@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketComparisonRetention
-import Vegas.Game.OnePacketStoppedContinuationValue
-import Vegas.Game.OnePacketSiteLinearity
+public import Vegas.Game.OnePacketComparisonRetention
+public import Vegas.Game.OnePacketStoppedContinuationValue
+public import Vegas.Game.OnePacketSiteLinearity
+
+@[expose] public section
 
 /-! # Source continuation values of the common native comparison profile -/
 
@@ -15,16 +19,17 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L] (setup : Setup (Player := Player) (L := L))
-  (runtime : EventGraphRuntime (graph setup))
+  (timeouts : EventTimeouts (graph setup))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
-  (scheduler : (application setup runtime leaks).Scheduler)
+  (scheduler : (application setup timeouts leaks).Scheduler)
 
-local notation "N" => onePacketModel setup runtime leaks bounds (initialLaw setup) horizon scheduler
+local notation "N" => onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+  scheduler
 local notation "NP" => ReactiveApplication.ResponseMenu.protocol
-  (bounds.onePacketMenu runtime leaks) (initialLaw setup) horizon scheduler
+  (bounds.onePacketMenu timeouts leaks) (initialLaw setup) horizon scheduler
 local notation "Clear" => ReactiveApplication.stateInvariant
-  (app := application setup runtime leaks)
+  (app := application setup timeouts leaks)
     (fun native : EventGraphRuntime.State (graph setup) =>
       EventGraph.Config.defaulted (EventGraphRuntime.State.config native) = ∅)
 
@@ -50,41 +55,41 @@ open Classical in
 /-- The same common native weights approximate the source value at every
 intended boundary, under counted native service and completion. -/
 theorem assembled_stopped_boundary_value_sub_le
-    [(application setup runtime leaks).FiniteNature (initialLaw setup) scheduler]
+    [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
     [∀ who, DecidableEq ((N).InfoState who)]
     (wellFormed : setup.WellFormed) (covers : bounds.CoversOutputValues)
     (capacity : ∀ player, bindingEventCount (graph setup) player < bounds.candidateCount)
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (scale : ℕ → ℝ) (positive : ∀ n, 0 < scale n) (le_one : ∀ n, scale n ≤ 1)
     {slots : Nat}
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup runtime leaks bounds (initialLaw setup)
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
       horizon scheduler slots p))
     (targetSequence : ℕ → (N).BehavioralAssessment)
-    (assembled : OnePacketAssembled setup runtime leaks bounds horizon scheduler sequence scale
+    (assembled : OnePacketAssembled setup timeouts leaks bounds horizon scheduler sequence scale
       positive
       le_one weights targetSequence) (n : ℕ)
     {delay bound : (graph setup).EventId → Nat}
-    (opportunity : ∀ control : (application setup runtime leaks).Control,
-      ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+    (opportunity : ∀ control : (application setup timeouts leaks).Control,
+      ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
         scheduler).Trace (some control) →
       control.execution.application.config.defaulted = ∅ →
-      OpportunityAt runtime leaks control.execution delay)
-    (inclusion : ∀ control : (application setup runtime leaks).Control,
-      ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+      OpportunityAt timeouts leaks control.execution delay)
+    (inclusion : ∀ control : (application setup timeouts leaks).Control,
+      ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
         scheduler).Trace (some control) →
       control.execution.application.config.defaulted = ∅ →
-      ProtectedInclusionAt runtime leaks control.execution bound)
-    (timely : runtime.AsyncTimely delay bound)
-    (completes : ∀ control : (application setup runtime leaks).Control,
-      ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+      ProtectedInclusionAt timeouts leaks control.execution bound)
+    (timely : (AsyncTimely timeouts) delay bound)
+    (completes : ∀ control : (application setup timeouts leaks).Control,
+      ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
         scheduler).Trace (some control) →
       control.execution.application.config.defaulted = ∅ →
-      (application setup runtime leaks).terminal (some control) →
+      (application setup timeouts leaks).terminal (some control) →
       control.execution.application.config.cut.Terminal)
     (certificate : (NP).WellFoundedHistories)
-    (rank : Nat) (start : (NP).History) (anchor : (application setup runtime leaks).Execution)
+    (rank : Nat) (start : (NP).History) (anchor : (application setup timeouts leaks).Execution)
     (state : start.state = some ⟨horizon - anchor.environmentRecall.length, none, anchor⟩)
-    (boundary : ReachedBoundary setup runtime leaks horizon scheduler rank anchor)
+    (boundary : ReachedBoundary setup timeouts leaks horizon scheduler rank anchor)
     (point : ProtocolState setup.program)
     (decoded : sourceServicePrefix? setup rank anchor.application.config = some point)
     (intended : ProtocolState.Intended setup.program point)
@@ -93,27 +98,27 @@ theorem assembled_stopped_boundary_value_sub_le
     (excludedPayoff : Player → ℝ) (who : Player) {payoffBound : ℝ}
     (boundNonneg : 0 ≤ payoffBound)
     (payoffBounded : ∀ history : (NP).History,
-      |exclusionBase setup runtime parameter utility excludedPayoff leaks history.state who| ≤
+      |exclusionBase setup timeouts parameter utility excludedPayoff leaks history.state who| ≤
         payoffBound)
     (excludedBounded : |excludedPayoff who| ≤ payoffBound) :
     let stopped := fun history : (NP).History => ¬ Clear history.state ∨
-      DecodedState setup runtime leaks (failureProfile setup.program)
+      DecodedState setup timeouts leaks (failureProfile setup.program)
         (ProtocolState.OwesFailure who setup.program) history.state
     |expect ((N).runBehavioralUntil certificate
         ((targetSequence n).strategy) stopped start)
         (fun final => if stopped final then excludedPayoff who else
-          exclusionBase setup runtime parameter utility excludedPayoff leaks final.state who) -
+          exclusionBase setup timeouts parameter utility excludedPayoff leaks final.state who) -
       sourcePointValue setup parameter utility excludedPayoff
         (setup.intendedOpeningProfile (sequence n).strategy) who point| ≤
       (2 * payoffBound * (1 - slotRetention (scale n))) *
-        (application setup runtime leaks).rank horizon start.state := by
+        (application setup timeouts leaks).rank horizon start.state := by
   intro stopped
-  have retained := assembled_dominatesHonestFrom_boundary setup runtime leaks bounds horizon
+  have retained := assembled_dominatesHonestFrom_boundary setup timeouts leaks bounds horizon
     scheduler
     wellFormed covers capacity sequence scale positive le_one weights targetSequence
       assembled n opportunity inclusion timely
     completes certificate rank start anchor state boundary point decoded intended
-  have estimate := counted_stopped_boundary_value_sub_le (runtime := runtime) opportunity
+  have estimate := counted_stopped_boundary_value_sub_le (timeouts := timeouts) opportunity
     inclusion timely
     completes wellFormed covers capacity
     (sequence n) certificate rank start anchor state boundary point decoded intended
@@ -126,23 +131,23 @@ theorem assembled_stopped_boundary_value_sub_le
   rw [sourceValue] at estimate
   exact estimate
 
-variable {setup runtime leaks bounds horizon scheduler}
+variable {setup timeouts leaks bounds horizon scheduler}
 
 /-- Before the next source event completes, the configuration remains fixed.
 Consequently an intended start has no earlier public-exclusion or own-debt stop. -/
 theorem debtStopped_eq_bind_eventPhase
     (certificate : (NP).WellFoundedHistories)
     (players : ∀ who, (N).BehavioralPolicy who) (who : Player)
-    (start : (NP).History) (control : (application setup runtime leaks).Control)
+    (start : (NP).History) (control : (application setup timeouts leaks).Control)
     (current : start.state = some control) {rank : Nat}
     (ordered : control.execution.application.config.cut.IsPrefix rank)
     (point : ProtocolState setup.program)
     (decoded : sourceServicePrefix? setup rank control.execution.application.config = some point)
     (intended : ProtocolState.Intended setup.program point) :
     let phase := fun history : (NP).History =>
-      LateStopped setup runtime leaks bounds horizon scheduler rank history ∨ ¬ Clear history.state
+      LateStopped setup timeouts leaks bounds horizon scheduler rank history ∨ ¬ Clear history.state
     let stopped := fun history : (NP).History => ¬ Clear history.state ∨
-      DecodedState setup runtime leaks (failureProfile setup.program)
+      DecodedState setup timeouts leaks (failureProfile setup.program)
         (ProtocolState.OwesFailure who setup.program) history.state
     (N).runBehavioralUntil certificate players stopped start =
       ((N).runBehavioralUntil certificate players phase start).bind
@@ -150,7 +155,7 @@ theorem debtStopped_eq_bind_eventPhase
   classical
   intro phase stopped
   let inside := fun history : (NP).History => phase history ∨
-    ∃ before : (application setup runtime leaks).Control, history.state = some before ∧
+    ∃ before : (application setup timeouts leaks).Control, history.state = some before ∧
       before.execution.application.config = control.execution.application.config
   have safe : ∀ history, inside history → ¬ phase history → ¬ stopped history := by
     intro history holds going
@@ -175,10 +180,10 @@ theorem debtStopped_eq_bind_eventPhase
     obtain ⟨before, state, configEq⟩ := holds.resolve_left going
     obtain ⟨⟨joint, _, realized⟩, _⟩ :=
       (N).mem_support_runBehavioralFrom_one players running member
-    change next.state ∈ ((application setup runtime leaks).transition (initialLaw setup)
+    change next.state ∈ ((application setup timeouts leaks).transition (initialLaw setup)
       horizon scheduler history.state joint).support at realized
     rw [state] at realized
-    obtain ⟨after, afterState, _⟩ := (application setup runtime leaks).transition_recall_prefix
+    obtain ⟨after, afterState, _⟩ := (application setup timeouts leaks).transition_recall_prefix
       (initialLaw setup) horizon scheduler before next.state joint realized
     have beforeOrdered : before.execution.application.config.cut.IsPrefix rank := by
       rw [configEq]
@@ -186,7 +191,7 @@ theorem debtStopped_eq_bind_eventPhase
     by_cases clearNext : Clear next.state
     · have empty : after.execution.application.config.defaulted = ∅ :=
         by simpa only [afterState, ReactiveApplication.stateInvariant] using clearNext
-      rcases reactive_protocol_config_eq_or_step_of_clear runtime leaks (initialLaw setup)
+      rcases reactive_protocol_config_eq_or_step_of_clear timeouts leaks (initialLaw setup)
           horizon scheduler before after joint (afterState ▸ realized) empty with
         same | ⟨event, ready, action, supported⟩
       · exact Or.inr ⟨after, afterState, same.trans configEq⟩

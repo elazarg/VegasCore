@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveEvaluation
-import GameTheory.Math.Probability.ConditionalObservation
-import GameTheory.Math.Probability.ExpectationConditioning
-import GameTheoryExtensions.Math.Probability.Support
+public import Interaction.ReactiveEvaluation
+public import GameTheory.Math.Probability.ConditionalObservation
+public import GameTheory.Math.Probability.ExpectationConditioning
+public import GameTheoryExtensions.Math.Probability.Support
+
+@[expose] public section
 
 /-! # Evaluation by scheduler rounds
 

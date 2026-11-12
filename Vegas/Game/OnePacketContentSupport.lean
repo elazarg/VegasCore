@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketSourceTurn
-import Vegas.Game.OnePacketFactorization
-import Vegas.Game.IntendedAuthenticOpening
-import Vegas.Game.SourceServiceFacts
+public import Vegas.Game.OnePacketSourceTurn
+public import Vegas.Game.OnePacketFactorization
+public import Vegas.Game.IntendedAuthenticOpening
+public import Vegas.Game.SourceServiceFacts
+
+@[expose] public section
 
 /-! # Transmissions with positive content
 
@@ -50,29 +54,29 @@ theorem decodeEventAction_isSome : ∀ {Γ : SourceCtx Player L} {O : Finset Var
       | succ tail => exact decodeEventAction_isSome next tail action notData
 
 variable {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   [Fintype Player] {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup runtime leaks).Scheduler}
+  {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- **Offered packets decode.** A transmission the one-packet menu offers names
 an event, and decodes, after any execution, to a source action encoding at that
 event. -/
 theorem onePacket_sentSourceAction (who : Player)
-    (past : List (application setup runtime leaks).PlayerEntry)
-    (view : (application setup runtime leaks).PlayerView) (response : (application setup runtime
+    (past : List (application setup timeouts leaks).PlayerEntry)
+    (view : (application setup timeouts leaks).PlayerView) (response : (application setup timeouts
       leaks).Action)
-    (member : response ∈ bounds.onePacketActions runtime leaks who past view)
-    (material : (application setup runtime leaks).Submission)
+    (member : response ∈ bounds.onePacketActions timeouts leaks who past view)
+    (material : (application setup timeouts leaks).Submission)
     (sends : response.transmission = some material)
-    (after : (application setup runtime leaks).Execution) :
+    (after : (application setup timeouts leaks).Execution) :
     ∃ event action, material.call.packet.event? (graph setup) = some event ∧
-      sentSourceAction setup runtime leaks after response = some action ∧
+      sentSourceAction setup timeouts leaks after response = some action ∧
       (encodeEventAction? setup.program event action).isSome := by
-  obtain ⟨_, permitted⟩ := (bounds.mem_onePacketActions runtime leaks who past view
+  obtain ⟨_, permitted⟩ := (bounds.mem_onePacketActions timeouts leaks who past view
     response).mp member
-  have verdict : CountPermits ((application setup runtime leaks).outputs past)
-      (runtime.localEnvelope leaks who past view material) := by
+  have verdict : CountPermits ((application setup timeouts leaks).outputs past)
+      ((localEnvelope timeouts) leaks who past view material) := by
     rcases permitted with silent | ⟨other, transmits, counted⟩
     · rw [sends] at silent
       cases silent
@@ -81,10 +85,10 @@ theorem onePacket_sentSourceAction (who : Player)
       exact (countPermits_eq_true_iff _ _).mp counted
   have correct := verdict.2.1
   unfold CountCallCorrect at correct
-  have callEq : (runtime.localEnvelope leaks who past view material).payload.call =
+  have callEq : ((localEnvelope timeouts) leaks who past view material).payload.call =
       material.call.packet := rfl
   rw [callEq] at correct
-  have content : sentSourceAction setup runtime leaks after response =
+  have content : sentSourceAction setup timeouts leaks after response =
       callContent setup after.application material.call.packet := by
     unfold sentSourceAction
     rw [sends]
@@ -137,12 +141,12 @@ theorem onePacket_sentSourceAction (who : Player)
 
 /-- Every history of the one-packet game decodes at its completed prefix. -/
 theorem onePacket_decodes (profile : BehavioralProfile setup.program)
-    {control : (application setup runtime leaks).Control}
-    (trace : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+    {control : (application setup timeouts leaks).Control}
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control)) :
     ∃ rank point, control.execution.application.config.cut.IsPrefix rank ∧
       sourceServicePrefix? setup rank control.execution.application.config = some point := by
-  obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (runtime := runtime) profile _ horizon
+  obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (timeouts := timeouts) profile _ horizon
     scheduler trace control rfl
   exact ⟨rank, _, residual.checkpoint.ordered, residual.decode⟩
 
@@ -151,44 +155,45 @@ one-packet game, a transmission the menu offers whose content factor after any
 execution is positive names the player's turn, and its recall has not submitted
 for that event. -/
 theorem onePacket_content_pos (assessment : setup.intendedModel.BehavioralAssessment)
-    {control : (application setup runtime leaks).Control}
-    (trace : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+    {control : (application setup timeouts leaks).Control}
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control))
-    (who : Player) (response : (application setup runtime leaks).Action)
-    (member : response ∈ bounds.onePacketActions runtime leaks who
-      (control.execution.logs who) (control.execution.observe (application setup runtime leaks)
+    (who : Player) (response : (application setup timeouts leaks).Action)
+    (member : response ∈ bounds.onePacketActions timeouts leaks who
+      (control.execution.logs who) (control.execution.observe (application setup timeouts leaks)
         who))
-    (material : (application setup runtime leaks).Submission)
-    (sends : response.transmission = some material) (after : (application setup runtime
+    (material : (application setup timeouts leaks).Submission)
+    (sends : response.transmission = some material) (after : (application setup timeouts
       leaks).Execution)
-    (positive : 0 < contentFactor setup runtime leaks assessment who control.execution after
+    (positive : 0 < contentFactor setup timeouts leaks assessment who control.execution after
       response) :
     ∃ event, control.execution.application.publicView.ownTurn? who = some event ∧
-      runtime.eventRecorded leaks (control.execution.logs who) event = false ∧
+      (eventRecorded timeouts) leaks (control.execution.logs who) event = false ∧
       material.call.packet.event? (graph setup) = some event := by
   obtain ⟨named, action, packetEvent, sent, encoded⟩ :=
-    onePacket_sentSourceAction (runtime := runtime) who _ _ response member material sends after
-  have weighted : some action ∈ ((assessment.strategy who (sourceViewOf setup runtime leaks who
-      (control.execution.observe (application setup runtime leaks) who))).map Subtype.val).support
+    onePacket_sentSourceAction (timeouts := timeouts) who _ _ response member material sends after
+  have weighted : some action ∈ ((assessment.strategy who (sourceViewOf setup timeouts leaks who
+      (control.execution.observe (application setup timeouts leaks) who))).map Subtype.val).support
         := by
     unfold contentFactor at positive
     rw [sends] at positive
     dsimp only at positive
     rw [sent] at positive
     exact (PMF.mem_support_iff _ _).mpr (ENNReal.toReal_pos_iff.mp positive).1.ne'
-  have supported : some action ∈ (asIfHonestProfile setup runtime leaks assessment who
+  have supported : some action ∈ (asIfHonestProfile setup timeouts leaks assessment who
       (some (control.execution.logs who,
-        control.execution.observe (application setup runtime leaks) who))).support := weighted
+        control.execution.observe (application setup timeouts leaks) who))).support := weighted
   obtain ⟨rank, point, ordered, decoded⟩ :=
-    onePacket_decodes (runtime := runtime) (setup.intendedOpeningProfile assessment.strategy) trace
+    onePacket_decodes (timeouts := timeouts) (setup.intendedOpeningProfile assessment.strategy)
+      trace
   cases turn : control.execution.application.publicView.ownTurn? who with
   | none =>
-      rw [asIfHonestProfile_eq_pure_none (runtime := runtime) assessment who control.execution
+      rw [asIfHonestProfile_eq_pure_none (timeouts := timeouts) assessment who control.execution
         rank ordered point
         decoded _ turn] at supported
       cases (PMF.mem_support_pure_iff _ _).mp supported
   | some event =>
-      have rawTrace := (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup)
+      have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup)
         horizon scheduler trace
       have ready : control.execution.application.config.cut.Ready event :=
         (control.execution.application.publicView_eventReady event).mp
@@ -196,21 +201,21 @@ theorem onePacket_content_pos (assessment : setup.intendedModel.BehavioralAssess
       have active := control.execution.application.active_of_ready_owned
         (legalFacts setup leaks horizon scheduler control rawTrace).quiescent ready
         (PublicView.ownTurn?_spec _ who event turn).2
-      have atTurn := asIfHonestProfile_encodes (runtime := runtime) assessment who
+      have atTurn := asIfHonestProfile_encodes (timeouts := timeouts) assessment who
         control.execution rank ordered
         point decoded _ event turn active _ supported
       have same : named = event :=
         encodeEventAction?_event_unique setup.program named event action encoded atTurn
       subst same
       refine ⟨named, rfl, ?_, packetEvent⟩
-      cases recorded : runtime.eventRecorded leaks (control.execution.logs who) named
+      cases recorded : (eventRecorded timeouts) leaks (control.execution.logs who) named
         with
       | false => rfl
       | true =>
           exfalso
-          have rawTrace : ((application setup runtime leaks).protocol (initialLaw setup) horizon
+          have rawTrace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
               scheduler).Trace (some control) :=
-            (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup) horizon
+            (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon
               scheduler trace
           obtain ⟨entry, entryMember, submitted⟩ := List.any_eq_true.mp recorded
           have submittedEq := of_decide_eq_true submitted
@@ -222,20 +227,20 @@ theorem onePacket_content_pos (assessment : setup.intendedModel.BehavioralAssess
           | some earlier =>
               rw [transmits] at submittedEq
               dsimp only at submittedEq
-              have emitted := (transmissionsEmitted_serviceInvariant (runtime := runtime)
+              have emitted := (transmissionsEmitted_serviceInvariant (timeouts := timeouts)
                 scheduler).history
                 (initialLaw setup) horizon (fun _ _ _ _ member => (List.not_mem_nil member).elim)
                 rawTrace who entry entryMember earlier transmits
               obtain ⟨message, emits, call⟩ := emitted
-              have output : message ∈ (application setup runtime leaks).outputs
+              have output : message ∈ (application setup timeouts leaks).outputs
                   (control.execution.logs who) :=
                 List.mem_filterMap.mpr ⟨entry, entryMember, emits⟩
-              obtain ⟨_, permitted⟩ := (bounds.mem_onePacketActions runtime leaks who _ _
+              obtain ⟨_, permitted⟩ := (bounds.mem_onePacketActions timeouts leaks who _ _
                 response).mp member
-              have verdict : CountPermits ((application setup runtime leaks).outputs
+              have verdict : CountPermits ((application setup timeouts leaks).outputs
                   (control.execution.logs who))
-                  (runtime.localEnvelope leaks who (control.execution.logs who)
-                    (control.execution.observe (application setup runtime leaks) who) material) :=
+                  ((localEnvelope timeouts) leaks who (control.execution.logs who)
+                    (control.execution.observe (application setup timeouts leaks) who) material) :=
                       by
                 rcases permitted with silent | ⟨other, otherSends, counted⟩
                 · rw [sends] at silent
@@ -243,17 +248,17 @@ theorem onePacket_content_pos (assessment : setup.intendedModel.BehavioralAssess
                 · rw [sends] at otherSends
                   cases Option.some.inj otherSends
                   exact (countPermits_eq_true_iff _ _).mp counted
-              have recalled := runtime.countRecall_history leaks rawTrace
-              have callEq : (runtime.localEnvelope leaks who (control.execution.logs who)
-                  (control.execution.observe (application setup runtime leaks) who)
+              have recalled := (countRecall_history timeouts) leaks rawTrace
+              have callEq : ((localEnvelope timeouts) leaks who (control.execution.logs who)
+                  (control.execution.observe (application setup timeouts leaks) who)
                     material).payload.call =
                   material.call.packet := rfl
               have first := verdict.2.2 message
-              rw [runtime.localEnvelope_eq_of_recall leaks control.execution recalled.1
+              rw [(localEnvelope_eq_of_recall timeouts) leaks control.execution recalled.1
                 recalled.2.1 who material] at first
               apply first (earlierOwnPacket_of_output rawTrace who _ message output)
               rw [call, submittedEq]
-              rw [runtime.localEnvelope_eq_of_recall leaks control.execution recalled.1
+              rw [(localEnvelope_eq_of_recall timeouts) leaks control.execution recalled.1
                 recalled.2.1 who material] at callEq
               rw [callEq, packetEvent]
 

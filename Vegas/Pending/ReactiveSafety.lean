@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveRuntime
-import Vegas.Pending.EventCommitmentBinding
+public import Vegas.Pending.ReactiveRuntime
+public import Vegas.Pending.EventCommitmentBinding
+
+@[expose] public section
 
 /-! # Binding under arbitrary reactive continuations
 
@@ -19,12 +23,12 @@ open GameTheory.Math.Probability Interaction
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
 
-theorem reactive_respond_candidate_fixed (runtime : EventGraphRuntime graph)
+theorem reactive_respond_candidate_fixed (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (execution : (runtime.reactiveApplication leaks).Execution) (who : Player)
-    (action : (runtime.reactiveApplication leaks).Action) (candidate : Handle graph)
+    (execution : ((reactiveApplication timeouts) leaks).Execution) (who : Player)
+    (action : ((reactiveApplication timeouts) leaks).Action) (candidate : Handle graph)
     (fixed : execution.application.candidates.lookup candidate ≠ .fresh) :
-    (execution.respond (runtime.reactiveApplication leaks) who
+    (execution.respond ((reactiveApplication timeouts) leaks) who
       action).application.candidates.lookup
       candidate = execution.application.candidates.lookup candidate := by
   rcases action with ⟨transmission⟩

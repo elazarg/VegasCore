@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RevealDeviationSimulation
-import Vegas.Pending.EventInitialObservation
+public import Vegas.Game.RevealDeviationSimulation
+public import Vegas.Pending.EventInitialObservation
+
+@[expose] public section
 
 /-! # The ledger law of a deviation with concurrent reveals
 
@@ -20,7 +24,7 @@ open SourceProgram GameTheory.Math.Probability Interaction EventGraphRuntime Eve
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)} {mode : EventGraph.ExecutionMode}
-  {deadline : (serviceGraph setup mode).EventId → Nat}
+  {duration : (serviceGraph setup mode).EventId → Nat}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode))}
 
 /-- Initial configurations with equal normalized views of a player give it equal
@@ -46,11 +50,11 @@ theorem initial_bindingTraffic_eq_of_keyView (who : Player)
     (left right : (serviceGraph setup mode).Inputs)
     (views : keyView who (runKey (Config.initial left)) =
       keyView who (runKey (Config.initial right))) :
-    (serviceRuntime setup mode deadline).bindingTraffic leaks who
-        (ReactiveApplication.Execution.initial (serviceApplication setup mode deadline leaks)
+    (bindingTraffic (serviceTimeouts setup mode duration)) leaks who
+        (ReactiveApplication.Execution.initial (serviceApplication setup mode duration leaks)
           (EventGraphRuntime.State.initial left)) =
-      (serviceRuntime setup mode deadline).bindingTraffic leaks who
-        (ReactiveApplication.Execution.initial (serviceApplication setup mode deadline leaks)
+      (bindingTraffic (serviceTimeouts setup mode duration)) leaks who
+        (ReactiveApplication.Execution.initial (serviceApplication setup mode duration leaks)
           (EventGraphRuntime.State.initial right)) := by
   have observed := initial_playerObserve_eq_of_keyView who left right views
   have publics := EventGraphRuntime.State.initial_publicView_eq_of_observation who left right
@@ -67,19 +71,19 @@ theorem initial_bindingTraffic_eq_of_keyView (who : Player)
 
 /-- Every initial execution is the first phase boundary. -/
 theorem initial_phaseBoundary {horizon : Nat}
-    (scheduler : (serviceApplication setup mode deadline leaks).Scheduler)
-    (players : Player → (serviceApplication setup mode deadline leaks).Policy)
+    (scheduler : (serviceApplication setup mode duration leaks).Scheduler)
+    (players : Player → (serviceApplication setup mode duration leaks).Policy)
     (state : EventGraphRuntime.State (serviceGraph setup mode))
     (supported : state ∈ (serviceInitialLaw setup mode).support) :
     PhaseBoundary scheduler players horizon 0
-      (ReactiveApplication.Execution.initial (serviceApplication setup mode deadline leaks)
+      (ReactiveApplication.Execution.initial (serviceApplication setup mode duration leaks)
         state) := by
   obtain ⟨initial, _, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp supported
   refine ⟨?_, Nat.zero_le _, fun event smaller => absurd smaller (Nat.not_lt_zero _),
     fun event _ done => ?_, fun who entry member => ?_, fun completion member => ?_⟩
   · change ReactiveApplication.Execution.initial _ _ ∈
       ((serviceInitialLaw setup mode).bind fun state =>
-        (serviceApplication setup mode deadline leaks).runRounds scheduler players 0
+        (serviceApplication setup mode duration leaks).runRounds scheduler players 0
           (ReactiveApplication.Execution.initial _ state)).support
     rw [PMF.support_bind]
     exact Set.mem_iUnion₂.mpr ⟨_, supported, (PMF.mem_support_pure_iff _ _).mpr rfl⟩
@@ -96,12 +100,12 @@ the ledger law of the erased key a deviation of one player reaches by the horizo
 is the last-served erased-key law of a normalized graph deviation of the base
 from the initial configuration. -/
 theorem concurrent_deviation_erased_law {horizon : Nat}
-    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    {scheduler : (serviceApplication setup mode duration leaks).Scheduler}
     {delay : (serviceGraph setup mode).EventId → Nat}
     (bound : (serviceGraph setup mode).EventId → Nat) (turns : Nat)
-    (contract : AsyncContract (serviceRuntime setup mode deadline) leaks
+    (contract : AsyncContract (serviceTimeouts setup mode duration) leaks
         (serviceInitialLaw setup mode) horizon scheduler delay bound)
-    (timely : AsyncTimely (serviceRuntime setup mode deadline) delay bound)
+    (timely : AsyncTimely (serviceTimeouts setup mode duration) delay bound)
     (base : (serviceGraph setup mode).BehavioralProfile)
     (decides : ∀ (config : (serviceGraph setup mode).Config)
       (event : (serviceGraph setup mode).EventId) (owner : Player) (payload : L.Ty)
@@ -119,7 +123,7 @@ theorem concurrent_deviation_erased_law {horizon : Nat}
           PMF.pure (cast (congrArg EventField.Action outputEq.symm)
             (openingAccepted event config.store)))
     (referenceIndependent : ReadyIndependent ((serviceGraph setup mode).normalizeProfile base))
-    (who : Player) (deviation : (serviceApplication setup mode deadline leaks).Policy)
+    (who : Player) (deviation : (serviceApplication setup mode duration leaks).Policy)
     (independent : ∀ policy, LastIndependent
       ((serviceGraph setup mode).lastDeviationProfile base who policy) who)
     (relaxed : RelaxedOrder (serviceGraph setup mode))
@@ -127,21 +131,21 @@ theorem concurrent_deviation_erased_law {horizon : Nat}
     (concurrent : (serviceGraph setup mode).RevealsOnlyConcurrent) :
     ∃ policy : (serviceGraph setup mode).BehavioralPolicy who,
       (serviceInitialLaw setup mode).bind (fun state =>
-        ((serviceApplication setup mode deadline leaks).runToHorizon scheduler
-          (Function.update (serviceReferenceTurnPolicy setup mode deadline leaks bound turns
+        ((serviceApplication setup mode duration leaks).runToHorizon scheduler
+          (Function.update (serviceReferenceTurnPolicy setup mode duration leaks bound turns
             (firstTurnTiming setup turns mode) ((serviceGraph setup mode).normalizeProfile base))
             who deviation) horizon
-          (ReactiveApplication.Execution.initial (serviceApplication setup mode deadline leaks)
+          (ReactiveApplication.Execution.initial (serviceApplication setup mode duration leaks)
             state)).map fun final => readErased (runKey final.application.config)) =
       (serviceInitialLaw setup mode).bind fun state =>
         lastErasedLaw ((serviceGraph setup mode).lastDeviationProfile base who policy) who
           state.config := by
   classical
-  let app := serviceApplication setup mode deadline leaks
-  let players := Function.update (serviceReferenceTurnPolicy setup mode deadline leaks bound
+  let app := serviceApplication setup mode duration leaks
+  let players := Function.update (serviceReferenceTurnPolicy setup mode duration leaks bound
     turns (firstTurnTiming setup turns mode) ((serviceGraph setup mode).normalizeProfile base))
     who deviation
-  let traffic := (serviceRuntime setup mode deadline).bindingTraffic leaks who
+  let traffic := (bindingTraffic (serviceTimeouts setup mode duration)) leaks who
   let start := fun state : EventGraphRuntime.State (serviceGraph setup mode) =>
     ReactiveApplication.Execution.initial app state
   let noise := fun view : Option ((serviceGraph setup mode).PlayerObservation who) =>
@@ -157,7 +161,7 @@ theorem concurrent_deviation_erased_law {horizon : Nat}
     intro first firstMember second secondMember same
     obtain ⟨firstInitial, _, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp firstMember
     obtain ⟨secondInitial, _, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp secondMember
-    exact initial_bindingTraffic_eq_of_keyView (deadline := deadline) (leaks := leaks) who _ _
+    exact initial_bindingTraffic_eq_of_keyView (duration := duration) (leaks := leaks) who _ _
       same
   have factor : (serviceInitialLaw setup mode).map (fun state =>
       (runKey (start state).application.config, traffic (start state))) =

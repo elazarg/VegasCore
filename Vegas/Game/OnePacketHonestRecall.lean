@@ -1,15 +1,19 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketHonestContinuation
-import Vegas.Game.OnePacketForcedPrefix
-import Vegas.Game.OnePacketForcedRegular
-import Vegas.Game.OnePacketDebtFreeResponse
-import Vegas.Game.HonestContinuationIntended
-import GameTheory.Analysis.Protocol.RestrictionDomination
-import Interaction.ReactiveHistory
-import Vegas.Pending.ReactiveGraphSteps
-import Vegas.EventGraph.ObservationStep
-import Vegas.Game.SourceDebtObservation
+public import Vegas.Game.OnePacketHonestContinuation
+public import Vegas.Game.OnePacketForcedPrefix
+public import Vegas.Game.OnePacketForcedRegular
+public import Vegas.Game.OnePacketDebtFreeResponse
+public import Vegas.Game.HonestContinuationIntended
+public import GameTheory.Analysis.Protocol.RestrictionDomination
+public import Interaction.ReactiveHistory
+public import Vegas.Pending.ReactiveGraphSteps
+public import Vegas.EventGraph.ObservationStep
+public import Vegas.Game.SourceDebtObservation
+
+@[expose] public section
 
 /-! # Honest ready callbacks are recorded under counted native service -/
 
@@ -23,47 +27,48 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)}
   {horizon : Nat}
-  {scheduler : (application setup runtime leaks).Scheduler}
+  {scheduler : (application setup timeouts leaks).Scheduler}
   {delay bound : (graph setup).EventId → Nat}
-  (opportunity : ∀ control : (application setup runtime leaks).Control,
-    ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+  (opportunity : ∀ control : (application setup timeouts leaks).Control,
+    ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control) →
     control.execution.application.config.defaulted = ∅ →
-    OpportunityAt runtime leaks control.execution delay)
-  (timely : runtime.AsyncTimely delay bound)
+    OpportunityAt timeouts leaks control.execution delay)
+  (timely : (AsyncTimely timeouts) delay bound)
 
-local notation "menu" => bounds.onePacketMenu runtime leaks
-local notation "N" => onePacketModel setup runtime leaks bounds (initialLaw setup) horizon scheduler
+local notation "menu" => bounds.onePacketMenu timeouts leaks
+local notation "N" => onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+  scheduler
 local notation "E" => ReactiveApplication.ResponseMenu.protocol menu (initialLaw setup) horizon
   scheduler
 
-private def ReadyTurnsRecorded (execution : (application setup runtime leaks).Execution) : Prop :=
+def ReadyTurnsRecorded (execution : (application setup timeouts leaks).Execution) : Prop :=
   ∀ event : (graph setup).EventId, event ∉ execution.application.config.cut.completed →
-    ∀ who entry, entry ∈ execution.logs who → ActivatedAt setup runtime leaks who event entry →
-      runtime.eventRecorded leaks (execution.logs who) event = true
+    ∀ who entry, entry ∈ execution.logs who → ActivatedAt setup timeouts leaks who event entry →
+      (eventRecorded timeouts) leaks (execution.logs who) event = true
 
 include opportunity timely in
 private theorem readyTurnsRecorded_transition
     (wellFormed : setup.WellFormed) (covers : bounds.CoversOutputValues)
     (capacity : ∀ player, bindingEventCount (graph setup) player < bounds.candidateCount)
     (source : setup.intendedModel.BehavioralAssessment)
-    (history : (E).History) (control : (application setup runtime leaks).Control)
+    (history : (E).History) (control : (application setup timeouts leaks).Control)
     (state : history.state = some control)
     (point : ProtocolState setup.program)
     (decoded : decodedPoint setup control.execution.application.config = some point)
     (intended : ProtocolState.Intended setup.program point)
-    (recorded : ReadyTurnsRecorded (runtime := runtime) control.execution)
+    (recorded : ReadyTurnsRecorded (timeouts := timeouts) control.execution)
     (choices : ∀ player, (N).Choice player ((N).infoOf player history.trace))
     (chosen : ∀ player, choices player ∈
-      (honestProfile setup runtime leaks bounds (initialLaw setup) horizon scheduler source player
+      (honestProfile setup timeouts leaks bounds (initialLaw setup) horizon scheduler source player
         ((N).infoOf player history.trace)).support)
     (final : (E).History) (supported : final ∈ ((N).localStep history choices).support) :
-    ∃ next : (application setup runtime leaks).Control, final.state = some next ∧
-      ReadyTurnsRecorded (runtime := runtime) next.execution := by
+    ∃ next : (application setup timeouts leaks).Control, final.state = some next ∧
+      ReadyTurnsRecorded (timeouts := timeouts) next.execution := by
   classical
   by_cases stopped : (E).terminal history.state
   · rw [InformationModel.localStep, dite_eq_left stopped, PMF.mem_support_pure_iff] at supported
@@ -74,23 +79,23 @@ private theorem readyTurnsRecorded_transition
   obtain ⟨after, realized, finalMem⟩ := supported
   change final ∈ (PMF.pure _).support at finalMem
   cases (PMF.mem_support_pure_iff _ _).mp finalMem
-  have moved : after ∈ ((application setup runtime leaks).transition (initialLaw setup) horizon
+  have moved : after ∈ ((application setup timeouts leaks).transition (initialLaw setup) horizon
     scheduler
       (some control) (fun player => (choices player).1)).support := by
-    let joint : Player → Option (application setup runtime leaks).Action := fun player => (choices
+    let joint : Player → Option (application setup timeouts leaks).Action := fun player => (choices
       player).1
-    change after ∈ ((application setup runtime leaks).transition (initialLaw setup) horizon
+    change after ∈ ((application setup timeouts leaks).transition (initialLaw setup) horizon
       scheduler
       history.state joint).support at realized
-    change after ∈ ((application setup runtime leaks).transition (initialLaw setup) horizon
+    change after ∈ ((application setup timeouts leaks).transition (initialLaw setup) horizon
       scheduler
       (some control) joint).support
     rw [state] at realized
     exact realized
   obtain ⟨next, afterEq, _⟩ :=
-    (application setup runtime leaks).transition_recall_prefix (initialLaw setup) horizon
+    (application setup timeouts leaks).transition_recall_prefix (initialLaw setup) horizon
       scheduler control after (fun player => (choices player).1) moved
-  have path := runtime.reactive_protocol_graph_steps leaks (initialLaw setup) horizon scheduler
+  have path := (reactive_protocol_graph_steps timeouts) leaks (initialLaw setup) horizon scheduler
     control next (fun player => (choices player).1) (by simpa only [afterEq] using moved)
   have completed := EventGraph.completed_subset_of_history_prefix _ _
     (EventGraph.Config.Step.path_history_prefix path)
@@ -98,8 +103,8 @@ private theorem readyTurnsRecorded_transition
   have trace : (E).Trace (some control) := state ▸ history.trace
   have raw := (menu).toRawTrace (initialLaw setup) horizon scheduler trace
   have clear := defaulted_eq_empty_of_decodedIntended decoded intended
-  have forced : ∀ player, ForcedState setup runtime leaks player (some control) := fun player =>
-    (forcedState_iff_decodedPoint (runtime := runtime) control).mpr
+  have forced : ∀ player, ForcedState setup timeouts leaks player (some control) := fun player =>
+    (forcedState_iff_decodedPoint (timeouts := timeouts) control).mpr
       ⟨point, decoded, forcedPoint_of_intended player intended⟩
   have notOwed : ∀ player found, decodedPoint setup control.execution.application.config =
       some found → ¬ ProtocolState.OwesFailure player setup.program found := by
@@ -119,17 +124,18 @@ private theorem readyTurnsRecorded_transition
           obtain ⟨ending, step, same⟩ := PMF.support_map .. ▸ continued
           cases Option.some.inj (same.trans afterEq)
           intro event unfinished player entry member activated
-          have recallEq := (application setup runtime leaks).environmentStep_recall execution ending
+          have recallEq := (application setup timeouts leaks).environmentStep_recall execution
+            ending
             command step
           rw [recallEq] at member ⊢
           exact recorded event (fun done => unfinished (completed done))
             player entry member activated
   | some actor =>
       have observed : (N).infoOf actor history.trace = some (execution.logs actor,
-          execution.observe (application setup runtime leaks) actor) := by
+          execution.observe (application setup timeouts leaks) actor) := by
         have observes := (menu).info (initialLaw setup) horizon scheduler actor history.trace
         change (N).infoOf actor history.trace =
-          (application setup runtime leaks).observe actor history.state at observes
+          (application setup timeouts leaks).observe actor history.state at observes
         exact observes.trans (by rw [state]; simp [ReactiveApplication.observe])
       have localLegal := ((N).menu_adequate actor history.trace (choices actor).1).mp
         (choices actor).2
@@ -139,7 +145,7 @@ private theorem readyTurnsRecorded_transition
             rw [choiceEq] at localLegal
             exfalso
             apply localLegal
-            change (application setup runtime leaks).actor history.state = some actor
+            change (application setup timeouts leaks).actor history.state = some actor
             rw [state]
             rfl
         | some response => exact ⟨response, rfl⟩
@@ -149,11 +155,11 @@ private theorem readyTurnsRecorded_transition
       simp only [selected, Option.getD_some] at same
       cases Option.some.inj (same.symm.trans afterEq)
       intro event unfinished player entry member activated
-      rw [(runtime.reactive_respond_application leaks execution actor response).1]
+      rw [((reactive_respond_application timeouts) leaks execution actor response).1]
         at unfinished
-      rcases (application setup runtime leaks).respond_entry_origin execution actor player response
+      rcases (application setup timeouts leaks).respond_entry_origin execution actor player response
           entry member with earlier | ⟨samePlayer, sameView⟩
-      · exact runtime.eventRecorded_respond_of_recorded leaks execution actor player
+      · exact (eventRecorded_respond_of_recorded timeouts) leaks execution actor player
           response event (recorded event unfinished player entry earlier activated)
       · subst player
         have turn : execution.application.publicView.ownTurn? actor = some event := by
@@ -161,34 +167,34 @@ private theorem readyTurnsRecorded_transition
           rw [sameView] at activated
           change execution.application.publicView.ownTurn? actor = some event at activated
           exact activated
-        cases old : runtime.eventRecorded leaks (execution.logs actor) event with
+        cases old : (eventRecorded timeouts) leaks (execution.logs actor) event with
         | true =>
-            exact runtime.eventRecorded_respond_of_recorded leaks execution actor actor
+            exact (eventRecorded_respond_of_recorded timeouts) leaks execution actor actor
               response event old
         | false =>
-            have pending := pendingEvent_of_spec (runtime := runtime) (setup := setup) (leaks :=
+            have pending := pendingEvent_of_spec (timeouts := timeouts) (setup := setup) (leaks :=
               leaks) (who := actor)
               (past := execution.logs actor)
-              (view := execution.observe (application setup runtime leaks) actor) turn old
+              (view := execution.observe (application setup timeouts leaks) actor) turn old
             have never : ∀ earlier ∈ execution.logs actor,
-                ¬ ActivatedAt setup runtime leaks actor event earlier := by
+                ¬ ActivatedAt setup timeouts leaks actor event earlier := by
               intro earlier remembered previous
               have yes := recorded event unfinished actor earlier remembered
                 previous
               rw [old] at yes
               cases yes
-            have fits := firstActivation_inclusionFits_of_counted_opportunity setup runtime leaks
+            have fits := firstActivation_inclusionFits_of_counted_opportunity setup timeouts leaks
               bounds horizon
               scheduler delay bound opportunity timely trace rfl clear event turn never
             have rawSupported : (choices actor).1 ∈
-                ((honestChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler
+                ((honestChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler
                   source actor
                   (some (execution.logs actor,
-                    execution.observe (application setup runtime leaks) actor))).map
+                    execution.observe (application setup timeouts leaks) actor))).map
                       Subtype.val).support := by
-              let rawLaw : (application setup runtime leaks).Info →
-                  PMF (Option (application setup runtime leaks).Action) := fun info =>
-                (honestProfile setup runtime leaks bounds (initialLaw setup) horizon scheduler
+              let rawLaw : (application setup timeouts leaks).Info →
+                  PMF (Option (application setup timeouts leaks).Action) := fun info =>
+                (honestProfile setup timeouts leaks bounds (initialLaw setup) horizon scheduler
                   source actor
                   info).map Subtype.val
               have mapped : (choices actor).1 ∈ (rawLaw ((N).infoOf actor history.trace)).support :=
@@ -199,30 +205,30 @@ private theorem readyTurnsRecorded_transition
             obtain ⟨choice, localSupported, choiceEq⟩ :=
               (PMF.mem_support_map_iff _ _ _).mp rawSupported
             obtain ⟨action, material, canonical, transmits, _⟩ :=
-              honestChoice_canonical_of_debtFree (runtime := runtime) wellFormed covers capacity
+              honestChoice_canonical_of_debtFree (timeouts := timeouts) wellFormed covers capacity
                 source trace actor
                 (forced actor) (notOwed actor) event pending bound fits _ localSupported
             have responseEq := Option.some.inj ((choiceEq.trans selected).symm.trans canonical)
             subst response
-            apply runtime.eventRecorded_respond
-            rcases runtime.canonicalServiceDecision_cases leaks actor
-                (execution.logs actor) (execution.observe (application setup runtime leaks) actor)
+            apply (eventRecorded_respond timeouts)
+            rcases (canonicalServiceDecision_cases timeouts) leaks actor
+                (execution.logs actor) (execution.observe (application setup timeouts leaks) actor)
                 event action with silent | named
             · rw [silent] at transmits
               cases transmits
             · exact named
 
 variable
-  (inclusion : ∀ control : (application setup runtime leaks).Control,
-    ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+  (inclusion : ∀ control : (application setup timeouts leaks).Control,
+    ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control) →
     control.execution.application.config.defaulted = ∅ →
-    ProtectedInclusionAt runtime leaks control.execution bound)
-  (completes : ∀ control : (application setup runtime leaks).Control,
-    ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+    ProtectedInclusionAt timeouts leaks control.execution bound)
+  (completes : ∀ control : (application setup timeouts leaks).Control,
+    ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control) →
     control.execution.application.config.defaulted = ∅ →
-    (application setup runtime leaks).terminal (some control) →
+    (application setup timeouts leaks).terminal (some control) →
     control.execution.application.config.cut.Terminal)
 
 include opportunity timely inclusion completes in
@@ -233,20 +239,20 @@ theorem counted_honest_reached_not_late
     (capacity : ∀ player, bindingEventCount (graph setup) player < bounds.candidateCount)
     (source : setup.intendedModel.BehavioralAssessment)
     (certificate : (E).WellFoundedHistories)
-    (rank : Nat) (start : (E).History) (anchor : (application setup runtime leaks).Execution)
+    (rank : Nat) (start : (E).History) (anchor : (application setup timeouts leaks).Execution)
     (state : start.state = some ⟨horizon - anchor.environmentRecall.length, none, anchor⟩)
-    (boundary : ReachedBoundary setup runtime leaks horizon scheduler rank anchor)
+    (boundary : ReachedBoundary setup timeouts leaks horizon scheduler rank anchor)
     (point : ProtocolState setup.program)
     (decoded : sourceServicePrefix? setup rank anchor.application.config = some point)
     (intended : ProtocolState.Intended setup.program point) :
     ∀ fuel (history : (E).History), history ∈ ((N).runBehavioralFrom
-      (honestProfile setup runtime leaks bounds (initialLaw setup) horizon scheduler source) fuel
-        start).support → ∀ who, ¬ LateDelivery setup runtime leaks who ((N).infoOf who
+      (honestProfile setup timeouts leaks bounds (initialLaw setup) horizon scheduler source) fuel
+        start).support → ∀ who, ¬ LateDelivery setup timeouts leaks who ((N).infoOf who
           history.trace) := by
   classical
-  let players := honestProfile setup runtime leaks bounds (initialLaw setup) horizon scheduler
+  let players := honestProfile setup timeouts leaks bounds (initialLaw setup) horizon scheduler
     source
-  have law := counted_honest_boundary_readout_law (runtime := runtime) opportunity inclusion
+  have law := counted_honest_boundary_readout_law (timeouts := timeouts) opportunity inclusion
     timely completes covers capacity source certificate rank start anchor state boundary
     point decoded intended
   change _ = (setup.continuationLaw (setup.intendedOpeningProfile source.strategy)
@@ -256,8 +262,8 @@ theorem counted_honest_reached_not_late
     ((decodedPoint_eq_of_isPrefix boundary.ordered).trans decoded)
   have maintained : ∀ fuel (history : (E).History),
       history ∈ ((N).runBehavioralFrom players fuel start).support →
-      ∃ control : (application setup runtime leaks).Control, history.state = some control ∧
-        ReadyTurnsRecorded (runtime := runtime) control.execution := by
+      ∃ control : (application setup timeouts leaks).Control, history.state = some control ∧
+        ReadyTurnsRecorded (timeouts := timeouts) control.execution := by
     intro fuel
     induction fuel with
     | zero =>
@@ -281,7 +287,7 @@ theorem counted_honest_reached_not_late
             static intended law fuel middle earlier control current
         rw [(N).runBehavioralFrom_one_localStep] at next
         obtain ⟨choices, drawn, stepped⟩ := (PMF.mem_support_bind_iff _ _ _).mp next
-        exact readyTurnsRecorded_transition (runtime := runtime) opportunity timely wellFormed
+        exact readyTurnsRecorded_transition (timeouts := timeouts) opportunity timely wellFormed
           covers capacity source middle control current sourcePoint sourceDecoded sourceIntended
           recorded choices ((independentProduct_support_iff _ _).mp drawn) history stepped
   intro fuel history supported who late
@@ -289,7 +295,7 @@ theorem counted_honest_reached_not_late
   obtain ⟨past, view, event, same, pending, entry, member, activated⟩ := late
   rw [same] at pending
   have observes := (menu).info (initialLaw setup) horizon scheduler who history.trace
-  have actual : (application setup runtime leaks).observe who history.state = some (past, view) :=
+  have actual : (application setup timeouts leaks).observe who history.state = some (past, view) :=
     observes.symm.trans same
   rw [current] at actual
   rcases control with ⟨remaining, actor, execution⟩
@@ -298,11 +304,11 @@ theorem counted_honest_reached_not_late
     simp only [ReactiveApplication.observe, ↓reduceIte, Option.some.injEq, Prod.mk.injEq]
       at actual
     obtain ⟨pastEq, viewEq⟩ := actual
-    have pendingAt : pendingEvent setup runtime leaks who (some (execution.logs who,
-        execution.observe (application setup runtime leaks) who)) = some event := by
+    have pendingAt : pendingEvent setup timeouts leaks who (some (execution.logs who,
+        execution.observe (application setup timeouts leaks) who)) = some event := by
       rw [pastEq, viewEq]
       exact pending
-    obtain ⟨_, ready, _, unsent⟩ := pendingEvent_spec (runtime := runtime) pendingAt
+    obtain ⟨_, ready, _, unsent⟩ := pendingEvent_spec (timeouts := timeouts) pendingAt
     have unfinished := ((execution.application.publicView_eventReady event).mp ready).1
     have remembered : entry ∈ execution.logs who := pastEq.symm ▸ member
     have yes := recorded event unfinished who entry remembered activated

@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveStateInvariant
-import Interaction.ReactiveRecallInvariant
-import Vegas.Pending.PublicFailureEvidence
+public import Vegas.Pending.ReactiveStateInvariant
+public import Interaction.ReactiveRecallInvariant
+public import Vegas.Pending.PublicFailureEvidence
+
+@[expose] public section
 
 /-! # Recorded public views stay current until an event completes
 
@@ -24,13 +28,13 @@ open Interaction
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
-  (runtime : EventGraphRuntime graph)
+  (timeouts : EventTimeouts graph)
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
 
 /-- A recorded response's public view: its completion order is a prefix of the
 current one, and while no event has completed since, its public observation,
 accepted handles and activation times are the current ones. -/
-def EntryStable (execution : (runtime.reactiveApplication leaks).Execution) : Prop :=
+def EntryStable (execution : ((reactiveApplication timeouts) leaks).Execution) : Prop :=
   ∀ who, ∀ entry ∈ execution.logs who,
     entry.beforeView.application.publicView.observation.completionOrder <+:
         execution.application.publicView.observation.completionOrder ∧
@@ -77,12 +81,13 @@ private theorem retained_public_view_step (saved : PublicView graph)
 
 /-- Recorded public views stay current until an event completes, for every
 scheduler and arbitrary responses. -/
-theorem entryStable_serviceInvariant (scheduler : (runtime.reactiveApplication leaks).Scheduler) :
-    (runtime.reactiveApplication leaks).ServiceInvariant scheduler
-      (EntryStable runtime leaks) where
+theorem entryStable_serviceInvariant (scheduler : ((reactiveApplication timeouts)
+  leaks).Scheduler) :
+    ((reactiveApplication timeouts) leaks).ServiceInvariant scheduler
+      (EntryStable timeouts leaks) where
   respond execution who action valid := by
-    let app := runtime.reactiveApplication leaks
-    have publicEq := (runtime.reactive_respond_application leaks execution who action).2
+    let app := (reactiveApplication timeouts) leaks
+    have publicEq := ((reactive_respond_application timeouts) leaks execution who action).2
     intro observer entry member
     change entry.beforeView.application.publicView.observation.completionOrder <+:
         (execution.respond app who action).application.publicView.observation.completionOrder ∧ _
@@ -93,7 +98,7 @@ theorem entryStable_serviceInvariant (scheduler : (runtime.reactiveApplication l
     · rw [fresh]
       exact ⟨List.prefix_refl _, fun _ => ⟨rfl, rfl, rfl⟩⟩
   environment execution next command valid _ reached := by
-    let app := runtime.reactiveApplication leaks
+    let app := (reactiveApplication timeouts) leaks
     have recallEq := app.environmentStep_recall execution next command reached
     intro observer entry member
     rw [recallEq] at member
@@ -110,17 +115,17 @@ theorem entryStable_serviceInvariant (scheduler : (runtime.reactiveApplication l
       | refl => exact id
       | @head before middle moved _ ih =>
           exact fun prior => ih (retained_public_view_step saved before middle moved prior)
-    exact preserved (completionPath_reactive_environmentStep runtime leaks execution next command
+    exact preserved (completionPath_reactive_environmentStep timeouts leaks execution next command
       reached) (valid observer entry member)
 
 /-- Recorded public views stay current until an event completes, at every
 legal history. -/
 theorem entryStable_history (initial : PMF (State graph)) (horizon : Nat)
-    (scheduler : (runtime.reactiveApplication leaks).Scheduler) {state}
-    (trace : ((runtime.reactiveApplication leaks).protocol initial horizon scheduler).Trace
+    (scheduler : ((reactiveApplication timeouts) leaks).Scheduler) {state}
+    (trace : (((reactiveApplication timeouts) leaks).protocol initial horizon scheduler).Trace
       state) :
-    ReactiveApplication.serviceInvariant (EntryStable runtime leaks) state :=
-  (entryStable_serviceInvariant runtime leaks scheduler).history initial horizon
+    ReactiveApplication.serviceInvariant (EntryStable timeouts leaks) state :=
+  (entryStable_serviceInvariant timeouts leaks scheduler).history initial horizon
     (fun state _ who entry member => by
       simp [ReactiveApplication.Execution.initial] at member) trace
 

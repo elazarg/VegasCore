@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Examples.LateLeak.PenaltyPreservation
+public import Vegas.Examples.LateLeak.PenaltyPreservation
+
+@[expose] public section
 
 /-! # Late sends with leaked openings break sequential-equilibrium preservation
 

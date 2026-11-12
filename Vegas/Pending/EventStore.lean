@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.EventProgress
+public import Vegas.Pending.EventProgress
+
+@[expose] public section
 
 /-! # Immutable event-store prefixes
 
@@ -23,20 +27,20 @@ variable {graph : Vegas.EventGraph Player L}
 namespace EventGraphRuntime
 
 /-- Any accepted packet retains every already stored typed value. -/
-theorem handle_store_of_some (runtime : EventGraphRuntime graph)
+theorem handle_store_of_some (timeouts : EventTimeouts graph)
     (state next : State graph) (message : Message Player (Payload graph))
-    (accepted : handle runtime state message = some next)
+    (accepted : handle timeouts state message = some next)
     (field : graph.Field) (value : (graph.layout field).Value)
     (stored : state.config.store field = some value) :
     next.config.store field = some value := by
   obtain ⟨event, _, ready, action, member⟩ :=
-    handle_config_mem_step runtime state next message accepted
+    handle_config_mem_step timeouts state next message accepted
   exact state.config.step_store_of_some next.config event ready action member field value stored
 
 /-- Chance, clocks, and expiry preserve every field already present. -/
-theorem environmentStep_store_of_some (runtime : EventGraphRuntime graph)
+theorem environmentStep_store_of_some (timeouts : EventTimeouts graph)
     (state next : State graph) (command : EnvironmentCommand graph)
-    (member : next ∈ (environmentStep runtime state command).support)
+    (member : next ∈ (environmentStep timeouts state command).support)
     (field : graph.Field) (value : (graph.layout field).Value)
     (stored : state.config.store field = some value) :
     next.config.store field = some value := by
@@ -47,7 +51,7 @@ theorem environmentStep_store_of_some (runtime : EventGraphRuntime graph)
       exact stored
   | executeSample event =>
       obtain ⟨_, stutter | step⟩ :=
-        environmentStep_executeSample_config_activated runtime state next event member
+        environmentStep_executeSample_config_activated timeouts state next event member
       · rw [stutter.1]
         exact stored
       · obtain ⟨ready, action, member, _⟩ := step
@@ -55,7 +59,7 @@ theorem environmentStep_store_of_some (runtime : EventGraphRuntime graph)
           field value stored
   | expire event =>
       obtain ⟨_, stutter | step⟩ :=
-        environmentStep_expire_config_activated runtime state next event member
+        environmentStep_expire_config_activated timeouts state next event member
       · rw [stutter.1]
         exact stored
       · obtain ⟨ready, action, member, _⟩ := step
@@ -64,9 +68,9 @@ theorem environmentStep_store_of_some (runtime : EventGraphRuntime graph)
 
 /-- An environment operation only appends semantic completions; it cannot
 remove or replace an action already recorded in the graph history. -/
-theorem environmentStep_history_prefix (runtime : EventGraphRuntime graph)
+theorem environmentStep_history_prefix (timeouts : EventTimeouts graph)
     (state next : State graph) (command : EnvironmentCommand graph)
-    (member : next ∈ (environmentStep runtime state command).support) :
+    (member : next ∈ (environmentStep timeouts state command).support) :
     state.config.history.IsPrefix next.config.history := by
   have fromStep (event : graph.EventId) (ready : state.config.cut.Ready event)
       (action : graph.Action event)
@@ -83,13 +87,13 @@ theorem environmentStep_history_prefix (runtime : EventGraphRuntime graph)
       exact ⟨[], by simp⟩
   | executeSample event =>
       obtain ⟨_, stutter | step⟩ :=
-        environmentStep_executeSample_config_activated runtime state next event member
+        environmentStep_executeSample_config_activated timeouts state next event member
       · rw [stutter.1]
       · obtain ⟨ready, action, supported, _⟩ := step
         exact fromStep event ready action supported
   | expire event =>
       obtain ⟨_, stutter | step⟩ :=
-        environmentStep_expire_config_activated runtime state next event member
+        environmentStep_expire_config_activated timeouts state next event member
       · rw [stutter.1]
       · obtain ⟨ready, action, supported, _⟩ := step
         exact fromStep event ready action supported

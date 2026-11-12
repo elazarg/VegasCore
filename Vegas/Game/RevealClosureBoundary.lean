@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RevealRunTargetPhase
-import Vegas.Game.FactorTransfer
+public import Vegas.Game.RevealRunTargetPhase
+public import Vegas.Game.FactorTransfer
+
+@[expose] public section
 
 /-! # Phase boundaries seen through the closure
 
@@ -20,16 +24,16 @@ open SourceProgram GameTheory.Math.Probability Interaction EventGraphRuntime Eve
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {mode : EventGraph.ExecutionMode} {deadline : (serviceGraph setup mode).EventId → Nat}
+  {mode : EventGraph.ExecutionMode} {duration : (serviceGraph setup mode).EventId → Nat}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode))}
 
 /-- **Reflection at a phase boundary.** Two phase boundaries at one rank whose
 closures look alike to the deviator look alike to the deviator. -/
 theorem phaseBoundary_reflect (reference : (serviceGraph setup mode).BehavioralProfile)
     (who : Player)
-    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
-    {players : Player → (serviceApplication setup mode deadline leaks).Policy} {horizon rank : Nat}
-    {left right : (serviceApplication setup mode deadline leaks).Execution}
+    {scheduler : (serviceApplication setup mode duration leaks).Scheduler}
+    {players : Player → (serviceApplication setup mode duration leaks).Policy} {horizon rank : Nat}
+    {left right : (serviceApplication setup mode duration leaks).Execution}
     (leftBoundary : PhaseBoundary scheduler players horizon rank left)
     (rightBoundary : PhaseBoundary scheduler players horizon rank right)
     (views : keyView who (runKey (closure reference who left.application.config)) =
@@ -43,7 +47,7 @@ theorem phaseBoundary_reflect (reference : (serviceGraph setup mode).BehavioralP
   have leftPath := closure_path reference who left.application.config
   have rightPath := closure_path reference who right.application.config
   -- defaults transfer through the deviator's view of the closures
-  have defaultsTransfer {first second : (serviceApplication setup mode deadline leaks).Execution}
+  have defaultsTransfer {first second : (serviceApplication setup mode duration leaks).Execution}
       (firstBoundary : PhaseBoundary scheduler players horizon rank first)
       (secondBoundary : PhaseBoundary scheduler players horizon rank second)
       (sameViews : G.normalizeObservation who (G.playerObserve who
@@ -81,7 +85,7 @@ theorem phaseBoundary_reflect (reference : (serviceGraph setup mode).BehavioralP
     rw [secondRecorded, ← defaults, ← recorded]
     exact found
   have sets : left.application.config.cut.completed = right.application.config.cut.completed := by
-    have oneWay {first second : (serviceApplication setup mode deadline leaks).Execution}
+    have oneWay {first second : (serviceApplication setup mode duration leaks).Execution}
         (firstBoundary : PhaseBoundary scheduler players horizon rank first)
         (secondBoundary : PhaseBoundary scheduler players horizon rank second)
         (sameViews : G.normalizeObservation who (G.playerObserve who
@@ -118,10 +122,10 @@ event is not a reveal and is pending, nothing settles, so the closure is the
 configuration itself. -/
 theorem closure_eq_of_pending (reference : (serviceGraph setup mode).BehavioralProfile)
     (who : Player) (relaxed : RelaxedOrder (serviceGraph setup mode))
-    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
-    {players : Player → (serviceApplication setup mode deadline leaks).Policy} {horizon : Nat}
+    {scheduler : (serviceApplication setup mode duration leaks).Scheduler}
+    {players : Player → (serviceApplication setup mode duration leaks).Policy} {horizon : Nat}
     {event : (serviceGraph setup mode).EventId}
-    {execution : (serviceApplication setup mode deadline leaks).Execution}
+    {execution : (serviceApplication setup mode duration leaks).Execution}
     (boundary : PhaseBoundary scheduler players horizon event.val execution)
     (notPublication : ¬ ((serviceGraph setup mode).outputLayout event).IsPublication)
     (pending : event ∉ execution.application.config.cut.completed) :
@@ -185,39 +189,39 @@ theorem pending_closure_joint (base : (serviceGraph setup mode).BehavioralProfil
       ((serviceGraph setup mode).lastDeviationProfile base who policy) who)
     (referenceIndependent : ReadyIndependent ((serviceGraph setup mode).normalizeProfile base))
     (relaxed : RelaxedOrder (serviceGraph setup mode))
-    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
-    {players : Player → (serviceApplication setup mode deadline leaks).Policy} {horizon : Nat}
+    {scheduler : (serviceApplication setup mode duration leaks).Scheduler}
+    {players : Player → (serviceApplication setup mode duration leaks).Policy} {horizon : Nat}
     (event : (serviceGraph setup mode).EventId)
     (notPublication : ¬ ((serviceGraph setup mode).outputLayout event).IsPublication)
     (endpoint : ∀ execution, PhaseBoundary scheduler players horizon event.val execution →
-      ∀ final ∈ ((serviceApplication setup mode deadline leaks).runUntilHorizon scheduler players
+      ∀ final ∈ ((serviceApplication setup mode duration leaks).runUntilHorizon scheduler players
         (fun current => event ∈ current.application.config.cut.completed) horizon
         execution).support,
         PhaseBoundary scheduler players horizon (event.val + 1) final)
     (rawJoint : ∀ {Seed : Type} (prior : PMF Seed)
-      (execution : Seed → (serviceApplication setup mode deadline leaks).Execution),
+      (execution : Seed → (serviceApplication setup mode duration leaks).Execution),
       (∀ seed ∈ prior.support, PhaseBoundary scheduler players horizon event.val (execution seed) ∧
         event ∉ (execution seed).application.config.cut.completed) →
       ∀ noise : Option ((serviceGraph setup mode).PlayerObservation who) → PMF _,
       (prior.map (fun seed => (runKey (execution seed).application.config,
-          (serviceRuntime setup mode deadline).bindingTraffic leaks who (execution seed))) =
+          (bindingTraffic (serviceTimeouts setup mode duration)) leaks who (execution seed))) =
         (prior.map fun seed => runKey (execution seed).application.config).bind fun current =>
           (noise (keyView who current)).map fun extra => (current, extra)) →
       ∃ (build : (serviceGraph setup mode).BehavioralPolicy who →
           (serviceGraph setup mode).BehavioralPolicy who)
         (nextNoise : Option ((serviceGraph setup mode).PlayerObservation who) → PMF _),
         (prior.bind fun seed =>
-          ((serviceApplication setup mode deadline leaks).runUntilHorizon scheduler players
+          ((serviceApplication setup mode duration leaks).runUntilHorizon scheduler players
             (fun current => event ∈ current.application.config.cut.completed) horizon
             (execution seed)).map fun final => (runKey final.application.config,
-              (serviceRuntime setup mode deadline).bindingTraffic leaks who final)) =
+              (bindingTraffic (serviceTimeouts setup mode duration)) leaks who final)) =
           (prior.bind fun seed =>
-            ((serviceApplication setup mode deadline leaks).runUntilHorizon scheduler players
+            ((serviceApplication setup mode duration leaks).runUntilHorizon scheduler players
               (fun current => event ∈ current.application.config.cut.completed) horizon
               (execution seed)).map fun final => runKey final.application.config).bind
             (fun current => (nextNoise (keyView who current)).map fun extra => (current, extra)) ∧
         (∀ policy, (prior.bind fun seed =>
-          ((serviceApplication setup mode deadline leaks).runUntilHorizon scheduler players
+          ((serviceApplication setup mode duration leaks).runUntilHorizon scheduler players
             (fun current => event ∈ current.application.config.cut.completed) horizon
             (execution seed)).bind fun final =>
               keyTarget ((serviceGraph setup mode).lastDeviationProfile base who policy) who
@@ -231,13 +235,13 @@ theorem pending_closure_joint (base : (serviceGraph setup mode).BehavioralProfil
             actionLaw ((serviceGraph setup mode).lastDeviationProfile base who policy) config
               other) :
     ∀ {Seed : Type} (prior : PMF Seed)
-      (execution : Seed → (serviceApplication setup mode deadline leaks).Execution),
+      (execution : Seed → (serviceApplication setup mode duration leaks).Execution),
       (∀ seed ∈ prior.support, PhaseBoundary scheduler players horizon event.val (execution seed) ∧
         ¬ event ∈ (execution seed).application.config.cut.completed) →
       ∀ noise : Option ((serviceGraph setup mode).PlayerObservation who) → PMF _,
       (prior.map (fun seed => (runKey (closure ((serviceGraph setup mode).normalizeProfile base)
           who (execution seed).application.config),
-          (serviceRuntime setup mode deadline).bindingTraffic leaks who (execution seed))) =
+          (bindingTraffic (serviceTimeouts setup mode duration)) leaks who (execution seed))) =
         (prior.map fun seed => runKey (closure ((serviceGraph setup mode).normalizeProfile base)
           who (execution seed).application.config)).bind fun current =>
           (noise (keyView who current)).map fun extra => (current, extra)) →
@@ -245,20 +249,20 @@ theorem pending_closure_joint (base : (serviceGraph setup mode).BehavioralProfil
           (serviceGraph setup mode).BehavioralPolicy who)
         (nextNoise : Option ((serviceGraph setup mode).PlayerObservation who) → PMF _),
         (prior.bind fun seed =>
-          ((serviceApplication setup mode deadline leaks).runUntilHorizon scheduler players
+          ((serviceApplication setup mode duration leaks).runUntilHorizon scheduler players
             (fun current => event ∈ current.application.config.cut.completed) horizon
             (execution seed)).map fun final => (runKey (closure
               ((serviceGraph setup mode).normalizeProfile base) who final.application.config),
-              (serviceRuntime setup mode deadline).bindingTraffic leaks who final)) =
+              (bindingTraffic (serviceTimeouts setup mode duration)) leaks who final)) =
           (prior.bind fun seed =>
-            ((serviceApplication setup mode deadline leaks).runUntilHorizon scheduler players
+            ((serviceApplication setup mode duration leaks).runUntilHorizon scheduler players
               (fun current => event ∈ current.application.config.cut.completed) horizon
               (execution seed)).map fun final => runKey (closure
                 ((serviceGraph setup mode).normalizeProfile base) who
                 final.application.config)).bind
             (fun current => (nextNoise (keyView who current)).map fun extra => (current, extra)) ∧
         (∀ policy, (prior.bind fun seed =>
-          ((serviceApplication setup mode deadline leaks).runUntilHorizon scheduler players
+          ((serviceApplication setup mode duration leaks).runUntilHorizon scheduler players
             (fun current => event ∈ current.application.config.cut.completed) horizon
             (execution seed)).bind fun final =>
               keyTarget ((serviceGraph setup mode).lastDeviationProfile base who policy) who
@@ -268,7 +272,7 @@ theorem pending_closure_joint (base : (serviceGraph setup mode).BehavioralProfil
             keyTarget ((serviceGraph setup mode).lastDeviationProfile base who (build policy)) who
               (runKey (closure ((serviceGraph setup mode).normalizeProfile base) who
                 (execution seed).application.config))) ∧
-        ∀ policy (execution : (serviceApplication setup mode deadline leaks).Execution),
+        ∀ policy (execution : (serviceApplication setup mode duration leaks).Execution),
           PhaseBoundary scheduler players horizon event.val execution →
           event ∈ execution.application.config.cut.completed →
           keyTarget ((serviceGraph setup mode).lastDeviationProfile base who (build policy)) who
@@ -281,10 +285,10 @@ theorem pending_closure_joint (base : (serviceGraph setup mode).BehavioralProfil
   intro Seed prior execution goods noise factor
   let G := serviceGraph setup mode
   let R := G.normalizeProfile base
-  let app := serviceApplication setup mode deadline leaks
+  let app := serviceApplication setup mode duration leaks
   let phase := fun seed => app.runUntilHorizon scheduler players
     (fun current => event ∈ current.application.config.cut.completed) horizon (execution seed)
-  let traffic := (serviceRuntime setup mode deadline).bindingTraffic leaks who
+  let traffic := (bindingTraffic (serviceTimeouts setup mode duration)) leaks who
   have startEq (seed : Seed) (member : seed ∈ prior.support) :
       runKey (closure R who (execution seed).application.config) =
         runKey (execution seed).application.config := by

@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketFactorization
-import Vegas.Pending.ExclusionInvariant
-import Vegas.Pending.ReactiveGraphSteps
-import Interaction.ReactiveResponseAccounting
+public import Vegas.Game.OnePacketFactorization
+public import Vegas.Pending.ExclusionInvariant
+public import Vegas.Pending.ReactiveGraphSteps
+public import Interaction.ReactiveResponseAccounting
+
+@[expose] public section
 
 /-! # Scheduler rounds factor through the operational record
 
@@ -34,42 +38,42 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
-  (runtime : EventGraphRuntime (graph setup))
+  (timeouts : EventTimeouts (graph setup))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
 
 /-- The network an operational state records. -/
-def OperationalState.network (state : OperationalState setup runtime leaks) :
-    MessageNetwork Player (application setup runtime leaks).Payload :=
+def OperationalState.network (state : OperationalState setup timeouts leaks) :
+    MessageNetwork Player (application setup timeouts leaks).Payload :=
   ⟨state.environment.network.pending, state.environment.network.ledger, state.leaked,
     state.environment.network.inputs, state.environment.network.nextSerial⟩
 
 /-- The mass of the network effect of a command: at an activation, the mass the
 observation rule gives the packets the activated player learns; one
 otherwise. -/
-def commandMass (before after : OperationalState setup runtime leaks) :
-    (application setup runtime leaks).Command → ℝ
+def commandMass (before after : OperationalState setup timeouts leaks) :
+    (application setup timeouts leaks).Command → ℝ
   | .activate who =>
       ((leaks who before.network.pending).toOuterMeasure
         {selected | before.network.learn who selected = after.network
-          (runtime := runtime)}).toReal
+          (timeouts := timeouts)}).toReal
   | _ => 1
 
-variable (scheduler : (application setup runtime leaks).Scheduler)
+variable (scheduler : (application setup timeouts leaks).Scheduler)
 
 /-- **The operational mass of a scheduler round.** The scheduler's mass for the
 command recorded by the round, at the recall and view before it, times the
 mass of the command's network effect. -/
 def environmentMass :
-    Option (OperationalState setup runtime leaks) → Option (OperationalState setup runtime leaks)
+    Option (OperationalState setup timeouts leaks) → Option (OperationalState setup timeouts leaks)
       → ℝ
   | some before, some after =>
       match after.environmentRecall.drop before.environmentRecall.length with
       | [entry] => (scheduler before.environmentRecall before.environment entry.command).toReal *
-          commandMass setup runtime leaks before after entry.command
+          commandMass setup timeouts leaks before after entry.command
       | _ => 1
   | _, _ => 1
 
-variable {setup runtime leaks scheduler}
+variable {setup timeouts leaks scheduler}
 
 /-- No new graph record contributes no chance mass. -/
 theorem completionMass_of_config_eq {before after : EventGraphRuntime.State (graph setup)}
@@ -181,14 +185,14 @@ private theorem pure_apply_of_mem {α : Type*} {point reached : α}
 /-- An expiry that completes an event completes one with an actor. -/
 theorem expire_completion_actor (state next : EventGraphRuntime.State (graph setup))
     (expired : (graph setup).EventId)
-    (changed : next ∈ (EventGraphRuntime.environmentStep runtime state
+    (changed : next ∈ (EventGraphRuntime.environmentStep timeouts state
       (.expire expired)).support)
     {event : (graph setup).EventId} {ready : state.config.cut.Ready event}
     {action : (graph setup).Action event}
     (member : next.config ∈ (state.config.step event ready action).support) :
     ∃ actor, (graph setup).actor? event = some actor := by
   have stutter : next = state → False := fun same => config_ne_of_step member (by rw [same])
-  obtain ⟨_, effect⟩ := environmentStep_expire_config_activated runtime state next
+  obtain ⟨_, effect⟩ := environmentStep_expire_config_activated timeouts state next
     expired changed
   rcases effect with ⟨configEq, _⟩ | ⟨expiredReady, expiredAction, expiredMember, _⟩
   · exact (config_ne_of_step member configEq).elim
@@ -201,15 +205,15 @@ theorem expire_completion_actor (state next : EventGraphRuntime.State (graph set
         apply stutter
         cases activated : state.activatedAt expired with
         | none =>
-            rw [environmentStep_expire_of_not_activated runtime _ expired ready activated,
+            rw [environmentStep_expire_of_not_activated timeouts _ expired ready activated,
               PMF.mem_support_pure_iff] at changed
             exact changed
         | some entered =>
-            by_cases due : runtime.deadline expired ≤ state.clock - entered
-            · rw [environmentStep_expire_sample_eq runtime _ expired ready entered activated
+            by_cases due : timeouts.duration expired ≤ state.clock - entered
+            · rw [environmentStep_expire_sample_eq timeouts _ expired ready entered activated
                 due payload law outputEq codeEq view, PMF.mem_support_pure_iff] at changed
               exact changed
-            · rw [environmentStep_expire_of_not_due runtime _ expired ready entered
+            · rw [environmentStep_expire_of_not_due timeouts _ expired ready entered
                 activated due, PMF.mem_support_pure_iff] at changed
               exact changed
 
@@ -217,17 +221,17 @@ theorem expire_completion_actor (state next : EventGraphRuntime.State (graph set
 /-- The native operation includes its deterministic automatic tail. -/
 theorem applicationStep_mass (state next : EventGraphRuntime.State (graph setup))
     (command : EnvironmentCommand (graph setup))
-    (changed : next ∈ ((application setup runtime leaks).environment state command).support) :
-    ((application setup runtime leaks).environment state command next).toReal =
+    (changed : next ∈ ((application setup timeouts leaks).environment state command).support) :
+    ((application setup timeouts leaks).environment state command next).toReal =
       completionMass setup state next := by
-  let app := application setup runtime leaks
+  let app := application setup timeouts leaks
   have pureCase (native : EventGraphRuntime.State (graph setup))
-      (law : EventGraphRuntime.environmentStep runtime state command = PMF.pure native)
+      (law : EventGraphRuntime.environmentStep timeouts state command = PMF.pure native)
       (mass : completionMass setup state native.drain = 1) :
       (app.environment state command next).toReal = completionMass setup state next := by
     change ENNReal.toReal
-      (((EventGraphRuntime.environmentStep runtime state command).map State.drain) next) = _
-    change next ∈ ((EventGraphRuntime.environmentStep runtime state command).map
+      (((EventGraphRuntime.environmentStep timeouts state command).map State.drain) next) = _
+    change next ∈ ((EventGraphRuntime.environmentStep timeouts state command).map
       State.drain).support at changed
     rw [law, PMF.pure_map] at changed ⊢
     rw [pure_apply_of_mem changed]
@@ -240,15 +244,15 @@ theorem applicationStep_mass (state next : EventGraphRuntime.State (graph setup)
         (State.drain_trace { state with clock := state.clock + 1 })
   | expire expired =>
       obtain ⟨native, nativeLaw⟩ : ∃ native,
-          EventGraphRuntime.environmentStep runtime state (.expire expired) = PMF.pure native :=
+          EventGraphRuntime.environmentStep timeouts state (.expire expired) = PMF.pure native :=
         ⟨_, rfl⟩
-      have member : native ∈ (EventGraphRuntime.environmentStep runtime state
+      have member : native ∈ (EventGraphRuntime.environmentStep timeouts state
           (.expire expired)).support := by
         rw [nativeLaw]
         exact (PMF.mem_support_pure_iff _ _).mpr rfl
       apply pureCase native nativeLaw
       obtain ⟨_, effect⟩ :=
-        environmentStep_expire_config_activated runtime state native expired member
+        environmentStep_expire_config_activated timeouts state native expired member
       rcases effect with ⟨same, _⟩ | ⟨ready, action, supported, _⟩
       · simpa only [completionMass, same] using
           (completionMass_of_automatic_path native.drain_trace)
@@ -273,9 +277,9 @@ theorem applicationStep_mass (state next : EventGraphRuntime.State (graph setup)
             let native := fun value => state.complete event ready action value
             have law : app.environment state (.executeSample event) =
                 draw.map (fun value => (native value).drain) := by
-              change (EventGraphRuntime.environmentStep runtime state (.executeSample event)).map
+              change (EventGraphRuntime.environmentStep timeouts state (.executeSample event)).map
                 State.drain = _
-              rw [environmentStep_executeSample_eq runtime state event ready payload distribution
+              rw [environmentStep_executeSample_eq timeouts state event ready payload distribution
                 outputEq codeEq view, graphLaw, PMF.map_comp, PMF.map_comp]
               rfl
             have retained (value : ((graph setup).outputLayout event).Value) :
@@ -310,27 +314,27 @@ theorem applicationStep_mass (state next : EventGraphRuntime.State (graph setup)
             exact (congrArg ENNReal.toReal
               (pmf_map_apply_of_injective draw graphInjective value)).symm
         | bind owner payload outputEq codeEq =>
-            apply pureCase state (environmentStep_executeSample_of_nonsample runtime state event
+            apply pureCase state (environmentStep_executeSample_of_nonsample timeouts state event
               ready (fun _ _ _ _ sampled => by rw [view] at sampled; cases sampled))
             exact completionMass_of_automatic_path state.drain_trace
         | resolve owner payload binding checks outputEq codeEq =>
-            apply pureCase state (environmentStep_executeSample_of_nonsample runtime state event
+            apply pureCase state (environmentStep_executeSample_of_nonsample timeouts state event
               ready (fun _ _ _ _ sampled => by rw [view] at sampled; cases sampled))
             exact completionMass_of_automatic_path state.drain_trace
-      · apply pureCase state (environmentStep_executeSample_of_not_ready runtime state event ready)
+      · apply pureCase state (environmentStep_executeSample_of_not_ready timeouts state event ready)
         exact completionMass_of_automatic_path state.drain_trace
 
 
 private theorem include_primary
-    (execution : (application setup runtime leaks).Execution) (id : MessageId Player) :
-    (execution.includePending (application setup runtime leaks) id).application.config =
+    (execution : (application setup timeouts leaks).Execution) (id : MessageId Player) :
+    (execution.includePending (application setup timeouts leaks) id).application.config =
         execution.application.config ∨
       ∃ (event : (graph setup).EventId) (ready : execution.application.config.cut.Ready event)
         (action : (graph setup).Action event) (native : EventGraphRuntime.State (graph setup))
         (owner : Player),
         native.config ∈ (execution.application.config.step event ready action).support ∧
         (graph setup).actor? event = some owner ∧
-        (execution.includePending (application setup runtime leaks) id).application.config =
+        (execution.includePending (application setup timeouts leaks) id).application.config =
           native.drain.config := by
   cases found : execution.network.lookup id with
   | none =>
@@ -338,7 +342,7 @@ private theorem include_primary
       simp only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending, found]
   | some message =>
       cases accepted :
-          (application setup runtime leaks).handle execution.application message with
+          (application setup timeouts leaks).handle execution.application message with
       | none =>
           left
           simp only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
@@ -346,18 +350,18 @@ private theorem include_primary
       | some next =>
           obtain ⟨native, handled, drained⟩ := reactiveHandle_call accepted
           obtain ⟨event, named, ready, action, member⟩ :=
-            handle_config_mem_step runtime execution.application native _ handled
+            handle_config_mem_step timeouts execution.application native _ handled
           refine Or.inr ⟨event, ready, action, native, message.sender, member,
-            handle_sender_actor runtime execution.application native _ handled event named, ?_⟩
+            handle_sender_actor timeouts execution.application native _ handled event named, ?_⟩
           simp only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
             found, accepted, Option.getD_some]
           rw [drained]
 
 /-- An included packet whose complete endpoint is one graph step has an owned primary event. -/
-theorem include_completion_actor (execution : (application setup runtime leaks).Execution)
+theorem include_completion_actor (execution : (application setup timeouts leaks).Execution)
     (id : MessageId Player) {event : (graph setup).EventId}
     {ready : execution.application.config.cut.Ready event} {action : (graph setup).Action event}
-    (member : (execution.includePending (application setup runtime leaks) id).application.config ∈
+    (member : (execution.includePending (application setup timeouts leaks) id).application.config ∈
       (execution.application.config.step event ready action).support) :
     ∃ actor, (graph setup).actor? event = some actor := by
   rcases include_primary execution id with same | ⟨primary, primaryReady, chosen, native, owner,
@@ -374,9 +378,9 @@ theorem include_completion_actor (execution : (application setup runtime leaks).
     · exact (primaryReady.1 old).elim
 
 private theorem include_completionMass
-    (execution : (application setup runtime leaks).Execution) (id : MessageId Player) :
+    (execution : (application setup timeouts leaks).Execution) (id : MessageId Player) :
     completionMass setup execution.application
-      (execution.includePending (application setup runtime leaks) id).application = 1 := by
+      (execution.includePending (application setup timeouts leaks) id).application = 1 := by
   rcases include_primary execution id with same | ⟨event, ready, action, native, owner,
       moved, acting, drained⟩
   · exact completionMass_of_config_eq same
@@ -393,17 +397,17 @@ private theorem include_completionMass
 /-- **The mass of one command.** The environment step of a command gives a
 reached execution the chance mass of its completed event times the mass of the
 command's network effect. -/
-theorem environmentStep_mass (execution reached : (application setup runtime leaks).Execution)
-    (command : (application setup runtime leaks).Command)
-    (member : reached ∈ (execution.environmentStep (application setup runtime leaks)
+theorem environmentStep_mass (execution reached : (application setup timeouts leaks).Execution)
+    (command : (application setup timeouts leaks).Command)
+    (member : reached ∈ (execution.environmentStep (application setup timeouts leaks)
       command).support)
-    (before after : OperationalState setup runtime leaks) (beforeNetwork : before.network (runtime
-      := runtime) =
+    (before after : OperationalState setup timeouts leaks) (beforeNetwork : before.network (timeouts
+      := timeouts) =
       execution.network) (afterNetwork : after.network = reached.network) :
-    (execution.environmentStep (application setup runtime leaks) command reached).toReal =
+    (execution.environmentStep (application setup timeouts leaks) command reached).toReal =
       completionMass setup execution.application reached.application *
-        commandMass setup runtime leaks before after command := by
-  let app := application setup runtime leaks
+        commandMass setup timeouts leaks before after command := by
+  let app := application setup timeouts leaks
   let record := execution.environmentRecall ++ [⟨execution.observeEnvironment app, command⟩]
   cases command with
   | activate who =>
@@ -467,9 +471,9 @@ theorem environmentStep_mass (execution reached : (application setup runtime lea
       obtain ⟨state, changed, rfl⟩ := PMF.support_map .. ▸ member
       rw [pmf_map_apply_of_injective _ (fun first second same =>
         congrArg ReactiveApplication.Execution.application same) state]
-      change ((application setup runtime leaks).environment execution.application command
+      change ((application setup timeouts leaks).environment execution.application command
         state).toReal = completionMass setup execution.application state * 1
-      exact (applicationStep_mass (runtime := runtime) (leaks := leaks)
+      exact (applicationStep_mass (timeouts := timeouts) (leaks := leaks)
         execution.application state command changed).trans (mul_one _).symm
 
 variable [Fintype Player] {bounds : MessageBounds (graph setup)} {horizon : Nat}
@@ -479,24 +483,25 @@ scheduler round of the one-packet game, under any profile, is the chance mass
 of the event it completes times the operational mass of the round. -/
 theorem environment_stepProb
     (profile : ∀ player,
-      (onePacketInformation setup runtime leaks bounds horizon scheduler).BehavioralPolicy player)
-    {before after : (application setup runtime leaks).ProtocolState}
-    (prior : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace before)
-    (joint : Player → Option (application setup runtime leaks).Action)
-    (legal : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Legal before joint)
-    (realized : after ∈ ((onePacketProtocol setup runtime leaks bounds horizon scheduler).step
+      (onePacketInformation setup timeouts leaks bounds horizon scheduler).BehavioralPolicy player)
+    {before after : (application setup timeouts leaks).ProtocolState}
+    (prior : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace before)
+    (joint : Player → Option (application setup timeouts leaks).Action)
+    (legal : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Legal before joint)
+    (realized : after ∈ ((onePacketProtocol setup timeouts leaks bounds horizon scheduler).step
       before
-      ⟨joint, legal⟩).support) (control : (application setup runtime leaks).Control)
+      ⟨joint, legal⟩).support) (control : (application setup timeouts leaks).Control)
     (initialized : before = some control) (idle : control.actor = none)
-    (next : (application setup runtime leaks).Control) (reachedNext : after = some next) :
-    InformationModel.stepProb (onePacketInformation setup runtime leaks bounds horizon scheduler)
+    (next : (application setup timeouts leaks).Control) (reachedNext : after = some next) :
+    InformationModel.stepProb (onePacketInformation setup timeouts leaks bounds horizon scheduler)
         profile prior ⟨joint, legal⟩ after =
       completionMass setup control.execution.application next.execution.application *
-        environmentMass setup runtime leaks scheduler (operationalState setup runtime leaks before)
-          (operationalState setup runtime leaks after) := by
-  let app := application setup runtime leaks
+        environmentMass setup timeouts leaks scheduler (operationalState setup timeouts leaks
+          before)
+          (operationalState setup timeouts leaks after) := by
+  let app := application setup timeouts leaks
   subst initialized reachedNext
-  rw [stepProb_of_idle (runtime := runtime) profile prior joint legal idle]
+  rw [stepProb_of_idle (timeouts := timeouts) profile prior joint legal idle]
   change some next ∈ (app.transition (initialLaw setup) horizon scheduler (some control)
     joint).support at realized
   rcases control with ⟨remaining, current, execution⟩
@@ -528,9 +533,9 @@ theorem environment_stepProb
             have inner := Option.some.inj equal
             exact congrArg ReactiveApplication.Control.execution inner) reached,
           ENNReal.toReal_mul]
-        obtain ⟨first, firstEq⟩ : ∃ first, operationalState setup runtime leaks
+        obtain ⟨first, firstEq⟩ : ∃ first, operationalState setup timeouts leaks
             (some ⟨remaining + 1, none, execution⟩) = some first := ⟨_, rfl⟩
-        obtain ⟨second, secondEq⟩ : ∃ second, operationalState setup runtime leaks
+        obtain ⟨second, secondEq⟩ : ∃ second, operationalState setup timeouts leaks
             (some ⟨remaining, command.actor? app, reached⟩) = some second := ⟨_, rfl⟩
         have firstRecall : first.environmentRecall =
           execution.environmentRecall := by
@@ -547,7 +552,7 @@ theorem environment_stepProb
         have secondNetwork : second.network = reached.network := by
           rw [← Option.some.inj secondEq]
           rfl
-        rw [firstEq, secondEq, environmentStep_mass (runtime := runtime) execution reached command
+        rw [firstEq, secondEq, environmentStep_mass (timeouts := timeouts) execution reached command
           member first second
           firstNetwork secondNetwork]
         simp only [environmentMass, firstRecall, secondRecall, recallEq, List.drop_left, firstView]
@@ -569,8 +574,8 @@ theorem environment_stepProb
           (List.singleton_injective entries)).symm
 
 omit [Fintype Player] in
-theorem environmentMass_nonneg (before after : Option (OperationalState setup runtime leaks)) :
-    0 ≤ environmentMass setup runtime leaks scheduler before after := by
+theorem environmentMass_nonneg (before after : Option (OperationalState setup timeouts leaks)) :
+    0 ≤ environmentMass setup timeouts leaks scheduler before after := by
   unfold environmentMass
   split
   · split
@@ -586,12 +591,12 @@ theorem environmentMass_nonneg (before after : Option (OperationalState setup ru
 /-- The operational mass of a transition: the round's mass at a scheduler round
 and a given response mass at a response. -/
 def roundOrResponseMass
-    (response : Option (OperationalState setup runtime leaks) → Option (OperationalState setup
-      runtime leaks) → ℝ)
-    (before after : Option (OperationalState setup runtime leaks)) : ℝ :=
+    (response : Option (OperationalState setup timeouts leaks) → Option (OperationalState setup
+      timeouts leaks) → ℝ)
+    (before after : Option (OperationalState setup timeouts leaks)) : ℝ :=
   match before with
   | some state =>
-      if state.actor = none then environmentMass setup runtime leaks
+      if state.actor = none then environmentMass setup timeouts leaks
         scheduler before after
       else response before after
   | none => 1
@@ -602,52 +607,53 @@ player satisfies the component bound, the operational steps hold with the round
 mass at scheduler rounds. -/
 def OperationalSteps.ofComponents {sequence : ℕ → setup.intendedModel.BehavioralAssessment}
     {profiles : ℕ → ∀ player,
-      (onePacketInformation setup runtime leaks bounds horizon scheduler).BehavioralPolicy player}
+      (onePacketInformation setup timeouts leaks bounds horizon scheduler).BehavioralPolicy player}
     {who : Player}
-    (response : ℕ → Option (OperationalState setup runtime leaks) →
-      Option (OperationalState setup runtime leaks) → ℝ)
+    (response : ℕ → Option (OperationalState setup timeouts leaks) →
+      Option (OperationalState setup timeouts leaks) → ℝ)
     (error : ℕ → ℝ) (response_nonneg : ∀ n before after, 0 ≤ response n before after)
     (error_nonneg : ∀ n, 0 ≤ error n) (error_tendsto : Filter.Tendsto error Filter.atTop (nhds 0))
     (component : ∀ n {before after}
-      (prior : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace before)
+      (prior : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace before)
         joint legal
-      (_ : after ∈ ((onePacketProtocol setup runtime leaks bounds horizon scheduler).step before
-        ⟨joint, legal⟩).support) (control next : (application setup runtime leaks).Control)
+      (_ : after ∈ ((onePacketProtocol setup timeouts leaks bounds horizon scheduler).step before
+        ⟨joint, legal⟩).support) (control next : (application setup timeouts leaks).Control)
       (actor : Player), before = some control → after = some next →
       control.actor = some actor → actor ≠ who →
-      forcedAgent (runtime := runtime) (bounds.onePacketMenu runtime leaks) (initialLaw setup)
+      forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks) (initialLaw setup)
         horizon
-        scheduler actor ((application setup runtime leaks).observe actor (some control)) →
-      ForcedState setup runtime leaks who (some control) →
-      0 < contentFactor setup runtime leaks (sequence n) actor control.execution next.execution
+        scheduler actor ((application setup timeouts leaks).observe actor (some control)) →
+      ForcedState setup timeouts leaks who (some control) →
+      0 < contentFactor setup timeouts leaks (sequence n) actor control.execution next.execution
         ((joint actor).getD ⟨none⟩) →
-      |InformationModel.stepProb (onePacketInformation setup runtime leaks bounds horizon scheduler)
+      |InformationModel.stepProb (onePacketInformation setup timeouts leaks bounds horizon
+        scheduler)
           (profiles n) prior ⟨joint, legal⟩ after -
-        contentFactor setup runtime leaks (sequence n) actor control.execution next.execution
+        contentFactor setup timeouts leaks (sequence n) actor control.execution next.execution
             ((joint actor).getD ⟨none⟩) *
-          response n (operationalState setup runtime leaks before) (operationalState setup runtime
+          response n (operationalState setup timeouts leaks before) (operationalState setup timeouts
             leaks after)| ≤
-        error n * (contentFactor setup runtime leaks (sequence n) actor control.execution
+        error n * (contentFactor setup timeouts leaks (sequence n) actor control.execution
           next.execution
             ((joint actor).getD ⟨none⟩) *
-          response n (operationalState setup runtime leaks before) (operationalState setup runtime
+          response n (operationalState setup timeouts leaks before) (operationalState setup timeouts
             leaks after))) :
-    OperationalSteps setup runtime leaks bounds horizon scheduler sequence profiles who where
-  mass n := roundOrResponseMass (runtime := runtime) (scheduler := scheduler)
+    OperationalSteps setup timeouts leaks bounds horizon scheduler sequence profiles who where
+  mass n := roundOrResponseMass (timeouts := timeouts) (scheduler := scheduler)
     (response n)
   error := error
   mass_nonneg n before after := by
     unfold roundOrResponseMass
     split
     · split
-      · exact environmentMass_nonneg (runtime := runtime) _ _
+      · exact environmentMass_nonneg (timeouts := timeouts) _ _
       · exact response_nonneg _ _ _
     · exact zero_le_one
   error_nonneg := error_nonneg
   error_tendsto := error_tendsto
   environment n before after prior joint legal realized control initialized
     idle next reached := by
-    rw [environment_stepProb (runtime := runtime) (profiles n) prior joint legal realized control
+    rw [environment_stepProb (timeouts := timeouts) (profiles n) prior joint legal realized control
       initialized idle next
       reached]
     subst initialized
@@ -661,11 +667,11 @@ def OperationalSteps.ofComponents {sequence : ℕ → setup.intendedModel.Behavi
       acting other forced observerForced positive
     subst initialized
     have active : ¬ control.actor = none := by rw [acting]; exact Option.some_ne_none _
-    have massEq : roundOrResponseMass (runtime := runtime) (scheduler := scheduler) (response n)
-        (operationalState setup runtime leaks (some control)) (operationalState setup runtime
+    have massEq : roundOrResponseMass (timeouts := timeouts) (scheduler := scheduler) (response n)
+        (operationalState setup timeouts leaks (some control)) (operationalState setup timeouts
           leaks after) =
-        response n (operationalState setup runtime leaks (some control))
-          (operationalState setup runtime leaks after) := by
+        response n (operationalState setup timeouts leaks (some control))
+          (operationalState setup timeouts leaks after) := by
       change (if control.actor = none then _ else _) = _
       simp only [active, ↓reduceIte]
     rw [massEq]

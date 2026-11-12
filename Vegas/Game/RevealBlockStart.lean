@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RevealBlockGraph
+public import Vegas.Game.RevealBlockGraph
+
+@[expose] public section
 
 /-! # Block starts that may already be done
 

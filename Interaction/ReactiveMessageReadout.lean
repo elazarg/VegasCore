@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveRecall
-import GameTheory.Math.Probability.ConditionalObservation
-import GameTheory.Math.Probability.ExpectationConditioning
+public import Interaction.ReactiveRecall
+public import GameTheory.Math.Probability.ConditionalObservation
+public import GameTheory.Math.Probability.ExpectationConditioning
+
+@[expose] public section
 
 /-! # The message readout of a reactive execution
 

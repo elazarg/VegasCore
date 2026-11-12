@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketCompletionLaw
-import Vegas.Game.OnePacketLateBadMass
-import Vegas.Game.OnePacketLateLumping
-import Vegas.Game.OnePacketLateSuccess
+public import Vegas.Game.OnePacketCompletionLaw
+public import Vegas.Game.OnePacketLateBadMass
+public import Vegas.Game.OnePacketLateLumping
+public import Vegas.Game.OnePacketLateSuccess
+
+@[expose] public section
 
 /-! # Completion potentials for actual current-event laws -/
 
@@ -16,40 +20,40 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup runtime leaks).Scheduler}
+  {scheduler : (application setup timeouts leaks).Scheduler}
 
 local notation "E" => ReactiveApplication.ResponseMenu.protocol
-  (bounds.onePacketMenu runtime leaks) (initialLaw setup) horizon scheduler
+  (bounds.onePacketMenu timeouts leaks) (initialLaw setup) horizon scheduler
 
 open Classical in
 /-- On any actual law supported on completed events, missing intended completion
 points without failure have exactly the mass of the physical bad-stop observable. -/
 theorem completionPoint_badMass_eq_lateBadStop
-    (law : PMF (E).History) (rank : Nat) (key : LateKey setup runtime leaks)
+    (law : PMF (E).History) (rank : Nat) (key : LateKey setup timeouts leaks)
     (event : (graph setup).EventId)
-    (decided : decidedEvent (runtime := runtime) key = some event)
-    (fresh : (application setup runtime leaks).Control → Prop)
+    (decided : decidedEvent (timeouts := timeouts) key = some event)
+    (fresh : (application setup timeouts leaks).Control → Prop)
     (completed : ∀ final ∈ law.support,
-      ∃ control : (application setup runtime leaks).Control, final.state = some control ∧
+      ∃ control : (application setup timeouts leaks).Control, final.state = some control ∧
         event ∈ control.execution.application.config.cut.completed) :
     (law.toOuterMeasure {final |
-      completionPoint setup runtime leaks bounds horizon scheduler rank fresh final = none ∧
-        ¬ DecisionFailed (runtime := runtime) key final.state}).toReal =
-      expect law (lateBadStop setup runtime leaks bounds horizon scheduler rank fresh event) := by
+      completionPoint setup timeouts leaks bounds horizon scheduler rank fresh final = none ∧
+        ¬ DecisionFailed (timeouts := timeouts) key final.state}).toReal =
+      expect law (lateBadStop setup timeouts leaks bounds horizon scheduler rank fresh event) := by
   rw [← expect_indicator]
   apply expect_congr_on_support
   intro final member
   obtain ⟨control, state, completed⟩ := completed final member
-  have failed : DecisionFailed (runtime := runtime) key final.state ↔
+  have failed : DecisionFailed (timeouts := timeouts) key final.state ↔
       StoreEventFailed control.execution.application.config.store event := by
     simp only [state, DecisionFailed, decided, completed, true_and]
-  have successful : (∃ next : (application setup runtime leaks).Control,
+  have successful : (∃ next : (application setup timeouts leaks).Control,
       final.state = some next ∧ event ∈ next.execution.application.config.cut.completed ∧
         ¬ StoreEventFailed next.execution.application.config.store event) ↔
-      ¬ DecisionFailed (runtime := runtime) key final.state := by
+      ¬ DecisionFailed (timeouts := timeouts) key final.state := by
     rw [failed]
     constructor
     · rintro ⟨next, same, _completed, works⟩
@@ -61,31 +65,31 @@ theorem completionPoint_badMass_eq_lateBadStop
   unfold lateBadStop
   simp only [Set.mem_ofPred_eq]
   have equivalence :
-      (completionPoint setup runtime leaks bounds horizon scheduler rank fresh final = none ∧
-        ¬ DecisionFailed (runtime := runtime) key final.state) ↔
-      (∃ next : (application setup runtime leaks).Control,
+      (completionPoint setup timeouts leaks bounds horizon scheduler rank fresh final = none ∧
+        ¬ DecisionFailed (timeouts := timeouts) key final.state) ↔
+      (∃ next : (application setup timeouts leaks).Control,
         final.state = some next ∧ event ∈ next.execution.application.config.cut.completed ∧
           ¬ StoreEventFailed next.execution.application.config.store event) ∧
-        completionPoint setup runtime leaks bounds horizon scheduler rank fresh final = none :=
+        completionPoint setup timeouts leaks bounds horizon scheduler rank fresh final = none :=
     ⟨fun holds => ⟨successful.mpr holds.2, holds.1⟩,
       fun holds => ⟨holds.2, successful.mp holds.1⟩⟩
-  by_cases first : completionPoint setup runtime leaks bounds horizon scheduler rank fresh final =
-      none ∧ ¬ DecisionFailed (runtime := runtime) key final.state
+  by_cases first : completionPoint setup timeouts leaks bounds horizon scheduler rank fresh final =
+      none ∧ ¬ DecisionFailed (timeouts := timeouts) key final.state
   · rw [ite_eq_left first, ite_eq_left (equivalence.mp first)]
   · rw [ite_eq_right first, ite_eq_right (fun second => first (equivalence.mpr second))]
 
 section CommitmentValues
 
-variable (setup runtime leaks bounds horizon scheduler)
-  [(application setup runtime leaks).FiniteNature (initialLaw setup) scheduler]
+variable (setup timeouts leaks bounds horizon scheduler)
+  [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
   {Parameter : Type} (parameter : State L setup.context → Parameter)
   (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
   (excludedPayoff : Player → ℝ)
-  [∀ who, DecidableEq ((onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
+  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
     scheduler).InfoState who)]
 
 local notation "onePacketN" =>
-  onePacketModel setup runtime leaks bounds (initialLaw setup) horizon scheduler
+  onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon scheduler
 
 open Classical in
 /-- **The value of committing a choice at a site history.** The expected source
@@ -94,7 +98,7 @@ the history's configuration decodes to after `rank` events, when that point is a
 point of the intended game; the exclusion payoff otherwise. -/
 def decodedCommitValue (profile : BehavioralProfile setup.program) (who : Player) (rank : Nat)
     (choice : Option (OwnAction Player L))
-    (history : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup)
+    (history : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup)
       horizon scheduler).History) : ℝ :=
   match history.state with
   | none => excludedPayoff who
@@ -114,8 +118,9 @@ def siteCommitValue (assessment : (onePacketN).BehavioralAssessment)
     (profile : BehavioralProfile setup.program) {who : Player}
     (site : (onePacketN).InformationSite who) (choice : Option (OwnAction Player L)) : ℝ :=
   expect (assessment.belief who site) fun history =>
-    decodedCommitValue setup runtime leaks bounds horizon scheduler parameter utility excludedPayoff
-      profile who (siteRank (runtime := runtime) site.1) choice history.1
+    decodedCommitValue setup timeouts leaks bounds horizon scheduler parameter utility
+      excludedPayoff
+      profile who (siteRank (timeouts := timeouts) site.1) choice history.1
 
 end CommitmentValues
 

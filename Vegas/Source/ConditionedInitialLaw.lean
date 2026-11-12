@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Source.IntendedGame
-import GameTheory.Math.Probability.Conditioning
+public import Vegas.Source.IntendedGame
+public import GameTheory.Math.Probability.Conditioning
+
+@[expose] public section
 
 /-! # Conditioning the actual source initializer
 

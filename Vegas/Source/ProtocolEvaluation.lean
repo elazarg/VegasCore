@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Source.ProtocolTermination
+public import Vegas.Source.ProtocolTermination
+
+@[expose] public section
 
 /-! # Agreement with source execution
 

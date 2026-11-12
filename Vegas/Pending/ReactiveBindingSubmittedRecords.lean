@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveBindingPreparationRecord
-import Vegas.Pending.ReactiveOnePacketMenu
-import Vegas.Pending.ReactiveBinding
+public import Vegas.Pending.ReactiveBindingPreparationRecord
+public import Vegas.Pending.ReactiveOnePacketMenu
+public import Vegas.Pending.ReactiveBinding
+
+@[expose] public section
 
 /-! # Original records of submitted owned bindings -/
 
@@ -14,22 +18,22 @@ open Interaction EventGraph
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {graph : Vegas.EventGraph Player L}
-  (runtime : EventGraphRuntime graph)
+  (timeouts : EventTimeouts graph)
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
 
 private theorem earlierInput_of_countRecall
-    (execution : (runtime.reactiveApplication leaks).Execution)
-    (count : runtime.CountRecall leaks execution) (who : Player)
+    (execution : ((reactiveApplication timeouts) leaks).Execution)
+    (count : (CountRecall timeouts) leaks execution) (who : Player)
     (material : WitnessedSubmission graph)
     (message : Message Player (WitnessedPacket graph))
     (member : message ∈ execution.network.inputs) (sender : message.sender = who) :
-    EarlierOwnPacket ((runtime.reactiveApplication leaks).outputs (execution.logs who))
-      (runtime.localEnvelope leaks who (execution.logs who)
-        (execution.observe (runtime.reactiveApplication leaks) who) material) message := by
+    EarlierOwnPacket (((reactiveApplication timeouts) leaks).outputs (execution.logs who))
+      ((localEnvelope timeouts) leaks who (execution.logs who)
+        (execution.observe ((reactiveApplication timeouts) leaks) who) material) message := by
   refine ⟨?_, sender, ?_⟩
   · rw [← count.1 who]
     exact List.mem_filter.mpr ⟨member, by simpa using sender⟩
-  · change message.id.2 < (runtime.reactiveApplication leaks).submissionCount
+  · change message.id.2 < ((reactiveApplication timeouts) leaks).submissionCount
       (execution.logs who)
     rw [← count.2.1 who, ← sender]
     exact count.2.2.serial_lt member
@@ -37,20 +41,20 @@ private theorem earlierInput_of_countRecall
 /-- The count verdict prevents an admitted binding from overwriting any
 previous own binding event's private record. -/
 theorem priorBinding_ne_of_permitted
-    (execution : (runtime.reactiveApplication leaks).Execution)
-    (count : runtime.CountRecall leaks execution) (who : Player)
+    (execution : ((reactiveApplication timeouts) leaks).Execution)
+    (count : (CountRecall timeouts) leaks execution) (who : Player)
     (event : graph.EventId) (serial : Nat) (opening : Option (Raw L))
     (permitted : countPermits
-      ((runtime.reactiveApplication leaks).outputs (execution.logs who))
-      (runtime.localEnvelope leaks who (execution.logs who)
-        (execution.observe (runtime.reactiveApplication leaks) who)
+      (((reactiveApplication timeouts) leaks).outputs (execution.logs who))
+      ((localEnvelope timeouts) leaks who (execution.logs who)
+        (execution.observe ((reactiveApplication timeouts) leaks) who)
         ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩) = true)
     (message : Message Player (WitnessedPacket graph))
     (member : message ∈ execution.network.inputs) (sender : message.sender = who)
     (other : graph.EventId) (candidate : Handle graph)
     (call : message.payload.call = .commitment other candidate) : other ≠ event := by
   have first := ((countPermits_eq_true_iff _ _).mp permitted).2.2
-  have different := first message (earlierInput_of_countRecall runtime leaks execution count
+  have different := first message (earlierInput_of_countRecall timeouts leaks execution count
     who _ message member sender)
   change message.payload.call.event? graph ≠ some event at different
   intro same
@@ -61,8 +65,8 @@ theorem priorBinding_ne_of_permitted
 /-- Every submitted own binding has its original typed result in memory, with
 fixed candidates on both sides and preservation of all original successes.
 Completed packets remain covered, so actual inclusion needs no memory deletion. -/
-def RecordsSubmittedBindings (memory : BindingMemory runtime leaks) (who : Player)
-    (original repaired : (runtime.reactiveApplication leaks).Execution) : Prop :=
+def RecordsSubmittedBindings (memory : BindingMemory timeouts leaks) (who : Player)
+    (original repaired : ((reactiveApplication timeouts) leaks).Execution) : Prop :=
   ∀ message ∈ original.network.inputs, message.sender = who →
     ∀ event candidate, message.payload.call = .commitment event candidate →
       ∀ payload (outputEq : graph.outputLayout event = .binding who payload)
@@ -79,35 +83,35 @@ def RecordsSubmittedBindings (memory : BindingMemory runtime leaks) (who : Playe
 
 /-- The concrete initializer has no signed submissions, so preparation
 provenance holds for any initial application state and any private memory. -/
-theorem recordsSubmittedBindings_initial (memory : BindingMemory runtime leaks) (who : Player)
-    (first second : (runtime.reactiveApplication leaks).State) :
-    memory.RecordsSubmittedBindings runtime leaks who
-      (ReactiveApplication.Execution.initial (runtime.reactiveApplication leaks) first)
-      (ReactiveApplication.Execution.initial (runtime.reactiveApplication leaks) second) := by
+theorem recordsSubmittedBindings_initial (memory : BindingMemory timeouts leaks) (who : Player)
+    (first second : ((reactiveApplication timeouts) leaks).State) :
+    memory.RecordsSubmittedBindings timeouts leaks who
+      (ReactiveApplication.Execution.initial ((reactiveApplication timeouts) leaks) first)
+      (ReactiveApplication.Execution.initial ((reactiveApplication timeouts) leaks) second) := by
   intro message member
   cases member
 
 /-- Actual environment operations preserve all recorded submitted bindings.
 This covers arbitrary sampling, inclusion, expiry, and clock commands jointly;
 fixed candidates are immutable even when other handles are accepted. -/
-theorem RecordsSubmittedBindings.environmentStep {memory : BindingMemory runtime leaks}
-    {who : Player} {original repaired : (runtime.reactiveApplication leaks).Execution}
-    (recorded : memory.RecordsSubmittedBindings runtime leaks who original repaired)
-    (command : (runtime.reactiveApplication leaks).Command)
-    (nextOriginal nextRepaired : (runtime.reactiveApplication leaks).Execution)
-    (left : nextOriginal ∈ (original.environmentStep (runtime.reactiveApplication leaks)
+theorem RecordsSubmittedBindings.environmentStep {memory : BindingMemory timeouts leaks}
+    {who : Player} {original repaired : ((reactiveApplication timeouts) leaks).Execution}
+    (recorded : memory.RecordsSubmittedBindings timeouts leaks who original repaired)
+    (command : ((reactiveApplication timeouts) leaks).Command)
+    (nextOriginal nextRepaired : ((reactiveApplication timeouts) leaks).Execution)
+    (left : nextOriginal ∈ (original.environmentStep ((reactiveApplication timeouts) leaks)
       command).support)
-    (right : nextRepaired ∈ (repaired.environmentStep (runtime.reactiveApplication leaks)
+    (right : nextRepaired ∈ (repaired.environmentStep ((reactiveApplication timeouts) leaks)
       command).support) :
-    memory.RecordsSubmittedBindings runtime leaks who nextOriginal nextRepaired := by
+    memory.RecordsSubmittedBindings timeouts leaks who nextOriginal nextRepaired := by
   intro message member sender event candidate call payload outputEq codeEq node
-  rw [(runtime.reactiveApplication leaks).environmentStep_inputs original nextOriginal
+  rw [((reactiveApplication timeouts) leaks).environmentStep_inputs original nextOriginal
     command left] at member
   obtain ⟨remembered, firstFixed, secondFixed, succeeds, successes⟩ :=
     recorded message member sender event candidate call payload outputEq codeEq node
-  have firstStable := (runtime.fixedCandidateLookupInvariant leaks original.application
+  have firstStable := ((fixedCandidateLookupInvariant timeouts) leaks original.application
     candidate firstFixed).environmentStep original nextOriginal command rfl left
-  have secondStable := (runtime.fixedCandidateLookupInvariant leaks repaired.application
+  have secondStable := ((fixedCandidateLookupInvariant timeouts) leaks repaired.application
     candidate secondFixed).environmentStep repaired nextRepaired command rfl right
   refine ⟨?_, ?_, ?_, ?_, ?_⟩
   · simpa only [State.bindingResult, firstStable] using remembered

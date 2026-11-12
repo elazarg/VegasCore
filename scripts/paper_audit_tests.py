@@ -1,4 +1,4 @@
-"""Behavioral and mutation tests for the Lean-native paper audit (run after lake build)."""
+"""Behavioral and mutation tests for the paper audit (run after lake --wfail build)."""
 import importlib.util
 from pathlib import Path
 import tempfile
@@ -11,7 +11,8 @@ SPEC = importlib.util.spec_from_file_location('paper_audit', Path(__file__).with
 AUDIT = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(AUDIT)
 ROOT = AUDIT.ROOT
-HEADER = 'import Lean\nimport Mathlib.Tactic\n'
+HEADER = ('module\n\npublic import Lean\npublic import Mathlib.Tactic\n\n'
+          '@[expose] public section\n\n')
 
 
 def pin(name='result', expected=None):
@@ -157,10 +158,19 @@ class PaperAuditTests(unittest.TestCase):
             cls.paths[name] = path
         # These files deliberately have different import headers. A merged driver
         # would make Real available to lean_only and invalidate this test.
-        for name, header in (('lean_only', 'import Lean\n'), ('mathlib_real', HEADER)):
+        lean_only = 'module\n\npublic import Lean\n\n@[expose] public section\n\n'
+        for name, header in (('lean_only', lean_only), ('mathlib_real', HEADER)):
             path = cls.directory / (name + '.lean')
             path.write_text(header + 'def Vegas.Paper.RealType : Type := Real\n' + base,
                             encoding='utf-8')
+            cls.paths[name] = path
+        meta_header = 'module\n\npublic meta import Lean\n\n@[expose] public section\n\n'
+        ordinary_frontend = ('def Vegas.Paper.frontend : Lean.Elab.Command.CommandElabM Unit :=\n'
+                             '  Lean.Elab.Command.elabCommand Lean.Syntax.missing\n')
+        for name, text in (('meta_imports', base),
+                           ('meta_source_rejected', ordinary_frontend + base)):
+            path = cls.directory / (name + '.lean')
+            path.write_text(meta_header + text, encoding='utf-8')
             cls.paths[name] = path
         # The real paper does not import the full Lean frontend umbrella.
         # Auditing it catches dependencies that the small fixture headers hide.
@@ -287,11 +297,42 @@ class PaperAuditTests(unittest.TestCase):
         self.assertTrue(report['results'])
         self.assertEqual(set(report['results']), set(report['pins']))
 
+    def test_freshness_gate_rejects_cached_lake_warnings_without_rebuilding(self):
+        directory = ROOT / '.lake/paper-audit'
+        with tempfile.TemporaryDirectory(prefix='warnings-', dir=directory) as temp:
+            project = Path(temp)
+            (project / 'lean-toolchain').write_text(
+                (ROOT / 'lean-toolchain').read_text(encoding='utf-8'), encoding='utf-8')
+            (project / 'lakefile.toml').write_text(
+                'name = "audit_warnings"\nrequiresModuleSystem = true\n'
+                '[[lean_lib]]\nname = "Paper"\n[[lean_lib]]\nname = "Tools"\n',
+                encoding='utf-8')
+            (project / 'Tools.lean').write_text(
+                'module\npublic section\ndef helper : Nat := 0\n', encoding='utf-8')
+            (project / 'Paper.lean').write_text(
+                'import Tools\ndef certificate : Nat := helper\n', encoding='utf-8')
+            built = subprocess.run(['lake', 'build', 'Paper', 'Tools'], cwd=project,
+                                   capture_output=True, text=True, timeout=180)
+            self.assertEqual(built.returncode, 0, built.stdout + built.stderr)
+            self.assertIn('warning:', built.stdout + built.stderr)
+            artifact = project / '.lake/build/lib/lean/Paper.olean'
+            original = artifact.read_bytes()
+            with patch.object(AUDIT, 'ROOT', project):
+                with self.assertRaisesRegex(RuntimeError, 'has warnings'):
+                    AUDIT.ensure_fresh_build()
+            self.assertEqual(artifact.read_bytes(), original)
+
     def test_each_file_uses_only_its_own_imports(self):
         self.assertEqual(self.reports['mathlib_real']['errors'], [])
         self.assertTrue(any("Unknown identifier `Real`" in e
                             for e in self.reports['lean_only']['errors']),
                         self.reports['lean_only']['errors'])
+
+    def test_validator_meta_scope_does_not_change_the_audited_source_scope(self):
+        self.assertEqual(self.reports['meta_imports']['errors'], [])
+        self.assertTrue(any('imported as `meta`' in error
+                            for error in self.reports['meta_source_rejected']['errors']),
+                        self.reports['meta_source_rejected']['errors'])
 
     def test_rejections_are_policy_diagnostics_and_keep_later_results(self):
         for case in ('class', 'open_pointwise', 'term_open_classical', 'attribute'):

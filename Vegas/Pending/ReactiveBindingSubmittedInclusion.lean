@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveBindingSubmittedRecords
-import Vegas.Pending.ReactiveBindingFrame
-import Vegas.Pending.ReactiveBindingSubmissionFrame
+public import Vegas.Pending.ReactiveBindingSubmittedRecords
+public import Vegas.Pending.ReactiveBindingFrame
+public import Vegas.Pending.ReactiveBindingSubmissionFrame
+
+@[expose] public section
 
 /-! # Actual pending inclusion from recorded submission provenance -/
 
@@ -13,19 +17,19 @@ namespace Vegas.EventGraphRuntime.BindingMemory
 open Interaction EventGraph
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
-  {graph : Vegas.EventGraph Player L} {runtime : EventGraphRuntime graph}
+  {graph : Vegas.EventGraph Player L} {timeouts : EventTimeouts graph}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)}
-  {memory : BindingMemory runtime leaks} {who : Player}
-  {original repaired : (runtime.reactiveApplication leaks).Execution}
+  {memory : BindingMemory timeouts leaks} {who : Player}
+  {original repaired : ((reactiveApplication timeouts) leaks).Execution}
 
 /-- An actual retained envelope is one of the signed global inputs. This
 uses author recall conservation and transmission provenance only. -/
-theorem input_of_lookup (count : runtime.CountRecall leaks original)
-    (provenance : original.Provenance (runtime.reactiveApplication leaks))
+theorem input_of_lookup (count : (CountRecall timeouts) leaks original)
+    (provenance : original.Provenance ((reactiveApplication timeouts) leaks))
     (id : MessageId Player) (message : Message Player (WitnessedPacket graph))
     (found : original.network.lookup id = some message) : message ∈ original.network.inputs := by
   obtain ⟨entry, member, material, _, emitted, _⟩ := provenance.lookup id message found
-  have output : message ∈ (runtime.reactiveApplication leaks).outputs
+  have output : message ∈ ((reactiveApplication timeouts) leaks).outputs
       (original.logs message.sender) := List.mem_filterMap.mpr ⟨entry, member, emitted⟩
   rw [← count.1 message.sender] at output
   exact (List.mem_filter.mp output).1
@@ -33,9 +37,9 @@ theorem input_of_lookup (count : runtime.CountRecall leaks original)
 /-- The pending binding's remembered action, remembered value and fixed
 candidate facts follow from its actual signed submission. -/
 theorem RecordsSubmittedBindings.pending_binding
-    (recorded : memory.RecordsSubmittedBindings runtime leaks who original repaired)
-    (count : runtime.CountRecall leaks original)
-    (provenance : original.Provenance (runtime.reactiveApplication leaks))
+    (recorded : memory.RecordsSubmittedBindings timeouts leaks who original repaired)
+    (count : (CountRecall timeouts) leaks original)
+    (provenance : original.Provenance ((reactiveApplication timeouts) leaks))
     (event : graph.EventId) (payload : L.Ty)
     (outputEq : graph.outputLayout event = .binding who payload)
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
@@ -58,11 +62,11 @@ theorem RecordsSubmittedBindings.pending_binding
 /-- Real delayed inclusion preserves the frame using submission facts carried
 by the invariant; no separate remembered-result premise is required. -/
 theorem Frame.recorded_binding_inclusion
-    (frame : Frame runtime leaks memory who original repaired)
+    (frame : Frame timeouts leaks memory who original repaired)
     (clear : original.application.config.defaulted = ∅)
-    (recorded : memory.RecordsSubmittedBindings runtime leaks who original repaired)
-    (count : runtime.CountRecall leaks original)
-    (provenance : original.Provenance (runtime.reactiveApplication leaks))
+    (recorded : memory.RecordsSubmittedBindings timeouts leaks who original repaired)
+    (count : (CountRecall timeouts) leaks original)
+    (provenance : original.Provenance ((reactiveApplication timeouts) leaks))
     (event : graph.EventId) (payload : L.Ty)
     (outputEq : graph.outputLayout event = .binding who payload)
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
@@ -73,11 +77,11 @@ theorem Frame.recorded_binding_inclusion
     (found : original.network.lookup id =
       some ⟨id, ⟨.commitment event candidate, none, some ⟨event⟩⟩⟩)
     (ready : original.application.config.cut.Ready event)
-    (timely : original.application.WithinDeadline runtime event)
+    (timely : original.application.WithinDeadline timeouts event)
     (vacant : original.application.accepted (.inr event) = none)
     (unused : original.application.HandleUnused candidate) :
-    let app := runtime.reactiveApplication leaks
-    Frame runtime leaks memory who
+    let app := (reactiveApplication timeouts) leaks
+    Frame timeouts leaks memory who
       { original.includePending app id with environmentRecall := original.environmentRecall ++
         [⟨original.observeEnvironment app, .include id⟩] }
       { repaired.includePending app id with environmentRecall := repaired.environmentRecall ++

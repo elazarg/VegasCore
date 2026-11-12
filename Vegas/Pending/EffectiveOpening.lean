@@ -1,12 +1,16 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveGuardConformance
-import Vegas.EventGraph.SchedulerReplay
-import Vegas.EventGraph.RevealRelaxedScheduling
-import Vegas.EventGraph.LastSchedulerErasure
-import Vegas.EventGraph.FootprintIndependence
-import Vegas.EventGraph.ErasureTwin
-import Vegas.Pending.CanonicalKeyPublication
+public import Vegas.Pending.ReactiveGuardConformance
+public import Vegas.EventGraph.SchedulerReplay
+public import Vegas.EventGraph.RevealRelaxedScheduling
+public import Vegas.EventGraph.LastSchedulerErasure
+public import Vegas.EventGraph.FootprintIndependence
+public import Vegas.EventGraph.ErasureTwin
+public import Vegas.Pending.CanonicalKeyPublication
+
+@[expose] public section
 
 /-! # Effective openings
 

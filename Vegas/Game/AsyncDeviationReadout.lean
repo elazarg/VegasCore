@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.AsyncDeviationLaw
-import Vegas.Source.DisclosureBehavioral
-import Mathlib.Tactic.Convert
+public import Vegas.Game.AsyncDeviationLaw
+public import Vegas.Source.DisclosureBehavioral
+public import Mathlib.Tactic.Convert
+
+@[expose] public section
 
 /-! # Typed outcome of arbitrary physical unilateral deviations
 
@@ -21,64 +25,64 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
 private theorem native_deviation_mode_transport
     (setup : Setup (Player := Player) (L := L))
-    (sequential : ∀ (deadline : (graph setup).EventId → Nat)
+    (sequential : ∀ (duration : (graph setup).EventId → Nat)
       (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-      (horizon : Nat) (scheduler : (application setup ⟨deadline⟩ leaks).Scheduler)
+      (horizon : Nat) (scheduler : (application setup ⟨duration⟩ leaks).Scheduler)
       (delay bound : (graph setup).EventId → Nat) (turns : Nat)
       (profile : BehavioralProfile setup.program),
-      AsyncContract (⟨deadline⟩ : EventGraphRuntime (graph setup)) leaks
+      AsyncContract (⟨duration⟩ : EventTimeouts (graph setup)) leaks
         (initialLaw setup) horizon scheduler delay bound →
-      AsyncTimely (⟨deadline⟩ : EventGraphRuntime (graph setup)) delay bound →
+      AsyncTimely (⟨duration⟩ : EventTimeouts (graph setup)) delay bound →
       (∀ who, (profile who).EffectiveDisclosures setup.program []
         (Revelations.initial setup.context)) →
-      ∀ (who : Player) (deviation : (application setup ⟨deadline⟩ leaks).Policy),
+      ∀ (who : Player) (deviation : (application setup ⟨duration⟩ leaks).Policy),
       ∃ policy : BehavioralPolicy who setup.program,
-        ((application setup ⟨deadline⟩ leaks).roundsFrom (initialLaw setup) scheduler
-          (Function.update (serviceTurnPolicy setup .sequential deadline leaks bound turns
+        ((application setup ⟨duration⟩ leaks).roundsFrom (initialLaw setup) scheduler
+          (Function.update (serviceTurnPolicy setup .sequential duration leaks bound turns
             (firstTurnTiming setup turns) profile) who deviation) horizon).map
-          (fun final => sourceReadout setup ⟨deadline⟩ leaks
-            ((application setup ⟨deadline⟩ leaks).finished final)) =
+          (fun final => sourceReadout setup ⟨duration⟩ leaks
+            ((application setup ⟨duration⟩ leaks).finished final)) =
           (setup.run (Function.update profile who policy)).map some)
     {mode : EventGraph.ExecutionMode}
-    {deadline : (serviceGraph setup mode).EventId → Nat}
+    {duration : (serviceGraph setup mode).EventId → Nat}
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
     (ordered : (serviceGraph setup mode).BarrierOrdered)
-    {horizon : Nat} {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    {horizon : Nat} {scheduler : (serviceApplication setup mode duration leaks).Scheduler}
     {delay bound : (serviceGraph setup mode).EventId → Nat}
-    (contract : AsyncContract (serviceRuntime setup mode deadline) leaks
+    (contract : AsyncContract (serviceTimeouts setup mode duration) leaks
       (serviceInitialLaw setup mode) horizon scheduler delay bound)
-    (timely : AsyncTimely (serviceRuntime setup mode deadline) delay bound) (turns : Nat)
+    (timely : AsyncTimely (serviceTimeouts setup mode duration) delay bound) (turns : Nat)
     (profile : BehavioralProfile setup.program)
     (effective : ∀ who, (profile who).EffectiveDisclosures setup.program []
       (Revelations.initial setup.context))
-    (who : Player) (deviation : (serviceApplication setup mode deadline leaks).Policy) :
+    (who : Player) (deviation : (serviceApplication setup mode duration leaks).Policy) :
     ∃ policy : BehavioralPolicy who setup.program,
-      ((serviceApplication setup mode deadline leaks).roundsFrom
+      ((serviceApplication setup mode duration leaks).roundsFrom
         (serviceInitialLaw setup mode) scheduler
-        (Function.update (serviceTurnPolicy setup mode deadline leaks bound turns
+        (Function.update (serviceTurnPolicy setup mode duration leaks bound turns
           (firstTurnTiming setup turns mode) profile) who deviation) horizon).map
-          (fun final => serviceSourceReadout setup mode deadline leaks
-            ((serviceApplication setup mode deadline leaks).finished final)) =
+          (fun final => serviceSourceReadout setup mode duration leaks
+            ((serviceApplication setup mode duration leaks).finished final)) =
         (setup.run (Function.update profile who policy)).map some := by
   let statement := fun mode : EventGraph.ExecutionMode =>
-    ∀ (deadline : (serviceGraph setup mode).EventId → Nat)
+    ∀ (duration : (serviceGraph setup mode).EventId → Nat)
       (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
-      (horizon : Nat) (scheduler : (serviceApplication setup mode deadline leaks).Scheduler)
+      (horizon : Nat) (scheduler : (serviceApplication setup mode duration leaks).Scheduler)
       (delay bound : (serviceGraph setup mode).EventId → Nat) (turns : Nat)
       (profile : BehavioralProfile setup.program),
-      AsyncContract (serviceRuntime setup mode deadline) leaks (serviceInitialLaw setup mode)
+      AsyncContract (serviceTimeouts setup mode duration) leaks (serviceInitialLaw setup mode)
         horizon scheduler delay bound →
-      AsyncTimely (serviceRuntime setup mode deadline) delay bound →
+      AsyncTimely (serviceTimeouts setup mode duration) delay bound →
       (∀ who, (profile who).EffectiveDisclosures setup.program []
         (Revelations.initial setup.context)) →
-      ∀ (who : Player) (deviation : (serviceApplication setup mode deadline leaks).Policy),
+      ∀ (who : Player) (deviation : (serviceApplication setup mode duration leaks).Policy),
       ∃ policy : BehavioralPolicy who setup.program,
-        ((serviceApplication setup mode deadline leaks).roundsFrom
+        ((serviceApplication setup mode duration leaks).roundsFrom
           (serviceInitialLaw setup mode) scheduler
-          (Function.update (serviceTurnPolicy setup mode deadline leaks bound turns
+          (Function.update (serviceTurnPolicy setup mode duration leaks bound turns
             (firstTurnTiming setup turns mode) profile) who deviation) horizon).map
-            (fun final => serviceSourceReadout setup mode deadline leaks
-              ((serviceApplication setup mode deadline leaks).finished final)) =
+            (fun final => serviceSourceReadout setup mode duration leaks
+              ((serviceApplication setup mode duration leaks).finished final)) =
           (setup.run (Function.update profile who policy)).map some
   let evaluate := fun
       (predecessors : Fin setup.eventGraph.order.eventCount →
@@ -103,11 +107,11 @@ private theorem native_deviation_mode_transport
           | inl _ => trivial
           | inr producer => exact reads event (.inr producer) member
         payoffs := setup.eventGraph.payoffs }
-      ∀ (deadline : compiled.EventId → Nat)
+      ∀ (duration : compiled.EventId → Nat)
         (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket compiled))
         (horizon : Nat),
-        let runtime : EventGraphRuntime compiled := ⟨deadline⟩
-        let app := runtime.reactiveApplication leaks
+        let timeouts : EventTimeouts compiled := ⟨duration⟩
+        let app := (reactiveApplication timeouts) leaks
         ∀ (scheduler : app.Scheduler) (delay bound : compiled.EventId → Nat)
           (turns : Nat) (profile : BehavioralProfile setup.program),
           let initial : PMF (EventGraphRuntime.State compiled) :=
@@ -123,13 +127,13 @@ private theorem native_deviation_mode_transport
                     if inactive : who ∈ observed.defaulted then PMF.pure ⟨none⟩ else
                       ((compileEventProfile setup.program profile) who event owned observed
                         inactive).map
-                          (runtime.canonicalServiceDecision leaks who past view event)
+                          ((canonicalServiceDecision timeouts) leaks who past view event)
                   else PMF.pure ⟨none⟩
             else PMF.pure ⟨none⟩
           let opportunity : Player → compiled.EventId → app.Policy :=
             fun who event past view =>
-              if runtime.eventRecorded leaks past event then app.silentPolicy past view else
-              if view.application.publicView.InclusionFitsDeadline runtime bound event then
+              if (eventRecorded timeouts) leaks past event then app.silentPolicy past view else
+              if view.application.publicView.InclusionFitsDeadline timeouts bound event then
                 (canonical who past view).bind fun response =>
                   if response.transmission = none then app.silentPolicy past view
                   else PMF.pure response
@@ -157,8 +161,8 @@ private theorem native_deviation_mode_transport
                   (Revelations.initial setup.context) [] (outputEmbedding setup.program)
                     config.store config.history
               else none
-          AsyncContract runtime leaks initial horizon scheduler delay bound →
-          AsyncTimely runtime delay bound →
+          AsyncContract timeouts leaks initial horizon scheduler delay bound →
+          AsyncTimely timeouts delay bound →
           (∀ who, (profile who).EffectiveDisclosures setup.program []
             (Revelations.initial setup.context)) →
           ∀ (who : Player) (deviation : app.Policy),
@@ -185,7 +189,7 @@ private theorem native_deviation_mode_transport
     delta serviceTurnFamily serviceReferenceTurnFamily serviceTurn
     delta serviceCanonicalOpportunity serviceReferenceOpportunity serviceCanonicalPolicy
     delta serviceReferencePolicy serviceSourceReadout
-    delta serviceApplication serviceRuntime serviceInitialLaw
+    delta serviceApplication serviceTimeouts serviceInitialLaw
     delta serviceGraph graph EventGraph.sequentialize EventGraph.withMode
     dsimp (config := { instances := true }) only
     constructor
@@ -214,7 +218,7 @@ private theorem native_deviation_mode_transport
           exact eq_of_heq same)
       _ = statement .sequential := (propext (representation .sequential)).symm
   have general : statement mode := statementEq.symm ▸ sequential
-  exact general deadline leaks horizon scheduler delay bound turns profile contract timely
+  exact general duration leaks horizon scheduler delay bound turns profile contract timely
     effective who deviation
 
 end Vegas
@@ -228,30 +232,30 @@ has the typed-state/public-default law of a behavioral source deviation. -/
 theorem asyncDeviation_readout_law
     (setup : Setup (Player := Player) (L := L))
     {mode : EventGraph.ExecutionMode}
-    {deadline : (serviceGraph setup mode).EventId → Nat}
+    {duration : (serviceGraph setup mode).EventId → Nat}
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
     (ordered : (serviceGraph setup mode).BarrierOrdered)
-    {horizon : Nat} {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    {horizon : Nat} {scheduler : (serviceApplication setup mode duration leaks).Scheduler}
     {delay bound : (serviceGraph setup mode).EventId → Nat}
-    (contract : AsyncContract (serviceRuntime setup mode deadline) leaks
+    (contract : AsyncContract (serviceTimeouts setup mode duration) leaks
       (serviceInitialLaw setup mode) horizon scheduler delay bound)
-    (timely : AsyncTimely (serviceRuntime setup mode deadline) delay bound) (turns : Nat)
+    (timely : AsyncTimely (serviceTimeouts setup mode duration) delay bound) (turns : Nat)
     (original : BehavioralProfile setup.program)
-    (who : Player) (deviation : (serviceApplication setup mode deadline leaks).Policy) :
+    (who : Player) (deviation : (serviceApplication setup mode duration leaks).Policy) :
     ∃ policy : BehavioralPolicy who setup.program,
-      ((serviceApplication setup mode deadline leaks).roundsFrom
+      ((serviceApplication setup mode duration leaks).roundsFrom
         (serviceInitialLaw setup mode) scheduler
-        (Function.update (serviceTurnPolicy setup mode deadline leaks bound turns
+        (Function.update (serviceTurnPolicy setup mode duration leaks bound turns
           (firstTurnTiming setup turns mode) (normalizeDisclosureProfile setup.program original))
           who deviation) horizon).map (fun execution =>
-            (serviceSourceReadout setup mode deadline leaks
-              ((serviceApplication setup mode deadline leaks).finished execution)).map
+            (serviceSourceReadout setup mode duration leaks
+              ((serviceApplication setup mode duration leaks).finished execution)).map
                 (fun final => (final.state, final.defaults))) =
         (setup.run (Function.update original who policy)).map
           (fun final => some (final.state, final.defaults)) := by
   obtain ⟨policy, physical⟩ := native_deviation_mode_transport setup
-    (fun deadline leaks horizon scheduler delay bound turns profile contract timely effective who
-        deviation => sourceService_deviation_readout_law setup ⟨deadline⟩ leaks horizon scheduler
+    (fun duration leaks horizon scheduler delay bound turns profile contract timely effective who
+        deviation => sourceService_deviation_readout_law setup ⟨duration⟩ leaks horizon scheduler
           delay bound turns contract timely profile effective who deviation) leaks ordered
     contract timely turns (normalizeDisclosureProfile setup.program original)
     (fun player => BehavioralPolicy.normalizeDisclosures_effective setup.program (original player))

@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveBindingRestoration
+public import Vegas.Pending.ReactiveBindingRestoration
+
+@[expose] public section
 
 /-! # The domain of private binding reconstruction
 
@@ -135,16 +139,16 @@ theorem complete_unmodified_observation (memory : BindingShadow graph) (who : Pl
 end BindingShadow
 
 variable [DecidableEq Player]
-  (runtime : EventGraphRuntime graph)
+  (timeouts : EventTimeouts graph)
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
 
 namespace BindingMemory
 
-theorem repairResponse_ownBindings (who : Player) (memory : BindingMemory runtime leaks)
+theorem repairResponse_ownBindings (who : Player) (memory : BindingMemory timeouts leaks)
     (onlyBindings : memory.shadow.OwnBindings who)
-    (view : (runtime.reactiveApplication leaks).PlayerView)
-    (response : (runtime.reactiveApplication leaks).Action) :
-    (memory.repairResponse runtime leaks who view response).2.OwnBindings who := by
+    (view : ((reactiveApplication timeouts) leaks).PlayerView)
+    (response : ((reactiveApplication timeouts) leaks).Action) :
+    (memory.repairResponse timeouts leaks who view response).2.OwnBindings who := by
   unfold repairResponse
   split
   · split

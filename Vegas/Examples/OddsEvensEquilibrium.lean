@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Examples.OddsEvensSetup
-import GameTheory.Analysis.Protocol.SequentialExistence
+public import Vegas.Examples.OddsEvensSetup
+public import GameTheory.Analysis.Protocol.SequentialExistence
+
+@[expose] public section
 
 /-! # Sequential-equilibrium existence for the intended Odds–Evens game -/
 

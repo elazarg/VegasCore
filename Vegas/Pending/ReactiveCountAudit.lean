@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveCountVerdict
-import Interaction.ReactiveTrafficContinuation
-import Interaction.ReactiveInputOrder
-import Interaction.ChallengeWindow
-import GameTheoryExtensions.Analysis.Protocol.TerminalAudit
+public import Vegas.Pending.ReactiveCountVerdict
+public import Interaction.ReactiveTrafficContinuation
+public import Interaction.ReactiveInputOrder
+public import Interaction.ChallengeWindow
+public import GameTheoryExtensions.Analysis.Protocol.TerminalAudit
+
+@[expose] public section
 
 /-! # The count audit: sampled signed traffic judged by the count verdict
 
@@ -40,21 +44,22 @@ variable {Player : Type} [DecidableEq Player]
 abbrev CountEvidence (graph : Vegas.EventGraph Player L) :=
   List (Message Player (WitnessedPacket graph)) × Message Player (WitnessedPacket graph)
 
-variable (runtime : EventGraphRuntime graph)
+variable (timeouts : EventTimeouts graph)
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
 
 /-- The count evidence of one traffic record: all signed envelopes of the
 traffic and the record's packet. -/
-def countEvidence (traffic : List (runtime.reactiveApplication leaks).TrafficRecord)
-    (record : (runtime.reactiveApplication leaks).TrafficRecord) : CountEvidence graph :=
+def countEvidence (traffic : List ((reactiveApplication timeouts) leaks).TrafficRecord)
+    (record : ((reactiveApplication timeouts) leaks).TrafficRecord) : CountEvidence graph :=
   (traffic.map ReactiveApplication.TrafficRecord.envelope, record.envelope)
 
 /-- **The count audit.** A sample of count evidence is drawn from the actual
 traffic; a player is charged once if some sampled packet of theirs is forbidden
 by the count verdict. -/
 def countAudit (sample : List (CountEvidence graph) → PMF (List (CountEvidence graph)))
-    (traffic : List (runtime.reactiveApplication leaks).TrafficRecord) : PMF (Player → Bool) :=
-  (runtime.reactiveApplication leaks).sampledTrafficAudit (runtime.countEvidence leaks traffic)
+    (traffic : List ((reactiveApplication timeouts) leaks).TrafficRecord) : PMF (Player → Bool) :=
+  ((reactiveApplication timeouts) leaks).sampledTrafficAudit ((countEvidence timeouts) leaks
+    traffic)
     (fun evidence => evidence.2.sender) (fun evidence => countPermits evidence.1 evidence.2)
     sample traffic
 
@@ -79,17 +84,17 @@ theorem countAudit_collection (service : EvidenceReportService (CountEvidence gr
     (observationRate deliveryRate : Player → ℝ)
     (delivery_nonnegative : ∀ who, 0 ≤ deliveryRate who)
     (coverage : CountEvidenceCoverage service observationRate deliveryRate)
-    (traffic : List (runtime.reactiveApplication leaks).TrafficRecord)
-    (record : (runtime.reactiveApplication leaks).TrafficRecord) (present : record ∈ traffic)
+    (traffic : List ((reactiveApplication timeouts) leaks).TrafficRecord)
+    (record : ((reactiveApplication timeouts) leaks).TrafficRecord) (present : record ∈ traffic)
     (forbidden : countPermits (traffic.map ReactiveApplication.TrafficRecord.envelope)
       record.envelope = false) :
     observationRate record.envelope.sender * deliveryRate record.envelope.sender ≤
-      (((runtime.countAudit leaks service.sample traffic).map
+      ((((countAudit timeouts) leaks service.sample traffic).map
         (fun verdict => verdict record.envelope.sender)) true).toReal := by
   unfold countAudit
   rw [ReactiveApplication.sampledTrafficAudit_collection]
-  have member : runtime.countEvidence leaks traffic record ∈
-      traffic.map (runtime.countEvidence leaks traffic) := List.mem_map_of_mem present
+  have member : (countEvidence timeouts) leaks traffic record ∈
+      traffic.map ((countEvidence timeouts) leaks traffic) := List.mem_map_of_mem present
   obtain ⟨observed, delivered⟩ := coverage _ _ member forbidden
   refine (service.sample_coverage _ _ _ _ (delivery_nonnegative _) observed delivered).trans ?_
   apply ENNReal.toReal_mono (outerMeasure_ne_top _ _)
@@ -99,14 +104,14 @@ theorem countAudit_collection (service : EvidenceReportService (CountEvidence gr
 
 /-- Traffic whose packets the count verdict all permits is charged to nobody. -/
 theorem countAudit_charge_zero (service : EvidenceReportService (CountEvidence graph))
-    (traffic : List (runtime.reactiveApplication leaks).TrafficRecord)
+    (traffic : List ((reactiveApplication timeouts) leaks).TrafficRecord)
     (clean : ∀ record ∈ traffic,
       countPermits (traffic.map ReactiveApplication.TrafficRecord.envelope) record.envelope =
         true)
     (who : Player) :
-    (((runtime.countAudit leaks service.sample traffic).map
+    ((((countAudit timeouts) leaks service.sample traffic).map
       (fun verdict => verdict who)) true).toReal = 0 :=
-  (runtime.reactiveApplication leaks).sampledTrafficAudit_sound _ _ _ _ traffic who
+  ((reactiveApplication timeouts) leaks).sampledTrafficAudit_sound _ _ _ _ traffic who
     (fun observed supported => service.sample_authentic _ observed supported)
     (fun record present _ => clean record present)
 

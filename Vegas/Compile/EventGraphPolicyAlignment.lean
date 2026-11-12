@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Compile.EventGraphCanonical
-import Vegas.Compile.EventGraphPolicyBacktranslation
-import GameTheory.Math.Probability.ConditionalObservation
-import GameTheory.Math.Probability.ExpectationConditioning
+public import Vegas.Compile.EventGraphCanonical
+public import Vegas.Compile.EventGraphPolicyBacktranslation
+public import GameTheory.Math.Probability.ConditionalObservation
+public import GameTheory.Math.Probability.ExpectationConditioning
+
+@[expose] public section
 
 /-! # Canonical policy backtranslation law
 

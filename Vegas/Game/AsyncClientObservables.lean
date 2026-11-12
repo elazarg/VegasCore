@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.AsyncServiceRawNash
-import Vegas.Game.SourceServiceTurnSettlement
-import Vegas.Game.TerminalObservationLaws
+public import Vegas.Game.AsyncServiceRawNash
+public import Vegas.Game.SourceServiceTurnSettlement
+public import Vegas.Game.TerminalObservationLaws
+
+@[expose] public section
 
 /-! # Client laws and observable guarantees under asynchronous service
 
@@ -33,18 +37,16 @@ def clientSettlementLaw {turns : Nat} (timing : TurnTiming service.setup turns s
     (deposit : Player → ℝ) :
     PMF (TerminalObservation service.setup) :=
   let settle := TerminalAudit.settlement
-    (serviceBaseUtility service.setup service.mode service.deadline service.leaks
+    (serviceBaseUtility service.setup service.mode service.duration service.leaks
       (fun config => utility (config.state, config.defaults)))
-    ((serviceRuntime service.setup service.mode service.deadline).serviceAuditObservation
+    ((serviceAuditObservation (serviceTimeouts service.setup service.mode service.duration))
       service.leaks)
-    (serviceSourceAudit service.setup service.mode service.deadline service.leaks sample) deposit
-  ((service.rawMenu.information (serviceInitialLaw service.setup service.mode) service.horizon
-    service.scheduler).runBehavioral
-      (service.clientProfile admission service.rawMenu timing source)
-      (2 * service.horizon + 1)).bind fun final =>
+    (serviceSourceAudit service.setup service.mode service.duration service.leaks sample) deposit
+  (service.run service.rawMenu
+      (service.clientProfile admission service.rawMenu timing source)).bind fun final =>
         (settle final.state).map fun payoffs =>
           TerminalObservation.read service.setup
-            ((serviceSourceReadout service.setup service.mode service.deadline service.leaks
+            ((serviceSourceReadout service.setup service.mode service.duration service.leaks
               final.state).map (fun config => (config.state, config.defaults))) payoffs
 
 /-- The source law uses the same fixed terminal-input and public-result reader. -/

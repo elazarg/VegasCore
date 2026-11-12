@@ -1,8 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactivePolicy
-import GameTheory.Protocol.SingleMover
-import GameTheory.Protocol.StateKernel
+public import Interaction.ReactivePolicy
+public import GameTheory.Protocol.SingleMover
+public import GameTheory.Protocol.StateKernel
+public import GameTheory.Protocol.BehavioralTerminal
+public import GameTheory.Protocol.Strategic
+
+@[expose] public section
 
 /-! # The canonical protocol executes the reactive policy interface
 
@@ -104,5 +110,43 @@ theorem run_map_state (initial : PMF app.State) (horizon : Nat) (scheduler : app
         rfl
   · intro current running
     exact app.behavioral_step initial horizon scheduler players current running
+
+section Complete
+
+variable [Finite Principal]
+
+/-- Complete behavioral history law from an arbitrary legal history. The
+protocol's proved bound determines the evaluator's step budget. -/
+def runFrom (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
+    (profile : (who : Principal) → (app.information initial horizon scheduler).BehavioralPolicy who)
+    (history : (app.protocol initial horizon scheduler).History) :=
+  (app.information initial horizon scheduler).runBehavioralFrom profile (2 * horizon + 1) history
+
+/-- Complete behavioral play from initialization. -/
+def run (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
+    (profile : (who : Principal) →
+      (app.information initial horizon scheduler).BehavioralPolicy who) :=
+  app.runFrom initial horizon scheduler profile
+    (app.protocol initial horizon scheduler).initHistory
+
+/-- The behavioral game of complete reactive executions. -/
+abbrev gameForm (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler) :=
+  (app.information initial horizon scheduler).toBehavioralGameForm (2 * horizon + 1)
+
+/-- The derived finite evaluator is the well-founded terminal history law,
+including from off-path histories and under arbitrary replacement policies. -/
+theorem runFrom_eq_terminal (initial : PMF app.State) (horizon : Nat)
+    (scheduler : app.Scheduler)
+    (profile : (who : Principal) → (app.information initial horizon scheduler).BehavioralPolicy who)
+    (history : (app.protocol initial horizon scheduler).History) :
+    app.runFrom initial horizon scheduler profile history =
+      (app.information initial horizon scheduler).runBehavioralTerminalFrom
+        (app.bounded initial horizon scheduler).wellFoundedHistories profile history :=
+  (InformationModel.runBehavioralTerminalFrom_eq_runBehavioralFrom_of_bounded
+    (app.information initial horizon scheduler)
+    (app.bounded initial horizon scheduler).wellFoundedHistories
+    (app.bounded initial horizon scheduler) profile history).symm
+
+end Complete
 
 end Interaction.ReactiveApplication

@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.EventGraph.RevealRelaxedScheduling
-import Vegas.EventGraph.LastSchedulerErasure
+public import Vegas.EventGraph.RevealRelaxedScheduling
+public import Vegas.EventGraph.LastSchedulerErasure
+
+@[expose] public section
 
 /-! # Ready independence from read footprints
 

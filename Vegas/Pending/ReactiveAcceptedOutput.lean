@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveSignedCommitments
-import Vegas.Pending.EventBindingInvariant
-import Vegas.Pending.ExclusionInvariant
+public import Vegas.Pending.ReactiveSignedCommitments
+public import Vegas.Pending.EventBindingInvariant
+public import Vegas.Pending.ExclusionInvariant
+
+@[expose] public section
 
 /-! # Typed results of accepted calls
 
@@ -78,12 +82,12 @@ def KeepsFixedCandidates (before after : State graph) : Prop :=
 def KeepsStore (before after : State graph) : Prop :=
   ∀ field value, before.config.store field = some value → after.config.store field = some value
 
-variable (runtime : EventGraphRuntime graph)
+variable (timeouts : EventTimeouts graph)
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
 
 /-- **Fixed meanings stay fixed** under every runtime operation. -/
 theorem keepsFixedCandidates_step :
-    (runtime.reactiveApplication leaks).StepRelation KeepsFixedCandidates where
+    ((reactiveApplication timeouts) leaks).StepRelation KeepsFixedCandidates where
   refl _ _ _ := rfl
   submit state who material handle fixed := by
     change (submitStep (material.call.register state who) who
@@ -93,15 +97,15 @@ theorem keepsFixedCandidates_step :
   handle state message next accepted handle fixed := by
     obtain ⟨native, handled, rfl⟩ := reactiveHandle_call accepted
     rw [native.drain_tables.2.1]
-    rcases handle_tables_cases runtime state native _ handled with
+    rcases handle_tables_cases timeouts state native _ handled with
       ⟨_, candidate, _, candidates, _⟩ | ⟨_, candidates⟩
     · rw [candidates, state.candidates.lookup_freeze_eq_of_not_fresh handle candidate fixed]
     · rw [candidates]
   environment state command next reached handle _ := by
-    rw [(reactiveApplication_environment_tables runtime leaks state next command reached).2]
+    rw [(reactiveApplication_environment_tables timeouts leaks state next command reached).2]
 
 /-- **Stored fields stay stored** under every runtime operation. -/
-theorem keepsStore_step : (runtime.reactiveApplication leaks).StepRelation KeepsStore where
+theorem keepsStore_step : ((reactiveApplication timeouts) leaks).StepRelation KeepsStore where
   refl _ _ _ stored := stored
   submit state who material field value stored := by
     change (submitStep (material.call.register state who) who
@@ -114,26 +118,26 @@ theorem keepsStore_step : (runtime.reactiveApplication leaks).StepRelation Keeps
   handle state message next accepted field value stored := by
     obtain ⟨native, handled, rfl⟩ := reactiveHandle_call accepted
     exact native.drain_store_of_some field value
-      (handle_store_of_some runtime state native _ handled field value stored)
+      (handle_store_of_some timeouts state native _ handled field value stored)
   environment state command next reached field value stored := by
-    change next ∈ ((environmentStep runtime state command).map State.drain).support at reached
+    change next ∈ ((environmentStep timeouts state command).map State.drain).support at reached
     obtain ⟨native, moved, rfl⟩ := PMF.support_map .. ▸ reached
     exact native.drain_store_of_some field value
-      (environmentStep_store_of_some runtime state native command moved field value stored)
+      (environmentStep_store_of_some timeouts state native command moved field value stored)
 
 /-- **An accepted commitment writes a success.** If the contract accepts a
 commitment for a binding event whose handle holds an openable meaning of the
 bound type, the event's output is that success. -/
 theorem handle_commitment_output_success (state next : State graph) (id : MessageId Player)
     (event : graph.EventId) (candidate : Handle graph)
-    (accepted : handle runtime state ⟨id, .commitment event candidate⟩ = some next)
+    (accepted : handle timeouts state ⟨id, .commitment event candidate⟩ = some next)
     (valid : state.BindingInvariant) (owner : Player) (payload : L.Ty)
     (layoutEq : graph.layout (.inr event) = .binding owner payload) (value : L.Val payload)
     (fixed : state.candidates.lookup candidate = .openable ⟨payload, value⟩) :
     OutputSucceeded next.config.store event := by
   obtain ⟨candidates, acceptedEq, _⟩ :=
-    handle_commitment_tables runtime state next id event candidate accepted
-  have nextValid := handle_bindingInvariant runtime state next _ valid accepted
+    handle_commitment_tables timeouts state next id event candidate accepted
+  have nextValid := handle_bindingInvariant timeouts state next _ valid accepted
   let ref : FieldRef graph.layout (.binding owner payload) := ⟨.inr event, layoutEq⟩
   have associated : next.accepted ref.field = some candidate := by
     change next.accepted (.inr event) = some candidate
@@ -162,7 +166,7 @@ opening for a resolution whose evaluation on the current store publishes a
 success, the event's output is that success. -/
 theorem handle_opening_output_success (state next : State graph) (id : MessageId Player)
     (event : graph.EventId) (candidate : Handle graph) (raw : Raw L)
-    (accepted : handle runtime state ⟨id, .opening event candidate raw⟩ = some next)
+    (accepted : handle timeouts state ⟨id, .opening event candidate raw⟩ = some next)
     (owner : Player) (payload : L.Ty) (binding : FieldRef graph.layout (.binding owner payload))
     (checks : List (GuardCheck graph.layout payload))
     (outputEq : graph.outputLayout event = .publication payload)
@@ -176,12 +180,12 @@ theorem handle_opening_output_success (state next : State graph) (id : MessageId
   have ownerActive : owner ∉ state.config.defaulted := by
     obtain ⟨active, _ready, _timely, actor, input, ref, guards, layoutEq, nativeCode,
       opening, result, nativeNode, sender, _rest⟩ :=
-      (handle_opening_iff runtime state next id event candidate raw).mp accepted
+      (handle_opening_iff timeouts state next id event candidate raw).mp accepted
     rw [node] at nativeNode
     cases nativeNode
     simpa only [sender] using active
   obtain ⟨ready, action, member, _, _, owner', payload', binding', checks', outputEq', codeEq',
-    node', actionEq⟩ := handle_opening_config_step runtime state next id event candidate raw
+    node', actionEq⟩ := handle_opening_config_step timeouts state next id event candidate raw
       accepted
   rw [node] at node'
   cases node'
@@ -250,7 +254,7 @@ theorem AcceptanceWitness.complete
     {state next : State graph}
     (witness : AcceptanceWitness event message sent action output state)
     (sameConfig : state.config = sent)
-    (accepted : handle runtime state ⟨message.id, message.payload.call⟩ = some next) :
+    (accepted : handle timeouts state ⟨message.id, message.payload.call⟩ = some next) :
     ∃ ready : sent.cut.Ready event, sent.actualDecision event action = some action ∧
       next.config = sent.complete event ready action output := by
   subst sent
@@ -260,7 +264,7 @@ theorem AcceptanceWitness.complete
   · rw [call] at accepted
     obtain ⟨active, ready, _, otherOwner, otherPayload, otherLayout, otherCode, _, sender,
       _, _, _, nativeEq⟩ :=
-      (handle_commitment_iff runtime state next message.id event candidate).mp accepted
+      (handle_commitment_iff timeouts state next message.id event candidate).mp accepted
     have sameKind := layoutEq.symm.trans otherLayout
     cases sameKind
     have activeOwner : owner ∉ state.config.defaulted := by simpa only [sender] using active
@@ -273,7 +277,7 @@ theorem AcceptanceWitness.complete
     obtain ⟨active, ready, _, otherOwner, otherPayload, otherBinding, otherChecks,
       otherOutput, otherCode, _, otherResult, actualNode, sender, _, _, _, _, _,
       actualResult, nativeEq⟩ :=
-      (handle_opening_iff runtime state next message.id event candidate raw).mp accepted
+      (handle_opening_iff timeouts state next message.id event candidate raw).mp accepted
     rw [node] at actualNode
     cases actualNode
     rw [resolved] at actualResult
@@ -292,12 +296,12 @@ theorem AcceptanceWitness.reactive_complete
     {state next : State graph}
     (witness : AcceptanceWitness event message sent action output state)
     (sameConfig : state.config = sent)
-    (accepted : (runtime.reactiveApplication leaks).handle state message = some next) :
+    (accepted : ((reactiveApplication timeouts) leaks).handle state message = some next) :
     ∃ ready : sent.cut.Ready event, sent.actualDecision event action = some action ∧
-      ∃ native, handle runtime state ⟨message.id, message.payload.call⟩ = some native ∧
+      ∃ native, handle timeouts state ⟨message.id, message.payload.call⟩ = some native ∧
         native.drain = next ∧ native.config = sent.complete event ready action output := by
   obtain ⟨native, handled, drained⟩ := reactiveHandle_call accepted
-  obtain ⟨ready, actual, completed⟩ := witness.complete runtime sameConfig handled
+  obtain ⟨ready, actual, completed⟩ := witness.complete timeouts sameConfig handled
   exact ⟨ready, actual, native, handled, drained, completed⟩
 
 /-- A ready active owner's typed accepted-call result is supported by the graph executor. -/
@@ -348,9 +352,9 @@ theorem AcceptanceWitness.output_eq
     {state next : State graph}
     (witness : AcceptanceWitness event message sent action output state)
     (sameConfig : state.config = sent)
-    (accepted : handle runtime state ⟨message.id, message.payload.call⟩ = some next) :
+    (accepted : handle timeouts state ⟨message.id, message.payload.call⟩ = some next) :
     next.config.outputs event = some output := by
-  obtain ⟨ready, _, completed⟩ := witness.complete runtime sameConfig accepted
+  obtain ⟨ready, _, completed⟩ := witness.complete timeouts sameConfig accepted
   rw [completed, Config.complete_output_same]
 
 /-- Automatic completions retain the actual decision certified by an accepted call. -/
@@ -360,11 +364,11 @@ theorem AcceptanceWitness.reactive_decision
     {state next : State graph}
     (witness : AcceptanceWitness event message sent action output state)
     (sameConfig : state.config = sent)
-    (accepted : (runtime.reactiveApplication leaks).handle state message = some next) :
+    (accepted : ((reactiveApplication timeouts) leaks).handle state message = some next) :
     ∃ defaultEvent, (⟨event, some action, defaultEvent⟩ : graph.Completion) ∈
       next.config.history := by
   obtain ⟨native, handled, nextEq⟩ := reactiveHandle_call accepted
-  obtain ⟨ready, recorded, completed⟩ := witness.complete runtime sameConfig handled
+  obtain ⟨ready, recorded, completed⟩ := witness.complete timeouts sameConfig handled
   obtain ⟨tail, historyEq⟩ := Config.Step.path_history_prefix native.drain_graph_steps
   rw [nextEq] at historyEq
   refine ⟨(graph.nodes event).defaultEvent action output, ?_⟩
@@ -382,8 +386,8 @@ theorem AcceptanceWitness.output_success
     (witness : AcceptanceWitness event message sent action output state)
     (sameConfig : state.config = sent)
     (succeeded : ¬ (graph.outputLayout event).IsFailure output)
-    (accepted : handle runtime state ⟨message.id, message.payload.call⟩ = some next) :
+    (accepted : handle timeouts state ⟨message.id, message.payload.call⟩ = some next) :
     OutputSucceeded next.config.store event :=
-  ⟨output, witness.output_eq runtime sameConfig accepted, succeeded⟩
+  ⟨output, witness.output_eq timeouts sameConfig accepted, succeeded⟩
 
 end Vegas.EventGraphRuntime

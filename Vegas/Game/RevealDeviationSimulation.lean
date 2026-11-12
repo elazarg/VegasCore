@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RevealPhaseBoundary
-import Vegas.Game.DeviationSimulation
+public import Vegas.Game.RevealPhaseBoundary
+public import Vegas.Game.DeviationSimulation
+
+@[expose] public section
 
 /-! # Simulating a deviation on the ledger with concurrent reveals
 
@@ -22,7 +26,7 @@ open SourceProgram GameTheory.Math.Probability Interaction EventGraphRuntime Eve
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)} {mode : EventGraph.ExecutionMode}
-  {deadline : (serviceGraph setup mode).EventId → Nat}
+  {duration : (serviceGraph setup mode).EventId → Nat}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode))}
 
 section Read
@@ -46,12 +50,12 @@ end Read
 
 /-- A round from a terminal configuration keeps it. -/
 theorem round_config_eq_of_terminal
-    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
-    {players : Player → (serviceApplication setup mode deadline leaks).Policy}
-    {execution next : (serviceApplication setup mode deadline leaks).Execution}
+    {scheduler : (serviceApplication setup mode duration leaks).Scheduler}
+    {players : Player → (serviceApplication setup mode duration leaks).Policy}
+    {execution next : (serviceApplication setup mode duration leaks).Execution}
     (terminal : execution.application.config.cut.Terminal)
     (reached : next ∈
-      ((serviceApplication setup mode deadline leaks).round scheduler players execution).support) :
+      ((serviceApplication setup mode duration leaks).round scheduler players execution).support) :
     next.application.config = execution.application.config := by
   rcases Relation.ReflTransGen.cases_head (round_config_path reached) with same | ⟨_, moved, _⟩
   · exact same.symm
@@ -60,11 +64,11 @@ theorem round_config_eq_of_terminal
 
 /-- Rounds from a terminal configuration keep it. -/
 theorem runRounds_config_eq_of_terminal
-    (scheduler : (serviceApplication setup mode deadline leaks).Scheduler)
-    (players : Player → (serviceApplication setup mode deadline leaks).Policy) :
-    ∀ (count : Nat) (execution final : (serviceApplication setup mode deadline leaks).Execution),
+    (scheduler : (serviceApplication setup mode duration leaks).Scheduler)
+    (players : Player → (serviceApplication setup mode duration leaks).Policy) :
+    ∀ (count : Nat) (execution final : (serviceApplication setup mode duration leaks).Execution),
       execution.application.config.cut.Terminal →
-      final ∈ ((serviceApplication setup mode deadline leaks).runRounds scheduler players count
+      final ∈ ((serviceApplication setup mode duration leaks).runRounds scheduler players count
         execution).support →
       final.application.config = execution.application.config := by
   intro count
@@ -85,12 +89,12 @@ boundary of a ledger run in which honest clients open a reveal exactly when its
 opening is accepted, the deviation of one player is simulated by the
 last-served erased-key laws of normalized graph deviations of the base. -/
 theorem concurrentDeviationSimulation {horizon : Nat}
-    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    {scheduler : (serviceApplication setup mode duration leaks).Scheduler}
     {delay : (serviceGraph setup mode).EventId → Nat}
     (bound : (serviceGraph setup mode).EventId → Nat) (turns : Nat)
-    (contract : AsyncContract (serviceRuntime setup mode deadline) leaks
+    (contract : AsyncContract (serviceTimeouts setup mode duration) leaks
         (serviceInitialLaw setup mode) horizon scheduler delay bound)
-    (timely : AsyncTimely (serviceRuntime setup mode deadline) delay bound)
+    (timely : AsyncTimely (serviceTimeouts setup mode duration) delay bound)
     (base : (serviceGraph setup mode).BehavioralProfile)
     (decides : ∀ (config : (serviceGraph setup mode).Config)
       (event : (serviceGraph setup mode).EventId) (owner : Player) (payload : L.Ty)
@@ -108,7 +112,7 @@ theorem concurrentDeviationSimulation {horizon : Nat}
           PMF.pure (cast (congrArg EventField.Action outputEq.symm)
             (openingAccepted event config.store)))
     (referenceIndependent : ReadyIndependent ((serviceGraph setup mode).normalizeProfile base))
-    (who : Player) (deviation : (serviceApplication setup mode deadline leaks).Policy)
+    (who : Player) (deviation : (serviceApplication setup mode duration leaks).Policy)
     (independent : ∀ policy, LastIndependent
       ((serviceGraph setup mode).lastDeviationProfile base who policy) who)
     (relaxed : RelaxedOrder (serviceGraph setup mode))
@@ -116,25 +120,25 @@ theorem concurrentDeviationSimulation {horizon : Nat}
     (concurrent : (serviceGraph setup mode).RevealsOnlyConcurrent) :
     ∀ rank, rank ≤ (serviceGraph setup mode).order.eventCount →
       DeviationSimulation scheduler
-        (Function.update (serviceReferenceTurnPolicy setup mode deadline leaks bound turns
+        (Function.update (serviceReferenceTurnPolicy setup mode duration leaks bound turns
           (firstTurnTiming setup turns mode) ((serviceGraph setup mode).normalizeProfile base))
           who deviation) horizon readErased
         (fun execution => runKey execution.application.config)
-        ((serviceRuntime setup mode deadline).bindingTraffic leaks who) (keyView who)
+        ((bindingTraffic (serviceTimeouts setup mode duration)) leaks who) (keyView who)
         (fun policy => keyTarget ((serviceGraph setup mode).lastDeviationProfile base who policy)
           who)
-        (PhaseBoundary scheduler (Function.update (serviceReferenceTurnPolicy setup mode deadline
+        (PhaseBoundary scheduler (Function.update (serviceReferenceTurnPolicy setup mode duration
           leaks bound turns (firstTurnTiming setup turns mode)
           ((serviceGraph setup mode).normalizeProfile base)) who deviation) horizon rank) := by
   classical
   let G := serviceGraph setup mode
-  let app := serviceApplication setup mode deadline leaks
-  let players := Function.update (serviceReferenceTurnPolicy setup mode deadline leaks bound
+  let app := serviceApplication setup mode duration leaks
+  let players := Function.update (serviceReferenceTurnPolicy setup mode duration leaks bound
     turns (firstTurnTiming setup turns mode) (G.normalizeProfile base)) who deviation
   suffices step : ∀ gap rank, G.order.eventCount - rank = gap → rank ≤ G.order.eventCount →
       DeviationSimulation scheduler players horizon readErased
         (fun execution => runKey execution.application.config)
-        ((serviceRuntime setup mode deadline).bindingTraffic leaks who) (keyView who)
+        ((bindingTraffic (serviceTimeouts setup mode duration)) leaks who) (keyView who)
         (fun policy => keyTarget (G.lastDeviationProfile base who policy) who)
         (PhaseBoundary scheduler players horizon rank) from
     fun rank within => step _ rank rfl within
@@ -183,7 +187,7 @@ theorem concurrentDeviationSimulation {horizon : Nat}
   have tailOf : ∀ next, next ≤ G.order.eventCount → rank < next →
       DeviationSimulation scheduler players horizon readErased
         (fun execution => runKey execution.application.config)
-        ((serviceRuntime setup mode deadline).bindingTraffic leaks who) (keyView who)
+        ((bindingTraffic (serviceTimeouts setup mode duration)) leaks who) (keyView who)
         (fun policy => keyTarget (G.lastDeviationProfile base who policy) who)
         (PhaseBoundary scheduler players horizon next) :=
     fun next bounded later => ih (G.order.eventCount - next) (by omega) next rfl bounded

@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveRecovery
+public import Interaction.ReactiveRecovery
+
+@[expose] public section
 
 /-! # Continuing an execution reached by other players
 

@@ -1,15 +1,19 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Source.IntendedPlay
-import Vegas.Source.InitialState
-import Vegas.Expr.Simple
-import GameTheoryExtensions.Math.Probability.Uniform
-import Vegas.Game.RevealService
-import Vegas.Game.IntendedHistory
-import Vegas.Game.IntendedAuthenticOpening
-import GameTheory.Analysis.Protocol.SequentialExistence
-import GameTheoryExtensions.Analysis.Protocol.ConsistencyCompletion
-import GameTheory.Math.Probability.FiniteUniform
+public import Vegas.Source.IntendedPlay
+public import Vegas.Source.InitialState
+public import Vegas.Expr.Simple
+public import GameTheoryExtensions.Math.Probability.Uniform
+public import Vegas.Game.RevealService
+public import Vegas.Game.IntendedHistory
+public import Vegas.Game.IntendedAuthenticOpening
+public import GameTheory.Analysis.Protocol.SequentialExistence
+public import GameTheoryExtensions.Analysis.Protocol.ConsistencyCompletion
+public import GameTheory.Math.Probability.FiniteUniform
+
+@[expose] public section
 
 open GameTheory.Math.Probability
 
@@ -498,11 +502,11 @@ def openedState (bit : Bool) (label : Fin 3) : setup.ProtocolState :=
   some (.inr (.inl (revealSuccessor 2 .here
     (Config.initial (sourceInitial bit label)) true)))
 
-private theorem initialJointLegal : setup.intendedProtocol.Legal none (fun _ => none) := by
+theorem initialJointLegal : setup.intendedProtocol.Legal none (fun _ => none) := by
   change ¬ False ∧ ∀ _ : Player, ¬ False
   exact ⟨not_false, fun _ => not_false⟩
 
-private theorem initialDraw_supported (bit : Bool) (label : Fin 3) :
+theorem initialDraw_supported (bit : Bool) (label : Fin 3) :
     drawnState bit label ∈
       (setup.intendedProtocol.step none ⟨fun _ => none, initialJointLegal⟩).support := by
   change drawnState bit label ∈
@@ -514,10 +518,10 @@ private theorem initialDraw_supported (bit : Bool) (label : Fin 3) :
 def drawnHistory (bit : Bool) (label : Fin 3) : setup.intendedProtocol.History :=
   setup.intendedProtocol.initHistory.extend initialJointLegal (initialDraw_supported bit label)
 
-private def aliceJoint (who : Player) : Option (OwnAction Player simpleExpr) :=
+def aliceJoint (who : Player) : Option (OwnAction Player simpleExpr) :=
   if who = alice then some (.reveal alice 0 true) else none
 
-private theorem aliceJointLegal (bit : Bool) (label : Fin 3) :
+theorem aliceJointLegal (bit : Bool) (label : Fin 3) :
     setup.intendedProtocol.Legal (drawnState bit label) aliceJoint := by
   refine ⟨?_, ?_⟩
   · change ¬ False
@@ -531,7 +535,7 @@ private theorem aliceJointLegal (bit : Bool) (label : Fin 3) :
     · change some alice ≠ some bob
       decide
 
-private theorem opening_supported (bit : Bool) (label : Fin 3) :
+theorem opening_supported (bit : Bool) (label : Fin 3) :
     openedState bit label ∈
       (setup.intendedProtocol.step (drawnState bit label)
         ⟨aliceJoint, aliceJointLegal bit label⟩).support := by

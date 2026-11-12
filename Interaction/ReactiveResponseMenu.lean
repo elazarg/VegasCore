@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveDecisionInformation
+public import Interaction.ReactiveDecisionInformation
+
+@[expose] public section
 
 /-! # Reactive runtime instances with explicit finite response menus
 

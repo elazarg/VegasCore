@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketForcedRegular
+public import Vegas.Game.OnePacketForcedRegular
+
+@[expose] public section
 
 /-! # Clear public defaults imply the foreign public record -/
 
@@ -12,14 +16,14 @@ open SourceProgram Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
 /-- If no owner is publicly defaulted, every foreign owner remains active. -/
 theorem publicRecord_of_clear {who : Player}
-    {control : (application setup runtime leaks).Control}
+    {control : (application setup timeouts leaks).Control}
     (clear : control.execution.application.config.defaulted = ∅) :
-    PublicRecord setup runtime who control := by
+    PublicRecord setup timeouts who control := by
   intro other _different excluded
   rw [clear] at excluded
   exact Finset.notMem_empty other excluded

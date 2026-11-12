@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Compile.EventGraphHistory
+public import Vegas.Compile.EventGraphHistory
+
+@[expose] public section
 
 /-! # Backtranslation of compiled event-graph actions
 

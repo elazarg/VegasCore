@@ -1,30 +1,34 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import VegasTests.AbsorbingFailure
-import VegasTests.ChanceScheduling
-import VegasTests.ConditionalPublicPrior
-import VegasTests.CompilerCorrectness
-import VegasTests.Disclosure
-import VegasTests.DisclosureNormalization
-import VegasTests.EventCompilation
-import VegasTests.EventGraph
-import VegasTests.EventGraphDefault
-import VegasTests.EventGraphReadout
-import VegasTests.EventMessages
-import VegasTests.EventStrategies
-import VegasTests.FiniteSupportPurification
-import VegasTests.Honest
-import VegasTests.PartialEnvironment
-import VegasTests.ClientCompiler
-import VegasTests.ResultExpressions
-import VegasTests.RosterAutomaticCompletion
-import VegasTests.RuntimeDefault
-import VegasTests.RuntimeScenarios
-import VegasTests.ServiceTiming
-import VegasTests.SourceSemantics
-import VegasTests.SourceSetup
-import VegasTests.ValueBinding
+public import VegasTests.AbsorbingFailure
+public import VegasTests.ChanceScheduling
+public import VegasTests.ConditionalPublicPrior
+public import VegasTests.CompilerCorrectness
+public import VegasTests.Disclosure
+public import VegasTests.DisclosureNormalization
+public import VegasTests.EventCompilation
+public import VegasTests.EventGraph
+public import VegasTests.EventGraphDefault
+public import VegasTests.EventGraphReadout
+public import VegasTests.EventMessages
+public import VegasTests.EventStrategies
+public import VegasTests.FiniteSupportPurification
+public import VegasTests.Honest
+public import VegasTests.PartialEnvironment
+public import VegasTests.ClientCompiler
+public import VegasTests.ResultExpressions
+public import VegasTests.RosterAutomaticCompletion
+public import VegasTests.RuntimeDefault
+public import VegasTests.RuntimeScenarios
+public import VegasTests.ServiceTiming
+public import VegasTests.SourceSemantics
+public import VegasTests.SourceSetup
+public import VegasTests.ValueBinding
 
-import VegasTests.PrivateInputs
-import VegasTests.PendingObservationPrivacy
-import VegasTests.PaymentDefaults
+public import VegasTests.PrivateInputs
+public import VegasTests.PendingObservationPrivacy
+public import VegasTests.PaymentDefaults
+
+@[expose] public section

@@ -1,11 +1,15 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.SourceServiceReachedDecoding
-import Vegas.Pending.ReactiveOwnerWindow
-import Vegas.Pending.ReactiveSampleLikelihood
-import Vegas.Game.ServiceSettledEvidence
-import Vegas.Pending.ReactiveGraphSteps
-import Vegas.Pending.ReactiveOpeningLikelihood
+public import Vegas.Game.SourceServiceReachedDecoding
+public import Vegas.Pending.ReactiveOwnerWindow
+public import Vegas.Pending.ReactiveSampleLikelihood
+public import Vegas.Game.ServiceSettledEvidence
+public import Vegas.Pending.ReactiveGraphSteps
+public import Vegas.Pending.ReactiveOpeningLikelihood
+
+@[expose] public section
 
 /-! # One deviating player's traffic, round by round, in every dependency mode
 
@@ -37,7 +41,7 @@ open GameTheory.Math.Probability Interaction EventGraphRuntime
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {mode : EventGraph.ExecutionMode} {deadline : (serviceGraph setup mode).EventId → Nat}
+  {mode : EventGraph.ExecutionMode} {duration : (serviceGraph setup mode).EventId → Nat}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode))}
 
 section Steps
@@ -58,19 +62,19 @@ variable (setup leaks)
 /-- The players of a phase whose ready event belongs to `who` or to chance:
 `who` follows `deviation` and every other player is silent. -/
 abbrev focalPlayers (who : Player)
-    (deviation : (serviceApplication setup mode deadline leaks).Policy) : Player →
-    (serviceApplication setup mode deadline leaks).Policy := Function.update
-    (fun _ => (serviceApplication setup mode deadline leaks).silentPolicy) who deviation
+    (deviation : (serviceApplication setup mode duration leaks).Policy) : Player →
+    (serviceApplication setup mode duration leaks).Policy := Function.update
+    (fun _ => (serviceApplication setup mode duration leaks).silentPolicy) who deviation
 
 variable {setup leaks}
 
 /-- Equal deviator traffic gives equal deviator observations. -/
 theorem observe_eq_of_bindingTraffic (who : Player)
-    {left right : (serviceApplication setup mode deadline leaks).Execution}
-    (same : (serviceRuntime setup mode deadline).bindingTraffic leaks who left =
-      (serviceRuntime setup mode deadline).bindingTraffic leaks who right) :
-    left.observe (serviceApplication setup mode deadline leaks) who = right.observe
-        (serviceApplication setup mode deadline leaks) who := by
+    {left right : (serviceApplication setup mode duration leaks).Execution}
+    (same : (bindingTraffic (serviceTimeouts setup mode duration)) leaks who left =
+      (bindingTraffic (serviceTimeouts setup mode duration)) leaks who right) :
+    left.observe (serviceApplication setup mode duration leaks) who = right.observe
+        (serviceApplication setup mode duration leaks) who := by
   have networks : left.network = right.network := congrArg Prod.fst same
   have receipts : left.receipts = right.receipts := congrArg (fun value => value.2.1) same
   have views : left.application.playerView who = right.application.playerView who :=
@@ -79,16 +83,16 @@ theorem observe_eq_of_bindingTraffic (who : Player)
   rw [networks]
   exact congrArg₂ (fun view evidence =>
     (⟨right.network.observe who, view, evidence⟩ :
-        (serviceApplication setup mode deadline leaks).PlayerView))
+        (serviceApplication setup mode duration leaks).PlayerView))
     views receipts
 
 /-- Equal deviator traffic gives equal scheduler observations. -/
 theorem observeEnvironment_eq_of_bindingTraffic (who : Player)
-    {left right : (serviceApplication setup mode deadline leaks).Execution}
-    (same : (serviceRuntime setup mode deadline).bindingTraffic leaks who left =
-      (serviceRuntime setup mode deadline).bindingTraffic leaks who right) :
-    left.observeEnvironment (serviceApplication setup mode deadline leaks) =
-      right.observeEnvironment (serviceApplication setup mode deadline leaks) := by
+    {left right : (serviceApplication setup mode duration leaks).Execution}
+    (same : (bindingTraffic (serviceTimeouts setup mode duration)) leaks who left =
+      (bindingTraffic (serviceTimeouts setup mode duration)) leaks who right) :
+    left.observeEnvironment (serviceApplication setup mode duration leaks) =
+      right.observeEnvironment (serviceApplication setup mode duration leaks) := by
   have networks : left.network = right.network := congrArg Prod.fst same
   have receipts : left.receipts = right.receipts := congrArg (fun value => value.2.1) same
   have publics : left.application.publicView = right.application.publicView :=
@@ -101,29 +105,29 @@ theorem observeEnvironment_eq_of_bindingTraffic (who : Player)
 /-- Replacing the environment recall by the same list keeps equal deviator
 traffic. -/
 theorem bindingTraffic_with_environmentRecall (who : Player)
-    {left right : (serviceApplication setup mode deadline leaks).Execution}
-    (same : (serviceRuntime setup mode deadline).bindingTraffic leaks who left =
-      (serviceRuntime setup mode deadline).bindingTraffic leaks who right)
-    (entries : List (serviceApplication setup mode deadline leaks).EnvironmentEntry) :
-    (serviceRuntime setup mode deadline).bindingTraffic leaks who
+    {left right : (serviceApplication setup mode duration leaks).Execution}
+    (same : (bindingTraffic (serviceTimeouts setup mode duration)) leaks who left =
+      (bindingTraffic (serviceTimeouts setup mode duration)) leaks who right)
+    (entries : List (serviceApplication setup mode duration leaks).EnvironmentEntry) :
+    (bindingTraffic (serviceTimeouts setup mode duration)) leaks who
     { left with environmentRecall := entries } =
-      (serviceRuntime setup mode deadline).bindingTraffic leaks who
+      (bindingTraffic (serviceTimeouts setup mode duration)) leaks who
       { right with environmentRecall := entries } := by
   dsimp only [EventGraphRuntime.bindingTraffic] at same ⊢
   exact congrArg (fun read => (read.1, read.2.1, entries, read.2.2.2)) same
 
 /-- Recording the same command keeps equal deviator traffic. -/
 theorem bindingTraffic_record (who : Player)
-    {left right : (serviceApplication setup mode deadline leaks).Execution}
-    (same : (serviceRuntime setup mode deadline).bindingTraffic leaks who left =
-      (serviceRuntime setup mode deadline).bindingTraffic leaks who right)
-    (command : (serviceApplication setup mode deadline leaks).Command) :
-    (serviceRuntime setup mode deadline).bindingTraffic leaks who
+    {left right : (serviceApplication setup mode duration leaks).Execution}
+    (same : (bindingTraffic (serviceTimeouts setup mode duration)) leaks who left =
+      (bindingTraffic (serviceTimeouts setup mode duration)) leaks who right)
+    (command : (serviceApplication setup mode duration leaks).Command) :
+    (bindingTraffic (serviceTimeouts setup mode duration)) leaks who
         { left with environmentRecall := left.environmentRecall ++
-          [⟨left.observeEnvironment (serviceApplication setup mode deadline leaks), command⟩] } =
-      (serviceRuntime setup mode deadline).bindingTraffic leaks who
+          [⟨left.observeEnvironment (serviceApplication setup mode duration leaks), command⟩] } =
+      (bindingTraffic (serviceTimeouts setup mode duration)) leaks who
         { right with environmentRecall := right.environmentRecall ++
-          [⟨right.observeEnvironment (serviceApplication setup mode deadline leaks),
+          [⟨right.observeEnvironment (serviceApplication setup mode duration leaks),
               command⟩] } := by
   have environments : left.environmentRecall = right.environmentRecall :=
     congrArg (fun value => value.2.2.1) same
@@ -133,17 +137,17 @@ theorem bindingTraffic_record (who : Player)
 /-- An application command with no primary state change performs automatic
 completion and records the command's original environment observation. -/
 theorem environmentStep_application_of_pure
-    (execution : (serviceApplication setup mode deadline leaks).Execution)
+    (execution : (serviceApplication setup mode duration leaks).Execution)
     (command : EnvironmentCommand (serviceGraph setup mode))
-    (unchanged : environmentStep (serviceRuntime setup mode deadline) execution.application
+    (unchanged : environmentStep (serviceTimeouts setup mode duration) execution.application
         command = PMF.pure execution.application) : execution.environmentStep
-    (serviceApplication setup mode deadline leaks) (.application command) = PMF.pure
+    (serviceApplication setup mode duration leaks) (.application command) = PMF.pure
     { execution with
         application := execution.application.drain
         environmentRecall := execution.environmentRecall ++
-          [⟨execution.observeEnvironment (serviceApplication setup mode deadline leaks),
+          [⟨execution.observeEnvironment (serviceApplication setup mode duration leaks),
             .application command⟩] } := by
-  change (((environmentStep (serviceRuntime setup mode deadline) execution.application command).map
+  change (((environmentStep (serviceTimeouts setup mode duration) execution.application command).map
       State.drain).map fun state => { execution with application := state }).map _ = _
   rw [unchanged, PMF.pure_map, PMF.pure_map, PMF.pure_map]
 
@@ -155,14 +159,14 @@ theorem handle_foreign_sender_none {who : Player}
       (serviceGraph setup mode).actor? event = none ∨
         (serviceGraph setup mode).actor? event = some who)
     (message : Message Player (Payload (serviceGraph setup mode))) (other : message.sender ≠ who) :
-    handle (serviceRuntime setup mode deadline) state message = none := by
-  cases accepted : handle (serviceRuntime setup mode deadline) state message with
+    handle (serviceTimeouts setup mode duration) state message = none := by
+  cases accepted : handle (serviceTimeouts setup mode duration) state message with
   | none => rfl
   | some next =>
       exfalso
       obtain ⟨named, namedEq, namedReady, _, _⟩ :=
-        handle_config_mem_step (serviceRuntime setup mode deadline) _ _ _ accepted
-      have sender := handle_sender_actor (serviceRuntime setup mode deadline) _ _ _ accepted named
+        handle_config_mem_step (serviceTimeouts setup mode duration) _ _ _ accepted
+      have sender := handle_sender_actor (serviceTimeouts setup mode duration) _ _ _ accepted named
         namedEq
       rcases focal named namedReady with none | owned
       · rw [none] at sender
@@ -172,21 +176,21 @@ theorem handle_foreign_sender_none {who : Player}
 /-- Including a pending packet keeps equal deviator traffic when the handler
 treats that packet alike for the deviator on both sides. -/
 theorem include_bindingTraffic_of_handled {who : Player}
-    {left right : (serviceApplication setup mode deadline leaks).Execution}
-    (same : (serviceRuntime setup mode deadline).bindingTraffic leaks who left =
-      (serviceRuntime setup mode deadline).bindingTraffic leaks who right)
+    {left right : (serviceApplication setup mode duration leaks).Execution}
+    (same : (bindingTraffic (serviceTimeouts setup mode duration)) leaks who left =
+      (bindingTraffic (serviceTimeouts setup mode duration)) leaks who right)
     (id : MessageId Player)
     (handled : ∀ message, left.network.lookup id = some message →
       Option.map (fun state => state.playerView who)
-          (handle (serviceRuntime setup mode deadline) left.application
+          (handle (serviceTimeouts setup mode duration) left.application
               ⟨message.id, message.payload.call⟩) =
         Option.map (fun state => state.playerView who)
-          (handle (serviceRuntime setup mode deadline) right.application
+          (handle (serviceTimeouts setup mode duration) right.application
               ⟨message.id, message.payload.call⟩)) :
-    (serviceRuntime setup mode deadline).bindingTraffic leaks who
-        (left.includePending (serviceApplication setup mode deadline leaks) id) =
-      (serviceRuntime setup mode deadline).bindingTraffic leaks who
-        (right.includePending (serviceApplication setup mode deadline leaks) id) := by
+    (bindingTraffic (serviceTimeouts setup mode duration)) leaks who
+        (left.includePending (serviceApplication setup mode duration leaks) id) =
+      (bindingTraffic (serviceTimeouts setup mode duration)) leaks who
+        (right.includePending (serviceApplication setup mode duration leaks) id) := by
   have networks : left.network = right.network := congrArg Prod.fst same
   have views : left.application.playerView who = right.application.playerView who :=
     congrArg (fun value => value.2.2.2.2.1) same
@@ -205,21 +209,21 @@ theorem include_bindingTraffic_of_handled {who : Player}
       exact Prod.ext (by rw [networks]) (Prod.ext receipts
         (Prod.ext environments (Prod.ext recalled (Prod.ext views publics))))
   | some message =>
-      apply bindingTraffic_include_of_handler (serviceRuntime setup mode deadline) leaks left right
+      apply bindingTraffic_include_of_handler (serviceTimeouts setup mode duration) leaks left right
           who same id message found
       simp only [reactiveApplication_handle]
       split
       · have beforeDrain := handled message found
-        cases first : handle (serviceRuntime setup mode deadline) left.application
+        cases first : handle (serviceTimeouts setup mode duration) left.application
             ⟨message.id, message.payload.call⟩ with
         | none =>
-            cases second : handle (serviceRuntime setup mode deadline) right.application
+            cases second : handle (serviceTimeouts setup mode duration) right.application
                 ⟨message.id, message.payload.call⟩ with
             | none => rfl
             | some state => simp only [first, second, Option.map_none, Option.map_some,
                 reduceCtorEq] at beforeDrain
         | some state =>
-            cases second : handle (serviceRuntime setup mode deadline) right.application
+            cases second : handle (serviceTimeouts setup mode duration) right.application
                 ⟨message.id, message.payload.call⟩ with
             | none => simp only [first, second, Option.map_none, Option.map_some,
                 reduceCtorEq] at beforeDrain
@@ -232,26 +236,26 @@ theorem include_bindingTraffic_of_handled {who : Player}
 /-- Including any pending packet keeps equal deviator traffic when every ready
 event belongs to the deviator or to chance. -/
 theorem focal_include_bindingTraffic {who : Player}
-    {left right : (serviceApplication setup mode deadline leaks).Execution}
+    {left right : (serviceApplication setup mode duration leaks).Execution}
     (leftFocal : ∀ event, left.application.config.cut.Ready event →
       (serviceGraph setup mode).actor? event = none ∨
         (serviceGraph setup mode).actor? event = some who)
     (rightFocal : ∀ event, right.application.config.cut.Ready event →
       (serviceGraph setup mode).actor? event = none ∨
         (serviceGraph setup mode).actor? event = some who)
-    (same : (serviceRuntime setup mode deadline).bindingTraffic leaks who left =
-      (serviceRuntime setup mode deadline).bindingTraffic leaks who right)
+    (same : (bindingTraffic (serviceTimeouts setup mode duration)) leaks who left =
+      (bindingTraffic (serviceTimeouts setup mode duration)) leaks who right)
     (id : MessageId Player) :
-    (serviceRuntime setup mode deadline).bindingTraffic leaks who
-        (left.includePending (serviceApplication setup mode deadline leaks) id) =
-      (serviceRuntime setup mode deadline).bindingTraffic leaks who
-        (right.includePending (serviceApplication setup mode deadline leaks) id) := by
+    (bindingTraffic (serviceTimeouts setup mode duration)) leaks who
+        (left.includePending (serviceApplication setup mode duration leaks) id) =
+      (bindingTraffic (serviceTimeouts setup mode duration)) leaks who
+        (right.includePending (serviceApplication setup mode duration leaks) id) := by
   have views : left.application.playerView who = right.application.playerView who :=
     congrArg (fun value => value.2.2.2.2.1) same
   apply include_bindingTraffic_of_handled same id
   intro message _
   by_cases sender : message.sender = who
-  · exact handle_playerView_congr_of_sender (serviceRuntime setup mode deadline) left.application
+  · exact handle_playerView_congr_of_sender (serviceTimeouts setup mode duration) left.application
       right.application who ⟨message.id, message.payload.call⟩ views sender
   · rw [handle_foreign_sender_none left.application leftFocal
         ⟨message.id, message.payload.call⟩ sender,
@@ -261,37 +265,37 @@ theorem focal_include_bindingTraffic {who : Player}
 /-- An application command keeps equal deviator traffic: clocks and expiry
 read the public view, and public chance reads public data. -/
 theorem application_environmentStep_traffic_congr
-    {who : Player} {left right : (serviceApplication setup mode deadline leaks).Execution}
-    (same : (serviceRuntime setup mode deadline).bindingTraffic leaks who left =
-      (serviceRuntime setup mode deadline).bindingTraffic leaks who right)
+    {who : Player} {left right : (serviceApplication setup mode duration leaks).Execution}
+    (same : (bindingTraffic (serviceTimeouts setup mode duration)) leaks who left =
+      (bindingTraffic (serviceTimeouts setup mode duration)) leaks who right)
     (command : EnvironmentCommand (serviceGraph setup mode)) :
-    (left.environmentStep (serviceApplication setup mode deadline leaks) (.application command)).map
-        ((serviceRuntime setup mode deadline).bindingTraffic leaks who) =
-      (right.environmentStep (serviceApplication setup mode deadline leaks)
+    (left.environmentStep (serviceApplication setup mode duration leaks) (.application command)).map
+        ((bindingTraffic (serviceTimeouts setup mode duration)) leaks who) =
+      (right.environmentStep (serviceApplication setup mode duration leaks)
           (.application command)).map
-        ((serviceRuntime setup mode deadline).bindingTraffic leaks who) := by
-  let app := serviceApplication setup mode deadline leaks
-  have pureCase : environmentStep (serviceRuntime setup mode deadline) left.application command =
+        ((bindingTraffic (serviceTimeouts setup mode duration)) leaks who) := by
+  let app := serviceApplication setup mode duration leaks
+  have pureCase : environmentStep (serviceTimeouts setup mode duration) left.application command =
       PMF.pure left.application →
-      environmentStep (serviceRuntime setup mode deadline) right.application command =
+      environmentStep (serviceTimeouts setup mode duration) right.application command =
         PMF.pure right.application →
       (left.environmentStep app (.application command)).map
-          ((serviceRuntime setup mode deadline).bindingTraffic leaks who) =
+          ((bindingTraffic (serviceTimeouts setup mode duration)) leaks who) =
         (right.environmentStep app (.application command)).map
-          ((serviceRuntime setup mode deadline).bindingTraffic leaks who) := by
+          ((bindingTraffic (serviceTimeouts setup mode duration)) leaks who) := by
     intro leftPure rightPure
     rw [environmentStep_application_of_pure left command leftPure,
       environmentStep_application_of_pure right command rightPure, PMF.pure_map,
       PMF.pure_map]
     exact congrArg PMF.pure
-      (bindingTraffic_drain (serviceRuntime setup mode deadline) leaks _ _ who
+      (bindingTraffic_drain (serviceTimeouts setup mode duration) leaks _ _ who
         (bindingTraffic_record (leaks := leaks) who same _))
   cases command with
   | advanceClock =>
-      exact bindingTraffic_maintenance (serviceRuntime setup mode deadline) leaks left right who
+      exact bindingTraffic_maintenance (serviceTimeouts setup mode duration) leaks left right who
           same .advanceClock (fun _ impossible => by cases impossible)
   | expire other =>
-      exact bindingTraffic_maintenance (serviceRuntime setup mode deadline) leaks left right who
+      exact bindingTraffic_maintenance (serviceTimeouts setup mode duration) leaks left right who
           same (.expire other) (fun _ impossible => by cases impossible)
   | executeSample other =>
       have publics : left.application.publicView = right.application.publicView :=
@@ -303,7 +307,7 @@ theorem application_environmentStep_traffic_congr
           exact otherReady
         cases node : nodeView (serviceGraph setup mode) other with
         | sample payload law outputEq codeEq =>
-            exact bindingTraffic_sample (serviceRuntime setup mode deadline) leaks left right who
+            exact bindingTraffic_sample (serviceTimeouts setup mode duration) leaks left right who
               same other otherReady rightReady payload law outputEq codeEq node
         | bind owner payload outputEq codeEq =>
             apply pureCase
@@ -335,23 +339,23 @@ theorem application_environmentStep_traffic_congr
 chance, one round of the deviator against silence, under any scheduler, gives
 equal deviator traffic laws from equal deviator traffic. -/
 theorem focalRound_traffic_congr
-    (scheduler : (serviceApplication setup mode deadline leaks).Scheduler) (who : Player)
-    (deviation : (serviceApplication setup mode deadline leaks).Policy)
-    {left right : (serviceApplication setup mode deadline leaks).Execution}
+    (scheduler : (serviceApplication setup mode duration leaks).Scheduler) (who : Player)
+    (deviation : (serviceApplication setup mode duration leaks).Policy)
+    {left right : (serviceApplication setup mode duration leaks).Execution}
     (leftFocal : ∀ event, left.application.config.cut.Ready event → (serviceGraph setup mode).actor?
         event = none ∨ (serviceGraph setup mode).actor? event = some who)
     (rightFocal : ∀ event, right.application.config.cut.Ready event →
         (serviceGraph setup mode).actor? event = none ∨ (serviceGraph setup mode).actor? event =
         some who)
-    (same : (serviceRuntime setup mode deadline).bindingTraffic leaks who left =
-        (serviceRuntime setup mode deadline).bindingTraffic leaks who right) :
-    ((serviceApplication setup mode deadline leaks).round scheduler
+    (same : (bindingTraffic (serviceTimeouts setup mode duration)) leaks who left =
+        (bindingTraffic (serviceTimeouts setup mode duration)) leaks who right) :
+    ((serviceApplication setup mode duration leaks).round scheduler
         (focalPlayers setup leaks who deviation) left).map
-    ((serviceRuntime setup mode deadline).bindingTraffic leaks who) =
-    ((serviceApplication setup mode deadline leaks).round scheduler
+    ((bindingTraffic (serviceTimeouts setup mode duration)) leaks who) =
+    ((serviceApplication setup mode duration leaks).round scheduler
         (focalPlayers setup leaks who deviation)
-        right).map ((serviceRuntime setup mode deadline).bindingTraffic leaks who) := by
-  let app := serviceApplication setup mode deadline leaks
+        right).map ((bindingTraffic (serviceTimeouts setup mode duration)) leaks who) := by
+  let app := serviceApplication setup mode duration leaks
   let players := focalPlayers setup leaks who deviation
   have environments : left.environmentRecall = right.environmentRecall :=
     congrArg (fun value => value.2.2.1) same
@@ -372,9 +376,9 @@ theorem focalRound_traffic_congr
       intro sample _
       let first := left.sampledActivation app actor sample
       let second := right.sampledActivation app actor sample
-      have activated : (serviceRuntime setup mode deadline).bindingTraffic leaks who first =
-          (serviceRuntime setup mode deadline).bindingTraffic leaks who second :=
-        bindingTraffic_activation (serviceRuntime setup mode deadline) leaks left right who actor
+      have activated : (bindingTraffic (serviceTimeouts setup mode duration)) leaks who first =
+          (bindingTraffic (serviceTimeouts setup mode duration)) leaks who second :=
+        bindingTraffic_activation (serviceTimeouts setup mode duration) leaks left right who actor
             same sample
       change ((players actor (first.logs actor) (first.observe app actor)).map
           (first.respond app actor)).map _ =
@@ -387,12 +391,13 @@ theorem focalRound_traffic_congr
         rw [recalled, observe_eq_of_bindingTraffic who activated, PMF.map_comp, PMF.map_comp]
         apply map_congr_on_support _
         intro response _
-        exact bindingTraffic_owner_response (serviceRuntime setup mode deadline) leaks first second
+        exact bindingTraffic_owner_response (serviceTimeouts setup mode duration) leaks first second
             who activated response
       · simp only [players, focalPlayers, Function.update_of_ne deviator,
           ReactiveApplication.silentPolicy_apply, PMF.pure_map]
         exact congrArg PMF.pure
-            (bindingTraffic_silent (serviceRuntime setup mode deadline) leaks first second who actor
+            (bindingTraffic_silent (serviceTimeouts setup mode duration) leaks first second who
+              actor
                 activated ⟨none⟩ rfl)
   | «include» id =>
       simp only [ReactiveApplication.Command.actor?, ReactiveApplication.resume,
@@ -418,26 +423,26 @@ to chance, the deviator against silence, under any scheduler, gives equal
 deviator traffic laws at the end of a completion run from equal deviator
 traffic. -/
 theorem focalPhase_traffic_congr
-    (scheduler : (serviceApplication setup mode deadline leaks).Scheduler)
-    (who : Player) (deviation : (serviceApplication setup mode deadline leaks).Policy)
+    (scheduler : (serviceApplication setup mode duration leaks).Scheduler)
+    (who : Player) (deviation : (serviceApplication setup mode duration leaks).Policy)
     {event : (serviceGraph setup mode).EventId}
     (focal : (serviceGraph setup mode).actor? event = none ∨
       (serviceGraph setup mode).actor? event = some who)
     (alone : ∀ (cut : (serviceGraph setup mode).order.Cut) other, cut.Ready event →
       cut.Ready other → other = event) :
-    ∀ (count : Nat) (left right : (serviceApplication setup mode deadline leaks).Execution),
+    ∀ (count : Nat) (left right : (serviceApplication setup mode duration leaks).Execution),
       (event ∉ left.application.config.cut.completed → left.application.config.cut.Ready event) →
       (event ∉ right.application.config.cut.completed → right.application.config.cut.Ready event) →
-      (serviceRuntime setup mode deadline).bindingTraffic leaks who left =
-        (serviceRuntime setup mode deadline).bindingTraffic leaks who right →
-      ((serviceApplication setup mode deadline leaks).runUntil scheduler
+      (bindingTraffic (serviceTimeouts setup mode duration)) leaks who left =
+        (bindingTraffic (serviceTimeouts setup mode duration)) leaks who right →
+      ((serviceApplication setup mode duration leaks).runUntil scheduler
           (focalPlayers setup leaks who deviation)
           (fun final => event ∈ final.application.config.cut.completed) count left).map
-      ((serviceRuntime setup mode deadline).bindingTraffic leaks who) =
-      ((serviceApplication setup mode deadline leaks).runUntil scheduler
+      ((bindingTraffic (serviceTimeouts setup mode duration)) leaks who) =
+      ((serviceApplication setup mode duration leaks).runUntil scheduler
           (focalPlayers setup leaks who deviation)
           (fun final => event ∈ final.application.config.cut.completed) count right).map
-          ((serviceRuntime setup mode deadline).bindingTraffic leaks who) := by
+          ((bindingTraffic (serviceTimeouts setup mode duration)) leaks who) := by
   intro count
   induction count with
   | zero =>
@@ -473,7 +478,7 @@ theorem focalPhase_traffic_congr
           intro unfinished
           have unchanged := EventGraph.Config.Step.path_eq_of_ready_of_not_completed event
             (fun query ready => alone _ query (leftOpen stopped) ready) unfinished
-            (reactive_round_graph_steps (serviceRuntime setup mode deadline) leaks scheduler
+            (reactive_round_graph_steps (serviceTimeouts setup mode duration) leaks scheduler
               (focalPlayers setup leaks who deviation) left next nextReached)
           rw [unchanged]
           exact leftOpen stopped
@@ -482,7 +487,7 @@ theorem focalPhase_traffic_congr
           intro unfinished
           have unchanged := EventGraph.Config.Step.path_eq_of_ready_of_not_completed event
             (fun query ready => alone _ query (rightOpen rightRunning) ready) unfinished
-            (reactive_round_graph_steps (serviceRuntime setup mode deadline) leaks scheduler
+            (reactive_round_graph_steps (serviceTimeouts setup mode duration) leaks scheduler
               (focalPlayers setup leaks who deviation) right other otherReached)
           rw [unchanged]
           exact rightOpen rightRunning

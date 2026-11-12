@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Source.DisclosureBehavioral
-import Vegas.Expr.Simple
+public import Vegas.Source.DisclosureBehavioral
+public import Vegas.Expr.Simple
+
+@[expose] public section
 
 /-! # Guard-aware source disclosure normalization
 
@@ -16,22 +20,22 @@ open Vegas Vegas.SourceProgram GameTheory.Math.Probability
 
 noncomputable section
 
-private def rejectGuard : SourceGuard (Player := Unit) simpleExpr [] () 0 .bool where
+def rejectGuard : SourceGuard (Player := Unit) simpleExpr [] () 0 .bool where
   schema := []
   schemaNames := by decide
   subjectFresh := by decide
   code := .constBool false
   reads := fun h => nomatch h
 
-private def rejectedOpening : SourceProgram Unit simpleExpr [] ∅ :=
+def rejectedOpening : SourceProgram Unit simpleExpr [] ∅ :=
   .commit 0 () (by decide) rejectGuard <|
   .reveal 1 () 0 (by decide) .here (by decide) <|
   .ret []
 
-private def rejectedPolicy : BehavioralPolicy (who := ()) rejectedOpening :=
+def rejectedPolicy : BehavioralPolicy (who := ()) rejectedOpening :=
   (fun _ _ _ => PMF.pure (some (.success true)), fun _ _ _ => PMF.pure true, PUnit.unit)
 
-private def bound : Config Unit simpleExpr [(0, .commitment () .bool)] :=
+def bound : Config Unit simpleExpr [(0, .commitment () .bool)] :=
   commitSuccessor 0 rejectGuard (Config.initial (Env.empty (CellVal simpleExpr)))
     (some (.success true))
 

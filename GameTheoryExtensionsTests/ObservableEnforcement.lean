@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheoryExtensions.Analysis.ObservableEnforcement
+public import GameTheoryExtensions.Analysis.ObservableEnforcement
+
+@[expose] public section
 
 /-! # Sanctions distinguish visible violations from hidden profitable deviations
 
@@ -16,7 +20,7 @@ namespace GameTheoryExtensionsTests.ObservableEnforcement
 
 open GameTheory GameTheory.Math.Probability GameTheory.Enforcement
 
-private def base (outcome : Bool) : ℝ := if outcome then 1 else 0
+def base (outcome : Bool) : ℝ := if outcome then 1 else 0
 
 private theorem profitable : expect (PMF.pure false) base < expect (PMF.pure true) base := by
   simp [expect_pure, base]

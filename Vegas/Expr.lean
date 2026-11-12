@@ -1,3 +1,7 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Expr.Simple
+public import Vegas.Expr.Simple
+
+@[expose] public section

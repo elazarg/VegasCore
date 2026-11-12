@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RevealBlockCoupling
-import Vegas.Game.RevealBlockEndpoint
+public import Vegas.Game.RevealBlockCoupling
+public import Vegas.Game.RevealBlockEndpoint
+
+@[expose] public section
 
 /-! # Reading the start of a block from its end
 

@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ExclusionInvariant
-import Vegas.Pending.ReactiveBindingOmission
-import Vegas.Pending.ReactiveRuntime
-import Interaction.ReactiveInvariant
+public import Vegas.Pending.ExclusionInvariant
+public import Vegas.Pending.ReactiveBindingOmission
+public import Vegas.Pending.ReactiveRuntime
+public import Interaction.ReactiveInvariant
+
+@[expose] public section
 
 /-! # Public failure and receipt provenance along native completion traces
 
@@ -21,7 +25,7 @@ open EventGraph Interaction GameTheory.Math.Probability
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {graph : Vegas.EventGraph Player L}
-  (runtime : EventGraphRuntime graph)
+  (timeouts : EventTimeouts graph)
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
 
 /-- Either the configuration, accepted handles and activation times are
@@ -42,20 +46,20 @@ theorem CompletionStep.refl (state : State graph) : CompletionStep state state :
 /-- An accepted commitment fills a vacant output field. -/
 theorem handle_commitment_vacant (state next : State graph) (id : MessageId Player)
     (event : graph.EventId) (candidate : Handle graph)
-    (accepted : handle runtime state ⟨id, .commitment event candidate⟩ = some next) :
+    (accepted : handle timeouts state ⟨id, .commitment event candidate⟩ = some next) :
     state.accepted (.inr event) = none := by
   obtain ⟨_active, _ready, _timely, _owner, _payload, _outputEq, _codeEq, _view, _sender,
     _handleOwner, vacant, _unused, _nextEq⟩ :=
-    (handle_commitment_iff runtime state next id event candidate).mp accepted
+    (handle_commitment_iff timeouts state next id event candidate).mp accepted
   exact vacant
 
 theorem completionStep_handle (state next : State graph)
     (message : Message Player (Payload graph))
-    (accepted : handle runtime state message = some next) : CompletionStep state next := by
+    (accepted : handle timeouts state message = some next) : CompletionStep state next := by
   obtain ⟨event, named, ready, action, member⟩ :=
-    handle_config_mem_step runtime state next message accepted
+    handle_config_mem_step timeouts state next message accepted
   refine Or.inr ⟨event, ready, action, member,
-    (handle_clock_activated runtime state next message accepted).2, ?_⟩
+    (handle_clock_activated timeouts state next message accepted).2, ?_⟩
   intro field changed
   rcases message with ⟨id, packet⟩
   cases packet with
@@ -63,21 +67,21 @@ theorem completionStep_handle (state next : State graph)
   | commitment actual candidate =>
       have actualEq : actual = event := Option.some.inj named
       subst actualEq
-      have tables := (handle_commitment_tables runtime state next id actual candidate accepted).2.1
+      have tables := (handle_commitment_tables timeouts state next id actual candidate accepted).2.1
       by_cases other : field = .inr actual
       · subst other
-        exact ⟨handle_commitment_vacant runtime state next id actual candidate accepted, rfl⟩
+        exact ⟨handle_commitment_vacant timeouts state next id actual candidate accepted, rfl⟩
       · exact (changed (by rw [tables, Function.update_of_ne other])).elim
   | opening actual candidate raw =>
-      have tables := (handle_resolution_tables runtime state next _ (by intros; simp)
+      have tables := (handle_resolution_tables timeouts state next _ (by intros; simp)
         accepted).1
       exact (changed (by rw [tables])).elim
 
 theorem completionStep_environmentStep (state next : State graph)
     (command : EnvironmentCommand graph)
-    (member : next ∈ (environmentStep runtime state command).support) :
+    (member : next ∈ (environmentStep timeouts state command).support) :
     CompletionStep state next := by
-  have accepted := (environmentStep_tables runtime state next command member).1
+  have accepted := (environmentStep_tables timeouts state next command member).1
   have unchanged : ∀ field, next.accepted field ≠ state.accepted field → False :=
     fun field changed => changed (by rw [accepted])
   cases command with
@@ -86,13 +90,13 @@ theorem completionStep_environmentStep (state next : State graph)
       subst next
       exact Or.inl ⟨rfl, rfl, rfl⟩
   | executeSample event =>
-      rcases (environmentStep_executeSample_config_activated runtime state next event member).2
+      rcases (environmentStep_executeSample_config_activated timeouts state next event member).2
         with ⟨configEq, activatedEq⟩ | ⟨ready, action, stepped, activatedEq⟩
       · exact Or.inl ⟨configEq, accepted, activatedEq⟩
       · exact Or.inr ⟨event, ready, action, stepped, activatedEq,
           fun field changed => (unchanged field changed).elim⟩
   | expire event =>
-      rcases (environmentStep_expire_config_activated runtime state next event member).2
+      rcases (environmentStep_expire_config_activated timeouts state next event member).2
         with ⟨configEq, activatedEq⟩ | ⟨ready, action, stepped, activatedEq⟩
       · exact Or.inl ⟨configEq, accepted, activatedEq⟩
       · exact Or.inr ⟨event, ready, action, stepped, activatedEq,
@@ -402,12 +406,12 @@ theorem State.drain_completionPath (state : State graph) :
 
 /-- Every application operation has a finite native completion footprint. -/
 theorem reactiveApplication_completionPath :
-    (runtime.reactiveApplication leaks).StepRelation
+    ((reactiveApplication timeouts) leaks).StepRelation
       (Relation.ReflTransGen CompletionStep) where
   refl := fun _ => .refl
   submit := by
     intro state who submission
-    have publicEq := reactiveApplication_submit_publicView runtime leaks state who submission
+    have publicEq := reactiveApplication_submit_publicView timeouts leaks state who submission
     apply Relation.ReflTransGen.single
     refine Or.inl ⟨?_, congrArg PublicView.accepted publicEq,
       congrArg PublicView.activatedAt publicEq⟩
@@ -417,22 +421,22 @@ theorem reactiveApplication_completionPath :
     intro state message next accepted
     obtain ⟨native, handled, rfl⟩ := reactiveHandle_call accepted
     exact (Relation.ReflTransGen.single
-      (completionStep_handle runtime state native _ handled)).trans native.drain_completionPath
+      (completionStep_handle timeouts state native _ handled)).trans native.drain_completionPath
   environment := by
     intro state command next reached
-    change next ∈ ((environmentStep runtime state command).map State.drain).support at reached
+    change next ∈ ((environmentStep timeouts state command).map State.drain).support at reached
     obtain ⟨native, moved, rfl⟩ := PMF.support_map .. ▸ reached
     exact (Relation.ReflTransGen.single
-      (completionStep_environmentStep runtime state native command moved)).trans
+      (completionStep_environmentStep timeouts state native command moved)).trans
         native.drain_completionPath
 
 /-- Every scheduler command has a finite native completion footprint. -/
 theorem completionPath_reactive_environmentStep
-    (execution next : (runtime.reactiveApplication leaks).Execution)
-    (command : (runtime.reactiveApplication leaks).Command)
-    (reached : next ∈ (execution.environmentStep (runtime.reactiveApplication leaks)
+    (execution next : ((reactiveApplication timeouts) leaks).Execution)
+    (command : ((reactiveApplication timeouts) leaks).Command)
+    (reached : next ∈ (execution.environmentStep ((reactiveApplication timeouts) leaks)
       command).support) :
     Relation.ReflTransGen CompletionStep execution.application next.application :=
-  (reactiveApplication_completionPath runtime leaks).environmentStep execution next command reached
+  (reactiveApplication_completionPath timeouts leaks).environmentStep execution next command reached
 
 end Vegas.EventGraphRuntime

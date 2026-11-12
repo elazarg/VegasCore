@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Source.Protocol
-import GameTheory.Protocol.Backward
+public import Vegas.Source.Protocol
+public import GameTheory.Protocol.Backward
+
+@[expose] public section
 
 /-! # Finite source protocol execution
 

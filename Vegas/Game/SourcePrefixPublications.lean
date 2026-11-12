@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketForced
-import Vegas.Source.IntendedGame
-import Vegas.Source.IntendedForPlayer
+public import Vegas.Game.OnePacketForced
+public import Vegas.Source.IntendedGame
+public import Vegas.Source.IntendedForPlayer
+
+@[expose] public section
 
 /-! # Failures in typed source prefix readouts
 

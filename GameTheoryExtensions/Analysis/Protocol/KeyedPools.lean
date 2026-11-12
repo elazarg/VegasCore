@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheoryExtensions.Analysis.Protocol.SuccessRanking
+public import GameTheoryExtensions.Analysis.Protocol.SuccessRanking
+
+@[expose] public section
 
 /-! # Pools keyed by what a move may depend on
 

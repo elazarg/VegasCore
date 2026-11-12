@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Mathlib.Data.Finset.Card
-import Mathlib.Data.Fintype.Basic
-import Mathlib.Data.Nat.Find
+public import Mathlib.Data.Finset.Card
+public import Mathlib.Data.Fintype.Basic
+public import Mathlib.Data.Nat.Find
+
+@[expose] public section
 
 /-! # Finite event orders and completed cuts
 
@@ -67,6 +71,12 @@ def enabled (cut : Cut order) : Finset (Fin order.eventCount) :=
 /-- A cut is terminal when every event is complete. -/
 def Terminal (cut : Cut order) : Prop :=
   cut.completed = Finset.univ
+
+/-- A ready event witnesses that the cut has not completed every event. -/
+theorem Ready.not_terminal {cut : Cut order} {event : Fin order.eventCount}
+    (ready : cut.Ready event) : ¬ cut.Terminal := by
+  intro terminal
+  exact ready.1 (terminal.symm ▸ Finset.mem_univ event)
 
 /-- Complete one ready event. -/
 def complete (cut : Cut order) (event : Fin order.eventCount)

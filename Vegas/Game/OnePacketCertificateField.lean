@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RevealService
-import Vegas.Pending.ReactiveOnePacketMenu
-import Vegas.Pending.ReactiveSignedCommitments
-import Vegas.Pending.ReactiveStateInvariant
+public import Vegas.Game.RevealService
+public import Vegas.Pending.ReactiveOnePacketMenu
+public import Vegas.Pending.ReactiveSignedCommitments
+public import Vegas.Pending.ReactiveStateInvariant
+
+@[expose] public section
 
 /-! # The field certified by an owned evidence request
 
@@ -36,15 +40,15 @@ open GameTheory GameTheory.Protocol Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
-variable (setup runtime leaks) in
+variable (setup timeouts leaks) in
 /-- **Owned requests are emitted.** Every recalled transmission emitted an
 envelope; when it requested owned evidence, the envelope carries exactly that
 evidence; and the direct predecessors of the event its token names have
 completed. -/
-def OwnedRequestsEmitted (execution : (application setup runtime leaks).Execution) : Prop :=
+def OwnedRequestsEmitted (execution : (application setup timeouts leaks).Execution) : Prop :=
   ∀ who, ∀ recalled ∈ execution.logs who, ∀ submission,
     recalled.action.transmission = some submission →
     ∃ message, recalled.emitted = some message ∧
@@ -85,18 +89,18 @@ private theorem predecessors_completed_of_tokenFor (state : EventGraphRuntime.St
 variable (leaks) in
 /-- Owned requests stay emitted along every environment step. -/
 theorem ownedRequestsEmitted_environment
-    (execution next : (application setup runtime leaks).Execution)
-    (command : (application setup runtime leaks).Command)
-    (valid : OwnedRequestsEmitted setup runtime leaks execution)
-    (reached : next ∈ (execution.environmentStep (application setup runtime leaks)
+    (execution next : (application setup timeouts leaks).Execution)
+    (command : (application setup timeouts leaks).Command)
+    (valid : OwnedRequestsEmitted setup timeouts leaks execution)
+    (reached : next ∈ (execution.environmentStep (application setup timeouts leaks)
       command).support) :
-    OwnedRequestsEmitted setup runtime leaks next := by
-  have path := (runtime.reactiveApplication_graphSteps leaks).environmentStep
+    OwnedRequestsEmitted setup timeouts leaks next := by
+  have path := ((reactiveApplication_graphSteps timeouts) leaks).environmentStep
     execution next command reached
   have historyPrefix := (EventGraph.Config.Step.path_history_prefix path).map
     EventCompletion.event
   intro who recalled member submission sent
-  rw [(application setup runtime leaks).environmentStep_recall
+  rw [(application setup timeouts leaks).environmentStep_recall
     execution next command reached] at member
   obtain ⟨message, emitted, evidence, token⟩ := valid who recalled member submission sent
   refine ⟨message, emitted, evidence, fun event named predecessor completed => ?_⟩
@@ -107,17 +111,17 @@ theorem ownedRequestsEmitted_environment
 variable [Fintype Player] (bounds : MessageBounds (graph setup))
 
 /-- Owned requests stay emitted along every one-packet response. -/
-theorem ownedRequestsEmitted_respond (execution : (application setup runtime leaks).Execution)
-    (valid : OwnedRequestsEmitted setup runtime leaks execution) (who : Player)
-    (action : (application setup runtime leaks).Action)
-    (member : action ∈ (bounds.onePacketMenu runtime leaks).actions who
-      (execution.logs who) (execution.observe (application setup runtime leaks) who)) :
-    OwnedRequestsEmitted setup runtime leaks (execution.respond (application setup runtime leaks)
+theorem ownedRequestsEmitted_respond (execution : (application setup timeouts leaks).Execution)
+    (valid : OwnedRequestsEmitted setup timeouts leaks execution) (who : Player)
+    (action : (application setup timeouts leaks).Action)
+    (member : action ∈ (bounds.onePacketMenu timeouts leaks).actions who
+      (execution.logs who) (execution.observe (application setup timeouts leaks) who)) :
+    OwnedRequestsEmitted setup timeouts leaks (execution.respond (application setup timeouts leaks)
       who action) := by
-  let app := application setup runtime leaks
-  have configEq := (runtime.reactive_respond_application leaks execution who action).1
+  let app := application setup timeouts leaks
+  have configEq := ((reactive_respond_application timeouts) leaks execution who action).1
   intro observer recalled entryMember submission sent
-  rw [respond_recall runtime leaks] at entryMember
+  rw [respond_recall timeouts leaks] at entryMember
   split at entryMember
   · rename_i same
     subst same
@@ -130,8 +134,8 @@ theorem ownedRequestsEmitted_respond (execution : (application setup runtime lea
       rcases action with ⟨transmission⟩
       change transmission = some submission at sent
       subst sent
-      have normal := ((bounds.menu_mem runtime leaks observer _ _ _).mp
-        ((bounds.mem_onePacketActions runtime leaks observer _ _ _).mp member).1).2
+      have normal := ((bounds.menu_mem timeouts leaks observer _ _ _).mp
+        ((bounds.mem_onePacketActions timeouts leaks observer _ _ _).mp member).1).2
       have normalEvidence := congrArg (fun response : app.Action =>
         response.transmission.map WitnessedSubmission.evidence) normal
       simp only [ReactiveApplication.SubmissionNormalization.action,
@@ -152,7 +156,7 @@ theorem ownedRequestsEmitted_respond (execution : (application setup runtime lea
         exact resolved
       · rw [configEq]
         apply predecessors_completed_of_tokenFor execution.application submission.call.packet
-        rw [← reactiveApplication_packet_token runtime leaks execution.application observer
+        rw [← reactiveApplication_packet_token timeouts leaks execution.application observer
           (execution.network.known observer) submission]
         exact named
   · obtain ⟨message, emitted, evidence, token⟩ :=
@@ -163,32 +167,32 @@ theorem ownedRequestsEmitted_respond (execution : (application setup runtime lea
 
 /-- **Owned requests are emitted along every history** of the one-packet game. -/
 theorem ownedRequestsEmitted_history {horizon : Nat}
-    {scheduler : (application setup runtime leaks).Scheduler}
-    {control : (application setup runtime leaks).Control}
-    (trace : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+    {scheduler : (application setup timeouts leaks).Scheduler}
+    {control : (application setup timeouts leaks).Control}
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control)) :
-    OwnedRequestsEmitted setup runtime leaks control.execution :=
-  (show (bounds.onePacketMenu runtime leaks).ServiceInvariant scheduler
-      (OwnedRequestsEmitted setup runtime leaks) from
+    OwnedRequestsEmitted setup timeouts leaks control.execution :=
+  (show (bounds.onePacketMenu timeouts leaks).ServiceInvariant scheduler
+      (OwnedRequestsEmitted setup timeouts leaks) from
     { respond := fun execution who action valid member =>
-        ownedRequestsEmitted_respond (runtime := runtime) bounds execution valid who action member
+        ownedRequestsEmitted_respond (timeouts := timeouts) bounds execution valid who action member
       environment := fun execution next command valid _ reached =>
-        ownedRequestsEmitted_environment (runtime := runtime) leaks execution next command valid
+        ownedRequestsEmitted_environment (timeouts := timeouts) leaks execution next command valid
           reached }).history
     (initialLaw setup) horizon (fun _ _ _ _ member => (List.not_mem_nil member).elim) trace
 
 /-- Along every history of the one-packet game, every packet a player recalls
 emitting is in the network. -/
 theorem output_mem_inputs_of_trace {horizon : Nat}
-    {scheduler : (application setup runtime leaks).Scheduler}
-    {control : (application setup runtime leaks).Control}
-    (trace : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+    {scheduler : (application setup timeouts leaks).Scheduler}
+    {control : (application setup timeouts leaks).Control}
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control))
     (who : Player) (packet : Message Player (WitnessedPacket (graph setup)))
-    (output : packet ∈ (application setup runtime leaks).outputs (control.execution.logs who)) :
+    (output : packet ∈ (application setup timeouts leaks).outputs (control.execution.logs who)) :
     packet ∈ control.execution.network.inputs := by
-  have clean := (bounds.onePacketMenu_countClean runtime leaks scheduler).history
-    (initialLaw setup) horizon (fun state _ => runtime.countClean_initial leaks state)
+  have clean := (bounds.onePacketMenu_countClean timeouts leaks scheduler).history
+    (initialLaw setup) horizon (fun state _ => (countClean_initial timeouts) leaks state)
     trace
   rw [← clean.1.1 who] at output
   exact (List.mem_filter.mp output).1
@@ -197,9 +201,9 @@ theorem output_mem_inputs_of_trace {horizon : Nat}
 history of the one-packet game, a commitment in the network names a prepared
 handle of its sender that no earlier packet of the sender named. -/
 theorem commitment_facts_of_trace {horizon : Nat}
-    {scheduler : (application setup runtime leaks).Scheduler}
-    {control : (application setup runtime leaks).Control}
-    (trace : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+    {scheduler : (application setup timeouts leaks).Scheduler}
+    {control : (application setup timeouts leaks).Control}
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control))
     (packet : Message Player (WitnessedPacket (graph setup)))
     (input : packet ∈ control.execution.network.inputs) (named : (graph setup).EventId)
@@ -208,8 +212,8 @@ theorem commitment_facts_of_trace {horizon : Nat}
     candidate.1 = packet.sender ∧ (∃ serial, candidate.2 = .prepared serial) ∧
       ∀ other, EarlierOwnPacket control.execution.network.inputs packet other →
         ∀ named', other.payload.call ≠ .commitment named' candidate := by
-  have clean := (bounds.onePacketMenu_countClean runtime leaks scheduler).history
-    (initialLaw setup) horizon (fun state _ => runtime.countClean_initial leaks state)
+  have clean := (bounds.onePacketMenu_countClean timeouts leaks scheduler).history
+    (initialLaw setup) horizon (fun state _ => (countClean_initial timeouts) leaks state)
     trace
   have correct := ((countPermits_eq_true_iff _ _).mp (clean.2 packet input)).2.1
   unfold CountCallCorrect at correct
@@ -219,9 +223,9 @@ theorem commitment_facts_of_trace {horizon : Nat}
 /-- **Commitments never share a handle.** Along every history of the one-packet
 game, two commitments in the network never name one handle for two events. -/
 theorem commitment_unique_of_trace {horizon : Nat}
-    {scheduler : (application setup runtime leaks).Scheduler}
-    {control : (application setup runtime leaks).Control}
-    (trace : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+    {scheduler : (application setup timeouts leaks).Scheduler}
+    {control : (application setup timeouts leaks).Control}
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control))
     (first : Message Player (WitnessedPacket (graph setup)))
     (firstInput : first ∈ control.execution.network.inputs)
@@ -231,14 +235,14 @@ theorem commitment_unique_of_trace {horizon : Nat}
     (firstCall : first.payload.call = .commitment firstEvent candidate)
     (secondCall : second.payload.call = .commitment secondEvent candidate) :
     firstEvent = secondEvent := by
-  have clean := (bounds.onePacketMenu_countClean runtime leaks scheduler).history
-    (initialLaw setup) horizon (fun state _ => runtime.countClean_initial leaks state)
+  have clean := (bounds.onePacketMenu_countClean timeouts leaks scheduler).history
+    (initialLaw setup) horizon (fun state _ => (countClean_initial timeouts) leaks state)
     trace
   obtain ⟨firstOwner, _, firstFresh⟩ :=
-    commitment_facts_of_trace (runtime := runtime) bounds trace first firstInput firstEvent
+    commitment_facts_of_trace (timeouts := timeouts) bounds trace first firstInput firstEvent
       candidate firstCall
   obtain ⟨secondOwner, _, secondFresh⟩ :=
-    commitment_facts_of_trace (runtime := runtime) bounds trace second secondInput secondEvent
+    commitment_facts_of_trace (timeouts := timeouts) bounds trace second secondInput secondEvent
       candidate secondCall
   have sameSender : first.sender = second.sender := firstOwner.symm.trans secondOwner
   rcases lt_trichotomy first.id.2 second.id.2 with lower | same | higher
@@ -258,13 +262,13 @@ theorem commitment_unique_of_trace {horizon : Nat}
 the one-packet game, a recalled transmission requesting owned evidence opens a
 resolve event that is ready or completed, and the requested handle is accepted,
 if at all, only at the binding field of that event. -/
-theorem certificate_field {horizon : Nat} {scheduler : (application setup runtime leaks).Scheduler}
-    {control : (application setup runtime leaks).Control}
-    (trace : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+theorem certificate_field {horizon : Nat} {scheduler : (application setup timeouts leaks).Scheduler}
+    {control : (application setup timeouts leaks).Control}
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control))
-    (sender : Player) (recalled : (application setup runtime leaks).PlayerEntry)
+    (sender : Player) (recalled : (application setup timeouts leaks).PlayerEntry)
     (member : recalled ∈ control.execution.logs sender)
-    (submission : (application setup runtime leaks).Submission)
+    (submission : (application setup timeouts leaks).Submission)
     (sent : recalled.action.transmission = some submission)
     (fact : OpeningFact (graph setup)) (owned : submission.evidence = .owned fact) :
     ∃ event owner payload binding checks outputEq codeEq,
@@ -274,27 +278,27 @@ theorem certificate_field {horizon : Nat} {scheduler : (application setup runtim
       ∀ field, control.execution.application.accepted field = some fact.handle →
         field = binding.field := by
   let inputs := control.execution.network.inputs
-  have rawTrace : ((application setup runtime leaks).protocol (initialLaw setup) horizon
+  have rawTrace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
     scheduler).Trace
       (some control) :=
-    (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup) horizon scheduler
+    (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon scheduler
       trace
-  have clean := (bounds.onePacketMenu_countClean runtime leaks scheduler).history
-    (initialLaw setup) horizon (fun state _ => runtime.countClean_initial leaks state)
+  have clean := (bounds.onePacketMenu_countClean timeouts leaks scheduler).history
+    (initialLaw setup) horizon (fun state _ => (countClean_initial timeouts) leaks state)
     trace
-  have signed := signedCommitments_history runtime leaks (initialLaw setup)
+  have signed := signedCommitments_history timeouts leaks (initialLaw setup)
     (fun state supported => by
       obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ supported
       exact ⟨_, rfl⟩) horizon scheduler rawTrace
   obtain ⟨message, emitted, evidence, issued⟩ :=
-    ownedRequestsEmitted_history (runtime := runtime) bounds trace sender recalled member
+    ownedRequestsEmitted_history (timeouts := timeouts) bounds trace sender recalled member
       submission sent
   have carried := evidence fact owned
-  have inputOf := output_mem_inputs_of_trace (runtime := runtime) bounds trace
+  have inputOf := output_mem_inputs_of_trace (timeouts := timeouts) bounds trace
   have messageInput : message ∈ inputs :=
     inputOf sender message (List.mem_filterMap.mpr ⟨recalled, member, emitted⟩)
-  have commitmentFacts := commitment_facts_of_trace (runtime := runtime) bounds trace
-  have commitmentUnique := commitment_unique_of_trace (runtime := runtime) bounds trace
+  have commitmentFacts := commitment_facts_of_trace (timeouts := timeouts) bounds trace
+  have commitmentUnique := commitment_unique_of_trace (timeouts := timeouts) bounds trace
   have permitted : CountPermits inputs message :=
     (countPermits_eq_true_iff _ _).mp (clean.2 message messageInput)
   have correct := permitted.2.1

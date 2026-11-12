@@ -1,23 +1,27 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Source.Safety
-import Vegas.Game.IntendedNash
-import Vegas.Game.ConcurrentRevealForfeit
-import Vegas.Game.IntendedOpeningExtension
-import Vegas.Game.SourceProtocolNash
-import Vegas.Compile.EventGraphScheduling
-import Vegas.Game.EventCompilation
-import Vegas.Pending.GraphRefinement
-import Vegas.Game.SourceServiceFirstTurnCompletion
-import Vegas.Game.AsyncServiceRawNash
-import Vegas.Game.AsyncClientObservables
-import Vegas.Game.ProgramPaymentAsyncNash
-import Vegas.Game.ClientCompiler
-import Vegas.Game.PaymentPreservation
-import Vegas.Examples.OddsEvensRawEquilibrium
-import Vegas.Examples.OddsEvensFullSource
-import Vegas.Examples.CommitRevealAuction
-import Vegas.Examples.LateLeak
+public import Vegas.Source.Safety
+public import Vegas.Game.IntendedNash
+public import Vegas.Game.ConcurrentRevealPreservation
+public import Vegas.Game.IntendedOpeningExtension
+public import Vegas.Game.SourceProtocolNash
+public import Vegas.Compile.EventGraphScheduling
+public import Vegas.Game.EventCompilation
+public import Vegas.Pending.GraphRefinement
+public import Vegas.Game.SourceServiceFirstTurnCompletion
+public import Vegas.Game.AsyncServiceRawNash
+public import Vegas.Game.AsyncClientObservables
+public import Vegas.Game.ProgramPaymentAsyncNash
+public import Vegas.Game.ClientCompiler
+public import Vegas.Game.PaymentPreservation
+public import Vegas.Examples.OddsEvensRawEquilibrium
+public import Vegas.Examples.OddsEvensFullSource
+public import Vegas.Examples.CommitRevealAuction
+public import Vegas.Examples.LateLeak
+
+@[expose] public section
 
 /-! # Claims of the maintained paper
 
@@ -172,30 +176,30 @@ def Vegas.Paper.forfeitPayoff (forfeit : ℝ) (terminal : TerminalConfig setup) 
 variable (finite : setup.program.FiniteBindingTypes) [initialFinite : setup.FiniteInitialLaw]
   (wellFormed : setup.WellFormed) (forfeit : ℝ)
 
-local notation "values" => CommitmentInterface.values setup.program
-local notation "source" => setup.informationModel values
 local notation "horizon" => setup.program.instructionCount + 1
 local notation "base" => sourcePayoff setup parameter utility
 local notation "penalized" => forfeitPayoff setup parameter utility forfeit
 
 include finite wellFormed initialFinite in
 theorem Vegas.Paper.intended_forfeit_isεNash_preserved
-    (range : setup.TerminalPayoffSpread values parameter utility forfeit)
+    (admission : CommitmentInterface setup.program)
+    (range : setup.TerminalPayoffSpread admission parameter utility forfeit)
     (intended : Profile setup.intendedModel.behavioralSignature)
-    (target : Profile (source).behavioralSignature)
-    (agrees : (setup.intendedRestriction values).ExtendsProfile intended target) (ε : ℝ)
+    (target : Profile (setup.informationModel admission).behavioralSignature)
+    (agrees : (setup.intendedRestriction admission).ExtendsProfile intended target) (ε : ℝ)
     (equilibrium : IsεNash (setup.intendedModel.toBehavioralGameForm horizon)
       (fun final => readoutPayoff setup base final.state) ε intended) :
-    IsεNash ((source).toBehavioralGameForm horizon)
+    IsεNash ((setup.informationModel admission).toBehavioralGameForm horizon)
         (fun final => readoutPayoff setup penalized final.state) ε target ∧
-      (∀ final ∈ ((source).runBehavioral target horizon).support, ∀ terminal,
+      (∀ final ∈ ((setup.informationModel admission).runBehavioral target horizon).support,
+        ∀ terminal,
         setup.protocolReadout final.state = some terminal → NoFailedReveals setup terminal) ∧
-      ((source).runBehavioral target horizon).map
+      ((setup.informationModel admission).runBehavioral target horizon).map
           (fun final => readoutAndPayoff setup penalized final.state) =
         (setup.intendedModel.runBehavioral intended horizon).map
           (fun final => readoutAndPayoff setup base final.state) := by
-  exact setup.intended_forfeit_isεNash_preserved finite wellFormed parameter utility forfeit
-    range intended target agrees ε equilibrium
+  exact setup.intended_forfeit_isεNash_preserved admission finite wellFormed parameter utility
+    forfeit range intended target agrees ε equilibrium
 
 /-- info: 'Vegas.Paper.intended_forfeit_isεNash_preserved' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
@@ -258,6 +262,11 @@ theorem Vegas.Paper.concurrentReveal_intended_forfeit
         (setup.concurrentForfeitPayoff parameter utility forfeit) ε
         (setup.concurrentRevealGraph.normalizeProfile (compileEventProfile setup.program
           (setup.decodeBehavioralProfile forfeiture target))) ∧
+      (∀ outcome ∈ ((setup.concurrentRevealGraph.gameForm setup.concurrentInputs scheduler).play
+          (setup.concurrentRevealGraph.normalizeProfile (compileEventProfile setup.program
+            (setup.decodeBehavioralProfile forfeiture target)))).support,
+        (setup.concurrentReadout outcome).defaulted = ∅ ∧
+          NoFailedReveals setup (setup.concurrentReadout outcome)) ∧
       ((setup.concurrentRevealGraph.gameForm setup.concurrentInputs scheduler).play
           (setup.concurrentRevealGraph.normalizeProfile (compileEventProfile setup.program
             (setup.decodeBehavioralProfile forfeiture target)))).map
@@ -265,23 +274,82 @@ theorem Vegas.Paper.concurrentReveal_intended_forfeit
             setup.concurrentForfeitPayoff parameter utility forfeit outcome)) =
         (setup.intendedModel.runBehavioral intended horizon).map
           (fun final => (setup.protocolReadout final.state,
-            readoutPayoff setup base final.state)) :=
-  setup.concurrentReveal_intended_forfeit finite wellFormed parameter utility forfeit range
-    intended target agrees ε equilibrium disclosing scheduler
+            readoutPayoff setup base final.state)) ∧
+      (∀ who event (actor : setup.concurrentRevealGraph.actor? event = some who),
+        (publication : (setup.concurrentRevealGraph.outputLayout event).IsPublication) →
+          ∀ (observation : setup.concurrentRevealGraph.PlayerObservation who)
+            (active : who ∉ observation.defaulted),
+            compileEventPolicy setup.program who (setup.decodeBehavioralProfile forfeiture target
+              who) event actor observation active =
+              PMF.pure (EventGraph.EventField.openAction _ publication)) := by
+  obtain ⟨nash, clean, law⟩ := setup.concurrentReveal_intended_forfeit finite wellFormed parameter
+    utility forfeit range intended target agrees ε equilibrium disclosing scheduler
+  exact ⟨nash, clean, law, fun who event actor publication observation active =>
+    compileEventPolicy_publication setup.program who
+      (setup.decodeBehavioralProfile forfeiture target who) (disclosing who) event actor
+      publication observation active⟩
 
 /-- info: 'Vegas.Paper.concurrentReveal_intended_forfeit' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.concurrentReveal_intended_forfeit
 
+include finite wellFormed initialFinite in
+/-- The effective-opening clients preserve intended approximate Nash equilibrium,
+complete source readout and the payoff vector on the concurrent-reveal ledger.
+No public default or failed reveal occurs on supported play. -/
+theorem Vegas.Paper.concurrentReveal_intended_ledger
+    (range : ∀ high low who, utility high who - utility low who ≤ forfeit)
+    (intended : Profile setup.intendedModel.behavioralSignature)
+    (target : Profile (setup.informationModel forfeiture).behavioralSignature)
+    (agrees : (setup.intendedRestriction forfeiture).ExtendsProfile intended target) (ε : ℝ)
+    (equilibrium : IsεNash (setup.intendedModel.toBehavioralGameForm horizon)
+      (fun final => readoutPayoff setup base final.state) ε intended)
+    (disclosing : ∀ who, Disclosing setup.program
+      (setup.decodeBehavioralProfile forfeiture target who))
+    (duration : (serviceGraph setup .concurrentReveals).EventId → Nat)
+    (leaks : MessageNetwork.ObservationRule Player
+      (WitnessedPacket (serviceGraph setup .concurrentReveals)))
+    {ledgerHorizon turns : Nat}
+    {scheduler : (serviceApplication setup .concurrentReveals duration leaks).Scheduler}
+    {delay bound : (serviceGraph setup .concurrentReveals).EventId → Nat}
+    (contract : AsyncContract (serviceTimeouts setup .concurrentReveals duration) leaks
+      (serviceInitialLaw setup .concurrentReveals) ledgerHorizon scheduler delay bound)
+    (timely : AsyncTimely (serviceTimeouts setup .concurrentReveals duration) delay bound) :
+    IsεNash (concurrentLedgerGame setup duration leaks scheduler ledgerHorizon)
+        (concurrentConfigPayoff setup parameter utility forfeit) ε
+        (concurrentLedgerClients setup duration leaks bound turns
+          (setup.decodeBehavioralProfile forfeiture target)) ∧
+      (∀ config ∈ ((concurrentLedgerGame setup duration leaks scheduler ledgerHorizon).play
+          (concurrentLedgerClients setup duration leaks bound turns
+            (setup.decodeBehavioralProfile forfeiture target))).support,
+        config.cut.Terminal ∧ config.defaulted = ∅ ∧ ∃ terminal,
+          concurrentRankedRead setup config = some terminal ∧ NoFailedReveals setup terminal) ∧
+      (((concurrentLedgerGame setup duration leaks scheduler ledgerHorizon).play
+          (concurrentLedgerClients setup duration leaks bound turns
+            (setup.decodeBehavioralProfile forfeiture target))).map fun config =>
+            (concurrentRankedRead setup config,
+              concurrentConfigPayoff setup parameter utility forfeit config)) =
+        (setup.intendedModel.runBehavioral intended horizon).map
+          (fun final => (setup.protocolReadout final.state,
+            readoutPayoff setup base final.state)) :=
+  Vegas.concurrentReveal_intended_ledger setup finite wellFormed parameter utility forfeit range
+    intended target agrees ε equilibrium disclosing duration leaks contract timely
+
+/-- info: 'Vegas.Paper.concurrentReveal_intended_ledger' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.concurrentReveal_intended_ledger
+
 omit [Finite Player] initialFinite in
 /-- Every intended profile has an extension that opens at every reveal. -/
 theorem Vegas.Paper.exists_disclosing_extension
+    (admission : CommitmentInterface setup.program)
     (intended : Profile setup.intendedModel.behavioralSignature) :
-    ∃ target : Profile (setup.informationModel forfeiture).behavioralSignature,
-      (setup.intendedRestriction forfeiture).ExtendsProfile intended target ∧
-        ∀ who, Disclosing setup.program (setup.decodeBehavioralProfile forfeiture target who) :=
-  setup.exists_disclosing_extension forfeiture intended
+    ∃ target : Profile (setup.informationModel admission).behavioralSignature,
+      (setup.intendedRestriction admission).ExtendsProfile intended target ∧
+        ∀ who, Disclosing setup.program (setup.decodeBehavioralProfile admission target who) :=
+  setup.exists_disclosing_extension admission intended
 
 /-- info: 'Vegas.Paper.exists_disclosing_extension' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
@@ -304,10 +372,15 @@ variable {Γ : SourceCtx Player L} {openNames : Finset VarId}
 theorem Vegas.Paper.scheduled_terminalConfig_law (program : SourceProgram Player L Γ openNames)
     (scheduler : (toEventGraph program).PublicScheduler)
     (profile : BehavioralProfile program) (state : State L Γ) :
-    ((toEventGraph program).terminalOutcomes scheduler
+    (∀ (graphProfile : (toEventGraph program).BehavioralProfile)
+      (first second : (toEventGraph program).PublicScheduler),
+      (toEventGraph program).policyPlan graphProfile first =
+        (toEventGraph program).policyPlan graphProfile second) ∧
+      ((toEventGraph program).terminalOutcomes scheduler
         (compileEventProfile program profile) (encodeInputs state)).map (terminalConfig program) =
       program.run profile state :=
-  Vegas.scheduled_terminalConfig_law program scheduler profile state
+  ⟨fun graphProfile first second => toEventGraph_policyPlan_eq program graphProfile first second,
+    Vegas.scheduled_terminalConfig_law program scheduler profile state⟩
 
 /-- info: 'Vegas.Paper.scheduled_terminalConfig_law' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
@@ -338,12 +411,12 @@ A service completion guarantee additionally makes every terminal field available
 
 section Runtime
 
-variable {graph : EventGraph Player L} (runtime : EventGraphRuntime graph)
+variable {graph : EventGraph Player L} (timeouts : EventTimeouts graph)
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
 
 /-- The graph configuration retained by a native protocol control. -/
 def Vegas.Paper.controlConfig
-    (control : (runtime.reactiveApplication leaks).Control) : graph.Config :=
+    (control : ((reactiveApplication timeouts) leaks).Control) : graph.Config :=
   control.execution.application.config
 
 /-- Every typed graph field has an available stored value. -/
@@ -351,14 +424,14 @@ def Vegas.Paper.FieldsAvailable (config : graph.Config) : Prop :=
   ∀ field, (config.store field).isSome = true
 
 variable (inputs : PMF graph.Inputs) (horizon : ℕ)
-  (scheduler : (runtime.reactiveApplication leaks).Scheduler)
+  (scheduler : ((reactiveApplication timeouts) leaks).Scheduler)
 
-local notation "app" => runtime.reactiveApplication leaks
+local notation "app" => (reactiveApplication timeouts) leaks
 local notation "initial" => inputs.map EventGraphRuntime.State.initial
 local notation "protocol" => ReactiveApplication.protocol
-  (runtime.reactiveApplication leaks) (inputs.map EventGraphRuntime.State.initial) horizon
+  ((reactiveApplication timeouts) leaks) (inputs.map EventGraphRuntime.State.initial) horizon
     scheduler
-local notation "configAt" => controlConfig runtime leaks
+local notation "configAt" => controlConfig timeouts leaks
 
 theorem Vegas.Paper.reactive_protocol_graph_refinement :
     (∀ before after joint,
@@ -366,9 +439,10 @@ theorem Vegas.Paper.reactive_protocol_graph_refinement :
         Relation.ReflTransGen EventGraph.Config.Step (configAt before) (configAt after)) ∧
     ∀ control, (protocol).Trace (some control) →
       (∃ input ∈ inputs.support, (configAt control).Reachable input) ∧
-      (runtime.CompletesPlay leaks initial horizon scheduler → (protocol).terminal (some control) →
+      ((CompletesPlay timeouts) leaks initial horizon scheduler → (protocol).terminal (some
+        control) →
         (configAt control).cut.Terminal ∧ FieldsAvailable (configAt control)) :=
-  runtime.reactive_protocol_graph_refinement leaks inputs horizon scheduler
+  Vegas.EventGraphRuntime.reactive_protocol_graph_refinement timeouts leaks inputs horizon scheduler
 
 /-- info: 'Vegas.Paper.reactive_protocol_graph_refinement' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
@@ -383,25 +457,25 @@ the complete typed source state and public default history. The following two
 laws quantify over every observation of that joint result and every source profile.
 `AsyncContract` requires bounded owner opportunities, protected inclusion of an
 owner's sole submitted identifier, and completion on initialized legal terminal
-histories. `AsyncTimely` requires `delay event + bound event < deadline event`
+histories. `AsyncTimely` requires `delay event + bound event < duration event`
 for each owned event; both conditions concern the supplied scheduler and runtime. -/
 
 section OrdinaryCompiler
 
 variable {setup : Setup (Player := Player) (L := L)} [Finite Player]
-  (runtime : EventGraphRuntime (graph setup))
+  (timeouts : EventTimeouts (graph setup))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-  {horizon turns : ℕ} (scheduler : (application setup runtime leaks).Scheduler)
+  {horizon turns : ℕ} (scheduler : (application setup timeouts leaks).Scheduler)
   (delay bound : (graph setup).EventId → ℕ) (original : BehavioralProfile setup.program)
 
 /-- The initialized actual-client law, read as an optional complete source configuration. -/
 def Vegas.Paper.clientReadoutLaw : PMF (Option (TerminalConfig setup)) :=
-  ((application setup runtime leaks).roundsFrom (initialLaw setup) scheduler
-      (serviceClientPolicy setup .sequential runtime.deadline leaks bound turns
+  ((application setup timeouts leaks).roundsFrom (initialLaw setup) scheduler
+      (serviceClientPolicy setup .sequential timeouts.duration leaks bound turns
         (firstTurnTiming setup turns) (setup.program.normalizeDisclosureProfile original))
       horizon).map
-      (fun execution => sourceReadout setup runtime leaks
-        ((application setup runtime leaks).finished execution))
+      (fun execution => sourceReadout setup timeouts leaks
+        ((application setup timeouts leaks).finished execution))
 
 /-- An observation of the terminal typed state together with public default history. -/
 def Vegas.Paper.terminalObservation {Outcome : Type u}
@@ -409,12 +483,13 @@ def Vegas.Paper.terminalObservation {Outcome : Type u}
     (terminal : TerminalConfig setup) : Outcome :=
   read (terminal.state, terminal.defaults)
 
-variable (contract : runtime.AsyncContract leaks (initialLaw setup) horizon scheduler delay bound)
-  (timely : runtime.AsyncTimely delay bound) {Outcome : Type u}
+variable (contract : (AsyncContract timeouts) leaks (initialLaw setup) horizon scheduler delay
+  bound)
+  (timely : (AsyncTimely timeouts) delay bound) {Outcome : Type u}
   (read : State L setup.program.terminalCtx × DefaultHistory Player → Outcome)
 
 local notation "clientLaw" => clientReadoutLaw (horizon := horizon) (turns := turns)
-  runtime leaks scheduler bound original
+  timeouts leaks scheduler bound original
 local notation "observe" => terminalObservation (setup := setup) read
 
 include contract timely in
@@ -424,7 +499,7 @@ theorem Vegas.Paper.sourceServiceClientPolicy_outcome_law :
       (setup.run original).map (fun terminal => some (observe terminal)) := by
   dsimp only [clientReadoutLaw, terminalObservation]
   simpa only [PMF.map_comp, Function.comp_def] using
-    Vegas.sourceServiceClientPolicy_outcome_law runtime leaks scheduler delay bound original
+    Vegas.sourceServiceClientPolicy_outcome_law timeouts leaks scheduler delay bound original
       contract timely read
 
 /-- info: 'Vegas.Paper.sourceServiceClientPolicy_outcome_law' depends on axioms:
@@ -442,7 +517,7 @@ theorem Vegas.Paper.sourceServiceClientPolicy_graph_law :
           some (observe (terminalConfig setup.program terminal))) := by
   dsimp only [clientReadoutLaw, terminalObservation]
   simpa only [PMF.map_comp, Function.comp_def] using
-    Vegas.sourceServiceClientPolicy_graph_law runtime leaks scheduler delay bound original
+    Vegas.sourceServiceClientPolicy_graph_law timeouts leaks scheduler delay bound original
       contract timely read
 
 /-- info: 'Vegas.Paper.sourceServiceClientPolicy_graph_law' depends on axioms:
@@ -495,34 +570,34 @@ def Vegas.Paper.intendedNash (ε : ℝ)
 /-- The actual evidence audit is applied to the terminal source utility. -/
 def Vegas.Paper.ledgerSettlement :=
   TerminalAudit.settlement
-      (serviceBaseUtility service.setup service.mode service.deadline service.leaks
+      (serviceBaseUtility service.setup service.mode service.duration service.leaks
         (fun terminal => utility (service.setup.parameterOutcome parameter terminal)))
-      ((serviceRuntime service.setup service.mode service.deadline).serviceAuditObservation
+      ((serviceAuditObservation (serviceTimeouts service.setup service.mode service.duration))
         service.leaks)
-      (serviceSourceAudit service.setup service.mode service.deadline service.leaks sample) deposit
+      (serviceSourceAudit service.setup service.mode service.duration service.leaks sample) deposit
 
 /-- Audited utility on the native state, using the declared terminal payoff. -/
 def Vegas.Paper.ledgerUtility :=
   TerminalAudit.utility
-      (serviceBaseUtility service.setup service.mode service.deadline service.leaks
+      (serviceBaseUtility service.setup service.mode service.duration service.leaks
         (fun terminal => utility (service.setup.parameterOutcome parameter terminal)))
-      ((serviceRuntime service.setup service.mode service.deadline).serviceAuditObservation
+      ((serviceAuditObservation (serviceTimeouts service.setup service.mode service.duration))
         service.leaks)
-      (serviceSourceAudit service.setup service.mode service.deadline service.leaks sample) deposit
+      (serviceSourceAudit service.setup service.mode service.duration service.leaks sample) deposit
 
 /-- Expected utility under the same audit and bounded raw ledger game. -/
 def Vegas.Paper.ledgerNash (ε : ℝ)
     (profile : Profile (ledgerModel service).behavioralSignature) : Prop :=
-  IsεNash ((ledgerModel service).toBehavioralGameForm (2 * service.horizon + 1))
+  IsεNash (service.gameForm service.rawMenu)
       (fun final who => ledgerUtility service parameter utility sample deposit final.state who)
       ε profile
 
 /-- Joint law of terminal cells, public defaults and realized audited payoffs. -/
 def Vegas.Paper.ledgerJointLaw
     (profile : Profile (ledgerModel service).behavioralSignature) :=
-  ((ledgerModel service).runBehavioral profile (2 * service.horizon + 1)).bind fun final =>
+  (service.run service.rawMenu profile).bind fun final =>
       (ledgerSettlement service parameter utility sample deposit final.state).map fun payoffs =>
-        ((serviceSourceReadout service.setup service.mode service.deadline service.leaks
+        ((serviceSourceReadout service.setup service.mode service.duration service.leaks
           final.state).map (fun terminal => (terminal.state, terminal.defaults)), payoffs)
 
 /-- The corresponding joint law of the intended game. -/
@@ -600,12 +675,11 @@ theorem Vegas.Paper.clientSettlementLaw_withinTV
 /-- Monetary clients preserve actual receipts jointly with typed cells and public defaults. -/
 theorem Vegas.Paper.payment_firstTurnClientProfile_settlement_law
     (turns : Nat) (source : Profile (service.sourceModel admission).behavioralSignature) :
-    (((ledgerModel service).runBehavioral
+    ((service.run service.rawMenu
       (service.clientProfile admission service.rawMenu
-        (firstTurnTiming service.setup turns service.mode) source)
-      (2 * service.horizon + 1)).bind fun final =>
+        (firstTurnTiming service.setup turns service.mode) source)).bind fun final =>
         (service.paymentSettlement sample deposit final.state).map fun receipts =>
-          ((serviceSourceReadout service.setup service.mode service.deadline service.leaks
+          ((serviceSourceReadout service.setup service.mode service.duration service.leaks
             final.state).map (fun terminal => (terminal.state, terminal.defaults)), receipts)) =
       (service.setup.run (service.setup.decodeBehavioralProfile admission source)).map
         (fun terminal => (some (terminal.state, terminal.defaults),
@@ -686,6 +760,9 @@ section PhysicalClients
 and authentic evidence collection conditions. `ClientCompilation` retains the
 selected raw assessment, its sequential equilibrium, absence of public defaults
 and charges, and the joint complete source-configuration/settled-payoff law.
+Its refinement certificate retains the intended strategy and actual replay
+posterior at genuine source decisions, covers every intended decision history,
+and preserves clean-boundary continuations through the audit and raw aliases.
 -/
 
 
@@ -698,20 +775,19 @@ section ClientRuntime
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup runtime leaks).Scheduler}
+  {scheduler : (application setup timeouts leaks).Scheduler}
   {Parameter : Type} {parameter : Vegas.State L setup.context → Parameter}
 
-local notation "app" => application setup runtime leaks
+local notation "app" => application setup timeouts leaks
 local notation "Initial" => initialLaw setup
-local notation "raw" => bounds.rawMenu runtime leaks
+local notation "raw" => bounds.rawMenu timeouts leaks
 local notation "model" => ReactiveApplication.ResponseMenu.information
-  (bounds.rawMenu runtime leaks) Initial horizon scheduler
-local notation "clientFuel" => 2 * horizon + 1
+  (bounds.rawMenu timeouts leaks) Initial horizon scheduler
 local notation "sourceFuel" => instructionCount setup.program + 1
-local notation "sourceConfigAt" => sourceReadout setup runtime leaks
+local notation "sourceConfigAt" => sourceReadout setup timeouts leaks
 
 section Equilibrium
 
@@ -719,7 +795,7 @@ variable {utility : Parameter × PublicOutcome setup.program → Player → ℝ}
   {excludedPayoff : Player → ℝ}
 
 theorem Vegas.Paper.intended_raw_sequentialEquilibrium_preserved
-    (spec : ClientSpec setup runtime leaks bounds horizon scheduler
+    (spec : ClientSpec setup timeouts leaks bounds horizon scheduler
       parameter utility excludedPayoff)
     (intended : setup.intendedModel.BehavioralAssessment)
     (equilibrium : setup.IntendedSequentialEquilibrium parameter utility intended) :
@@ -732,15 +808,17 @@ theorem Vegas.Paper.intended_raw_sequentialEquilibrium_preserved
 #print axioms Vegas.Paper.intended_raw_sequentialEquilibrium_preserved
 
 theorem Vegas.Paper.compile_correct
-    (spec : ClientSpec setup runtime leaks bounds horizon scheduler
+    (spec : ClientSpec setup timeouts leaks bounds horizon scheduler
       parameter utility excludedPayoff)
     (intended : setup.intendedModel.BehavioralAssessment)
     (equilibrium : setup.IntendedSequentialEquilibrium parameter utility intended) :
     let compiled := spec.compile intended equilibrium
-    compiled.assessment.IsSequentialEquilibriumFor
+    Nonempty (ClientAssessmentRefinement setup timeouts leaks bounds horizon scheduler
+      intended compiled.assessment) ∧
+    compiled.assessment.IsSequentialEquilibrium
       ((raw).decisionInformationAntichain Initial horizon scheduler)
-      (fun who site => compiled.assessment.truncatedContinuationContext site
-        (fun final => spec.payoff who final.state) clientFuel) ∧
+      ((raw).bounded Initial horizon scheduler).wellFoundedHistories
+      (fun who final => spec.payoff who final.state) ∧
     (∀ who, (raw).restrictPolicy Initial horizon scheduler who (compiled.clients who) =
       compiled.assessment.strategy who) ∧
     ((app).finish Initial horizon scheduler compiled.clients none).bind spec.observation =
@@ -754,16 +832,18 @@ theorem Vegas.Paper.compile_correct
 #print axioms Vegas.Paper.compile_correct
 
 theorem Vegas.Paper.compile_ledger_correct
-    (spec : ClientSpec setup runtime leaks bounds horizon scheduler
+    (spec : ClientSpec setup timeouts leaks bounds horizon scheduler
       parameter utility excludedPayoff)
     (intended : setup.intendedModel.BehavioralAssessment)
     (equilibrium : setup.IntendedSequentialEquilibrium parameter utility intended)
     (unobserved : leaks.DeliversNothing) :
     let compiled := spec.compile intended equilibrium
-    compiled.assessment.IsSequentialEquilibriumFor
+    Nonempty (ClientAssessmentRefinement setup timeouts leaks bounds horizon scheduler
+      intended compiled.assessment) ∧
+    compiled.assessment.IsSequentialEquilibrium
       ((raw).decisionInformationAntichain Initial horizon scheduler)
-      (fun who site => compiled.assessment.truncatedContinuationContext site
-        (fun final => spec.payoff who final.state) clientFuel) ∧
+      ((raw).bounded Initial horizon scheduler).wellFoundedHistories
+      (fun who final => spec.payoff who final.state) ∧
     (∀ who, ReactiveApplication.Policy.IgnoresLeakedFields app (compiled.ledgerClients who)) ∧
     (∀ (history : ((raw).protocol Initial horizon scheduler).History) who,
       (raw).restrictPolicy Initial horizon scheduler who (compiled.ledgerClients who)
@@ -780,7 +860,7 @@ theorem Vegas.Paper.compile_ledger_correct
 #print axioms Vegas.Paper.compile_ledger_correct
 
 theorem Vegas.Paper.clients_sequentiallyRational
-    {spec : ClientSpec setup runtime leaks bounds horizon scheduler
+    {spec : ClientSpec setup timeouts leaks bounds horizon scheduler
       parameter utility excludedPayoff}
     {intended : setup.intendedModel.BehavioralAssessment}
     (compiled : ClientCompilation spec intended)
@@ -801,7 +881,7 @@ theorem Vegas.Paper.clients_sequentiallyRational
 #print axioms Vegas.Paper.clients_sequentiallyRational
 
 theorem Vegas.Paper.ledgerClients_sequentiallyRational
-    {spec : ClientSpec setup runtime leaks bounds horizon scheduler
+    {spec : ClientSpec setup timeouts leaks bounds horizon scheduler
       parameter utility excludedPayoff}
     {intended : setup.intendedModel.BehavioralAssessment}
     (compiled : ClientCompilation spec intended)
@@ -832,17 +912,17 @@ setup's declared exit transfer. -/
 def Vegas.Paper.rawProgramPaymentLaw
     {utility : Parameter × PublicOutcome setup.program → Player → ℝ}
     {excludedPayoff : Player → ℝ}
-    (spec : ClientSpec setup runtime leaks bounds horizon scheduler
+    (spec : ClientSpec setup timeouts leaks bounds horizon scheduler
       parameter utility excludedPayoff)
     (profile : Profile (model).behavioralSignature) : PMF (TerminalObservation setup) :=
-  ((model).runBehavioral profile clientFuel).bind fun final =>
+  ((raw).run Initial horizon scheduler profile).bind fun final =>
       spec.programPaymentObservation final.state
 
 /-- The actual physical-client execution with the same audited cash observation. -/
 def Vegas.Paper.physicalProgramPaymentLaw
     {utility : Parameter × PublicOutcome setup.program → Player → ℝ}
     {excludedPayoff : Player → ℝ}
-    (spec : ClientSpec setup runtime leaks bounds horizon scheduler
+    (spec : ClientSpec setup timeouts leaks bounds horizon scheduler
       parameter utility excludedPayoff)
     (clients : Player → (app).Policy) : PMF (TerminalObservation setup) :=
   ((app).finish Initial horizon scheduler clients none).bind spec.programPaymentObservation
@@ -857,7 +937,7 @@ local notation "exitTransfer" => (fun who => (setup.exitTransfers who : ℝ))
 local notation "exitUtility" => (fun who => exitValuation who + exitTransfer who)
 
 theorem Vegas.Paper.intended_raw_programPayments_preserved
-    (spec : ClientSpec setup runtime leaks bounds horizon scheduler
+    (spec : ClientSpec setup timeouts leaks bounds horizon scheduler
       parameter paidUtility exitUtility)
     (intended : setup.intendedModel.BehavioralAssessment)
     (compiled : ClientCompilation spec intended) :
@@ -865,9 +945,9 @@ theorem Vegas.Paper.intended_raw_programPayments_preserved
         setup.intendedPaymentLaw intended ∧
       Vegas.Paper.physicalProgramPaymentLaw spec compiled.clients =
         setup.intendedPaymentLaw intended := by
-  exact ⟨Vegas.intended_raw_programPayments_preserved setup runtime leaks bounds horizon scheduler
+  exact ⟨Vegas.intended_raw_programPayments_preserved setup timeouts leaks bounds horizon scheduler
       parameter valuation exitValuation spec intended compiled,
-    compiled.clients_programPayments_preserved setup runtime leaks bounds horizon scheduler
+    compiled.clients_programPayments_preserved setup timeouts leaks bounds horizon scheduler
       parameter valuation exitValuation spec intended⟩
 
 /-- info: 'Vegas.Paper.intended_raw_programPayments_preserved' depends on axioms:
@@ -891,7 +971,7 @@ open Vegas.Examples
 /-- The concrete periodic builder supplies its declared opportunity, inclusion
 and completion guarantees on every initialized legal history. -/
 theorem Vegas.Paper.oddsEvens_asyncContract :
-    AsyncContract OddsEvensService.runtime OddsEvensService.leaks OddsEvensService.initial
+    AsyncContract OddsEvensService.timeouts OddsEvensService.leaks OddsEvensService.initial
       OddsEvensService.horizon OddsEvensService.scheduler (fun _ => 3) (fun _ => 2) :=
   ⟨Vegas.Examples.OddsEvensService.opportunity,
       Vegas.Examples.OddsEvensService.protectedInclusion,
@@ -904,7 +984,7 @@ theorem Vegas.Paper.oddsEvens_asyncContract :
 
 /-- Reaction three and inclusion two fit within every six-tick deadline. -/
 theorem Vegas.Paper.oddsEvens_asyncTimely :
-    AsyncTimely OddsEvensService.runtime (fun _ => 3) (fun _ => 2) :=
+    AsyncTimely OddsEvensService.timeouts (fun _ => 3) (fun _ => 2) :=
   Vegas.Examples.OddsEvensService.timely
 
 /-- info: 'Vegas.Paper.oddsEvens_asyncTimely' depends on axioms:
@@ -916,23 +996,24 @@ end ConcreteService
 
 section FairLedger
 open Vegas.Examples
-local notation "fairMenu" => OddsEvens.bounds.rawMenu OddsEvensService.runtime
+local notation "fairMenu" => OddsEvens.bounds.rawMenu OddsEvensService.timeouts
     OddsEvensService.leaks
 local notation "fairModel" => ReactiveApplication.ResponseMenu.information
-  (OddsEvens.bounds.rawMenu OddsEvensService.runtime OddsEvensService.leaks)
+  (OddsEvens.bounds.rawMenu OddsEvensService.timeouts OddsEvensService.leaks)
   OddsEvensService.initial
   OddsEvensService.horizon OddsEvensService.scheduler
 local notation "fairSpec" => OddsEvensRaw.specification
 
 /-- Actual bounded-ledger execution of the concrete fair-game client profile. -/
 def Vegas.Paper.fairLedgerRun (profile : Profile (fairModel).behavioralSignature) :=
-  (fairModel).runBehavioral profile (2 * OddsEvensService.horizon + 1)
+  (fairMenu).run OddsEvensService.initial OddsEvensService.horizon
+    OddsEvensService.scheduler profile
 
 /-- The concrete fair game's joint source-configuration and audited payoff law. -/
 def Vegas.Paper.fairLedgerJointLaw (profile : Profile (fairModel).behavioralSignature) :=
   (Vegas.Paper.fairLedgerRun profile).bind fun final =>
       ((fairSpec).settlement final.state).map fun payoffs =>
-        (sourceReadout OddsEvensService.fixture OddsEvensService.runtime
+        (sourceReadout OddsEvensService.fixture OddsEvensService.timeouts
           OddsEvensService.leaks final.state, payoffs)
 
 /-- A fair ledger equilibrium has no defaults or charges and retains the source payoff law. -/
@@ -949,7 +1030,7 @@ theorem Vegas.Paper.fair_equilibrium_exists :
           control.execution.application.config.defaulted = ∅) ∧
       (∀ final ∈ (Vegas.Paper.fairLedgerRun target.strategy).support, ∀ who,
         TerminalAudit.charge OddsEvensService.app.stateTraffic
-          (OddsEvensService.runtime.countAudit OddsEvensService.leaks
+          ((countAudit OddsEvensService.timeouts) OddsEvensService.leaks
             OddsEvensRaw.evidenceService.sample) final.state who = 0) ∧
       Vegas.Paper.fairLedgerJointLaw target.strategy = OddsEvens.uniformJointLaw ∧
       ∀ who, expect (Vegas.Paper.fairLedgerJointLaw target.strategy)

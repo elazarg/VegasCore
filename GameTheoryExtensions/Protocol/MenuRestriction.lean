@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheory.Protocol.ActionRestriction
+public import GameTheory.Protocol.ActionRestriction
+
+@[expose] public section
 
 /-! # Restricting the menus of a protocol
 
@@ -179,7 +183,7 @@ theorem localStep_eq_of_joint (history : E.History)
   subst spelled
   simp only [localStep, dite_eq_right running]
 
-private theorem choice_cast_val {who : ι} {first second : M.InfoState who}
+theorem choice_cast_val {who : ι} {first second : M.InfoState who}
     (same : first = second) (cast : M.Choice who first = M.Choice who second)
     (choice : M.Choice who first) : (Eq.mp cast choice).1 = choice.1 := by
   subst same

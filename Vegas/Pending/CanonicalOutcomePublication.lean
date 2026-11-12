@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.CanonicalKeyPublication
-import Vegas.EventGraph.DecisionTwin
+public import Vegas.Pending.CanonicalKeyPublication
+public import Vegas.EventGraph.DecisionTwin
+
+@[expose] public section
 
 /-! # Canonical outcome law across publication rounds
 
@@ -169,14 +173,14 @@ theorem environmentStep_outcomeLaw_of_publications {Outcome : Type*}
     (read : graph.Config → Outcome)
     (keyed : ∀ left right : graph.Config, runKey left = runKey right → read left = read right)
     (invariant : ∀ config, read config.erase = read config)
-    (runtime : EventGraphRuntime graph)
+    (timeouts : EventTimeouts graph)
     (state next : State graph) (command : EnvironmentCommand graph)
     (publications : ∀ event, state.config.cut.Ready event →
       (graph.outputLayout event).IsPublication)
     (timely : ∀ event owner, state.config.cut.Ready event → graph.actor? event = some owner →
       owner ∉ state.config.defaulted → BindingHolds state.config event →
-      state.WithinDeadline runtime event)
-    (moved : next ∈ (environmentStep runtime state command).support) :
+      state.WithinDeadline timeouts event)
+    (moved : next ∈ (environmentStep timeouts state command).support) :
     outcomeLaw profile read next.config = outcomeLaw profile read state.config := by
   have viaKey (same : canonicalLaw profile next.config = canonicalLaw profile state.config) :
       outcomeLaw profile read next.config = outcomeLaw profile read state.config :=
@@ -194,23 +198,23 @@ theorem environmentStep_outcomeLaw_of_publications {Outcome : Type*}
             rw [outputEq] at publication
             exact publication.elim
         | bind owner payload outputEq codeEq =>
-            rw [environmentStep_executeSample_of_nonsample runtime state event ready
+            rw [environmentStep_executeSample_of_nonsample timeouts state event ready
               (fun _ _ _ _ impossible => by rw [view] at impossible; cases impossible),
               PMF.mem_support_pure_iff] at moved
             subst next
             rfl
         | resolve owner payload binding checks outputEq codeEq =>
-            rw [environmentStep_executeSample_of_nonsample runtime state event ready
+            rw [environmentStep_executeSample_of_nonsample timeouts state event ready
               (fun _ _ _ _ impossible => by rw [view] at impossible; cases impossible),
               PMF.mem_support_pure_iff] at moved
             subst next
             rfl
-      · rw [environmentStep_executeSample_of_not_ready runtime state event ready,
+      · rw [environmentStep_executeSample_of_not_ready timeouts state event ready,
           PMF.mem_support_pure_iff] at moved
         subst next
         rfl
   | expire event =>
-      rcases environmentStep_expire_config_eq_or_mem_step runtime state next event moved with
+      rcases environmentStep_expire_config_eq_or_mem_step timeouts state next event moved with
         same | ⟨ready, action, stepped⟩
       · rw [same]
       · cases view : nodeView graph event with
@@ -239,7 +243,7 @@ theorem environmentStep_outcomeLaw_of_publications {Outcome : Type*}
                   exact within.elim
               | some entered =>
                   rw [activated] at within
-                  rw [environmentStep_expire_of_not_due runtime state event ready entered
+                  rw [environmentStep_expire_of_not_due timeouts state event ready entered
                     activated (by omega), PMF.mem_support_pure_iff] at moved
                   subst next
                   rfl
@@ -268,18 +272,18 @@ theorem reactive_environmentStep_outcomeLaw_of_publications {Outcome : Type*}
     (read : graph.Config → Outcome)
     (keyed : ∀ left right : graph.Config, runKey left = runKey right → read left = read right)
     (invariant : ∀ config, read config.erase = read config)
-    (runtime : EventGraphRuntime graph)
+    (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (execution next : (runtime.reactiveApplication leaks).Execution)
-    (command : (runtime.reactiveApplication leaks).Command)
+    (execution next : ((reactiveApplication timeouts) leaks).Execution)
+    (command : ((reactiveApplication timeouts) leaks).Command)
     (publications : ∀ event, execution.application.config.cut.Ready event →
       (graph.outputLayout event).IsPublication)
     (timely : ∀ event owner, execution.application.config.cut.Ready event →
       graph.actor? event = some owner → owner ∉ execution.application.config.defaulted →
       BindingHolds execution.application.config event →
-      execution.application.WithinDeadline runtime event)
+      execution.application.WithinDeadline timeouts event)
     (moved : next ∈
-      (execution.environmentStep (runtime.reactiveApplication leaks) command).support) :
+      (execution.environmentStep ((reactiveApplication timeouts) leaks) command).support) :
     outcomeLaw profile read next.application.config =
       outcomeLaw profile read execution.application.config := by
   have viaKey {config : graph.Config}
@@ -304,7 +308,7 @@ theorem reactive_environmentStep_outcomeLaw_of_publications {Outcome : Type*}
           simp only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
             found]
       | some message =>
-          cases result : (runtime.reactiveApplication leaks).handle execution.application
+          cases result : ((reactiveApplication timeouts) leaks).handle execution.application
               message with
           | none =>
               simp only [ReactiveApplication.Execution.includePending,
@@ -315,18 +319,18 @@ theorem reactive_environmentStep_outcomeLaw_of_publications {Outcome : Type*}
               obtain ⟨native, handled, drained⟩ := reactiveHandle_call result
               apply viaKey
               rw [← drained, State.drain_canonicalLaw independent]
-              exact handle_canonicalLaw_of_publications independent opens runtime _ _ _
+              exact handle_canonicalLaw_of_publications independent opens timeouts _ _ _
                 publications handled
   | application operation =>
       rw [PMF.support_map] at supported
       obtain ⟨state, changed, rfl⟩ := supported
-      change state ∈ ((environmentStep runtime execution.application operation).map
+      change state ∈ ((environmentStep timeouts execution.application operation).map
         State.drain).support at changed
       obtain ⟨native, nativeMoved, rfl⟩ := PMF.support_map .. ▸ changed
       exact (outcomeLaw_eq_of_canonicalLaw_eq read keyed
         (State.drain_canonicalLaw independent native)).trans
         (environmentStep_outcomeLaw_of_publications independent opens read keyed invariant
-          runtime _ _ operation publications timely nativeMoved)
+          timeouts _ _ operation publications timely nativeMoved)
 
 /-- **Publication rounds preserve the outcome law.** A ledger round at a
 publication-only configuration preserves the outcome law of a ready-independent
@@ -339,26 +343,26 @@ theorem reactive_round_outcomeLaw_of_publications {Outcome : Type*}
     (read : graph.Config → Outcome)
     (keyed : ∀ left right : graph.Config, runKey left = runKey right → read left = read right)
     (invariant : ∀ config, read config.erase = read config)
-    (runtime : EventGraphRuntime graph)
+    (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (scheduler : (runtime.reactiveApplication leaks).Scheduler)
-    (players : Player → (runtime.reactiveApplication leaks).Policy)
-    (execution next : (runtime.reactiveApplication leaks).Execution)
+    (scheduler : ((reactiveApplication timeouts) leaks).Scheduler)
+    (players : Player → ((reactiveApplication timeouts) leaks).Policy)
+    (execution next : ((reactiveApplication timeouts) leaks).Execution)
     (publications : ∀ event, execution.application.config.cut.Ready event →
       (graph.outputLayout event).IsPublication)
     (timely : ∀ event owner, execution.application.config.cut.Ready event →
       graph.actor? event = some owner → owner ∉ execution.application.config.defaulted →
       BindingHolds execution.application.config event →
-      execution.application.WithinDeadline runtime event)
+      execution.application.WithinDeadline timeouts event)
     (reached : next ∈
-      ((runtime.reactiveApplication leaks).round scheduler players execution).support) :
+      (((reactiveApplication timeouts) leaks).round scheduler players execution).support) :
     outcomeLaw profile read next.application.config =
       outcomeLaw profile read execution.application.config := by
-  let app := runtime.reactiveApplication leaks
+  let app := (reactiveApplication timeouts) leaks
   obtain ⟨command, _, dispatched⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
   obtain ⟨middle, moved, resumed⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ dispatched)
   have middleLaw := reactive_environmentStep_outcomeLaw_of_publications independent opens read
-    keyed invariant runtime leaks execution middle command publications timely moved
+    keyed invariant timeouts leaks execution middle command publications timely moved
   change next ∈ (app.resume players (command.actor? app) middle).support at resumed
   cases actor : command.actor? app with
   | none =>
@@ -371,7 +375,7 @@ theorem reactive_round_outcomeLaw_of_publications {Outcome : Type*}
       change next ∈ (app.invoke players who middle).support at resumed
       rw [ReactiveApplication.invoke, PMF.support_map] at resumed
       obtain ⟨response, _, rfl⟩ := resumed
-      rw [(reactive_respond_application runtime leaks middle who response).1]
+      rw [(reactive_respond_application timeouts leaks middle who response).1]
       exact middleLaw
 
 end Vegas.EventGraphRuntime

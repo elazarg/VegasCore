@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketSwapRecord
+public import Vegas.Game.OnePacketSwapRecord
+
+@[expose] public section
 
 /-! # The information state of a swapped history
 
@@ -21,18 +25,18 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol Intera
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
 /-- **The swap of an information state**: the recall entry by entry, and the
 current view. -/
 def EventGraphRuntime.HiddenSwap.info (swap : HiddenSwap (graph setup)) :
-    (application setup runtime leaks).Info → (application setup runtime leaks).Info :=
+    (application setup timeouts leaks).Info → (application setup timeouts leaks).Info :=
   Option.map fun current => (current.1.map swap.entry, swap.view current.2)
 
 /-- Swapping an information state twice gives it back. -/
 theorem EventGraphRuntime.HiddenSwap.info_involutive (swap : HiddenSwap (graph setup)) :
-    Function.Involutive (swap.info (runtime := runtime) (leaks := leaks)) := by
+    Function.Involutive (swap.info (timeouts := timeouts) (leaks := leaks)) := by
   rintro (_ | ⟨past, observed⟩)
   · rfl
   · change some ((past.map swap.entry).map swap.entry, swap.view (swap.view observed)) = _
@@ -42,38 +46,38 @@ theorem EventGraphRuntime.HiddenSwap.info_involutive (swap : HiddenSwap (graph s
     exact List.map_congr_left fun entry _ => swap.entry_involutive entry
 
 variable [Fintype Player] {bounds : MessageBounds (graph setup)}
-  {initial : PMF (application setup runtime leaks).State} {horizon : Nat}
-  {scheduler : (application setup runtime leaks).Scheduler} {allowed : Set (graph setup).Inputs}
+  {initial : PMF (application setup timeouts leaks).State} {horizon : Nat}
+  {scheduler : (application setup timeouts leaks).Scheduler} {allowed : Set (graph setup).Inputs}
 
 /-- **The image of a history is in the swapped information state** of every
 player. -/
 theorem infoOf_mapTrace (swap : HiddenSwap (graph setup))
-    [InitialAcceptedCompleted (runtime := runtime) (leaks := leaks) initial]
+    [InitialAcceptedCompleted (timeouts := timeouts) (leaks := leaks) initial]
     (initialClosed : ∀ state ∈ initial.support, state.config.inputs ∈ allowed →
       state.swap swap ∈ initial.support)
     (bounded : ∀ handle raw, raw ∈ bounds.values → swap.raw handle raw ∈ bounds.values)
     (failures : ∀ event, swap.values.ExpiryFixed event)
-    (who : Player) {state : (application setup runtime leaks).ProtocolState}
-    (trace : ((bounds.onePacketMenu runtime leaks).protocol initial horizon
-      scheduler).Trace state) (guarded : SwapGuardState setup runtime swap allowed state) :
-    ((bounds.onePacketMenu runtime leaks).information initial horizon
+    (who : Player) {state : (application setup timeouts leaks).ProtocolState}
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol initial horizon
+      scheduler).Trace state) (guarded : SwapGuardState setup timeouts swap allowed state) :
+    ((bounds.onePacketMenu timeouts leaks).information initial horizon
       scheduler).infoOf who
-      ((onePacketSwapSymmetry (runtime := runtime) bounds initial horizon scheduler swap
+      ((onePacketSwapSymmetry (timeouts := timeouts) bounds initial horizon scheduler swap
         initialClosed
         bounded failures).mapTrace trace guarded) =
-      swap.info (((bounds.onePacketMenu runtime leaks).information initial
+      swap.info (((bounds.onePacketMenu timeouts leaks).information initial
         horizon
         scheduler).infoOf who trace) := by
-  have info : ((bounds.onePacketMenu runtime leaks).information initial horizon
-      scheduler).infoOf who trace = (application setup runtime leaks).observe who state :=
-    (bounds.onePacketMenu runtime leaks).info initial horizon scheduler who trace
-  have mappedInfo : ((bounds.onePacketMenu runtime leaks).information initial horizon
-      scheduler).infoOf who ((onePacketSwapSymmetry (runtime := runtime) bounds initial horizon
+  have info : ((bounds.onePacketMenu timeouts leaks).information initial horizon
+      scheduler).infoOf who trace = (application setup timeouts leaks).observe who state :=
+    (bounds.onePacketMenu timeouts leaks).info initial horizon scheduler who trace
+  have mappedInfo : ((bounds.onePacketMenu timeouts leaks).information initial horizon
+      scheduler).infoOf who ((onePacketSwapSymmetry (timeouts := timeouts) bounds initial horizon
         scheduler swap
         initialClosed bounded failures).mapTrace trace guarded) =
-      (application setup runtime leaks).observe who (swap.protocolState
+      (application setup timeouts leaks).observe who (swap.protocolState
         state) :=
-    (bounds.onePacketMenu runtime leaks).info initial horizon scheduler who _
+    (bounds.onePacketMenu timeouts leaks).info initial horizon scheduler who _
   rw [mappedInfo, info]
   cases state with
   | none => rfl

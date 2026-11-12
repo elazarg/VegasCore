@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveBindingLikelihood
-import Interaction.ReactiveMessageReadout
+public import Vegas.Pending.ReactiveBindingLikelihood
+public import Interaction.ReactiveMessageReadout
+
+@[expose] public section
 
 /-! # Scheduled opaque bindings under passive observation
 
@@ -21,23 +25,24 @@ open Interaction GameTheory.Math.Probability
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
 
-theorem bindingTraffic_activation (runtime : EventGraphRuntime graph)
+theorem bindingTraffic_activation (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (left right : (runtime.reactiveApplication leaks).Execution) (focal actor : Player)
-    (same : runtime.bindingTraffic leaks focal left = runtime.bindingTraffic leaks focal right)
+    (left right : ((reactiveApplication timeouts) leaks).Execution) (focal actor : Player)
+    (same : (bindingTraffic timeouts) leaks focal left = (bindingTraffic timeouts) leaks focal
+      right)
     (sample : Finset (MessageId Player)) :
-    runtime.bindingTraffic leaks focal
-        (left.sampledActivation (runtime.reactiveApplication leaks) actor sample) =
-      runtime.bindingTraffic leaks focal
-        (right.sampledActivation (runtime.reactiveApplication leaks) actor sample) := by
+    (bindingTraffic timeouts) leaks focal
+        (left.sampledActivation ((reactiveApplication timeouts) leaks) actor sample) =
+      (bindingTraffic timeouts) leaks focal
+        (right.sampledActivation ((reactiveApplication timeouts) leaks) actor sample) := by
   have networks := congrArg Prod.fst same
   have receipts := congrArg (fun value => value.2.1) same
   have environments := congrArg (fun value => value.2.2.1) same
   have privateViews := congrArg (fun value => value.2.2.2) same
   have publics := congrArg (fun value => value.2.2.2.2.2) same
   dsimp only [bindingTraffic] at networks receipts environments privateViews publics
-  have observed : left.observeEnvironment (runtime.reactiveApplication leaks) =
-      right.observeEnvironment (runtime.reactiveApplication leaks) := by
+  have observed : left.observeEnvironment ((reactiveApplication timeouts) leaks) =
+      right.observeEnvironment ((reactiveApplication timeouts) leaks) := by
     change ReactiveApplication.EnvironmentView.mk left.network.publicView
       left.application.publicView left.receipts = _
     rw [networks, publics, receipts]
@@ -49,17 +54,18 @@ theorem bindingTraffic_activation (runtime : EventGraphRuntime graph)
     rw [environments, observed]
     rfl
 
-theorem bindingTraffic_silent (runtime : EventGraphRuntime graph)
+theorem bindingTraffic_silent (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (left right : (runtime.reactiveApplication leaks).Execution) (focal actor : Player)
-    (same : runtime.bindingTraffic leaks focal left = runtime.bindingTraffic leaks focal right)
-    (response : (runtime.reactiveApplication leaks).Action)
+    (left right : ((reactiveApplication timeouts) leaks).Execution) (focal actor : Player)
+    (same : (bindingTraffic timeouts) leaks focal left = (bindingTraffic timeouts) leaks focal
+      right)
+    (response : ((reactiveApplication timeouts) leaks).Action)
     (transport : response = ⟨none⟩) :
-    runtime.bindingTraffic leaks focal
-        (left.respond (runtime.reactiveApplication leaks) actor response) =
-      runtime.bindingTraffic leaks focal
-        (right.respond (runtime.reactiveApplication leaks) actor response) := by
-  let app := runtime.reactiveApplication leaks
+    (bindingTraffic timeouts) leaks focal
+        (left.respond ((reactiveApplication timeouts) leaks) actor response) =
+      (bindingTraffic timeouts) leaks focal
+        (right.respond ((reactiveApplication timeouts) leaks) actor response) := by
+  let app := (reactiveApplication timeouts) leaks
   have networks := congrArg Prod.fst same
   have receipts := congrArg (fun value => value.2.1) same
   have environments := congrArg (fun value => value.2.2.1) same

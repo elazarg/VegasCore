@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveAsyncContract
-import Vegas.Pending.ReactiveCanonicalDecision
+public import Vegas.Pending.ReactiveAsyncContract
+public import Vegas.Pending.ReactiveCanonicalDecision
+
+@[expose] public section
 
 /-! # A ready owner must receive an opportunity before actual expiry -/
 
@@ -13,23 +17,24 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
 /-- At an idle actual raw prefix, every recorded owner activation has a
 corresponding actual response prefix and retained pre-response public view. -/
-theorem activated_owner_response_prefix (runtime : EventGraphRuntime graph)
+theorem activated_owner_response_prefix (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (initial : PMF (runtime.reactiveApplication leaks).State) (horizon : Nat)
-    (scheduler : (runtime.reactiveApplication leaks).Scheduler)
-    (control : (runtime.reactiveApplication leaks).Control)
-    (trace : ((runtime.reactiveApplication leaks).protocol initial horizon scheduler).Trace
+    (initial : PMF ((reactiveApplication timeouts) leaks).State) (horizon : Nat)
+    (scheduler : ((reactiveApplication timeouts) leaks).Scheduler)
+    (control : ((reactiveApplication timeouts) leaks).Control)
+    (trace : (((reactiveApplication timeouts) leaks).protocol initial horizon scheduler).Trace
       (some control)) (idle : control.actor = none)
-    (activation : (runtime.reactiveApplication leaks).EnvironmentEntry)
+    (activation : ((reactiveApplication timeouts) leaks).EnvironmentEntry)
     (recorded : activation ∈ control.execution.environmentRecall)
     (owner : Player) (activated : activation.command = .activate owner) :
-    ∃ before : (runtime.reactiveApplication leaks).Control,
-      Nonempty (((runtime.reactiveApplication leaks).protocol initial horizon scheduler).Trace
+    ∃ before : ((reactiveApplication timeouts) leaks).Control,
+      Nonempty ((((reactiveApplication timeouts) leaks).protocol initial horizon scheduler).Trace
         (some before)) ∧ before.actor = some owner ∧
       ∃ response ∈ control.execution.logs owner,
-        response.beforeView = before.execution.observe (runtime.reactiveApplication leaks) owner ∧
+        response.beforeView = before.execution.observe ((reactiveApplication timeouts) leaks)
+          owner ∧
         response.beforeView.application.publicView = activation.beforeView.application := by
-  let app := runtime.reactiveApplication leaks
+  let app := (reactiveApplication timeouts) leaks
   let paired (current : app.Control) (entry : app.EnvironmentEntry) (who : Player) : Prop :=
     ∃ before : app.Control,
       Nonempty ((app.protocol initial horizon scheduler).Trace (some before)) ∧
@@ -124,13 +129,13 @@ omit [DecidableEq Player] in
 /-- The existing asynchronous margin turns a timely actual response into
 exactly the inclusion-window hypothesis used by packet settlement. -/
 theorem PublicView.inclusionFitsDeadline_of_response_delay
-    (runtime : EventGraphRuntime graph) (delay bound : graph.EventId → Nat)
-    (timely : runtime.AsyncTimely delay bound) (view : PublicView graph)
+    (timeouts : EventTimeouts graph) (delay bound : graph.EventId → Nat)
+    (timely : (AsyncTimely timeouts) delay bound) (view : PublicView graph)
     (event : graph.EventId) (entered : Nat)
     (owned : (graph.actor? event).isSome)
     (activated : view.activatedAt event = some entered)
     (responded : view.clock ≤ entered + delay event) :
-    view.InclusionFitsDeadline runtime bound event := by
+    view.InclusionFitsDeadline timeouts bound event := by
   unfold PublicView.InclusionFitsDeadline
   rw [activated]
   have margin := timely event owned

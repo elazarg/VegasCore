@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketFactorization
-import Vegas.Pending.ReactiveBindingFrameRounds
+public import Vegas.Game.OnePacketFactorization
+public import Vegas.Pending.ReactiveBindingFrameRounds
+
+@[expose] public section
 
 /-! # Operational projections of directed hidden-binding repair
 
@@ -21,50 +25,50 @@ open SourceProgram Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
 /-- The part of own recall retained by every late-delivery key. Private source
 choices and candidate material are omitted, but actual envelopes are retained. -/
-def operationalRecall (past : List (application setup runtime leaks).PlayerEntry) :
-    List (OperationalView setup runtime leaks ×
-      Option (Message Player (application setup runtime leaks).Payload)) :=
-  past.map fun entry => (operationalView setup runtime leaks entry.beforeView, entry.emitted)
+def operationalRecall (past : List (application setup timeouts leaks).PlayerEntry) :
+    List (OperationalView setup timeouts leaks ×
+      Option (Message Player (application setup timeouts leaks).Payload)) :=
+  past.map fun entry => (operationalView setup timeouts leaks entry.beforeView, entry.emitted)
 
 namespace EventGraphRuntime.BindingMemory.Frame
 
-variable {memory : BindingMemory runtime leaks} {owner : Player}
-  {original repaired : (application setup runtime leaks).Execution}
+variable {memory : BindingMemory timeouts leaks} {owner : Player}
+  {original repaired : (application setup timeouts leaks).Execution}
 
 /-- A binding-repair frame preserves the operational current view of its owner. -/
-theorem operationalView (frame : Frame runtime leaks memory owner original repaired) :
-    Vegas.operationalView setup runtime leaks (original.observe (application setup runtime leaks)
+theorem operationalView (frame : Frame timeouts leaks memory owner original repaired) :
+    Vegas.operationalView setup timeouts leaks (original.observe (application setup timeouts leaks)
       owner) =
-      Vegas.operationalView setup runtime leaks (repaired.observe (application setup runtime
+      Vegas.operationalView setup timeouts leaks (repaired.observe (application setup timeouts
         leaks) owner) := by
-  exact (congrArg (Vegas.operationalView setup runtime leaks) frame.observed).symm
+  exact (congrArg (Vegas.operationalView setup timeouts leaks) frame.observed).symm
 
 /-- Foreign players have equal full decision inputs under the repair frame. -/
 theorem decisionInput {who : Player}
-    (frame : Frame runtime leaks memory owner original repaired) (foreign : who ≠ owner) :
-    (original.logs who, original.observe (application setup runtime leaks) who) =
-      (repaired.logs who, repaired.observe (application setup runtime leaks) who) :=
+    (frame : Frame timeouts leaks memory owner original repaired) (foreign : who ≠ owner) :
+    (original.logs who, original.observe (application setup timeouts leaks) who) =
+      (repaired.logs who, repaired.observe (application setup timeouts leaks) who) :=
   Prod.ext (frame.logs who foreign) (frame.foreign_observed who foreign)
 
 /-- Replacing only the private material of a canonical binding leaves the
 owner's operational recall unchanged. Both actual signed envelopes, including
 the readiness token and fresh serial, are identical. -/
 theorem operationalRecall_rawBinding
-    (frame : Frame runtime leaks memory owner original repaired)
-    (recalled : Vegas.operationalRecall (runtime := runtime) (setup := setup) (leaks := leaks)
-        (original.logs owner) = Vegas.operationalRecall (runtime := runtime) (repaired.logs
+    (frame : Frame timeouts leaks memory owner original repaired)
+    (recalled : Vegas.operationalRecall (timeouts := timeouts) (setup := setup) (leaks := leaks)
+        (original.logs owner) = Vegas.operationalRecall (timeouts := timeouts) (repaired.logs
           owner))
     (event : (graph setup).EventId) (first second : Option (Raw L)) (serial : Nat) :
-    Vegas.operationalRecall (runtime := runtime)
-        ((original.respond (application setup runtime leaks) owner
+    Vegas.operationalRecall (timeouts := timeouts)
+        ((original.respond (application setup timeouts leaks) owner
           ⟨some ⟨⟨.commitment event (owner, .prepared serial), first⟩, .none⟩⟩).logs owner) =
-      Vegas.operationalRecall (runtime := runtime)
-        ((repaired.respond (application setup runtime leaks) owner
+      Vegas.operationalRecall (timeouts := timeouts)
+        ((repaired.respond (application setup timeouts leaks) owner
           ⟨some ⟨⟨.commitment event (owner, .prepared serial), second⟩, .none⟩⟩).logs owner) := by
   have publicEq := frame.publicView
   have network := frame.network
@@ -72,46 +76,46 @@ theorem operationalRecall_rawBinding
   simp only [ReactiveApplication.Execution.respond, Vegas.operationalRecall,
     List.map_append, List.map_cons, List.map_nil,
     ite_true]
-  change Vegas.operationalRecall (runtime := runtime) (original.logs owner) ++ [_] =
-    Vegas.operationalRecall (runtime := runtime) (repaired.logs owner) ++ [_]
+  change Vegas.operationalRecall (timeouts := timeouts) (original.logs owner) ++ [_] =
+    Vegas.operationalRecall (timeouts := timeouts) (repaired.logs owner) ++ [_]
   rw [recalled]
   congr 1
   apply congrArg List.singleton
   apply Prod.ext current
   apply congrArg some
   apply congrArg₂ Message.mk (congrArg (fun net => (owner, net.nextSerial owner)) network)
-  exact (reactiveApplication_packet_none runtime leaks original.application owner
+  exact (reactiveApplication_packet_none timeouts leaks original.application owner
     (original.network.known owner) ⟨.commitment event (owner, .prepared serial), first⟩).trans
       ((congrArg (fun pub => (⟨.commitment event (owner, .prepared serial), none,
         pub.tokenFor (.commitment event (owner, .prepared serial))⟩ :
         WitnessedPacket (graph setup)))
           publicEq).trans
-        (reactiveApplication_packet_none runtime leaks repaired.application owner
+        (reactiveApplication_packet_none timeouts leaks repaired.application owner
           (repaired.network.known owner)
           ⟨.commitment event (owner, .prepared serial), second⟩).symm)
 
 /-- Operational recall and the current delivered value are precisely the extra
 owner-local invariants needed for equality of all players' late-delivery keys. -/
-theorem lateKey (frame : Frame runtime leaks memory owner original repaired)
-    (recalled : Vegas.operationalRecall (runtime := runtime) (setup := setup) (leaks := leaks)
-        (original.logs owner) = Vegas.operationalRecall (runtime := runtime) (repaired.logs
+theorem lateKey (frame : Frame timeouts leaks memory owner original repaired)
+    (recalled : Vegas.operationalRecall (timeouts := timeouts) (setup := setup) (leaks := leaks)
+        (original.logs owner) = Vegas.operationalRecall (timeouts := timeouts) (repaired.logs
           owner))
-    (delivered : deliveredValue setup runtime leaks owner
-        (original.observe (application setup runtime leaks) owner) =
-      deliveredValue setup runtime leaks owner (repaired.observe (application setup runtime leaks)
+    (delivered : deliveredValue setup timeouts leaks owner
+        (original.observe (application setup timeouts leaks) owner) =
+      deliveredValue setup timeouts leaks owner (repaired.observe (application setup timeouts leaks)
         owner))
     (who : Player) :
-    Vegas.lateKey setup runtime leaks who
-        (some (original.logs who, original.observe (application setup runtime leaks) who)) =
-      Vegas.lateKey setup runtime leaks who
-        (some (repaired.logs who, repaired.observe (application setup runtime leaks) who)) := by
+    Vegas.lateKey setup timeouts leaks who
+        (some (original.logs who, original.observe (application setup timeouts leaks) who)) =
+      Vegas.lateKey setup timeouts leaks who
+        (some (repaired.logs who, repaired.observe (application setup timeouts leaks) who)) := by
   by_cases same : who = owner
   · subst who
     simp only [Vegas.lateKey]
     rw [frame.operationalView, delivered]
-    change some (LateKey.mk owner _ (Vegas.operationalRecall (runtime :=
-      runtime) _) _) =
-      some (LateKey.mk owner _ (Vegas.operationalRecall (runtime := runtime)
+    change some (LateKey.mk owner _ (Vegas.operationalRecall (timeouts :=
+      timeouts) _) _) =
+      some (LateKey.mk owner _ (Vegas.operationalRecall (timeouts := timeouts)
         _) _)
     rw [recalled]
   · rw [frame.decisionInput same]
@@ -120,17 +124,17 @@ theorem lateKey (frame : Frame runtime leaks memory owner original repaired)
 preserves the exact operational state, including the scheduler's private recall
 and every player's delivery key. -/
 theorem operationalState
-    (frame : Frame runtime leaks memory owner original repaired)
-    (recalled : Vegas.operationalRecall (runtime := runtime) (setup := setup) (leaks := leaks)
-        (original.logs owner) = Vegas.operationalRecall (runtime := runtime) (repaired.logs
+    (frame : Frame timeouts leaks memory owner original repaired)
+    (recalled : Vegas.operationalRecall (timeouts := timeouts) (setup := setup) (leaks := leaks)
+        (original.logs owner) = Vegas.operationalRecall (timeouts := timeouts) (repaired.logs
           owner))
-    (delivered : deliveredValue setup runtime leaks owner
-        (original.observe (application setup runtime leaks) owner) =
-      deliveredValue setup runtime leaks owner (repaired.observe (application setup runtime leaks)
+    (delivered : deliveredValue setup timeouts leaks owner
+        (original.observe (application setup timeouts leaks) owner) =
+      deliveredValue setup timeouts leaks owner (repaired.observe (application setup timeouts leaks)
         owner))
     (remaining : Nat) (actor : Option Player) :
-    Vegas.operationalState setup runtime leaks (some ⟨remaining, actor, original⟩) =
-      Vegas.operationalState setup runtime leaks (some ⟨remaining, actor, repaired⟩) := by
+    Vegas.operationalState setup timeouts leaks (some ⟨remaining, actor, original⟩) =
+      Vegas.operationalState setup timeouts leaks (some ⟨remaining, actor, repaired⟩) := by
   simp only [Vegas.operationalState]
   congr 1
   simp only [frame.service, frame.environment, frame.network]

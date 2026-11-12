@@ -15,10 +15,11 @@ source policy. The manuscript is maintained separately in `overleaf/`.
 | Result | Checked scope |
 | --- | --- |
 | `Vegas.intended_raw_sequentialEquilibrium_preserved` | Intended-game SE extends to the bounded raw-menu game of the forced-exit contract on the sequential graph with finite catalogues covering every binding, publication and initial-input value, under a finitely branching asynchronous builder, arbitrary finitely branching pending observation, conditional independence of initial private data given a public signal, and funded count-audit coverage. The realized joint outcome/payoff law is preserved and no player is excluded or charged on the implementing path. |
+| `Vegas.concurrentReveal_intended_ledger` | Under every timely asynchronous service scheduler, first-turn effective-opening clients preserve intended ε-Nash equilibrium with concurrent independent reveals, against arbitrary native policies. The complete source-configuration/payoff law is preserved, with no defaults, failed reveals or audit deposit. |
 | `Vegas.intended_raw_programPayments_preserved` | Every supplied compilation and its exact physical clients retain executable receipts jointly with initial inputs, typed terminal state and public results. |
 | `Vegas.EventGraphRuntime.MessageBounds.onePacket_raw_sequentialEquilibrium` | Extension from the one-permitted-packet game to the bounded raw response menu of the same native application and scheduler, for normalization-invariant utilities, authentic count-evidence coverage and deposits covering the legal-history payoff spread. |
 
-These theorems need neither complete pending visibility nor independent
+The sequential-equilibrium theorems need neither complete pending visibility nor independent
 inclusion jobs for different messages. Their substantive hypotheses include
 timely opportunities, protected inclusion and completion on every legal raw
 history; finite source and physical branching; bounded utility and the stated
@@ -49,7 +50,9 @@ source law, scheduler correspondence and Nash results remain in the core,
 including approximate Nash correspondence. The compiled graph is a total source
 order: every permitted public graph scheduler produces the same event plan
 (`Vegas.toEventGraph_policyPlan_eq`). Scheduler quantification adds no choice of
-execution order for this compiler. Source execution and the native runtime
+execution order for this compiler. The concurrent-reveal mode relaxes only
+independent reveals of different owners; its intended Nash theorem has real
+scheduling choices, while bindings remain source ordered. Source execution and the native runtime
 share absorbing public defaults; the runtime mechanically
 completes instructions of owners who have defaulted.
 There is no API compatibility requirement.
@@ -92,7 +95,8 @@ modules and inspect signatures with `python lean-defs.py` before adding machiner
 
 The [research archive](docs/archives.md) preserves the broader concurrent work,
 proof experiments and earlier design documents at fixed revisions, with a
-restart guide. Those research targets are not current theorem claims.
+restart guide. The broader concurrent-binding and sequential-equilibrium targets remain
+separate from the checked concurrent-reveal Nash theorem.
 
 ## Build and validate
 
@@ -103,7 +107,7 @@ is anchored by the annotated tag
 Run:
 
 ```powershell
-lake build
+lake --wfail build
 python scripts/check-paper-audit.py
 python scripts/check-module-boundaries.py
 python scripts/check-lean-options.py
@@ -112,8 +116,9 @@ python -m unittest discover -s scripts -p 'test_*.py'
 python -m unittest scripts.paper_audit_tests
 ```
 
-Required Lean options are centralized in `lakefile.toml`; warnings fail the
-build. Source policy rejects admissions, axiom declarations and trust escapes.
+Required Lean options are centralized in `lakefile.toml`. The strict build rejects
+compiler and Lake warnings, including cached diagnostics. Source policy rejects
+admissions, axiom declarations and trust escapes.
 The [script guide](scripts/README.md) explains the structural checks and inventories.
 
 Released under the [MIT license](LICENSE).

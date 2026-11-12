@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Foundation.Context
-import Vegas.Foundation.Probability
-import Vegas.Foundation.Result
-import GameTheoryExtensions.Math.Probability.Support
+public import Vegas.Foundation.Context
+public import Vegas.Foundation.Probability
+public import Vegas.Foundation.Result
+public import GameTheoryExtensions.Math.Probability.Support
+
+@[expose] public section
 
 /-!
 # The embedded expression-language interface `IExpr`

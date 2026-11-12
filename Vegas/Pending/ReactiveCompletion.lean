@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.PublicFailureEvidence
-import Vegas.Pending.ExclusionEvidence
-import Vegas.Pending.AcceptedEventOwnership
-import Vegas.Pending.EventCommandFrame
-import Interaction.ReactiveMessageIdentity
+public import Vegas.Pending.PublicFailureEvidence
+public import Vegas.Pending.ExclusionEvidence
+public import Vegas.Pending.AcceptedEventOwnership
+public import Vegas.Pending.EventCommandFrame
+public import Interaction.ReactiveMessageIdentity
+
+@[expose] public section
 
 /-! # Factual origins of native completion records
 
@@ -125,19 +129,19 @@ theorem State.drain_new_completion (state : State graph) (record : graph.Complet
 
 /-- A record newly appended by a native environment command comes from a due expiry
 or from chance. -/
-theorem native_new_completion_cases (runtime : EventGraphRuntime graph)
+theorem native_new_completion_cases (timeouts : EventTimeouts graph)
     (state native : State graph) (command : EnvironmentCommand graph)
-    (supported : native ∈ (environmentStep runtime state command).support)
+    (supported : native ∈ (environmentStep timeouts state command).support)
     (record : graph.Completion) (fresh : record ∉ state.config.history)
     (present : record ∈ native.config.history) :
     (command = .expire record.event ∧
       ∃ entered, state.activatedAt record.event = some entered ∧
-        runtime.deadline record.event ≤ state.clock - entered ∧
+        timeouts.duration record.event ≤ state.clock - entered ∧
         ∃ (action : graph.Action record.event) (value : (graph.outputLayout record.event).Value),
           ExpiredAction record.event action ∧ record = EventGraph.completion graph
             record.event (state.config.actualDecision record.event action) value) ∨
       graph.actor? record.event = none := by
-  rcases completionStep_environmentStep runtime state native command supported with
+  rcases completionStep_environmentStep timeouts state native command supported with
     ⟨same, _⟩ | ⟨event, ready, action, member, _⟩
   · exact (fresh (by simpa only [same] using present)).elim
   obtain ⟨value, recorded⟩ := completion_eq_of_new_step member record fresh present
@@ -148,7 +152,7 @@ theorem native_new_completion_cases (runtime : EventGraphRuntime graph)
   | some owner =>
       have expired : command = .expire record.event := by
         by_contra other
-        have kept := environmentStep_owned_completed_iff runtime state native command
+        have kept := environmentStep_owned_completed_iff timeouts state native command
           record.event owner acting other supported
         have completed : record.event ∈ native.config.cut.completed :=
           (native.config.history_exact record.event).mp (List.mem_map.mpr ⟨record, present, rfl⟩)
@@ -156,16 +160,16 @@ theorem native_new_completion_cases (runtime : EventGraphRuntime graph)
       subst command
       have stutter : native.config = state.config → False := config_ne_of_step member
       have timed : ∃ entered, state.activatedAt record.event = some entered ∧
-          runtime.deadline record.event ≤ state.clock - entered := by
+          timeouts.duration record.event ≤ state.clock - entered := by
         cases activated : state.activatedAt record.event with
         | none =>
-            rw [environmentStep_expire_of_not_activated runtime state record.event ready
+            rw [environmentStep_expire_of_not_activated timeouts state record.event ready
               activated, PMF.mem_support_pure_iff] at supported
             exact (stutter (congrArg State.config supported)).elim
         | some entered =>
-            by_cases due : runtime.deadline record.event ≤ state.clock - entered
+            by_cases due : timeouts.duration record.event ≤ state.clock - entered
             · exact ⟨entered, rfl, due⟩
-            · rw [environmentStep_expire_of_not_due runtime state record.event ready entered
+            · rw [environmentStep_expire_of_not_due timeouts state record.event ready entered
                 activated due, PMF.mem_support_pure_iff] at supported
               exact (stutter (congrArg State.config supported)).elim
       obtain ⟨entered, activated, due⟩ := timed
@@ -176,7 +180,7 @@ theorem native_new_completion_cases (runtime : EventGraphRuntime graph)
           rw [nodeView_sample_actor outputEq codeEq] at acting
           cases acting
       | bind bindingOwner payload outputEq codeEq =>
-          rw [environmentStep_expire_bind_eq runtime state record.event ready entered activated
+          rw [environmentStep_expire_bind_eq timeouts state record.event ready entered activated
             due bindingOwner payload outputEq codeEq view, PMF.mem_support_pure_iff] at supported
           rw [supported] at present
           refine ⟨_, cast (congrArg EventGraph.EventField.Value outputEq.symm)
@@ -184,7 +188,7 @@ theorem native_new_completion_cases (runtime : EventGraphRuntime graph)
             .binding bindingOwner payload outputEq, ?_⟩
           exact List.mem_singleton.mp ((List.mem_append.mp present).resolve_left fresh)
       | resolve bindingOwner payload binding checks outputEq codeEq =>
-          rw [environmentStep_expire_resolve_eq runtime state record.event ready entered activated
+          rw [environmentStep_expire_resolve_eq timeouts state record.event ready entered activated
             due bindingOwner payload binding checks outputEq codeEq view,
             PMF.mem_support_pure_iff] at supported
           rw [supported] at present
@@ -196,32 +200,32 @@ theorem native_new_completion_cases (runtime : EventGraphRuntime graph)
 /-- Every newly appended native record comes from the actual accepted packet,
 due expiry, chance event, or automatic service after the actual primitive result.
 Automatic records retain their inherited defaulted actor and both silent metadata fields. -/
-theorem reactive_new_completion_cases (runtime : EventGraphRuntime graph)
+theorem reactive_new_completion_cases (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (execution next : (runtime.reactiveApplication leaks).Execution)
-    (command : (runtime.reactiveApplication leaks).Command)
+    (execution next : ((reactiveApplication timeouts) leaks).Execution)
+    (command : ((reactiveApplication timeouts) leaks).Command)
     (reached : next ∈
-      (execution.environmentStep (runtime.reactiveApplication leaks) command).support)
+      (execution.environmentStep ((reactiveApplication timeouts) leaks) command).support)
     (record : graph.Completion) (fresh : record ∉ execution.application.config.history)
     (present : record ∈ next.application.config.history) :
     (∃ message ∈ execution.network.pending, ∃ native,
       message ∈ next.network.ledger ∧ (message.id, true) ∈ next.receipts ∧
       message.payload.call.event? graph = some record.event ∧
       graph.actor? record.event = some message.sender ∧
-      handle runtime execution.application ⟨message.id, message.payload.call⟩ = some native ∧
+      handle timeouts execution.application ⟨message.id, message.payload.call⟩ = some native ∧
       native.drain = next.application ∧ record ∈ native.config.history) ∨
     (command = .application (.expire record.event) ∧
       ∃ entered, execution.application.activatedAt record.event = some entered ∧
-        runtime.deadline record.event ≤ execution.application.clock - entered ∧
+        timeouts.duration record.event ≤ execution.application.clock - entered ∧
         ∃ (action : graph.Action record.event) (value : (graph.outputLayout record.event).Value),
           ExpiredAction record.event action ∧ record = EventGraph.completion graph
             record.event (execution.application.config.actualDecision record.event action) value) ∨
     graph.actor? record.event = none ∨
     (∃ native, native.drain = next.application ∧ record ∉ native.config.history ∧
       ((∃ message ∈ execution.network.pending, command = .include message.id ∧
-          handle runtime execution.application ⟨message.id, message.payload.call⟩ = some native) ∨
+          handle timeouts execution.application ⟨message.id, message.payload.call⟩ = some native) ∨
         ∃ operation, command = .application operation ∧
-          native ∈ (environmentStep runtime execution.application operation).support) ∧
+          native ∈ (environmentStep timeouts execution.application operation).support) ∧
       record.decision = none ∧ record.defaultEvent = none ∧
         ∃ owner, graph.actor? record.event = some owner ∧ owner ∈ native.config.defaulted) := by
   cases command with
@@ -238,7 +242,7 @@ theorem reactive_new_completion_cases (runtime : EventGraphRuntime graph)
       cases (PMF.mem_support_pure_iff _ _).mp supported
       cases found : execution.network.lookup id with
       | none =>
-          have unchanged : (execution.includePending (runtime.reactiveApplication leaks)
+          have unchanged : (execution.includePending ((reactiveApplication timeouts) leaks)
               id).application = execution.application := by
             simp only [ReactiveApplication.Execution.includePending,
               MessageNetwork.includePending, found]
@@ -248,16 +252,16 @@ theorem reactive_new_completion_cases (runtime : EventGraphRuntime graph)
             have same := (List.find?_eq_some_iff_append.mp found).1
             simpa only [decide_eq_true_eq] using same
           have pending := List.mem_of_find?_eq_some found
-          cases accepted : (runtime.reactiveApplication leaks).handle execution.application
+          cases accepted : ((reactiveApplication timeouts) leaks).handle execution.application
               message with
           | none =>
-              have unchanged : (execution.includePending (runtime.reactiveApplication leaks)
+              have unchanged : (execution.includePending ((reactiveApplication timeouts) leaks)
                   id).application = execution.application := by
                 simp only [ReactiveApplication.Execution.includePending,
                   MessageNetwork.includePending, found, accepted, Option.getD_none]
               exact (fresh (by simpa only [unchanged] using present)).elim
           | some after =>
-              have applicationEq : (execution.includePending (runtime.reactiveApplication leaks)
+              have applicationEq : (execution.includePending ((reactiveApplication timeouts) leaks)
                   id).application = after := by
                 simp only [ReactiveApplication.Execution.includePending,
                   MessageNetwork.includePending, found, accepted, Option.getD_some]
@@ -266,22 +270,22 @@ theorem reactive_new_completion_cases (runtime : EventGraphRuntime graph)
                 simpa only [applicationEq, ← drained] using present
               by_cases primary : record ∈ native.config.history
               · obtain ⟨event, named, ready, action, moved⟩ :=
-                  handle_config_mem_step runtime execution.application native _ handled
+                  handle_config_mem_step timeouts execution.application native _ handled
                 obtain ⟨value, same⟩ := completion_eq_of_new_step moved record fresh primary
                 have namedRecord : record.event = event := congrArg EventCompletion.event same
                 obtain ⟨other, otherNamed, actor⟩ :=
-                  handle_event_actor runtime execution.application native _ handled
+                  handle_event_actor timeouts execution.application native _ handled
                 have sameEvent : other = event := Option.some.inj (otherNamed.symm.trans named)
                 subst other
                 change graph.actor? event = some message.sender at actor
                 left
                 refine ⟨message, pending, native, ?_, ?_, ?_, ?_, handled, ?_, primary⟩
-                · have network := (runtime.reactiveApplication leaks).includePending_network
+                · have network := ((reactiveApplication timeouts) leaks).includePending_network
                     execution id
                   rw [network]
                   simp only [MessageNetwork.includePending, found]
                   exact List.mem_append_right _ (List.mem_singleton_self _)
-                · rw [show (execution.includePending (runtime.reactiveApplication leaks)
+                · rw [show (execution.includePending ((reactiveApplication timeouts) leaks)
                       id).receipts = execution.receipts ++ [(id, true)] by
                     simp only [ReactiveApplication.Execution.includePending,
                       MessageNetwork.includePending, found, accepted, Option.isSome_some],
@@ -297,11 +301,11 @@ theorem reactive_new_completion_cases (runtime : EventGraphRuntime graph)
   | application operation =>
       obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
       obtain ⟨state, changed, rfl⟩ := PMF.support_map .. ▸ supported
-      change state ∈ ((EventGraphRuntime.environmentStep runtime execution.application
+      change state ∈ ((EventGraphRuntime.environmentStep timeouts execution.application
         operation).map State.drain).support at changed
       obtain ⟨native, moved, rfl⟩ := PMF.support_map .. ▸ changed
       by_cases primary : record ∈ native.config.history
-      · rcases native_new_completion_cases runtime execution.application native operation
+      · rcases native_new_completion_cases timeouts execution.application native operation
           moved record fresh primary with expired | ownerless
         · obtain ⟨same, timed⟩ := expired
           subst operation
@@ -347,11 +351,11 @@ private theorem failed_primary (before native : State graph)
 
 /-- A newly defaulted owner is attributed to the primary owned event of the
 actual command. Automatic completions introduce no new default. -/
-theorem new_default_origin (runtime : EventGraphRuntime graph)
+theorem new_default_origin (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (execution next : (runtime.reactiveApplication leaks).Execution)
-    (command : (runtime.reactiveApplication leaks).Command)
-    (reached : next ∈ (execution.environmentStep (runtime.reactiveApplication leaks)
+    (execution next : ((reactiveApplication timeouts) leaks).Execution)
+    (command : ((reactiveApplication timeouts) leaks).Command)
+    (reached : next ∈ (execution.environmentStep ((reactiveApplication timeouts) leaks)
       command).support)
     (owner : Player) (active : owner ∉ execution.application.config.defaulted)
     (introduced : owner ∈ next.application.config.defaulted)
@@ -362,7 +366,7 @@ theorem new_default_origin (runtime : EventGraphRuntime graph)
         message.sender = owner ∧ message.payload.call.event? graph = some event) ∨
       (command = .application (.expire event) ∧
         ∃ entered, execution.application.activatedAt event = some entered ∧
-          runtime.deadline event ≤ execution.application.clock - entered)) := by
+          timeouts.duration event ≤ execution.application.clock - entered)) := by
   cases command with
   | wait =>
       simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map,
@@ -383,7 +387,7 @@ theorem new_default_origin (runtime : EventGraphRuntime graph)
             found] at introduced
           exact (active introduced).elim
       | some message =>
-          cases accepted : (runtime.reactiveApplication leaks).handle execution.application
+          cases accepted : ((reactiveApplication timeouts) leaks).handle execution.application
               message with
           | none =>
               simp only [ReactiveApplication.Execution.includePending,
@@ -398,17 +402,17 @@ theorem new_default_origin (runtime : EventGraphRuntime graph)
                 rw [← native.drain_defaulted, drained]
                 exact stateMember
               obtain ⟨event, named, ready, action, moved⟩ :=
-                handle_config_mem_step runtime execution.application native _ handled
+                handle_config_mem_step timeouts execution.application native _ handled
               have owned := EventGraph.Config.step_new_default_actor
                 execution.application.config native.config event ready action moved owner active
                 nativeMember
-              have authored := handle_sender_actor runtime execution.application native _ handled
+              have authored := handle_sender_actor timeouts execution.application native _ handled
                 event named
               have failed := failed_primary execution.application native evidence
-                (evidence.handle runtime _ native handled) event ready action moved
-                (completionStep_handle runtime _ _ _ handled) owner active nativeMember
+                (evidence.handle timeouts _ native handled) event ready action moved
+                (completionStep_handle timeouts _ _ _ handled) owner active nativeMember
               have finalFailed : State.PublicFailure
-                  (execution.includePending (runtime.reactiveApplication leaks) id).application
+                  (execution.includePending ((reactiveApplication timeouts) leaks) id).application
                   event := by
                 simp only [ReactiveApplication.Execution.includePending,
                   MessageNetwork.includePending, found, accepted, Option.getD_some]
@@ -422,13 +426,13 @@ theorem new_default_origin (runtime : EventGraphRuntime graph)
   | application operation =>
       obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
       obtain ⟨state, changed, rfl⟩ := PMF.support_map .. ▸ supported
-      change state ∈ ((EventGraphRuntime.environmentStep runtime execution.application
+      change state ∈ ((EventGraphRuntime.environmentStep timeouts execution.application
         operation).map State.drain).support at changed
       obtain ⟨native, moved, rfl⟩ := PMF.support_map .. ▸ changed
       have nativeMember : owner ∈ native.config.defaulted := by
         rw [← native.drain_defaulted]
         exact introduced
-      rcases completionStep_environmentStep runtime execution.application native operation moved
+      rcases completionStep_environmentStep timeouts execution.application native operation moved
         with ⟨same, _, _⟩ | ⟨event, ready, action, sampled, _, _⟩
       · rw [same] at nativeMember
         exact (active nativeMember).elim
@@ -438,27 +442,27 @@ theorem new_default_origin (runtime : EventGraphRuntime graph)
         have expired : operation = .expire event := by
           by_contra different
           apply ready.1
-          apply (environmentStep_owned_completed_iff runtime execution.application native
+          apply (environmentStep_owned_completed_iff timeouts execution.application native
             operation event owner owned different moved).mp
           rw [execution.application.config.step_cut event ready action native.config sampled]
           exact Finset.mem_insert_self _ _
         subst operation
         have timed : ∃ entered, execution.application.activatedAt event = some entered ∧
-            runtime.deadline event ≤ execution.application.clock - entered := by
+            timeouts.duration event ≤ execution.application.clock - entered := by
           cases activated : execution.application.activatedAt event with
           | none =>
-              rw [environmentStep_expire_of_not_activated runtime execution.application event
+              rw [environmentStep_expire_of_not_activated timeouts execution.application event
                 ready activated, PMF.mem_support_pure_iff] at moved
               exact (config_ne_of_step sampled (congrArg State.config moved)).elim
           | some entered =>
-              by_cases due : runtime.deadline event ≤ execution.application.clock - entered
+              by_cases due : timeouts.duration event ≤ execution.application.clock - entered
               · exact ⟨entered, rfl, due⟩
-              · rw [environmentStep_expire_of_not_due runtime execution.application event ready
+              · rw [environmentStep_expire_of_not_due timeouts execution.application event ready
                   entered activated due, PMF.mem_support_pure_iff] at moved
                 exact (config_ne_of_step sampled (congrArg State.config moved)).elim
         have failed := failed_primary execution.application native evidence
-          (evidence.environmentStep runtime (.expire event) native moved) event ready action
-          sampled (completionStep_environmentStep runtime _ _ (.expire event) moved)
+          (evidence.environmentStep timeouts (.expire event) native moved) event ready action
+          sampled (completionStep_environmentStep timeouts _ _ (.expire event) moved)
           owner active nativeMember
         exact ⟨event, owned, ready, failed.of_completionPath native.drain_completionPath,
           Or.inr ⟨rfl, timed⟩⟩

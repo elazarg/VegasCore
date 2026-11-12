@@ -34,6 +34,9 @@ initialized histories retain reachability, cells, deadlines and quiescence.
 The roster scheduler has an all-history service proof through automatic
 completion, and completed native configurations freeze readout and fixed-exit
 payoff. Sequential completion geometry uses finite paths and actual prefix ranks.
+`Vegas.EventTimeouts graph` supplies only per-event timeout durations, measured
+from readiness in clock ticks. The state, handlers and execution machinery
+belong to the `Vegas.EventGraphRuntime` namespace.
 The direct sequential physical-client laws compose the source continuation
 with silent expiry, typed acceptance and chance sampling in
 [SourceServiceFirstTurnCompletion](../Vegas/Game/SourceServiceFirstTurnCompletion.lean).
@@ -47,6 +50,13 @@ realizes the law with bounded-menu clients under the supplied value-coverage
 and capacity interfaces. The lower graph APIs retain genuinely nonordered
 results, including the different raw reveal-order laws in
 [ConcurrentRevealOrderLaw](../Vegas/Examples/ConcurrentRevealOrderLaw.lean).
+The [concurrent-reveal preservation theorem](../Vegas/Game/ConcurrentRevealPreservation.lean)
+uses the same native application with reveal-relaxed dependencies. Against
+arbitrary native policies, effective-opening clients preserve intended Nash
+equilibrium under the forfeit, with the complete source-configuration/payoff
+law and no defaults or failed reveals. Its graph counterpart quantifies over
+actual scheduling choices between independent reveals; neither result asserts
+concurrent SE preservation.
 The [physical deviation law](../Vegas/Game/AsyncDeviationReadout.lean)
 backtranslates every raw unilateral policy against first-turn clients to one
 behavioral source policy with the same typed-state/public-default law. Its
@@ -76,6 +86,16 @@ consumes the forced-exit theorem and the
 The [instance guide](sequential-se-instances.md) describes their exact scope.
 The [semantic client compiler](../Vegas/Game/ClientCompiler.lean) selects
 a consistent bounded-menu completion uniformly for each source equilibrium.
+The [assessment fidelity contract](../Vegas/Game/OnePacketAssessmentFidelity.lean)
+retains intended decision laws, actual replay posteriors and clean-boundary
+continuations of that common completion. Its assembly owner combines strategy,
+belief and continuation limits; source-history and decision-coverage owners
+prove that every intended decision history has a genuine native realization.
+The [raw assessment transport](../Vegas/Game/OnePacketAssessmentExtension.lean)
+keeps corresponding local laws and complete normalized history laws through
+the audit and private response aliases. The
+[physical fidelity adapter](../Vegas/Game/ClientAssessmentFidelity.lean) composes
+that certificate with the existing callback decoder.
 [Ledger assessment realization](../Interaction/ReactiveLedgerAssessment.lean)
 identifies complete physical continuations and source-independent client laws.
 The [compiler guide](semantic-client-compiler.md) distinguishes this semantic
@@ -91,6 +111,14 @@ definitions. Share actual operations and isolate hypotheses that vary with a
 runtime. Stronger sequential results should reuse the concrete execution and
 information definitions; they do not require a universal runtime language.
 
+
+The complete reactive evaluators in
+[ReactiveEvaluation](../Interaction/ReactiveEvaluation.lean) and
+[ReactiveResponseEvaluation](../Interaction/ReactiveResponseEvaluation.lean)
+derive their evaluator budgets from the scheduler-round horizon and prove
+equality with terminal play at every legal starting history. Compiler artifacts
+and paper-facing results use complete execution and full sequential equilibrium;
+finite-prefix fuel remains local to the corresponding proof adapters.
 
 ## Standalone checked consumers
 

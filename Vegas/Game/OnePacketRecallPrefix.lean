@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheoryExtensions.Protocol.OwnPlayPrefix
-import Vegas.Game.OnePacketSpliceForced
+public import GameTheoryExtensions.Protocol.OwnPlayPrefix
+public import Vegas.Game.OnePacketSpliceForced
+
+@[expose] public section
 
 /-! # Actual prefix witnesses from retained native recall -/
 
@@ -14,51 +18,52 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup runtime leaks).Scheduler}
+  {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- Final private recall determines the entire recorded own-play sequence,
 including at a final state where the player is inactive. -/
 theorem onePacket_ownPlay_recall (who : Player)
-    {state : (onePacketProtocol setup runtime leaks bounds horizon scheduler).State}
-    (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace state) :
-    (onePacketInformation setup runtime leaks bounds horizon scheduler).ownPlay who trace =
-      (application setup runtime leaks).recallOwnPlay ((application setup runtime leaks).recallAt
+    {state : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).State}
+    (trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace state) :
+    (onePacketInformation setup timeouts leaks bounds horizon scheduler).ownPlay who trace =
+      (application setup timeouts leaks).recallOwnPlay ((application setup timeouts leaks).recallAt
         who state) := by
-  exact ((bounds.onePacketMenu runtime leaks).ownPlay_toRawTrace (initialLaw setup)
+  exact ((bounds.onePacketMenu timeouts leaks).ownPlay_toRawTrace (initialLaw setup)
     horizon scheduler who trace).symm.trans
-      ((application setup runtime leaks).trace_ownPlay (initialLaw setup) horizon scheduler who
-        ((bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup) horizon
+      ((application setup timeouts leaks).trace_ownPlay (initialLaw setup) horizon scheduler who
+        ((bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon
           scheduler trace))
 
 /-- Every recorded native response has an actual initialized active prefix
 with exactly its recorded decision information. -/
 theorem initialized_prefix_of_mem_ownPlay
-    {state : (onePacketProtocol setup runtime leaks bounds horizon scheduler).State}
-    (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace state)
+    {state : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).State}
+    (trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace state)
     {who : Player}
-    {recorded : (onePacketInformation setup runtime leaks bounds horizon scheduler).InfoState who ×
-      (application setup runtime leaks).Action}
-    (member : recorded ∈ (onePacketInformation setup runtime leaks bounds horizon scheduler).ownPlay
+    {recorded : (onePacketInformation setup timeouts leaks bounds horizon scheduler).InfoState who ×
+      (application setup timeouts leaks).Action}
+    (member : recorded ∈ (onePacketInformation setup timeouts leaks bounds horizon
+      scheduler).ownPlay
       who trace) :
-    ∃ (control : (application setup runtime leaks).Control)
-      (prior : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some
+    ∃ (control : (application setup timeouts leaks).Control)
+      (prior : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some
         control)),
       TracePrefix prior trace ∧ control.actor = some who ∧
-        (onePacketInformation setup runtime leaks bounds horizon scheduler).infoOf who prior =
+        (onePacketInformation setup timeouts leaks bounds horizon scheduler).infoOf who prior =
           recorded.1 := by
   obtain ⟨before, after, prior, joint, legal, realized, isPrefix, info, selected⟩ :=
     InformationModel.exists_tracePrefix_of_mem_ownPlay trace member
-  have localLegal := (onePacketProtocol setup runtime leaks bounds horizon
+  have localLegal := (onePacketProtocol setup timeouts leaks bounds horizon
     scheduler).legalOption_of_legal
     legal who
   rw [selected] at localLegal
   have acting := localLegal.1
   cases before with
   | none =>
-      change (application setup runtime leaks).actor none = some who at acting
+      change (application setup timeouts leaks).actor none = some who at acting
       simp only [ReactiveApplication.actor, Option.bind_none] at acting
       cases acting
   | some control =>
@@ -68,25 +73,26 @@ theorem initialized_prefix_of_mem_ownPlay
 /-- If every actual initialized prefix is a forced input for a player, every
 decision remembered in the final recall is a forced input for that player. -/
 theorem forcedAgent_of_recorded_decision
-    {state : (onePacketProtocol setup runtime leaks bounds horizon scheduler).State}
-    (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace state)
+    {state : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).State}
+    (trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace state)
     (who : Player)
-    (forcedPrefixes : ∀ (control : (application setup runtime leaks).Control)
-      (prior : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some
+    (forcedPrefixes : ∀ (control : (application setup timeouts leaks).Control)
+      (prior : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some
         control)),
-      TracePrefix prior trace → forcedAgent (runtime := runtime) (bounds.onePacketMenu runtime
+      TracePrefix prior trace → forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts
         leaks)
-        (initialLaw setup) horizon scheduler who ((application setup runtime leaks).observe who
+        (initialLaw setup) horizon scheduler who ((application setup timeouts leaks).observe who
           (some control)))
-    {recorded : (onePacketInformation setup runtime leaks bounds horizon scheduler).InfoState who ×
-      (application setup runtime leaks).Action}
-    (member : recorded ∈ (onePacketInformation setup runtime leaks bounds horizon scheduler).ownPlay
+    {recorded : (onePacketInformation setup timeouts leaks bounds horizon scheduler).InfoState who ×
+      (application setup timeouts leaks).Action}
+    (member : recorded ∈ (onePacketInformation setup timeouts leaks bounds horizon
+      scheduler).ownPlay
       who trace) :
-    forcedAgent (runtime := runtime) (bounds.onePacketMenu runtime leaks) (initialLaw setup)
+    forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks) (initialLaw setup)
       horizon scheduler
       who recorded.1 := by
-  obtain ⟨control, prior, isPrefix, _acting, info⟩ := initialized_prefix_of_mem_ownPlay (runtime
-    := runtime) trace member
+  obtain ⟨control, prior, isPrefix, _acting, info⟩ := initialized_prefix_of_mem_ownPlay (timeouts
+    := timeouts) trace member
   rw [← info, onePacket_infoOf]
   exact forcedPrefixes control prior isPrefix
 

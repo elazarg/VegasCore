@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketDirectedRepairContinuation
+public import Vegas.Game.OnePacketDirectedRepairContinuation
+
+@[expose] public section
 
 /-! # Supported passive environment steps of directed binding repair
 
@@ -18,28 +22,28 @@ open GameTheory
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
 namespace DirectedBindingFrame
 
-variable {memory : BindingMemory runtime leaks} {owner : Player}
-  {original repaired : (application setup runtime leaks).Execution}
+variable {memory : BindingMemory timeouts leaks} {owner : Player}
+  {original repaired : (application setup timeouts leaks).Execution}
 
 /-- The same actual pending-identifier sample extends both executions. No
 independence or restriction on the pending-message observation law is needed. -/
-theorem activate_step (frame : DirectedBindingFrame (runtime := runtime) memory owner original
+theorem activate_step (frame : DirectedBindingFrame (timeouts := timeouts) memory owner original
   repaired)
-    (actor : Player) (nextOriginal : (application setup runtime leaks).Execution)
-    (left : nextOriginal ∈ (original.environmentStep (application setup runtime leaks)
+    (actor : Player) (nextOriginal : (application setup timeouts leaks).Execution)
+    (left : nextOriginal ∈ (original.environmentStep (application setup timeouts leaks)
       (.activate actor)).support) :
-    ∃ nextRepaired : (application setup runtime leaks).Execution,
-      nextRepaired ∈ (repaired.environmentStep (application setup runtime leaks)
+    ∃ nextRepaired : (application setup timeouts leaks).Execution,
+      nextRepaired ∈ (repaired.environmentStep (application setup timeouts leaks)
         (.activate actor)).support ∧
-      DirectedBindingFrame (runtime := runtime) memory owner nextOriginal nextRepaired := by
+      DirectedBindingFrame (timeouts := timeouts) memory owner nextOriginal nextRepaired := by
   rw [ReactiveApplication.Execution.activation_samples, PMF.support_map] at left
   obtain ⟨selected, supported, rfl⟩ := left
-  refine ⟨repaired.sampledActivation (application setup runtime leaks) actor selected, ?_,
+  refine ⟨repaired.sampledActivation (application setup timeouts leaks) actor selected, ?_,
     frame.activate actor selected⟩
   rw [ReactiveApplication.Execution.activation_samples, PMF.support_map]
   refine ⟨selected, ?_, rfl⟩
@@ -48,20 +52,21 @@ theorem activate_step (frame : DirectedBindingFrame (runtime := runtime) memory 
 
 /-- Waiting records the same actual scheduler input and preserves all private
 recalls. Its paired successor is determined by the runtime. -/
-theorem wait_step (frame : DirectedBindingFrame (runtime := runtime) memory owner original repaired)
-    (nextOriginal : (application setup runtime leaks).Execution)
-    (left : nextOriginal ∈ (original.environmentStep (application setup runtime leaks)
+theorem wait_step (frame : DirectedBindingFrame (timeouts := timeouts) memory owner original
+  repaired)
+    (nextOriginal : (application setup timeouts leaks).Execution)
+    (left : nextOriginal ∈ (original.environmentStep (application setup timeouts leaks)
       .wait).support) :
-    ∃ nextRepaired : (application setup runtime leaks).Execution,
-      nextRepaired ∈ (repaired.environmentStep (application setup runtime leaks) .wait).support ∧
-      DirectedBindingFrame (runtime := runtime) memory owner nextOriginal nextRepaired := by
+    ∃ nextRepaired : (application setup timeouts leaks).Execution,
+      nextRepaired ∈ (repaired.environmentStep (application setup timeouts leaks) .wait).support ∧
+      DirectedBindingFrame (timeouts := timeouts) memory owner nextOriginal nextRepaired := by
   have leftEq : nextOriginal = { original with environmentRecall := original.environmentRecall ++
-      [⟨original.observeEnvironment (application setup runtime leaks), .wait⟩] } := by
+      [⟨original.observeEnvironment (application setup timeouts leaks), .wait⟩] } := by
     simpa only [ReactiveApplication.Execution.environmentStep, PMF.pure_map,
       PMF.mem_support_pure_iff _ _] using left
   subst nextOriginal
   refine ⟨{ repaired with environmentRecall := repaired.environmentRecall ++
-    [⟨repaired.observeEnvironment (application setup runtime leaks), .wait⟩] }, ?_, ?_⟩
+    [⟨repaired.observeEnvironment (application setup timeouts leaks), .wait⟩] }, ?_, ?_⟩
   · simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map,
       PMF.mem_support_pure_iff _ _]
   · refine ⟨{ frame.toFrame with service := ?_ }, frame.recalled⟩
@@ -69,34 +74,34 @@ theorem wait_step (frame : DirectedBindingFrame (runtime := runtime) memory owne
     rw [frame.service, frame.toFrame.environment]
 
 /-- Advancing the actual public clock has a paired deterministic successor. -/
-theorem advanceClock_step (frame : DirectedBindingFrame (runtime := runtime) memory owner original
+theorem advanceClock_step (frame : DirectedBindingFrame (timeouts := timeouts) memory owner original
   repaired)
     (clear : original.application.config.defaulted = ∅)
-    (nextOriginal : (application setup runtime leaks).Execution)
-    (left : nextOriginal ∈ (original.environmentStep (application setup runtime leaks)
+    (nextOriginal : (application setup timeouts leaks).Execution)
+    (left : nextOriginal ∈ (original.environmentStep (application setup timeouts leaks)
       (.application .advanceClock)).support) :
-    ∃ nextRepaired : (application setup runtime leaks).Execution,
-      nextRepaired ∈ (repaired.environmentStep (application setup runtime leaks)
+    ∃ nextRepaired : (application setup timeouts leaks).Execution,
+      nextRepaired ∈ (repaired.environmentStep (application setup timeouts leaks)
         (.application .advanceClock)).support ∧
-      DirectedBindingFrame (runtime := runtime) memory owner nextOriginal nextRepaired := by
+      DirectedBindingFrame (timeouts := timeouts) memory owner nextOriginal nextRepaired := by
   have repairedClear : repaired.application.config.defaulted = ∅ :=
     (congrArg (fun view : PublicView (graph setup) => view.observation.defaulted)
       frame.toFrame.publicView).symm.trans clear
-  let next (execution : (application setup runtime leaks).Execution) :
-      (application setup runtime leaks).Execution :=
+  let next (execution : (application setup timeouts leaks).Execution) :
+      (application setup timeouts leaks).Execution :=
     { execution with
       application := { execution.application with clock := execution.application.clock + 1 }
       environmentRecall := execution.environmentRecall ++
-        [⟨execution.observeEnvironment (application setup runtime leaks), .application
+        [⟨execution.observeEnvironment (application setup timeouts leaks), .application
           .advanceClock⟩] }
-  have law (execution : (application setup runtime leaks).Execution)
+  have law (execution : (application setup timeouts leaks).Execution)
       (empty : execution.application.config.defaulted = ∅) :
-      execution.environmentStep (application setup runtime leaks) (.application .advanceClock) =
+      execution.environmentStep (application setup timeouts leaks) (.application .advanceClock) =
         PMF.pure (next execution) := by
-    have appLaw : (application setup runtime leaks).environment execution.application
+    have appLaw : (application setup timeouts leaks).environment execution.application
       .advanceClock =
         PMF.pure { execution.application with clock := execution.application.clock + 1 } := by
-      change (EventGraphRuntime.environmentStep runtime execution.application .advanceClock).map
+      change (EventGraphRuntime.environmentStep timeouts execution.application .advanceClock).map
         State.drain = _
       rw [EventGraphRuntime.environmentStep, PMF.pure_map]
       apply congrArg PMF.pure

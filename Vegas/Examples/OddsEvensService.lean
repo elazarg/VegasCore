@@ -1,13 +1,17 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Examples.OddsEvensSetup
-import Vegas.Pending.ReactiveServiceProgress
-import Vegas.Pending.ReactiveStateInvariant
-import Vegas.Pending.ReactiveServiceConditions
-import Interaction.ReactiveRawRoundTrace
-import Interaction.ReactiveServiceRounds
-import Interaction.ReactivePendingProcessing
-import Interaction.ReactivePolicyInvariant
+public import Vegas.Examples.OddsEvensSetup
+public import Vegas.Pending.ReactiveServiceProgress
+public import Vegas.Pending.ReactiveStateInvariant
+public import Vegas.Pending.ReactiveServiceConditions
+public import Interaction.ReactiveRawRoundTrace
+public import Interaction.ReactiveServiceRounds
+public import Interaction.ReactivePendingProcessing
+public import Interaction.ReactivePolicyInvariant
+
+@[expose] public section
 
 /-! # A periodic physical service on the actual forced-exit application -/
 
@@ -24,9 +28,9 @@ abbrev compiled := OddsEvens.compiled
 def leaks : MessageNetwork.ObservationRule OddsEvens.Player (WitnessedPacket compiled) :=
   fun _ _ => PMF.pure ∅
 
-def runtime : EventGraphRuntime compiled := serviceRuntime fixture .sequential (fun _ => 6)
+def timeouts : EventTimeouts compiled := serviceTimeouts fixture .sequential (fun _ => 6)
 
-abbrev app := runtime.reactiveApplication leaks
+abbrev app := (reactiveApplication timeouts) leaks
 
 def initial : PMF app.State := Vegas.initialLaw fixture
 
@@ -119,16 +123,16 @@ theorem runRounds_progress (inputs : compiled.Inputs) (players : OddsEvens.Playe
     respond := by
       intro execution who action previous _
       obtain ⟨ticks, previous⟩ := previous
-      exact ⟨_, previous.trans (reactive_respond_progress runtime leaks inputs execution who
+      exact ⟨_, previous.trans (reactive_respond_progress timeouts leaks inputs execution who
         action previous.invariant)⟩
     environment := by
       intro execution next selected previous moved
       obtain ⟨ticks, previous⟩ := previous
-      exact ⟨_, previous.trans (reactive_environment_progress runtime leaks inputs execution next
+      exact ⟨_, previous.trans (reactive_environment_progress timeouts leaks inputs execution next
         selected previous.invariant moved)⟩ }
   exact invariant.runRounds scheduler count before after ⟨0, .refl valid⟩ reached
 
-theorem timely : runtime.AsyncTimely (fun _ => 3) (fun _ => 2) := by
+theorem timely : (AsyncTimely timeouts) (fun _ => 3) (fun _ => 2) := by
   intro event _
   change 3 + 2 < 6
   decide

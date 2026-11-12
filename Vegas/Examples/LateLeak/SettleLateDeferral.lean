@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Examples.LateLeak.SettleLateValues
+public import Vegas.Examples.LateLeak.SettleLateValues
+
+@[expose] public section
 
 /-! # Deferring the protected opening in the settle-late game
 

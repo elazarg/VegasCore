@@ -103,7 +103,7 @@ in the actual payment service, retaining the joint full-state/payout law
 without an equilibrium premise. The default build includes all source,
 scheduling, correlated-prior, positive-latency and strategy-completion consumers.
 
-Acceptance requires the full `lake build`, exact standard-axiom guards, source
+Acceptance requires the full `lake --wfail build`, exact standard-axiom guards, source
 policy, module boundaries, documentation checks and repository-checker tests.
 The maintained manuscript must compile with resolved references, no overflow,
 body at most 13 pages and total at most 16 pages, and pass visual inspection.

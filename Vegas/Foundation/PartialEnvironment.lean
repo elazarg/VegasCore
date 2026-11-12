@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Foundation.Context
+public import Vegas.Foundation.Context
+
+@[expose] public section
 
 /-! # Collecting selected positions of typed partial environments -/
 

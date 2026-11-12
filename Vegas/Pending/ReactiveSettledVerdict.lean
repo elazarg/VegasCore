@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveServiceConformance
+public import Vegas.Pending.ReactiveServiceConformance
+
+@[expose] public section
 
 /-! # Packet verdicts against the settled contract record
 

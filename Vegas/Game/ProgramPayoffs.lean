@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Compile.EventGraphCanonical
-import Vegas.Source.InitialState
-import GameTheoryExtensions.Analysis.QuasilinearSettlement
+public import Vegas.Compile.EventGraphCanonical
+public import Vegas.Source.InitialState
+public import GameTheoryExtensions.Analysis.QuasilinearSettlement
+
+@[expose] public section
 
 /-! # Strategic utility from executable source payments
 

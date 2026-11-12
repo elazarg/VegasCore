@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ExclusionInvariant
-import Vegas.Pending.EventActivationOrigin
+public import Vegas.Pending.ExclusionInvariant
+public import Vegas.Pending.EventActivationOrigin
+
+@[expose] public section
 
 /-! # Activation origins through automatic completion -/
 

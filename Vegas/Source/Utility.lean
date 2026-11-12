@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Source.Semantics
-import GameTheory.Math.Probability.Expectation
+public import Vegas.Source.Semantics
+public import GameTheory.Math.Probability.Expectation
+
+@[expose] public section
 
 /-! # Fixed source utility after public default
 

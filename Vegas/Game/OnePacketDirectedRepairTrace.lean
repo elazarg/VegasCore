@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketDirectedRepairSteps
-import Vegas.Game.OnePacketDirectedRepairMenu
-import Vegas.Pending.ReactiveOnePacketFreshness
+public import Vegas.Game.OnePacketDirectedRepairSteps
+public import Vegas.Game.OnePacketDirectedRepairMenu
+public import Vegas.Pending.ReactiveOnePacketFreshness
+
+@[expose] public section
 
 /-! # Actual one-packet traces through directed binding repair
 
@@ -22,27 +26,27 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup runtime leaks).Scheduler}
+  {scheduler : (application setup timeouts leaks).Scheduler}
 
 private theorem exists_response_trace_with_record
-    (remaining : Nat) (execution : (application setup runtime leaks).Execution) (who : Player)
-    (response : (application setup runtime leaks).Action)
-    (prior : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace
+    (remaining : Nat) (execution : (application setup timeouts leaks).Execution) (who : Player)
+    (response : (application setup timeouts leaks).Action)
+    (prior : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace
       (some ⟨remaining, some who, execution⟩))
-    (member : response ∈ bounds.onePacketActions runtime leaks who
-      (execution.logs who) (execution.observe (application setup runtime leaks) who)) :
-    ∃ trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace
-        (some ⟨remaining, none, execution.respond (application setup runtime leaks) who response⟩),
-      operationalRecord setup runtime leaks bounds horizon scheduler trace =
-        operationalState setup runtime leaks
-            (some ⟨remaining, none, execution.respond (application setup runtime leaks) who
+    (member : response ∈ bounds.onePacketActions timeouts leaks who
+      (execution.logs who) (execution.observe (application setup timeouts leaks) who)) :
+    ∃ trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace
+        (some ⟨remaining, none, execution.respond (application setup timeouts leaks) who response⟩),
+      operationalRecord setup timeouts leaks bounds horizon scheduler trace =
+        operationalState setup timeouts leaks
+            (some ⟨remaining, none, execution.respond (application setup timeouts leaks) who
               response⟩) ::
-          operationalRecord setup runtime leaks bounds horizon scheduler prior := by
+          operationalRecord setup timeouts leaks bounds horizon scheduler prior := by
   let joint := fun actor => if actor = who then some response else none
-  have legal : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Legal
+  have legal : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Legal
       (some ⟨remaining, some who, execution⟩) joint := by
     constructor
     · simp [onePacketProtocol, ReactiveApplication.ResponseMenu.protocol,
@@ -56,8 +60,8 @@ private theorem exists_response_trace_with_record
       · simp [joint, onePacketProtocol, ReactiveApplication.ResponseMenu.protocol,
           ReactiveApplication.actor, same, Ne.symm same]
   have realized : some ⟨remaining, none,
-      execution.respond (application setup runtime leaks) who response⟩ ∈
-      ((onePacketProtocol setup runtime leaks bounds horizon scheduler).step
+      execution.respond (application setup timeouts leaks) who response⟩ ∈
+      ((onePacketProtocol setup timeouts leaks bounds horizon scheduler).step
         (some ⟨remaining, some who, execution⟩) ⟨joint, legal⟩).support := by
     change _ ∈ (PMF.pure _).support
     simp only [joint, ↓reduceIte, Option.getD_some, PMF.mem_support_pure_iff _ _]
@@ -65,21 +69,21 @@ private theorem exists_response_trace_with_record
 
 namespace DirectedBindingFrame
 
-variable {memory : BindingMemory runtime leaks} {owner : Player}
-  {original repaired : (application setup runtime leaks).Execution}
+variable {memory : BindingMemory timeouts leaks} {owner : Player}
+  {original repaired : (application setup timeouts leaks).Execution}
 
 /-- An actual admitted raw binding extends a directed repair to an actual
 admitted history with the same entire operational record. Freshness and legal
 repair are consequences of the histories and the finite value bounds. -/
-theorem binding_trace (frame : DirectedBindingFrame (runtime := runtime) memory owner original
+theorem binding_trace (frame : DirectedBindingFrame (timeouts := timeouts) memory owner original
   repaired)
     (remaining : Nat)
-    (prior : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace
+    (prior : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace
       (some ⟨remaining, some owner, original⟩))
-    (imagePrior : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace
+    (imagePrior : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace
       (some ⟨remaining, some owner, repaired⟩))
-    (records : operationalRecord setup runtime leaks bounds horizon scheduler prior =
-      operationalRecord setup runtime leaks bounds horizon scheduler imagePrior)
+    (records : operationalRecord setup timeouts leaks bounds horizon scheduler prior =
+      operationalRecord setup timeouts leaks bounds horizon scheduler imagePrior)
     (event : (graph setup).EventId) (payload : L.Ty)
     (outputEq : (graph setup).outputLayout event = .binding owner payload)
     (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
@@ -90,61 +94,62 @@ theorem binding_trace (frame : DirectedBindingFrame (runtime := runtime) memory 
     (turn : original.application.publicView.ownTurn? owner = some event)
     (covered : bounds.CoversOutputValues)
     (member : (⟨some ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩⟩ :
-      (application setup runtime leaks).Action) ∈ bounds.onePacketActions runtime leaks owner
-        (original.logs owner) (original.observe (application setup runtime leaks) owner)) :
-    let app := application setup runtime leaks
+      (application setup timeouts leaks).Action) ∈ bounds.onePacketActions timeouts leaks owner
+        (original.logs owner) (original.observe (application setup timeouts leaks) owner)) :
+    let app := application setup timeouts leaks
     let view := repaired.observe app owner
     let response : app.Action :=
       ⟨some ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩⟩
-    let change := memory.repairResponse runtime leaks owner view response
-    let remembered : BindingMemory runtime leaks :=
-      ⟨change.2, memory.responses ++ [(memory.shadow.inputView runtime leaks view,
+    let change := memory.repairResponse timeouts leaks owner view response
+    let remembered : BindingMemory timeouts leaks :=
+      ⟨change.2, memory.responses ++ [(memory.shadow.inputView timeouts leaks view,
         response)]⟩
-    DirectedBindingFrame (runtime := runtime) remembered owner (original.respond app owner response)
+    DirectedBindingFrame (timeouts := timeouts) remembered owner (original.respond app owner
+      response)
         (repaired.respond app owner change.1) ∧
-      ∃ trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace
+      ∃ trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace
           (some ⟨remaining, none, repaired.respond app owner change.1⟩),
-        operationalRecord setup runtime leaks bounds horizon scheduler trace =
-          operationalState setup runtime leaks
+        operationalRecord setup timeouts leaks bounds horizon scheduler trace =
+          operationalState setup timeouts leaks
               (some ⟨remaining, none, original.respond app owner response⟩) ::
-            operationalRecord setup runtime leaks bounds horizon scheduler prior := by
+            operationalRecord setup timeouts leaks bounds horizon scheduler prior := by
   intro app view response change remembered
   have initializedPrior := prior
-  change ((bounds.onePacketMenu runtime leaks).protocol
+  change ((bounds.onePacketMenu timeouts leaks).protocol
     (serviceInitialLaw setup .sequential) horizon scheduler).Trace _ at initializedPrior
   rw [serviceInitialLaw_eq_inputs] at initializedPrior
-  have fresh := bounds.onePacket_binding_fresh runtime leaks
+  have fresh := bounds.onePacket_binding_fresh timeouts leaks
     (setup.initialLaw.map setup.eventInputs) horizon scheduler initializedPrior owner event serial
     opening member
-  have originalCount := runtime.countRecall_history leaks
-    ((bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup) horizon scheduler
+  have originalCount := (countRecall_history timeouts) leaks
+    ((bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon scheduler
       prior)
-  have repairedCount := runtime.countRecall_history leaks
-    ((bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup) horizon scheduler
+  have repairedCount := (countRecall_history timeouts) leaks
+    ((bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon scheduler
       imagePrior)
-  have legalRepair := frame.toFrame.repairResponse_onePacket (runtime :=
-    runtime) bounds frame.recalled originalCount
+  have legalRepair := frame.toFrame.repairResponse_onePacket (timeouts :=
+    timeouts) bounds frame.recalled originalCount
     repairedCount event payload outputEq codeEq node serial opening fresh covered member
   have repairedFrame := frame.binding_submission event payload outputEq
     codeEq node serial
     opening fresh ready
-  change DirectedBindingFrame (runtime := runtime) remembered owner (original.respond app owner
+  change DirectedBindingFrame (timeouts := timeouts) remembered owner (original.respond app owner
     response)
     (repaired.respond app owner change.1) at repairedFrame
   refine ⟨repairedFrame, ?_⟩
-  obtain ⟨trace, record⟩ := exists_response_trace_with_record (runtime := runtime) remaining
+  obtain ⟨trace, record⟩ := exists_response_trace_with_record (timeouts := timeouts) remaining
     repaired owner change.1
     imagePrior legalRepair
   refine ⟨trace, ?_⟩
-  have afterPublic := (runtime.reactive_respond_application leaks original owner
+  have afterPublic := ((reactive_respond_application timeouts) leaks original owner
     response).2
   have afterTurn : (original.respond app owner response).application.publicView.ownTurn? owner =
       some event := by
     rw [afterPublic]
     exact turn
-  have bothDelivered : deliveredValue setup runtime leaks owner
+  have bothDelivered : deliveredValue setup timeouts leaks owner
         ((original.respond app owner response).observe app owner) =
-      deliveredValue setup runtime leaks owner
+      deliveredValue setup timeouts leaks owner
         ((repaired.respond app owner change.1).observe app owner) := by
     have repairedTurn : (repaired.respond app owner change.1).application.publicView.ownTurn?
         owner = some event := by

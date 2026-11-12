@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheoryExtensions.Analysis.Protocol.StoppedExitBound
-import GameTheoryExtensions.Protocol.TracePrefix
+public import GameTheoryExtensions.Analysis.Protocol.StoppedExitBound
+public import GameTheoryExtensions.Protocol.TracePrefix
+
+@[expose] public section
 
 /-! # Exact atoms at the first stopped history -/
 

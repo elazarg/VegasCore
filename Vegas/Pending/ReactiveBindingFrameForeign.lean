@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveBindingFrameOpening
+public import Vegas.Pending.ReactiveBindingFrameOpening
+
+@[expose] public section
 
 /-! # Other players' accepted commitments during a private repair
 
@@ -17,17 +21,17 @@ open Interaction EventGraph GameTheory.Math.Probability
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
-  {runtime : EventGraphRuntime graph}
+  {timeouts : EventTimeouts graph}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)}
-  {memory : BindingMemory runtime leaks} {owner : Player}
-  {original repaired : (runtime.reactiveApplication leaks).Execution}
+  {memory : BindingMemory timeouts leaks} {owner : Player}
+  {original repaired : ((reactiveApplication timeouts) leaks).Execution}
 
-theorem setAccepted (frame : Frame runtime leaks memory owner original repaired)
+theorem setAccepted (frame : Frame timeouts leaks memory owner original repaired)
     (accepted : graph.Field → Option (Handle graph)) :
-    Frame runtime leaks memory owner
+    Frame timeouts leaks memory owner
       { original with application := { original.application with accepted := accepted } }
       { repaired with application := { repaired.application with accepted := accepted } } := by
-  let app := runtime.reactiveApplication leaks
+  let app := (reactiveApplication timeouts) leaks
   refine ⟨frame.past, ?_, frame.lengths, frame.network, frame.service, ?_,
     frame.logs, frame.slots, frame.successful, frame.submissions⟩
   · have application := congrArg ReactiveApplication.PlayerView.application frame.observed
@@ -51,10 +55,10 @@ theorem setAccepted (frame : Frame runtime leaks memory owner original repaired)
 have the same typed result. This includes the repaired player's own lawful
 binding submitted before the conditional continuation began. -/
 theorem binding_inclusion_unmodified
-    (frame : Frame runtime leaks memory owner original repaired)
+    (frame : Frame timeouts leaks memory owner original repaired)
     (clear : original.application.config.defaulted = ∅)
     (id : MessageId Player)
-    (endpointClear : (original.includePending (runtime.reactiveApplication leaks)
+    (endpointClear : (original.includePending ((reactiveApplication timeouts) leaks)
       id).application.config.defaulted = ∅)
     (event : graph.EventId) (candidate : Handle graph)
     (actor : Player) (payload : L.Ty)
@@ -63,7 +67,7 @@ theorem binding_inclusion_unmodified
       (graph.nodes event) = .bind actor payload)
     (node : nodeView graph event = .bind actor payload outputEq codeEq)
     (ready : original.application.config.cut.Ready event)
-    (timely : original.application.WithinDeadline runtime event)
+    (timely : original.application.WithinDeadline timeouts event)
     (sender : id.1 = actor) (owned : candidate.1 = actor)
     (vacant : original.application.accepted (.inr event) = none)
     (unused : original.application.HandleUnused candidate)
@@ -76,8 +80,8 @@ theorem binding_inclusion_unmodified
     (evidence : Option (OpeningFact graph))
     (found : original.network.lookup id =
       some ⟨id, ⟨.commitment event candidate, evidence, some ⟨event⟩⟩⟩) :
-    let app := runtime.reactiveApplication leaks
-    Frame runtime leaks memory owner
+    let app := (reactiveApplication timeouts) leaks
+    Frame timeouts leaks memory owner
       { original.includePending app id with environmentRecall := original.environmentRecall ++
         [⟨original.observeEnvironment app, .include id⟩] }
       { repaired.includePending app id with environmentRecall := repaired.environmentRecall ++
@@ -94,7 +98,7 @@ theorem binding_inclusion_unmodified
     congrArg PublicView.activatedAt frame.publicView
   have accepted : original.application.accepted = repaired.application.accepted :=
     congrArg PublicView.accepted frame.publicView
-  have rightTimely : repaired.application.WithinDeadline runtime event := by
+  have rightTimely : repaired.application.WithinDeadline timeouts event := by
     unfold State.WithinDeadline at timely ⊢
     rwa [← clocks, ← activations]
   have rightVacant : repaired.application.accepted (.inr event) = none := by
@@ -114,11 +118,11 @@ theorem binding_inclusion_unmodified
   apply frame.include_accepted id endpointClear _ found
     (WitnessedPacket.tokenValid_commitment _ _ _) _ _
     paired
-  · rw [handle_commitment_eq runtime original.application id event candidate actor payload outputEq
+  · rw [handle_commitment_eq timeouts original.application id event candidate actor payload outputEq
       codeEq node ready timely (by simp [clear]) sender owned vacant unused,
         original.application.candidates.freeze_eq_self_of_not_fresh candidate fixed]
     rfl
-  · rw [handle_commitment_eq runtime repaired.application id event candidate actor payload outputEq
+  · rw [handle_commitment_eq timeouts repaired.application id event candidate actor payload outputEq
       codeEq node rightReady rightTimely (by simp [rightClear]) sender owned rightVacant
         rightUnused,
         repaired.application.candidates.freeze_eq_self_of_not_fresh candidate rightFixed,
@@ -130,11 +134,11 @@ theorem binding_inclusion_unmodified
 /-- Reserved inclusion of another player's fixed canonical candidate retains
 the complete frame, for successful or failed private material. -/
 theorem foreign_binding_inclusion
-    (frame : Frame runtime leaks memory owner original repaired)
+    (frame : Frame timeouts leaks memory owner original repaired)
     (clear : original.application.config.defaulted = ∅)
     (onlyBindings : memory.shadow.OwnBindings owner)
     (id : MessageId Player)
-    (endpointClear : (original.includePending (runtime.reactiveApplication leaks)
+    (endpointClear : (original.includePending ((reactiveApplication timeouts) leaks)
       id).application.config.defaulted = ∅)
     (event : graph.EventId) (candidate : Handle graph)
     (actor : Player) (different : actor ≠ owner) (payload : L.Ty)
@@ -143,7 +147,7 @@ theorem foreign_binding_inclusion
       (graph.nodes event) = .bind actor payload)
     (node : nodeView graph event = .bind actor payload outputEq codeEq)
     (ready : original.application.config.cut.Ready event)
-    (timely : original.application.WithinDeadline runtime event)
+    (timely : original.application.WithinDeadline timeouts event)
     (sender : id.1 = actor) (owned : candidate.1 = actor)
     (vacant : original.application.accepted (.inr event) = none)
     (unused : original.application.HandleUnused candidate)
@@ -151,8 +155,8 @@ theorem foreign_binding_inclusion
     (evidence : Option (OpeningFact graph))
     (found : original.network.lookup id =
       some ⟨id, ⟨.commitment event candidate, evidence, some ⟨event⟩⟩⟩) :
-    let app := runtime.reactiveApplication leaks
-    Frame runtime leaks memory owner
+    let app := (reactiveApplication timeouts) leaks
+    Frame timeouts leaks memory owner
       { original.includePending app id with environmentRecall := original.environmentRecall ++
         [⟨original.observeEnvironment app, .include id⟩] }
       { repaired.includePending app id with environmentRecall := repaired.environmentRecall ++

@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveAliasSelector
-import Interaction.ReactiveAliasConsistency
-import GameTheory.Analysis.Protocol.BeliefTransport
+public import Interaction.ReactiveAliasSelector
+public import Interaction.ReactiveAliasConsistency
+public import GameTheory.Analysis.Protocol.BeliefTransport
+
+@[expose] public section
 
 /-! # Exact Bayes beliefs under private response aliases
 

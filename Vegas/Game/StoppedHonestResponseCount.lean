@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.StoppedHonestComparison
-import Interaction.ReactiveResponseCount
+public import Vegas.Game.StoppedHonestComparison
+public import Interaction.ReactiveResponseCount
+
+@[expose] public section
 
 /-! # Honest stopped comparisons charged to actual expected responses -/
 
@@ -15,16 +19,16 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
-  (runtime : EventGraphRuntime (graph setup))
+  (timeouts : EventTimeouts (graph setup))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-  (bounds : MessageBounds (graph setup)) (initial : PMF (application setup runtime leaks).State)
-  (horizon : Nat) (scheduler : (application setup runtime leaks).Scheduler)
+  (bounds : MessageBounds (graph setup)) (initial : PMF (application setup timeouts leaks).State)
+  (horizon : Nat) (scheduler : (application setup timeouts leaks).Scheduler)
 
-local notation "menu" => bounds.onePacketMenu runtime leaks
+local notation "menu" => bounds.onePacketMenu timeouts leaks
 local notation "N" =>
-  onePacketModel (runtime := runtime) setup leaks bounds initial horizon scheduler
+  onePacketModel (timeouts := timeouts) setup leaks bounds initial horizon scheduler
 local notation "E" => ReactiveApplication.ResponseMenu.protocol
-  (bounds.onePacketMenu runtime leaks) initial horizon scheduler
+  (bounds.onePacketMenu timeouts leaks) initial horizon scheduler
 
 /-- Honest-choice loss is charged to the actual conditional number of future
 responses. This compares complete stopped history laws at every starting site. -/
@@ -33,18 +37,18 @@ theorem onePacket_stopped_withinTV_honest
     (certificate : (E).WellFoundedHistories) (stopped : (E).History → Prop)
     (profile : ∀ who, (N).BehavioralPolicy who) (start : (E).History)
     {retention : ℝ} (nonnegative : 0 ≤ retention) (le_one : retention ≤ 1)
-    (dominates : DominatesHonestFrom (runtime := runtime) setup leaks bounds
+    (dominates : DominatesHonestFrom (timeouts := timeouts) setup leaks bounds
       initial horizon scheduler assessment
       retention profile start) :
     PMF.WithinTV ((1 - retention) * (menu).expectedResponses initial horizon scheduler certificate
-        (honestProfile (runtime := runtime) setup leaks bounds initial horizon
+        (honestProfile (timeouts := timeouts) setup leaks bounds initial horizon
           scheduler assessment) stopped start)
       ((N).runBehavioralUntil certificate
-        (honestProfile (runtime := runtime) setup leaks bounds initial horizon
+        (honestProfile (timeouts := timeouts) setup leaks bounds initial horizon
           scheduler assessment) stopped start)
       ((N).runBehavioralUntil certificate profile stopped start) := by
   classical
-  let honest := honestProfile (runtime := runtime) setup leaks bounds initial
+  let honest := honestProfile (timeouts := timeouts) setup leaks bounds initial
     horizon scheduler assessment
   let exposure := (menu).expectedResponses initial horizon scheduler certificate honest stopped
   let inside := fun history => ∃ fuel, history ∈ ((N).runBehavioralFrom honest fuel start).support
@@ -60,7 +64,7 @@ theorem onePacket_stopped_withinTV_honest
     certificate honest profile stopped inside (fun final => if final ∈ event then 1 else 0)
     (low := 0) (width := 1) (by norm_num)
     (fun _ => by split <;> norm_num)
-    (fun history => (1 - retention) * (application setup runtime
+    (fun history => (1 - retention) * (application setup timeouts
       leaks).responseCharge history.state)
     (fun history => (1 - retention) * exposure history)
     (fun history _ => mul_nonneg (sub_nonneg.mpr le_one)
@@ -80,7 +84,7 @@ theorem onePacket_stopped_withinTV_honest
       nlinarith)
     (by
       rintro history ⟨fuel, reached⟩ _ _
-      exact onePacket_step_withinTV_honest (runtime := runtime) setup leaks bounds initial
+      exact onePacket_step_withinTV_honest (timeouts := timeouts) setup leaks bounds initial
         horizon scheduler assessment
         profile history nonnegative le_one (fun who _ => dominates fuel history reached who))
     start ⟨0, by simp [InformationModel.runBehavioralFrom]⟩
@@ -94,21 +98,21 @@ theorem onePacket_stopped_expect_sub_le_expectedResponses
     (certificate : (E).WellFoundedHistories) (stopped : (E).History → Prop)
     (profile : ∀ who, (N).BehavioralPolicy who) (start : (E).History)
     {retention : ℝ} (nonnegative : 0 ≤ retention) (le_one : retention ≤ 1)
-    (dominates : DominatesHonestFrom (runtime := runtime) setup leaks bounds
+    (dominates : DominatesHonestFrom (timeouts := timeouts) setup leaks bounds
       initial horizon scheduler assessment
       retention profile start)
     (payoff : (E).History → ℝ) {bound : ℝ}
     (payoffBounded : ∀ history, |payoff history| ≤ bound) :
     |expect ((N).runBehavioralUntil certificate profile stopped start) payoff -
       expect ((N).runBehavioralUntil certificate
-        (honestProfile (runtime := runtime) setup leaks bounds initial horizon
+        (honestProfile (timeouts := timeouts) setup leaks bounds initial horizon
           scheduler assessment) stopped start)
         payoff| ≤
       (2 * bound * (1 - retention)) * (menu).expectedResponses initial horizon scheduler
-        certificate (honestProfile (runtime := runtime) setup leaks bounds
+        certificate (honestProfile (timeouts := timeouts) setup leaks bounds
           initial horizon scheduler assessment)
         stopped start := by
-  have close := onePacket_stopped_withinTV_honest (runtime := runtime) setup leaks bounds
+  have close := onePacket_stopped_withinTV_honest (timeouts := timeouts) setup leaks bounds
     initial horizon scheduler
     assessment certificate stopped profile start nonnegative le_one dominates
   have interval : ∀ history : (E).History, -bound ≤ payoff history ∧

@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.EventApplication
+public import Vegas.Pending.EventApplication
+
+@[expose] public section
 
 /-! # Reachability and activation invariants for event applications
 
@@ -183,15 +187,15 @@ theorem privateStep_facts (state : State graph) (who : Player)
   | prepare serial raw => exact ⟨rfl, rfl, rfl⟩
 
 /-- Accepted pending packets preserve the runtime invariant. -/
-theorem handle_invariant {inputs : graph.Inputs} (runtime : EventGraphRuntime graph)
+theorem handle_invariant {inputs : graph.Inputs} (timeouts : EventTimeouts graph)
     (state next : State graph) (message : Message Player (Payload graph))
     (invariant : state.Invariant inputs)
-    (accepted : handle runtime state message = some next) :
+    (accepted : handle timeouts state message = some next) :
     next.Invariant inputs := by
   obtain ⟨event, _, ready, action, member⟩ :=
-    handle_config_mem_step runtime state next message accepted
+    handle_config_mem_step timeouts state next message accepted
   obtain ⟨clockEq, activatedEq⟩ :=
-    handle_clock_activated runtime state next message accepted
+    handle_clock_activated timeouts state next message accepted
   let refreshed : State graph :=
     { state with
       config := next.config
@@ -204,37 +208,37 @@ theorem handle_invariant {inputs : graph.Inputs} (runtime : EventGraphRuntime gr
   · exact activatedEq
 
 /-- Accepted pending packets can only enlarge the completed frontier. -/
-theorem handle_completed_subset (runtime : EventGraphRuntime graph)
+theorem handle_completed_subset (timeouts : EventTimeouts graph)
     (state next : State graph) (message : Message Player (Payload graph))
-    (accepted : handle runtime state message = some next) :
+    (accepted : handle timeouts state message = some next) :
     state.config.cut.completed ⊆ next.config.cut.completed := by
   obtain ⟨_, _, ready, action, member⟩ :=
-    handle_config_mem_step runtime state next message accepted
+    handle_config_mem_step timeouts state next message accepted
   exact State.completed_subset_of_mem_step state.config _ ready action next.config member
 
 /-- An accepted packet preserves the timestamp of any event that remains
 unfinished. -/
 theorem handle_activatedAt_of_not_completed {inputs : graph.Inputs}
-    (runtime : EventGraphRuntime graph) (state next : State graph)
+    (timeouts : EventTimeouts graph) (state next : State graph)
     (message : Message Player (Payload graph)) (invariant : state.Invariant inputs)
-    (accepted : handle runtime state message = some next)
+    (accepted : handle timeouts state message = some next)
     (query : graph.EventId) (entered : Nat)
     (activated : state.activatedAt query = some entered)
     (unfinished : query ∉ next.config.cut.completed) :
     next.activatedAt query = some entered := by
   obtain ⟨completed, _, ready, action, member⟩ :=
-    handle_config_mem_step runtime state next message accepted
+    handle_config_mem_step timeouts state next message accepted
   obtain ⟨_, activatedEq⟩ :=
-    handle_clock_activated runtime state next message accepted
+    handle_clock_activated timeouts state next message accepted
   rw [activatedEq]
   exact invariant.refreshStep_activatedAt_of_not_completed completed query ready action
     next.config member entered activated unfinished
 
 /-- Environment commands advance the clock by exactly their declared tick
 count.  Sample and expiry commands contribute zero ticks. -/
-theorem environmentStep_clock (runtime : EventGraphRuntime graph)
+theorem environmentStep_clock (timeouts : EventTimeouts graph)
     (state next : State graph) (command : EnvironmentCommand graph)
-    (member : next ∈ (environmentStep runtime state command).support) :
+    (member : next ∈ (environmentStep timeouts state command).support) :
     next.clock = state.clock + command.clockTicks := by
   cases command with
   | advanceClock =>
@@ -243,19 +247,19 @@ theorem environmentStep_clock (runtime : EventGraphRuntime graph)
       rfl
   | executeSample event =>
       obtain ⟨clockEq, _⟩ :=
-        environmentStep_executeSample_config_activated runtime state next event member
+        environmentStep_executeSample_config_activated timeouts state next event member
       simpa [EnvironmentCommand.clockTicks] using clockEq
   | expire event =>
       obtain ⟨clockEq, _⟩ :=
-        environmentStep_expire_config_activated runtime state next event member
+        environmentStep_expire_config_activated timeouts state next event member
       simpa [EnvironmentCommand.clockTicks] using clockEq
 
 /-- Every supported environment command preserves graph reachability and exact
 activation metadata. -/
 theorem environmentStep_invariant {inputs : graph.Inputs}
-    (runtime : EventGraphRuntime graph) (state next : State graph)
+    (timeouts : EventTimeouts graph) (state next : State graph)
     (command : EnvironmentCommand graph) (invariant : state.Invariant inputs)
-    (member : next ∈ (environmentStep runtime state command).support) :
+    (member : next ∈ (environmentStep timeouts state command).support) :
     next.Invariant inputs := by
   cases command with
   | advanceClock =>
@@ -268,7 +272,7 @@ theorem environmentStep_invariant {inputs : graph.Inputs}
       omega
   | executeSample event =>
       obtain ⟨clockEq, effect⟩ :=
-        environmentStep_executeSample_config_activated runtime state next event member
+        environmentStep_executeSample_config_activated timeouts state next event member
       rcases effect with ⟨configEq, activatedEq⟩ | ⟨ready, action, configMem, activatedEq⟩
       · exact invariant.copy configEq clockEq activatedEq
       · let refreshed : State graph :=
@@ -280,7 +284,7 @@ theorem environmentStep_invariant {inputs : graph.Inputs}
         exact refreshedInvariant.copy rfl clockEq activatedEq
   | expire event =>
       obtain ⟨clockEq, effect⟩ :=
-        environmentStep_expire_config_activated runtime state next event member
+        environmentStep_expire_config_activated timeouts state next event member
       rcases effect with ⟨configEq, activatedEq⟩ | ⟨ready, action, configMem, activatedEq⟩
       · exact invariant.copy configEq clockEq activatedEq
       · let refreshed : State graph :=
@@ -292,9 +296,9 @@ theorem environmentStep_invariant {inputs : graph.Inputs}
         exact refreshedInvariant.copy rfl clockEq activatedEq
 
 /-- Environment commands cannot undo completed events. -/
-theorem environmentStep_completed_subset (runtime : EventGraphRuntime graph)
+theorem environmentStep_completed_subset (timeouts : EventTimeouts graph)
     (state next : State graph) (command : EnvironmentCommand graph)
-    (member : next ∈ (environmentStep runtime state command).support) :
+    (member : next ∈ (environmentStep timeouts state command).support) :
     state.config.cut.completed ⊆ next.config.cut.completed := by
   cases command with
   | advanceClock =>
@@ -303,14 +307,14 @@ theorem environmentStep_completed_subset (runtime : EventGraphRuntime graph)
       exact Finset.Subset.rfl
   | executeSample event =>
       obtain ⟨_, effect⟩ :=
-        environmentStep_executeSample_config_activated runtime state next event member
+        environmentStep_executeSample_config_activated timeouts state next event member
       rcases effect with ⟨configEq, _⟩ | ⟨ready, action, configMem, _⟩
       · rw [configEq]
       · exact State.completed_subset_of_mem_step state.config event ready action
           next.config configMem
   | expire event =>
       obtain ⟨_, effect⟩ :=
-        environmentStep_expire_config_activated runtime state next event member
+        environmentStep_expire_config_activated timeouts state next event member
       rcases effect with ⟨configEq, _⟩ | ⟨ready, action, configMem, _⟩
       · rw [configEq]
       · exact State.completed_subset_of_mem_step state.config event ready action
@@ -319,9 +323,9 @@ theorem environmentStep_completed_subset (runtime : EventGraphRuntime graph)
 /-- An environment command preserves the timestamp of every event that stays
 unfinished. -/
 theorem environmentStep_activatedAt_of_not_completed {inputs : graph.Inputs}
-    (runtime : EventGraphRuntime graph) (state next : State graph)
+    (timeouts : EventTimeouts graph) (state next : State graph)
     (command : EnvironmentCommand graph) (invariant : state.Invariant inputs)
-    (member : next ∈ (environmentStep runtime state command).support)
+    (member : next ∈ (environmentStep timeouts state command).support)
     (query : graph.EventId) (entered : Nat)
     (activated : state.activatedAt query = some entered)
     (unfinished : query ∉ next.config.cut.completed) :
@@ -333,7 +337,7 @@ theorem environmentStep_activatedAt_of_not_completed {inputs : graph.Inputs}
       exact activated
   | executeSample event =>
       obtain ⟨_, effect⟩ :=
-        environmentStep_executeSample_config_activated runtime state next event member
+        environmentStep_executeSample_config_activated timeouts state next event member
       rcases effect with ⟨_, activatedEq⟩ | ⟨ready, action, configMem, activatedEq⟩
       · rw [activatedEq]
         exact activated
@@ -342,7 +346,7 @@ theorem environmentStep_activatedAt_of_not_completed {inputs : graph.Inputs}
           next.config configMem entered activated unfinished
   | expire event =>
       obtain ⟨_, effect⟩ :=
-        environmentStep_expire_config_activated runtime state next event member
+        environmentStep_expire_config_activated timeouts state next event member
       rcases effect with ⟨_, activatedEq⟩ | ⟨ready, action, configMem, activatedEq⟩
       · rw [activatedEq]
         exact activated
@@ -372,13 +376,13 @@ completes the addressed event and every handler branch requires that event to
 be ready. -/
 
 /-- Acceptance completes the addressed event, which was unfinished before. -/
-theorem handle_completes (runtime : EventGraphRuntime graph)
+theorem handle_completes (timeouts : EventTimeouts graph)
     (state next : State graph) (message : Message Player (Payload graph))
-    (accepted : handle runtime state message = some next) :
+    (accepted : handle timeouts state message = some next) :
     ∃ event, Payload.event? graph message.payload = some event ∧
       event ∉ state.config.cut.completed ∧ event ∈ next.config.cut.completed := by
   obtain ⟨event, addressed, ready, action, member⟩ :=
-    handle_config_mem_step runtime state next message accepted
+    handle_config_mem_step timeouts state next message accepted
   refine ⟨event, addressed, ready.1, ?_⟩
   rw [state.config.step_cut event ready action next.config member]
   simp

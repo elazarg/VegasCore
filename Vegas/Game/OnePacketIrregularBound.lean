@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketCounterpartDomination
-import Vegas.Game.OnePacketComponentSteps
-import Vegas.Game.OnePacketSlotTrembles
+public import Vegas.Game.OnePacketCounterpartDomination
+public import Vegas.Game.OnePacketComponentSteps
+public import Vegas.Game.OnePacketSlotTrembles
+
+@[expose] public section
 
 /-! # Irregular step bounds from response masses
 
@@ -29,30 +33,30 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup runtime leaks).Scheduler}
+  {scheduler : (application setup timeouts leaks).Scheduler}
 
-variable (setup runtime leaks bounds horizon scheduler) in
+variable (setup timeouts leaks bounds horizon scheduler) in
 /-- **The response mass** of a joint action at a control state: the mass the
 acting player's policy, at its recall and view, gives its response; one when
 nobody acts. -/
 def responseMass (profile : ∀ player,
-      (onePacketInformation setup runtime leaks bounds horizon scheduler).BehavioralPolicy player)
-    (control : (application setup runtime leaks).Control)
-    (joint : Player → Option (application setup runtime leaks).Action) : ℝ :=
+      (onePacketInformation setup timeouts leaks bounds horizon scheduler).BehavioralPolicy player)
+    (control : (application setup timeouts leaks).Control)
+    (joint : Player → Option (application setup timeouts leaks).Action) : ℝ :=
   match control.actor with
   | some actor => (((profile actor (some (control.execution.logs actor,
-      control.execution.observe (application setup runtime leaks) actor))).map Subtype.val)
+      control.execution.observe (application setup timeouts leaks) actor))).map Subtype.val)
         (joint actor)).toReal
   | none => 1
 
 theorem responseMass_nonneg (profile : ∀ player,
-      (onePacketInformation setup runtime leaks bounds horizon scheduler).BehavioralPolicy player)
-    (control : (application setup runtime leaks).Control)
-    (joint : Player → Option (application setup runtime leaks).Action) :
-    0 ≤ responseMass setup runtime leaks bounds horizon scheduler profile control joint := by
+      (onePacketInformation setup timeouts leaks bounds horizon scheduler).BehavioralPolicy player)
+    (control : (application setup timeouts leaks).Control)
+    (joint : Player → Option (application setup timeouts leaks).Action) :
+    0 ≤ responseMass setup timeouts leaks bounds horizon scheduler profile control joint := by
   unfold responseMass
   split
   · exact ENNReal.toReal_nonneg
@@ -60,30 +64,30 @@ theorem responseMass_nonneg (profile : ∀ player,
 
 /-- **A response step has its response mass.** -/
 theorem stepProb_eq_responseMass (profile : ∀ player,
-      (onePacketInformation setup runtime leaks bounds horizon scheduler).BehavioralPolicy player)
-    {before after : (application setup runtime leaks).ProtocolState}
-    (prior : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace before)
-    (joint : Player → Option (application setup runtime leaks).Action)
-    (legal : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Legal before joint)
-    (realized : after ∈ ((onePacketProtocol setup runtime leaks bounds horizon scheduler).step
+      (onePacketInformation setup timeouts leaks bounds horizon scheduler).BehavioralPolicy player)
+    {before after : (application setup timeouts leaks).ProtocolState}
+    (prior : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace before)
+    (joint : Player → Option (application setup timeouts leaks).Action)
+    (legal : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Legal before joint)
+    (realized : after ∈ ((onePacketProtocol setup timeouts leaks bounds horizon scheduler).step
       before
-      ⟨joint, legal⟩).support) (control : (application setup runtime leaks).Control)
+      ⟨joint, legal⟩).support) (control : (application setup timeouts leaks).Control)
     (initialized : before = some control) {actor : Player} (acting : control.actor = some actor) :
-    InformationModel.stepProb (onePacketInformation setup runtime leaks bounds horizon scheduler)
+    InformationModel.stepProb (onePacketInformation setup timeouts leaks bounds horizon scheduler)
         profile prior ⟨joint, legal⟩ after =
-      responseMass setup runtime leaks bounds horizon scheduler profile control joint := by
-  rw [response_stepProb (runtime := runtime) profile prior joint legal realized control
+      responseMass setup timeouts leaks bounds horizon scheduler profile control joint := by
+  rw [response_stepProb (timeouts := timeouts) profile prior joint legal realized control
     initialized acting]
   unfold responseMass
   rw [acting]
   have general : ∀ info (_ : info = some (control.execution.logs actor,
-      control.execution.observe (application setup runtime leaks) actor))
-      (choice : (onePacketInformation setup runtime leaks bounds horizon scheduler).Choice actor
+      control.execution.observe (application setup timeouts leaks) actor))
+      (choice : (onePacketInformation setup timeouts leaks bounds horizon scheduler).Choice actor
         info),
       choice.1 = joint actor →
       (profile actor info choice).toReal =
         (((profile actor (some (control.execution.logs actor,
-          control.execution.observe (application setup runtime leaks) actor))).map Subtype.val)
+          control.execution.observe (application setup timeouts leaks) actor))).map Subtype.val)
             (joint actor)).toReal := by
     rintro info rfl choice value
     rw [← value, pmf_map_apply_of_injective _ Subtype.val_injective]
@@ -95,7 +99,7 @@ theorem stepProb_eq_responseMass (profile : ∀ player,
 
 variable {sequence : ℕ → setup.intendedModel.BehavioralAssessment}
   {profiles : ℕ → ∀ player,
-    (onePacketInformation setup runtime leaks bounds horizon scheduler).BehavioralPolicy player}
+    (onePacketInformation setup timeouts leaks bounds horizon scheduler).BehavioralPolicy player}
   {who : Player}
 
 open Classical in
@@ -103,25 +107,25 @@ open Classical in
 of positive response mass has positive operational mass, the response mass
 divided by the operational mass bounds every irregular response. -/
 def IrregularStepBound.ofResponseMass
-    (steps : OperationalSteps setup runtime leaks bounds horizon scheduler sequence profiles who)
-    (positive : ∀ n {before after : (application setup runtime leaks).ProtocolState}
-      (_ : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace before) joint
+    (steps : OperationalSteps setup timeouts leaks bounds horizon scheduler sequence profiles who)
+    (positive : ∀ n {before after : (application setup timeouts leaks).ProtocolState}
+      (_ : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace before) joint
         legal
-      (_ : after ∈ ((onePacketProtocol setup runtime leaks bounds horizon scheduler).step before
-        ⟨joint, legal⟩).support) (control next : (application setup runtime leaks).Control),
+      (_ : after ∈ ((onePacketProtocol setup timeouts leaks bounds horizon scheduler).step before
+        ⟨joint, legal⟩).support) (control next : (application setup timeouts leaks).Control),
       before = some control → after = some next →
-      ¬ RegularStep setup runtime leaks bounds horizon scheduler (sequence n) who before joint
+      ¬ RegularStep setup timeouts leaks bounds horizon scheduler (sequence n) who before joint
         after →
-      0 < responseMass setup runtime leaks bounds horizon scheduler (profiles n) control joint →
-      0 < steps.mass n (operationalState setup runtime leaks before)
-        (operationalState setup runtime leaks after)) :
-    IrregularStepBound setup runtime leaks bounds horizon scheduler steps where
+      0 < responseMass setup timeouts leaks bounds horizon scheduler (profiles n) control joint →
+      0 < steps.mass n (operationalState setup timeouts leaks before)
+        (operationalState setup timeouts leaks after)) :
+    IrregularStepBound setup timeouts leaks bounds horizon scheduler steps where
   bound n control joint next :=
-    responseMass setup runtime leaks bounds horizon scheduler (profiles n) control joint /
-      steps.mass n (operationalState setup runtime leaks (some control))
-        (operationalState setup runtime leaks (some next))
+    responseMass setup timeouts leaks bounds horizon scheduler (profiles n) control joint /
+      steps.mass n (operationalState setup timeouts leaks (some control))
+        (operationalState setup timeouts leaks (some next))
   bound_nonneg n control joint next :=
-    div_nonneg (responseMass_nonneg (runtime := runtime) _ _ _) (steps.mass_nonneg _ _ _)
+    div_nonneg (responseMass_nonneg (timeouts := timeouts) _ _ _) (steps.mass_nonneg _ _ _)
   step_le n {before after} prior joint legal realized control next
     initialized reached
       irregular := by
@@ -132,9 +136,9 @@ def IrregularStepBound.ofResponseMass
       intro actor acting
       exact (none_ ⟨actor, acting⟩).elim
     obtain ⟨actor, acting⟩ := acting
-    rw [stepProb_eq_responseMass (runtime := runtime) (profiles n) prior joint legal realized
+    rw [stepProb_eq_responseMass (timeouts := timeouts) (profiles n) prior joint legal realized
       control rfl acting]
-    rcases (responseMass_nonneg (runtime := runtime) (profiles n) control joint).lt_or_eq with
+    rcases (responseMass_nonneg (timeouts := timeouts) (profiles n) control joint).lt_or_eq with
       massPos | zero
     · have opPos := positive n prior joint legal realized control next rfl rfl irregular massPos
       rw [div_mul_cancel₀ _ opPos.ne']
@@ -148,39 +152,39 @@ component whose main, alternative and slot-tier laws give the response no
 mass, its response mass is at most the cube of the scale. -/
 theorem responseMass_le_of_slotTrembled
     (profile : ∀ player,
-      (onePacketInformation setup runtime leaks bounds horizon scheduler).BehavioralPolicy player)
-    (control : (application setup runtime leaks).Control) {actor : Player}
+      (onePacketInformation setup timeouts leaks bounds horizon scheduler).BehavioralPolicy player)
+    (control : (application setup timeouts leaks).Control) {actor : Player}
     (acting : control.actor = some actor)
-    (joint : Player → Option (application setup runtime leaks).Action) {scale : ℝ}
+    (joint : Player → Option (application setup timeouts leaks).Action) {scale : ℝ}
     (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1)
-    (main alternative slot : PMF ((onePacketInformation setup runtime leaks bounds horizon
+    (main alternative slot : PMF ((onePacketInformation setup timeouts leaks bounds horizon
       scheduler).Choice actor (some (control.execution.logs actor,
-        control.execution.observe (application setup runtime leaks) actor))))
+        control.execution.observe (application setup timeouts leaks) actor))))
     (component : profile actor (some (control.execution.logs actor,
-        control.execution.observe (application setup runtime leaks) actor)) =
-      slotTrembledChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler scale
+        control.execution.observe (application setup timeouts leaks) actor)) =
+      slotTrembledChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler scale
         nonnegative le_one actor _ main alternative slot)
-    (outside : ∀ choice : (onePacketInformation setup runtime leaks bounds horizon
+    (outside : ∀ choice : (onePacketInformation setup timeouts leaks bounds horizon
         scheduler).Choice actor (some (control.execution.logs actor,
-          control.execution.observe (application setup runtime leaks) actor)),
+          control.execution.observe (application setup timeouts leaks) actor)),
       choice.1 = joint actor → main choice = 0 ∧ alternative choice = 0 ∧ slot choice = 0) :
-    responseMass setup runtime leaks bounds horizon scheduler profile control joint ≤ scale ^ 3 :=
+    responseMass setup timeouts leaks bounds horizon scheduler profile control joint ≤ scale ^ 3 :=
       by
   unfold responseMass
   rw [acting]
   simp only
-  by_cases found : ∃ choice : (onePacketInformation setup runtime leaks bounds horizon
+  by_cases found : ∃ choice : (onePacketInformation setup timeouts leaks bounds horizon
       scheduler).Choice actor (some (control.execution.logs actor,
-        control.execution.observe (application setup runtime leaks) actor)), choice.1 = joint actor
+        control.execution.observe (application setup timeouts leaks) actor)), choice.1 = joint actor
   · obtain ⟨choice, value⟩ := found
     rw [← value, pmf_map_apply_of_injective _ Subtype.val_injective, component]
     obtain ⟨mainZero, alternativeZero, slotZero⟩ := outside choice value
-    exact slotTrembledChoice_le_of_unprescribed setup runtime leaks bounds (initialLaw setup)
+    exact slotTrembledChoice_le_of_unprescribed setup timeouts leaks bounds (initialLaw setup)
       horizon
       scheduler nonnegative le_one actor _ main alternative slot choice mainZero alternativeZero
       slotZero
   · have zero : ((profile actor (some (control.execution.logs actor,
-        control.execution.observe (application setup runtime leaks) actor))).map Subtype.val)
+        control.execution.observe (application setup timeouts leaks) actor))).map Subtype.val)
           (joint actor) = 0 := by
       rw [PMF.map_apply]
       refine ENNReal.tsum_eq_zero.mpr fun choice => ?_

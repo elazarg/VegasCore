@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Mathlib.Algebra.BigOperators.Field
-import Mathlib.Analysis.SpecificLimits.Basic
+public import Mathlib.Algebra.BigOperators.Field
+public import Mathlib.Analysis.SpecificLimits.Basic
+
+@[expose] public section
 
 /-! # Transporting a marginal through an approximate product factorization
 

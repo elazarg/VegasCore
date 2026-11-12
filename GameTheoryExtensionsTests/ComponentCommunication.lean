@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheory.Core.MatrixGame
+public import GameTheory.Core.MatrixGame
+
+@[expose] public section
 
 /-! # Communication can make a nonstrategic payoff strategic
 

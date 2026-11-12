@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveNormalRecall
-import Interaction.ReactiveImplementationContinuation
-import GameTheory.Math.Probability.ConditionalObservation
-import GameTheory.Math.Probability.ExpectationConditioning
+public import Interaction.ReactiveNormalRecall
+public import Interaction.ReactiveImplementationContinuation
+public import GameTheory.Math.Probability.ConditionalObservation
+public import GameTheory.Math.Probability.ExpectationConditioning
+
+@[expose] public section
 
 /-! # Simulating private response names inside a strategy
 

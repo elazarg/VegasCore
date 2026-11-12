@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveImplementation
+public import Interaction.ReactiveImplementation
+
+@[expose] public section
 
 /-! # Private implementation realization at a pending response
 

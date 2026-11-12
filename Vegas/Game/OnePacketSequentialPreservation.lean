@@ -1,12 +1,16 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketComponents
-import Vegas.Game.OnePacketSlotLaw
-import Vegas.Game.OnePacketExtension
-import Vegas.Game.OnePacketLawApproximation
-import GameTheoryExtensions.Analysis.Protocol.FreeKeyedPools
-import Vegas.Game.OnePacketDelivery
-import Vegas.Game.OnePacketIntendedProjection
+public import Vegas.Game.OnePacketComponents
+public import Vegas.Game.OnePacketSlotLaw
+public import Vegas.Game.OnePacketExtension
+public import Vegas.Game.OnePacketLawApproximation
+public import GameTheoryExtensions.Analysis.Protocol.FreeKeyedPools
+public import Vegas.Game.OnePacketDelivery
+public import Vegas.Game.OnePacketIntendedProjection
+
+@[expose] public section
 
 /-! # The pooled components of the one-packet certificate
 
@@ -41,11 +45,11 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
-  (runtime : EventGraphRuntime (graph setup))
+  (timeouts : EventTimeouts (graph setup))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
-  (scheduler : (application setup runtime leaks).Scheduler)
-  [(application setup runtime leaks).FiniteNature (initialLaw setup) scheduler]
+  (scheduler : (application setup timeouts leaks).Scheduler)
+  [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
   [Finite setup.intendedProtocol.History]
   {Parameter : Type} (parameter : State L setup.context → Parameter)
   (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
@@ -56,15 +60,15 @@ local notation "Initial" => initialLaw setup
 section Certificate
 
 local notation "onePacketN" =>
-  onePacketModel setup runtime leaks bounds (initialLaw setup) horizon scheduler
+  onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon scheduler
 
-variable [∀ who, DecidableEq ((onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
+variable [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
   scheduler).InfoState who)]
 
 /-- The fallback of the one-packet certificate: some choice at every information
 state. -/
 def onePacketFallback (who : Player) :
-    (onePacketModel setup runtime leaks bounds Initial horizon scheduler).Policy who :=
+    (onePacketModel setup timeouts leaks bounds Initial horizon scheduler).Policy who :=
   fun _ => Classical.arbitrary _
 
 open Classical in
@@ -73,7 +77,7 @@ def onePacketUnforced (scale : ℕ → ℝ) (scale_pos : ∀ n, 0 < scale n)
     (scale_le_one : ∀ n, scale n ≤ 1) (n : ℕ)
     (agent : (onePacketN).InformationAgent (onePacketN).playedInformation) :
     (onePacketN).Choice agent.1 agent.2.1 → PMF ((onePacketN).Choice agent.1 agent.2.1) :=
-  unforcedLaw setup runtime leaks bounds Initial horizon scheduler (scale n) (scale_pos n).le
+  unforcedLaw setup timeouts leaks bounds Initial horizon scheduler (scale n) (scale_pos n).le
     (scale_le_one n) agent
 
 open Classical in
@@ -83,7 +87,7 @@ def onePacketPrescribed (sequence : ℕ → setup.intendedModel.BehavioralAssess
     (scale : ℕ → ℝ) (scale_pos : ∀ n, 0 < scale n) (scale_le_one : ∀ n, scale n ≤ 1) (n : ℕ)
     (agent : (onePacketN).InformationAgent (onePacketN).playedInformation) :
     PMF ((onePacketN).Choice agent.1 agent.2.1) :=
-  slotPrescribedComponent setup runtime leaks bounds Initial horizon scheduler
+  slotPrescribedComponent setup timeouts leaks bounds Initial horizon scheduler
     (sequence n)
     (scale n) (scale_pos n).le (scale_le_one n) agent.1 agent.2.1
 
@@ -95,7 +99,7 @@ def onePacketLate (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     {slots : Nat} (n : ℕ)
     (agent : (onePacketN).InformationAgent (onePacketN).playedInformation)
     (option : LateOption slots) : PMF ((onePacketN).Choice agent.1 agent.2.1) :=
-  lateComponent setup runtime leaks bounds Initial horizon scheduler (sequence n)
+  lateComponent setup timeouts leaks bounds Initial horizon scheduler (sequence n)
     (scale n)
     (scale_pos n).le (scale_le_one n) agent.1 agent.2.1 option
 
@@ -116,31 +120,31 @@ theorem onePacketMixture_ge_honest_of_not_late
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (scale : ℕ → ℝ) (scale_pos : ∀ n, 0 < scale n) (scale_le_one : ∀ n, scale n ≤ 1)
     {slots : Nat} (n : ℕ)
-    (weights : ∀ p, PMF (OnePacketPart setup runtime leaks bounds (initialLaw setup)
+    (weights : ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
       horizon scheduler slots p))
-    {who : Player} {info : (application setup runtime leaks).Info}
-    (notLate : ¬ LateDelivery setup runtime leaks who info)
-    (occurs : ∃ history : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup)
+    {who : Player} {info : (application setup timeouts leaks).Info}
+    (notLate : ¬ LateDelivery setup timeouts leaks who info)
+    (occurs : ∃ history : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup)
       horizon scheduler).History, (onePacketN).infoOf who history.trace = info)
-    (forced : forcedAgent (runtime := runtime) (bounds.onePacketMenu runtime leaks) (initialLaw
+    (forced : forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks) (initialLaw
       setup) horizon
       scheduler who info)
-    (clear : info.isSome → runtime.ClearInput leaks info)
+    (clear : info.isSome → (ClearInput timeouts) leaks info)
     (choice : (onePacketN).Choice who info) :
-    slotRetention (scale n) * ((honestProfile setup runtime leaks bounds (initialLaw setup) horizon
+    slotRetention (scale n) * ((honestProfile setup timeouts leaks bounds (initialLaw setup) horizon
         scheduler (sequence n) who info) choice).toReal ≤
       (((onePacketN).agentBehavior (onePacketN).playedInformation
-        (onePacketFallback setup runtime leaks bounds horizon scheduler)
-        (fun agent => (weights (onePacketPool setup runtime leaks bounds (initialLaw setup)
+        (onePacketFallback setup timeouts leaks bounds horizon scheduler)
+        (fun agent => (weights (onePacketPool setup timeouts leaks bounds (initialLaw setup)
           horizon scheduler
           agent)).bind
           (freeKeyedComponent
-            (onePacketUnforced setup runtime leaks bounds horizon scheduler scale scale_pos
+            (onePacketUnforced setup timeouts leaks bounds horizon scheduler scale scale_pos
               scale_le_one n)
-            (onePacketPrescribed setup runtime leaks bounds horizon scheduler sequence scale
+            (onePacketPrescribed setup timeouts leaks bounds horizon scheduler sequence scale
               scale_pos
               scale_le_one n)
-            (onePacketLate setup runtime leaks bounds horizon scheduler sequence scale scale_pos
+            (onePacketLate setup timeouts leaks bounds horizon scheduler sequence scale scale_pos
               scale_le_one (slots := slots) n) agent)) who info) choice).toReal := by
   classical
   have retention_le_one := slotRetention_le_one (scale_pos n).le (scale_le_one n)
@@ -158,75 +162,79 @@ theorem onePacketMixture_ge_honest_of_not_late
   by_cases present : info ∈ (onePacketN).playedInformation who
   · let agent : (onePacketN).InformationAgent (onePacketN).playedInformation :=
       ⟨who, ⟨info, present⟩⟩
-    have notFree : ¬ FreeAgent setup runtime leaks bounds (initialLaw setup)
+    have notFree : ¬ FreeAgent setup timeouts leaks bounds (initialLaw setup)
       horizon scheduler agent :=
       fun unforced => unforced ⟨actualClear, forced⟩
-    have notKeyed : ¬ ownedKeyed (FreeAgent setup runtime leaks bounds (initialLaw setup)
+    have notKeyed : ¬ ownedKeyed (FreeAgent setup timeouts leaks bounds (initialLaw setup)
       horizon scheduler)
-        (LateDeliveryAgent setup runtime leaks bounds (initialLaw setup) horizon scheduler) agent :=
+        (LateDeliveryAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler)
+          agent :=
       fun keyed => notLate keyed.1
     obtain ⟨identify, componentEq⟩ := freeKeyedComponent_of_not_free
-      (key := agentLateKey setup runtime leaks bounds (initialLaw setup) horizon scheduler)
-      (onePacketUnforced setup runtime leaks bounds horizon scheduler scale scale_pos scale_le_one
+      (key := agentLateKey setup timeouts leaks bounds (initialLaw setup) horizon scheduler)
+      (onePacketUnforced setup timeouts leaks bounds horizon scheduler scale scale_pos scale_le_one
         n)
-      (onePacketPrescribed setup runtime leaks bounds horizon scheduler sequence scale scale_pos
+      (onePacketPrescribed setup timeouts leaks bounds horizon scheduler sequence scale scale_pos
         scale_le_one n)
-      (onePacketLate setup runtime leaks bounds horizon scheduler sequence scale scale_pos
+      (onePacketLate setup timeouts leaks bounds horizon scheduler sequence scale scale_pos
         scale_le_one (slots := slots) n) notFree
     have constant : ∀ part, freeKeyedComponent
-        (onePacketUnforced setup runtime leaks bounds horizon scheduler scale scale_pos
+        (onePacketUnforced setup timeouts leaks bounds horizon scheduler scale scale_pos
           scale_le_one n)
-        (onePacketPrescribed setup runtime leaks bounds horizon scheduler sequence scale scale_pos
+        (onePacketPrescribed setup timeouts leaks bounds horizon scheduler sequence scale scale_pos
           scale_le_one n)
-        (onePacketLate setup runtime leaks bounds horizon scheduler sequence scale scale_pos
+        (onePacketLate setup timeouts leaks bounds horizon scheduler sequence scale scale_pos
           scale_le_one (slots := slots) n) agent part =
-        onePacketPrescribed setup runtime leaks bounds horizon scheduler sequence scale scale_pos
+        onePacketPrescribed setup timeouts leaks bounds horizon scheduler sequence scale scale_pos
           scale_le_one n agent := fun part => by
       rw [componentEq]
       exact keyedComponent_of_not_keyed _ _ notKeyed _
     have atAgent := (onePacketN).agentBehavior_at (onePacketN).playedInformation
-      (onePacketFallback setup runtime leaks bounds horizon scheduler)
-      (fun agent => (weights (onePacketPool setup runtime leaks bounds (initialLaw setup)
+      (onePacketFallback setup timeouts leaks bounds horizon scheduler)
+      (fun agent => (weights (onePacketPool setup timeouts leaks bounds (initialLaw setup)
         horizon scheduler
         agent)).bind
         (freeKeyedComponent
-          (onePacketUnforced setup runtime leaks bounds horizon scheduler scale scale_pos
+          (onePacketUnforced setup timeouts leaks bounds horizon scheduler scale scale_pos
             scale_le_one n)
-          (onePacketPrescribed setup runtime leaks bounds horizon scheduler sequence scale scale_pos
+          (onePacketPrescribed setup timeouts leaks bounds horizon scheduler sequence scale
+            scale_pos
             scale_le_one n)
-          (onePacketLate setup runtime leaks bounds horizon scheduler sequence scale scale_pos
+          (onePacketLate setup timeouts leaks bounds horizon scheduler sequence scale scale_pos
             scale_le_one (slots := slots) n) agent)) agent
     change _ ≤ (((onePacketN).agentBehavior _ _ _ agent.1 agent.2.1) choice).toReal
-    have mixture : (weights (onePacketPool setup runtime leaks bounds (initialLaw setup)
+    have mixture : (weights (onePacketPool setup timeouts leaks bounds (initialLaw setup)
       horizon scheduler agent)).bind
         (freeKeyedComponent
-          (onePacketUnforced setup runtime leaks bounds horizon scheduler scale scale_pos
+          (onePacketUnforced setup timeouts leaks bounds horizon scheduler scale scale_pos
             scale_le_one n)
-          (onePacketPrescribed setup runtime leaks bounds horizon scheduler sequence scale scale_pos
+          (onePacketPrescribed setup timeouts leaks bounds horizon scheduler sequence scale
+            scale_pos
             scale_le_one n)
-          (onePacketLate setup runtime leaks bounds horizon scheduler sequence scale scale_pos
+          (onePacketLate setup timeouts leaks bounds horizon scheduler sequence scale scale_pos
             scale_le_one (slots := slots) n) agent) =
-        onePacketPrescribed setup runtime leaks bounds horizon scheduler sequence scale scale_pos
+        onePacketPrescribed setup timeouts leaks bounds horizon scheduler sequence scale scale_pos
           scale_le_one n agent := by
       rw [show freeKeyedComponent
-          (onePacketUnforced setup runtime leaks bounds horizon scheduler scale scale_pos
+          (onePacketUnforced setup timeouts leaks bounds horizon scheduler scale scale_pos
             scale_le_one n)
-          (onePacketPrescribed setup runtime leaks bounds horizon scheduler sequence scale scale_pos
+          (onePacketPrescribed setup timeouts leaks bounds horizon scheduler sequence scale
+            scale_pos
             scale_le_one n)
-          (onePacketLate setup runtime leaks bounds horizon scheduler sequence scale scale_pos
+          (onePacketLate setup timeouts leaks bounds horizon scheduler sequence scale scale_pos
             scale_le_one (slots := slots) n) agent = fun _ =>
-          onePacketPrescribed setup runtime leaks bounds horizon scheduler sequence scale scale_pos
+          onePacketPrescribed setup timeouts leaks bounds horizon scheduler sequence scale scale_pos
             scale_le_one n agent from funext constant]
       exact PMF.bind_const _ _
     rw [atAgent]
-    refine le_of_le_of_eq (slotTrembledChoice_ge_main setup runtime leaks bounds (initialLaw
+    refine le_of_le_of_eq (slotTrembledChoice_ge_main setup timeouts leaks bounds (initialLaw
       setup) horizon
       scheduler (scale_pos n).le (scale_le_one n) who info
-      (honestChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler (sequence n)
+      (honestChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler (sequence n)
         who info)
-      (PMF.pure (silenceChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler who
+      (PMF.pure (silenceChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler who
         info))
-      (slotChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler (sequence n) who
+      (slotChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler (sequence n) who
         info)
       choice) ?_
     exact congrArg (fun law => (law choice).toReal) mixture.symm
@@ -239,11 +247,11 @@ theorem onePacketMixture_ge_honest_of_not_late
           apply present
           rw [← infoEq]
           apply (onePacketN).mem_playedInformation
-          have active : (application setup runtime leaks).observe who history.state = some
+          have active : (application setup timeouts leaks).observe who history.state = some
             observed :=
-            ((bounds.onePacketMenu runtime leaks).info (initialLaw setup) horizon
+            ((bounds.onePacketMenu timeouts leaks).info (initialLaw setup) horizon
               scheduler who history.trace).symm.trans (infoEq.trans infoCase)
-          have isSome := ((application setup runtime leaks).observe_isSome who history.state).mp
+          have isSome := ((application setup timeouts leaks).observe_isSome who history.state).mp
             (by rw [active]; rfl)
           intro stopped
           revert stopped isSome
@@ -261,19 +269,19 @@ pool's weights. -/
 def OnePacketAssembled (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (scale : ℕ → ℝ) (scale_pos : ∀ n, 0 < scale n) (scale_le_one : ∀ n, scale n ≤ 1)
     {slots : Nat}
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup runtime leaks bounds (initialLaw setup)
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
       horizon scheduler slots p))
     (targetSequence : ℕ → (onePacketN).BehavioralAssessment) : Prop :=
   ∀ n, (targetSequence n).strategy = (onePacketN).agentBehavior (onePacketN).playedInformation
-    (onePacketFallback setup runtime leaks bounds horizon scheduler)
-    fun agent => (weights n (onePacketPool setup runtime leaks bounds (initialLaw setup)
+    (onePacketFallback setup timeouts leaks bounds horizon scheduler)
+    fun agent => (weights n (onePacketPool setup timeouts leaks bounds (initialLaw setup)
       horizon scheduler agent)).bind
       (freeKeyedComponent
-        (onePacketUnforced setup runtime leaks bounds horizon scheduler scale scale_pos
+        (onePacketUnforced setup timeouts leaks bounds horizon scheduler scale scale_pos
           scale_le_one n)
-        (onePacketPrescribed setup runtime leaks bounds horizon scheduler sequence scale scale_pos
+        (onePacketPrescribed setup timeouts leaks bounds horizon scheduler sequence scale scale_pos
           scale_le_one n)
-        (onePacketLate setup runtime leaks bounds horizon scheduler sequence scale scale_pos
+        (onePacketLate setup timeouts leaks bounds horizon scheduler sequence scale scale_pos
           scale_le_one (slots := slots) n) agent)
 
 open Classical in
@@ -290,11 +298,11 @@ structure OnePacketCertificateInputs (sequence : ℕ → setup.intendedModel.Beh
   scale_vanishing : Tendsto scale atTop (nhds 0)
   /-- The failure set of each agent's event. -/
   failed : (onePacketN).InformationAgent (onePacketN).playedInformation →
-    Set ((bounds.onePacketMenu runtime leaks).protocol Initial horizon
+    Set ((bounds.onePacketMenu timeouts leaks).protocol Initial horizon
       scheduler).History
   /-- Failure pays exactly the exclusion payoff. -/
   failed_pays : ∀ agent, ∀ history ∈ failed agent,
-    payoffComponent setup (readoutExclusion setup runtime leaks bounds Initial horizon
+    payoffComponent setup (readoutExclusion setup timeouts leaks bounds Initial horizon
       scheduler parameter utility excludedPayoff history) agent.1 = excludedPayoff agent.1
   /-- A bound on the gap between a continuation value and the exclusion payoff. -/
   gapBound : ℝ
@@ -305,9 +313,9 @@ structure OnePacketCertificateInputs (sequence : ℕ → setup.intendedModel.Beh
   no local law changes the agent's expected exclusion payoff. -/
   owing_noGain : ∀ (assessment : (onePacketN).BehavioralAssessment) who
       (site : (onePacketN).InformationSite who),
-    OwingAgent setup runtime leaks bounds Initial horizon scheduler ((onePacketN).agentAt
+    OwingAgent setup timeouts leaks bounds Initial horizon scheduler ((onePacketN).agentAt
       site) → ∀ law,
-      localGain (2 * horizon + 1) (readoutExclusion setup runtime leaks bounds Initial
+      localGain (2 * horizon + 1) (readoutExclusion setup timeouts leaks bounds Initial
         horizon
         scheduler parameter utility excludedPayoff) (payoffComponent setup) assessment site law = 0
   /-- **The one-dimensional decomposition of late delivery, with its value
@@ -318,63 +326,63 @@ structure OnePacketCertificateInputs (sequence : ℕ → setup.intendedModel.Beh
   times that continuation value up to the error, and each option fails,
   belief-averaged, within a vanishing drift of one minus its score at the site's
   late-delivery key. -/
-  decomposition : ∀ (weights : ℕ → ∀ p, PMF (OnePacketPart setup runtime leaks bounds Initial
+  decomposition : ∀ (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds Initial
     horizon
     scheduler
       slots p))
           (targetSequence : ℕ → (onePacketN).BehavioralAssessment),
         (∀ n, (targetSequence n).strategy = (onePacketN).agentBehavior
-            (onePacketN).playedInformation (onePacketFallback setup runtime leaks bounds horizon
+            (onePacketN).playedInformation (onePacketFallback setup timeouts leaks bounds horizon
               scheduler)
-          fun agent => (weights n (onePacketPool setup runtime leaks bounds Initial horizon
+          fun agent => (weights n (onePacketPool setup timeouts leaks bounds Initial horizon
             scheduler
             agent)).bind
-            (freeKeyedComponent ((onePacketUnforced setup runtime leaks bounds horizon scheduler
+            (freeKeyedComponent ((onePacketUnforced setup timeouts leaks bounds horizon scheduler
               scale
                 scale_pos
-            scale_le_one) n) ((onePacketPrescribed setup runtime leaks bounds horizon scheduler
+            scale_le_one) n) ((onePacketPrescribed setup timeouts leaks bounds horizon scheduler
               sequence
                 scale
-            scale_pos scale_le_one) n) ((onePacketLate setup runtime leaks bounds horizon scheduler
+            scale_pos scale_le_one) n) ((onePacketLate setup timeouts leaks bounds horizon scheduler
                 sequence scale scale_pos
             scale_le_one (slots := slots)) n) agent)) →
         (∀ n, (targetSequence n).IsFullyMixed) →
         (∀ n, BehavioralAssessment.IsBayesConsistent (onePacketN) (targetSequence n)
-          ((bounds.onePacketMenu runtime leaks).decisionRecall
+          ((bounds.onePacketMenu timeouts leaks).decisionRecall
             Initial horizon scheduler).decisionInformationAntichain) →
         ∃ (continuation : ℕ → (onePacketN).InformationAgent (onePacketN).playedInformation → ℝ)
-          (score : ℕ → Option (LateKey setup runtime leaks) → LateOption slots → ℝ) (error drift :
+          (score : ℕ → Option (LateKey setup timeouts leaks) → LateOption slots → ℝ) (error drift :
             ℕ → ℝ),
           Tendsto error atTop (nhds 0) ∧ Tendsto drift atTop (nhds 0) ∧ (∀ n, 0 ≤ drift n) ∧
           ∀ n (agent : (onePacketN).InformationAgent (onePacketN).playedInformation), ownedKeyed
-              (FreeAgent setup runtime leaks bounds Initial horizon scheduler)
-              (LateDeliveryAgent setup runtime leaks bounds Initial horizon scheduler)
+              (FreeAgent setup timeouts leaks bounds Initial horizon scheduler)
+              (LateDeliveryAgent setup timeouts leaks bounds Initial horizon scheduler)
                 agent →
-            ¬ OwingAgent setup runtime leaks bounds Initial horizon scheduler agent →
+            ¬ OwingAgent setup timeouts leaks bounds Initial horizon scheduler agent →
             ∀ decision : (onePacketN).IsDecisionInfo agent.1 agent.2.1,
             excludedPayoff agent.1 ≤ continuation n agent + error n ∧
             continuation n agent - excludedPayoff agent.1 ≤ gapBound ∧
-            (∀ option, |localSuccessValue (2 * horizon + 1) (readoutExclusion setup runtime leaks
+            (∀ option, |localSuccessValue (2 * horizon + 1) (readoutExclusion setup timeouts leaks
               bounds
                 Initial horizon
             scheduler parameter utility excludedPayoff) (payoffComponent setup) (targetSequence n)
                 (who := agent.1) ⟨agent.2.1, decision⟩ (failed agent) ((onePacketLate setup
-                  runtime leaks
+                  timeouts leaks
                     bounds horizon scheduler sequence scale scale_pos
             scale_le_one (slots := slots)) n agent option) -
               (1 - localFailure (2 * horizon + 1) (targetSequence n) (who := agent.1) ⟨agent.2.1,
                   decision⟩
-                (failed agent) ((onePacketLate setup runtime leaks bounds horizon scheduler
+                (failed agent) ((onePacketLate setup timeouts leaks bounds horizon scheduler
                   sequence scale
                     scale_pos
             scale_le_one (slots := slots)) n agent option)) * continuation n agent| ≤ error n) ∧
             ∀ option, |localFailure (2 * horizon + 1) (targetSequence n) (who := agent.1)
                 ⟨agent.2.1, decision⟩
-                (failed agent) ((onePacketLate setup runtime leaks bounds horizon scheduler
+                (failed agent) ((onePacketLate setup timeouts leaks bounds horizon scheduler
                   sequence scale
                     scale_pos
             scale_le_one (slots := slots)) n agent option) - (1 - score n (agentLateKey setup
-              runtime leaks
+              timeouts leaks
                 bounds Initial horizon scheduler agent) option)| ≤
               drift n
   /-- **The ranking of marked choices.** At every forced site of an agent
@@ -383,47 +391,47 @@ structure OnePacketCertificateInputs (sequence : ℕ → setup.intendedModel.Beh
   of one minus the score of some option, or surely; at a first activation the
   prescribed component fails at most as often up to a vanishing slack, or the
   choice fails surely. -/
-  ranking : ∀ (weights : ℕ → ∀ p, PMF (OnePacketPart setup runtime leaks bounds Initial
+  ranking : ∀ (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds Initial
     horizon scheduler
     slots p))
           (targetSequence : ℕ → (onePacketN).BehavioralAssessment),
         (∀ n, (targetSequence n).strategy = (onePacketN).agentBehavior
-            (onePacketN).playedInformation (onePacketFallback setup runtime leaks bounds horizon
+            (onePacketN).playedInformation (onePacketFallback setup timeouts leaks bounds horizon
               scheduler)
-          fun agent => (weights n (onePacketPool setup runtime leaks bounds Initial horizon
+          fun agent => (weights n (onePacketPool setup timeouts leaks bounds Initial horizon
             scheduler
             agent)).bind
-            (freeKeyedComponent ((onePacketUnforced setup runtime leaks bounds horizon scheduler
+            (freeKeyedComponent ((onePacketUnforced setup timeouts leaks bounds horizon scheduler
               scale
                 scale_pos
-            scale_le_one) n) ((onePacketPrescribed setup runtime leaks bounds horizon scheduler
+            scale_le_one) n) ((onePacketPrescribed setup timeouts leaks bounds horizon scheduler
               sequence
                 scale
-            scale_pos scale_le_one) n) ((onePacketLate setup runtime leaks bounds horizon scheduler
+            scale_pos scale_le_one) n) ((onePacketLate setup timeouts leaks bounds horizon scheduler
                 sequence scale scale_pos
             scale_le_one (slots := slots)) n) agent)) →
         (∀ n, (targetSequence n).IsFullyMixed) →
         (∀ n, BehavioralAssessment.IsBayesConsistent (onePacketN) (targetSequence n)
-          ((bounds.onePacketMenu runtime leaks).decisionRecall
+          ((bounds.onePacketMenu timeouts leaks).decisionRecall
             Initial horizon scheduler).decisionInformationAntichain) →
         ∃ (continuation : ℕ → (onePacketN).InformationAgent (onePacketN).playedInformation → ℝ)
-          (score : ℕ → Option (LateKey setup runtime leaks) → LateOption slots → ℝ) (error drift
+          (score : ℕ → Option (LateKey setup timeouts leaks) → LateOption slots → ℝ) (error drift
             slack : ℕ
               → ℝ),
           Tendsto error atTop (nhds 0) ∧ Tendsto drift atTop (nhds 0) ∧
           Tendsto slack atTop (nhds 0) ∧ (∀ n, 0 ≤ drift n) ∧ (∀ n, 0 ≤ slack n) ∧
           ∀ n who (site : (onePacketN).InformationSite who) (choice : (onePacketN).Choice who
               site.1),
-            ¬ FreeAgent setup runtime leaks bounds Initial horizon scheduler
+            ¬ FreeAgent setup timeouts leaks bounds Initial horizon scheduler
               ((onePacketN).agentAt site) →
-              ¬ OwingAgent setup runtime leaks bounds Initial horizon scheduler
+              ¬ OwingAgent setup timeouts leaks bounds Initial horizon scheduler
                 ((onePacketN).agentAt
                 site) →
                 compared who site choice →
             ((excludedPayoff who ≤ continuation n ((onePacketN).agentAt site) + error n ∧
                 continuation n ((onePacketN).agentAt site) - excludedPayoff who ≤ gapBound) ∨
               failed ((onePacketN).agentAt site) = ∅) ∧
-            |localSuccessValue (2 * horizon + 1) (readoutExclusion setup runtime leaks bounds
+            |localSuccessValue (2 * horizon + 1) (readoutExclusion setup timeouts leaks bounds
               (initialLaw
                 setup) horizon
             scheduler parameter utility excludedPayoff) (payoffComponent setup) (targetSequence n)
@@ -432,60 +440,60 @@ structure OnePacketCertificateInputs (sequence : ℕ → setup.intendedModel.Beh
               (1 - localFailure (2 * horizon + 1) (targetSequence n) site
                 (failed ((onePacketN).agentAt site)) (PMF.pure choice)) *
                 continuation n ((onePacketN).agentAt site)| ≤ error n ∧
-            (ownedKeyed (FreeAgent setup runtime leaks bounds Initial horizon scheduler)
-              (LateDeliveryAgent setup runtime leaks bounds Initial horizon scheduler)
+            (ownedKeyed (FreeAgent setup timeouts leaks bounds Initial horizon scheduler)
+              (LateDeliveryAgent setup timeouts leaks bounds Initial horizon scheduler)
                   ((onePacketN).agentAt site) →
-              (∀ option, |localSuccessValue (2 * horizon + 1) (readoutExclusion setup runtime
+              (∀ option, |localSuccessValue (2 * horizon + 1) (readoutExclusion setup timeouts
                 leaks bounds
                   Initial horizon
             scheduler parameter utility excludedPayoff) (payoffComponent setup) (targetSequence n)
                 site
-                  (failed ((onePacketN).agentAt site)) ((onePacketLate setup runtime leaks bounds
+                  (failed ((onePacketN).agentAt site)) ((onePacketLate setup timeouts leaks bounds
                     horizon
                       scheduler sequence scale scale_pos
             scale_le_one (slots := slots)) n ((onePacketN).agentAt site) option) -
                 (1 - localFailure (2 * horizon + 1) (targetSequence n) site (failed
                     ((onePacketN).agentAt site))
-                  ((onePacketLate setup runtime leaks bounds horizon scheduler sequence scale
+                  ((onePacketLate setup timeouts leaks bounds horizon scheduler sequence scale
                     scale_pos
             scale_le_one (slots := slots)) n ((onePacketN).agentAt site) option)) * continuation n
                 ((onePacketN).agentAt site)| ≤
                 error n) ∧
               (∀ option, |localFailure (2 * horizon + 1) (targetSequence n) site (failed
                   ((onePacketN).agentAt site))
-                  ((onePacketLate setup runtime leaks bounds horizon scheduler sequence scale
+                  ((onePacketLate setup timeouts leaks bounds horizon scheduler sequence scale
                     scale_pos
             scale_le_one (slots := slots)) n ((onePacketN).agentAt site) option) -
-                (1 - score n (agentLateKey setup runtime leaks bounds Initial horizon
+                (1 - score n (agentLateKey setup timeouts leaks bounds Initial horizon
                   scheduler
               ((onePacketN).agentAt site)) option)| ≤ drift n) ∧
               ((∃ option, |localFailure (2 * horizon + 1) (targetSequence n) site (failed
                   ((onePacketN).agentAt site))
-                  (PMF.pure choice) - (1 - score n (agentLateKey setup runtime leaks bounds
+                  (PMF.pure choice) - (1 - score n (agentLateKey setup timeouts leaks bounds
                     (initialLaw
                       setup) horizon scheduler
               ((onePacketN).agentAt site)) option)| ≤ drift n) ∨
                 localFailure (2 * horizon + 1) (targetSequence n) site
                   (failed ((onePacketN).agentAt site)) (PMF.pure choice) = 1)) ∧
-            (¬ ownedKeyed (FreeAgent setup runtime leaks bounds Initial horizon scheduler)
-              (LateDeliveryAgent setup runtime leaks bounds Initial horizon scheduler)
+            (¬ ownedKeyed (FreeAgent setup timeouts leaks bounds Initial horizon scheduler)
+              (LateDeliveryAgent setup timeouts leaks bounds Initial horizon scheduler)
                   ((onePacketN).agentAt site) →
-              |localSuccessValue (2 * horizon + 1) (readoutExclusion setup runtime leaks bounds
+              |localSuccessValue (2 * horizon + 1) (readoutExclusion setup timeouts leaks bounds
                 (initialLaw
                   setup) horizon
             scheduler parameter utility excludedPayoff) (payoffComponent setup) (targetSequence n)
                 site
                 (failed ((onePacketN).agentAt site))
-                  ((onePacketPrescribed setup runtime leaks bounds horizon scheduler sequence scale
+                  ((onePacketPrescribed setup timeouts leaks bounds horizon scheduler sequence scale
             scale_pos scale_le_one) n ((onePacketN).agentAt site)) -
                 (1 - localFailure (2 * horizon + 1) (targetSequence n) site (failed
                     ((onePacketN).agentAt site))
-                  ((onePacketPrescribed setup runtime leaks bounds horizon scheduler sequence scale
+                  ((onePacketPrescribed setup timeouts leaks bounds horizon scheduler sequence scale
             scale_pos scale_le_one) n ((onePacketN).agentAt site))) * continuation n
                 ((onePacketN).agentAt site)| ≤ error n ∧
               (localFailure (2 * horizon + 1) (targetSequence n) site (failed ((onePacketN).agentAt
                   site))
-                  ((onePacketPrescribed setup runtime leaks bounds horizon scheduler sequence scale
+                  ((onePacketPrescribed setup timeouts leaks bounds horizon scheduler sequence scale
             scale_pos scale_le_one) n ((onePacketN).agentAt site)) ≤
                 localFailure (2 * horizon + 1) (targetSequence n) site
                   (failed ((onePacketN).agentAt site)) (PMF.pure choice) + slack n ∨
@@ -495,51 +503,51 @@ structure OnePacketCertificateInputs (sequence : ℕ → setup.intendedModel.Beh
   site of an agent owing no failure meets one of the three local comparisons of
   a pooled limit certificate on its own: values outside the intended menu, bad
   bindings, charged packets. -/
-  otherComparisons : ∀ (weights : ℕ → ∀ p, PMF (OnePacketPart setup runtime leaks bounds
+  otherComparisons : ∀ (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds
     Initial horizon
     scheduler
       slots p))
           (targetSequence : ℕ → (onePacketN).BehavioralAssessment),
         (∀ n, (targetSequence n).strategy = (onePacketN).agentBehavior
-            (onePacketN).playedInformation (onePacketFallback setup runtime leaks bounds horizon
+            (onePacketN).playedInformation (onePacketFallback setup timeouts leaks bounds horizon
               scheduler)
-          fun agent => (weights n (onePacketPool setup runtime leaks bounds Initial horizon
+          fun agent => (weights n (onePacketPool setup timeouts leaks bounds Initial horizon
             scheduler
             agent)).bind
-            (freeKeyedComponent ((onePacketUnforced setup runtime leaks bounds horizon scheduler
+            (freeKeyedComponent ((onePacketUnforced setup timeouts leaks bounds horizon scheduler
               scale
                 scale_pos
-            scale_le_one) n) ((onePacketPrescribed setup runtime leaks bounds horizon scheduler
+            scale_le_one) n) ((onePacketPrescribed setup timeouts leaks bounds horizon scheduler
               sequence
                 scale
-            scale_pos scale_le_one) n) ((onePacketLate setup runtime leaks bounds horizon scheduler
+            scale_pos scale_le_one) n) ((onePacketLate setup timeouts leaks bounds horizon scheduler
                 sequence scale scale_pos
             scale_le_one (slots := slots)) n) agent)) →
         (∀ n, (targetSequence n).IsFullyMixed) →
         (∀ n, BehavioralAssessment.IsBayesConsistent (onePacketN) (targetSequence n)
-          ((bounds.onePacketMenu runtime leaks).decisionRecall
+          ((bounds.onePacketMenu timeouts leaks).decisionRecall
             Initial horizon scheduler).decisionInformationAntichain) →
-        (∀ n (alternative : ∀ p, PMF (OnePacketPart setup runtime leaks bounds Initial
+        (∀ n (alternative : ∀ p, PMF (OnePacketPart setup timeouts leaks bounds Initial
           horizon scheduler
           slots p))
             p,
-          ∑ agent ∈ Finset.univ.filter (fun agent => onePacketPool setup runtime leaks bounds
+          ∑ agent ∈ Finset.univ.filter (fun agent => onePacketPool setup timeouts leaks bounds
             Initial horizon scheduler agent = p),
             (if decision : (onePacketN).IsDecisionInfo agent.1 agent.2.1 then
               let comparison := (onePacketN).assessmentComparisonWith ((onePacketN).truncatedRunner
                   (2 * horizon + 1))
-                (readoutExclusion setup runtime leaks bounds Initial horizon
+                (readoutExclusion setup timeouts leaks bounds Initial horizon
             scheduler parameter utility excludedPayoff) (targetSequence n) agent.1
                 (⟨agent.2.1, decision⟩, ((targetSequence n).strategy agent.1).withLaw agent.2.1
-                  ((alternative (onePacketPool setup runtime leaks bounds Initial horizon scheduler
+                  ((alternative (onePacketPool setup timeouts leaks bounds Initial horizon scheduler
                     agent)).bind
-                    (freeKeyedComponent ((onePacketUnforced setup runtime leaks bounds horizon
+                    (freeKeyedComponent ((onePacketUnforced setup timeouts leaks bounds horizon
                       scheduler
                         scale scale_pos
-            scale_le_one) n) ((onePacketPrescribed setup runtime leaks bounds horizon scheduler
+            scale_le_one) n) ((onePacketPrescribed setup timeouts leaks bounds horizon scheduler
               sequence
                 scale
-            scale_pos scale_le_one) n) ((onePacketLate setup runtime leaks bounds horizon scheduler
+            scale_pos scale_le_one) n) ((onePacketLate setup timeouts leaks bounds horizon scheduler
                 sequence scale scale_pos
             scale_le_one (slots := slots)) n) agent)))
               expect comparison.alternative ((payoffComponent setup) · agent.1) -
@@ -547,31 +555,31 @@ structure OnePacketCertificateInputs (sequence : ℕ → setup.intendedModel.Beh
             else 0) ≤ 0) →
         ∃ otherError : ℕ → ℝ, Tendsto otherError atTop (nhds 0) ∧
           ∀ n who (site : (onePacketN).InformationSite who), (onePacketN).agentAt site ∉
-              Finset.univ.filter (FreeAgent setup runtime leaks bounds Initial horizon scheduler) →
-            ¬ OwingAgent setup runtime leaks bounds Initial horizon scheduler
+              Finset.univ.filter (FreeAgent setup timeouts leaks bounds Initial horizon scheduler) →
+            ¬ OwingAgent setup timeouts leaks bounds Initial horizon scheduler
               ((onePacketN).agentAt site) →
             ∀ choice : (onePacketN).Choice who site.1, ¬ compared who site choice →
             let gain := fun law : PMF ((onePacketN).Choice who site.1) =>
               let comparison := (onePacketN).assessmentComparisonWith ((onePacketN).truncatedRunner
-                  (2 * horizon + 1)) (readoutExclusion setup runtime leaks bounds (initialLaw
+                  (2 * horizon + 1)) (readoutExclusion setup timeouts leaks bounds (initialLaw
                     setup) horizon
             scheduler parameter utility excludedPayoff) (targetSequence n)
                 who (site, ((targetSequence n).strategy who).withLaw site.1 law)
               expect comparison.alternative ((payoffComponent setup) · who) -
                 expect comparison.prescribed ((payoffComponent setup) · who)
             gain (PMF.pure choice) ≤ otherError n ∨
-              (∃ alternative : PMF (OnePacketPart setup runtime leaks bounds Initial horizon
+              (∃ alternative : PMF (OnePacketPart setup timeouts leaks bounds Initial horizon
                 scheduler slots
-                  (onePacketPool setup runtime leaks bounds Initial horizon scheduler
+                  (onePacketPool setup timeouts leaks bounds Initial horizon scheduler
                     ((onePacketN).agentAt site))),
                 gain (PMF.pure choice) ≤
-                  gain (alternative.bind (freeKeyedComponent ((onePacketUnforced setup runtime
+                  gain (alternative.bind (freeKeyedComponent ((onePacketUnforced setup timeouts
                     leaks bounds
                       horizon scheduler scale scale_pos
-            scale_le_one) n) ((onePacketPrescribed setup runtime leaks bounds horizon scheduler
+            scale_le_one) n) ((onePacketPrescribed setup timeouts leaks bounds horizon scheduler
               sequence
                 scale
-            scale_pos scale_le_one) n) ((onePacketLate setup runtime leaks bounds horizon scheduler
+            scale_pos scale_le_one) n) ((onePacketLate setup timeouts leaks bounds horizon scheduler
                 sequence scale scale_pos
             scale_le_one (slots := slots)) n)
                     ((onePacketN).agentAt site))) + otherError n) ∨
@@ -589,47 +597,47 @@ structure OnePacketCertificateInputs (sequence : ℕ → setup.intendedModel.Beh
   /-- **The law approximation.** The one-packet law of typed readout and
   exclusion payoff approaches the perturbed intended law, as the law
   approximation for slot-trembled components provides. -/
-  lawApproximation : ∀ (weights : ℕ → ∀ p, PMF (OnePacketPart setup runtime leaks bounds
+  lawApproximation : ∀ (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds
     Initial horizon
     scheduler
       slots p)) (targetSequence : ℕ →
       (onePacketN).BehavioralAssessment),
       (∀ n, (targetSequence n).strategy = (onePacketN).agentBehavior (onePacketN).playedInformation
-          (onePacketFallback setup runtime leaks bounds horizon scheduler)
-        fun agent => (weights n (onePacketPool setup runtime leaks bounds Initial horizon scheduler
+          (onePacketFallback setup timeouts leaks bounds horizon scheduler)
+        fun agent => (weights n (onePacketPool setup timeouts leaks bounds Initial horizon scheduler
           agent)).bind
-            (freeKeyedComponent (onePacketUnforced setup runtime leaks bounds horizon scheduler
+            (freeKeyedComponent (onePacketUnforced setup timeouts leaks bounds horizon scheduler
               scale
             scale_pos
-          scale_le_one n) (onePacketPrescribed setup runtime leaks bounds horizon scheduler
+          scale_le_one n) (onePacketPrescribed setup timeouts leaks bounds horizon scheduler
             sequence scale
-          scale_pos scale_le_one n) (onePacketLate setup runtime leaks bounds horizon scheduler
+          scale_pos scale_le_one n) (onePacketLate setup timeouts leaks bounds horizon scheduler
             sequence
           scale scale_pos scale_le_one (slots := slots) n) agent)) →
       (∀ n, (targetSequence n).IsFullyMixed) →
       (∀ n, BehavioralAssessment.IsBayesConsistent (onePacketN) (targetSequence n)
-        ((bounds.onePacketMenu runtime leaks).decisionRecall
+        ((bounds.onePacketMenu timeouts leaks).decisionRecall
           Initial horizon scheduler).decisionInformationAntichain) →
-      (∀ n (alternative : ∀ p, PMF (OnePacketPart setup runtime leaks bounds Initial horizon
+      (∀ n (alternative : ∀ p, PMF (OnePacketPart setup timeouts leaks bounds Initial horizon
         scheduler
         slots p)) p,
-        ∑ agent ∈ Finset.univ.filter (fun agent => onePacketPool setup runtime leaks bounds
+        ∑ agent ∈ Finset.univ.filter (fun agent => onePacketPool setup timeouts leaks bounds
           Initial horizon
             scheduler agent = p),
           (if decision : (onePacketN).IsDecisionInfo agent.1 agent.2.1 then
             let comparison := (onePacketN).assessmentComparisonWith ((onePacketN).truncatedRunner
                 (2 * horizon + 1))
-              (readoutExclusion setup runtime leaks bounds Initial horizon
+              (readoutExclusion setup timeouts leaks bounds Initial horizon
           scheduler parameter utility excludedPayoff) (targetSequence n) agent.1
               (⟨agent.2.1, decision⟩, ((targetSequence n).strategy agent.1).withLaw agent.2.1
-                ((alternative (onePacketPool setup runtime leaks bounds Initial horizon scheduler
+                ((alternative (onePacketPool setup timeouts leaks bounds Initial horizon scheduler
                   agent)).bind
-                    (freeKeyedComponent (onePacketUnforced setup runtime leaks bounds horizon
+                    (freeKeyedComponent (onePacketUnforced setup timeouts leaks bounds horizon
                       scheduler
                     scale scale_pos
-          scale_le_one n) (onePacketPrescribed setup runtime leaks bounds horizon scheduler
+          scale_le_one n) (onePacketPrescribed setup timeouts leaks bounds horizon scheduler
             sequence scale
-          scale_pos scale_le_one n) (onePacketLate setup runtime leaks bounds horizon scheduler
+          scale_pos scale_le_one n) (onePacketLate setup timeouts leaks bounds horizon scheduler
             sequence
           scale scale_pos scale_le_one (slots := slots) n) agent)))
             expect comparison.alternative ((payoffComponent setup) · agent.1) -
@@ -638,7 +646,7 @@ structure OnePacketCertificateInputs (sequence : ℕ → setup.intendedModel.Beh
       ∃ lawError : ℕ → ℝ, Tendsto lawError atTop (nhds 0) ∧
         ∀ n outcome,
           |((((onePacketN).runBehavioral (targetSequence n).strategy (2 * horizon + 1)).map
-              (readoutExclusion setup runtime leaks bounds Initial horizon
+              (readoutExclusion setup timeouts leaks bounds Initial horizon
           scheduler parameter utility excludedPayoff))
               outcome).toReal -
             (((setup.intendedModel.runBehavioral (sequence n).strategy (instructionCount

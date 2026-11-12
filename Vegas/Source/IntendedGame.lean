@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Source.GuardPrediction
-import Vegas.Source.SetupProtocol
-import GameTheoryExtensions.Protocol.MenuRestriction
+public import Vegas.Source.GuardPrediction
+public import Vegas.Source.SetupProtocol
+public import GameTheoryExtensions.Protocol.MenuRestriction
+
+@[expose] public section
 
 /-! # The intended game
 

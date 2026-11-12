@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketReplayWeight
+public import Vegas.Game.OnePacketReplayWeight
+
+@[expose] public section
 
 /-! # Matching the initial draw of the intended replay
 
@@ -25,7 +29,7 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
 
 /-- The decoded point of the native initial state of a setup draw is the entry
 point of that draw. -/
@@ -75,26 +79,26 @@ theorem initialMass_eq (initial : State L setup.context) :
 
 variable [Fintype Player]
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {horizon : Nat} {scheduler : (application setup runtime leaks).Scheduler}
+  {horizon : Nat} {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- **The initial draw matches** at every realized native initial
 transition. -/
 theorem replayStepMatches_start (assessment : setup.intendedModel.BehavioralAssessment)
-    (who : Player) (joint : Player → Option (application setup runtime leaks).Action)
-    {after : (application setup runtime leaks).ProtocolState}
-    (realized : after ∈ ((application setup runtime leaks).transition (initialLaw setup) horizon
+    (who : Player) (joint : Player → Option (application setup timeouts leaks).Action)
+    {after : (application setup timeouts leaks).ProtocolState}
+    (realized : after ∈ ((application setup timeouts leaks).transition (initialLaw setup) horizon
       scheduler
       none joint).support) :
-    ReplayStepMatches setup runtime leaks assessment who setup.intendedProtocol.initHistory 1 none
+    ReplayStepMatches setup timeouts leaks assessment who setup.intendedProtocol.initHistory 1 none
       joint
       after := by
   change after ∈ ((initialLaw setup).map fun state => some
-    (⟨horizon, none, ReactiveApplication.Execution.initial (application setup runtime leaks)
+    (⟨horizon, none, ReactiveApplication.Execution.initial (application setup timeouts leaks)
       state⟩ :
-      (application setup runtime leaks).Control)).support at realized
+      (application setup timeouts leaks).Control)).support at realized
   obtain ⟨state, supported, rfl⟩ := PMF.support_map .. ▸ realized
   obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ supported
-  exact replayStepMatches_initial (runtime := runtime) assessment who _ joint (initialMass_eq
+  exact replayStepMatches_initial (timeouts := timeouts) assessment who _ joint (initialMass_eq
     initial)
 
 end Vegas

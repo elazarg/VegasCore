@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveEvaluation
+public import Interaction.ReactiveEvaluation
+
+@[expose] public section
 
 /-! # Canonical in-flight reactions and authenticated network recall
 
@@ -15,7 +19,7 @@ namespace InteractionTests.ReactiveProtocol
 
 open Interaction GameTheory.Protocol GameTheory.Math.Probability
 
-private abbrev app : ReactiveApplication Bool where
+abbrev app : ReactiveApplication Bool where
   State := Unit
   Payload := Nat
   Submission := Nat
@@ -30,29 +34,29 @@ private abbrev app : ReactiveApplication Bool where
   observePublic _ := ()
   observePending _ pending := PMF.pure (pending.map Message.id).toFinset
 
-private def send (value : Nat) : app.Action := ⟨some value⟩
+def send (value : Nat) : app.Action := ⟨some value⟩
 
-private def players : Bool → app.Policy := fun who _ view =>
+def players : Bool → app.Policy := fun who _ view =>
   PMF.pure (send (if who then
     (view.messages.leaked.head?.map Message.payload).getD 0 + 1 else 7))
 
-private def scheduler : app.Scheduler := fun history view =>
+def scheduler : app.Scheduler := fun history view =>
   PMF.pure (match history.length with
     | 0 => .activate false
     | 1 => .activate true
     | _ => if view.network.inputs.any (fun input =>
         input.sender && input.payload == 8) then .activate false else .wait)
 
-private def e0 : app.Execution := .initial app ()
-private def e1 : app.Execution := { e0 with environmentRecall :=
+def e0 : app.Execution := .initial app ()
+def e1 : app.Execution := { e0 with environmentRecall :=
   [⟨e0.observeEnvironment app, .activate false⟩] }
-private def e2 : app.Execution := e1.respond app false (send 7)
-private def e3 : app.Execution := { e2 with
+def e2 : app.Execution := e1.respond app false (send 7)
+def e3 : app.Execution := { e2 with
   network := e2.network.learn true {(false, 0)}
   environmentRecall := e2.environmentRecall ++ [⟨e2.observeEnvironment app, .activate true⟩] }
-private def e4 : app.Execution := e3.respond app true (send 8)
+def e4 : app.Execution := e3.respond app true (send 8)
 
-private def kernel : app.ProtocolState → PMF app.ProtocolState :=
+def kernel : app.ProtocolState → PMF app.ProtocolState :=
   app.controlStep (PMF.pure ()) 3 scheduler players
 
 private theorem setup_step : kernel none = PMF.pure (some ⟨3, none, e0⟩) := by

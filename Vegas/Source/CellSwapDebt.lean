@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Source.DebtObservation
+public import Vegas.Source.DebtObservation
+
+@[expose] public section
 
 /-! # Owing a failure after a cell swap
 
@@ -97,7 +101,7 @@ theorem base_eq_of_sameCells : {Γ : SourceCtx Player L} → {O : Finset VarId} 
               rw [inner]
 
 omit [IExpr.ResultTypes L] in
-private theorem config_indebted_iff_of_state {who : Player} {Γ : SourceCtx Player L}
+theorem config_indebted_iff_of_state {who : Player} {Γ : SourceCtx Player L}
     {unresolved : Finset VarId} {registry : Registry Γ} {revelations : Revelations Γ}
     {left right : Config Player L Γ}
     (leftStatic : left.registry = registry ∧ @left.revelations = @revelations)
@@ -111,7 +115,7 @@ private theorem config_indebted_iff_of_state {who : Player} {Γ : SourceCtx Play
       (rightStatic.2.trans leftStatic.2.symm) observed.symm⟩
 
 omit [DecidableEq Player] [IExpr.ResultTypes L] in
-private theorem config_failedBinding_iff_of_state {who : Player} {Γ : SourceCtx Player L}
+theorem config_failedBinding_iff_of_state {who : Player} {Γ : SourceCtx Player L}
     {unresolved : Finset VarId} {left right : Config Player L Γ}
     (same : left.state = right.state) :
     left.FailedBinding who unresolved ↔ right.FailedBinding who unresolved := by
@@ -323,7 +327,7 @@ section Swap
 variable [DecidableEq (CellTy Player L)]
 
 omit [DecidableEq Player] [IExpr.ResultTypes L] in
-private theorem config_state_swap {Γ : SourceCtx Player L} (swap : CellSwap Player L)
+theorem config_state_swap {Γ : SourceCtx Player L} (swap : CellSwap Player L)
     (distinct : (Γ.map Prod.fst).Nodup) (first second : Config Player L Γ)
     (sends : ∀ name kind value other, State.cell? first.state name kind = some value →
       State.cell? second.state name kind = some other → swap.cell name kind value = other) :

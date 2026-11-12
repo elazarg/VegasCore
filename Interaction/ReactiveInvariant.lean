@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveProtocol
-import Interaction.ReactiveEnvironmentStep
+public import Interaction.ReactiveProtocol
+public import Interaction.ReactiveEnvironmentStep
+
+@[expose] public section
 
 /-! # Application invariants at every canonical reactive history
 

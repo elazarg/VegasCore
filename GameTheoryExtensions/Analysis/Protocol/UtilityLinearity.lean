@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheory.Analysis.Protocol.Sequential
-import GameTheory.Math.Probability.ExpectationAlgebra
+public import GameTheory.Analysis.Protocol.Sequential
+public import GameTheory.Math.Probability.ExpectationAlgebra
+
+@[expose] public section
 
 /-! # Linear utility closure for one sequential assessment
 

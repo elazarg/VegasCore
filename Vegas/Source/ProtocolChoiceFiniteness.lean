@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Source.SetupProtocolBehavioral
+public import Vegas.Source.SetupProtocolBehavioral
+
+@[expose] public section
 
 /-! # Finite source choices at arbitrary decision views
 

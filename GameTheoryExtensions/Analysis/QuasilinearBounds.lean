@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Mathlib.Basic.Real.Basic
-import Mathlib.Tactic.Linarith
+public import Mathlib.Basic.Real.Basic
+public import Mathlib.Tactic.Linarith
+
+@[expose] public section
 
 /-! # Bounds for quasi-linear payoffs with an optional terminal outcome
 

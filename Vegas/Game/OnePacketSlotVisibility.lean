@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketSlotTrembles
+public import Vegas.Game.OnePacketSlotTrembles
+
+@[expose] public section
 
 /-! # What the slot tier shows, and what it hides
 
@@ -28,23 +32,23 @@ open GameTheory GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
-  (runtime : EventGraphRuntime (graph setup))
+  (timeouts : EventTimeouts (graph setup))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
 
 /-- The local envelope of a commitment of `who` for `event` at a prepared
 slot: no evidence and the event's readiness token from the view. -/
-def slotEnvelope (who : Player) (past : List (application setup runtime leaks).PlayerEntry)
-    (view : (application setup runtime leaks).PlayerView) (event : (graph setup).EventId)
+def slotEnvelope (who : Player) (past : List (application setup timeouts leaks).PlayerEntry)
+    (view : (application setup timeouts leaks).PlayerView) (event : (graph setup).EventId)
     (slot : Nat) : Message Player (WitnessedPacket (graph setup)) :=
-  ⟨(who, (application setup runtime leaks).submissionCount past),
+  ⟨(who, (application setup timeouts leaks).submissionCount past),
     ⟨.commitment event (who, .prepared slot), none,
       view.application.publicView.tokenFor (.commitment event (who, .prepared slot))⟩⟩
 
 /-- At a binding, the slot tier is silent on omission and otherwise sends the
 normalized commitment at the slot. -/
-theorem slotResponse_of_bind (who : Player) (past : List (application setup runtime
+theorem slotResponse_of_bind (who : Player) (past : List (application setup timeouts
   leaks).PlayerEntry)
-    (view : (application setup runtime leaks).PlayerView) (event : (graph setup).EventId)
+    (view : (application setup timeouts leaks).PlayerView) (event : (graph setup).EventId)
     {owner : Player} {payload : L.Ty}
     {outputEq : (graph setup).outputLayout event = .binding owner payload}
     {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
@@ -52,11 +56,11 @@ theorem slotResponse_of_bind (who : Player) (past : List (application setup runt
     (node : nodeView (graph setup) event = .bind owner payload outputEq codeEq) (slot : Nat)
     (choice : Option (OwnAction Player L)) (action : (graph setup).Action event)
     (encoded : choice.bind (encodeEventAction? setup.program event) = some action) :
-    slotResponse setup runtime leaks who past view event slot choice =
+    slotResponse setup timeouts leaks who past view event slot choice =
       match cast (congrArg EventGraph.EventField.Action outputEq) action with
       | none => ⟨none⟩
-      | some result => (runtime.reactiveNormalization leaks).action who past view
-          (runtime.reactiveBinding leaks who event payload result slot) := by
+      | some result => ((reactiveNormalization timeouts) leaks).action who past view
+          ((reactiveBinding timeouts) leaks who event payload result slot) := by
   unfold slotResponse
   rw [encoded]
   simp only [node]
@@ -66,8 +70,8 @@ theorem slotResponse_of_bind (who : Player) (past : List (application setup runt
 binding, committed at a slot, transmits a packet whose local envelope is the
 slot's envelope. -/
 theorem slotResponse_transmission (who : Player)
-    (past : List (application setup runtime leaks).PlayerEntry)
-    (view : (application setup runtime leaks).PlayerView) (event : (graph setup).EventId)
+    (past : List (application setup timeouts leaks).PlayerEntry)
+    (view : (application setup timeouts leaks).PlayerView) (event : (graph setup).EventId)
     {owner : Player} {payload : L.Ty}
     {outputEq : (graph setup).outputLayout event = .binding owner payload}
     {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
@@ -76,11 +80,11 @@ theorem slotResponse_transmission (who : Player)
     (choice : Option (OwnAction Player L)) (action : (graph setup).Action event)
     (encoded : choice.bind (encodeEventAction? setup.program event) = some action)
     (present : (cast (congrArg EventGraph.EventField.Action outputEq) action).isSome = true) :
-    ∃ material, (slotResponse setup runtime leaks who past view event slot choice).transmission =
+    ∃ material, (slotResponse setup timeouts leaks who past view event slot choice).transmission =
         some material ∧
-      runtime.localEnvelope leaks who past view material =
-        slotEnvelope setup runtime leaks who past view event slot := by
-  rw [slotResponse_of_bind setup runtime leaks who past view event node slot choice action encoded]
+      (localEnvelope timeouts) leaks who past view material =
+        slotEnvelope setup timeouts leaks who past view event slot := by
+  rw [slotResponse_of_bind setup timeouts leaks who past view event node slot choice action encoded]
   cases result : cast (congrArg EventGraph.EventField.Action outputEq) action with
   | none => simp [result] at present
   | some value => exact ⟨_, rfl, rfl⟩
@@ -103,8 +107,8 @@ committed at a slot within the candidate capacity lies in the one-packet menu
 exactly when the count verdict permits the slot's envelope against the
 player's earlier packets. -/
 theorem slotResponse_mem_onePacket_iff (who : Player)
-    (past : List (application setup runtime leaks).PlayerEntry)
-    (view : (application setup runtime leaks).PlayerView) (event : (graph setup).EventId)
+    (past : List (application setup timeouts leaks).PlayerEntry)
+    (view : (application setup timeouts leaks).PlayerView) (event : (graph setup).EventId)
     {owner : Player} {payload : L.Ty}
     {outputEq : (graph setup).outputLayout event = .binding owner payload}
     {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
@@ -112,14 +116,14 @@ theorem slotResponse_mem_onePacket_iff (who : Player)
     (node : nodeView (graph setup) event = .bind owner payload outputEq codeEq) (slot : Nat)
     (capacity : slot < bounds.candidateCount) (choice : Option (OwnAction Player L))
     (covered : CoveredBinding setup bounds event choice) :
-    slotResponse setup runtime leaks who past view event slot choice ∈
-        bounds.onePacketActions runtime leaks who past view ↔
-      countPermits ((application setup runtime leaks).outputs past)
-        (slotEnvelope setup runtime leaks who past view event slot) = true := by
+    slotResponse setup timeouts leaks who past view event slot choice ∈
+        bounds.onePacketActions timeouts leaks who past view ↔
+      countPermits ((application setup timeouts leaks).outputs past)
+        (slotEnvelope setup timeouts leaks who past view event slot) = true := by
   obtain ⟨action, encoded, values⟩ := covered
   obtain ⟨value, successful, included⟩ := values owner payload outputEq codeEq node
   obtain ⟨material, transmits, envelope⟩ :=
-    slotResponse_transmission setup runtime leaks who past view event node slot choice action
+    slotResponse_transmission setup timeouts leaks who past view event node slot choice action
       encoded (by rw [successful]; rfl)
   rw [bounds.mem_onePacketActions]
   constructor
@@ -131,22 +135,22 @@ theorem slotResponse_mem_onePacket_iff (who : Player)
       rwa [envelope] at permitted
   · intro permitted
     refine ⟨?_, Or.inr ⟨material, transmits, by rwa [envelope]⟩⟩
-    rw [slotResponse_of_bind setup runtime leaks who past view event node slot choice action
+    rw [slotResponse_of_bind setup timeouts leaks who past view event node slot choice action
       encoded, successful]
-    apply bounds.binding_normalized_available runtime leaks who past view event payload
+    apply bounds.binding_normalized_available timeouts leaks who past view event payload
       _ slot capacity
     intro chosen same
     cases same
     exact included
 
-variable (initial : PMF (application setup runtime leaks).State) (horizon : Nat)
-  (scheduler : (application setup runtime leaks).Scheduler)
+variable (initial : PMF (application setup timeouts leaks).State) (horizon : Nat)
+  (scheduler : (application setup timeouts leaks).Scheduler)
 
 omit [Fintype Player] in
 /-- **Distinct slots or values give distinct responses** at fresh slots. -/
 theorem slotResponse_injective (who : Player)
-    (past : List (application setup runtime leaks).PlayerEntry)
-    (view : (application setup runtime leaks).PlayerView) (event : (graph setup).EventId)
+    (past : List (application setup timeouts leaks).PlayerEntry)
+    (view : (application setup timeouts leaks).PlayerView) (event : (graph setup).EventId)
     {owner : Player} {payload : L.Ty}
     {outputEq : (graph setup).outputLayout event = .binding owner payload}
     {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
@@ -157,22 +161,22 @@ theorem slotResponse_injective (who : Player)
     (first second : Option (OwnAction Player L))
     (firstCovered : CoveredBinding setup bounds event first)
     (secondCovered : CoveredBinding setup bounds event second)
-    (same : slotResponse setup runtime leaks who past view event slot first =
-      slotResponse setup runtime leaks who past view event other second) :
+    (same : slotResponse setup timeouts leaks who past view event slot first =
+      slotResponse setup timeouts leaks who past view event other second) :
     slot = other ∧ first.bind (encodeEventAction? setup.program event) =
       second.bind (encodeEventAction? setup.program event) := by
   obtain ⟨firstAction, firstEncoded, firstValues⟩ := firstCovered
   obtain ⟨secondAction, secondEncoded, secondValues⟩ := secondCovered
   obtain ⟨firstValue, firstSuccess, _⟩ := firstValues owner payload outputEq codeEq node
   obtain ⟨secondValue, secondSuccess, _⟩ := secondValues owner payload outputEq codeEq node
-  rw [slotResponse_of_bind setup runtime leaks who past view event node slot first firstAction
+  rw [slotResponse_of_bind setup timeouts leaks who past view event node slot first firstAction
       firstEncoded,
-    slotResponse_of_bind setup runtime leaks who past view event node other second secondAction
+    slotResponse_of_bind setup timeouts leaks who past view event node other second secondAction
       secondEncoded, firstSuccess, secondSuccess] at same
   simp only at same
-  rw [runtime.reactiveBinding_normal_of_fresh leaks who past view event payload _ slot
+  rw [(reactiveBinding_normal_of_fresh timeouts) leaks who past view event payload _ slot
       slotFresh,
-    runtime.reactiveBinding_normal_of_fresh leaks who past view event payload _ other
+    (reactiveBinding_normal_of_fresh timeouts) leaks who past view event payload _ other
       otherFresh] at same
   have transmission := congrArg ReactiveApplication.Action.transmission same
   simp only [EventGraphRuntime.reactiveBinding, Option.some.injEq] at transmission

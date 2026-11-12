@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Compile.EventGraphInputs
-import Vegas.EventGraph.Sequential
-import Vegas.Pending.ReactiveRuntime
-import Vegas.Pending.EventPublicState
-import Vegas.Source.ProtocolTermination
+public import Vegas.Compile.EventGraphInputs
+public import Vegas.EventGraph.Sequential
+public import Vegas.Pending.ReactiveRuntime
+public import Vegas.Pending.EventPublicState
+public import Vegas.Source.ProtocolTermination
+
+@[expose] public section
 
 /-! # Compiled source service configurations
 
@@ -61,28 +65,28 @@ theorem serviceGraph_revealRelaxedOrdered (setup : Setup (Player := Player) (L :
     (mode : EventGraph.ExecutionMode) : (serviceGraph setup mode).RevealRelaxedOrdered :=
   setup.eventGraph.withMode_revealRelaxedOrdered (toEventGraph_barrierOrdered setup.program) mode
 
-/-- The default roster deadline: an event may stay ready for its index plus one
+/-- The default roster timeout: an event may stay ready for its index plus one
 clock ticks. -/
-abbrev rankDeadline (setup : Setup (Player := Player) (L := L))
+abbrev rankDuration (setup : Setup (Player := Player) (L := L))
     (mode : EventGraph.ExecutionMode) (event : (serviceGraph setup mode).EventId) : Nat :=
   event.val + 1
 
-/-- The service runtime of a dependency mode with a configured deadline duration
-per event. The runtime counts each duration from the clock at which the event
-became ready (`EventGraphRuntime.State.WithinDeadline`). -/
-abbrev serviceRuntime (setup : Setup (Player := Player) (L := L))
+/-- Timeout durations for the service graph of a dependency mode. Each duration
+is counted from the clock at which the event became ready
+(`EventGraphRuntime.State.WithinDeadline`). -/
+abbrev serviceTimeouts (setup : Setup (Player := Player) (L := L))
     (mode : EventGraph.ExecutionMode)
-    (deadline : (serviceGraph setup mode).EventId → Nat) :
-    EventGraphRuntime (serviceGraph setup mode) where
-  deadline := deadline
+    (duration : (serviceGraph setup mode).EventId → Nat) :
+    EventTimeouts (serviceGraph setup mode) where
+  duration := duration
 
-@[simp] theorem serviceRuntime_deadline (setup : Setup (Player := Player) (L := L))
-    (mode : EventGraph.ExecutionMode) (deadline : (serviceGraph setup mode).EventId → Nat) :
-    (serviceRuntime setup mode deadline).deadline = deadline := rfl
+@[simp] theorem serviceTimeouts_duration (setup : Setup (Player := Player) (L := L))
+    (mode : EventGraph.ExecutionMode) (duration : (serviceGraph setup mode).EventId → Nat) :
+    (serviceTimeouts setup mode duration).duration = duration := rfl
 
-/-- The default service runtime: the sequential graph with `rankDeadline`. -/
-abbrev runtime (setup : Setup (Player := Player) (L := L)) : EventGraphRuntime (graph setup) :=
-  serviceRuntime setup .sequential (rankDeadline setup .sequential)
+/-- The default service timeout durations: the sequential graph with `rankDuration`. -/
+abbrev timeouts (setup : Setup (Player := Player) (L := L)) : EventTimeouts (graph setup) :=
+  serviceTimeouts setup .sequential (rankDuration setup .sequential)
 
 /-- In the sequentialized graph a ready event is the only ready event, so each
 player either has it as its turn or is idle. -/
@@ -118,12 +122,12 @@ theorem ownTurn?_of_ready (setup : Setup (Player := Player) (L := L))
 section Configured
 
 variable (setup : Setup (Player := Player) (L := L)) (mode : EventGraph.ExecutionMode)
-  (deadline : (serviceGraph setup mode).EventId → Nat)
+  (duration : (serviceGraph setup mode).EventId → Nat)
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
 
-/-- The reactive application of the service runtime of a dependency mode and a
-deadline configuration, under an observation rule for pending packets. -/
-abbrev serviceApplication := (serviceRuntime setup mode deadline).reactiveApplication leaks
+/-- The reactive application of a service graph and its timeout durations,
+under an observation rule for pending packets. -/
+abbrev serviceApplication := (reactiveApplication (serviceTimeouts setup mode duration)) leaks
 
 /-- The prior over initial values, compiled to initial states of the service
 graph of a dependency mode. -/
@@ -140,10 +144,10 @@ end Configured
 
 variable (setup : Setup (Player := Player) (L := L))
 
-/-- The sequential compiled application with its supplied runtime. -/
-abbrev application (runtime : EventGraphRuntime (graph setup))
+/-- The sequential compiled application with its supplied timeout durations. -/
+abbrev application (timeouts : EventTimeouts (graph setup))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))) :=
-  runtime.reactiveApplication leaks
+  (reactiveApplication timeouts) leaks
 
 /-- The initial law of the default sequential graph. -/
 abbrev initialLaw : PMF (EventGraphRuntime.State (graph setup)) :=

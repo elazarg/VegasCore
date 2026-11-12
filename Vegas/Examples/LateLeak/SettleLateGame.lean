@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Examples.LateLeak.Game
+public import Vegas.Examples.LateLeak.Game
+
+@[expose] public section
 
 /-! # The late-turn game under a settle-late builder
 

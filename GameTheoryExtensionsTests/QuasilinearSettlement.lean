@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheoryExtensions.Analysis.QuasilinearSettlement
-import GameTheory.Math.Probability.FiniteUniform
+public import GameTheoryExtensions.Analysis.QuasilinearSettlement
+public import GameTheory.Math.Probability.FiniteUniform
+
+@[expose] public section
 
 open GameTheory.Math.Probability
 
@@ -19,32 +23,32 @@ namespace GameTheoryExtensionsTests.QuasilinearSettlement
 
 open GameTheory GameTheory.Enforcement.TerminalAudit
 
-private def coin : PMF Bool := uniformLaw Bool
+def coin : PMF Bool := uniformLaw Bool
 
-private def chargeCoin (outcome : Bool) : PMF Bool :=
+def chargeCoin (outcome : Bool) : PMF Bool :=
   if outcome then coin else PMF.pure false
 
-private def audit (outcome : Bool) : PMF (Bool → Bool) :=
+def audit (outcome : Bool) : PMF (Bool → Bool) :=
   (chargeCoin outcome).map fun charged _ => charged
 
-private def transfer (outcome who : Bool) : ℝ :=
+def transfer (outcome who : Bool) : ℝ :=
   if outcome then (if who then 11 else 5) else (if who then 7 else 3)
 
-private def deposit (who : Bool) : ℝ := if who then 4 else 2
+def deposit (who : Bool) : ℝ := if who then 4 else 2
 
-private def valuation (outcome who : Bool) : ℝ :=
+def valuation (outcome who : Bool) : ℝ :=
   (if outcome then 20 else 10) + if who then 1 else 0
 
-private def cashObservation (outcome charged : Bool) : Bool × (Bool → ℝ) :=
+def cashObservation (outcome charged : Bool) : Bool × (Bool → ℝ) :=
   (outcome, fun who =>
     if outcome && !charged then (if who then 11 else 5) else (if who then 7 else 3))
 
-private def utilityObservation (outcome charged : Bool) : Bool × (Bool → ℝ) :=
+def utilityObservation (outcome charged : Bool) : Bool × (Bool → ℝ) :=
   (outcome, fun who => if outcome then
     (if charged then (if who then 28 else 23) else (if who then 32 else 25))
     else (if who then 18 else 13))
 
-private def scenarioLaw (readout : Bool → Bool → Bool × (Bool → ℝ)) :
+def scenarioLaw (readout : Bool → Bool → Bool × (Bool → ℝ)) :
     PMF (Bool × (Bool → ℝ)) :=
   coin.bind fun outcome => (chargeCoin outcome).map (readout outcome)
 

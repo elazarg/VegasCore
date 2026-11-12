@@ -1,12 +1,16 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheory.Math.Probability.Bounds
-import GameTheory.Math.Probability.Domination
-import GameTheory.Math.Probability.ExpectationAlgebra
-import GameTheory.Math.Probability.ExpectationBind
-import GameTheory.Math.Probability.ExpectationMap
-import GameTheory.Math.Probability.ExpectationMixture
-import GameTheory.Math.Probability.Support
+public import GameTheory.Math.Probability.Bounds
+public import GameTheory.Math.Probability.Domination
+public import GameTheory.Math.Probability.ExpectationAlgebra
+public import GameTheory.Math.Probability.ExpectationBind
+public import GameTheory.Math.Probability.ExpectationMap
+public import GameTheory.Math.Probability.ExpectationMixture
+public import GameTheory.Math.Probability.Support
+
+@[expose] public section
 
 /-! # Expectations of composed laws -/
 

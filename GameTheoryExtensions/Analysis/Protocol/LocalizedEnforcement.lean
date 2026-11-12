@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheoryExtensions.Analysis.Protocol.PassageRestrictionExtension
-import GameTheoryExtensions.Math.Probability.Expectation
+public import GameTheoryExtensions.Analysis.Protocol.PassageRestrictionExtension
+public import GameTheoryExtensions.Math.Probability.Expectation
+
+@[expose] public section
 
 /-! # Enforcement by clean continuation comparators
 

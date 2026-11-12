@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RevealService
-import Vegas.Pending.ReactiveServiceAudit
-import Interaction.ReactiveAuditCollection
+public import Vegas.Game.RevealService
+public import Vegas.Pending.ReactiveServiceAudit
+public import Interaction.ReactiveAuditCollection
+
+@[expose] public section
 
 /-! # Protocol audits of compiled source executions
 
@@ -36,11 +40,11 @@ authenticated separately; its verdict denotes an actually collected charge
 under the declared inclusion and escrow service contract. -/
 def serviceSourceAudit
     (setup : Setup (Player := Player) (L := L)) (mode : EventGraph.ExecutionMode)
-    (deadline : (serviceGraph setup mode).EventId → Nat)
+    (duration : (serviceGraph setup mode).EventId → Nat)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
     (sample : List (SettledEvidence setup mode) → PMF (List (SettledEvidence setup mode))) :=
-  (serviceRuntime setup mode deadline).serviceAudit leaks fun record =>
-    (serviceApplication setup mode deadline leaks).sampledTrafficAudit
+  (serviceAudit (serviceTimeouts setup mode duration)) leaks fun record =>
+    (serviceApplication setup mode duration leaks).sampledTrafficAudit
       (fun traffic => (record, traffic.envelope))
       (fun evidence => evidence.2.sender) (fun evidence => evidence.1.permits evidence.2) sample
 

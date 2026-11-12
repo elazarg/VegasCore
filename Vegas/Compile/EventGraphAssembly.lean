@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Compile.EventGraphCompiler
-import Vegas.EventGraph.BarrierInformation
-import Vegas.Source.Setup
+public import Vegas.Compile.EventGraphCompiler
+public import Vegas.EventGraph.BarrierInformation
+public import Vegas.Source.Setup
+
+@[expose] public section
 
 /-! # Assembly of source-ranked event graphs
 

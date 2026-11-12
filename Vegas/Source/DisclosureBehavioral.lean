@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Source.Setup
-import Vegas.Source.DisclosureAliases
-import Vegas.Source.ProtocolBehavioralPolicy
-import GameTheory.Math.Probability.Support
+public import Vegas.Source.Setup
+public import Vegas.Source.DisclosureAliases
+public import Vegas.Source.ProtocolBehavioralPolicy
+public import GameTheory.Math.Probability.Support
+
+@[expose] public section
 
 /-! # Normalizing ineffective disclosure intentions
 

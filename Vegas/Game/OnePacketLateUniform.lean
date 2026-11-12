@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketBaseAssembly
-import Vegas.Game.OnePacketSwapDecorrelationLimit
+public import Vegas.Game.OnePacketBaseAssembly
+public import Vegas.Game.OnePacketSwapDecorrelationLimit
+
+@[expose] public section
 
 /-! # Uniform decorrelation at late deliveries
 
@@ -25,20 +29,20 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
-  (runtime : EventGraphRuntime (graph setup))
+  (timeouts : EventTimeouts (graph setup))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
-  (scheduler : (application setup runtime leaks).Scheduler)
-  [(application setup runtime leaks).FiniteNature (initialLaw setup) scheduler]
+  (scheduler : (application setup timeouts leaks).Scheduler)
+  [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
   [Finite setup.intendedProtocol.History]
-  [∀ who, DecidableEq ((onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
+  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
     scheduler).InfoState who)]
 
 local notation "onePacketN" =>
-  onePacketModel setup runtime leaks bounds (initialLaw setup) horizon scheduler
+  onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon scheduler
 
 omit [Finite setup.intendedProtocol.History]
-  [∀ who, DecidableEq ((onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
+  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
     scheduler).InfoState who)] in
 open Filter in
 /-- **Uniform decorrelation.** If at every site satisfying a condition the
@@ -50,24 +54,24 @@ theorem exists_uniform_decorrelation
     (perSite : ∀ who (site : (onePacketN).InformationSite who), condition who site →
       ∃ error : ℕ → ℝ, Tendsto error atTop (nhds 0) ∧ ∀ n,
         BeliefDecorrelated ((targetSequence n).belief who site)
-          (fun history => operationalRecord setup runtime leaks bounds horizon scheduler
+          (fun history => operationalRecord setup timeouts leaks bounds horizon scheduler
             history.1.trace)
-          (fun history => nativeDecodedState setup runtime leaks history.1.state) (error n)) :
+          (fun history => nativeDecodedState setup timeouts leaks history.1.state) (error n)) :
     ∃ error : ℕ → ℝ, Tendsto error atTop (nhds 0) ∧
       ∀ n who (site : (onePacketN).InformationSite who), condition who site →
         BeliefDecorrelated ((targetSequence n).belief who site)
-          (fun history => operationalRecord setup runtime leaks bounds horizon scheduler
+          (fun history => operationalRecord setup timeouts leaks bounds horizon scheduler
             history.1.trace)
-          (fun history => nativeDecodedState setup runtime leaks history.1.state) (error n) :=
-  exists_uniform_of_sites setup runtime leaks bounds horizon scheduler
+          (fun history => nativeDecodedState setup timeouts leaks history.1.state) (error n) :=
+  exists_uniform_of_sites setup timeouts leaks bounds horizon scheduler
     (fun n who site error => BeliefDecorrelated ((targetSequence n).belief who site)
-      (fun history => operationalRecord setup runtime leaks bounds horizon scheduler
+      (fun history => operationalRecord setup timeouts leaks bounds horizon scheduler
         history.1.trace)
-      (fun history => nativeDecodedState setup runtime leaks history.1.state) error)
+      (fun history => nativeDecodedState setup timeouts leaks history.1.state) error)
     (fun _ _ _ _ _ le decorrelated => decorrelated.mono le) condition perSite
 
-variable {setup runtime leaks bounds horizon scheduler} in
-omit [∀ who, DecidableEq ((onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
+variable {setup timeouts leaks bounds horizon scheduler} in
+omit [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
     scheduler).InfoState who)] in
 open Classical in
 /-- **Vanishing decorrelation at a forced own-turn site.** At a forced site of
@@ -81,30 +85,30 @@ theorem OnePacketBeliefInputs.tendsto_decorrelated (wellFormed : setup.WellForme
     {targetSequence : ℕ → (onePacketN).BehavioralAssessment}
     (mixed : ∀ n, (targetSequence n).IsFullyMixed)
     (bayes : ∀ n, BehavioralAssessment.IsBayesConsistent (onePacketN) (targetSequence n)
-      ((bounds.onePacketMenu runtime leaks).decisionRecall
+      ((bounds.onePacketMenu timeouts leaks).decisionRecall
         (initialLaw setup) horizon scheduler).decisionInformationAntichain)
     {who : Player} {site : (onePacketN).InformationSite who}
     {sourceSite : setup.intendedModel.InformationSite who}
-    {past : List (application setup runtime leaks).PlayerEntry}
-    {view : (application setup runtime leaks).PlayerView}
+    {past : List (application setup timeouts leaks).PlayerEntry}
+    {view : (application setup timeouts leaks).PlayerView}
     (decision : site.1 = some (past, view))
-    (projected : sourceSite.1 = projectView setup runtime leaks who site.1)
-    (forced : forcedAgent (runtime := runtime) (bounds.onePacketMenu runtime leaks) (initialLaw
+    (projected : sourceSite.1 = projectView setup timeouts leaks who site.1)
+    (forced : forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks) (initialLaw
       setup) horizon
       scheduler who site.1)
     {event : (graph setup).EventId} (turn : view.application.publicView.ownTurn? who = some event)
     (covered : BindingFieldsCovered bounds)
-    (inputs : OnePacketBeliefInputs setup runtime leaks bounds horizon scheduler sequence
+    (inputs : OnePacketBeliefInputs setup timeouts leaks bounds horizon scheduler sequence
       targetSequence
       site sourceSite decision projected) :
     ∃ error : ℕ → ℝ, Tendsto error atTop (nhds 0) ∧ ∀ n,
       BeliefDecorrelated ((targetSequence n).belief who site)
-        (fun history => operationalRecord setup runtime leaks bounds horizon scheduler
+        (fun history => operationalRecord setup timeouts leaks bounds horizon scheduler
           history.1.trace)
-        (fun history => nativeDecodedState setup runtime leaks history.1.state) (error n) := by
+        (fun history => nativeDecodedState setup timeouts leaks history.1.state) (error n) := by
   let := Fintype.ofFinite (setup.intendedModel.InformationHistory who sourceSite.1)
-  exact tendsto_beliefDecorrelated (runtime := runtime) wellFormed decision projected
-    (fun n => ForcedBeliefInputs.ofRegularHistories (runtime := runtime) (n := n) wellFormed
+  exact tendsto_beliefDecorrelated (timeouts := timeouts) wellFormed decision projected
+    (fun n => ForcedBeliefInputs.ofRegularHistories (timeouts := timeouts) (n := n) wellFormed
       forced decision turn
       projected (sourceMixed n) (inputs.ownIntended n) (inputs.fiberMass n) (inputs.fiber n)
       (inputs.counterpart n) (inputs.commonWeight n)
@@ -123,55 +127,55 @@ operational records and the decoded points at every late delivery of an agent
 that is neither free nor owing. -/
 theorem OnePacketBaseInputs.lateDecorrelated
     {sequence : ℕ → setup.intendedModel.BehavioralAssessment} {slots : Nat}
-    (inputs : OnePacketBaseInputs setup runtime leaks bounds horizon scheduler sequence slots)
+    (inputs : OnePacketBaseInputs setup timeouts leaks bounds horizon scheduler sequence slots)
     (wellFormed : setup.WellFormed) (sourceMixed : ∀ n, (sequence n).IsFullyMixed)
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup runtime leaks bounds (initialLaw setup)
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
       horizon scheduler slots p))
     (targetSequence : ℕ → (onePacketN).BehavioralAssessment)
-    (assembled : OnePacketAssembled setup runtime leaks bounds horizon scheduler sequence
+    (assembled : OnePacketAssembled setup timeouts leaks bounds horizon scheduler sequence
       inputs.scale
       inputs.scale_pos inputs.scale_le_one weights
         targetSequence)
     (mixed : ∀ n, (targetSequence n).IsFullyMixed)
     (bayes : ∀ n, BehavioralAssessment.IsBayesConsistent (onePacketN) (targetSequence n)
-      ((bounds.onePacketMenu runtime leaks).decisionRecall
+      ((bounds.onePacketMenu timeouts leaks).decisionRecall
         (initialLaw setup) horizon scheduler).decisionInformationAntichain) :
     ∃ decorrelation : ℕ → ℝ, Tendsto decorrelation atTop (nhds 0) ∧
       ∀ n who (site : (onePacketN).InformationSite who),
-        ¬ FreeAgent setup runtime leaks bounds (initialLaw setup) horizon scheduler
+        ¬ FreeAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler
         ((onePacketN).agentAt site) →
-        ¬ OwingAgent setup runtime leaks bounds (initialLaw setup) horizon scheduler
+        ¬ OwingAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler
         ((onePacketN).agentAt site) →
-        ownedKeyed (FreeAgent setup runtime leaks bounds (initialLaw setup) horizon scheduler)
-          (LateDeliveryAgent setup runtime leaks bounds (initialLaw setup) horizon scheduler)
+        ownedKeyed (FreeAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler)
+          (LateDeliveryAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler)
           ((onePacketN).agentAt site) →
         BeliefDecorrelated ((targetSequence n).belief who site)
-          (fun history => operationalRecord setup runtime leaks bounds horizon scheduler
+          (fun history => operationalRecord setup timeouts leaks bounds horizon scheduler
             history.1.trace)
-          (fun history => nativeDecodedState setup runtime leaks history.1.state) (decorrelation
+          (fun history => nativeDecodedState setup timeouts leaks history.1.state) (decorrelation
             n) := by
-  obtain ⟨decorrelation, limit, holds⟩ := exists_uniform_decorrelation setup runtime leaks bounds
+  obtain ⟨decorrelation, limit, holds⟩ := exists_uniform_decorrelation setup timeouts leaks bounds
     horizon scheduler targetSequence
-    (fun who site => ¬ FreeAgent setup runtime leaks bounds (initialLaw setup) horizon scheduler
+    (fun who site => ¬ FreeAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler
       ((onePacketN).agentAt site) ∧
-      ¬ OwingAgent setup runtime leaks bounds (initialLaw setup) horizon scheduler
+      ¬ OwingAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler
         ((onePacketN).agentAt site) ∧
-      ownedKeyed (FreeAgent setup runtime leaks bounds (initialLaw setup) horizon scheduler)
-        (LateDeliveryAgent setup runtime leaks bounds (initialLaw setup) horizon scheduler)
+      ownedKeyed (FreeAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler)
+        (LateDeliveryAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler)
         ((onePacketN).agentAt site))
     (fun who site ⟨notFree, notOwing, keyed⟩ => by
-      obtain ⟨input, atSite, event, turn⟩ := lateDelivery_input setup runtime leaks keyed.1
-      have forced := forcedAgent_of_not_free setup runtime leaks bounds (initialLaw setup)
+      obtain ⟨input, atSite, event, turn⟩ := lateDelivery_input setup timeouts leaks keyed.1
+      have forced := forcedAgent_of_not_free setup timeouts leaks bounds (initialLaw setup)
         horizon scheduler notFree
-      have debtFree := siteDebtFree_of_not_owing setup runtime leaks bounds horizon scheduler
+      have debtFree := siteDebtFree_of_not_owing setup timeouts leaks bounds horizon scheduler
         notOwing
-      have decision := projectedDecision_of_forcedAgent (runtime := runtime) wellFormed forced
+      have decision := projectedDecision_of_forcedAgent (timeouts := timeouts) wellFormed forced
         atSite turn debtFree
-      exact OnePacketBeliefInputs.tendsto_decorrelated (runtime := runtime) wellFormed sourceMixed
+      exact OnePacketBeliefInputs.tendsto_decorrelated (timeouts := timeouts) wellFormed sourceMixed
         mixed bayes atSite
         rfl forced turn (bindingFieldsCovered_of_covers inputs.covers
           inputs.coversInputs)
-        (inputs.beliefInputs setup runtime leaks bounds horizon scheduler weights targetSequence
+        (inputs.beliefInputs setup timeouts leaks bounds horizon scheduler weights targetSequence
           assembled mixed bayes who site notFree notOwing atSite turn decision))
   exact ⟨decorrelation, limit, fun n who site notFree notOwing keyed =>
     holds n who site ⟨notFree, notOwing, keyed⟩⟩

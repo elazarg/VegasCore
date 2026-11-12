@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.PublicFailureEvidence
-import Interaction.ReactiveHistory
+public import Vegas.Pending.PublicFailureEvidence
+public import Interaction.ReactiveHistory
+
+@[expose] public section
 
 /-! # Native failure persistence and receipt provenance -/
 
@@ -13,7 +17,7 @@ open Interaction GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
   GameTheory.Math.Probability
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
-  {graph : Vegas.EventGraph Player L} (runtime : EventGraphRuntime graph)
+  {graph : Vegas.EventGraph Player L} (timeouts : EventTimeouts graph)
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
 
 /-- Completing a different ready event preserves every previous public failure. -/
@@ -24,37 +28,38 @@ theorem State.PublicFailure.of_completionStep {before after : State graph}
 
 /-- No application operation can erase public failure evidence. -/
 theorem reactiveApplication_publicFailure_monotone :
-    (runtime.reactiveApplication leaks).StepRelation
+    ((reactiveApplication timeouts) leaks).StepRelation
       (fun before after => ∀ event, before.PublicFailure event → after.PublicFailure event) where
   refl := fun _ _ failed => failed
   submit := fun state who submission _event failed => failed.of_completionPath
-    ((reactiveApplication_completionPath runtime leaks).submit state who submission)
+    ((reactiveApplication_completionPath timeouts leaks).submit state who submission)
   handle := fun state message next accepted _event failed => failed.of_completionPath
-    ((reactiveApplication_completionPath runtime leaks).handle state message next accepted)
+    ((reactiveApplication_completionPath timeouts leaks).handle state message next accepted)
   environment := fun state command next reached _event failed => failed.of_completionPath
-    ((reactiveApplication_completionPath runtime leaks).environment state command next reached)
+    ((reactiveApplication_completionPath timeouts leaks).environment state command next reached)
 
 /-- Every application operation preserves prior public default membership. -/
 theorem reactiveApplication_defaulted_monotone :
-    (runtime.reactiveApplication leaks).StepRelation
+    ((reactiveApplication timeouts) leaks).StepRelation
       (fun before after => before.config.defaulted ⊆ after.config.defaulted) where
   refl := fun _ => Finset.Subset.refl _
   submit := fun state who submission => CompletionStep.defaulted_mono_path
-    ((reactiveApplication_completionPath runtime leaks).submit state who submission)
+    ((reactiveApplication_completionPath timeouts leaks).submit state who submission)
   handle := fun state message next accepted => CompletionStep.defaulted_mono_path
-    ((reactiveApplication_completionPath runtime leaks).handle state message next accepted)
+    ((reactiveApplication_completionPath timeouts leaks).handle state message next accepted)
   environment := fun state command next reached => CompletionStep.defaulted_mono_path
-    ((reactiveApplication_completionPath runtime leaks).environment state command next reached)
+    ((reactiveApplication_completionPath timeouts leaks).environment state command next reached)
 
 /-- Accepted handles retain completed-event provenance along every initialized history. -/
 theorem native_receiptsComplete_history (initial : PMF (State graph))
     (initialized : ∀ native ∈ initial.support, ∃ inputs, native = State.initial inputs)
-    (horizon : Nat) (scheduler : (runtime.reactiveApplication leaks).Scheduler)
-    {state : (runtime.reactiveApplication leaks).ProtocolState}
-    (trace : ((runtime.reactiveApplication leaks).protocol initial horizon scheduler).Trace state) :
+    (horizon : Nat) (scheduler : ((reactiveApplication timeouts) leaks).Scheduler)
+    {state : ((reactiveApplication timeouts) leaks).ProtocolState}
+    (trace : (((reactiveApplication timeouts) leaks).protocol initial horizon scheduler).Trace
+      state) :
     ReactiveApplication.stateInvariant State.ReceiptsComplete state := by
-  let step := reactiveApplication_completionPath runtime leaks
-  have preserved : (runtime.reactiveApplication leaks).Invariant State.ReceiptsComplete :=
+  let step := reactiveApplication_completionPath timeouts leaks
+  have preserved : ((reactiveApplication timeouts) leaks).Invariant State.ReceiptsComplete :=
     { submit := fun state who submission valid => valid.path (step.submit state who submission)
       handle := fun state message next valid accepted =>
         valid.path (step.handle state message next accepted)
@@ -68,10 +73,10 @@ theorem native_receiptsComplete_history (initial : PMF (State graph))
 /-- If a native transition ends without defaults, its predecessor also has none.
 No initialization or receipt assumption is needed for this monotonicity fact. -/
 theorem native_clear_before_transition (initial : PMF (State graph))
-    (horizon : Nat) (scheduler : (runtime.reactiveApplication leaks).Scheduler)
-    {before after : (runtime.reactiveApplication leaks).ProtocolState}
-    (joint : Player → Option (runtime.reactiveApplication leaks).Action)
-    (realized : after ∈ ((runtime.reactiveApplication leaks).transition initial horizon scheduler
+    (horizon : Nat) (scheduler : ((reactiveApplication timeouts) leaks).Scheduler)
+    {before after : ((reactiveApplication timeouts) leaks).ProtocolState}
+    (joint : Player → Option ((reactiveApplication timeouts) leaks).Action)
+    (realized : after ∈ (((reactiveApplication timeouts) leaks).transition initial horizon scheduler
       before joint).support)
     (clear : ∀ current, after = some current →
       current.execution.application.config.defaulted = ∅) :
@@ -82,9 +87,9 @@ theorem native_clear_before_transition (initial : PMF (State graph))
     intro found same
     cases Option.some.inj same
     obtain ⟨next, nextEq, _recall⟩ :=
-      (runtime.reactiveApplication leaks).transition_recall_prefix initial horizon scheduler
+      ((reactiveApplication timeouts) leaks).transition_recall_prefix initial horizon scheduler
         current after joint realized
-    have persists := (reactiveApplication_defaulted_monotone runtime leaks).transition initial
+    have persists := (reactiveApplication_defaulted_monotone timeouts leaks).transition initial
       horizon scheduler current next joint (nextEq ▸ realized)
     apply Finset.eq_empty_iff_forall_notMem.mpr
     intro who member

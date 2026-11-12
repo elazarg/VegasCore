@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketSwapFiberSum
-import Vegas.Game.OnePacketOwnerSwap
-import Vegas.Pending.ReactiveBoundedValues
+public import Vegas.Game.OnePacketSwapFiberSum
+public import Vegas.Game.OnePacketOwnerSwap
+public import Vegas.Pending.ReactiveBoundedValues
+
+@[expose] public section
 
 /-! # The owner swap keeps the message bounds
 
@@ -31,7 +35,7 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol Intera
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
 
 omit [IExpr.ResultTypes L] in
 /-- A typed initial value makes openable only a value of a binding field. -/
@@ -52,7 +56,7 @@ private theorem openable_of_candidateOfValue (owner : Player)
 variable {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
 variable {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup runtime leaks).Scheduler}
+  {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- Every initial state of the supplied runtime has its openable candidates
 within the bounds when the bounds cover the initial binding inputs. -/
@@ -120,28 +124,28 @@ variable (leaks bounds) in
 /-- Openable candidates stay within the bounds along every one-packet response
 and every environment step. -/
 private theorem candidateValues_serviceInvariant :
-    (bounds.onePacketMenu runtime leaks).ServiceInvariant scheduler
+    (bounds.onePacketMenu timeouts leaks).ServiceInvariant scheduler
       (fun execution => bounds.CandidateValues execution.application) where
   respond execution who action valid member :=
-    bounds.candidateValues_respond runtime leaks execution who action valid (by
+    bounds.candidateValues_respond timeouts leaks execution who action valid (by
       intro material transmitted
-      have allowed := (bounds.menu_mem runtime leaks who _ _ _).mp
-        ((bounds.mem_onePacketActions runtime leaks who _ _ _).mp member).1
+      have allowed := (bounds.menu_mem timeouts leaks who _ _ _).mp
+        ((bounds.mem_onePacketActions timeouts leaks who _ _ _).mp member).1
       rw [transmitted] at allowed
       exact allowed.1.1.2)
   environment execution next command valid _ reached :=
-    bounds.candidateValues_environment runtime leaks execution next command valid reached
+    bounds.candidateValues_environment timeouts leaks execution next command valid reached
 
 /-- **Openable candidates are within the bounds.** Along every history of the
 one-packet game, every openable candidate of the catalogue is within the message
 bounds, when the bounds cover every value of every initial binding input. -/
 theorem candidate_mem_values_of_trace (covers : bounds.CoversInputValues)
-    {control : (application setup runtime leaks).Control}
-    (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control))
+    {control : (application setup timeouts leaks).Control}
+    (trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some control))
     {handle : Handle (graph setup)} {raw : Raw L}
     (found : control.execution.application.candidates.lookup handle = .openable raw) :
     raw ∈ bounds.values :=
-  (candidateValues_serviceInvariant (runtime := runtime) leaks bounds).history (initialLaw setup)
+  (candidateValues_serviceInvariant (timeouts := timeouts) leaks bounds).history (initialLaw setup)
     horizon
     (fun state member => candidateValues_initial covers state member) trace handle raw found
 
@@ -150,18 +154,18 @@ bounds.** For two histories of the one-packet game, the owner swap between the
 views of `who` at their end states moves values within the message bounds, when
 the bounds cover every value of every initial binding input. -/
 theorem ownerSwap_bounded (covers : bounds.CoversInputValues) (who : Player)
-    {firstControl secondControl : (application setup runtime leaks).Control}
-    (firstTrace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace
+    {firstControl secondControl : (application setup timeouts leaks).Control}
+    (firstTrace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace
       (some firstControl))
-    (secondTrace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace
+    (secondTrace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace
       (some secondControl)) :
     ∀ handle raw, raw ∈ bounds.values →
-      (ownerSwap who (firstControl.execution.observe (application setup runtime leaks)
+      (ownerSwap who (firstControl.execution.observe (application setup timeouts leaks)
         who).application
-        (secondControl.execution.observe (application setup runtime leaks) who).application).raw
+        (secondControl.execution.observe (application setup timeouts leaks) who).application).raw
           handle raw ∈ bounds.values :=
   ownerSwap_bounded_of_candidates who _ _
-    (fun _ _ found => candidate_mem_values_of_trace (runtime := runtime) covers firstTrace found)
-    (fun _ _ found => candidate_mem_values_of_trace (runtime := runtime) covers secondTrace found)
+    (fun _ _ found => candidate_mem_values_of_trace (timeouts := timeouts) covers firstTrace found)
+    (fun _ _ found => candidate_mem_values_of_trace (timeouts := timeouts) covers secondTrace found)
 
 end Vegas

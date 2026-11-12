@@ -1,48 +1,52 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.EventGraph.BarrierBlocks
-import Vegas.EventGraph.BarrierInformation
-import Vegas.EventGraph.Barriers
-import Vegas.EventGraph.Basic
-import Vegas.EventGraph.BindingRefinement
-import Vegas.EventGraph.CanonicalStep
-import Vegas.EventGraph.Code
-import Vegas.EventGraph.Commutation
-import Vegas.EventGraph.CommutationRecall
-import Vegas.EventGraph.NormalizedPolicy
-import Vegas.EventGraph.SchedulerErasure
-import Vegas.EventGraph.RevealRelaxedScheduling
-import Vegas.EventGraph.SolitaryEvent
-import Vegas.EventGraph.LastScheduler
-import Vegas.EventGraph.LastSchedulerErasure
-import Vegas.EventGraph.PolicyPatch
-import Vegas.EventGraph.LastErasedLaw
-import Vegas.EventGraph.NormalizedRestriction
-import Vegas.EventGraph.LastKeyTarget
-import Vegas.EventGraph.HonestClosure
-import Vegas.EventGraph.PrefixRestriction
-import Vegas.EventGraph.FootprintIndependence
-import Vegas.EventGraph.ErasureTwin
-import Vegas.EventGraph.SchedulerPredraw
-import Vegas.EventGraph.SchedulerReplay
-import Vegas.EventGraph.RevealDeviation
-import Vegas.EventGraph.WithholdingCoupling
-import Vegas.EventGraph.ConcurrentRevealNash
-import Vegas.EventGraph.SequentialNormalization
-import Vegas.EventGraph.PublicationDecision
-import Vegas.EventGraph.DecisionTwin
-import Vegas.EventGraph.DefaultFailure
-import Vegas.EventGraph.Execution
-import Vegas.EventGraph.Information
-import Vegas.EventGraph.ObservationStep
-import Vegas.EventGraph.Order
-import Vegas.EventGraph.OwnedStep
-import Vegas.EventGraph.PolicyCongruence
-import Vegas.EventGraph.Recall
-import Vegas.EventGraph.ResolutionFields
-import Vegas.EventGraph.ResolutionProvenance
-import Vegas.EventGraph.RevealRelaxation
-import Vegas.EventGraph.Semantics
-import Vegas.EventGraph.Sequential
-import Vegas.EventGraph.SequentialLaw
-import Vegas.EventGraph.Validation
+public import Vegas.EventGraph.BarrierBlocks
+public import Vegas.EventGraph.BarrierInformation
+public import Vegas.EventGraph.Barriers
+public import Vegas.EventGraph.Basic
+public import Vegas.EventGraph.BindingRefinement
+public import Vegas.EventGraph.CanonicalStep
+public import Vegas.EventGraph.Code
+public import Vegas.EventGraph.Commutation
+public import Vegas.EventGraph.CommutationRecall
+public import Vegas.EventGraph.NormalizedPolicy
+public import Vegas.EventGraph.SchedulerErasure
+public import Vegas.EventGraph.RevealRelaxedScheduling
+public import Vegas.EventGraph.SolitaryEvent
+public import Vegas.EventGraph.LastScheduler
+public import Vegas.EventGraph.LastSchedulerErasure
+public import Vegas.EventGraph.PolicyPatch
+public import Vegas.EventGraph.LastErasedLaw
+public import Vegas.EventGraph.NormalizedRestriction
+public import Vegas.EventGraph.LastKeyTarget
+public import Vegas.EventGraph.HonestClosure
+public import Vegas.EventGraph.PrefixRestriction
+public import Vegas.EventGraph.FootprintIndependence
+public import Vegas.EventGraph.ErasureTwin
+public import Vegas.EventGraph.SchedulerPredraw
+public import Vegas.EventGraph.SchedulerReplay
+public import Vegas.EventGraph.RevealDeviation
+public import Vegas.EventGraph.WithholdingCoupling
+public import Vegas.EventGraph.ConcurrentRevealNash
+public import Vegas.EventGraph.SequentialNormalization
+public import Vegas.EventGraph.PublicationDecision
+public import Vegas.EventGraph.DecisionTwin
+public import Vegas.EventGraph.DefaultFailure
+public import Vegas.EventGraph.Execution
+public import Vegas.EventGraph.Information
+public import Vegas.EventGraph.ObservationStep
+public import Vegas.EventGraph.Order
+public import Vegas.EventGraph.OwnedStep
+public import Vegas.EventGraph.PolicyCongruence
+public import Vegas.EventGraph.Recall
+public import Vegas.EventGraph.ResolutionFields
+public import Vegas.EventGraph.ResolutionProvenance
+public import Vegas.EventGraph.RevealRelaxation
+public import Vegas.EventGraph.Semantics
+public import Vegas.EventGraph.Sequential
+public import Vegas.EventGraph.SequentialLaw
+public import Vegas.EventGraph.Validation
+
+@[expose] public section

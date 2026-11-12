@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveServiceConformance
-import Vegas.Pending.ReactiveEventStability
+public import Vegas.Pending.ReactiveServiceConformance
+public import Vegas.Pending.ReactiveEventStability
+
+@[expose] public section
 
 /-! # Native-acceptable fresh calls
 
@@ -23,20 +27,20 @@ open Interaction EventGraph
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
-  (runtime : EventGraphRuntime graph)
+  (timeouts : EventTimeouts graph)
 
 /-- Native acceptance permits authentic openings independently of their guarded result.
 A binding's candidate need not be the author's canonical serial. -/
 def freshServiceAcceptable (view : PublicView graph)
     (message : Message Player (WitnessedPacket graph)) : Prop :=
   match message.payload.call with
-  | .commitment event _ => view.BindingIncludable runtime ⟨message.id, message.payload.call⟩ ∧
+  | .commitment event _ => view.BindingIncludable timeouts ⟨message.id, message.payload.call⟩ ∧
       message.payload.token = some ⟨event⟩
   | .opening event candidate raw =>
       view.EventReady event ∧
       (match view.activatedAt event with
         | none => False
-        | some entered => view.clock - entered < runtime.deadline event) ∧
+        | some entered => view.clock - entered < timeouts.duration event) ∧
       certifiedOpening message.payload = true ∧
       (match nodeView graph event with
         | .resolve owner payload binding _ _ _ =>
@@ -57,11 +61,11 @@ theorem freshServiceAcceptable_opening_iff (view : PublicView graph) (id : Messa
     (node : nodeView graph event = .resolve owner payload binding checks outputEq codeEq)
     (candidate : Handle graph) (raw : Raw L) (evidence : Option (OpeningFact graph))
     (token : Option (ReadinessToken graph)) :
-    runtime.freshServiceAcceptable view ⟨id, ⟨.opening event candidate raw, evidence, token⟩⟩ ↔
+    (freshServiceAcceptable timeouts) view ⟨id, ⟨.opening event candidate raw, evidence, token⟩⟩ ↔
       view.EventReady event ∧
       (match view.activatedAt event with
         | none => False
-        | some entered => view.clock - entered < runtime.deadline event) ∧
+        | some entered => view.clock - entered < timeouts.duration event) ∧
       certifiedOpening (⟨.opening event candidate raw, evidence, token⟩ :
         WitnessedPacket graph) = true ∧
       id.1 = owner ∧ candidate.1 = owner ∧ view.accepted binding.field = some candidate ∧
@@ -71,8 +75,8 @@ theorem freshServiceAcceptable_opening_iff (view : PublicView graph) (id : Messa
 /-- A conforming packet is acceptable. -/
 theorem freshServiceEnvelope.acceptable {view : PublicView graph}
     {message : Message Player (WitnessedPacket graph)}
-    (conforming : runtime.freshServiceEnvelope view message) :
-    runtime.freshServiceAcceptable view message := by
+    (conforming : (freshServiceEnvelope timeouts) view message) :
+    (freshServiceAcceptable timeouts) view message := by
   rcases message with ⟨id, ⟨packet, evidence, token⟩⟩
   cases packet with
   | commitment event candidate => exact ⟨conforming.1, conforming.2.2.2⟩
@@ -83,7 +87,7 @@ theorem freshServiceEnvelope.acceptable {view : PublicView graph}
 /-- An acceptable fresh call carries the readiness token of its event. -/
 theorem freshServiceAcceptable.tokenValid {view : PublicView graph}
     {message : Message Player (WitnessedPacket graph)}
-    (conforming : runtime.freshServiceAcceptable view message) :
+    (conforming : (freshServiceAcceptable timeouts) view message) :
     message.payload.tokenValid = true := by
   rcases message with ⟨id, ⟨packet, evidence, token⟩⟩
   cases packet with
@@ -96,7 +100,8 @@ theorem freshServiceAcceptable.tokenValid {view : PublicView graph}
       cases node : nodeView graph event with
       | resolve owner payload binding checks outputEq codeEq =>
           obtain ⟨_, _, _, _, _, _, _, tokened⟩ :=
-            (runtime.freshServiceAcceptable_opening_iff view id event owner payload binding checks
+            ((freshServiceAcceptable_opening_iff timeouts) view id event owner payload binding
+              checks
               outputEq codeEq node candidate raw evidence token).mp conforming
           subst tokened
           exact WitnessedPacket.tokenValid_opening _ _ _ _
@@ -111,7 +116,7 @@ theorem freshServiceAcceptable.tokenValid {view : PublicView graph}
 /-- Native-acceptable fresh packets name publicly ready events. -/
 theorem freshServiceAcceptable_ready (view : PublicView graph)
     (message : Message Player (WitnessedPacket graph))
-    (permitted : runtime.freshServiceAcceptable view message) :
+    (permitted : (freshServiceAcceptable timeouts) view message) :
     ∃ event, message.payload.call.event? graph = some event ∧ view.EventReady event := by
   cases call : message.payload.call with
   | commitment event candidate =>
@@ -125,7 +130,7 @@ theorem freshServiceAcceptable_ready (view : PublicView graph)
 /-- Native-acceptable packets name events owned by their authenticated senders. -/
 theorem freshServiceAcceptable_owned (view : PublicView graph)
     (message : Message Player (WitnessedPacket graph))
-    (permitted : runtime.freshServiceAcceptable view message) :
+    (permitted : (freshServiceAcceptable timeouts) view message) :
     ∃ event, message.payload.call.event? graph = some event ∧ view.EventReady event ∧
       graph.actor? event = some message.sender := by
   cases call : message.payload.call with
@@ -167,7 +172,7 @@ theorem freshServiceAcceptable_resolution_shape
     (node : nodeView graph event = .resolve owner payload binding checks outputEq codeEq)
     (message : Message Player (WitnessedPacket graph))
     (named : message.payload.call.event? graph = some event)
-    (permitted : runtime.freshServiceAcceptable view message) :
+    (permitted : (freshServiceAcceptable timeouts) view message) :
     ∃ candidate raw, message.sender = owner ∧ candidate.1 = owner ∧
       view.accepted binding.field = some candidate ∧ raw.ty = payload ∧
       message.payload = ⟨.opening event candidate raw, some ⟨candidate, raw⟩, some ⟨event⟩⟩ := by
@@ -182,7 +187,7 @@ theorem freshServiceAcceptable_resolution_shape
       change some actual = some event at named
       cases Option.some.inj named
       obtain ⟨_ready, _timely, certified, sender, owned, associated, typed, tokened⟩ :=
-        (runtime.freshServiceAcceptable_opening_iff view id event owner payload binding checks
+        ((freshServiceAcceptable_opening_iff timeouts) view id event owner payload binding checks
           outputEq codeEq node candidate raw evidence token).mp permitted
       have evidenceEq : evidence = some ⟨candidate, raw⟩ := by
         cases evidence with
@@ -201,7 +206,7 @@ it and accepted handles changed only at their vacant output fields. -/
 theorem bindingIncludable_accepted_of_extends (relaxed : graph.RevealRelaxedOrdered)
     (state : State graph) (view : PublicView graph) (id : MessageId Player)
     (event : graph.EventId) (candidate : Handle graph)
-    (includable : view.BindingIncludable runtime ⟨id, .commitment event candidate⟩)
+    (includable : view.BindingIncludable timeouts ⟨id, .commitment event candidate⟩)
     {extra : List graph.EventId}
     (order : state.publicView.observation.completionOrder =
       view.observation.completionOrder ++ extra)
@@ -209,10 +214,10 @@ theorem bindingIncludable_accepted_of_extends (relaxed : graph.RevealRelaxedOrde
     (acceptedChanged : ∀ field, state.accepted field ≠ view.accepted field →
       view.accepted field = none ∧ ∃ other ∈ extra, field = .inr other)
     (unfinished : event ∉ state.config.cut.completed)
-    (timely : state.WithinDeadline runtime event)
+    (timely : state.WithinDeadline timeouts event)
     (quiescent : ∀ event, ¬ state.AutomaticReady event)
     (invariant : state.BindingInvariant) :
-    ∃ next, handle runtime state ⟨id, .commitment event candidate⟩ = some next := by
+    ∃ next, handle timeouts state ⟨id, .commitment event candidate⟩ = some next := by
   obtain ⟨_active, ready, _, owned⟩ := includable
   have readyNow := ready_of_eventReady_extends order ready unfinished
   have completedExtra : ∀ other ∈ extra, other ∈ state.config.cut.completed := by
@@ -260,7 +265,7 @@ theorem bindingIncludable_accepted_of_extends (relaxed : graph.RevealRelaxedOrde
         refine ⟨readyNow, ?_⟩
         rw [eventActor]
         simpa only [sender] using inactive
-      exact ⟨_, runtime.handle_commitment_eq state id event candidate owner payload outputEq
+      exact ⟨_, (handle_commitment_eq timeouts) state id event candidate owner payload outputEq
         codeEq node readyNow timely active sender handleOwner vacantNow unusedNow⟩
 
 /-- An authentic fresh call is accepted while its event is unfinished and timely.
@@ -269,7 +274,7 @@ must be quiescent. The guarded result may be either success or public failure. -
 theorem freshServiceAcceptable_accepted_of_extends (relaxed : graph.RevealRelaxedOrdered)
     (state : State graph) (view : PublicView graph)
     (message : Message Player (WitnessedPacket graph))
-    (conforming : runtime.freshServiceAcceptable view message)
+    (conforming : (freshServiceAcceptable timeouts) view message)
     (event : graph.EventId) (named : message.payload.call.event? graph = some event)
     {extra : List graph.EventId}
     (order : state.publicView.observation.completionOrder =
@@ -278,11 +283,11 @@ theorem freshServiceAcceptable_accepted_of_extends (relaxed : graph.RevealRelaxe
     (acceptedChanged : ∀ field, state.accepted field ≠ view.accepted field →
       view.accepted field = none ∧ ∃ other ∈ extra, field = .inr other)
     (unfinished : event ∉ state.config.cut.completed)
-    (timely : state.WithinDeadline runtime event)
+    (timely : state.WithinDeadline timeouts event)
     (certified : ∀ fact ∈ message.payload.evidence.toList, fact.Holds state)
     (quiescent : ∀ event, ¬ state.AutomaticReady event)
     (invariant : state.BindingInvariant) :
-    ∃ next, handle runtime state ⟨message.id, message.payload.call⟩ = some next := by
+    ∃ next, handle timeouts state ⟨message.id, message.payload.call⟩ = some next := by
   rcases message with ⟨id, ⟨packet, evidence, token⟩⟩
   cases packet with
   | malformed raw => exact conforming.elim
@@ -290,7 +295,7 @@ theorem freshServiceAcceptable_accepted_of_extends (relaxed : graph.RevealRelaxe
       change some actual = some event at named
       have actualEq : actual = event := Option.some.inj named
       subst actualEq
-      exact bindingIncludable_accepted_of_extends runtime relaxed state view
+      exact bindingIncludable_accepted_of_extends timeouts relaxed state view
         id actual candidate conforming.1 order together acceptedChanged unfinished timely
         quiescent invariant
   | opening actual candidate raw =>
@@ -300,7 +305,8 @@ theorem freshServiceAcceptable_accepted_of_extends (relaxed : graph.RevealRelaxe
       cases node : nodeView graph actual with
       | resolve owner payload binding checks outputEq codeEq =>
           obtain ⟨ready, _, certifiedPacket, sender, owned, associated, typed, _⟩ :=
-            (runtime.freshServiceAcceptable_opening_iff view id actual owner payload binding checks
+            ((freshServiceAcceptable_opening_iff timeouts) view id actual owner payload binding
+              checks
               outputEq codeEq node candidate raw evidence token).mp conforming
           have readyNow := ready_of_eventReady_extends order ready unfinished
           obtain ⟨value, rfl⟩ : ∃ value : L.Val payload, raw = ⟨payload, value⟩ := by
@@ -340,7 +346,7 @@ theorem freshServiceAcceptable_accepted_of_extends (relaxed : graph.RevealRelaxe
             refine ⟨readyNow, ?_⟩
             rw [eventActor]
             simpa only [sender] using inactive
-          exact ⟨_, runtime.handle_opening_eq state id actual candidate owner payload binding
+          exact ⟨_, (handle_opening_eq timeouts) state id actual candidate owner payload binding
             checks outputEq codeEq node readyNow timely active sender owned associatedNow value
             verified stored result resolved⟩
       | bind _ _ _ _ =>

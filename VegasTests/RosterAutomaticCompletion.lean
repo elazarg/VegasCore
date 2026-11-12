@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Expr.Simple
-import Vegas.Compile.EventGraphInputs
-import Vegas.Pending.ReactiveRuntime
-import Vegas.Game.ServiceRoster
+public import Vegas.Expr.Simple
+public import Vegas.Compile.EventGraphInputs
+public import Vegas.Pending.ReactiveRuntime
+public import Vegas.Game.ServiceRoster
+
+@[expose] public section
 
 /-! # Automatic completion and roster clock service
 
@@ -14,12 +18,12 @@ The roster scheduler suppresses clock commands for blocks complete at entry.
 
 noncomputable section
 
-namespace VegasTests
+namespace VegasTests.RosterAutomaticCompletion
 
 open Vegas Vegas.SourceProgram Vegas.EventGraphRuntime
   GameTheory.Math.Probability Interaction
 
-private def acceptBinding {Γ : SourceCtx Bool simpleExpr} (owner : Bool) (name : VarId) :
+def acceptBinding {Γ : SourceCtx Bool simpleExpr} (owner : Bool) (name : VarId) :
     SourceGuard simpleExpr Γ owner name .bool where
   schema := []
   schemaNames := by decide
@@ -27,7 +31,7 @@ private def acceptBinding {Γ : SourceCtx Bool simpleExpr} (owner : Bool) (name 
   code := .constBool true
   reads := fun member => nomatch member
 
-private def consecutiveBindings : SourceProgram Bool simpleExpr [] ∅ :=
+def consecutiveBindings : SourceProgram Bool simpleExpr [] ∅ :=
   .commit 0 false (by decide) (acceptBinding false 0) <|
   .commit 1 false (by decide) (acceptBinding false 1) <|
   .commit 2 false (by decide) (acceptBinding false 2) <|
@@ -38,31 +42,31 @@ private def consecutiveBindings : SourceProgram Bool simpleExpr [] ∅ :=
   .reveal 7 true 3 (by decide) (.there (.there (.there .here))) (by decide) <|
   .ret []
 
-private abbrev compiled := toEventGraph consecutiveBindings
+abbrev compiled := toEventGraph consecutiveBindings
 
-private def rankedRuntime : EventGraphRuntime compiled where
-  deadline event := event.val + 1
+def rankedTimeouts : EventTimeouts compiled where
+  duration event := event.val + 1
 
-private def initialLedger : State compiled :=
+def initialLedger : State compiled :=
   State.initial (encodeInputs (Env.empty (CellVal simpleExpr)))
 
-private abbrev first : compiled.EventId := ⟨0, by decide⟩
-private abbrev second : compiled.EventId := ⟨1, by decide⟩
-private abbrev third : compiled.EventId := ⟨2, by decide⟩
-private abbrev bob : compiled.EventId := ⟨3, by decide⟩
+abbrev first : compiled.EventId := ⟨0, by decide⟩
+abbrev second : compiled.EventId := ⟨1, by decide⟩
+abbrev third : compiled.EventId := ⟨2, by decide⟩
+abbrev bob : compiled.EventId := ⟨3, by decide⟩
 
-private theorem firstReady : initialLedger.config.cut.Ready first := by decide
+theorem firstReady : initialLedger.config.cut.Ready first := by decide
 
-private def omission : State compiled :=
+def omission : State compiled :=
   ({ initialLedger with clock := 1 } : State compiled).complete first firstReady none .failure
 
-private theorem secondReady : omission.config.cut.Ready second := by decide
+theorem secondReady : omission.config.cut.Ready second := by decide
 
-private def afterSecond : State compiled := omission.completeFailure second secondReady
+def afterSecond : State compiled := omission.completeFailure second secondReady
 
-private theorem thirdReady : afterSecond.config.cut.Ready third := by decide
+theorem thirdReady : afterSecond.config.cut.Ready third := by decide
 
-private def afterThird : State compiled := afterSecond.completeFailure third thirdReady
+def afterThird : State compiled := afterSecond.completeFailure third thirdReady
 
 private theorem secondAutomatic : omission.AutomaticReady second := by decide
 private theorem thirdAutomatic : afterSecond.AutomaticReady third := by decide
@@ -87,19 +91,19 @@ private theorem exactDrain : omission.drain = afterThird := by
   exact State.drainFuel_eq_of_clear 5 afterThird finalClear
 
 private theorem rawExpiry :
-    environmentStep rankedRuntime { initialLedger with clock := 1 } (.expire first) =
+    environmentStep rankedTimeouts { initialLedger with clock := 1 } (.expire first) =
       PMF.pure omission := by
-  exact environmentStep_expire_bind_eq rankedRuntime { initialLedger with clock := 1 }
+  exact environmentStep_expire_bind_eq rankedTimeouts { initialLedger with clock := 1 }
     first firstReady 0 rfl (by decide) false .bool rfl rfl rfl
 
-private def atClock (clock : Nat) : State compiled := { afterThird with clock }
+def atClock (clock : Nat) : State compiled := { afterThird with clock }
 
 /-- The actual native expiry/drain exposes Bob's event at clock one. -/
 private theorem earlyReadyAfterExpiry
     (leaks : MessageNetwork.ObservationRule Bool (WitnessedPacket compiled)) :
-    (rankedRuntime.reactiveApplication leaks).environment
+    ((reactiveApplication rankedTimeouts) leaks).environment
         { initialLedger with clock := 1 } (.expire first) = PMF.pure (atClock 1) := by
-  change ((environmentStep rankedRuntime { initialLedger with clock := 1 }
+  change ((environmentStep rankedTimeouts { initialLedger with clock := 1 }
     (.expire first)).map State.drain) = _
   rw [rawExpiry, PMF.pure_map, exactDrain]
   rfl
@@ -113,7 +117,7 @@ private theorem earlyReadyMetadata :
 /-- A clock command increments the native clock while preserving readiness. -/
 private theorem clockTick
     (leaks : MessageNetwork.ObservationRule Bool (WitnessedPacket compiled)) (clock : Nat) :
-    (rankedRuntime.reactiveApplication leaks).environment (atClock clock) .advanceClock =
+    ((reactiveApplication rankedTimeouts) leaks).environment (atClock clock) .advanceClock =
       PMF.pure (atClock (clock + 1)) := by
   change (PMF.pure { atClock clock with clock := (atClock clock).clock + 1 }).map State.drain = _
   rw [PMF.pure_map, State.drain_eq_of_clear]
@@ -123,7 +127,7 @@ private theorem clockTick
 /-- The first tick is also an actual native operation from the compiled initialization. -/
 private theorem initialNativeTick
     (leaks : MessageNetwork.ObservationRule Bool (WitnessedPacket compiled)) :
-    (rankedRuntime.reactiveApplication leaks).environment initialLedger .advanceClock =
+    ((reactiveApplication rankedTimeouts) leaks).environment initialLedger .advanceClock =
       PMF.pure { initialLedger with clock := 1 } := by
   change (PMF.pure { initialLedger with clock := initialLedger.clock + 1 }).map State.drain = _
   rw [PMF.pure_map, State.drain_eq_of_empty _ (by rfl)]
@@ -132,27 +136,27 @@ private theorem initialNativeTick
 /-- Expiry addressed to a skipped binding does not reset the next owner's clock. -/
 private theorem skippedExpiry
     (leaks : MessageNetwork.ObservationRule Bool (WitnessedPacket compiled)) :
-    (rankedRuntime.reactiveApplication leaks).environment (atClock 3) (.expire second) =
+    ((reactiveApplication rankedTimeouts) leaks).environment (atClock 3) (.expire second) =
       PMF.pure (atClock 3) := by
-  change (environmentStep rankedRuntime (atClock 3) (.expire second)).map State.drain = _
+  change (environmentStep rankedTimeouts (atClock 3) (.expire second)).map State.drain = _
   rw [environmentStep_expire_of_not_ready _ _ _ (by decide), PMF.pure_map]
   rw [State.drain_eq_of_clear (atClock 3) finalClear]
 
 /-- The native executor reaches the overdue state after expiry and four further ticks. -/
 example
     (leaks : MessageNetwork.ObservationRule Bool (WitnessedPacket compiled)) :
-    ((rankedRuntime.reactiveApplication leaks).environment initialLedger .advanceClock).bind
-      (fun state => ((rankedRuntime.reactiveApplication leaks).environment state
+    (((reactiveApplication rankedTimeouts) leaks).environment initialLedger .advanceClock).bind
+      (fun state => (((reactiveApplication rankedTimeouts) leaks).environment state
         (.expire first)).bind fun state =>
-        ((rankedRuntime.reactiveApplication leaks).environment state .advanceClock).bind
+        (((reactiveApplication rankedTimeouts) leaks).environment state .advanceClock).bind
           fun state =>
-        ((rankedRuntime.reactiveApplication leaks).environment state .advanceClock).bind
+        (((reactiveApplication rankedTimeouts) leaks).environment state .advanceClock).bind
           fun state =>
-        ((rankedRuntime.reactiveApplication leaks).environment state (.expire second)).bind
+        (((reactiveApplication rankedTimeouts) leaks).environment state (.expire second)).bind
           fun state =>
-        ((rankedRuntime.reactiveApplication leaks).environment state .advanceClock).bind
+        (((reactiveApplication rankedTimeouts) leaks).environment state .advanceClock).bind
           fun state =>
-        (rankedRuntime.reactiveApplication leaks).environment state .advanceClock) =
+        ((reactiveApplication rankedTimeouts) leaks).environment state .advanceClock) =
       PMF.pure (atClock 5) := by
   rw [initialNativeTick]
   erw [PMF.pure_bind, earlyReadyAfterExpiry, PMF.pure_bind, clockTick,
@@ -163,14 +167,14 @@ example
 example :
     (atClock 5).config.cut.Ready bob ∧ (atClock 5).activatedAt bob = some 1 ∧
       1 + bob.val < (atClock 5).clock ∧
-      ¬ (atClock 5).WithinDeadline rankedRuntime bob := by
+      ¬ (atClock 5).WithinDeadline rankedTimeouts bob := by
   refine ⟨by decide, by decide, by decide, ?_⟩
   change ¬ (5 - 1 < 4)
   decide
 
 /-- Automatic completion preserves the next active event's original entry time. -/
 example (leaks : MessageNetwork.ObservationRule Bool (WitnessedPacket compiled)) :
-    (rankedRuntime.reactiveApplication leaks).environment
+    ((reactiveApplication rankedTimeouts) leaks).environment
         { initialLedger with clock := 1 } (.expire first) = PMF.pure (atClock 1) ∧
       (atClock 1).clock = 1 ∧ (atClock 1).activatedAt bob = some 1 ∧
       (atClock 1).config.cut.Ready bob ∧
@@ -183,10 +187,10 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 example (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (rosters : (graph setup).EventId → List Player)
-    (past : List (application setup (Vegas.runtime setup) leaks).EnvironmentEntry)
-    (view : (application setup (Vegas.runtime setup) leaks).EnvironmentView)
+    (past : List (application setup (Vegas.timeouts setup) leaks).EnvironmentEntry)
+    (view : (application setup (Vegas.timeouts setup) leaks).EnvironmentView)
     (event : (graph setup).EventId)
-    (entry : (application setup (Vegas.runtime setup) leaks).EnvironmentEntry)
+    (entry : (application setup (Vegas.timeouts setup) leaks).EnvironmentEntry)
     (saved : past[(rosterPlanPrefix setup rosters event.val).length]? = some entry) :
     rosterBlockCompleted setup leaks rosters past view event ↔
       event ∈ entry.beforeView.application.observation.completionOrder := by
@@ -196,9 +200,9 @@ example (setup : Setup (Player := Player) (L := L))
 example (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (rosters : (graph setup).EventId → List Player)
-    (network : (runtime setup).NetworkPolicy leaks)
-    (past : List (application setup (Vegas.runtime setup) leaks).EnvironmentEntry)
-    (view : (application setup (Vegas.runtime setup) leaks).EnvironmentView)
+    (network : (NetworkPolicy (timeouts setup)) leaks)
+    (past : List (application setup (Vegas.timeouts setup) leaks).EnvironmentEntry)
+    (view : (application setup (Vegas.timeouts setup) leaks).EnvironmentView)
     (event : (graph setup).EventId)
     (selected : (rosterPlan setup rosters)[past.length]? = some (event, .tick))
     (completed : rosterBlockCompleted setup leaks rosters past view event) :
@@ -209,9 +213,9 @@ example (setup : Setup (Player := Player) (L := L))
 example (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (rosters : (graph setup).EventId → List Player)
-    (network : (runtime setup).NetworkPolicy leaks)
-    (past : List (application setup (Vegas.runtime setup) leaks).EnvironmentEntry)
-    (view : (application setup (Vegas.runtime setup) leaks).EnvironmentView)
+    (network : (NetworkPolicy (timeouts setup)) leaks)
+    (past : List (application setup (Vegas.timeouts setup) leaks).EnvironmentEntry)
+    (view : (application setup (Vegas.timeouts setup) leaks).EnvironmentView)
     (event : (graph setup).EventId)
     (selected : (rosterPlan setup rosters)[past.length]? = some (event, .tick))
     (live : ¬ rosterBlockCompleted setup leaks rosters past view event) :
@@ -219,4 +223,4 @@ example (setup : Setup (Player := Player) (L := L))
       PMF.pure (.application .advanceClock) := by
   simp only [rosterScheduler, selected, ite_eq_right live]
 
-end VegasTests
+end VegasTests.RosterAutomaticCompletion

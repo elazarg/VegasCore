@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveMenuInvariant
-import Interaction.ReactivePublication
-import Vegas.Pending.ReactiveFiniteResponses
+public import Interaction.ReactiveMenuInvariant
+public import Interaction.ReactivePublication
+public import Vegas.Pending.ReactiveFiniteResponses
+
+@[expose] public section
 
 /-! # Accepted handles stay inside the finite message domain
 
@@ -24,9 +28,9 @@ variable {Player : Type} [DecidableEq Player]
 def AcceptedHandles (state : State graph) : Prop :=
   ∀ field candidate, state.accepted field = some candidate → bounds.AllowsHandle candidate
 
-def ExecutionHandles (runtime : EventGraphRuntime graph)
+def ExecutionHandles (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (execution : (runtime.reactiveApplication leaks).Execution) : Prop :=
+    (execution : ((reactiveApplication timeouts) leaks).Execution) : Prop :=
   bounds.AcceptedHandles execution.application ∧
     execution.network.Satisfies (fun message => bounds.AllowsPacket message.payload.call)
 
@@ -37,14 +41,14 @@ theorem acceptedHandles_initial (inputs : graph.Inputs) :
     State.initial_accepted_eq_some inputs field candidate accepted
   trivial
 
-theorem acceptedHandles_handle (runtime : EventGraphRuntime graph)
+theorem acceptedHandles_handle (timeouts : EventTimeouts graph)
     (state next : State graph) (message : Message Player (Payload graph))
     (valid : bounds.AcceptedHandles state) (packet : bounds.AllowsPacket message.payload)
-    (accepted : handle runtime state message = some next) : bounds.AcceptedHandles next := by
+    (accepted : handle timeouts state message = some next) : bounds.AcceptedHandles next := by
   rcases message with ⟨id, payload⟩
   cases payload with
   | commitment event candidate =>
-      have tables := handle_commitment_tables runtime state next id event candidate accepted
+      have tables := handle_commitment_tables timeouts state next id event candidate accepted
       intro field handle stored
       rw [tables.2.1] at stored
       by_cases current : field = .inr event
@@ -55,25 +59,25 @@ theorem acceptedHandles_handle (runtime : EventGraphRuntime graph)
       · rw [Function.update_of_ne current] at stored
         exact valid field handle stored
   | opening event candidate raw =>
-      have tables := handle_resolution_tables runtime state next _ (by intros; simp) accepted
+      have tables := handle_resolution_tables timeouts state next _ (by intros; simp) accepted
       simpa only [AcceptedHandles, tables.1] using valid
   | malformed raw => simp [handle] at accepted
 
-theorem executionHandles_respond (runtime : EventGraphRuntime graph)
+theorem executionHandles_respond (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (execution : (runtime.reactiveApplication leaks).Execution) (who : Player)
-    (response : (runtime.reactiveApplication leaks).Action)
-    (valid : bounds.ExecutionHandles runtime leaks execution)
+    (execution : ((reactiveApplication timeouts) leaks).Execution) (who : Player)
+    (response : ((reactiveApplication timeouts) leaks).Action)
+    (valid : bounds.ExecutionHandles timeouts leaks execution)
     (allowed : ∀ material, response.transmission = some material →
       bounds.AllowsPacket material.call.packet) :
-    bounds.ExecutionHandles runtime leaks
-      (execution.respond (runtime.reactiveApplication leaks) who response) := by
+    bounds.ExecutionHandles timeouts leaks
+      (execution.respond ((reactiveApplication timeouts) leaks) who response) := by
   rcases response with ⟨transmission⟩
   cases transmission with
   | none => exact valid
   | some material =>
       refine ⟨?_, valid.2.submit who
-        (material.emit ((runtime.reactiveApplication leaks).submit execution.application who
+        (material.emit (((reactiveApplication timeouts) leaks).submit execution.application who
           material) who (execution.network.known who)) (allowed material rfl)⟩
       change bounds.AcceptedHandles
         (submitStep (material.call.register execution.application who) who material.call.packet)
@@ -83,13 +87,13 @@ theorem executionHandles_respond (runtime : EventGraphRuntime graph)
         execution.application.accepted at same
       simpa only [AcceptedHandles, submitStep_accepted, same] using valid.1
 
-theorem executionHandles_environment (runtime : EventGraphRuntime graph)
+theorem executionHandles_environment (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (execution next : (runtime.reactiveApplication leaks).Execution)
-    (command : (runtime.reactiveApplication leaks).Command)
-    (valid : bounds.ExecutionHandles runtime leaks execution)
-    (reached : next ∈ (execution.environmentStep (runtime.reactiveApplication leaks)
-      command).support) : bounds.ExecutionHandles runtime leaks next := by
+    (execution next : ((reactiveApplication timeouts) leaks).Execution)
+    (command : ((reactiveApplication timeouts) leaks).Command)
+    (valid : bounds.ExecutionHandles timeouts leaks execution)
+    (reached : next ∈ (execution.environmentStep ((reactiveApplication timeouts) leaks)
+      command).support) : bounds.ExecutionHandles timeouts leaks next := by
   cases command with
   | wait =>
       simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map] at reached
@@ -108,9 +112,9 @@ theorem executionHandles_environment (runtime : EventGraphRuntime graph)
         | none => exact valid.1
         | some message =>
             change bounds.AcceptedHandles
-              (((runtime.reactiveApplication leaks).handle execution.application
+              ((((reactiveApplication timeouts) leaks).handle execution.application
                 message).getD execution.application)
-            cases accepted : (runtime.reactiveApplication leaks).handle execution.application
+            cases accepted : ((reactiveApplication timeouts) leaks).handle execution.application
                 message with
             | none => exact valid.1
             | some state =>
@@ -118,10 +122,11 @@ theorem executionHandles_environment (runtime : EventGraphRuntime graph)
                 obtain ⟨native, handled, drained⟩ := reactiveHandle_call accepted
                 rw [← drained]
                 simpa only [AcceptedHandles, native.drain_tables.1] using
-                  bounds.acceptedHandles_handle runtime execution.application
+                  bounds.acceptedHandles_handle timeouts execution.application
                     native ⟨message.id, message.payload.call⟩ valid.1
                     (valid.2.lookup id message found) handled
-      · change (execution.includePending (runtime.reactiveApplication leaks) id).network.Satisfies _
+      · change (execution.includePending ((reactiveApplication timeouts) leaks)
+        id).network.Satisfies _
         rw [ReactiveApplication.includePending_network]
         exact valid.2.includePending id
   | application command =>
@@ -129,30 +134,30 @@ theorem executionHandles_environment (runtime : EventGraphRuntime graph)
       obtain ⟨state, changed, rfl⟩ := PMF.support_map .. ▸ supported
       refine ⟨?_, valid.2⟩
       simpa only [AcceptedHandles,
-        (reactiveApplication_environment_tables runtime leaks execution.application state command
+        (reactiveApplication_environment_tables timeouts leaks execution.application state command
           changed).1]
         using valid.1
 
 /-- The same bounds hold before normalization, for every raw response admitted
 by the complete finite menu. -/
-theorem executionHandles_raw_history [Fintype Player] (runtime : EventGraphRuntime graph)
+theorem executionHandles_raw_history [Fintype Player] (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (inputs : PMF graph.Inputs) (horizon : Nat)
-    (scheduler : (runtime.reactiveApplication leaks).Scheduler) :
-    ∀ {state} (_trace : ((bounds.rawMenu runtime leaks).protocol (inputs.map State.initial)
+    (scheduler : ((reactiveApplication timeouts) leaks).Scheduler) :
+    ∀ {state} (_trace : ((bounds.rawMenu timeouts leaks).protocol (inputs.map State.initial)
       horizon scheduler).Trace state),
       ReactiveApplication.serviceInvariant
-        (bounds.ExecutionHandles runtime leaks) state := by
-  have invariant : (bounds.rawMenu runtime leaks).ServiceInvariant scheduler
-      (bounds.ExecutionHandles runtime leaks) := {
+        (bounds.ExecutionHandles timeouts leaks) state := by
+  have invariant : (bounds.rawMenu timeouts leaks).ServiceInvariant scheduler
+      (bounds.ExecutionHandles timeouts leaks) := {
     respond := fun execution who response valid legal =>
-      bounds.executionHandles_respond runtime leaks execution who response valid (by
+      bounds.executionHandles_respond timeouts leaks execution who response valid (by
         intro material submitted
         rw [rawMenu, ReactiveApplication.ResponseMenu.fromSubmissions_mem] at legal
         rw [submitted] at legal
         exact ((bounds.submissions_mem _ _).mp legal).1.1)
     environment := fun execution next command valid _ reached =>
-      bounds.executionHandles_environment runtime leaks execution next command valid reached }
+      bounds.executionHandles_environment timeouts leaks execution next command valid reached }
   intro state trace
   exact invariant.history (inputs.map State.initial) horizon (by
     intro state supported

@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.EventApplication
+public import Vegas.Pending.EventApplication
+
+@[expose] public section
 
 /-! # Native accepted events belong to their authenticated sender -/
 
@@ -13,9 +17,9 @@ variable {Player : Type} [DecidableEq Player]
 
 /-- The native handler accepts only the source event owned by the packet sender.
 This holds for arbitrary raw packets, without any prescribed-policy premise. -/
-theorem handle_event_actor (runtime : EventGraphRuntime graph) (state after : State graph)
+theorem handle_event_actor (timeouts : EventTimeouts graph) (state after : State graph)
     (message : Message Player (Payload graph))
-    (accepted : handle runtime state message = some after) :
+    (accepted : handle timeouts state message = some after) :
     ∃ event, message.payload.event? graph = some event ∧
       graph.actor? event = some message.sender := by
   cases packet : message.payload with
@@ -23,7 +27,7 @@ theorem handle_event_actor (runtime : EventGraphRuntime graph) (state after : St
   | commitment event candidate =>
     refine ⟨event, rfl, ?_⟩
     by_cases ready : state.config.cut.Ready event
-    · by_cases timely : state.WithinDeadline runtime event
+    · by_cases timely : state.WithinDeadline timeouts event
       · cases node : nodeView graph event with
         | sample payload law outputEq codeEq =>
           simp [handle, packet, ready, timely, node] at accepted
@@ -42,7 +46,7 @@ theorem handle_event_actor (runtime : EventGraphRuntime graph) (state after : St
   | opening event candidate raw =>
     refine ⟨event, rfl, ?_⟩
     by_cases ready : state.config.cut.Ready event
-    · by_cases timely : state.WithinDeadline runtime event
+    · by_cases timely : state.WithinDeadline timeouts event
       · cases node : nodeView graph event with
         | sample payload law outputEq codeEq =>
           simp [handle, packet, ready, timely, node] at accepted

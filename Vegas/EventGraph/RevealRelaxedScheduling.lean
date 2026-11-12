@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.EventGraph.SchedulerErasure
-import Vegas.EventGraph.Sequential
+public import Vegas.EventGraph.SchedulerErasure
+public import Vegas.EventGraph.Sequential
+
+@[expose] public section
 
 /-! # Scheduling graphs whose only concurrency is between reveals
 

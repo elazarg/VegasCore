@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.MessageNetworkInvariant
+public import Interaction.MessageNetworkInvariant
+
+@[expose] public section
 
 /-! # Retaining envelopes until their purpose is settled
 

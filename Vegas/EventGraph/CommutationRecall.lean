@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.EventGraph.Commutation
-import Vegas.EventGraph.Information
+public import Vegas.EventGraph.Commutation
+public import Vegas.EventGraph.Information
+
+@[expose] public section
 
 /-! # Commutation of ready events with different actors
 
@@ -114,7 +118,7 @@ are read from these records; completion order is not. -/
 def storeRecall (graph : Vegas.EventGraph Player L) (config : graph.Config) :=
   (config.store, completionOf config)
 
-private def outputLaw (config : graph.Config) (event : graph.EventId)
+def outputLaw (config : graph.Config) (event : graph.EventId)
     (ready : config.cut.Ready event) (action : graph.Action event) :
     PMF (graph.outputLayout event).Value :=
   ((graph.nodes event).eval? (config.effectiveAction event action) config.store).get

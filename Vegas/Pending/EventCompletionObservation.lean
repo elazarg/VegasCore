@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.EventApplication
-import Vegas.Pending.ExclusionCompletion
-import Vegas.EventGraph.ObservationStep
+public import Vegas.Pending.EventApplication
+public import Vegas.Pending.ExclusionCompletion
+public import Vegas.EventGraph.ObservationStep
+
+@[expose] public section
 
 /-! # Native observations of paired graph completions -/
 

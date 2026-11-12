@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveBindingFrameOpening
+public import Vegas.Pending.ReactiveBindingFrameOpening
+
+@[expose] public section
 
 /-! # Response windows in the actual repaired implementation
 
@@ -17,16 +21,16 @@ open Interaction EventGraph GameTheory.Math.Probability
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
-  {runtime : EventGraphRuntime graph}
+  {timeouts : EventTimeouts graph}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)}
-  {memory : BindingMemory runtime leaks} {owner : Player}
-  {original repaired : (runtime.reactiveApplication leaks).Execution}
+  {memory : BindingMemory timeouts leaks} {owner : Player}
+  {original repaired : ((reactiveApplication timeouts) leaks).Execution}
 
-theorem foreign_observed (frame : Frame runtime leaks memory owner original repaired)
+theorem foreign_observed (frame : Frame timeouts leaks memory owner original repaired)
     (actor : Player) (different : actor ≠ owner) :
-    original.observe (runtime.reactiveApplication leaks) actor =
-      repaired.observe (runtime.reactiveApplication leaks) actor := by
-  let app := runtime.reactiveApplication leaks
+    original.observe ((reactiveApplication timeouts) leaks) actor =
+      repaired.observe ((reactiveApplication timeouts) leaks) actor := by
+  let app := (reactiveApplication timeouts) leaks
   change (⟨original.network.observe actor, app.observePlayer original.application actor,
     original.receipts⟩ : app.PlayerView) =
       ⟨repaired.network.observe actor, app.observePlayer repaired.application actor,

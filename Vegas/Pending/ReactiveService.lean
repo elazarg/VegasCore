@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveRuntime
-import Interaction.ReactivePublication
-import Interaction.MessageNetworkIdentity
-import Vegas.Pending.ServicePlan
+public import Vegas.Pending.ReactiveRuntime
+public import Interaction.ReactivePublication
+public import Interaction.MessageNetworkIdentity
+public import Vegas.Pending.ServicePlan
+
+@[expose] public section
 
 /-! # Reserved service with one owner activation
 
@@ -32,47 +36,47 @@ inductive NetworkChoice (Player : Type) where
   | include (id : MessageId Player)
   | wait
 
-def NetworkChoice.command (runtime : EventGraphRuntime graph)
+def NetworkChoice.command (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)) :
-    NetworkChoice Player → (runtime.reactiveApplication leaks).Command
+    NetworkChoice Player → ((reactiveApplication timeouts) leaks).Command
   | .activate who => .activate who
   | .include id => .include id
   | .wait => .wait
 
-abbrev NetworkPolicy (runtime : EventGraphRuntime graph)
+abbrev NetworkPolicy (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)) :=
-  List (runtime.reactiveApplication leaks).EnvironmentEntry →
-    (runtime.reactiveApplication leaks).EnvironmentView → PMF (NetworkChoice Player)
+  List ((reactiveApplication timeouts) leaks).EnvironmentEntry →
+    ((reactiveApplication timeouts) leaks).EnvironmentView → PMF (NetworkChoice Player)
 
 /-- A network policy branches finitely at every recall and view. -/
-class NetworkPolicy.FiniteSupport {runtime : EventGraphRuntime graph}
+class NetworkPolicy.FiniteSupport {timeouts : EventTimeouts graph}
     {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)}
-    (network : runtime.NetworkPolicy leaks) : Prop where
+    (network : (NetworkPolicy timeouts) leaks) : Prop where
   support_finite : ∀ history view, (network history view).support.Finite
 
 /-- Selection is by event and authenticated author, excluding spent identifiers. -/
-def reactiveLatest (runtime : EventGraphRuntime graph)
+def reactiveLatest (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (event : graph.EventId) (owner : Player)
-    (view : (runtime.reactiveApplication leaks).EnvironmentView) :
-      (runtime.reactiveApplication leaks).Command :=
+    (view : ((reactiveApplication timeouts) leaks).EnvironmentView) :
+      ((reactiveApplication timeouts) leaks).Command :=
   match view.network.pending.reverse.find? (fun message =>
       message.sender = owner ∧ message.payload.call.event? graph = some event ∧
-        view.Unpublished (runtime.reactiveApplication leaks) message.id) with
+        view.Unpublished ((reactiveApplication timeouts) leaks) message.id) with
   | none => .wait
   | some message => .include message.id
 
 /-- Including the latest packet for a completed target preserves the application.
 Identifier uniqueness ensures the selected identifier names the selected packet. -/
-theorem reactiveLatest_application_of_completed (runtime : EventGraphRuntime graph)
+theorem reactiveLatest_application_of_completed (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (execution next : (runtime.reactiveApplication leaks).Execution)
+    (execution next : ((reactiveApplication timeouts) leaks).Execution)
     (event : graph.EventId) (owner : Player)
     (completed : event ∈ execution.application.config.cut.completed)
     (unique : execution.network.UniqueIds)
-    (reached : next ∈ (execution.environmentStep (runtime.reactiveApplication leaks)
-      (runtime.reactiveLatest leaks event owner
-        (execution.observeEnvironment (runtime.reactiveApplication leaks)))).support) :
+    (reached : next ∈ (execution.environmentStep ((reactiveApplication timeouts) leaks)
+      ((reactiveLatest timeouts) leaks event owner
+        (execution.observeEnvironment ((reactiveApplication timeouts) leaks)))).support) :
     next.application = execution.application := by
   unfold reactiveLatest at reached
   split at reached
@@ -88,7 +92,7 @@ theorem reactiveLatest_application_of_completed (runtime : EventGraphRuntime gra
     simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map,
       PMF.mem_support_pure_iff] at reached
     subst next
-    change (execution.includePending (runtime.reactiveApplication leaks)
+    change (execution.includePending ((reactiveApplication timeouts) leaks)
       selected.id).application = _
     unfold ReactiveApplication.Execution.includePending MessageNetwork.includePending
     cases lookup : execution.network.lookup selected.id with
@@ -102,33 +106,33 @@ theorem reactiveLatest_application_of_completed (runtime : EventGraphRuntime gra
           (unique.pending selected selectedPending).pending message present identified
         subst message
         have rejected := reactiveHandle_none (leaks := leaks)
-          (handle_eq_none_of_completed runtime execution.application
+          (handle_eq_none_of_completed timeouts execution.application
             ⟨selected.id, selected.payload.call⟩ event selectedNamed completed)
         simp only [rejected, Option.getD_none]
 
-def interactionInstruction (runtime : EventGraphRuntime graph)
+def interactionInstruction (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (network : runtime.NetworkPolicy leaks)
-    (history : List (runtime.reactiveApplication leaks).EnvironmentEntry)
-    (view : (runtime.reactiveApplication leaks).EnvironmentView) :
-    ServiceInstruction graph → PMF (runtime.reactiveApplication leaks).Command
+    (network : (NetworkPolicy timeouts) leaks)
+    (history : List ((reactiveApplication timeouts) leaks).EnvironmentEntry)
+    (view : ((reactiveApplication timeouts) leaks).EnvironmentView) :
+    ServiceInstruction graph → PMF ((reactiveApplication timeouts) leaks).Command
   | .player who => PMF.pure (.activate who)
   | .wire => (network history view).map (fun choice =>
-      (runtime.reactiveApplication leaks).atMostOnceCommand view (choice.command runtime leaks))
-  | .includeLatest event owner => PMF.pure (runtime.reactiveLatest leaks event owner view)
+      ((reactiveApplication timeouts) leaks).atMostOnceCommand view (choice.command timeouts leaks))
+  | .includeLatest event owner => PMF.pure ((reactiveLatest timeouts) leaks event owner view)
   | .sample event => PMF.pure (.application (.executeSample event))
   | .tick => PMF.pure (.application .advanceClock)
   | .expire event => PMF.pure (.application (.expire event))
 
 /-- A reserved instruction branches finitely without any restriction on the
 discretionary network policy, because it never calls that policy. -/
-theorem interactionInstruction_support_finite_of_not_wire (runtime : EventGraphRuntime graph)
+theorem interactionInstruction_support_finite_of_not_wire (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (network : runtime.NetworkPolicy leaks)
-    (history : List (runtime.reactiveApplication leaks).EnvironmentEntry)
-    (view : (runtime.reactiveApplication leaks).EnvironmentView)
+    (network : (NetworkPolicy timeouts) leaks)
+    (history : List ((reactiveApplication timeouts) leaks).EnvironmentEntry)
+    (view : ((reactiveApplication timeouts) leaks).EnvironmentView)
     (instruction : ServiceInstruction graph) (reserved : instruction ≠ .wire) :
-    (runtime.interactionInstruction leaks network history view instruction).support.Finite := by
+    ((interactionInstruction timeouts) leaks network history view instruction).support.Finite := by
   cases instruction <;> simp_all [interactionInstruction]
 
 end Vegas.EventGraphRuntime

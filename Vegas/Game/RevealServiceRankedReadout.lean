@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RevealServicePayoffs
-import Vegas.Compile.ConcurrentRevealGraph
+public import Vegas.Game.RevealServicePayoffs
+public import Vegas.Compile.ConcurrentRevealGraph
+
+@[expose] public section
 
 /-! # Source readout in instruction order
 
@@ -27,12 +31,12 @@ variable {Player : Type} [DecidableEq Player]
 section Configured
 
 variable (setup : Setup (Player := Player) (L := L)) (mode : EventGraph.ExecutionMode)
-  (deadline : (serviceGraph setup mode).EventId → Nat)
+  (duration : (serviceGraph setup mode).EventId → Nat)
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
 
 /-- Read the complete source configuration from the native terminal store, with
 completions listed in instruction order. -/
-def serviceRankedReadout (state : (serviceApplication setup mode deadline leaks).ProtocolState) :
+def serviceRankedReadout (state : (serviceApplication setup mode duration leaks).ProtocolState) :
     Option (Config Player L setup.program.terminalCtx) :=
   state.bind fun control =>
     let config := control.execution.application.config
@@ -76,12 +80,12 @@ theorem rankedHistory_eq_of_rankSort {graph : Vegas.EventGraph Player L}
 
 /-- On a history in instruction order, the ranked and the service readers agree. -/
 theorem serviceRankedReadout_eq_of_rankSort
-    (control : (serviceApplication setup mode deadline leaks).Control)
+    (control : (serviceApplication setup mode duration leaks).Control)
     (ordered : (serviceGraph setup mode).rankSort
         (control.execution.application.config.history.map EventCompletion.event) =
       control.execution.application.config.history.map EventCompletion.event) :
-    serviceRankedReadout setup mode deadline leaks (some control) =
-      serviceSourceReadout setup mode deadline leaks (some control) := by
+    serviceRankedReadout setup mode duration leaks (some control) =
+      serviceSourceReadout setup mode duration leaks (some control) := by
   unfold serviceRankedReadout serviceSourceReadout
   simp only [Option.bind_some]
   rw [rankedHistory_eq_of_rankSort _ ordered]

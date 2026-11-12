@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Source.FailedBindingDeviation
-import Vegas.Source.Exclusion
-import Vegas.Source.AuthenticOpening
+public import Vegas.Source.FailedBindingDeviation
+public import Vegas.Source.Exclusion
+public import Vegas.Source.AuthenticOpening
+
+@[expose] public section
 
 /-! # Owing a failure is observed
 
@@ -97,7 +101,7 @@ end Config
 namespace ProtocolState
 
 omit [IExpr.ResultTypes L] in
-private theorem config_indebted_iff {who : Player} {Γ : SourceCtx Player L}
+theorem config_indebted_iff {who : Player} {Γ : SourceCtx Player L}
     {unresolved : Finset VarId} {registry : Registry Γ} {revelations : Revelations Γ}
     {left right : Config Player L Γ}
     (leftStatic : left.registry = registry ∧ @left.revelations = @revelations)
@@ -111,7 +115,7 @@ private theorem config_indebted_iff {who : Player} {Γ : SourceCtx Player L}
       (rightStatic.2.trans leftStatic.2.symm) observed.symm⟩
 
 omit [IExpr.ResultTypes L] in
-private theorem config_failedBinding_iff {who : Player} {Γ : SourceCtx Player L}
+theorem config_failedBinding_iff {who : Player} {Γ : SourceCtx Player L}
     {unresolved : Finset VarId} {left right : Config Player L Γ}
     (same : left.view who = right.view who) :
     left.FailedBinding who unresolved ↔ right.FailedBinding who unresolved :=

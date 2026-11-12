@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveInvariant
-import Interaction.ReactiveEnvironmentStep
-import Interaction.ReactiveStopping
-import Vegas.Pending.ReactiveRuntime
-import Vegas.EventGraph.OwnedStep
+public import Interaction.ReactiveInvariant
+public import Interaction.ReactiveEnvironmentStep
+public import Interaction.ReactiveStopping
+public import Vegas.Pending.ReactiveRuntime
+public import Vegas.EventGraph.OwnedStep
+
+@[expose] public section
 
 /-! # Finite graph paths for raw ledger transitions
 
@@ -24,13 +28,13 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
 /-- A response registers private material while retaining the graph configuration
 and the public application view. -/
-theorem reactive_respond_application (runtime : EventGraphRuntime graph)
+theorem reactive_respond_application (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (execution : (runtime.reactiveApplication leaks).Execution) (who : Player)
-    (action : (runtime.reactiveApplication leaks).Action) :
-    (execution.respond (runtime.reactiveApplication leaks) who action).application.config =
+    (execution : ((reactiveApplication timeouts) leaks).Execution) (who : Player)
+    (action : ((reactiveApplication timeouts) leaks).Action) :
+    (execution.respond ((reactiveApplication timeouts) leaks) who action).application.config =
         execution.application.config ∧
-      (execution.respond (runtime.reactiveApplication leaks) who action).application.publicView =
+      (execution.respond ((reactiveApplication timeouts) leaks) who action).application.publicView =
         execution.application.publicView := by
   rcases action with ⟨transmission⟩
   cases transmission with
@@ -42,9 +46,9 @@ theorem reactive_respond_application (runtime : EventGraphRuntime graph)
           (material.call.register_facts who execution.application).2⟩
 
 /-- Native environment service stutters or performs one supported graph step. -/
-theorem environmentStep_graph_steps (runtime : EventGraphRuntime graph)
+theorem environmentStep_graph_steps (timeouts : EventTimeouts graph)
     (state next : State graph) (command : EnvironmentCommand graph)
-    (supported : next ∈ (environmentStep runtime state command).support) :
+    (supported : next ∈ (environmentStep timeouts state command).support) :
     Relation.ReflTransGen EventGraph.Config.Step state.config next.config := by
   cases command with
   | advanceClock =>
@@ -52,20 +56,20 @@ theorem environmentStep_graph_steps (runtime : EventGraphRuntime graph)
       subst next
       exact .refl
   | executeSample event =>
-      rcases (environmentStep_executeSample_config_activated runtime state next event
+      rcases (environmentStep_executeSample_config_activated timeouts state next event
         supported).2 with same | ⟨ready, action, moved, _⟩
       · rw [same.1]
       · exact .single ⟨event, ready, action, moved⟩
   | expire event =>
-      rcases (environmentStep_expire_config_activated runtime state next event supported).2
+      rcases (environmentStep_expire_config_activated timeouts state next event supported).2
         with same | ⟨ready, action, moved, _⟩
       · rw [same.1]
       · exact .single ⟨event, ready, action, moved⟩
 
 /-- All application operations follow finite paths of the sole graph executor. -/
-theorem reactiveApplication_graphSteps (runtime : EventGraphRuntime graph)
+theorem reactiveApplication_graphSteps (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)) :
-    (runtime.reactiveApplication leaks).StepRelation (fun before after =>
+    ((reactiveApplication timeouts) leaks).StepRelation (fun before after =>
       Relation.ReflTransGen EventGraph.Config.Step before.config after.config) where
   refl := fun _ => .refl
   submit state who material := by
@@ -76,29 +80,29 @@ theorem reactiveApplication_graphSteps (runtime : EventGraphRuntime graph)
     obtain ⟨native, handled, nextEq⟩ := reactiveHandle_call accepted
     rw [← nextEq]
     obtain ⟨event, _, ready, action, moved⟩ :=
-      handle_config_mem_step runtime state native ⟨message.id, message.payload.call⟩ handled
+      handle_config_mem_step timeouts state native ⟨message.id, message.payload.call⟩ handled
     exact (Relation.ReflTransGen.single ⟨event, ready, action, moved⟩).trans
       native.drain_graph_steps
   environment state command next supported := by
-    change next ∈ ((environmentStep runtime state command).map State.drain).support at supported
+    change next ∈ ((environmentStep timeouts state command).map State.drain).support at supported
     obtain ⟨native, moved, rfl⟩ := PMF.support_map .. ▸ supported
-    exact (environmentStep_graph_steps runtime state native command moved).trans
+    exact (environmentStep_graph_steps timeouts state native command moved).trans
       native.drain_graph_steps
 
 /-- A scheduler round follows a finite path of the graph executor, including
 all automatic completions triggered by its command. -/
-theorem reactive_round_graph_steps (runtime : EventGraphRuntime graph)
+theorem reactive_round_graph_steps (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (scheduler : (runtime.reactiveApplication leaks).Scheduler)
-    (players : Player → (runtime.reactiveApplication leaks).Policy)
-    (before after : (runtime.reactiveApplication leaks).Execution)
-    (reached : after ∈ ((runtime.reactiveApplication leaks).round scheduler players
+    (scheduler : ((reactiveApplication timeouts) leaks).Scheduler)
+    (players : Player → ((reactiveApplication timeouts) leaks).Policy)
+    (before after : ((reactiveApplication timeouts) leaks).Execution)
+    (reached : after ∈ (((reactiveApplication timeouts) leaks).round scheduler players
       before).support) :
     Relation.ReflTransGen Config.Step before.application.config after.application.config := by
-  let app := runtime.reactiveApplication leaks
+  let app := (reactiveApplication timeouts) leaks
   obtain ⟨command, _, dispatched⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
   obtain ⟨middle, moved, resumed⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ dispatched)
-  have path := (runtime.reactiveApplication_graphSteps leaks).environmentStep
+  have path := ((reactiveApplication_graphSteps timeouts) leaks).environmentStep
     before middle command moved
   cases actor : command.actor? app with
   | none =>
@@ -111,31 +115,31 @@ theorem reactive_round_graph_steps (runtime : EventGraphRuntime graph)
       rw [actor] at resumed
       obtain ⟨response, _, rfl⟩ := PMF.support_map .. ▸ resumed
       exact path.trans
-        ((runtime.reactiveApplication_graphSteps leaks).respond middle who response)
+        (((reactiveApplication_graphSteps timeouts) leaks).respond middle who response)
 
 /-- A round cannot change the graph configuration before its unique ready
 event completes, even when the command may perform automatic completion. -/
-theorem reactive_round_config_eq_of_pending (runtime : EventGraphRuntime graph)
+theorem reactive_round_config_eq_of_pending (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (scheduler : (runtime.reactiveApplication leaks).Scheduler)
-    (players : Player → (runtime.reactiveApplication leaks).Policy)
-    (event : graph.EventId) (before after : (runtime.reactiveApplication leaks).Execution)
+    (scheduler : ((reactiveApplication timeouts) leaks).Scheduler)
+    (players : Player → ((reactiveApplication timeouts) leaks).Policy)
+    (event : graph.EventId) (before after : ((reactiveApplication timeouts) leaks).Execution)
     (unique : ∀ other, before.application.config.cut.Ready other → other = event)
     (pending : event ∉ after.application.config.cut.completed)
-    (reached : after ∈ ((runtime.reactiveApplication leaks).round scheduler players
+    (reached : after ∈ (((reactiveApplication timeouts) leaks).round scheduler players
       before).support) : after.application.config = before.application.config :=
   Config.Step.path_eq_of_ready_of_not_completed event unique pending
-    (reactive_round_graph_steps runtime leaks scheduler players before after reached)
+    (reactive_round_graph_steps timeouts leaks scheduler players before after reached)
 
 /-- Every stopped native execution follows a finite supported graph path.
 The path may contain several automatic completions in one scheduler round. -/
-theorem reactive_runUntil_graph_steps (runtime : EventGraphRuntime graph)
+theorem reactive_runUntil_graph_steps (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (scheduler : (runtime.reactiveApplication leaks).Scheduler)
-    (players : Player → (runtime.reactiveApplication leaks).Policy)
-    (stop : (runtime.reactiveApplication leaks).Execution → Prop) [DecidablePred stop]
-    (count : Nat) (before after : (runtime.reactiveApplication leaks).Execution)
-    (reached : after ∈ ((runtime.reactiveApplication leaks).runUntil scheduler players
+    (scheduler : ((reactiveApplication timeouts) leaks).Scheduler)
+    (players : Player → ((reactiveApplication timeouts) leaks).Policy)
+    (stop : ((reactiveApplication timeouts) leaks).Execution → Prop) [DecidablePred stop]
+    (count : Nat) (before after : ((reactiveApplication timeouts) leaks).Execution)
+    (reached : after ∈ (((reactiveApplication timeouts) leaks).runUntil scheduler players
       stop count before).support) :
     Relation.ReflTransGen Config.Step before.application.config after.application.config := by
   induction count generalizing before with
@@ -150,16 +154,17 @@ theorem reactive_runUntil_graph_steps (runtime : EventGraphRuntime graph)
         exact .refl
       · simp only [ReactiveApplication.runUntil, stopped, ↓reduceIte] at reached
         obtain ⟨middle, moved, rest⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
-        exact (reactive_round_graph_steps runtime leaks scheduler players before middle moved).trans
+        exact (reactive_round_graph_steps timeouts leaks scheduler players before middle
+          moved).trans
           (ih middle rest)
 
 /-- A native command ending before any public default stutters or performs
 one supported graph step. Automatic tails are empty in this internally clear region. -/
-theorem reactive_environmentStep_config_eq_or_step (runtime : EventGraphRuntime graph)
+theorem reactive_environmentStep_config_eq_or_step (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (execution next : (runtime.reactiveApplication leaks).Execution)
-    (command : (runtime.reactiveApplication leaks).Command)
-    (reached : next ∈ (execution.environmentStep (runtime.reactiveApplication leaks)
+    (execution next : ((reactiveApplication timeouts) leaks).Execution)
+    (command : ((reactiveApplication timeouts) leaks).Command)
+    (reached : next ∈ (execution.environmentStep ((reactiveApplication timeouts) leaks)
       command).support)
     (clear : next.application.config.defaulted = ∅) :
     next.application.config = execution.application.config ∨
@@ -195,7 +200,7 @@ theorem reactive_environmentStep_config_eq_or_step (runtime : EventGraphRuntime 
             found]
       | some message =>
           cases accepted :
-              (runtime.reactiveApplication leaks).handle execution.application message with
+              ((reactiveApplication timeouts) leaks).handle execution.application message with
           | none =>
               left
               simp only [ReactiveApplication.Execution.includePending,
@@ -208,7 +213,7 @@ theorem reactive_environmentStep_config_eq_or_step (runtime : EventGraphRuntime 
                   found, accepted, Option.getD_some] using clear
               obtain ⟨native, handled, drained⟩ := reactiveHandle_call accepted
               obtain ⟨event, _, ready, action, moved⟩ :=
-                handle_config_mem_step runtime execution.application native _ handled
+                handle_config_mem_step timeouts execution.application native _ handled
               refine Or.inr ⟨event, ready, action, ?_⟩
               simp only [ReactiveApplication.Execution.includePending,
                 MessageNetwork.includePending,
@@ -218,7 +223,7 @@ theorem reactive_environmentStep_config_eq_or_step (runtime : EventGraphRuntime 
   | application operation =>
       obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
       obtain ⟨state, changed, rfl⟩ := PMF.support_map .. ▸ supported
-      change state ∈ ((environmentStep runtime execution.application operation).map
+      change state ∈ ((environmentStep timeouts execution.application operation).map
         State.drain).support at changed
       obtain ⟨native, moved, rfl⟩ := PMF.support_map .. ▸ changed
       change native.drain.config.defaulted = ∅ at clear
@@ -229,39 +234,39 @@ theorem reactive_environmentStep_config_eq_or_step (runtime : EventGraphRuntime 
           subst native
           exact Or.inl rfl
       | executeSample event =>
-          rcases (environmentStep_executeSample_config_activated runtime execution.application
+          rcases (environmentStep_executeSample_config_activated timeouts execution.application
             native event moved).2 with ⟨same, _⟩ | ⟨ready, action, sampled, _⟩
           · exact Or.inl same
           · exact Or.inr ⟨event, ready, action, sampled⟩
       | expire event =>
-          rcases environmentStep_expire_config_eq_or_mem_step runtime execution.application native
+          rcases environmentStep_expire_config_eq_or_mem_step timeouts execution.application native
             event moved with same | ⟨ready, action, expired⟩
           · exact Or.inl same
           · exact Or.inr ⟨event, ready, action, expired⟩
 
 /-- Arbitrary raw responses and scheduler choices refine finite supported graph paths. -/
-theorem reactive_protocol_graph_steps (runtime : EventGraphRuntime graph)
+theorem reactive_protocol_graph_steps (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (initial : PMF (State graph)) (horizon : Nat)
-    (scheduler : (runtime.reactiveApplication leaks).Scheduler)
-    (before after : (runtime.reactiveApplication leaks).Control)
-    (joint : Player → Option (runtime.reactiveApplication leaks).Action)
-    (supported : some after ∈ ((runtime.reactiveApplication leaks).transition
+    (scheduler : ((reactiveApplication timeouts) leaks).Scheduler)
+    (before after : ((reactiveApplication timeouts) leaks).Control)
+    (joint : Player → Option ((reactiveApplication timeouts) leaks).Action)
+    (supported : some after ∈ (((reactiveApplication timeouts) leaks).transition
       initial horizon scheduler (some before) joint).support) :
     Relation.ReflTransGen EventGraph.Config.Step before.execution.application.config
       after.execution.application.config :=
-  (reactiveApplication_graphSteps runtime leaks).transition
+  (reactiveApplication_graphSteps timeouts leaks).transition
     initial horizon scheduler before after joint supported
 
 /-- A native protocol transition ending with no public defaults either stutters
 or performs one supported graph step. Automatic tails are empty in this region. -/
-theorem reactive_protocol_config_eq_or_step_of_clear (runtime : EventGraphRuntime graph)
+theorem reactive_protocol_config_eq_or_step_of_clear (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (initial : PMF (State graph)) (horizon : Nat)
-    (scheduler : (runtime.reactiveApplication leaks).Scheduler)
-    (before after : (runtime.reactiveApplication leaks).Control)
-    (joint : Player → Option (runtime.reactiveApplication leaks).Action)
-    (supported : some after ∈ ((runtime.reactiveApplication leaks).transition
+    (scheduler : ((reactiveApplication timeouts) leaks).Scheduler)
+    (before after : ((reactiveApplication timeouts) leaks).Control)
+    (joint : Player → Option ((reactiveApplication timeouts) leaks).Action)
+    (supported : some after ∈ (((reactiveApplication timeouts) leaks).transition
       initial horizon scheduler (some before) joint).support)
     (clear : after.execution.application.config.defaulted = ∅) :
     after.execution.application.config = before.execution.application.config ∨
@@ -272,7 +277,7 @@ theorem reactive_protocol_config_eq_or_step_of_clear (runtime : EventGraphRuntim
   cases actor with
   | some who =>
       cases Option.some.inj ((PMF.mem_support_pure_iff _ _).mp supported)
-      exact Or.inl (runtime.reactive_respond_application leaks execution who _).1
+      exact Or.inl ((reactive_respond_application timeouts) leaks execution who _).1
   | none =>
       cases remaining with
       | zero =>
@@ -283,27 +288,27 @@ theorem reactive_protocol_config_eq_or_step_of_clear (runtime : EventGraphRuntim
             Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
           obtain ⟨next, reached, same⟩ := PMF.support_map .. ▸ moved
           cases Option.some.inj same
-          exact reactive_environmentStep_config_eq_or_step runtime leaks execution next command
+          exact reactive_environmentStep_config_eq_or_step timeouts leaks execution next command
             reached clear
 
 /-- No physical transition can restore a publicly defaulted player. -/
-theorem reactive_protocol_defaulted_mono (runtime : EventGraphRuntime graph)
+theorem reactive_protocol_defaulted_mono (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (initial : PMF (State graph)) (horizon : Nat)
-    (scheduler : (runtime.reactiveApplication leaks).Scheduler)
-    (before after : (runtime.reactiveApplication leaks).Control)
-    (joint : Player → Option (runtime.reactiveApplication leaks).Action)
-    (supported : some after ∈ ((runtime.reactiveApplication leaks).transition
+    (scheduler : ((reactiveApplication timeouts) leaks).Scheduler)
+    (before after : ((reactiveApplication timeouts) leaks).Control)
+    (joint : Player → Option ((reactiveApplication timeouts) leaks).Action)
+    (supported : some after ∈ (((reactiveApplication timeouts) leaks).transition
       initial horizon scheduler (some before) joint).support) :
     before.execution.application.config.defaulted ⊆ after.execution.application.config.defaulted :=
   EventGraph.Config.Step.path_defaulted_mono
-    (reactive_protocol_graph_steps runtime leaks initial horizon scheduler before after joint
+    (reactive_protocol_graph_steps timeouts leaks initial horizon scheduler before after joint
       supported)
 
 /-- An accepted authentic opening records true, even when its publication fails.
 Automatic completion preserves that authoritative record. -/
 theorem reactiveHandle_opening_decision
-    (runtime : EventGraphRuntime graph)
+    (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (state next : State graph) (id : MessageId Player) (event : graph.EventId)
     (candidate : Handle graph) (raw : Raw L)
@@ -315,7 +320,7 @@ theorem reactiveHandle_opening_decision
       .resolve owner payload binding checks)
     (node : nodeView graph event = .resolve owner payload binding checks outputEq codeEq)
     (evidence : Option (OpeningFact graph)) (token : Option (ReadinessToken graph))
-    (accepted : (runtime.reactiveApplication leaks).handle state
+    (accepted : ((reactiveApplication timeouts) leaks).handle state
       ⟨id, ⟨.opening event candidate raw, evidence, token⟩⟩ = some next) :
     ∃ defaultEvent, (⟨event,
         some (cast (congrArg EventField.Action outputEq.symm) true), defaultEvent⟩ :
@@ -323,7 +328,7 @@ theorem reactiveHandle_opening_decision
   obtain ⟨native, handled, nextEq⟩ := reactiveHandle_call accepted
   obtain ⟨active, ready, timely, owner', payload', binding', checks', outputEq', codeEq',
     value, result, actualNode, sender, owned, associated, rawEq, fixed, stored, resolved,
-    nativeEq⟩ := (handle_opening_iff runtime state native id event candidate raw).mp handled
+    nativeEq⟩ := (handle_opening_iff timeouts state native id event candidate raw).mp handled
   rw [node] at actualNode
   cases actualNode
   have actor := nodeView_resolve_actor outputEq codeEq
@@ -347,12 +352,12 @@ theorem reactiveHandle_opening_decision
   exact List.mem_append_right _ (List.mem_singleton_self _)
 
 
-private theorem environment_primary_or_stutter (runtime : EventGraphRuntime graph)
+private theorem environment_primary_or_stutter (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (before after : (runtime.reactiveApplication leaks).Execution)
-    (command : (runtime.reactiveApplication leaks).Command)
+    (before after : ((reactiveApplication timeouts) leaks).Execution)
+    (command : ((reactiveApplication timeouts) leaks).Command)
     (quiescent : ∀ event, ¬ before.application.AutomaticReady event)
-    (reached : after ∈ (before.environmentStep (runtime.reactiveApplication leaks)
+    (reached : after ∈ (before.environmentStep ((reactiveApplication timeouts) leaks)
       command).support) :
     after.application.config = before.application.config ∨
       ∃ (event : graph.EventId) (ready : before.application.config.cut.Ready event)
@@ -384,7 +389,7 @@ private theorem environment_primary_or_stutter (runtime : EventGraphRuntime grap
             found]
       | some message =>
           cases accepted :
-              (runtime.reactiveApplication leaks).handle before.application message with
+              ((reactiveApplication timeouts) leaks).handle before.application message with
           | none =>
               left
               simp only [ReactiveApplication.Execution.includePending,
@@ -392,7 +397,7 @@ private theorem environment_primary_or_stutter (runtime : EventGraphRuntime grap
           | some state =>
               obtain ⟨native, handled, drained⟩ := reactiveHandle_call accepted
               obtain ⟨event, _, ready, action, moved⟩ :=
-                handle_config_mem_step runtime before.application native _ handled
+                handle_config_mem_step timeouts before.application native _ handled
               refine Or.inr ⟨event, ready, action, native, moved, ?_⟩
               simp only [ReactiveApplication.Execution.includePending,
                 MessageNetwork.includePending, found, accepted, Option.getD_some]
@@ -400,7 +405,7 @@ private theorem environment_primary_or_stutter (runtime : EventGraphRuntime grap
   | application operation =>
       obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
       obtain ⟨state, changed, rfl⟩ := PMF.support_map .. ▸ supported
-      change state ∈ ((environmentStep runtime before.application operation).map
+      change state ∈ ((environmentStep timeouts before.application operation).map
         State.drain).support at changed
       obtain ⟨native, moved, rfl⟩ := PMF.support_map .. ▸ changed
       cases operation with
@@ -409,30 +414,30 @@ private theorem environment_primary_or_stutter (runtime : EventGraphRuntime grap
           subst native
           exact Or.inl (drainStutter _ rfl)
       | executeSample event =>
-          rcases (environmentStep_executeSample_config_activated runtime before.application
+          rcases (environmentStep_executeSample_config_activated timeouts before.application
             native event moved).2 with ⟨same, _⟩ | ⟨ready, action, sampled, _⟩
           · exact Or.inl (drainStutter native same)
           · exact Or.inr ⟨event, ready, action, native, sampled, rfl⟩
       | expire event =>
-          rcases environmentStep_expire_config_eq_or_mem_step runtime before.application native
+          rcases environmentStep_expire_config_eq_or_mem_step timeouts before.application native
             event moved with same | ⟨ready, action, expired⟩
           · exact Or.inl (drainStutter native same)
           · exact Or.inr ⟨event, ready, action, native, expired, rfl⟩
 
-private theorem round_primary_or_stutter (runtime : EventGraphRuntime graph)
+private theorem round_primary_or_stutter (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (scheduler : (runtime.reactiveApplication leaks).Scheduler)
-    (players : Player → (runtime.reactiveApplication leaks).Policy)
-    (before after : (runtime.reactiveApplication leaks).Execution)
+    (scheduler : ((reactiveApplication timeouts) leaks).Scheduler)
+    (players : Player → ((reactiveApplication timeouts) leaks).Policy)
+    (before after : ((reactiveApplication timeouts) leaks).Execution)
     (quiescent : ∀ event, ¬ before.application.AutomaticReady event)
-    (reached : after ∈ ((runtime.reactiveApplication leaks).round scheduler players
+    (reached : after ∈ (((reactiveApplication timeouts) leaks).round scheduler players
       before).support) :
     after.application.config = before.application.config ∨
       ∃ (event : graph.EventId) (ready : before.application.config.cut.Ready event)
         (action : graph.Action event) (native : State graph),
         native.config ∈ (before.application.config.step event ready action).support ∧
           after.application.config = native.drain.config := by
-  let app := runtime.reactiveApplication leaks
+  let app := (reactiveApplication timeouts) leaks
   obtain ⟨command, _, dispatched⟩ := (PMF.mem_support_bind_iff _ _ _).mp reached
   obtain ⟨middle, moved, resumed⟩ := (PMF.mem_support_bind_iff _ _ _).mp dispatched
   have configEq : after.application.config = middle.application.config := by
@@ -446,23 +451,23 @@ private theorem round_primary_or_stutter (runtime : EventGraphRuntime graph)
         change after ∈ (app.resume players (command.actor? app) middle).support at resumed
         rw [actor] at resumed
         obtain ⟨response, _, rfl⟩ := PMF.support_map .. ▸ resumed
-        exact (reactive_respond_application runtime leaks middle who response).1
+        exact (reactive_respond_application timeouts leaks middle who response).1
   rw [configEq]
-  exact environment_primary_or_stutter runtime leaks before middle command quiescent moved
+  exact environment_primary_or_stutter timeouts leaks before middle command quiescent moved
 
 /-- At a unique ready event of a quiescent state, a completed stopped run is one
 supported primary graph step followed by native automatic completion. Arbitrary
 earlier rounds may stutter without changing the starting graph configuration. -/
-theorem runUntil_completed_primary_drain (runtime : EventGraphRuntime graph)
+theorem runUntil_completed_primary_drain (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (scheduler : (runtime.reactiveApplication leaks).Scheduler)
-    (players : Player → (runtime.reactiveApplication leaks).Policy)
+    (scheduler : ((reactiveApplication timeouts) leaks).Scheduler)
+    (players : Player → ((reactiveApplication timeouts) leaks).Policy)
     (event : graph.EventId) (count : Nat)
-    (before after : (runtime.reactiveApplication leaks).Execution)
+    (before after : ((reactiveApplication timeouts) leaks).Execution)
     (ready : before.application.config.cut.Ready event)
     (unique : ∀ query, before.application.config.cut.Ready query → query = event)
     (quiescent : ∀ query, ¬ before.application.AutomaticReady query)
-    (reached : after ∈ ((runtime.reactiveApplication leaks).runUntil scheduler players
+    (reached : after ∈ (((reactiveApplication timeouts) leaks).runUntil scheduler players
       (fun current => event ∈ current.application.config.cut.completed) count before).support)
     (completed : event ∈ after.application.config.cut.completed) :
     ∃ (action : graph.Action event) (native : State graph),
@@ -476,15 +481,15 @@ theorem runUntil_completed_primary_drain (runtime : EventGraphRuntime graph)
       simp only [ReactiveApplication.runUntil, ready.1, ite_false] at reached
       obtain ⟨middle, moved, rest⟩ := (PMF.mem_support_bind_iff _ _ _).mp reached
       by_cases done : event ∈ middle.application.config.cut.completed
-      · rw [(runtime.reactiveApplication leaks).runUntil_of_stop scheduler players _ count
+      · rw [((reactiveApplication timeouts) leaks).runUntil_of_stop scheduler players _ count
           middle done, PMF.mem_support_pure_iff] at rest
         subst after
-        rcases round_primary_or_stutter runtime leaks scheduler players before middle quiescent
+        rcases round_primary_or_stutter timeouts leaks scheduler players before middle quiescent
           moved with same | ⟨query, queryReady, action, native, primary, drained⟩
         · exact (ready.1 (same ▸ done)).elim
         · cases unique query queryReady
           exact ⟨action, native, primary, drained⟩
-      · have same := reactive_round_config_eq_of_pending runtime leaks scheduler players event
+      · have same := reactive_round_config_eq_of_pending timeouts leaks scheduler players event
           before middle unique done moved
         obtain ⟨action, native, primary, drained⟩ := ih middle (same ▸ ready)
           (by simpa only [same] using unique)
@@ -495,33 +500,33 @@ theorem runUntil_completed_primary_drain (runtime : EventGraphRuntime graph)
 /-- A fixed whole-continuation law determines the actual primary decision of
 every completed stopped run; automatic completion may extend its endpoint. -/
 theorem runUntil_fixed_primary_drain
-    (runtime : EventGraphRuntime graph)
+    (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (scheduler : (runtime.reactiveApplication leaks).Scheduler)
-    (players : Player → (runtime.reactiveApplication leaks).Policy)
+    (scheduler : ((reactiveApplication timeouts) leaks).Scheduler)
+    (players : Player → ((reactiveApplication timeouts) leaks).Policy)
     (event : graph.EventId) (count : Nat)
-    (before : (runtime.reactiveApplication leaks).Execution)
+    (before : ((reactiveApplication timeouts) leaks).Execution)
     (ready : before.application.config.cut.Ready event)
     (unique : ∀ query, before.application.config.cut.Ready query → query = event)
     (owner : Player) (owned : graph.actor? event = some owner)
     (active : owner ∉ before.application.config.defaulted)
     (quiescent : ∀ query, ¬before.application.AutomaticReady query)
     (action : graph.Action event) (plan : graph.EventPlan)
-    (law : ((runtime.reactiveApplication leaks).runUntil scheduler players
+    (law : (((reactiveApplication timeouts) leaks).runUntil scheduler players
       (fun final => event ∈ final.application.config.cut.completed) count before).bind
         (fun final => graph.runPlan plan final.application.config.remaining
           final.application.config) =
       (before.application.config.step event ready action).bind
         (fun config => graph.runPlan plan config.remaining config))
-    (completed : ∀ final ∈ ((runtime.reactiveApplication leaks).runUntil scheduler players
+    (completed : ∀ final ∈ (((reactiveApplication timeouts) leaks).runUntil scheduler players
       (fun final => event ∈ final.application.config.cut.completed) count before).support,
       event ∈ final.application.config.cut.completed) :
-    ∀ final ∈ ((runtime.reactiveApplication leaks).runUntil scheduler players
+    ∀ final ∈ (((reactiveApplication timeouts) leaks).runUntil scheduler players
       (fun final => event ∈ final.application.config.cut.completed) count before).support,
       ∃ native : State graph,
         native.config ∈ (before.application.config.step event ready action).support ∧
           final.application.config = native.drain.config := by
-  let app := runtime.reactiveApplication leaks
+  let app := (reactiveApplication timeouts) leaks
   let read := fun config : graph.Config =>
     config.history.find? (fun record => decide (record.event = event))
   let phase := app.runUntil scheduler players
@@ -584,7 +589,7 @@ theorem runUntil_fixed_primary_drain
       (phase.map (fun final => read final.application.config)).support :=
     (PMF.mem_support_map_iff _ _ _).mpr ⟨final, reached, rfl⟩
   rw [mapped, PMF.mem_support_pure_iff] at seen
-  obtain ⟨actualAction, native, primary, drained⟩ := runUntil_completed_primary_drain runtime
+  obtain ⟨actualAction, native, primary, drained⟩ := runUntil_completed_primary_drain timeouts
     leaks scheduler players event count before final ready unique quiescent reached
       (completed final reached)
   obtain ⟨actualValue, _actualOutput, nativeHistory⟩ := before.application.config.step_completion
@@ -618,14 +623,14 @@ theorem runUntil_fixed_primary_drain
 
 /-- A quiescent native protocol transition retains its graph configuration or
 performs one supported primary completion followed by automatic service. -/
-theorem reactive_protocol_primary_or_stutter (runtime : EventGraphRuntime graph)
+theorem reactive_protocol_primary_or_stutter (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (initial : PMF (State graph)) (horizon : Nat)
-    (scheduler : (runtime.reactiveApplication leaks).Scheduler)
-    (before after : (runtime.reactiveApplication leaks).Control)
-    (joint : Player → Option (runtime.reactiveApplication leaks).Action)
+    (scheduler : ((reactiveApplication timeouts) leaks).Scheduler)
+    (before after : ((reactiveApplication timeouts) leaks).Control)
+    (joint : Player → Option ((reactiveApplication timeouts) leaks).Action)
     (quiescent : ∀ event, ¬ before.execution.application.AutomaticReady event)
-    (supported : some after ∈ ((runtime.reactiveApplication leaks).transition
+    (supported : some after ∈ (((reactiveApplication timeouts) leaks).transition
       initial horizon scheduler (some before) joint).support) :
     after.execution.application.config = before.execution.application.config ∨
       ∃ (event : graph.EventId) (ready : before.execution.application.config.cut.Ready event)
@@ -636,7 +641,7 @@ theorem reactive_protocol_primary_or_stutter (runtime : EventGraphRuntime graph)
   cases actor with
   | some who =>
       cases Option.some.inj ((PMF.mem_support_pure_iff _ _).mp supported)
-      exact Or.inl (runtime.reactive_respond_application leaks execution who _).1
+      exact Or.inl ((reactive_respond_application timeouts) leaks execution who _).1
   | none =>
       cases remaining with
       | zero =>
@@ -647,7 +652,7 @@ theorem reactive_protocol_primary_or_stutter (runtime : EventGraphRuntime graph)
             Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
           obtain ⟨next, reached, same⟩ := PMF.support_map .. ▸ moved
           cases Option.some.inj same
-          exact environment_primary_or_stutter runtime leaks execution next command
+          exact environment_primary_or_stutter timeouts leaks execution next command
             quiescent reached
 
 

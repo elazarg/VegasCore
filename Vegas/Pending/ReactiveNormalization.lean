@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveRuntime
-import Vegas.Pending.EvidenceNormalization
-import Interaction.ReactiveResponseNormalization
+public import Vegas.Pending.ReactiveRuntime
+public import Vegas.Pending.EvidenceNormalization
+public import Interaction.ReactiveResponseNormalization
+
+@[expose] public section
 
 /-! # Semantic normal forms of event submissions
 
@@ -93,11 +97,11 @@ theorem Submission.normalizeReactive_candidateAfter (who : Player)
           · simp [normalizeReactive, openingEffective, owned, candidateAfter]
   | opening | malformed => rfl
 
-theorem Submission.normalizeReactive_register (runtime : EventGraphRuntime graph)
+theorem Submission.normalizeReactive_register (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)) (who : Player)
     (state : State graph) (submission : Submission graph) :
     (submission.normalizeReactive who
-        ((runtime.reactiveApplication leaks).observePlayer state who)).register state who =
+        (((reactiveApplication timeouts) leaks).observePlayer state who)).register state who =
       submission.register state who := by
   classical
   rcases submission with ⟨packet, material⟩
@@ -143,13 +147,13 @@ theorem WitnessedSubmission.normalizeReactive_idempotent
     candidates, EvidenceRequest.normalize_idempotent]
 
 theorem WitnessedSubmission.normalizeReactive_emit
-    (runtime : EventGraphRuntime graph)
+    (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (state : State graph) (who : Player)
     (known : List (Message Player (WitnessedPacket graph)))
     (submission : WitnessedSubmission graph) :
     (submission.normalizeReactive who
-      ((runtime.reactiveApplication leaks).observePlayer state who) known).emit
+      (((reactiveApplication timeouts) leaks).observePlayer state who) known).emit
         (submitStep (submission.call.register state who) who submission.call.packet) who known =
       submission.emit
         (submitStep (submission.call.register state who) who submission.call.packet) who known := by
@@ -162,12 +166,12 @@ theorem WitnessedSubmission.normalizeReactive_emit
           known)) _ = _
   rw [candidates, EvidenceRequest.resolve_normalize]
 
-def reactiveNormalization (runtime : EventGraphRuntime graph)
+def reactiveNormalization (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)) :
-    (runtime.reactiveApplication leaks).SubmissionNormalization where
+    ((reactiveApplication timeouts) leaks).SubmissionNormalization where
   normalize := WitnessedSubmission.normalizeReactive
   idempotent := WitnessedSubmission.normalizeReactive_idempotent
-  packet := WitnessedSubmission.normalizeReactive_emit runtime leaks
+  packet := WitnessedSubmission.normalizeReactive_emit timeouts leaks
   submit state who known submission := by
     change submitStep _ who _ = submitStep _ who _
     dsimp only [WitnessedSubmission.normalizeReactive]

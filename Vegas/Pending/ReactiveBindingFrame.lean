@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveBindingCoupling
-import Vegas.EventGraph.BindingRefinement
-import Vegas.Pending.ReactiveSubmissionRecall
+public import Vegas.Pending.ReactiveBindingCoupling
+public import Vegas.EventGraph.BindingRefinement
+public import Vegas.Pending.ReactiveSubmissionRecall
+
+@[expose] public section
 
 /-! # The concrete frame carried by a repaired native continuation
 
@@ -20,15 +24,15 @@ open Interaction GameTheory.Math.Probability EventGraph
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
-  (runtime : EventGraphRuntime graph)
+  (timeouts : EventTimeouts graph)
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
 
-structure Frame (memory : BindingMemory runtime leaks) (owner : Player)
-    (original repaired : (runtime.reactiveApplication leaks).Execution) : Prop where
-  past : memory.restoreRecall runtime leaks (repaired.logs owner) = original.logs owner
-  observed : memory.shadow.inputView runtime leaks
-    (repaired.observe (runtime.reactiveApplication leaks) owner) =
-      original.observe (runtime.reactiveApplication leaks) owner
+structure Frame (memory : BindingMemory timeouts leaks) (owner : Player)
+    (original repaired : ((reactiveApplication timeouts) leaks).Execution) : Prop where
+  past : memory.restoreRecall timeouts leaks (repaired.logs owner) = original.logs owner
+  observed : memory.shadow.inputView timeouts leaks
+    (repaired.observe ((reactiveApplication timeouts) leaks) owner) =
+      original.observe ((reactiveApplication timeouts) leaks) owner
   lengths : (repaired.logs owner).length = memory.responses.length
   network : original.network = repaired.network
   service : original.environmentRecall = repaired.environmentRecall
@@ -38,15 +42,15 @@ structure Frame (memory : BindingMemory runtime leaks) (owner : Player)
   slots : ∀ query, original.application.candidates.lookup (owner, query) = .fresh ↔
     repaired.application.candidates.lookup (owner, query) = .fresh
   successful : original.application.config.store.BindingRefines repaired.application.config.store
-  submissions : runtime.submissionRecall leaks (original.logs owner) =
-    runtime.submissionRecall leaks (repaired.logs owner)
+  submissions : (submissionRecall timeouts) leaks (original.logs owner) =
+    (submissionRecall timeouts) leaks (repaired.logs owner)
 
 theorem frame_atRecall (owner : Player)
-    (execution : (runtime.reactiveApplication leaks).Execution) :
-    Frame runtime leaks (atRecall runtime leaks (execution.logs owner)) owner
+    (execution : ((reactiveApplication timeouts) leaks).Execution) :
+    Frame timeouts leaks (atRecall timeouts leaks (execution.logs owner)) owner
       execution execution where
-  past := restoreRecall_atRecall runtime leaks _
-  observed := BindingShadow.inputView_empty runtime leaks _
+  past := restoreRecall_atRecall timeouts leaks _
+  observed := BindingShadow.inputView_empty timeouts leaks _
   lengths := by simp only [atRecall, List.length_map]
   network := rfl
   service := rfl
@@ -58,42 +62,42 @@ theorem frame_atRecall (owner : Player)
 
 namespace Frame
 
-variable {runtime leaks} {memory : BindingMemory runtime leaks} {owner : Player}
-  {original repaired : (runtime.reactiveApplication leaks).Execution}
+variable {timeouts leaks} {memory : BindingMemory timeouts leaks} {owner : Player}
+  {original repaired : ((reactiveApplication timeouts) leaks).Execution}
 
-theorem receipts (frame : Frame runtime leaks memory owner original repaired) :
+theorem receipts (frame : Frame timeouts leaks memory owner original repaired) :
     original.receipts = repaired.receipts :=
   (congrArg ReactiveApplication.PlayerView.receipts frame.observed).symm
 
-theorem publicView (frame : Frame runtime leaks memory owner original repaired) :
+theorem publicView (frame : Frame timeouts leaks memory owner original repaired) :
     original.application.publicView = repaired.application.publicView :=
-  (congrArg (fun view : (runtime.reactiveApplication leaks).PlayerView =>
+  (congrArg (fun view : ((reactiveApplication timeouts) leaks).PlayerView =>
     view.application.publicView) frame.observed).symm
 
-theorem firstSubmission (frame : Frame runtime leaks memory owner original repaired)
-    (response : (runtime.reactiveApplication leaks).Action) :
-    runtime.firstSubmission leaks (original.logs owner) response =
-      runtime.firstSubmission leaks (repaired.logs owner) response := by
+theorem firstSubmission (frame : Frame timeouts leaks memory owner original repaired)
+    (response : ((reactiveApplication timeouts) leaks).Action) :
+    (firstSubmission timeouts) leaks (original.logs owner) response =
+      (firstSubmission timeouts) leaks (repaired.logs owner) response := by
   unfold EventGraphRuntime.firstSubmission
-  cases runtime.submittedEvent? leaks response with
+  cases (submittedEvent? timeouts) leaks response with
   | none => rfl
   | some event =>
-      exact congrArg Bool.not (runtime.eventRecorded_congr leaks _ _ frame.submissions event)
+      exact congrArg Bool.not ((eventRecorded_congr timeouts) leaks _ _ frame.submissions event)
 
-theorem environment (frame : Frame runtime leaks memory owner original repaired) :
-    original.observeEnvironment (runtime.reactiveApplication leaks) =
-      repaired.observeEnvironment (runtime.reactiveApplication leaks) := by
+theorem environment (frame : Frame timeouts leaks memory owner original repaired) :
+    original.observeEnvironment ((reactiveApplication timeouts) leaks) =
+      repaired.observeEnvironment ((reactiveApplication timeouts) leaks) := by
   change (⟨original.network.publicView, original.application.publicView,
-    original.receipts⟩ : (runtime.reactiveApplication leaks).EnvironmentView) =
+    original.receipts⟩ : ((reactiveApplication timeouts) leaks).EnvironmentView) =
       ⟨repaired.network.publicView, repaired.application.publicView, repaired.receipts⟩
   rw [frame.network, frame.receipts, frame.publicView]
 
 /-- A passive sample is shared on the equal pending pool. The sampled set is
 not restricted, including when the activated player is the repaired owner. -/
-theorem activate (frame : Frame runtime leaks memory owner original repaired)
+theorem activate (frame : Frame timeouts leaks memory owner original repaired)
     (actor : Player) (selected : Finset (MessageId Player)) :
-    let app := runtime.reactiveApplication leaks
-    Frame runtime leaks memory owner
+    let app := (reactiveApplication timeouts) leaks
+    Frame timeouts leaks memory owner
       { original with
         network := original.network.learn actor selected
         environmentRecall := original.environmentRecall ++
@@ -106,25 +110,25 @@ theorem activate (frame : Frame runtime leaks memory owner original repaired)
     frame.successful, frame.submissions⟩
   · have ownApplication := congrArg ReactiveApplication.PlayerView.application frame.observed
     change (⟨(repaired.network.learn actor selected).observe owner,
-      memory.shadow.view ((runtime.reactiveApplication leaks).observePlayer
+      memory.shadow.view (((reactiveApplication timeouts) leaks).observePlayer
         repaired.application owner), repaired.receipts⟩ :
-          (runtime.reactiveApplication leaks).PlayerView) =
+          ((reactiveApplication timeouts) leaks).PlayerView) =
       ⟨(original.network.learn actor selected).observe owner,
-        (runtime.reactiveApplication leaks).observePlayer original.application owner,
+        ((reactiveApplication timeouts) leaks).observePlayer original.application owner,
           original.receipts⟩
     rw [frame.network, frame.receipts]
     exact congrArg (fun view => (⟨(repaired.network.learn actor selected).observe owner,
-      view, repaired.receipts⟩ : (runtime.reactiveApplication leaks).PlayerView)) ownApplication
+      view, repaired.receipts⟩ : ((reactiveApplication timeouts) leaks).PlayerView)) ownApplication
   · rw [frame.network]
   · rw [frame.service, frame.environment]
 
-private theorem foreign_catalog (execution : (runtime.reactiveApplication leaks).Execution)
+private theorem foreign_catalog (execution : ((reactiveApplication timeouts) leaks).Execution)
     (actor : Player) (different : owner ≠ actor)
-    (response : (runtime.reactiveApplication leaks).Action) :
-    (fun query => (execution.respond (runtime.reactiveApplication leaks)
+    (response : ((reactiveApplication timeouts) leaks).Action) :
+    (fun query => (execution.respond ((reactiveApplication timeouts) leaks)
       actor response).application.candidates.lookup (owner, query)) =
         fun query => execution.application.candidates.lookup (owner, query) := by
-  have same : (execution.respond (runtime.reactiveApplication leaks)
+  have same : (execution.respond ((reactiveApplication timeouts) leaks)
       actor response).application.playerView owner = execution.application.playerView owner := by
     rcases response with ⟨transmission⟩
     cases transmission with
@@ -137,14 +141,14 @@ private theorem foreign_catalog (execution : (runtime.reactiveApplication leaks)
 
 /-- Arbitrary foreign raw responses, including forwarding and local evidence
 aliases, preserve the repaired player's input and the joint outside frame. -/
-theorem foreign_response (frame : Frame runtime leaks memory owner original repaired)
+theorem foreign_response (frame : Frame timeouts leaks memory owner original repaired)
     (actor : Player) (foreign : actor ≠ owner)
-    (response : (runtime.reactiveApplication leaks).Action) :
-    Frame runtime leaks memory owner
-      (original.respond (runtime.reactiveApplication leaks) actor response)
-      (repaired.respond (runtime.reactiveApplication leaks) actor response) := by
-  let app := runtime.reactiveApplication leaks
-  have paired := memory.foreign_response runtime leaks original repaired owner actor foreign
+    (response : ((reactiveApplication timeouts) leaks).Action) :
+    Frame timeouts leaks memory owner
+      (original.respond ((reactiveApplication timeouts) leaks) actor response)
+      (repaired.respond ((reactiveApplication timeouts) leaks) actor response) := by
+  let app := (reactiveApplication timeouts) leaks
+  have paired := memory.foreign_response timeouts leaks original repaired owner actor foreign
     frame.past frame.observed frame.network frame.views frame.logs response
   refine ⟨paired.1, paired.2.1, ?_, paired.2.2.1, ?_, paired.2.2.2.2.1,
     paired.2.2.2.2.2, ?_, ?_, ?_⟩
@@ -155,8 +159,8 @@ theorem foreign_response (frame : Frame runtime leaks memory owner original repa
     rw [congrFun (foreign_catalog original actor foreign.symm response) query,
       congrFun (foreign_catalog repaired actor foreign.symm response) query]
     exact frame.slots query
-  · rw [(runtime.reactive_respond_application leaks original actor response).1,
-      (runtime.reactive_respond_application leaks repaired actor response).1]
+  · rw [((reactive_respond_application timeouts) leaks original actor response).1,
+      ((reactive_respond_application timeouts) leaks repaired actor response).1]
     exact frame.successful
   · rw [app.respond_recall_other original actor owner foreign.symm response,
       app.respond_recall_other repaired actor owner foreign.symm response]
@@ -164,16 +168,16 @@ theorem foreign_response (frame : Frame runtime leaks memory owner original repa
 
 /-- Silence preserves the concrete frame while recording the
 original response in private memory. No pending observation is discarded. -/
-theorem transport_response (frame : Frame runtime leaks memory owner original repaired)
-    (response : (runtime.reactiveApplication leaks).Action)
+theorem transport_response (frame : Frame timeouts leaks memory owner original repaired)
+    (response : ((reactiveApplication timeouts) leaks).Action)
     (notSubmitted : ∀ submission, response.transmission ≠ some submission) :
-    let app := runtime.reactiveApplication leaks
-    let remembered := memory.record runtime leaks
-      (memory.shadow.inputView runtime leaks (repaired.observe app owner)) response
-    Frame runtime leaks remembered owner (original.respond app owner response)
+    let app := (reactiveApplication timeouts) leaks
+    let remembered := memory.record timeouts leaks
+      (memory.shadow.inputView timeouts leaks (repaired.observe app owner)) response
+    Frame timeouts leaks remembered owner (original.respond app owner response)
       (repaired.respond app owner response) := by
-  let app := runtime.reactiveApplication leaks
-  have paired := memory.transport_response runtime leaks original repaired owner frame.lengths
+  let app := (reactiveApplication timeouts) leaks
+  have paired := memory.transport_response timeouts leaks original repaired owner frame.lengths
     frame.past frame.observed response notSubmitted
   have unchanged (execution : app.Execution) :
       (execution.respond app owner response).application = execution.application := by
@@ -200,7 +204,7 @@ theorem transport_response (frame : Frame runtime leaks memory owner original re
     exact frame.slots query
   · rw [unchanged original, unchanged repaired]
     exact frame.successful
-  · rw [runtime.submissionRecall_respond, runtime.submissionRecall_respond, frame.submissions]
+  · rw [(submissionRecall_respond timeouts), (submissionRecall_respond timeouts), frame.submissions]
 
 end Frame
 end Vegas.EventGraphRuntime.BindingMemory

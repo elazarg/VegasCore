@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheoryExtensions.Analysis.Protocol.TerminalAudit
-import GameTheoryExtensions.Math.Transfers
+public import GameTheoryExtensions.Analysis.Protocol.TerminalAudit
+public import GameTheoryExtensions.Math.Transfers
+
+@[expose] public section
 
 /-! # Monetary settlement evaluated by quasi-linear utility
 

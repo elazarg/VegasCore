@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RevealService
-import Vegas.Pending.ReactiveCompiledMenu
+public import Vegas.Game.RevealService
+public import Vegas.Pending.ReactiveCompiledMenu
+
+@[expose] public section
 
 /-! # Finite source-service choices
 
@@ -22,8 +26,8 @@ variable {Player : Type} [Fintype Player] [DecidableEq Player]
 def sourceServiceMenu (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (bounds : MessageBounds (graph setup)) :
-    (application setup (Vegas.runtime setup) leaks).ResponseMenu where
-  actions := bounds.compiledActions (runtime setup) leaks
-  nonempty := bounds.compiledActions_nonempty (runtime setup) leaks
+    (application setup (Vegas.timeouts setup) leaks).ResponseMenu where
+  actions := bounds.compiledActions (timeouts setup) leaks
+  nonempty := bounds.compiledActions_nonempty (timeouts setup) leaks
 
 end Vegas

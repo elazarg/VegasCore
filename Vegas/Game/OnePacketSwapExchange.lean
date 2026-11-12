@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketSwapGuardSite
-import Vegas.Game.OnePacketSwapFibers
+public import Vegas.Game.OnePacketSwapGuardSite
+public import Vegas.Game.OnePacketSwapFibers
+
+@[expose] public section
 
 /-! # The swap between two points of an information site
 

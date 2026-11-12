@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.MessageNetwork
-import Interaction.MessageInvariant
+public import Interaction.MessageNetwork
+public import Interaction.MessageInvariant
+
+@[expose] public section
 
 /-! # Predicates on all envelopes retained by the network -/
 

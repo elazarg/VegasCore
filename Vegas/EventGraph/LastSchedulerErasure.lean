@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.EventGraph.LastScheduler
-import Vegas.EventGraph.SchedulerErasure
-import Vegas.EventGraph.RevealRelaxedScheduling
+public import Vegas.EventGraph.LastScheduler
+public import Vegas.EventGraph.SchedulerErasure
+public import Vegas.EventGraph.RevealRelaxedScheduling
+
+@[expose] public section
 
 /-! # Taking other players' events early under the last scheduler
 
@@ -48,14 +52,6 @@ structure LastIndependent (profile : graph.BehavioralProfile) (who : Player) : P
 def lastLaw (profile : graph.BehavioralProfile) (who : Player) (config : graph.Config) :=
   (graph.runPlan (graph.policyPlan profile (graph.lastScheduler who)) config.remaining
     config).map runKey
-
-omit [DecidableEq Player] in
-private theorem not_terminal_of_ready {config : graph.Config} {event : graph.EventId}
-    (ready : config.cut.Ready event) : ¬ config.cut.Terminal := by
-  intro terminal
-  apply ready.1
-  rw [terminal]
-  exact Finset.mem_univ _
 
 /-- The last scheduler's law takes its picked event first. -/
 theorem lastLaw_step (profile : graph.BehavioralProfile) (who : Player) (config : graph.Config)
@@ -152,10 +148,10 @@ theorem LastIndependent.eventStep_bind_lastLaw {profile : graph.BehavioralProfil
   | zero =>
       intro config remaining event ready _
       exact absurd ((config.terminal_iff_remaining_zero).mpr remaining)
-        (not_terminal_of_ready ready)
+        ready.not_terminal
   | succ fuel ih =>
       intro config remaining event ready movable
-      have notTerminal := not_terminal_of_ready ready
+      have notTerminal := ready.not_terminal
       let picked := graph.lastPick who config.cut.enabled
         (enabled_nonempty_of_not_terminal config notTerminal)
       have pickedReady : config.cut.Ready picked :=

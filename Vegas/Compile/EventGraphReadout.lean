@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Compile.EventGraphObservation
-import Vegas.Compile.EventGraphState
-import Vegas.EventGraph.Semantics
-import Vegas.Compile.EventGraphHistory
-import Vegas.Source.Metadata
+public import Vegas.Compile.EventGraphObservation
+public import Vegas.Compile.EventGraphState
+public import Vegas.EventGraph.Semantics
+public import Vegas.Compile.EventGraphHistory
+public import Vegas.Source.Metadata
+
+@[expose] public section
 
 /-! # Typed source-state readout from event-graph stores
 

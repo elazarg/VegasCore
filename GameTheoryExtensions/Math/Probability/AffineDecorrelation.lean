@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheoryExtensions.Math.Probability.ProductDecorrelation
+public import GameTheoryExtensions.Math.Probability.ProductDecorrelation
+
+@[expose] public section
 
 /-! # Affine payoff scores under approximate record independence -/
 

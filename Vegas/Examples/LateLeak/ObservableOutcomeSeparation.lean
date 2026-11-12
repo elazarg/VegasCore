@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Examples.LateLeak.OutcomeSeparation
+public import Vegas.Examples.LateLeak.OutcomeSeparation
+
+@[expose] public section
 
 /-! # Outcome separation after erasing transmission timing
 

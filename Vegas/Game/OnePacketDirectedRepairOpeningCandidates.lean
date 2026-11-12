@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketDirectedRepairOpeningTrace
-import Vegas.Game.OnePacketSwapGuardSite
-import Vegas.Pending.ReactiveBindingSubmittedResponse
+public import Vegas.Game.OnePacketDirectedRepairOpeningTrace
+public import Vegas.Game.OnePacketSwapGuardSite
+public import Vegas.Pending.ReactiveBindingSubmittedResponse
+
+@[expose] public section
 
 /-! # Authentic signed opening candidates survive directed repair -/
 
@@ -16,29 +20,30 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup runtime leaks).Scheduler}
+  {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- The certificate emitted by an actual opening names its true current
 candidate value, including certificates obtained by forwarding. -/
 theorem onePacket_opening_candidate
-    {control : (application setup runtime leaks).Control}
-    (prior : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control))
+    {control : (application setup timeouts leaks).Control}
+    (prior : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some control))
     (who : Player) (material : WitnessedSubmission (graph setup))
     (event : (graph setup).EventId) (candidate : Handle (graph setup)) (raw : Raw L)
     (packet : material.call.packet = .opening event candidate raw)
-    (certified : (runtime.localEnvelope leaks who (control.execution.logs who)
-      (control.execution.observe (application setup runtime leaks) who) material).payload.evidence =
+    (certified : ((localEnvelope timeouts) leaks who (control.execution.logs who)
+      (control.execution.observe (application setup timeouts leaks) who)
+        material).payload.evidence =
         some ⟨candidate, raw⟩) :
     control.execution.application.candidates.lookup candidate = .openable raw := by
-  let app := application setup runtime leaks
-  have rawTrace := (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup)
+  let app := application setup timeouts leaks
+  have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup)
     horizon scheduler prior
-  have count := runtime.countRecall_history leaks rawTrace
-  have sound : (runtime.packetEvidence leaks).Sound control.execution :=
-    (runtime.packetEvidence leaks).history_sound (initialLaw setup) horizon scheduler
+  have count := (countRecall_history timeouts) leaks rawTrace
+  have sound : ((packetEvidence timeouts) leaks).Sound control.execution :=
+    ((packetEvidence timeouts) leaks).history_sound (initialLaw setup) horizon scheduler
       rawTrace
   have unchanged : app.submit control.execution.application who material =
       control.execution.application := by
@@ -46,7 +51,7 @@ theorem onePacket_opening_candidate
     dsimp only at packet
     subst submitted
     cases opening <;> rfl
-  have envelope := runtime.localEnvelope_eq_of_recall leaks control.execution count.1
+  have envelope := (localEnvelope_eq_of_recall timeouts) leaks control.execution count.1
     count.2.1 who material
   have emitted := (congrArg (fun message : Message Player (WitnessedPacket (graph setup)) =>
     message.payload.evidence) envelope).symm.trans certified
@@ -62,14 +67,15 @@ namespace DirectedBindingFrame
 Output handles use the original-success part of the submitted-binding records;
 initial handles use the actual initialized binding invariant. -/
 theorem opening_candidate_of_signed
-    {memory : BindingMemory runtime leaks} {owner : Player}
-    {original repaired : (application setup runtime leaks).Control}
-    (frame : DirectedBindingFrame (runtime := runtime) memory owner original.execution
+    {memory : BindingMemory timeouts leaks} {owner : Player}
+    {original repaired : (application setup timeouts leaks).Control}
+    (frame : DirectedBindingFrame (timeouts := timeouts) memory owner original.execution
       repaired.execution)
-    (recorded : memory.RecordsSubmittedBindings runtime leaks owner
+    (recorded : memory.RecordsSubmittedBindings timeouts leaks owner
       original.execution repaired.execution)
-    (prior : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some original))
-    (imagePrior : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some
+    (prior : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some
+      original))
+    (imagePrior : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some
       repaired))
     (material : WitnessedSubmission (graph setup))
     {payload : L.Ty}
@@ -78,18 +84,18 @@ theorem opening_candidate_of_signed
     (leftFixed : original.execution.application.candidates.lookup candidate =
       .openable ⟨payload, value⟩)
     (signed : SignedBinding
-      (EarlierOwnPacket ((application setup runtime leaks).outputs (original.execution.logs
+      (EarlierOwnPacket ((application setup timeouts leaks).outputs (original.execution.logs
         owner))
-        (runtime.localEnvelope leaks owner (original.execution.logs owner)
-          (original.execution.observe (application setup runtime leaks) owner) material))
+        ((localEnvelope timeouts) leaks owner (original.execution.logs owner)
+          (original.execution.observe (application setup timeouts leaks) owner) material))
       owner candidate binding.field) :
     candidate.1 = owner ∧ repaired.execution.application.candidates.lookup candidate =
       .openable ⟨payload, value⟩ := by
-  have rawTrace := (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup)
+  have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup)
     horizon scheduler prior
-  have count := runtime.countRecall_history leaks rawTrace
-  have clean := (bounds.onePacketMenu_countClean runtime leaks scheduler).history
-    (initialLaw setup) horizon (fun state _ => runtime.countClean_initial leaks state) prior
+  have count := (countRecall_history timeouts) leaks rawTrace
+  have clean := (bounds.onePacketMenu_countClean timeouts leaks scheduler).history
+    (initialLaw setup) horizon (fun state _ => (countClean_initial timeouts) leaks state) prior
   cases field : binding.field with
   | inl input =>
       simp only [SignedBinding, field] at signed
@@ -97,10 +103,10 @@ theorem opening_candidate_of_signed
       have layoutEq : (graph setup).inputLayout input = .binding owner payload := by
         simpa only [field, EventGraph.layout, EventGraph.fieldLayout, Sum.elim_inl,
           Sum.elim_inr] using binding.layout_eq
-      have accepted := accepted_initial_of_trace (runtime := runtime) prior layoutEq
-      have valid := bindingInvariant_of_history (runtime := runtime) bounds horizon scheduler
+      have accepted := accepted_initial_of_trace (timeouts := timeouts) prior layoutEq
+      have valid := bindingInvariant_of_history (timeouts := timeouts) bounds horizon scheduler
         ⟨some original, prior⟩ rfl
-      have validImage := bindingInvariant_of_history (runtime := runtime) bounds horizon scheduler
+      have validImage := bindingInvariant_of_history (timeouts := timeouts) bounds horizon scheduler
         ⟨some repaired, imagePrior⟩ rfl
       have stored := valid.opening_stored binding (owner, .initial input) value
         (by simpa only [field] using accepted) leftFixed

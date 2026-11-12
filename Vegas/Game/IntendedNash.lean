@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.IntendedPreservation
-import GameTheoryExtensions.Analysis.Protocol.RetainedDeviation
+public import Vegas.Game.IntendedPreservation
+public import GameTheoryExtensions.Analysis.Protocol.RetainedDeviation
+
+@[expose] public section
 
 /-! # Approximate Nash preservation under public default
 
@@ -89,40 +93,41 @@ theorem owesFailure_of_extra (admission : CommitmentInterface setup.program)
     _ _ spelled missing target realized
 
 /-- **Approximate Nash preservation for the intended game.** For a well-formed
-setup with finite commitment payload types and a finite initial law, and a
+setup with any commitment admission interface, finite commitment payload types
+and a finite initial law, and a
 forfeit no smaller than the payoff range, every source profile that extends an
 `ε`-Nash equilibrium of the intended game is an `ε`-Nash equilibrium of the
 source game under the forfeit pass, with the same `ε`. It has the intended joint
 law of terminal store and payoff, and no reveal fails on any history it
 reaches. -/
 theorem intended_forfeit_isεNash_preserved [Finite Player]
+    (admission : CommitmentInterface setup.program)
     (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw]
     (wellFormed : setup.WellFormed) {Parameter : Type}
     (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
     (forfeit : ℝ)
-    (range : setup.TerminalPayoffSpread (CommitmentInterface.values setup.program)
+    (range : setup.TerminalPayoffSpread admission
       parameter utility forfeit)
     (intended : Profile setup.intendedModel.behavioralSignature)
     (target : Profile
-      (setup.informationModel (CommitmentInterface.values setup.program)).behavioralSignature)
-    (agrees : (setup.intendedRestriction (CommitmentInterface.values
-      setup.program)).ExtendsProfile intended target) (ε : ℝ)
+      (setup.informationModel admission).behavioralSignature)
+    (agrees : (setup.intendedRestriction admission).ExtendsProfile intended target) (ε : ℝ)
     (equilibrium : IsεNash (setup.intendedModel.toBehavioralGameForm
         (instructionCount setup.program + 1))
       (fun final who => (setup.protocolReadout final.state).elim 0
         (fun state => utility (setup.parameterOutcome parameter state) who)) ε intended) :
     IsεNash ((setup.informationModel
-        (CommitmentInterface.values setup.program)).toBehavioralGameForm
+        admission).toBehavioralGameForm
           (instructionCount setup.program + 1))
       (fun final who => (setup.protocolReadout final.state).elim 0
         (fun state => forfeitUtility setup.program forfeit utility
           (setup.parameterOutcome parameter state) who)) ε target ∧
-    (∀ final ∈ ((setup.informationModel (CommitmentInterface.values setup.program)).runBehavioral
+    (∀ final ∈ ((setup.informationModel admission).runBehavioral
         target (instructionCount setup.program + 1)).support,
       ∀ terminal, setup.protocolReadout final.state = some terminal →
         ∀ who, failedReveals setup.program who (publicOutcome setup.program terminal) = 0) ∧
-    ((setup.informationModel (CommitmentInterface.values setup.program)).runBehavioral
+    ((setup.informationModel admission).runBehavioral
         target (instructionCount setup.program + 1)).map
         (fun final => (setup.protocolReadout final.state,
           fun who => (setup.protocolReadout final.state).elim 0
@@ -133,22 +138,21 @@ theorem intended_forfeit_isεNash_preserved [Finite Player]
           fun who => (setup.protocolReadout final.state).elim 0
             (fun state => utility (setup.parameterOutcome parameter state) who))) := by
   classical
-  have : Finite (setup.executionProtocol (CommitmentInterface.values setup.program)).History :=
+  have : Finite (setup.executionProtocol admission).History :=
     setup.finite_history finite _
   have : Finite setup.intendedProtocol.History :=
     Finite.of_injective _ (setup.intendedRestriction
-      (CommitmentInterface.values setup.program)).history.injective
+      admission).history.injective
   let sourcePayoff := fun (final : setup.intendedProtocol.History) (who : Player) =>
     (setup.protocolReadout final.state).elim 0
       (fun state => utility (setup.parameterOutcome parameter state) who)
   let targetPayoff := fun (final : (setup.executionProtocol
-      (CommitmentInterface.values setup.program)).History) (who : Player) =>
+      admission).History) (who : Player) =>
     (setup.protocolReadout final.state).elim 0
       (fun state => forfeitUtility setup.program forfeit utility
         (setup.parameterOutcome parameter state) who)
   have matching : ∀ history who,
-      targetPayoff ((setup.intendedRestriction (CommitmentInterface.values
-        setup.program)).history history) who =
+      targetPayoff ((setup.intendedRestriction admission).history history) who =
         sourcePayoff history who := by
     intro history who
     change (setup.protocolReadout history.state).elim 0 _ =
@@ -165,13 +169,13 @@ theorem intended_forfeit_isεNash_preserved [Finite Player]
         simp [zero]
   have forfeits : ∀ who indebted (history : setup.intendedProtocol.History),
       setup.OwesFailureState who indebted.state →
-      (setup.executionProtocol (CommitmentInterface.values setup.program)).terminal
+      (setup.executionProtocol admission).terminal
         indebted.state →
       setup.intendedProtocol.terminal history.state →
       targetPayoff indebted who ≤ sourcePayoff history who := by
     intro who indebted history owing stopped intendedStopped
     obtain ⟨intendedTerminal, intendedRead⟩ :=
-      setup.exists_protocolReadout_of_terminal (CommitmentInterface.values setup.program)
+      setup.exists_protocolReadout_of_terminal admission
         intendedStopped
     cases finalState : indebted.state with
     | none =>
@@ -193,16 +197,16 @@ theorem intended_forfeit_isεNash_preserved [Finite Player]
           (setup.parameterOutcome parameter terminal) who ≤
             utility (setup.parameterOutcome parameter intendedTerminal) who
         have fullyStopped :
-            (setup.executionProtocol (CommitmentInterface.values setup.program)).terminal
+            (setup.executionProtocol admission).terminal
               indebted.state := by
           rw [finalState]
           exact stopped
         have spread := range indebted
-          ((setup.intendedRestriction (CommitmentInterface.values setup.program)).history history)
+          ((setup.intendedRestriction admission).history history)
           fullyStopped intendedStopped who
         have nonnegative := range indebted indebted fullyStopped fullyStopped who
         have lowerRead : setup.protocolReadout
-            ((setup.intendedRestriction (CommitmentInterface.values setup.program)).history
+            ((setup.intendedRestriction admission).history
               history).state = some intendedTerminal := intendedRead
         simp only [read', lowerRead, Option.elim_some] at spread
         simp only [read', Option.elim_some, sub_self] at nonnegative
@@ -211,18 +215,16 @@ theorem intended_forfeit_isεNash_preserved [Finite Player]
           Nat.one_le_cast.mpr positive
         simp only [forfeitUtility]
         nlinarith
-  have law := (setup.intendedRestriction (CommitmentInterface.values
-    setup.program)).initialized_law intended target agrees
+  have law := (setup.intendedRestriction admission).initialized_law intended target agrees
     (instructionCount setup.program + 1)
   refine ⟨?_, ?_, ?_⟩
-  · exact (setup.intendedRestriction (CommitmentInterface.values
-    setup.program)).isεNash_extends_of_debt (setup.protocol_bounded _)
+  · exact (setup.intendedRestriction admission).isεNash_extends_of_debt (setup.protocol_bounded _)
       ((setup.informationModel _).menuRestriction_reflecting _ _ (setup.intendedMenu_subset
-        (CommitmentInterface.values setup.program)))
+        admission))
       intended target agrees (fun who => setup.OwesFailureState who)
-      (fun who => setup.owesFailure_localStep (CommitmentInterface.values setup.program) who)
+      (fun who => setup.owesFailure_localStep admission who)
       (fun who original choices next running _ extra reached =>
-        setup.owesFailure_of_extra (CommitmentInterface.values setup.program) wellFormed who
+        setup.owesFailure_of_extra admission wellFormed who
           original choices next running extra reached)
       sourcePayoff targetPayoff (fun _ _ => payoffIntegrable_of_finite _ _)
       (fun _ _ => payoffIntegrable_of_finite _ _) matching forfeits ε equilibrium

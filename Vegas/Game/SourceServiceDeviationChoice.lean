@@ -1,15 +1,19 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Source.ObservationRecall
-import Vegas.Compile.EventGraphStep
-import Vegas.Game.SourceServiceCheckpoint
-import Vegas.Pending.ExclusionCompletion
-import GameTheoryExtensions.Math.Probability.ObservedChoice
-import Interaction.ReactiveRawRoundTrace
-import Vegas.Game.ServiceDeviationTraffic
-import Vegas.Game.SourceServiceTurnPolicy
-import Vegas.Game.SourceServiceCompletion
-import Interaction.ReactiveMixtureRounds
+public import Vegas.Source.ObservationRecall
+public import Vegas.Compile.EventGraphStep
+public import Vegas.Game.SourceServiceCheckpoint
+public import Vegas.Pending.ExclusionCompletion
+public import GameTheoryExtensions.Math.Probability.ObservedChoice
+public import Interaction.ReactiveRawRoundTrace
+public import Vegas.Game.ServiceDeviationTraffic
+public import Vegas.Game.SourceServiceTurnPolicy
+public import Vegas.Game.SourceServiceCompletion
+public import Interaction.ReactiveMixtureRounds
+
+@[expose] public section
 
 /-! # Actual disclosure choices and a deviating player at a ready event
 
@@ -61,7 +65,7 @@ open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)} {mode : EventGraph.ExecutionMode}
-  {deadline : (serviceGraph setup mode).EventId → Nat}
+  {duration : (serviceGraph setup mode).EventId → Nat}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode))}
 
 /-- While an event is ready alone, no player but its actor has a turn. -/
@@ -82,17 +86,17 @@ theorem ownTurn?_none_of_alone {event : (serviceGraph setup mode).EventId}
 
 /-- Readiness at a pending event is preserved until that event completes. -/
 theorem round_ready_of_pending
-    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
-    {players : Player → (serviceApplication setup mode deadline leaks).Policy}
+    {scheduler : (serviceApplication setup mode duration leaks).Scheduler}
+    {players : Player → (serviceApplication setup mode duration leaks).Policy}
     {event : (serviceGraph setup mode).EventId}
     (alone : ∀ (cut : (serviceGraph setup mode).order.Cut) other, cut.Ready event →
       cut.Ready other → other = event)
-    {before after : (serviceApplication setup mode deadline leaks).Execution}
+    {before after : (serviceApplication setup mode duration leaks).Execution}
     (ready : before.application.config.cut.Ready event)
-    (reached : after ∈ ((serviceApplication setup mode deadline leaks).round scheduler
+    (reached : after ∈ ((serviceApplication setup mode duration leaks).round scheduler
       players before).support) (pending : event ∉ after.application.config.cut.completed) :
     after.application.config.cut.Ready event := by
-  rw [reactive_round_config_eq_of_pending (serviceRuntime setup mode deadline) leaks scheduler
+  rw [reactive_round_config_eq_of_pending (serviceTimeouts setup mode duration) leaks scheduler
     players event before after (fun other otherReady => alone _ other ready otherReady)
     pending reached]
   exact ready
@@ -100,27 +104,27 @@ theorem round_ready_of_pending
 /-- Until the sole ready event of the deviator or of chance completes,
 first-turn clients of the other players remain silent. -/
 theorem runUntil_deviation_focal
-    (scheduler : (serviceApplication setup mode deadline leaks).Scheduler)
+    (scheduler : (serviceApplication setup mode duration leaks).Scheduler)
     (bound : (serviceGraph setup mode).EventId → Nat) (turns : Nat)
     (profile : BehavioralProfile setup.program) (who : Player)
-    (deviation : (serviceApplication setup mode deadline leaks).Policy)
+    (deviation : (serviceApplication setup mode duration leaks).Policy)
     (event : (serviceGraph setup mode).EventId)
     (focal : (serviceGraph setup mode).actor? event = none ∨ (serviceGraph setup mode).actor?
         event = some who)
     (alone : ∀ (cut : (serviceGraph setup mode).order.Cut) other, cut.Ready event → cut.Ready
         other → other = event) (count : Nat)
-    (execution : (serviceApplication setup mode deadline leaks).Execution)
+    (execution : (serviceApplication setup mode duration leaks).Execution)
     (holds : event ∉ execution.application.config.cut.completed →
       execution.application.config.cut.Ready event) :
-    (serviceApplication setup mode deadline leaks).runUntil scheduler
+    (serviceApplication setup mode duration leaks).runUntil scheduler
     (Function.update
-      (serviceTurnPolicy setup mode deadline leaks bound turns
+      (serviceTurnPolicy setup mode duration leaks bound turns
         (firstTurnTiming setup turns mode) profile) who deviation)
     (fun final => event ∈ final.application.config.cut.completed) count execution =
-    (serviceApplication setup mode deadline leaks).runUntil scheduler
+    (serviceApplication setup mode duration leaks).runUntil scheduler
     (focalPlayers setup leaks who deviation)
         (fun final => event ∈ final.application.config.cut.completed) count execution := by
-  let app := serviceApplication setup mode deadline leaks
+  let app := serviceApplication setup mode duration leaks
   apply app.runUntil_congr_of_agree scheduler _ _ _
     (fun current => event ∉ current.application.config.cut.completed →
       current.application.config.cut.Ready event)
@@ -151,7 +155,7 @@ theorem runUntil_deviation_focal
     exact round_ready_of_pending alone (currentHolds running) reached
   · exact holds
 
-private def actionAt (setup : Setup (Player := Player) (L := L))
+def actionAt (setup : Setup (Player := Player) (L := L))
     (mode : EventGraph.ExecutionMode)
     (event : (serviceGraph setup mode).EventId)
     {observer : Player} (observed : (serviceGraph setup mode).PlayerObservation observer) :
@@ -202,19 +206,19 @@ private theorem primary_owned_joint {Seed Choice : Type} {Γ Δ : SourceCtx Play
     (automatic : ∀ config, who ∈ config.defaulted → ∀ left right,
       advance config left = advance config right)
     (setup : Setup (Player := Player) (L := L)) {mode : EventGraph.ExecutionMode}
-    {deadline : (serviceGraph setup mode).EventId → Nat}
+    {duration : (serviceGraph setup mode).EventId → Nat}
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
-    (scheduler : (serviceApplication setup mode deadline leaks).Scheduler)
-    (deviation : (serviceApplication setup mode deadline leaks).Policy)
+    (scheduler : (serviceApplication setup mode duration leaks).Scheduler)
+    (deviation : (serviceApplication setup mode duration leaks).Policy)
     (event : (serviceGraph setup mode).EventId)
     (owned : (serviceGraph setup mode).actor? event = some who)
     (alone : ∀ (cut : (serviceGraph setup mode).order.Cut) other, cut.Ready event →
       cut.Ready other → other = event)
     (horizon : Nat) (prior : PMF Seed) (source : Seed → Config Player L Γ)
-    (execution : Seed → (serviceApplication setup mode deadline leaks).Execution)
+    (execution : Seed → (serviceApplication setup mode duration leaks).Execution)
     (noise : DecisionView who Γ → PMF _)
     (factor : prior.map (fun seed => (source seed,
-      (serviceRuntime setup mode deadline).bindingTraffic leaks who (execution seed))) =
+      (bindingTraffic (serviceTimeouts setup mode duration)) leaks who (execution seed))) =
       (prior.map source).bind fun config =>
         (noise (config.view who)).map fun traffic => (config, traffic))
     (ready : ∀ seed ∈ prior.support, event ∉ (execution seed).application.config.cut.completed →
@@ -222,22 +226,22 @@ private theorem primary_owned_joint {Seed Choice : Type} {Γ Δ : SourceCtx Play
     ∃ choice : DecisionView who Γ → PMF Choice,
       ∃ nextNoise : DecisionView who Δ → PMF _,
       (prior.bind fun seed =>
-        ((serviceApplication setup mode deadline leaks).runUntilHorizon scheduler
+        ((serviceApplication setup mode duration leaks).runUntilHorizon scheduler
           (focalPlayers setup leaks who deviation)
           (fun final => event ∈ final.application.config.cut.completed) horizon
           (execution seed)).map fun final =>
             (advance (source seed)
               (decode (actionAt setup mode event (final.application.playerView who).observation)),
-              (serviceRuntime setup mode deadline).bindingTraffic leaks who final)) =
+              (bindingTraffic (serviceTimeouts setup mode duration)) leaks who final)) =
       ((prior.map source).bind fun config =>
         (choice (config.view who)).map (advance config)).bind fun config =>
           (nextNoise (config.view who)).map fun traffic => (config, traffic) := by
-  let app := serviceApplication setup mode deadline leaks
-  let read := fun seed => (serviceRuntime setup mode deadline).bindingTraffic leaks who
+  let app := serviceApplication setup mode duration leaks
+  let read := fun seed => (bindingTraffic (serviceTimeouts setup mode duration)) leaks who
     (execution seed)
   let phase := fun seed => (app.runUntilHorizon scheduler (focalPlayers setup leaks who deviation)
     (fun final => event ∈ final.application.config.cut.completed) horizon (execution seed)).map
-      ((serviceRuntime setup mode deadline).bindingTraffic leaks who)
+      ((bindingTraffic (serviceTimeouts setup mode duration)) leaks who)
   obtain ⟨channel, channelLaw⟩ := exists_updated_observation_kernel_of_readout prior source read
     (fun config => config.view who) noise factor
     (fun _ => PMF.pure ()) (fun config _ => config) (fun config => config.view who)
@@ -296,12 +300,12 @@ automatic service has already passed it. The next typed source checkpoint keeps
 an automatic-only path to the actual stopped native configuration. -/
 theorem sourceService_deviator_reveal_law
     {Seed : Type} {horizon : Nat}
-    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
-    (complete : CompletesPlay (serviceRuntime setup mode deadline) leaks
+    {scheduler : (serviceApplication setup mode duration leaks).Scheduler}
+    (complete : CompletesPlay (serviceTimeouts setup mode duration) leaks
       (serviceInitialLaw setup mode) horizon scheduler)
     (bound : (serviceGraph setup mode).EventId → Nat) (turns : Nat)
     (wholeProfile : BehavioralProfile setup.program) (who : Player)
-    (deviation : (serviceApplication setup mode deadline leaks).Policy)
+    (deviation : (serviceApplication setup mode duration leaks).Policy)
     {Γ : SourceCtx Player L} {openNames : Finset VarId}
     {published name : VarId} {payload : L.Ty}
     (fresh : published ∉ Γ.map Prod.fst)
@@ -317,7 +321,7 @@ theorem sourceService_deviator_reveal_law
       cut.Ready (embedding.event ⟨0, by simp [eventCount]⟩) → cut.Ready other →
         other = embedding.event ⟨0, by simp [eventCount]⟩)
     (prior : PMF Seed) (source : Seed → Config Player L Γ)
-    (execution : Seed → (serviceApplication setup mode deadline leaks).Execution)
+    (execution : Seed → (serviceApplication setup mode duration leaks).Execution)
     (ghost : Seed → EventGraphRuntime.State (serviceGraph setup mode))
     (aligned : ∀ seed, CompiledPolicySuffix setup.program wholeProfile
       (.reveal published who name fresh binding unresolved next) profile refs
@@ -327,13 +331,13 @@ theorem sourceService_deviator_reveal_law
       Relation.ReflTransGen EventGraphRuntime.State.AutomaticStep (ghost seed) caught ∧
         caught.config = (execution seed).application.config)
     (boundary : ∀ seed ∈ prior.support, ∃ physicalRank, CompletionBoundary setup leaks scheduler
-      (Function.update (serviceTurnPolicy setup mode deadline leaks bound turns
+      (Function.update (serviceTurnPolicy setup mode duration leaks bound turns
         (firstTurnTiming setup turns mode) wholeProfile) who deviation)
         physicalRank (execution seed))
     (bounded : ∀ seed ∈ prior.support, (execution seed).environmentRecall.length ≤ horizon)
     (noise : DecisionView who Γ → PMF _)
     (factor : prior.map (fun seed => (source seed,
-        (serviceRuntime setup mode deadline).bindingTraffic leaks who (execution seed))) =
+        (bindingTraffic (serviceTimeouts setup mode duration)) leaks who (execution seed))) =
       (prior.map source).bind fun config =>
         (noise (config.view who)).map fun traffic => (config, traffic)) :
     let index : Fin (eventCount (.reveal published who name fresh binding unresolved next)) :=
@@ -341,9 +345,9 @@ theorem sourceService_deviator_reveal_law
     let event : (serviceGraph setup mode).EventId := embedding.event index
     let publicationRef : EventGraph.FieldRef (graphLayout setup.program) (.publication payload) :=
       by simpa [index, outputLayout, eventCount] using embedding.ref index
-    let players := Function.update (serviceTurnPolicy setup mode deadline leaks bound turns
+    let players := Function.update (serviceTurnPolicy setup mode duration leaks bound turns
       (firstTurnTiming setup turns mode) wholeProfile) who deviation
-    let readChoice := fun final : (serviceApplication setup mode deadline leaks).Execution =>
+    let readChoice := fun final : (serviceApplication setup mode duration leaks).Execution =>
       OwnAction.disclosure
         (((final.application.playerView who).observation.ownActions.find?
           (fun record => decide (record.event = event))).bind fun record =>
@@ -351,16 +355,16 @@ theorem sourceService_deviator_reveal_law
     ∃ kernel : DecisionView who Γ → PMF Bool,
       ∃ nextNoise : DecisionView who ((published, .publication payload) :: Γ) → PMF _,
       (prior.bind fun seed =>
-        ((serviceApplication setup mode deadline leaks).runUntilHorizon scheduler players
+        ((serviceApplication setup mode duration leaks).runUntilHorizon scheduler players
           (fun final => event ∈ final.application.config.cut.completed) horizon
           (execution seed)).map fun final =>
             (revealSuccessor published binding (source seed) (readChoice final),
-              (serviceRuntime setup mode deadline).bindingTraffic leaks who final)) =
+              (bindingTraffic (serviceTimeouts setup mode duration)) leaks who final)) =
         (((prior.map source).bind fun config =>
           (kernel (config.view who)).map (revealSuccessor published binding config)).bind
             fun config => (nextNoise (config.view who)).map fun traffic => (config, traffic)) ∧
       ∀ seed ∈ prior.support, ∀ final ∈
-          ((serviceApplication setup mode deadline leaks).runUntilHorizon scheduler players
+          ((serviceApplication setup mode duration leaks).runUntilHorizon scheduler players
             (fun current => event ∈ current.application.config.cut.completed) horizon
             (execution seed)).support,
         ∃ (disclose : Bool) (native : EventGraphRuntime.State (serviceGraph setup mode)),
@@ -372,7 +376,7 @@ theorem sourceService_deviator_reveal_law
           (who ∉ (source seed).defaulted → final.application.config = native.drain.config) ∧
           readChoice final = disclose := by
   intro index event publicationRef players readChoice
-  let app := serviceApplication setup mode deadline leaks
+  let app := serviceApplication setup mode duration leaks
   have eventRank : event.val = rank := by
     simpa only [event, index, Fin.val_zero, Nat.add_zero] using
       (aligned prior.support_nonempty.choose).graphSuffix.rankEq index
@@ -471,7 +475,7 @@ theorem sourceService_deviator_reveal_law
             (fun final => event ∈ final.application.config.cut.completed) horizon
             (execution seed)).map fun final =>
               (revealSuccessor published binding (source seed) (readChoice final),
-                (serviceRuntime setup mode deadline).bindingTraffic leaks who final)) := by
+                (bindingTraffic (serviceTimeouts setup mode duration)) leaks who final)) := by
         apply bind_congr_on_support _
         intro seed supported
         rw [phaseEq seed supported]
@@ -543,7 +547,7 @@ theorem sourceService_deviator_reveal_law
           rw [terminal]
           exact Finset.mem_univ _
       obtain ⟨action, native, primary, drained⟩ := runUntil_completed_primary_drain
-        (serviceRuntime setup mode deadline) leaks scheduler players event
+        (serviceTimeouts setup mode duration) leaks scheduler players event
         (horizon - (execution seed).environmentRecall.length) (execution seed) final ready
         (fun other otherReady => alone _ other ready otherReady)
         (by
@@ -604,12 +608,12 @@ public omission and opaque unusability. A defaulted head advances only its typed
 source checkpoint; its actual physical continuation remains at the same endpoint. -/
 theorem sourceService_deviator_commit_law
     {Seed : Type} {horizon : Nat}
-    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
-    (complete : CompletesPlay (serviceRuntime setup mode deadline) leaks
+    {scheduler : (serviceApplication setup mode duration leaks).Scheduler}
+    (complete : CompletesPlay (serviceTimeouts setup mode duration) leaks
       (serviceInitialLaw setup mode) horizon scheduler)
     (bound : (serviceGraph setup mode).EventId → Nat) (turns : Nat)
     (wholeProfile : BehavioralProfile setup.program) (who : Player)
-    (deviation : (serviceApplication setup mode deadline leaks).Policy)
+    (deviation : (serviceApplication setup mode duration leaks).Policy)
     {Γ : SourceCtx Player L} {openNames : Finset VarId}
     {name : VarId} {payload : L.Ty}
     (fresh : name ∉ Γ.map Prod.fst) (guard : SourceGuard L Γ who name payload)
@@ -624,7 +628,7 @@ theorem sourceService_deviator_commit_law
       cut.Ready (embedding.event ⟨0, by simp [eventCount]⟩) → cut.Ready other →
         other = embedding.event ⟨0, by simp [eventCount]⟩)
     (prior : PMF Seed) (source : Seed → Config Player L Γ)
-    (execution : Seed → (serviceApplication setup mode deadline leaks).Execution)
+    (execution : Seed → (serviceApplication setup mode duration leaks).Execution)
     (ghost : Seed → EventGraphRuntime.State (serviceGraph setup mode))
     (aligned : ∀ seed, CompiledPolicySuffix setup.program wholeProfile
       (.commit name who fresh guard next) profile refs
@@ -634,13 +638,13 @@ theorem sourceService_deviator_commit_law
       Relation.ReflTransGen EventGraphRuntime.State.AutomaticStep (ghost seed) caught ∧
         caught.config = (execution seed).application.config)
     (boundary : ∀ seed ∈ prior.support, ∃ physicalRank, CompletionBoundary setup leaks scheduler
-      (Function.update (serviceTurnPolicy setup mode deadline leaks bound turns
+      (Function.update (serviceTurnPolicy setup mode duration leaks bound turns
         (firstTurnTiming setup turns mode) wholeProfile) who deviation)
         physicalRank (execution seed))
     (bounded : ∀ seed ∈ prior.support, (execution seed).environmentRecall.length ≤ horizon)
     (noise : DecisionView who Γ → PMF _)
     (factor : prior.map (fun seed => (source seed,
-        (serviceRuntime setup mode deadline).bindingTraffic leaks who (execution seed))) =
+        (bindingTraffic (serviceTimeouts setup mode duration)) leaks who (execution seed))) =
       (prior.map source).bind fun config =>
         (noise (config.view who)).map fun traffic => (config, traffic)) :
     let index : Fin (eventCount (.commit name who fresh guard next)) :=
@@ -648,9 +652,9 @@ theorem sourceService_deviator_commit_law
     let event : (serviceGraph setup mode).EventId := embedding.event index
     let bindingRef : EventGraph.FieldRef (graphLayout setup.program) (.binding who payload) :=
       by simpa [index, outputLayout, eventCount] using embedding.ref index
-    let players := Function.update (serviceTurnPolicy setup mode deadline leaks bound turns
+    let players := Function.update (serviceTurnPolicy setup mode duration leaks bound turns
       (firstTurnTiming setup turns mode) wholeProfile) who deviation
-    let readChoice := fun final : (serviceApplication setup mode deadline leaks).Execution =>
+    let readChoice := fun final : (serviceApplication setup mode duration leaks).Execution =>
       OwnAction.binding who name payload
         (((final.application.playerView who).observation.ownActions.find?
           (fun record => decide (record.event = event))).bind fun record =>
@@ -658,16 +662,16 @@ theorem sourceService_deviator_commit_law
     ∃ kernel : DecisionView who Γ → PMF (Option (PublicationResult (L.Val payload))),
       ∃ nextNoise : DecisionView who ((name, .commitment who payload) :: Γ) → PMF _,
       (prior.bind fun seed =>
-        ((serviceApplication setup mode deadline leaks).runUntilHorizon scheduler players
+        ((serviceApplication setup mode duration leaks).runUntilHorizon scheduler players
           (fun final => event ∈ final.application.config.cut.completed) horizon
           (execution seed)).map fun final =>
             (commitSuccessor name guard (source seed) (readChoice final),
-              (serviceRuntime setup mode deadline).bindingTraffic leaks who final)) =
+              (bindingTraffic (serviceTimeouts setup mode duration)) leaks who final)) =
         (((prior.map source).bind fun config =>
           (kernel (config.view who)).map (commitSuccessor name guard config)).bind
             fun config => (nextNoise (config.view who)).map fun traffic => (config, traffic)) ∧
       ∀ seed ∈ prior.support, ∀ final ∈
-          ((serviceApplication setup mode deadline leaks).runUntilHorizon scheduler players
+          ((serviceApplication setup mode duration leaks).runUntilHorizon scheduler players
             (fun current => event ∈ current.application.config.cut.completed) horizon
             (execution seed)).support,
         ∃ (choice : Option (PublicationResult (L.Val payload)))
@@ -680,7 +684,7 @@ theorem sourceService_deviator_commit_law
           (who ∉ (source seed).defaulted → final.application.config = native.drain.config) ∧
           readChoice final = choice := by
   intro index event bindingRef players readChoice
-  let app := serviceApplication setup mode deadline leaks
+  let app := serviceApplication setup mode duration leaks
   have eventRank : event.val = rank := by
     simpa only [event, index, Fin.val_zero, Nat.add_zero] using
       (aligned prior.support_nonempty.choose).graphSuffix.rankEq index
@@ -778,7 +782,7 @@ theorem sourceService_deviator_commit_law
             (fun final => event ∈ final.application.config.cut.completed) horizon
             (execution seed)).map fun final =>
               (commitSuccessor name guard (source seed) (readChoice final),
-                (serviceRuntime setup mode deadline).bindingTraffic leaks who final)) := by
+                (bindingTraffic (serviceTimeouts setup mode duration)) leaks who final)) := by
         apply bind_congr_on_support _
         intro seed supported
         rw [phaseEq seed supported]
@@ -848,7 +852,7 @@ theorem sourceService_deviator_commit_law
           rw [terminal]
           exact Finset.mem_univ _
       obtain ⟨action, native, primary, drained⟩ := runUntil_completed_primary_drain
-        (serviceRuntime setup mode deadline) leaks scheduler players event
+        (serviceTimeouts setup mode duration) leaks scheduler players event
         (horizon - (execution seed).environmentRecall.length) (execution seed) final ready
         (fun other otherReady => alone _ other ready otherReady)
         (by

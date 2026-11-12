@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RevealBlockRun
+public import Vegas.Game.RevealBlockRun
+
+@[expose] public section
 
 /-! # Block ends fixed by the deviator's records
 

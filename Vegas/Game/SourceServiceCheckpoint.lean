@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.SourceServiceStep
-import Vegas.Game.RevealServiceState
-import Vegas.Source.SetupProtocol
-import Vegas.Pending.ExclusionCompletion
+public import Vegas.Game.SourceServiceStep
+public import Vegas.Game.RevealServiceState
+public import Vegas.Source.SetupProtocol
+public import Vegas.Pending.ExclusionCompletion
+
+@[expose] public section
 
 /-! # Dynamic source configuration checkpoints
 

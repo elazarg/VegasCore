@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Compile.EventGraphReadoutComplete
-import Vegas.Source.InitialState
-import Vegas.Source.ValueBinding
+public import Vegas.Compile.EventGraphReadoutComplete
+public import Vegas.Source.InitialState
+public import Vegas.Source.ValueBinding
+
+@[expose] public section
 
 /-! # Context agreement of decoded graph states
 

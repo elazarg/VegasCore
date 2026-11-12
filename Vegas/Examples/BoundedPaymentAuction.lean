@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Expr.Simple
-import Vegas.Game.ProgramPaymentNash
-import Vegas.Examples.CommitRevealAuction
+public import Vegas.Expr.Simple
+public import Vegas.Game.ProgramPaymentNash
+public import Vegas.Examples.CommitRevealAuction
+
+@[expose] public section
 
 /-! # A bounded auction whose transfers are executable instructions
 
@@ -21,10 +25,10 @@ open CommitRevealAuction (Player)
 
 abbrev Bid := Val (.range 0 6)
 
-private def bid (index : Fin 7) : Bid :=
+def bid (index : Fin 7) : Bid :=
   ⟨index.val, by have := index.isLt; constructor <;> omega⟩
 
-private def publications : List (PublicationResult Bid) :=
+def publications : List (PublicationResult Bid) :=
   .failure :: (List.finRange 7).map (fun index => .success (bid index))
 
 private theorem mem_publications (value : PublicationResult Bid) : value ∈ publications := by
@@ -42,7 +46,7 @@ private theorem mem_publications (value : PublicationResult Bid) : value ∈ pub
       exact List.mem_cons_of_mem _ (List.mem_map.mpr
         ⟨index, List.mem_finRange _, congrArg PublicationResult.success same⟩)
 
-private def publicLiteral {Γ : CtxSimple} : PublicationResult Bid → Expr Γ (.result (.range 0 6))
+def publicLiteral {Γ : CtxSimple} : PublicationResult Bid → Expr Γ (.result (.range 0 6))
   | .failure => .failure
   | .success value => .success (.constRange value)
 
@@ -50,7 +54,7 @@ private theorem eval_publicLiteral {Γ : CtxSimple} (env : PlainEnv Γ)
     (value : PublicationResult Bid) : evalExpr (publicLiteral value) env = value := by
   cases value <;> rfl
 
-private def tableExpr {α : Type} {Γ : CtxSimple} (test : α → Expr Γ .bool)
+def tableExpr {α : Type} {Γ : CtxSimple} (test : α → Expr Γ .bool)
     (amount : α → Int) : List α → Expr Γ .int
   | [] => .constInt 0
   | key :: rest => .ite (test key) (.constInt (amount key)) (tableExpr test amount rest)
@@ -84,7 +88,7 @@ def cash (penalty : Int) (alice bob : PublicationResult Bid) : Player → Int
       | .failure => 0
       | .success a => if a.val < b.val then -a.val else 0
 
-private def cashExpr {Γ : CtxSimple} (penalty : Int) (who : Player)
+def cashExpr {Γ : CtxSimple} (penalty : Int) (who : Player)
     (alice bob : Expr Γ (.result (.range 0 6))) : Expr Γ .int :=
   tableExpr (fun pair => .andBool (.eq (publicLiteral pair.1) alice)
     (.eq (publicLiteral pair.2) bob)) (fun pair => cash penalty pair.1 pair.2 who)
@@ -102,7 +106,7 @@ private theorem eval_cashExpr {Γ : CtxSimple} (penalty : Int) (who : Player)
       by_cases second : pair.2 = evalExpr bob env <;> simp_all [Prod.ext_iff]
   · exact List.mem_product.mpr ⟨mem_publications _, mem_publications _⟩
 
-private def acceptGuard {Γ : SourceCtx Player simpleExpr} (who : Player) (name : VarId) :
+def acceptGuard {Γ : SourceCtx Player simpleExpr} (who : Player) (name : VarId) :
     SourceGuard simpleExpr Γ who name (.range 0 6) where
   schema := []
   schemaNames := by decide
@@ -154,7 +158,7 @@ def result (penalty : Int) (alice bob : PublicationResult Bid) :
     ⟨[if bob.isFailure then some Player.bob else none,
       if alice.isFailure then some Player.alice else none, none, none]⟩⟩
 
-private def integerPublication : PublicationResult Bid → PublicationResult Int
+def integerPublication : PublicationResult Bid → PublicationResult Int
   | .failure => .failure
   | .success value => .success value.val
 

@@ -1,14 +1,18 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketMainActivationRegularity
-import Vegas.Game.OnePacketForeignFailure
-import Vegas.Game.OnePacketRareMainMass
-import Vegas.Game.OnePacketBaseAssembly
-import Vegas.Game.OnePacketSequentialPreservation
-import Vegas.Pending.ExclusionStoppedBoundary
-import Vegas.Pending.ExclusionEvidence
-import GameTheoryExtensions.Analysis.Protocol.StoppedExitBound
-import GameTheoryExtensions.Protocol.JointDistribution
+public import Vegas.Game.OnePacketMainActivationRegularity
+public import Vegas.Game.OnePacketForeignFailure
+public import Vegas.Game.OnePacketRareMainMass
+public import Vegas.Game.OnePacketBaseAssembly
+public import Vegas.Game.OnePacketSequentialPreservation
+public import Vegas.Pending.ExclusionStoppedBoundary
+public import Vegas.Pending.ExclusionEvidence
+public import GameTheoryExtensions.Analysis.Protocol.StoppedExitBound
+public import GameTheoryExtensions.Protocol.JointDistribution
+
+@[expose] public section
 
 /-! # Rare foreign first failures under actual assembled native counted play
 
@@ -27,15 +31,16 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L] (setup : Setup (Player := Player) (L := L))
-  (runtime : EventGraphRuntime (graph setup))
+  (timeouts : EventTimeouts (graph setup))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
-  (scheduler : (application setup runtime leaks).Scheduler)
+  (scheduler : (application setup timeouts leaks).Scheduler)
 
 local notation "NativeScheduler" => scheduler
-local notation "N" => onePacketModel setup runtime leaks bounds (initialLaw setup) horizon scheduler
+local notation "N" => onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+  scheduler
 local notation "Clear" => ReactiveApplication.stateInvariant
-  (app := application setup runtime leaks)
+  (app := application setup timeouts leaks)
     (fun native : EventGraphRuntime.State (graph setup) =>
       EventGraph.Config.defaulted (EventGraphRuntime.State.config native) = ∅)
 
@@ -43,34 +48,34 @@ local notation "Clear" => ReactiveApplication.stateInvariant
 profile gives a total mass at most square plus scale to every response event
 disjoint from source-main support. The original common weights are retained. -/
 theorem assembled_event_le_of_disjoint_main
-    [(application setup runtime leaks).FiniteNature (initialLaw setup) (NativeScheduler)]
+    [(application setup timeouts leaks).FiniteNature (initialLaw setup) (NativeScheduler)]
     [∀ who, DecidableEq ((N).InfoState who)]
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (scale : ℕ → ℝ) (positive : ∀ n, 0 < scale n) (le_one : ∀ n, scale n ≤ 1)
     {slots : Nat}
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup runtime leaks bounds (initialLaw setup)
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
       horizon scheduler slots p))
     (targetSequence : ℕ → (N).BehavioralAssessment)
-    (assembled : OnePacketAssembled setup runtime leaks bounds horizon scheduler sequence scale
+    (assembled : OnePacketAssembled setup timeouts leaks bounds horizon scheduler sequence scale
       positive
       le_one weights targetSequence) (n : ℕ)
-    (who : Player) (info : (application setup runtime leaks).Info)
-    (nonlate : ¬ LateDelivery setup runtime leaks who info)
+    (who : Player) (info : (application setup timeouts leaks).Info)
+    (nonlate : ¬ LateDelivery setup timeouts leaks who info)
     (occurs : ∃ history : (ReactiveApplication.ResponseMenu.protocol
-      (bounds.onePacketMenu runtime leaks) (initialLaw setup) horizon
+      (bounds.onePacketMenu timeouts leaks) (initialLaw setup) horizon
         (NativeScheduler)).History, (N).infoOf who history.trace = info)
-    (forced : Vegas.forcedAgent (runtime := runtime) (bounds.onePacketMenu runtime leaks)
+    (forced : Vegas.forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks)
       (initialLaw setup)
       horizon (NativeScheduler) who info)
-    (clear : info.isSome → runtime.ClearInput leaks info)
+    (clear : info.isSome → (ClearInput timeouts) leaks info)
     (event : Set ((N).Choice who info))
     (disjoint : Disjoint
-      (honestChoice setup runtime leaks bounds (initialLaw setup) horizon (NativeScheduler)
+      (honestChoice setup timeouts leaks bounds (initialLaw setup) horizon (NativeScheduler)
         (sequence n)
         who info).support event) :
     ((((targetSequence n).strategy who info).toOuterMeasure event).toReal) ≤ (scale n) ^ 2 +
       scale n := by
-  let main := honestChoice setup runtime leaks bounds (initialLaw setup) horizon (NativeScheduler)
+  let main := honestChoice setup timeouts leaks bounds (initialLaw setup) horizon (NativeScheduler)
     (sequence n) who info
   let law := (targetSequence n).strategy who info
   have dominates : ∀ choice, slotRetention (scale n) * (main choice).toReal ≤
@@ -79,7 +84,7 @@ theorem assembled_event_le_of_disjoint_main
     change slotRetention (scale n) * (main choice).toReal ≤
       (((targetSequence n).strategy who info) choice).toReal
     rw [assembled n]
-    exact onePacketMixture_ge_honest_of_not_late setup runtime leaks bounds horizon
+    exact onePacketMixture_ge_honest_of_not_late setup timeouts leaks bounds horizon
       (NativeScheduler)
       sequence scale positive le_one n
       ((weights n)) nonlate occurs
@@ -99,14 +104,14 @@ theorem assembled_event_le_of_disjoint_main
     linarith)
 
 private theorem responseChoice_getD_eq
-    (who : Player) (past : List (application setup runtime leaks).PlayerEntry)
-    (view : (application setup runtime leaks).PlayerView)
+    (who : Player) (past : List (application setup timeouts leaks).PlayerEntry)
+    (view : (application setup timeouts leaks).PlayerView)
     (choice : (N).Choice who (some (past, view))) :
-    responseChoice setup runtime leaks bounds (initialLaw setup) horizon (NativeScheduler) who
+    responseChoice setup timeouts leaks bounds (initialLaw setup) horizon (NativeScheduler) who
       (some (past, view)) (choice.1.getD ⟨none⟩) = choice := by
   classical
   rcases choice with ⟨value, allowed⟩
-  change ∃ response ∈ bounds.onePacketActions runtime leaks who past view,
+  change ∃ response ∈ bounds.onePacketActions timeouts leaks who past view,
     value = some response at allowed
   obtain ⟨response, offered, rfl⟩ := allowed
   apply Subtype.ext
@@ -116,54 +121,55 @@ private theorem responseChoice_getD_eq
 focal policy, puts at most square plus scale on violating the foreign fresh-main
 condition. Idle, focal, and nonfirst callbacks have no such violation. -/
 theorem assembled_joint_mainActivation_failure_le
-    [(application setup runtime leaks).FiniteNature (initialLaw setup) (NativeScheduler)]
+    [(application setup timeouts leaks).FiniteNature (initialLaw setup) (NativeScheduler)]
     [∀ who, DecidableEq ((N).InfoState who)]
     (wellFormed : setup.WellFormed)
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (scale : ℕ → ℝ) (positive : ∀ n, 0 < scale n) (le_one : ∀ n, scale n ≤ 1)
     {slots : Nat}
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup runtime leaks bounds (initialLaw setup)
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
       horizon scheduler slots p))
     (targetSequence : ℕ → (N).BehavioralAssessment)
-    (assembled : OnePacketAssembled setup runtime leaks bounds horizon scheduler sequence scale
+    (assembled : OnePacketAssembled setup timeouts leaks bounds horizon scheduler sequence scale
       positive
       le_one weights targetSequence) (n : ℕ)
     (focal : Player) (focalPolicy : (N).BehavioralPolicy focal)
-    (control : (application setup runtime leaks).Control)
-    (trace : (onePacketProtocol setup runtime leaks bounds horizon (NativeScheduler)).Trace (some
+    (control : (application setup timeouts leaks).Control)
+    (trace : (onePacketProtocol setup timeouts leaks bounds horizon (NativeScheduler)).Trace (some
       control))
     (clear : control.execution.application.config.defaulted = ∅)
-    (regular : RegularTrace setup runtime leaks bounds horizon (NativeScheduler) (sequence n)
+    (regular : RegularTrace setup timeouts leaks bounds horizon (NativeScheduler) (sequence n)
       focal trace)
     (notOwed : ∀ point, decodedPoint setup control.execution.application.config = some point →
       ¬ ProtocolState.OwesFailure focal setup.program point)
-    (running : ¬ (onePacketProtocol setup runtime leaks bounds horizon (NativeScheduler)).terminal
+    (running : ¬ (onePacketProtocol setup timeouts leaks bounds horizon (NativeScheduler)).terminal
       (some control)) :
     ((((N).behavioralJoint
       (Function.update ((targetSequence n).strategy) focal focalPolicy) trace
         running).toOuterMeasure
-      {draw | ¬ MainActivationStep setup runtime leaks bounds horizon (NativeScheduler) (sequence
+      {draw | ¬ MainActivationStep setup timeouts leaks bounds horizon (NativeScheduler) (sequence
         n) focal
         (some control) draw.1}).toReal) ≤ (scale n) ^ 2 + scale n := by
   classical
   let profile := Function.update ((targetSequence n).strategy) focal focalPolicy
   let jointLaw := (N).behavioralJoint profile trace running
-  let bad : Set {joint : Player → Option (application setup runtime leaks).Action //
-      (onePacketProtocol setup runtime leaks bounds horizon (NativeScheduler)).Legal
+  let bad : Set {joint : Player → Option (application setup timeouts leaks).Action //
+      (onePacketProtocol setup timeouts leaks bounds horizon (NativeScheduler)).Legal
         (some control) joint} :=
-    {draw | ¬ MainActivationStep setup runtime leaks bounds horizon (NativeScheduler) (sequence n)
+    {draw | ¬ MainActivationStep setup timeouts leaks bounds horizon (NativeScheduler) (sequence n)
       focal (some control) draw.1}
   change (jointLaw.toOuterMeasure bad).toReal ≤ _
   by_cases eligible : ∃ owner, control.actor = some owner ∧ owner ≠ focal ∧
-      FirstActivation setup runtime leaks owner (some (control.execution.logs owner,
-        control.execution.observe (application setup runtime leaks) owner))
+      FirstActivation setup timeouts leaks owner (some (control.execution.logs owner,
+        control.execution.observe (application setup timeouts leaks) owner))
   · obtain ⟨owner, active, different, first⟩ := eligible
     let info := some (control.execution.logs owner,
-      control.execution.observe (application setup runtime leaks) owner)
-    let main := honestChoice setup runtime leaks bounds (initialLaw setup) horizon (NativeScheduler)
+      control.execution.observe (application setup timeouts leaks) owner)
+    let main := honestChoice setup timeouts leaks bounds (initialLaw setup) horizon
+      (NativeScheduler)
       (sequence n) owner info
-    let optionBad := {selected : Option (application setup runtime leaks).Action |
-      responseChoice setup runtime leaks bounds (initialLaw setup) horizon (NativeScheduler) owner
+    let optionBad := {selected : Option (application setup timeouts leaks).Action |
+      responseChoice setup timeouts leaks bounds (initialLaw setup) horizon (NativeScheduler) owner
         info
         (selected.getD ⟨none⟩) ∉ main.support}
     have infoEq : (N).infoOf owner trace = info := by
@@ -189,12 +195,12 @@ theorem assembled_joint_mainActivation_failure_le
         exact outside (supported owner active different first)
     have choiceEvent : Subtype.val ⁻¹' optionBad = main.supportᶜ := by
       ext choice
-      change (responseChoice setup runtime leaks bounds (initialLaw setup) horizon
+      change (responseChoice setup timeouts leaks bounds (initialLaw setup) horizon
         (NativeScheduler) owner
         info (choice.1.getD ⟨none⟩) ∉ main.support) ↔ choice ∉ main.support
       rw [responseChoice_getD_eq]
-    have forced := forcedAgent_of_history (runtime := runtime) (⟨some control, trace⟩)
-      (forcedState_of_clear_regular_notOwes (runtime := runtime) wellFormed (sequence n) focal
+    have forced := forcedAgent_of_history (timeouts := timeouts) (⟨some control, trace⟩)
+      (forcedState_of_clear_regular_notOwes (timeouts := timeouts) wellFormed (sequence n) focal
         trace clear regular
         notOwed owner)
     rw [infoEq] at forced
@@ -207,17 +213,17 @@ theorem assembled_joint_mainActivation_failure_le
           rfl
         _ = ((((targetSequence n).strategy owner info).map Subtype.val).toOuterMeasure
           optionBad).toReal :=
-          congrArg (fun law : PMF (Option (application setup runtime leaks).Action) =>
+          congrArg (fun law : PMF (Option (application setup timeouts leaks).Action) =>
             (law.toOuterMeasure optionBad).toReal) marginal
         _ = _ := by rw [PMF.toOuterMeasure_map_apply, choiceEvent]
-    have clearInfo : info.isSome → runtime.ClearInput leaks info := fun _ =>
+    have clearInfo : info.isSome → (ClearInput timeouts) leaks info := fun _ =>
       ⟨control.execution.logs owner,
-        control.execution.observe (application setup runtime leaks) owner, rfl, clear⟩
+        control.execution.observe (application setup timeouts leaks) owner, rfl, clear⟩
     calc
       (jointLaw.toOuterMeasure bad).toReal = _ := massEq
-      _ ≤ _ := assembled_event_le_of_disjoint_main setup runtime leaks bounds horizon
+      _ ≤ _ := assembled_event_le_of_disjoint_main setup timeouts leaks bounds horizon
         scheduler sequence scale positive le_one weights targetSequence assembled n owner info
-        (not_lateDelivery_of_firstActivation (runtime := runtime) first) ⟨⟨some control, trace⟩,
+        (not_lateDelivery_of_firstActivation (timeouts := timeouts) first) ⟨⟨some control, trace⟩,
           infoEq⟩ forced clearInfo
         main.supportᶜ disjoint_compl_right
   · have zero : jointLaw.toOuterMeasure bad = 0 :=
@@ -230,30 +236,30 @@ theorem assembled_joint_mainActivation_failure_le
 private theorem oneStep_marker_mass_eq_joint
     (source : setup.intendedModel.BehavioralAssessment) (focal : Player) (cutoff : Nat)
     (profile : ∀ who, (N).BehavioralPolicy who)
-    (history : (onePacketProtocol setup runtime leaks bounds horizon (NativeScheduler)).History)
-    (running : ¬ (onePacketProtocol setup runtime leaks bounds horizon (NativeScheduler)).terminal
+    (history : (onePacketProtocol setup timeouts leaks bounds horizon (NativeScheduler)).History)
+    (running : ¬ (onePacketProtocol setup timeouts leaks bounds horizon (NativeScheduler)).terminal
       history.state)
-    (main : MainActivationTraceAfter setup runtime leaks bounds horizon (NativeScheduler) source
+    (main : MainActivationTraceAfter setup timeouts leaks bounds horizon (NativeScheduler) source
       focal
       cutoff history.trace) (later : cutoff ≤ history.trace.length) :
     (((N).runBehavioralFrom profile 1 history).toOuterMeasure
-      {next | ¬ MainActivationTraceAfter setup runtime leaks bounds horizon (NativeScheduler)
+      {next | ¬ MainActivationTraceAfter setup timeouts leaks bounds horizon (NativeScheduler)
         source focal
         cutoff next.trace}).toReal =
       (((N).behavioralJoint profile history.trace running).toOuterMeasure
-        {draw | ¬ MainActivationStep setup runtime leaks bounds horizon (NativeScheduler) source
+        {draw | ¬ MainActivationStep setup timeouts leaks bounds horizon (NativeScheduler) source
           focal
           history.state draw.1}).toReal := by
   classical
-  let mark := fun next : (onePacketProtocol setup runtime leaks bounds horizon
+  let mark := fun next : (onePacketProtocol setup timeouts leaks bounds horizon
     (NativeScheduler)).History =>
-    decide (¬ MainActivationTraceAfter setup runtime leaks bounds horizon (NativeScheduler) source
+    decide (¬ MainActivationTraceAfter setup timeouts leaks bounds horizon (NativeScheduler) source
       focal
       cutoff next.trace)
-  let markStep := fun draw : {joint : Player → Option (application setup runtime leaks).Action //
-      (onePacketProtocol setup runtime leaks bounds horizon (NativeScheduler)).Legal history.state
+  let markStep := fun draw : {joint : Player → Option (application setup timeouts leaks).Action //
+      (onePacketProtocol setup timeouts leaks bounds horizon (NativeScheduler)).Legal history.state
         joint} =>
-    decide (¬ MainActivationStep setup runtime leaks bounds horizon (NativeScheduler) source focal
+    decide (¬ MainActivationStep setup timeouts leaks bounds horizon (NativeScheduler) source focal
       history.state draw.1)
   have mapped : ((N).runBehavioralFrom profile 1 history).map mark =
       ((N).behavioralJoint profile history.trace running).map markStep := by
@@ -272,11 +278,11 @@ private theorem oneStep_marker_mass_eq_joint
           true_implies, true_and]
       _ = _ := PMF.bind_pure_comp _ _
   have mass := congrArg (fun law : PMF Bool => (law.toOuterMeasure {true}).toReal) mapped
-  have markEvent : mark ⁻¹' {true} = {next | ¬ MainActivationTraceAfter setup runtime leaks bounds
+  have markEvent : mark ⁻¹' {true} = {next | ¬ MainActivationTraceAfter setup timeouts leaks bounds
       horizon (NativeScheduler) source focal cutoff next.trace} := by
     ext next
     simp only [Set.mem_preimage, Set.mem_singleton_iff, mark, decide_eq_true_eq, Set.mem_ofPred_eq]
-  have stepEvent : markStep ⁻¹' {true} = {draw | ¬ MainActivationStep setup runtime leaks bounds
+  have stepEvent : markStep ⁻¹' {true} = {draw | ¬ MainActivationStep setup timeouts leaks bounds
     horizon
       (NativeScheduler) source focal history.state draw.1} := by
     ext draw
@@ -295,66 +301,67 @@ private theorem oneStep_marker_mass_eq_joint
 callback leaves source-main support is bounded by square plus scale times the
 actual remaining protocol rank. The focal policy is arbitrary. -/
 theorem assembled_marker_mass_le_rank
-    [(application setup runtime leaks).FiniteNature (initialLaw setup) (NativeScheduler)]
+    [(application setup timeouts leaks).FiniteNature (initialLaw setup) (NativeScheduler)]
     [∀ who, DecidableEq ((N).InfoState who)]
     (wellFormed : setup.WellFormed) (covers : bounds.CoversOutputValues)
     (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (scale : ℕ → ℝ) (positive : ∀ n, 0 < scale n) (le_one : ∀ n, scale n ≤ 1)
     {slots : Nat}
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup runtime leaks bounds (initialLaw setup)
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
       horizon scheduler slots p))
     (targetSequence : ℕ → (N).BehavioralAssessment)
-    (assembled : OnePacketAssembled setup runtime leaks bounds horizon scheduler sequence scale
+    (assembled : OnePacketAssembled setup timeouts leaks bounds horizon scheduler sequence scale
       positive
       le_one weights targetSequence) (n : ℕ)
     (focal : Player) (focalPolicy : (N).BehavioralPolicy focal)
     {delay bound : (graph setup).EventId → Nat}
-    (opportunity : ∀ control : (application setup runtime leaks).Control,
-      (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control) →
+    (opportunity : ∀ control : (application setup timeouts leaks).Control,
+      (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some control) →
       control.execution.application.config.defaulted = ∅ →
-      OpportunityAt runtime leaks control.execution delay)
-    (timely : runtime.AsyncTimely delay bound)
+      OpportunityAt timeouts leaks control.execution delay)
+    (timely : (AsyncTimely timeouts) delay bound)
     (certificate :
-      (onePacketProtocol setup runtime leaks bounds horizon (NativeScheduler)).WellFoundedHistories)
-    (extraStop : (onePacketProtocol setup runtime leaks bounds horizon (NativeScheduler)).History
+      (onePacketProtocol setup timeouts leaks bounds horizon
+        (NativeScheduler)).WellFoundedHistories)
+    (extraStop : (onePacketProtocol setup timeouts leaks bounds horizon (NativeScheduler)).History
       → Prop)
-    (start : (application setup runtime leaks).Control)
+    (start : (application setup timeouts leaks).Control)
     (startTrace :
-      (onePacketProtocol setup runtime leaks bounds horizon (NativeScheduler)).Trace (some start))
+      (onePacketProtocol setup timeouts leaks bounds horizon (NativeScheduler)).Trace (some start))
     (current : (graph setup).EventId)
     (turn : start.execution.application.publicView.ownTurn? focal = some current)
-    (regular : RegularTrace setup runtime leaks bounds horizon (NativeScheduler) (sequence n) focal
+    (regular : RegularTrace setup timeouts leaks bounds horizon (NativeScheduler) (sequence n) focal
       startTrace) :
     (((N).runBehavioralUntil certificate
       (Function.update ((targetSequence n).strategy) focal focalPolicy)
       (fun history => ¬ Clear history.state ∨
-        DecodedState setup runtime leaks (failureProfile setup.program)
+        DecodedState setup timeouts leaks (failureProfile setup.program)
           (ProtocolState.OwesFailure focal setup.program) history.state ∨ extraStop history)
       ⟨some start, startTrace⟩).toOuterMeasure
-      {final | ¬ MainActivationTraceAfter setup runtime leaks bounds horizon (NativeScheduler)
+      {final | ¬ MainActivationTraceAfter setup timeouts leaks bounds horizon (NativeScheduler)
         (sequence n)
         focal startTrace.length final.trace}).toReal ≤
-      ((scale n) ^ 2 + scale n) * (application setup runtime leaks).rank horizon (some start) := by
+      ((scale n) ^ 2 + scale n) * (application setup timeouts leaks).rank horizon (some start) := by
   classical
   let profile := Function.update ((targetSequence n).strategy) focal focalPolicy
   let stopped := fun history :
-      (onePacketProtocol setup runtime leaks bounds horizon (NativeScheduler)).History =>
+      (onePacketProtocol setup timeouts leaks bounds horizon (NativeScheduler)).History =>
     ¬ Clear history.state ∨
-      DecodedState setup runtime leaks (failureProfile setup.program)
+      DecodedState setup timeouts leaks (failureProfile setup.program)
         (ProtocolState.OwesFailure focal setup.program) history.state ∨ extraStop history
   let marked := {history :
-      (onePacketProtocol setup runtime leaks bounds horizon (NativeScheduler)).History |
-    ¬ MainActivationTraceAfter setup runtime leaks bounds horizon (NativeScheduler) (sequence n)
+      (onePacketProtocol setup timeouts leaks bounds horizon (NativeScheduler)).History |
+    ¬ MainActivationTraceAfter setup timeouts leaks bounds horizon (NativeScheduler) (sequence n)
       focal
       startTrace.length history.trace}
   let payoff := fun history => @ite ℝ (history ∈ marked) (Classical.propDecidable _) 1 0
   let inside := fun history :
-      (onePacketProtocol setup runtime leaks bounds horizon (NativeScheduler)).History =>
+      (onePacketProtocol setup timeouts leaks bounds horizon (NativeScheduler)).History =>
     (∃ reached, history.state = some reached) ∧ TracePrefix startTrace history.trace ∧
-      RegularTrace setup runtime leaks bounds horizon (NativeScheduler) (sequence n) focal
+      RegularTrace setup timeouts leaks bounds horizon (NativeScheduler) (sequence n) focal
         history.trace ∧
-      MainActivationTraceAfter setup runtime leaks bounds horizon (NativeScheduler) (sequence n)
+      MainActivationTraceAfter setup timeouts leaks bounds horizon (NativeScheduler) (sequence n)
         focal
         startTrace.length history.trace
   have payoffBounded : ∀ history, |payoff history| ≤ 1 := by
@@ -363,7 +370,7 @@ theorem assembled_marker_mass_le_rank
     split <;> norm_num
   have nonnegative : 0 ≤ (scale n) ^ 2 + scale n := add_nonneg (sq_nonneg _) (positive n).le
   have preserve : ∀ history, inside history → ¬ stopped history →
-      ¬ (onePacketProtocol setup runtime leaks bounds horizon (NativeScheduler)).terminal
+      ¬ (onePacketProtocol setup timeouts leaks bounds horizon (NativeScheduler)).terminal
         history.state →
       ∀ next ∈ ((N).runBehavioralFrom profile 1 history).support,
       next ∉ marked → inside next := by
@@ -382,11 +389,11 @@ theorem assembled_marker_mass_le_rank
     rcases history with ⟨previous, trace⟩
     change previous = some before at beforeState
     cases beforeState
-    obtain ⟨after, afterState, _recall⟩ := (application setup runtime
+    obtain ⟨after, afterState, _recall⟩ := (application setup timeouts
       leaks).transition_recall_prefix
       (initialLaw setup) horizon (NativeScheduler) before target draw.1 realized
     cases afterState
-    have main : MainActivationTraceAfter setup runtime leaks bounds horizon (NativeScheduler)
+    have main : MainActivationTraceAfter setup timeouts leaks bounds horizon (NativeScheduler)
       (sequence n)
         focal startTrace.length (trace.extend draw.1 draw.2 realized) := not_not.mp unmarked
     refine ⟨⟨after, rfl⟩, .extend valid.2.1 draw.1 draw.2 realized, ?_, main⟩
@@ -405,9 +412,9 @@ theorem assembled_marker_mass_le_rank
             decodedPoint setup before.execution.application.config = some point →
             ¬ ProtocolState.OwesFailure focal setup.program point := by
           intro point decoded owed
-          exact going (Or.inr (Or.inl (decodedState_of_nativeDecodedState (runtime := runtime)
+          exact going (Or.inr (Or.inl (decodedState_of_nativeDecodedState (timeouts := timeouts)
             (failureProfile setup.program) ⟨some before, trace⟩ decoded owed)))
-        exact regularStep_of_native_mainActivationTraceAfter (runtime := runtime) wellFormed
+        exact regularStep_of_native_mainActivationTraceAfter (timeouts := timeouts) wellFormed
           covers capacity
           (sequence n) focal
           owner same opportunity timely start before startTrace trace
@@ -419,7 +426,7 @@ theorem assembled_marker_mass_le_rank
     fun _ => expect_abs_le_of_bounded zero_le_one payoffBounded
   have estimate := (N).abs_expect_runBehavioralUntil_le_of_exits certificate profile stopped inside
     payoff payoffBounded nonnegative
-    (fun history => (application setup runtime leaks).rank horizon history.state)
+    (fun history => (application setup timeouts leaks).rank horizon history.state)
     (fun history valid _ => by
       have unmarked : history ∉ marked := not_not_intro valid.2.2.2
       simp only [payoff, unmarked, ↓reduceIte])
@@ -427,7 +434,8 @@ theorem assembled_marker_mass_le_rank
       intro history next valid going running member
       obtain ⟨⟨joint, legal, realized⟩, _⟩ :=
         (N).mem_support_runBehavioralFrom_one profile running member
-      exact (application setup runtime leaks).rank_step (initialLaw setup) horizon (NativeScheduler)
+      exact (application setup timeouts leaks).rank_step (initialLaw setup) horizon
+        (NativeScheduler)
         history.state next.state joint running realized)
     (by
       intro history valid going running
@@ -435,7 +443,7 @@ theorem assembled_marker_mass_le_rank
       rcases history with ⟨before, trace⟩
       change before = some control at controlState
       cases controlState
-      let history : (onePacketProtocol setup runtime leaks bounds horizon
+      let history : (onePacketProtocol setup timeouts leaks bounds horizon
         (NativeScheduler)).History :=
         ⟨some control, trace⟩
       let step := (N).runBehavioralFrom profile 1 history
@@ -475,24 +483,24 @@ theorem assembled_marker_mass_le_rank
       have notOwed : ∀ point, decodedPoint setup control.execution.application.config = some point →
           ¬ ProtocolState.OwesFailure focal setup.program point := by
         intro point decoded owed
-        exact going (Or.inr (Or.inl (decodedState_of_nativeDecodedState (runtime := runtime)
+        exact going (Or.inr (Or.inl (decodedState_of_nativeDecodedState (timeouts := timeouts)
           (failureProfile setup.program) history decoded owed)))
       rw [abs_of_nonneg (expect_nonneg step outside (fun next _ => outsideNonnegative next))]
       calc
         expect step outside ≤ expect step payoff := comparison
         _ = (step.toOuterMeasure marked).toReal := by
           simpa only [payoff] using expect_indicator step marked
-        _ = _ := oneStep_marker_mass_eq_joint setup runtime leaks bounds horizon scheduler
+        _ = _ := oneStep_marker_mass_eq_joint setup timeouts leaks bounds horizon scheduler
           (sequence n)
           focal startTrace.length profile history running valid.2.2.2 valid.2.1.length_le
-        _ ≤ _ := assembled_joint_mainActivation_failure_le setup runtime leaks bounds horizon
+        _ ≤ _ := assembled_joint_mainActivation_failure_le setup timeouts leaks bounds horizon
           scheduler
           wellFormed sequence scale positive le_one weights targetSequence assembled n focal
             focalPolicy control trace clear
           valid.2.2.1 notOwed running)
     ⟨some start, startTrace⟩
     ⟨⟨start, rfl⟩, .refl, regular,
-      mainActivationTraceAfter_of_length_le (runtime := runtime) (sequence n) focal startTrace
+      mainActivationTraceAfter_of_length_le (timeouts := timeouts) (sequence n) focal startTrace
         startTrace.length le_rfl⟩
   have indicator := expect_indicator
     ((N).runBehavioralUntil certificate profile stopped ⟨some start, startTrace⟩) marked
@@ -511,49 +519,49 @@ theorem stopped_foreignFailure_marked
     (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
     (source : setup.intendedModel.BehavioralAssessment) (focal : Player)
     {delay bound : (graph setup).EventId → Nat}
-    (opportunity : ∀ control : (application setup runtime leaks).Control,
-      (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control) →
+    (opportunity : ∀ control : (application setup timeouts leaks).Control,
+      (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some control) →
       control.execution.application.config.defaulted = ∅ →
-      OpportunityAt runtime leaks control.execution delay)
-    (inclusion : ∀ control : (application setup runtime leaks).Control,
-      (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control) →
+      OpportunityAt timeouts leaks control.execution delay)
+    (inclusion : ∀ control : (application setup timeouts leaks).Control,
+      (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some control) →
       control.execution.application.config.defaulted = ∅ →
-      ProtectedInclusionAt runtime leaks control.execution bound)
-    (timely : runtime.AsyncTimely delay bound)
-    (certificate : (onePacketProtocol setup runtime leaks bounds horizon
+      ProtectedInclusionAt timeouts leaks control.execution bound)
+    (timely : (AsyncTimely timeouts) delay bound)
+    (certificate : (onePacketProtocol setup timeouts leaks bounds horizon
       (NativeScheduler)).WellFoundedHistories)
     (profile : ∀ who, (N).BehavioralPolicy who)
-    (extraStop : (onePacketProtocol setup runtime leaks bounds horizon (NativeScheduler)).History
+    (extraStop : (onePacketProtocol setup timeouts leaks bounds horizon (NativeScheduler)).History
       → Prop)
-    (start : (application setup runtime leaks).Control)
+    (start : (application setup timeouts leaks).Control)
     (startTrace :
-      (onePacketProtocol setup runtime leaks bounds horizon (NativeScheduler)).Trace (some start))
+      (onePacketProtocol setup timeouts leaks bounds horizon (NativeScheduler)).Trace (some start))
     (current : (graph setup).EventId)
     (turn : start.execution.application.publicView.ownTurn? focal = some current)
     (clear : start.execution.application.config.defaulted = ∅)
-    (regular : RegularTrace setup runtime leaks bounds horizon (NativeScheduler) source focal
+    (regular : RegularTrace setup timeouts leaks bounds horizon (NativeScheduler) source focal
       startTrace)
-    (final : (onePacketProtocol setup runtime leaks bounds horizon (NativeScheduler)).History)
+    (final : (onePacketProtocol setup timeouts leaks bounds horizon (NativeScheduler)).History)
     (supported : final ∈ ((N).runBehavioralUntil certificate profile (fun history =>
       ¬ Clear history.state ∨
-      DecodedState setup runtime leaks (failureProfile setup.program)
+      DecodedState setup timeouts leaks (failureProfile setup.program)
         (ProtocolState.OwesFailure focal setup.program) history.state ∨ extraStop history)
       ⟨some start, startTrace⟩).support)
-    (finalControl : (application setup runtime leaks).Control) (state : final.state = some
+    (finalControl : (application setup timeouts leaks).Control) (state : final.state = some
       finalControl)
     (owner : Player) (different : owner ≠ focal) (event : (graph setup).EventId)
     (owned : (graph setup).actor? event = some owner)
     (failed : finalControl.execution.application.PublicFailure event) :
-    ¬ MainActivationTraceAfter setup runtime leaks bounds horizon (NativeScheduler) source focal
+    ¬ MainActivationTraceAfter setup timeouts leaks bounds horizon (NativeScheduler) source focal
       startTrace.length final.trace := by
   classical
-  have boundary := responseMenu_stopped_exclusion_boundary runtime leaks (initialLaw setup)
-    horizon (NativeScheduler) (bounds.onePacketMenu runtime leaks) certificate profile
-    (fun history => DecodedState setup runtime leaks (failureProfile setup.program)
+  have boundary := responseMenu_stopped_exclusion_boundary timeouts leaks (initialLaw setup)
+    horizon (NativeScheduler) (bounds.onePacketMenu timeouts leaks) certificate profile
+    (fun history => DecodedState setup timeouts leaks (failureProfile setup.program)
       (ProtocolState.OwesFailure focal setup.program) history.state ∨ extraStop history)
     ⟨some start, startTrace⟩ start rfl clear final supported
   intro main
-  have regularFinal := (stopped_regular_of_mainActivationTraceAfter (runtime := runtime)
+  have regularFinal := (stopped_regular_of_mainActivationTraceAfter (timeouts := timeouts)
     wellFormed covers
     capacity source focal opportunity timely certificate
     profile extraStop ⟨some start, startTrace⟩ start rfl current turn regular final supported).2.2
@@ -563,30 +571,30 @@ theorem stopped_foreignFailure_marked
   subst finalState
   rcases boundary with finalClear | ⟨remaining, execution, prior, command, next, priorClear,
     priorGoing, _chosen, reached, endpoint, startPrefix, targetPrefix⟩
-  · have rawTarget := (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup)
+  · have rawTarget := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup)
       horizon scheduler target
     have initialEq : initialLaw setup = (setup.initialLaw.map setup.eventInputs).map
         (EventGraphRuntime.State.initial (graph := graph setup)) :=
       serviceInitialLaw_eq_inputs (mode := .sequential) setup
     rw [initialEq] at rawTarget
     have evidence : ExclusionEvidence 0 ∅ finalControl.execution.application :=
-      ExclusionEvidence.history runtime leaks (setup.initialLaw.map setup.eventInputs) horizon
+      ExclusionEvidence.history timeouts leaks (setup.initialLaw.map setup.eventInputs) horizon
         scheduler rawTarget
     have impossible := (evidence.defaulted_zero owner).mpr ⟨event, owned, failed⟩
     change finalControl.execution.application.config.defaulted = ∅ at finalClear
     rw [finalClear] at impossible
     exact Finset.notMem_empty owner impossible
   · cases Option.some.inj endpoint
-    have beforeRegular := regularTrace_of_tracePrefix (runtime := runtime) source focal
+    have beforeRegular := regularTrace_of_tracePrefix (timeouts := timeouts) source focal
       targetPrefix regularFinal
     have beforeNotOwed : ∀ point, decodedPoint setup execution.application.config = some point →
         ¬ ProtocolState.OwesFailure focal setup.program point := by
       intro point decoded owed
       apply priorGoing
       left
-      exact decodedState_of_nativeDecodedState (runtime := runtime) (failureProfile setup.program)
+      exact decodedState_of_nativeDecodedState (timeouts := timeouts) (failureProfile setup.program)
         ⟨some ⟨remaining + 1, none, execution⟩, prior⟩ decoded owed
-    exact firstForeignFailure_not_mainActivationTraceAfter (runtime := runtime) wellFormed covers
+    exact firstForeignFailure_not_mainActivationTraceAfter (timeouts := timeouts) wellFormed covers
       capacity
       source focal owner different opportunity inclusion
       timely
@@ -597,74 +605,75 @@ theorem stopped_foreignFailure_marked
 profile have probability at most square plus scale times remaining protocol rank.
 The focal policy is arbitrary, and the runner stops at focal source debt. -/
 theorem assembled_foreign_failure_mass_le_rank
-    [(application setup runtime leaks).FiniteNature (initialLaw setup) (NativeScheduler)]
+    [(application setup timeouts leaks).FiniteNature (initialLaw setup) (NativeScheduler)]
     [∀ who, DecidableEq ((N).InfoState who)]
     (wellFormed : setup.WellFormed) (covers : bounds.CoversOutputValues)
     (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (scale : ℕ → ℝ) (positive : ∀ n, 0 < scale n) (le_one : ∀ n, scale n ≤ 1)
     {slots : Nat}
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup runtime leaks bounds (initialLaw setup)
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
       horizon scheduler slots p))
     (targetSequence : ℕ → (N).BehavioralAssessment)
-    (assembled : OnePacketAssembled setup runtime leaks bounds horizon scheduler sequence scale
+    (assembled : OnePacketAssembled setup timeouts leaks bounds horizon scheduler sequence scale
       positive
       le_one weights targetSequence) (n : ℕ)
     (focal : Player) (focalPolicy : (N).BehavioralPolicy focal)
     {delay bound : (graph setup).EventId → Nat}
-    (opportunity : ∀ control : (application setup runtime leaks).Control,
-      (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control) →
+    (opportunity : ∀ control : (application setup timeouts leaks).Control,
+      (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some control) →
       control.execution.application.config.defaulted = ∅ →
-      OpportunityAt runtime leaks control.execution delay)
-    (inclusion : ∀ control : (application setup runtime leaks).Control,
-      (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control) →
+      OpportunityAt timeouts leaks control.execution delay)
+    (inclusion : ∀ control : (application setup timeouts leaks).Control,
+      (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some control) →
       control.execution.application.config.defaulted = ∅ →
-      ProtectedInclusionAt runtime leaks control.execution bound)
-    (timely : runtime.AsyncTimely delay bound)
+      ProtectedInclusionAt timeouts leaks control.execution bound)
+    (timely : (AsyncTimely timeouts) delay bound)
     (certificate :
-      (onePacketProtocol setup runtime leaks bounds horizon (NativeScheduler)).WellFoundedHistories)
-    (extraStop : (onePacketProtocol setup runtime leaks bounds horizon (NativeScheduler)).History
+      (onePacketProtocol setup timeouts leaks bounds horizon
+        (NativeScheduler)).WellFoundedHistories)
+    (extraStop : (onePacketProtocol setup timeouts leaks bounds horizon (NativeScheduler)).History
       → Prop)
-    (start : (application setup runtime leaks).Control)
+    (start : (application setup timeouts leaks).Control)
     (startTrace :
-      (onePacketProtocol setup runtime leaks bounds horizon (NativeScheduler)).Trace (some start))
+      (onePacketProtocol setup timeouts leaks bounds horizon (NativeScheduler)).Trace (some start))
     (current : (graph setup).EventId)
     (turn : start.execution.application.publicView.ownTurn? focal = some current)
     (clear : start.execution.application.config.defaulted = ∅)
-    (regular : RegularTrace setup runtime leaks bounds horizon (NativeScheduler) (sequence n) focal
+    (regular : RegularTrace setup timeouts leaks bounds horizon (NativeScheduler) (sequence n) focal
       startTrace) :
     (((N).runBehavioralUntil certificate
       (Function.update ((targetSequence n).strategy) focal focalPolicy)
       (fun history => ¬ Clear history.state ∨
-        DecodedState setup runtime leaks (failureProfile setup.program)
+        DecodedState setup timeouts leaks (failureProfile setup.program)
           (ProtocolState.OwesFailure focal setup.program) history.state ∨ extraStop history)
       ⟨some start, startTrace⟩).toOuterMeasure
-      {final | ∃ (control : (application setup runtime leaks).Control) (owner : Player)
+      {final | ∃ (control : (application setup timeouts leaks).Control) (owner : Player)
         (event : (graph setup).EventId), final.state = some control ∧ owner ≠ focal ∧
         (graph setup).actor? event = some owner ∧
           control.execution.application.PublicFailure event}).toReal ≤
-      ((scale n) ^ 2 + scale n) * (application setup runtime leaks).rank horizon (some start) := by
+      ((scale n) ^ 2 + scale n) * (application setup timeouts leaks).rank horizon (some start) := by
   classical
   let profile := Function.update ((targetSequence n).strategy) focal focalPolicy
   let stopped := fun history :
-      (onePacketProtocol setup runtime leaks bounds horizon (NativeScheduler)).History =>
+      (onePacketProtocol setup timeouts leaks bounds horizon (NativeScheduler)).History =>
     ¬ Clear history.state ∨
-      DecodedState setup runtime leaks (failureProfile setup.program)
+      DecodedState setup timeouts leaks (failureProfile setup.program)
         (ProtocolState.OwesFailure focal setup.program) history.state ∨ extraStop history
   let law := (N).runBehavioralUntil certificate profile stopped ⟨some start, startTrace⟩
   let failures := {final :
-      (onePacketProtocol setup runtime leaks bounds horizon (NativeScheduler)).History |
-    ∃ (control : (application setup runtime leaks).Control) (owner : Player)
+      (onePacketProtocol setup timeouts leaks bounds horizon (NativeScheduler)).History |
+    ∃ (control : (application setup timeouts leaks).Control) (owner : Player)
       (event : (graph setup).EventId), final.state = some control ∧ owner ≠ focal ∧
       (graph setup).actor? event = some owner ∧ control.execution.application.PublicFailure event}
   let marked := {final :
-      (onePacketProtocol setup runtime leaks bounds horizon (NativeScheduler)).History |
-    ¬ MainActivationTraceAfter setup runtime leaks bounds horizon (NativeScheduler) (sequence n)
+      (onePacketProtocol setup timeouts leaks bounds horizon (NativeScheduler)).History |
+    ¬ MainActivationTraceAfter setup timeouts leaks bounds horizon (NativeScheduler) (sequence n)
       focal
       startTrace.length final.trace}
   have subset : failures ∩ law.support ⊆ marked := by
     rintro final ⟨⟨control, owner, event, state, different, owned, failed⟩, supported⟩
-    exact stopped_foreignFailure_marked setup runtime leaks bounds horizon scheduler wellFormed
+    exact stopped_foreignFailure_marked setup timeouts leaks bounds horizon scheduler wellFormed
       covers capacity (sequence n) focal opportunity inclusion timely certificate profile extraStop
       start startTrace current turn clear regular final supported control state owner different
       event
@@ -677,18 +686,18 @@ theorem assembled_foreign_failure_mass_le_rank
   calc
     _ = (law.toOuterMeasure failures).toReal := rfl
     _ ≤ (law.toOuterMeasure marked).toReal := ENNReal.toReal_mono (outerMeasure_ne_top _ _) mass
-    _ ≤ _ := assembled_marker_mass_le_rank setup runtime leaks bounds horizon scheduler wellFormed
+    _ ≤ _ := assembled_marker_mass_le_rank setup timeouts leaks bounds horizon scheduler wellFormed
       covers capacity sequence scale positive le_one weights targetSequence assembled n focal
         focalPolicy opportunity timely
       certificate extraStop start startTrace current turn regular
 
 
 private theorem foreign_failure_of_unclear_survival (focal : Player)
-    (history : (onePacketProtocol setup runtime leaks bounds horizon scheduler).History)
+    (history : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).History)
     (unclear : ¬ Clear history.state)
-    (survives : ∀ control : (application setup runtime leaks).Control,
+    (survives : ∀ control : (application setup timeouts leaks).Control,
       history.state = some control → focal ∉ control.execution.application.config.defaulted) :
-    ∃ (control : (application setup runtime leaks).Control) (owner : Player)
+    ∃ (control : (application setup timeouts leaks).Control) (owner : Player)
       (event : (graph setup).EventId), history.state = some control ∧ owner ≠ focal ∧
       (graph setup).actor? event = some owner ∧
         control.execution.application.PublicFailure event := by
@@ -697,14 +706,14 @@ private theorem foreign_failure_of_unclear_survival (focal : Player)
   cases state with
   | none => exact (unclear trivial).elim
   | some control =>
-    have rawTrace := (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup) horizon
+    have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon
       scheduler trace
     have initialEq : initialLaw setup = (setup.initialLaw.map setup.eventInputs).map
         (EventGraphRuntime.State.initial (graph := graph setup)) :=
       serviceInitialLaw_eq_inputs (mode := .sequential) setup
     rw [initialEq] at rawTrace
     have evidence : ExclusionEvidence 0 ∅ control.execution.application :=
-      ExclusionEvidence.history runtime leaks (setup.initialLaw.map setup.eventInputs) horizon
+      ExclusionEvidence.history timeouts leaks (setup.initialLaw.map setup.eventInputs) horizon
         scheduler rawTrace
     change control.execution.application.config.defaulted ≠ ∅ at unclear
     obtain ⟨owner, member⟩ := Finset.nonempty_iff_ne_empty.mpr unclear
@@ -717,73 +726,74 @@ private theorem foreign_failure_of_unclear_survival (focal : Player)
 /-- The actual foreign first-exit event of the debt-stopped common comparison
 profile is bounded by square plus scale times remaining protocol rank. -/
 theorem assembled_foreign_exit_mass_le_rank
-    [(application setup runtime leaks).FiniteNature (initialLaw setup) (NativeScheduler)]
+    [(application setup timeouts leaks).FiniteNature (initialLaw setup) (NativeScheduler)]
     [∀ who, DecidableEq ((N).InfoState who)]
     (wellFormed : setup.WellFormed) (covers : bounds.CoversOutputValues)
     (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (scale : ℕ → ℝ) (positive : ∀ n, 0 < scale n) (le_one : ∀ n, scale n ≤ 1)
     {slots : Nat}
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup runtime leaks bounds (initialLaw setup)
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
       horizon scheduler slots p))
     (targetSequence : ℕ → (N).BehavioralAssessment)
-    (assembled : OnePacketAssembled setup runtime leaks bounds horizon scheduler sequence scale
+    (assembled : OnePacketAssembled setup timeouts leaks bounds horizon scheduler sequence scale
       positive
       le_one weights targetSequence) (n : ℕ)
     (focal : Player) (focalPolicy : (N).BehavioralPolicy focal)
     {delay bound : (graph setup).EventId → Nat}
-    (opportunity : ∀ control : (application setup runtime leaks).Control,
-      (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control) →
+    (opportunity : ∀ control : (application setup timeouts leaks).Control,
+      (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some control) →
       control.execution.application.config.defaulted = ∅ →
-      OpportunityAt runtime leaks control.execution delay)
-    (inclusion : ∀ control : (application setup runtime leaks).Control,
-      (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control) →
+      OpportunityAt timeouts leaks control.execution delay)
+    (inclusion : ∀ control : (application setup timeouts leaks).Control,
+      (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some control) →
       control.execution.application.config.defaulted = ∅ →
-      ProtectedInclusionAt runtime leaks control.execution bound)
-    (timely : runtime.AsyncTimely delay bound)
+      ProtectedInclusionAt timeouts leaks control.execution bound)
+    (timely : (AsyncTimely timeouts) delay bound)
     (certificate :
-      (onePacketProtocol setup runtime leaks bounds horizon (NativeScheduler)).WellFoundedHistories)
-    (extraStop : (onePacketProtocol setup runtime leaks bounds horizon (NativeScheduler)).History
+      (onePacketProtocol setup timeouts leaks bounds horizon
+        (NativeScheduler)).WellFoundedHistories)
+    (extraStop : (onePacketProtocol setup timeouts leaks bounds horizon (NativeScheduler)).History
       → Prop)
-    (start : (application setup runtime leaks).Control)
+    (start : (application setup timeouts leaks).Control)
     (startTrace :
-      (onePacketProtocol setup runtime leaks bounds horizon (NativeScheduler)).Trace (some start))
+      (onePacketProtocol setup timeouts leaks bounds horizon (NativeScheduler)).Trace (some start))
     (current : (graph setup).EventId)
     (turn : start.execution.application.publicView.ownTurn? focal = some current)
     (clear : start.execution.application.config.defaulted = ∅)
-    (regular : RegularTrace setup runtime leaks bounds horizon (NativeScheduler) (sequence n) focal
+    (regular : RegularTrace setup timeouts leaks bounds horizon (NativeScheduler) (sequence n) focal
       startTrace) :
     (((N).runBehavioralUntil certificate
       (Function.update ((targetSequence n).strategy) focal focalPolicy)
       (fun history => ¬ Clear history.state ∨
-        DecodedState setup runtime leaks (failureProfile setup.program)
+        DecodedState setup timeouts leaks (failureProfile setup.program)
           (ProtocolState.OwesFailure focal setup.program) history.state ∨ extraStop history)
       ⟨some start, startTrace⟩).toOuterMeasure
       {final | ¬ Clear final.state ∧
-        (∀ control : (application setup runtime leaks).Control, final.state = some control →
+        (∀ control : (application setup timeouts leaks).Control, final.state = some control →
           focal ∉ control.execution.application.config.defaulted)}).toReal ≤
-      ((scale n) ^ 2 + scale n) * (application setup runtime leaks).rank horizon (some start) := by
+      ((scale n) ^ 2 + scale n) * (application setup timeouts leaks).rank horizon (some start) := by
   classical
   let profile := Function.update ((targetSequence n).strategy) focal focalPolicy
   let stopped := fun history :
-      (onePacketProtocol setup runtime leaks bounds horizon (NativeScheduler)).History =>
+      (onePacketProtocol setup timeouts leaks bounds horizon (NativeScheduler)).History =>
     ¬ Clear history.state ∨
-      DecodedState setup runtime leaks (failureProfile setup.program)
+      DecodedState setup timeouts leaks (failureProfile setup.program)
         (ProtocolState.OwesFailure focal setup.program) history.state ∨ extraStop history
   let law := (N).runBehavioralUntil certificate profile stopped ⟨some start, startTrace⟩
   let exits := {final :
-      (onePacketProtocol setup runtime leaks bounds horizon (NativeScheduler)).History |
+      (onePacketProtocol setup timeouts leaks bounds horizon (NativeScheduler)).History |
     ¬ Clear final.state ∧
-      (∀ control : (application setup runtime leaks).Control, final.state = some control →
+      (∀ control : (application setup timeouts leaks).Control, final.state = some control →
           focal ∉ control.execution.application.config.defaulted)}
   let failures := {final :
-      (onePacketProtocol setup runtime leaks bounds horizon (NativeScheduler)).History |
-    ∃ (control : (application setup runtime leaks).Control) (owner : Player)
+      (onePacketProtocol setup timeouts leaks bounds horizon (NativeScheduler)).History |
+    ∃ (control : (application setup timeouts leaks).Control) (owner : Player)
       (event : (graph setup).EventId), final.state = some control ∧ owner ≠ focal ∧
       (graph setup).actor? event = some owner ∧ control.execution.application.PublicFailure event}
   have subset : exits ⊆ failures := by
     intro final eligible
-    exact foreign_failure_of_unclear_survival setup runtime leaks bounds horizon scheduler focal
+    exact foreign_failure_of_unclear_survival setup timeouts leaks bounds horizon scheduler focal
       final
       eligible.1 eligible.2
   have mass : law.toOuterMeasure exits ≤ law.toOuterMeasure failures :=
@@ -791,7 +801,7 @@ theorem assembled_foreign_exit_mass_le_rank
   calc
     _ = (law.toOuterMeasure exits).toReal := rfl
     _ ≤ (law.toOuterMeasure failures).toReal := ENNReal.toReal_mono (outerMeasure_ne_top _ _) mass
-    _ ≤ _ := assembled_foreign_failure_mass_le_rank setup runtime leaks bounds horizon scheduler
+    _ ≤ _ := assembled_foreign_failure_mass_le_rank setup timeouts leaks bounds horizon scheduler
       wellFormed covers capacity sequence scale positive le_one weights targetSequence
         assembled n focal focalPolicy
       opportunity inclusion timely certificate extraStop start startTrace current turn clear regular

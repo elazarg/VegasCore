@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveAliasEquilibrium
-import Vegas.Pending.ReactiveResponseAliases
+public import Interaction.ReactiveAliasEquilibrium
+public import Vegas.Pending.ReactiveResponseAliases
+
+@[expose] public section
 
 /-! # Sequential equilibrium with private native response aliases
 
@@ -25,56 +29,57 @@ open GameTheory.Protocol.InformationModel
 
 variable {Player : Type} [Fintype Player] [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
-  (bounds : MessageBounds graph) (runtime : EventGraphRuntime graph)
+  (bounds : MessageBounds graph) (timeouts : EventTimeouts graph)
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
   (initial : PMF (State graph)) (horizon : Nat)
-  (scheduler : (runtime.reactiveApplication leaks).Scheduler)
+  (scheduler : ((reactiveApplication timeouts) leaks).Scheduler)
 
 def canonicalRawPolicy (who : Player)
     (source : BehavioralPolicy
-      ((bounds.menu runtime leaks).information initial horizon scheduler) who) :
-    ((bounds.rawMenu runtime leaks).information initial horizon scheduler).BehavioralPolicy who :=
-  (runtime.reactiveNormalization leaks).canonicalPolicy (bounds.rawMenu runtime leaks)
-    (bounds.rawMenu_recall runtime leaks) (bounds.rawMenu_closed runtime leaks)
+      ((bounds.menu timeouts leaks).information initial horizon scheduler) who) :
+    ((bounds.rawMenu timeouts leaks).information initial horizon scheduler).BehavioralPolicy who :=
+  ((reactiveNormalization timeouts) leaks).canonicalPolicy (bounds.rawMenu timeouts leaks)
+    (bounds.rawMenu_recall timeouts leaks) (bounds.rawMenu_closed timeouts leaks)
     initial horizon scheduler who source
 
 /-- An SE of the complete normalized native menu remains an SE when every
 bounded raw response alias is available. The source-language interpretation
 of this native game is a separate obligation. -/
 theorem exists_canonicalRaw_sequentialEquilibrium
-    [(runtime.reactiveApplication leaks).FiniteNature initial scheduler]
+    [((reactiveApplication timeouts) leaks).FiniteNature initial scheduler]
     (source : BehavioralAssessment
-      ((bounds.menu runtime leaks).information initial horizon scheduler))
-    (payoff : Player → (runtime.reactiveApplication leaks).ProtocolState → ℝ)
+      ((bounds.menu timeouts leaks).information initial horizon scheduler))
+    (payoff : Player → ((reactiveApplication timeouts) leaks).ProtocolState → ℝ)
     (equilibrium : source.IsSequentialEquilibriumFor
-      ((bounds.menu runtime leaks).decisionInformationAntichain initial horizon scheduler)
+      ((bounds.menu timeouts leaks).decisionInformationAntichain initial horizon scheduler)
       (fun who site => source.truncatedContinuationContext site
         (fun history => payoff who history.state) (2 * horizon + 1))) :
     ∃ target : BehavioralAssessment
-        ((bounds.rawMenu runtime leaks).information initial horizon scheduler),
-      target.strategy = (fun who => bounds.canonicalRawPolicy runtime leaks
+        ((bounds.rawMenu timeouts leaks).information initial horizon scheduler),
+      target.strategy = (fun who => bounds.canonicalRawPolicy timeouts leaks
         initial horizon scheduler who (source.strategy who)) ∧
       target.IsSequentialEquilibriumFor
-        ((bounds.rawMenu runtime leaks).decisionInformationAntichain initial horizon scheduler)
+        ((bounds.rawMenu timeouts leaks).decisionInformationAntichain initial horizon scheduler)
         (fun who site => target.truncatedContinuationContext site
-          (fun history => payoff who ((runtime.reactiveNormalization leaks).state history.state))
+          (fun history => payoff who (((reactiveNormalization timeouts) leaks).state history.state))
           (2 * horizon + 1)) ∧
       (∀ who (site : InformationSite
-          ((bounds.rawMenu runtime leaks).information initial horizon scheduler) who),
+          ((bounds.rawMenu timeouts leaks).information initial horizon scheduler) who),
         (target.belief who site).map
-            ((runtime.reactiveNormalization leaks).informationHistory (bounds.rawMenu runtime leaks)
-              (bounds.rawMenu_recall runtime leaks) initial horizon scheduler who site.1) =
-          source.belief who ((runtime.reactiveNormalization leaks).site
-            (bounds.rawMenu runtime leaks) (bounds.rawMenu_recall runtime leaks)
+            (((reactiveNormalization timeouts) leaks).informationHistory (bounds.rawMenu timeouts
+              leaks)
+              (bounds.rawMenu_recall timeouts leaks) initial horizon scheduler who site.1) =
+          source.belief who (((reactiveNormalization timeouts) leaks).site
+            (bounds.rawMenu timeouts leaks) (bounds.rawMenu_recall timeouts leaks)
               initial horizon scheduler who site)) ∧
-      (((bounds.rawMenu runtime leaks).information initial horizon scheduler).runBehavioral
+      (((bounds.rawMenu timeouts leaks).information initial horizon scheduler).runBehavioral
           target.strategy (2 * horizon + 1)).map
-            (fun history => (runtime.reactiveNormalization leaks).state history.state) =
-        (((bounds.menu runtime leaks).information initial horizon scheduler).runBehavioral
+            (fun history => ((reactiveNormalization timeouts) leaks).state history.state) =
+        (((bounds.menu timeouts leaks).information initial horizon scheduler).runBehavioral
           source.strategy (2 * horizon + 1)).map
             GameTheory.Protocol.ExecutionProtocol.History.state :=
-  (runtime.reactiveNormalization leaks).exists_canonical_sequentialEquilibrium
-    (bounds.rawMenu runtime leaks) (bounds.rawMenu_recall runtime leaks)
-    (bounds.rawMenu_closed runtime leaks) initial horizon scheduler source payoff equilibrium
+  ((reactiveNormalization timeouts) leaks).exists_canonical_sequentialEquilibrium
+    (bounds.rawMenu timeouts leaks) (bounds.rawMenu_recall timeouts leaks)
+    (bounds.rawMenu_closed timeouts leaks) initial horizon scheduler source payoff equilibrium
 
 end Vegas.EventGraphRuntime.MessageBounds

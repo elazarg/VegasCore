@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.EventGraph.Order
-import Vegas.EventGraph.Code
-import Vegas.EventGraph.Semantics
-import Vegas.Expr.Simple
+public import Vegas.EventGraph.Order
+public import Vegas.EventGraph.Code
+public import Vegas.EventGraph.Semantics
+public import Vegas.Expr.Simple
+
+@[expose] public section
 
 /-! # Dependency-driven execution regressions
 
@@ -18,17 +22,17 @@ open GameTheory.Math.Probability
 
 noncomputable section
 
-private abbrev independentOrder : EventOrder where
+abbrev independentOrder : EventOrder where
   eventCount := 4
   predecessors event := if event = 2 then {0, 1} else if event = 3 then {2} else ∅
   predecessor_lt := by decide
 
-private def initial : EventOrder.Cut independentOrder := .empty independentOrder
+def initial : EventOrder.Cut independentOrder := .empty independentOrder
 
 example : initial.enabled = {0, 1} := by decide
 
 /-- The higher-ranked independent event completes first. -/
-private def rightFirst : EventOrder.Cut independentOrder := initial.complete 1 (by decide)
+def rightFirst : EventOrder.Cut independentOrder := initial.complete 1 (by decide)
 
 example : 1 ∈ rightFirst.completed ∧ 0 ∉ rightFirst.completed := by decide
 
@@ -43,13 +47,13 @@ example :
       rightFirst.complete 0 (by decide) := by
   exact EventOrder.Cut.complete_comm (by decide) (by decide) (by decide)
 
-private abbrev BindingLayout : Fin 1 → Vegas.EventGraph.EventField Bool simpleExpr :=
+abbrev BindingLayout : Fin 1 → Vegas.EventGraph.EventField Bool simpleExpr :=
   fun _ => .binding false .bool
 
-private def bindingRef : Vegas.EventGraph.FieldRef BindingLayout (.binding false .bool) :=
+def bindingRef : Vegas.EventGraph.FieldRef BindingLayout (.binding false .bool) :=
   ⟨0, rfl⟩
 
-private def openBinding : Vegas.EventGraph.EventCode BindingLayout (.publication .bool) :=
+def openBinding : Vegas.EventGraph.EventCode BindingLayout (.publication .bool) :=
   Vegas.EventGraph.EventCode.resolve (layout := BindingLayout) false .bool bindingRef []
 
 /-- Missing storage is distinct from a completed failed binding. -/
@@ -65,7 +69,7 @@ example : openBinding.eval? true (fun _ => some (.success true)) =
 example : openBinding.eval? false (fun _ => some (.success true)) =
     some (PMF.pure .failure) := rfl
 
-private def falseCheck : Vegas.EventGraph.GuardCheck BindingLayout .bool where
+def falseCheck : Vegas.EventGraph.GuardCheck BindingLayout .bool where
   subject := 7
   payload := .bool
   code := { schema := [], schemaNames := by decide, subjectFresh := by decide,
@@ -76,7 +80,7 @@ private def falseCheck : Vegas.EventGraph.GuardCheck BindingLayout .bool where
   subject_mem := by intro field impossible; cases impossible
   reads_mem := fun ref => nomatch ref
 
-private def guardedOpening : Vegas.EventGraph.EventCode BindingLayout (.publication .bool) :=
+def guardedOpening : Vegas.EventGraph.EventCode BindingLayout (.publication .bool) :=
   Vegas.EventGraph.EventCode.resolve (layout := BindingLayout) false .bool bindingRef [falseCheck]
 
 /-- An unsatisfiable guard is retained; its valid opening resolves to failure. -/
@@ -86,7 +90,7 @@ example : guardedOpening.eval? true (fun _ => some (.success true)) =
 /-- Failure vacuously satisfies the same retained check. -/
 example : falseCheck.eval? (fun _ => none) .failure = some true := rfl
 
-private def rangeBinding :
+def rangeBinding :
     Vegas.EventGraph.EventCode BindingLayout (.binding false (.range 1 0)) :=
   Vegas.EventGraph.EventCode.bind (layout := BindingLayout) false (.range 1 0)
 
@@ -94,11 +98,11 @@ private def rangeBinding :
 example : rangeBinding.eval? (some .failure) (fun _ => none) =
     some (PMF.pure .failure) := rfl
 
-private abbrev DeferredLayout : Fin 2 → Vegas.EventGraph.EventField Bool simpleExpr :=
+abbrev DeferredLayout : Fin 2 → Vegas.EventGraph.EventField Bool simpleExpr :=
   Fin.cases (.binding false .bool) (fun _ => .publication .bool)
 
 /-- A schema input the code never reads needs no operand and no stored field. -/
-private def unreadInput : Vegas.EventGraph.GuardCheck DeferredLayout .bool where
+def unreadInput : Vegas.EventGraph.GuardCheck DeferredLayout .bool where
   subject := 2
   payload := .bool
   code := { schema := [(1, .bool)], schemaNames := by decide, subjectFresh := by decide,
@@ -119,13 +123,16 @@ private def unreadInput : Vegas.EventGraph.GuardCheck DeferredLayout .bool where
 example : unreadInput.eval? (fun _ => none) (.success true) = some true := rfl
 
 /-- The relation y = x is checked when x is proposed after y is public. -/
-private def closingEquality : Vegas.EventGraph.GuardCheck DeferredLayout .bool where
+def closingEquality : Vegas.EventGraph.GuardCheck DeferredLayout .bool where
   subject := 2
   payload := .bool
   code := { schema := [(1, .bool)], schemaNames := by decide, subjectFresh := by decide,
             code := .eq (.var 2 .here) (.var 1 (.there .here)) }
   subjectRead := .publication ⟨1, rfl⟩
-  reads := fun ref _ => match ref with | .here => .proposed
+  reads := fun ref _ => by
+    cases ref with
+    | here => exact .proposed
+    | there ref => nomatch ref
   readFields := {1}
   subject_mem := by
     intro field same
@@ -136,14 +143,14 @@ private def closingEquality : Vegas.EventGraph.GuardCheck DeferredLayout .bool w
     | here => cases impossible
     | there ref => nomatch ref
 
-private def publishedTrue : Vegas.EventGraph.Store DeferredLayout :=
+def publishedTrue : Vegas.EventGraph.Store DeferredLayout :=
   Fin.cases (some (.success false)) (fun _ => some (.success true))
 
 example : closingEquality.eval? publishedTrue (.success false) = some false := rfl
 
 example : closingEquality.eval? publishedTrue (.success true) = some true := rfl
 
-private def closeRelation : Vegas.EventGraph.EventCode DeferredLayout (.publication .bool) :=
+def closeRelation : Vegas.EventGraph.EventCode DeferredLayout (.publication .bool) :=
   Vegas.EventGraph.EventCode.resolve (layout := DeferredLayout) false .bool ⟨0, rfl⟩
     [closingEquality]
 
@@ -152,20 +159,20 @@ example : closeRelation.eval? true publishedTrue = some (PMF.pure .failure) := r
 
 example : publishedTrue 1 = some (.success true) := rfl
 
-private abbrev pairOrder : EventOrder where
+abbrev pairOrder : EventOrder where
   eventCount := 2
   predecessors _ := ∅
   predecessor_lt := by simp
 
-private abbrev pairInputs : Fin 0 → Vegas.EventGraph.EventField Bool simpleExpr := Fin.elim0
+abbrev pairInputs : Fin 0 → Vegas.EventGraph.EventField Bool simpleExpr := Fin.elim0
 
-private abbrev pairOutputs : Fin 2 → Vegas.EventGraph.EventField Bool simpleExpr :=
+abbrev pairOutputs : Fin 2 → Vegas.EventGraph.EventField Bool simpleExpr :=
   fun event => .binding (event.val == 1) .bool
 
-private abbrev pairLayout := Vegas.EventGraph.fieldLayout pairInputs pairOutputs
+abbrev pairLayout := Vegas.EventGraph.fieldLayout pairInputs pairOutputs
 
 /-- A hand-built graph with one independent binding per player. -/
-private abbrev pairGraph : Vegas.EventGraph Bool simpleExpr where
+abbrev pairGraph : Vegas.EventGraph Bool simpleExpr where
   inputCount := 0
   order := pairOrder
   inputLayout := pairInputs
@@ -177,7 +184,7 @@ private abbrev pairGraph : Vegas.EventGraph Bool simpleExpr where
     exact False.elim (Finset.notMem_empty field member)
   payoffs := []
 
-private def pairSchema : pairGraph.LogicalSchema where
+def pairSchema : pairGraph.LogicalSchema where
   fields := fun _ => ∅
   ownHistory := fun _ => []
 
@@ -223,19 +230,19 @@ private theorem pairInformation : pairGraph.InformationDiscipline pairSchema whe
     fin_cases earlier <;> fin_cases later <;>
       simp_all [Vegas.EventGraph.actor?, Vegas.EventGraph.EventCode.actor]
 
-private def pairInputValues : pairGraph.Inputs := fun input => nomatch input
+def pairInputValues : pairGraph.Inputs := fun input => nomatch input
 
-private def pairInitial : pairGraph.Config := .initial pairInputValues
+def pairInitial : pairGraph.Config := .initial pairInputValues
 
-private theorem pairInitial_ready (event : pairGraph.EventId) :
+theorem pairInitial_ready (event : pairGraph.EventId) :
     pairInitial.cut.Ready event := by
   simp [pairInitial, Vegas.EventGraph.Config.initial, EventOrder.Cut.Ready,
     EventOrder.Cut.empty, pairGraph, pairOrder]
 
-private def secondAccepted : pairGraph.Config :=
+def secondAccepted : pairGraph.Config :=
   pairInitial.complete (1 : Fin 2) (pairInitial_ready 1) (some (.success true)) (.success true)
 
-private theorem secondAccepted_ready0 : secondAccepted.cut.Ready (0 : Fin 2) := by
+theorem secondAccepted_ready0 : secondAccepted.cut.Ready (0 : Fin 2) := by
   exact (pairInitial_ready 0).after_complete (pairInitial_ready 1) (by decide)
 
 /-- This is an actual binding transition, not just a reordered submission. -/
@@ -279,20 +286,20 @@ example :
       (pairGraph.playerObserve false secondAccepted).ownActions :=
   pairInformation.logicalObserve_ownActions secondAccepted 0 false secondAccepted_ready0 rfl
 
-private def firstAccepted : pairGraph.Config :=
+def firstAccepted : pairGraph.Config :=
   pairInitial.complete (0 : Fin 2) (pairInitial_ready 0) (some (.success false)) (.success false)
 
-private theorem firstAccepted_ready1 : firstAccepted.cut.Ready (1 : Fin 2) := by
+theorem firstAccepted_ready1 : firstAccepted.cut.Ready (1 : Fin 2) := by
   exact (pairInitial_ready 1).after_complete (pairInitial_ready 0) (by decide)
 
-private def canonicalResult : pairGraph.Config :=
+def canonicalResult : pairGraph.Config :=
   firstAccepted.complete (1 : Fin 2) firstAccepted_ready1 (some (.success true)) (.success true)
 
-private def reverseResult : pairGraph.Config :=
+def reverseResult : pairGraph.Config :=
   secondAccepted.complete (0 : Fin 2) secondAccepted_ready0 (some (.success false)) (.success false)
 
 /-- Each player supplies its own Boolean bit at its binding event. -/
-private def pairProfile : pairGraph.BehavioralProfile :=
+def pairProfile : pairGraph.BehavioralProfile :=
   fun who _event _owner _observation _active => PMF.pure (some (.success who))
 
 private theorem pairInitial_notTerminal : ¬ pairInitial.cut.Terminal := by

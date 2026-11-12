@@ -1,13 +1,17 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketOwnSubmissions
-import Vegas.Game.SourceServiceFacts
-import Vegas.Game.OnePacketFirstActivation
-import Vegas.Game.OnePacketPrescribedSupport
-import Vegas.Game.SourceServiceCompletion
-import Vegas.Game.RevealServiceCalendarState
-import Vegas.Pending.ReactiveOwnerActivationRecall
-import GameTheoryExtensions.Analysis.Protocol.StoppedHistoryInvariant
+public import Vegas.Game.OnePacketOwnSubmissions
+public import Vegas.Game.SourceServiceFacts
+public import Vegas.Game.OnePacketFirstActivation
+public import Vegas.Game.OnePacketPrescribedSupport
+public import Vegas.Game.SourceServiceCompletion
+public import Vegas.Game.RevealServiceCalendarState
+public import Vegas.Pending.ReactiveOwnerActivationRecall
+public import GameTheoryExtensions.Analysis.Protocol.StoppedHistoryInvariant
+
+@[expose] public section
 
 /-! # Waiting for the first owner callback under counted native service -/
 
@@ -19,21 +23,21 @@ open SourceProgram GameTheory.Protocol GameTheory.Math.Probability Interaction E
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
 variable [Fintype Player]
   {bounds : MessageBounds (graph setup)}
-  {horizon : Nat} {scheduler : (application setup runtime leaks).Scheduler}
+  {horizon : Nat} {scheduler : (application setup timeouts leaks).Scheduler}
   {delay bound : (graph setup).EventId → Nat}
-  (opportunity : ∀ control : (application setup runtime leaks).Control,
-    ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+  (opportunity : ∀ control : (application setup timeouts leaks).Control,
+    ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control) →
     control.execution.application.config.defaulted = ∅ →
-    OpportunityAt runtime leaks control.execution delay)
-  (timely : runtime.AsyncTimely delay bound)
+    OpportunityAt timeouts leaks control.execution delay)
+  (timely : (AsyncTimely timeouts) delay bound)
 
-local notation "Menu" => bounds.onePacketMenu runtime leaks
+local notation "Menu" => bounds.onePacketMenu timeouts leaks
 
 include opportunity timely in
 /-- Before the owner's first ready callback, a scheduler command cannot complete
@@ -41,7 +45,7 @@ its event. A pending authentic packet would record an earlier ready callback;
 a due expiry would require one under pointwise opportunity.
 The application therefore keeps both its source configuration and public clarity. -/
 theorem counted_waiting_environment
-    {remaining : Nat} {execution : (application setup runtime leaks).Execution}
+    {remaining : Nat} {execution : (application setup timeouts leaks).Execution}
     (trace : ((Menu).protocol (initialLaw setup) horizon scheduler).Trace
       (some ⟨remaining + 1, none, execution⟩))
     (clear : execution.application.config.defaulted = ∅)
@@ -52,10 +56,10 @@ theorem counted_waiting_environment
     (owner : Player) (event : (graph setup).EventId)
     (owned : (graph setup).actor? event = some owner)
     (ready : execution.application.config.cut.Ready event)
-    (never : ∀ entry ∈ execution.logs owner, ¬ ActivatedAt setup runtime leaks owner event entry)
-    (command : (application setup runtime leaks).Command) (next : (application setup runtime
+    (never : ∀ entry ∈ execution.logs owner, ¬ ActivatedAt setup timeouts leaks owner event entry)
+    (command : (application setup timeouts leaks).Command) (next : (application setup timeouts
       leaks).Execution)
-    (reached : next ∈ (execution.environmentStep (application setup runtime leaks)
+    (reached : next ∈ (execution.environmentStep (application setup timeouts leaks)
       command).support) :
     next.application.config = execution.application.config ∧
       next.application.config.defaulted = ∅ := by
@@ -67,11 +71,11 @@ theorem counted_waiting_environment
     have recorded := eventRecorded_of_pending setup leaks rawTrace owner event message
       pending sender named
     obtain ⟨entry, remembered, submitted⟩ :=
-      (runtime.eventRecorded_iff leaks (execution.logs owner) event).mp recorded
-    have submissions := onePacket_ownSubmissionsAtTurn (runtime := runtime) bounds trace ordered
+      ((eventRecorded_iff timeouts) leaks (execution.logs owner) event).mp recorded
+    have submissions := onePacket_ownSubmissionsAtTurn (timeouts := timeouts) bounds trace ordered
       point decoded intendedPoint owner
     exact never entry remembered (submissions entry remembered event submitted)
-  have rawInputs : ((application setup runtime leaks).protocol
+  have rawInputs : ((application setup timeouts leaks).protocol
       ((setup.initialLaw.map setup.eventInputs).map State.initial) horizon scheduler).Trace
         (some ⟨remaining + 1, none, execution⟩) := by
     have initialEq : initialLaw setup =
@@ -79,26 +83,26 @@ theorem counted_waiting_environment
       serviceInitialLaw_eq_inputs (mode := .sequential) setup
     rw [← initialEq]
     exact rawTrace
-  obtain ⟨inputs, _supported, invariant⟩ := runtime.reactive_history_invariant leaks
+  obtain ⟨inputs, _supported, invariant⟩ := (reactive_history_invariant timeouts) leaks
     (setup.initialLaw.map setup.eventInputs) horizon scheduler rawInputs
   obtain ⟨entered, activated⟩ := invariant.activatedAt_eq_some_of_ready_actor event ready
     (by simp only [owned, Option.isSome_some])
   change execution.application.activatedAt event = some entered at activated
-  have within : execution.application.WithinDeadline runtime event := by
+  have within : execution.application.WithinDeadline timeouts event := by
     simp only [EventGraphRuntime.State.WithinDeadline, activated]
     apply Nat.lt_of_not_ge
     intro due
     obtain ⟨entry, remembered, activatedAt⟩ := due_owner_recalled_turn_of_opportunity
-      runtime leaks timely (serviceGraph_revealRelaxedOrdered setup .sequential)
+      timeouts leaks timely (serviceGraph_revealRelaxedOrdered setup .sequential)
       _ rawTrace rfl (opportunity _ trace clear) event owner owned ready entered activated due
     exact never entry remembered activatedAt
-  have same := environment_waiting_config runtime leaks execution next command event owner ready
+  have same := environment_waiting_config timeouts leaks execution next command event owner ready
     owned within facts.quiescent safe reached
   exact ⟨same, by simpa only [same] using clear⟩
 
 include opportunity timely in
 private theorem counted_waiting_transition
-    {control : (application setup runtime leaks).Control}
+    {control : (application setup timeouts leaks).Control}
     (trace : ((Menu).protocol (initialLaw setup) horizon scheduler).Trace (some control))
     (clear : control.execution.application.config.defaulted = ∅)
     {rank : Nat} (ordered : control.execution.application.config.cut.IsPrefix rank)
@@ -109,17 +113,17 @@ private theorem counted_waiting_transition
     (owned : (graph setup).actor? event = some owner)
     (ready : control.execution.application.config.cut.Ready event)
     (never : ∀ entry ∈ control.execution.logs owner,
-      ¬ ActivatedAt setup runtime leaks owner event entry)
+      ¬ ActivatedAt setup timeouts leaks owner event entry)
     (going : control.actor ≠ some owner)
-    (joint : Player → Option (application setup runtime leaks).Action)
-    (target : (application setup runtime leaks).ProtocolState)
-    (realized : target ∈ ((application setup runtime leaks).transition (initialLaw setup) horizon
+    (joint : Player → Option (application setup timeouts leaks).Action)
+    (target : (application setup timeouts leaks).ProtocolState)
+    (realized : target ∈ ((application setup timeouts leaks).transition (initialLaw setup) horizon
       scheduler (some control) joint).support) :
     ∃ next, target = some next ∧
       next.execution.application.config = control.execution.application.config ∧
       next.execution.application.config.defaulted = ∅ ∧
       next.execution.logs owner = control.execution.logs owner := by
-  let app := application setup runtime leaks
+  let app := application setup timeouts leaks
   rcases control with ⟨remaining, active, execution⟩
   cases active with
   | some responder =>
@@ -130,11 +134,11 @@ private theorem counted_waiting_transition
         (some (⟨remaining, none, execution.respond app responder ((joint responder).getD ⟨none⟩)⟩ :
           app.Control))).support at realized
       cases (PMF.mem_support_pure_iff _ _).mp realized
-      refine ⟨_, rfl, (runtime.reactive_respond_application leaks execution responder _).1,
+      refine ⟨_, rfl, ((reactive_respond_application timeouts) leaks execution responder _).1,
         ?_, app.respond_recall_other execution responder owner different _⟩
-      change (execution.respond (application setup runtime leaks) responder
+      change (execution.respond (application setup timeouts leaks) responder
         ((joint responder).getD ⟨none⟩)).application.config.defaulted = ∅
-      rw [(runtime.reactive_respond_application leaks execution responder _).1]
+      rw [((reactive_respond_application timeouts) leaks execution responder _).1]
       exact clear
   | none =>
       cases remaining with
@@ -145,7 +149,7 @@ private theorem counted_waiting_transition
           obtain ⟨command, _, moved⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ realized)
           obtain ⟨next, reached, nextEq⟩ := PMF.support_map .. ▸ moved
           cases nextEq
-          obtain ⟨same, nextClear⟩ := counted_waiting_environment (runtime := runtime) opportunity
+          obtain ⟨same, nextClear⟩ := counted_waiting_environment (timeouts := timeouts) opportunity
             timely trace clear ordered decoded intendedPoint owner event owned ready never command
             next reached
           exact ⟨_, rfl, same, nextClear,
@@ -157,18 +161,18 @@ the stopped behavioral run reaches its owner's first callback. Configuration,
 source point, public clarity and the owner's complete recall are unchanged
 through the waiting phase. All players' continuation policies are arbitrary. -/
 theorem counted_waiting_until_firstActivation
-    (completes : ∀ control : (application setup runtime leaks).Control,
-      ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+    (completes : ∀ control : (application setup timeouts leaks).Control,
+      ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control) →
       control.execution.application.config.defaulted = ∅ →
-      (application setup runtime leaks).terminal (some control) →
+      (application setup timeouts leaks).terminal (some control) →
       control.execution.application.config.cut.Terminal)
     (certificate : ((Menu).protocol (initialLaw setup) horizon
       scheduler).WellFoundedHistories)
     (players : ∀ player, ((Menu).information (initialLaw setup) horizon
       scheduler).BehavioralPolicy player)
     (start : ((Menu).protocol (initialLaw setup) horizon scheduler).History)
-    {remaining : Nat} {execution : (application setup runtime leaks).Execution}
+    {remaining : Nat} {execution : (application setup timeouts leaks).Execution}
     (current : start.state = some ⟨remaining, none, execution⟩)
     (clear : execution.application.config.defaulted = ∅)
     {rank : Nat} (ordered : execution.application.config.cut.IsPrefix rank)
@@ -178,11 +182,11 @@ theorem counted_waiting_until_firstActivation
     (owner : Player) (event : (graph setup).EventId)
     (owned : (graph setup).actor? event = some owner)
     (ready : execution.application.config.cut.Ready event)
-    (never : ∀ entry ∈ execution.logs owner, ¬ ActivatedAt setup runtime leaks owner event
+    (never : ∀ entry ∈ execution.logs owner, ¬ ActivatedAt setup timeouts leaks owner event
       entry) :
     ∀ stopped ∈ (((Menu).information (initialLaw setup) horizon
       scheduler).runBehavioralUntil certificate players
-        (fun history => (application setup runtime leaks).actor history.state = some owner)
+        (fun history => (application setup timeouts leaks).actor history.state = some owner)
           start).support,
       ∃ control, stopped.state = some control ∧ control.actor = some owner ∧
         control.execution.application.config = execution.application.config ∧
@@ -192,7 +196,7 @@ theorem counted_waiting_until_firstActivation
   let model := (Menu).information (initialLaw setup) horizon scheduler
   let protocol := (Menu).protocol (initialLaw setup) horizon scheduler
   let stopped := fun history : protocol.History =>
-    (application setup runtime leaks).actor history.state = some owner
+    (application setup timeouts leaks).actor history.state = some owner
   let property := fun history : protocol.History =>
     ∃ control, history.state = some control ∧
       control.execution.application.config = execution.application.config ∧
@@ -209,17 +213,17 @@ theorem counted_waiting_until_firstActivation
     have controlGoing : control.actor ≠ some owner := by
       intro active
       apply going
-      change (application setup runtime leaks).actor history.state = some owner
+      change (application setup timeouts leaks).actor history.state = some owner
       rw [state]
       exact active
     have trace : protocol.Trace (some control) := state ▸ history.trace
-    have nextStep : next.state ∈ ((application setup runtime leaks).transition (initialLaw setup)
+    have nextStep : next.state ∈ ((application setup timeouts leaks).transition (initialLaw setup)
       horizon
         scheduler (some control) joint).support := by
       rw [← state]
       exact realized
     obtain ⟨target, targetState, configEq, targetClear, targetRecall⟩ :=
-      counted_waiting_transition (runtime := runtime) opportunity timely trace controlClear
+      counted_waiting_transition (timeouts := timeouts) opportunity timely trace controlClear
         (same ▸ ordered) (same ▸ decoded) intendedPoint owner event owned (same ▸ ready)
         (by rw [recalledEq]; exact never) controlGoing joint next.state nextStep
     exact ⟨target, targetState, configEq.trans same, targetClear, targetRecall.trans recalledEq⟩
@@ -231,7 +235,7 @@ theorem counted_waiting_until_firstActivation
     rcases model.mem_support_runBehavioralUntil certificate players stopped start final supported
         with
       activated | terminal
-    · change (application setup runtime leaks).actor final.state = some owner at activated
+    · change (application setup timeouts leaks).actor final.state = some owner at activated
       rw [state] at activated
       exact activated
     · have complete := completes control (state ▸ final.trace) finalClear (state ▸ terminal)
@@ -248,21 +252,21 @@ include opportunity timely in
 arbitrary play. Its source configuration is unchanged and its complete owner
 recall still equals the boundary recall. -/
 theorem counted_boundary_firstActivation
-    (completes : ∀ control : (application setup runtime leaks).Control,
-      ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+    (completes : ∀ control : (application setup timeouts leaks).Control,
+      ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control) →
       control.execution.application.config.defaulted = ∅ →
-      (application setup runtime leaks).terminal (some control) →
+      (application setup timeouts leaks).terminal (some control) →
       control.execution.application.config.cut.Terminal)
     (certificate : ((Menu).protocol (initialLaw setup) horizon
       scheduler).WellFoundedHistories)
     (players : ∀ player, ((Menu).information (initialLaw setup) horizon
       scheduler).BehavioralPolicy player)
     (start : ((Menu).protocol (initialLaw setup) horizon scheduler).History)
-    {rank : Nat} {execution : (application setup runtime leaks).Execution}
+    {rank : Nat} {execution : (application setup timeouts leaks).Execution}
     (current : start.state =
       some ⟨horizon - execution.environmentRecall.length, none, execution⟩)
-    (boundary : ReachedBoundary setup runtime leaks horizon scheduler rank execution)
+    (boundary : ReachedBoundary setup timeouts leaks horizon scheduler rank execution)
     (clear : execution.application.config.defaulted = ∅)
     {point : ProtocolState setup.program}
     (decoded : sourceServicePrefix? setup rank execution.application.config = some point)
@@ -271,26 +275,26 @@ theorem counted_boundary_firstActivation
     (owned : (graph setup).actor? event = some owner) :
     ∀ stopped ∈ (((Menu).information (initialLaw setup) horizon
       scheduler).runBehavioralUntil certificate players
-        (fun history => (application setup runtime leaks).actor history.state = some owner)
+        (fun history => (application setup timeouts leaks).actor history.state = some owner)
           start).support,
-      ∃ (remaining : Nat) (anchor : (application setup runtime leaks).Execution),
+      ∃ (remaining : Nat) (anchor : (application setup timeouts leaks).Execution),
         stopped.state = some ⟨remaining, some owner, anchor⟩ ∧
         anchor.application.config = execution.application.config ∧
         anchor.application.config.defaulted = ∅ ∧
         anchor.logs owner = execution.logs owner ∧
-        pendingEvent setup runtime leaks owner
+        pendingEvent setup timeouts leaks owner
           (some (anchor.logs owner,
-            anchor.observe (application setup runtime leaks) owner)) = some event ∧
-        ∀ entry ∈ anchor.logs owner, ¬ ActivatedAt setup runtime leaks owner event entry := by
+            anchor.observe (application setup timeouts leaks) owner)) = some event ∧
+        ∀ entry ∈ anchor.logs owner, ¬ ActivatedAt setup timeouts leaks owner event entry := by
   have ready := (ready_iff_rank setup _ rank boundary.ordered event).mpr atRank
-  have never : ∀ entry ∈ execution.logs owner, ¬ ActivatedAt setup runtime leaks owner event
+  have never : ∀ entry ∈ execution.logs owner, ¬ ActivatedAt setup timeouts leaks owner event
     entry := by
     intro entry remembered activated
     exact boundary.untouched event (by omega) owner entry remembered
       (PublicView.ownTurn?_spec _ owner event activated).1
   intro stopped supported
   obtain ⟨control, state, active, same, finalClear, recalledEq⟩ :=
-    counted_waiting_until_firstActivation (runtime := runtime) opportunity timely completes
+    counted_waiting_until_firstActivation (timeouts := timeouts) opportunity timely completes
       certificate players start current clear boundary.ordered decoded intendedPoint owner event
       owned ready never stopped supported
   rcases control with ⟨remaining, actor, anchor⟩
@@ -303,21 +307,21 @@ theorem counted_boundary_firstActivation
     exact State.ownTurn_of_ready _ (serviceGraph_revealRelaxedOrdered setup .sequential) owner event
       ((anchor.application.publicView_eventReady event).mpr (same ▸ ready)) owned
   have finalNever : ∀ entry ∈ anchor.logs owner,
-      ¬ ActivatedAt setup runtime leaks owner event entry := by
+      ¬ ActivatedAt setup timeouts leaks owner event entry := by
     rw [recalledEq]
     exact never
-  have unrecorded : runtime.eventRecorded leaks (anchor.logs owner) event = false := by
-    cases recorded : runtime.eventRecorded leaks (anchor.logs owner) event with
+  have unrecorded : (eventRecorded timeouts) leaks (anchor.logs owner) event = false := by
+    cases recorded : (eventRecorded timeouts) leaks (anchor.logs owner) event with
     | false => rfl
     | true =>
         obtain ⟨entry, remembered, submitted⟩ :=
-          (runtime.eventRecorded_iff leaks (anchor.logs owner) event).mp recorded
-        have submissions := onePacket_ownSubmissionsAtTurn (runtime := runtime) bounds trace (same
+          ((eventRecorded_iff timeouts) leaks (anchor.logs owner) event).mp recorded
+        have submissions := onePacket_ownSubmissionsAtTurn (timeouts := timeouts) bounds trace (same
           ▸ boundary.ordered)
           point (same ▸ decoded) intendedPoint owner
         exact (finalNever entry remembered (submissions entry remembered event submitted)).elim
   exact ⟨remaining, anchor, state, same, finalClear, recalledEq,
-    pendingEvent_of_spec (runtime := runtime) turn unrecorded, finalNever⟩
+    pendingEvent_of_spec (timeouts := timeouts) turn unrecorded, finalNever⟩
 
 
 end Vegas

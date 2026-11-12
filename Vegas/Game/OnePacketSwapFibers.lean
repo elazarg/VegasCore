@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketSwapRegular
+public import Vegas.Game.OnePacketSwapRegular
+
+@[expose] public section
 
 /-! # The swap between two source points is symmetric
 

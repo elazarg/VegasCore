@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketSuccessorBoundary
-import Vegas.Pending.EventCommandFrame
-import Vegas.Pending.ReactiveGraphSteps
+public import Vegas.Game.OnePacketSuccessorBoundary
+public import Vegas.Pending.EventCommandFrame
+public import Vegas.Pending.ReactiveGraphSteps
+
+@[expose] public section
 
 /-! # Finite stopped chance phases of the native counted model -/
 
@@ -16,7 +20,7 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
 private theorem prefix_after_completion {before after : (graph setup).Config} {rank : Nat}
@@ -31,18 +35,18 @@ private theorem prefix_after_completion {before after : (graph setup).Config} {r
   exact ordered.complete_at event ready (actual.unique ordered)
 
 private theorem chance_environment_configLaw
-    (execution : (application setup runtime leaks).Execution)
-    (command : (application setup runtime leaks).Command)
+    (execution : (application setup timeouts leaks).Execution)
+    (command : (application setup timeouts leaks).Command)
     (event : (graph setup).EventId) (ready : execution.application.config.cut.Ready event)
     (actorless : (graph setup).actor? event = none)
     (action : (graph setup).Action event)
     (clear : execution.application.config.defaulted = ∅) :
-    (execution.environmentStep (application setup runtime leaks) command).map
+    (execution.environmentStep (application setup timeouts leaks) command).map
         (fun next => next.application.config) = PMF.pure execution.application.config ∨
-      (execution.environmentStep (application setup runtime leaks) command).map
+      (execution.environmentStep (application setup timeouts leaks) command).map
         (fun next => next.application.config) =
           execution.application.config.step event ready action := by
-  let app := application setup runtime leaks
+  let app := application setup timeouts leaks
   have sole (other : (graph setup).EventId)
       (otherReady : execution.application.config.cut.Ready other) : other = event :=
     setup.eventGraph.sequentialize_ready_unique _ otherReady ready
@@ -83,24 +87,24 @@ private theorem chance_environment_configLaw
       | some message =>
           have rejected : app.handle execution.application message = none := by
             apply reactiveHandle_none
-            cases handled : handle runtime execution.application ⟨message.id, message.payload.call⟩
+            cases handled : handle timeouts execution.application ⟨message.id, message.payload.call⟩
               with
             | none => rfl
             | some next =>
                 obtain ⟨query, named, queryReady, _, _⟩ :=
-                  handle_config_mem_step runtime execution.application next _ handled
+                  handle_config_mem_step timeouts execution.application next _ handled
                 have equal := sole query queryReady
                 subst query
-                have sender := handle_sender_actor runtime execution.application next _ handled
+                have sender := handle_sender_actor timeouts execution.application next _ handled
                   event named
                 rw [actorless] at sender
                 cases sender
           simp only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
             found, rejected, Option.getD_none]
   | application operation =>
-      have nativeLaw : (environmentStep runtime execution.application operation).map
+      have nativeLaw : (environmentStep timeouts execution.application operation).map
           EventGraphRuntime.State.config = PMF.pure execution.application.config ∨
-        (environmentStep runtime execution.application operation).map
+        (environmentStep timeouts execution.application operation).map
           EventGraphRuntime.State.config =
             execution.application.config.step event ready action := by
         cases node : nodeView (graph setup) event with
@@ -120,39 +124,39 @@ private theorem chance_environment_configLaw
                 · have equal := sole other otherReady
                   subst other
                   right
-                  rw [environmentStep_executeSample_eq runtime execution.application event ready
+                  rw [environmentStep_executeSample_eq timeouts execution.application event ready
                     payload law outputEq codeEq node, PMF.map_comp]
                   change (execution.application.config.step event ready _).map id = _
                   rw [PMF.map_id, ((graph setup).nodes event).action_eq_of_actor_none actorless
                     (cast (congrArg EventGraph.EventField.Action outputEq.symm) PUnit.unit) action]
                 · left
-                  rw [environmentStep_executeSample_of_not_ready runtime execution.application
+                  rw [environmentStep_executeSample_of_not_ready timeouts execution.application
                     other otherReady, PMF.pure_map]
             | expire other =>
                 left
-                have pure : environmentStep runtime execution.application (.expire other) =
+                have pure : environmentStep timeouts execution.application (.expire other) =
                     PMF.pure execution.application := by
                   by_cases otherReady : execution.application.config.cut.Ready other
                   · have equal := sole other otherReady
                     subst other
                     cases activated : execution.application.activatedAt event with
                     | none =>
-                        exact environmentStep_expire_of_not_activated runtime
+                        exact environmentStep_expire_of_not_activated timeouts
                           execution.application event ready activated
                     | some entered =>
-                        by_cases due : runtime.deadline event ≤
+                        by_cases due : timeouts.duration event ≤
                             execution.application.clock - entered
-                        · exact environmentStep_expire_sample_eq runtime execution.application
+                        · exact environmentStep_expire_sample_eq timeouts execution.application
                             event ready entered activated due payload law outputEq codeEq node
-                        · exact environmentStep_expire_of_not_due runtime execution.application
+                        · exact environmentStep_expire_of_not_due timeouts execution.application
                             event ready entered activated due
-                  · exact environmentStep_expire_of_not_ready runtime execution.application other
+                  · exact environmentStep_expire_of_not_ready timeouts execution.application other
                       otherReady
                 rw [pure, PMF.pure_map]
       have drains (native : EventGraphRuntime.State (graph setup))
-          (member : native ∈ (environmentStep runtime execution.application operation).support) :
+          (member : native ∈ (environmentStep timeouts execution.application operation).support) :
           native.drain.config = native.config := by
-        have mapped : native.config ∈ ((environmentStep runtime execution.application
+        have mapped : native.config ∈ ((environmentStep timeouts execution.application
             operation).map EventGraphRuntime.State.config).support :=
           (PMF.mem_support_map_iff _ _ _).mpr ⟨native, member, rfl⟩
         have empty : native.config.defaulted = ∅ := by
@@ -166,11 +170,11 @@ private theorem chance_environment_configLaw
         exact congrArg EventGraphRuntime.State.config (native.drain_eq_of_empty empty)
       have equal : (execution.environmentStep app (.application operation)).map
           (fun next => next.application.config) =
-          (environmentStep runtime execution.application operation).map
+          (environmentStep timeouts execution.application operation).map
             EventGraphRuntime.State.config := by
         unfold ReactiveApplication.Execution.environmentStep
         rw [PMF.map_comp, PMF.map_comp]
-        change ((environmentStep runtime execution.application operation).map
+        change ((environmentStep timeouts execution.application operation).map
           EventGraphRuntime.State.drain).map EventGraphRuntime.State.config = _
         rw [PMF.map_comp]
         exact map_congr_on_support _ drains
@@ -179,13 +183,13 @@ private theorem chance_environment_configLaw
 
 private theorem chance_control_harmonic [Fintype Player]
     (bounds : MessageBounds (graph setup)) (horizon : Nat)
-    (scheduler : (application setup runtime leaks).Scheduler)
+    (scheduler : (application setup timeouts leaks).Scheduler)
     (players : ∀ who,
-      (onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
+      (onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
         scheduler).BehavioralPolicy who)
-    (history : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+    (history : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).History)
-    {control : (application setup runtime leaks).Control} (current : history.state = some control)
+    {control : (application setup timeouts leaks).Control} (current : history.state = some control)
     (event : (graph setup).EventId) (ready : control.execution.application.config.cut.Ready event)
     (actorless : (graph setup).actor? event = none)
     (clear : control.execution.application.config.defaulted = ∅)
@@ -195,14 +199,14 @@ private theorem chance_control_harmonic [Fintype Player]
       (control.execution.application.config.step event ready action).map some)
     (completed : ∀ next ∈ (control.execution.application.config.step event ready action).support,
       continuation (some next) = PMF.pure (some next)) :
-    ((((onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
+    ((((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
       scheduler).runBehavioralFrom
       players 1 history).map (fun next =>
         next.state.map (fun state => state.execution.application.config))).bind continuation) =
       (control.execution.application.config.step event ready action).map some := by
   classical
-  let app := application setup runtime leaks
-  let menu := bounds.onePacketMenu runtime leaks
+  let app := application setup timeouts leaks
+  let menu := bounds.onePacketMenu timeouts leaks
   let policies := menu.decodeProfile (initialLaw setup) horizon scheduler players
   have environment (command : app.Command) :
       (control.execution.environmentStep app command).bind
@@ -212,7 +216,7 @@ private theorem chance_control_harmonic [Fintype Player]
           (fun next => next.application.config)).bind (fun config => continuation (some config)) :=
           (PMF.bind_map ..).symm
       _ = _ := by
-        rcases chance_environment_configLaw (runtime := runtime) control.execution
+        rcases chance_environment_configLaw (timeouts := timeouts) control.execution
           command event ready actorless action clear with stays | samples
         · rw [stays, PMF.pure_bind, unchanged]
         · rw [samples]
@@ -245,7 +249,7 @@ private theorem chance_control_harmonic [Fintype Player]
       calc _ = (policies who (execution.logs who) (execution.observe app who)).bind
             (fun _ => (execution.application.config.step event ready action).map some) :=
             bind_congr_on_support _ fun response _ => by
-              rw [(runtime.reactive_respond_application leaks execution who response).1]
+              rw [((reactive_respond_application timeouts) leaks execution who response).1]
               exact unchanged
         _ = _ := PMF.bind_const _ _
 
@@ -253,20 +257,21 @@ section FiniteChance
 
 variable [Fintype Player] {bounds : MessageBounds (graph setup)}
   {horizon : Nat}
-  {scheduler : (application setup runtime leaks).Scheduler}
-  (completes : ∀ control : (application setup runtime leaks).Control,
-    ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+  {scheduler : (application setup timeouts leaks).Scheduler}
+  (completes : ∀ control : (application setup timeouts leaks).Control,
+    ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control) →
     control.execution.application.config.defaulted = ∅ →
-    (application setup runtime leaks).terminal (some control) →
+    (application setup timeouts leaks).terminal (some control) →
     control.execution.application.config.cut.Terminal)
 
-local notation "menu" => bounds.onePacketMenu runtime leaks
-local notation "N" => onePacketModel setup runtime leaks bounds (initialLaw setup) horizon scheduler
+local notation "menu" => bounds.onePacketMenu timeouts leaks
+local notation "N" => onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+  scheduler
 local notation "E" => ReactiveApplication.ResponseMenu.protocol menu (initialLaw setup) horizon
   scheduler
 local notation "Clear" => ReactiveApplication.stateInvariant
-  (app := application setup runtime leaks)
+  (app := application setup timeouts leaks)
     (fun native : EventGraphRuntime.State (graph setup) =>
       EventGraph.Config.defaulted (EventGraphRuntime.State.config native) = ∅)
 
@@ -276,7 +281,7 @@ configurations, including the actual first public-exclusion stopping rule. -/
 theorem counted_chance_stopped_configLaw
     (certificate : (E).WellFoundedHistories)
     (players : ∀ player, (N).BehavioralPolicy player)
-    (start : (E).History) {control : (application setup runtime leaks).Control}
+    (start : (E).History) {control : (application setup timeouts leaks).Control}
     (current : start.state = some control) {rank : Nat}
     (ordered : control.execution.application.config.cut.IsPrefix rank)
     (event : (graph setup).EventId)
@@ -287,7 +292,7 @@ theorem counted_chance_stopped_configLaw
     (decoded : sourceServicePrefix? setup rank control.execution.application.config = some point)
     (intended : ProtocolState.Intended setup.program point) :
     ((N).runBehavioralUntil certificate players
-      (fun stop => LateStopped setup runtime leaks bounds horizon scheduler rank stop ∨
+      (fun stop => LateStopped setup timeouts leaks bounds horizon scheduler rank stop ∨
         ¬ Clear stop.state) start).map
         (fun final => final.state.map (fun next => next.execution.application.config)) =
       (control.execution.application.config.step event ready action).map some := by
@@ -295,14 +300,14 @@ theorem counted_chance_stopped_configLaw
   have atRank := (ready_iff_rank setup _ rank ordered event).mp ready
   let base := control.execution.application.config
   let law := base.step event ready action
-  let project : (application setup runtime leaks).ProtocolState → Option (graph setup).Config :=
+  let project : (application setup timeouts leaks).ProtocolState → Option (graph setup).Config :=
     fun state => state.map (fun next => next.execution.application.config)
   let potential : Option (graph setup).Config → PMF (Option (graph setup).Config) :=
     fun config => if config = some base then law.map some else PMF.pure config
   let stopped : (E).History → Prop := fun stop =>
-    LateStopped setup runtime leaks bounds horizon scheduler rank stop ∨ ¬ Clear stop.state
+    LateStopped setup timeouts leaks bounds horizon scheduler rank stop ∨ ¬ Clear stop.state
   let reach : (E).History → Prop := fun history =>
-    ∃ next : (application setup runtime leaks).Control, history.state = some next ∧
+    ∃ next : (application setup timeouts leaks).Control, history.state = some next ∧
       (next.execution.application.config = base ∨ next.execution.application.config ∈ law.support)
   have law_completed : ∀ config ∈ law.support, event ∈ config.cut.completed := by
     intro config supported
@@ -319,7 +324,7 @@ theorem counted_chance_stopped_configLaw
     exact ite_eq_right (fun equal => law_changed config supported (Option.some.inj equal))
   have initialDecoded : decodedPoint setup base = some point :=
     (decodedPoint_eq_of_isPrefix ordered).trans decoded
-  have no_pending_halt : ∀ (history : (E).History) (next : (application setup runtime
+  have no_pending_halt : ∀ (history : (E).History) (next : (application setup timeouts
     leaks).Control),
       history.state = some next → next.execution.application.config = base →
       stopped history ∨ (E).terminal history.state → False := by
@@ -346,7 +351,7 @@ theorem counted_chance_stopped_configLaw
         exact Finset.mem_univ _
       rw [equal] at member
       exact ready.1 member
-  have rows : ∀ (history : (E).History) (next : (application setup runtime leaks).Control),
+  have rows : ∀ (history : (E).History) (next : (application setup timeouts leaks).Control),
       history.state = some next → next.execution.application.config = base →
       (((N).runBehavioralFrom players 1 history).map (fun later => project later.state)).bind
         potential = law.map some := by
@@ -357,7 +362,7 @@ theorem counted_chance_stopped_configLaw
     have stepEq : next.execution.application.config.step event nextReady action = law := by
       simp only [equal]
       rfl
-    have row := chance_control_harmonic (runtime := runtime) bounds horizon scheduler players
+    have row := chance_control_harmonic (timeouts := timeouts) bounds horizon scheduler players
       history state event
       nextReady actorless (by
         rw [equal]
@@ -397,11 +402,11 @@ theorem counted_chance_stopped_configLaw
         intro later member
         obtain ⟨⟨joint, _legal, realized⟩, _⟩ :=
           (N).mem_support_runBehavioralFrom_one players ended member
-        change later.state ∈ ((application setup runtime leaks).transition (initialLaw setup)
+        change later.state ∈ ((application setup timeouts leaks).transition (initialLaw setup)
           horizon scheduler history.state joint).support at realized
         rw [state] at realized
         obtain ⟨after, afterState, _recallPrefix⟩ :=
-          (application setup runtime leaks).transition_recall_prefix (initialLaw setup) horizon
+          (application setup timeouts leaks).transition_recall_prefix (initialLaw setup) horizon
             scheduler next later.state joint realized
         refine ⟨after, afterState, ?_⟩
         by_cases equalAfter : after.execution.application.config = base
@@ -447,7 +452,7 @@ policies and scheduler are the actual comparison policies and native scheduler. 
 theorem counted_chance_stopped_sourceContinuation
     (certificate : (E).WellFoundedHistories)
     (players : ∀ player, (N).BehavioralPolicy player)
-    (start : (E).History) {control : (application setup runtime leaks).Control}
+    (start : (E).History) {control : (application setup timeouts leaks).Control}
     (current : start.state = some control) {rank : Nat}
     (event : (graph setup).EventId)
     (actorless : (graph setup).actor? event = none)
@@ -458,17 +463,17 @@ theorem counted_chance_stopped_sourceContinuation
     (decoded : sourceServicePrefix? setup rank control.execution.application.config = some point)
     (intended : ProtocolState.Intended setup.program point) :
     ((N).runBehavioralUntil certificate players
-      (fun stop => LateStopped setup runtime leaks bounds horizon scheduler rank stop ∨
+      (fun stop => LateStopped setup timeouts leaks bounds horizon scheduler rank stop ∨
         ¬ Clear stop.state) start).bind
         (fun final => (setup.continuationLaw profile
-          (nativeDecodedState setup runtime leaks final.state)).map some) =
+          (nativeDecodedState setup timeouts leaks final.state)).map some) =
       sourceContinuation setup profile rank control.execution.application.config := by
   classical
   let config := control.execution.application.config
   let ready := (ready_iff_rank setup config rank residual.checkpoint.ordered event).mpr atRank
   let action := ((graph setup).nodes event).actionOfActorNone actorless
   let phase := (N).runBehavioralUntil certificate players
-    (fun stop => LateStopped setup runtime leaks bounds horizon scheduler rank stop ∨ ¬ Clear
+    (fun stop => LateStopped setup timeouts leaks bounds horizon scheduler rank stop ∨ ¬ Clear
       stop.state)
     start
   let continuation : Option (graph setup).Config →
@@ -476,10 +481,10 @@ theorem counted_chance_stopped_sourceContinuation
     match next with
     | none => (setup.continuationLaw profile none).map some
     | some next => sourceContinuation setup profile (rank + 1) next
-  have configLaw := counted_chance_stopped_configLaw (runtime := runtime) completes certificate
+  have configLaw := counted_chance_stopped_configLaw (timeouts := timeouts) completes certificate
     players start current residual.checkpoint.ordered event ready actorless action decoded intended
   have factored : phase.bind (fun final => (setup.continuationLaw profile
-        (nativeDecodedState setup runtime leaks final.state)).map some) =
+        (nativeDecodedState setup timeouts leaks final.state)).map some) =
       (config.step event ready action).bind (sourceContinuation setup profile (rank + 1)) := by
     calc _ = (phase.map (fun final => final.state.map
           (fun next => next.execution.application.config))).bind continuation := by
@@ -508,7 +513,7 @@ theorem counted_chance_stopped_sourceContinuation
               rfl
       _ = _ := by rw [configLaw, PMF.bind_map]; rfl
   obtain ⟨law, sourceLaw, _policy, _effective⟩ :=
-    SourceResidual.head_law runtime leaks residual event atRank ready
+    SourceResidual.head_law timeouts leaks residual event atRank ready
   have fixed : law.bind (fun choice =>
       (config.step event ready choice).bind (sourceContinuation setup profile (rank + 1))) =
       (config.step event ready action).bind (sourceContinuation setup profile (rank + 1)) := by

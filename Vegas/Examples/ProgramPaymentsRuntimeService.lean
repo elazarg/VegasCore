@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Examples.ProgramPayments
-import Vegas.Game.SourceServiceSpec
-import Vegas.Pending.ReactiveMonitoring
+public import Vegas.Examples.ProgramPayments
+public import Vegas.Game.SourceServiceSpec
+public import Vegas.Pending.ReactiveMonitoring
+
+@[expose] public section
 
 /-! # A checked native service for the conditional payment program
 
@@ -78,7 +82,7 @@ def rosterService (bonus : Int) : SourceServiceSpec Player simpleExpr where
   leaks := leaks bonus
   bounds := bounds bonus
   rosters := rosters bonus
-  network := (runtime (setup bonus)).idleNetwork (leaks bonus)
+  network := (idleNetwork (timeouts (setup bonus))) (leaks bonus)
   values := binding_values_covered bonus
   initialValues := initial_values_covered bonus
   capacity := by change 2 ≤ 2; decide

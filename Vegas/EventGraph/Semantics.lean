@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.EventGraph.Information
-import GameTheory.Core.Form
+public import Vegas.EventGraph.Information
+public import GameTheory.Core.Form
+
+@[expose] public section
 
 /-! # Behavioral and public-scheduler semantics for event graphs
 

@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketEventSuccess
-import Vegas.Pending.ExclusionPolicyLaw
-import GameTheoryExtensions.Analysis.Protocol.StoppedHistoryAtom
+public import Vegas.Game.OnePacketEventSuccess
+public import Vegas.Pending.ExclusionPolicyLaw
+public import GameTheoryExtensions.Analysis.Protocol.StoppedHistoryAtom
+
+@[expose] public section
 
 
 /-! # Full continuations at packet-completion boundaries
@@ -22,40 +26,40 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup runtime leaks).Scheduler}
+  {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- A settled packet's first completion preserves the full remaining graph law.
 Additional stops may retain the unchanged sending configuration while the event is pending. -/
 theorem accepted_until_continuation
     (reference : (graph setup).BehavioralProfile)
-    (certificate : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup)
+    (certificate : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup)
       horizon scheduler).WellFoundedHistories)
-    (players : ∀ player, ((bounds.onePacketMenu runtime leaks).information
+    (players : ∀ player, ((bounds.onePacketMenu timeouts leaks).information
       (initialLaw setup) horizon scheduler).BehavioralPolicy player)
-    (extraStop : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup)
+    (extraStop : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup)
       horizon scheduler).History → Prop)
-    {who : Player} {entry : (application setup runtime leaks).PlayerEntry}
+    {who : Player} {entry : (application setup timeouts leaks).PlayerEntry}
     {message : Message Player (WitnessedPacket (graph setup))} {event : (graph setup).EventId}
     {sent : (graph setup).Config} {action : (graph setup).Action event}
     {output : ((graph setup).outputLayout event).Value}
-    (start : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
-      scheduler).History) {control : (application setup runtime leaks).Control}
+    (start : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+      scheduler).History) {control : (application setup timeouts leaks).Control}
     (current : start.state = some control)
-    (invariant : AcceptanceInvariant setup runtime leaks bounds horizon scheduler who entry
+    (invariant : AcceptanceInvariant setup timeouts leaks bounds horizon scheduler who entry
       message event sent action output (some control))
     (atSent : control.execution.application.config = sent)
-    (settles : ∀ stop ∈ (((bounds.onePacketMenu runtime leaks).information (initialLaw setup)
+    (settles : ∀ stop ∈ (((bounds.onePacketMenu timeouts leaks).information (initialLaw setup)
         horizon scheduler).runBehavioralUntil certificate players
         (fun history => (∃ final, history.state = some final ∧
           event ∈ final.execution.application.config.cut.completed) ∨ extraStop history)
         start).support,
-      ∀ final, stop.state = some final → RecordsEntry setup runtime leaks who entry (some final) →
+      ∀ final, stop.state = some final → RecordsEntry setup timeouts leaks who entry (some final) →
         event ∈ final.execution.application.config.cut.completed →
           (message.id, true) ∈ final.execution.receipts) :
-    ∀ stop ∈ (((bounds.onePacketMenu runtime leaks).information (initialLaw setup)
+    ∀ stop ∈ (((bounds.onePacketMenu timeouts leaks).information (initialLaw setup)
         horizon scheduler).runBehavioralUntil certificate players
         (fun history => (∃ final, history.state = some final ∧
           event ∈ final.execution.application.config.cut.completed) ∨ extraStop history)
@@ -75,22 +79,22 @@ theorem accepted_until_continuation
                 ((graph setup).policyPlan reference (graph setup).canonicalScheduler)
                 (sent.complete event ready action output).remaining
                 (sent.complete event ready action output)) := by
-  let menu := bounds.onePacketMenu runtime leaks
+  let menu := bounds.onePacketMenu timeouts leaks
   let model := menu.information (initialLaw setup) horizon scheduler
   let stopped := fun history : (menu.protocol (initialLaw setup) horizon scheduler).History =>
     (∃ final, history.state = some final ∧
       event ∈ final.execution.application.config.cut.completed) ∨ extraStop history
-  have initial : AcceptanceInvariant setup runtime leaks bounds horizon scheduler who entry
+  have initial : AcceptanceInvariant setup timeouts leaks bounds horizon scheduler who entry
       message event sent action output start.state := current ▸ invariant
   have transports : ∀ {state} {trace : (menu.protocol (initialLaw setup) horizon scheduler).Trace
         state}, TracePrefix start.trace trace →
-      AcceptanceInvariant setup runtime leaks bounds horizon scheduler who entry message event
+      AcceptanceInvariant setup timeouts leaks bounds horizon scheduler who entry message event
         sent action output state := by
     intro state trace earlier
     induction earlier with
     | refl => exact initial
     | extend previous joint legal realized ih =>
-        exact acceptanceInvariant_transition (runtime := runtime) bounds horizon scheduler who
+        exact acceptanceInvariant_transition (timeouts := timeouts) bounds horizon scheduler who
           entry message event sent action output _ _ joint legal ih realized
   intro stop member
   have prefixed := model.runBehavioralUntil_support_prefix certificate players stopped start
@@ -103,7 +107,7 @@ theorem accepted_until_continuation
       refine ⟨final, rfl, finalInvariant.2.2.2.2.2.1, ?_⟩
       intro completed
       have receipt := settles stop member final state finalInvariant.2.1 completed
-      let receiptSeen : (application setup runtime leaks).ProtocolState → Prop :=
+      let receiptSeen : (application setup timeouts leaks).ProtocolState → Prop :=
         fun found => found.elim False
           (fun current => (message.id, true) ∈ current.execution.receipts)
       have outside : ¬ receiptSeen start.state := by
@@ -158,16 +162,16 @@ theorem accepted_until_continuation
                 fun done => going (Or.inl ⟨before, rfl, done⟩)
               have beforeAt := priorInvariant.2.2.2.2.2.1 pending
               obtain ⟨packet, found, handled⟩ :=
-                (application setup runtime leaks).transition_new_accepted_receipt
+                (application setup timeouts leaks).transition_new_accepted_receipt
                   (initialLaw setup) horizon scheduler before final joint moved message.id
                   isInside wasOutside
               have rawPrior := menu.toRawTrace (initialLaw setup) horizon scheduler prior
-              have recalled := (application setup runtime leaks).history_inputRecall
+              have recalled := (application setup timeouts leaks).history_inputRecall
                 (initialLaw setup) horizon scheduler rawPrior
-              have unique := (application setup runtime leaks).uniqueIds_history scheduler
+              have unique := (application setup timeouts leaks).uniqueIds_history scheduler
                 (initialLaw setup) horizon _ rawPrior
               obtain ⟨first, last, split⟩ := priorInvariant.2.1
-              have recorded : message ∈ (application setup runtime leaks).outputs
+              have recorded : message ∈ (application setup timeouts leaks).outputs
                   (before.execution.logs who) := by
                 rw [split]
                 exact List.mem_filterMap.mpr ⟨entry, by simp, priorInvariant.2.2.1⟩
@@ -180,7 +184,7 @@ theorem accepted_until_continuation
                   found named
               subst packet
               obtain ⟨ready, actual, native, _handled, drained, completed⟩ :=
-                (priorInvariant.2.2.2.2.1).reactive_complete runtime leaks beforeAt handled
+                (priorInvariant.2.2.2.2.1).reactive_complete timeouts leaks beforeAt handled
               refine ⟨ready, actual, ?_, ?_⟩
               · intro empty
                 have nativeEmpty : native.config.defaulted = ∅ := by

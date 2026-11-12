@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Source.ConditionedInitialFiber
-import Vegas.Source.ConditionedInitialPolicy
-import GameTheory.Analysis.Protocol.CounterfactualReach
+public import Vegas.Source.ConditionedInitialFiber
+public import Vegas.Source.ConditionedInitialPolicy
+public import GameTheory.Analysis.Protocol.CounterfactualReach
+
+@[expose] public section
 
 /-! # Behavioral source reach under initial-law conditioning -/
 
@@ -150,7 +154,7 @@ theorem conditionInitial_stepProb_initial
   rw [← kernel]
   ring
 
-private theorem intended_historyReachWeight_root
+theorem intended_historyReachWeight_root
     (setup : Setup (Player := Player) (L := L))
     (policies : ∀ who, setup.intendedModel.BehavioralPolicy who) :
     (setup.intendedModel.historyReachWeight policies ⟨none, .start⟩).toReal = 1 := by

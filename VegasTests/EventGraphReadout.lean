@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.EventGraph.Commutation
-import Vegas.Expr.Simple
+public import Vegas.EventGraph.Commutation
+public import Vegas.Expr.Simple
+
+@[expose] public section
 
 /-! # Event-graph typed readout regressions
 
@@ -17,25 +21,25 @@ open GameTheory.Math.Probability
 
 noncomputable section
 
-private abbrev readoutOrder : EventOrder where
+abbrev readoutOrder : EventOrder where
   eventCount := 2
   predecessors _ := ∅
   predecessor_lt := by simp
 
-private abbrev readoutInputs : Fin 1 → Vegas.EventGraph.EventField Bool simpleExpr :=
+abbrev readoutInputs : Fin 1 → Vegas.EventGraph.EventField Bool simpleExpr :=
   fun _ => .binding false .bool
 
-private abbrev readoutOutputs : Fin 2 → Vegas.EventGraph.EventField Bool simpleExpr :=
+abbrev readoutOutputs : Fin 2 → Vegas.EventGraph.EventField Bool simpleExpr :=
   Fin.cases (.publicData .int) fun _ => .publication .bool
 
-private abbrev readoutLayout :=
+abbrev readoutLayout :=
   Vegas.EventGraph.fieldLayout readoutInputs readoutOutputs
 
-private def fairInt : RationalLaw Int where
+def fairInt : RationalLaw Int where
   entries := [(2, 1 / 2), (8, 1 / 2)]
   normalized := by norm_num
 
-private def chanceCode :
+def chanceCode :
     Vegas.EventGraph.EventCode (Player := Bool) (L := simpleExpr)
       readoutLayout (.publicData BaseTy.int) :=
   Vegas.EventGraph.EventCode.sample (layout := readoutLayout) BaseTy.int {
@@ -46,18 +50,18 @@ private def chanceCode :
     reads_mem := fun ref => nomatch ref
   }
 
-private def initialBinding :
+def initialBinding :
     Vegas.EventGraph.FieldRef (Player := Bool) (L := simpleExpr)
       readoutLayout (.binding false .bool) :=
   ⟨.inl 0, rfl⟩
 
-private def resolveCode :
+def resolveCode :
     Vegas.EventGraph.EventCode (Player := Bool) (L := simpleExpr)
       readoutLayout (.publication BaseTy.bool) :=
   Vegas.EventGraph.EventCode.resolve (layout := readoutLayout)
     false BaseTy.bool initialBinding []
 
-private def payoffExpr : Vegas.EventGraph.PublicExpr (Player := Bool) (L := simpleExpr)
+def payoffExpr : Vegas.EventGraph.PublicExpr (Player := Bool) (L := simpleExpr)
     readoutLayout .int where
   schema := [(10, .int), (11, .result .bool)]
   code := .ite
@@ -81,7 +85,7 @@ private def payoffExpr : Vegas.EventGraph.PublicExpr (Player := Bool) (L := simp
             simp
         | there ref => nomatch ref
 
-private abbrev readoutGraph : Vegas.EventGraph Bool simpleExpr where
+abbrev readoutGraph : Vegas.EventGraph Bool simpleExpr where
   inputCount := 1
   order := readoutOrder
   inputLayout := readoutInputs
@@ -102,21 +106,21 @@ private abbrev readoutGraph : Vegas.EventGraph Bool simpleExpr where
           simp at member
   payoffs := [(false, payoffExpr)]
 
-private def inputValues : readoutGraph.Inputs :=
+def inputValues : readoutGraph.Inputs :=
   fun _ => PublicationResult.success true
 
-private def sampleValue : (readoutGraph.outputLayout 0).Value := by
+def sampleValue : (readoutGraph.outputLayout 0).Value := by
   rw [show readoutGraph.outputLayout 0 = .publicData BaseTy.int from rfl]
   exact 2
 
-private def graphPayoff :
+def graphPayoff :
     Vegas.EventGraph.PublicExpr readoutGraph.layout BaseTy.int := by
   change Vegas.EventGraph.PublicExpr readoutLayout BaseTy.int
   exact payoffExpr
 
-private def initial : readoutGraph.Config := .initial inputValues
+def initial : readoutGraph.Config := .initial inputValues
 
-private theorem initial_ready (event : readoutGraph.EventId) :
+theorem initial_ready (event : readoutGraph.EventId) :
     initial.cut.Ready event := by
   simp [initial, Vegas.EventGraph.Config.initial, EventOrder.Cut.Ready,
     EventOrder.Cut.empty, readoutGraph, readoutOrder]
@@ -142,13 +146,13 @@ example :
     (readoutGraph.nodes 1).eval? true initial.store =
       some (PMF.pure (.success true)) := rfl
 
-private def sampled : readoutGraph.Config :=
+def sampled : readoutGraph.Config :=
   initial.complete 0 (initial_ready 0) PUnit.unit sampleValue
 
-private theorem sampled_ready_resolve : sampled.cut.Ready 1 :=
+theorem sampled_ready_resolve : sampled.cut.Ready 1 :=
   (initial_ready 1).after_complete (initial_ready 0) (by decide)
 
-private def terminal : readoutGraph.Config :=
+def terminal : readoutGraph.Config :=
   sampled.complete 1 sampled_ready_resolve true (.success true)
 
 private theorem terminal_is_terminal : terminal.cut.Terminal := by

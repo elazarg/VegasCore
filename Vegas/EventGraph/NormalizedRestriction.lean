@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.EventGraph.NormalizedPolicy
+public import Vegas.EventGraph.NormalizedPolicy
+
+@[expose] public section
 
 /-! # Restricting normalized observations
 

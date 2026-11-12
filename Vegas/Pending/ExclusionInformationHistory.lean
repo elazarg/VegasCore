@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveDefaultCompletion
+public import Vegas.Pending.ReactiveDefaultCompletion
+
+@[expose] public section
 
 /-! # Native information fibers before public default
 
@@ -18,26 +22,26 @@ open Interaction GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
   GameTheory.Math.Probability
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
-  {graph : Vegas.EventGraph Player L} (runtime : EventGraphRuntime graph)
+  {graph : Vegas.EventGraph Player L} (timeouts : EventTimeouts graph)
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
 
 /-- A deciding native input displays an empty whole public default set. -/
-def ClearInput (input : (runtime.reactiveApplication leaks).Info) : Prop :=
+def ClearInput (input : ((reactiveApplication timeouts) leaks).Info) : Prop :=
   ∃ past view, input = some (past, view) ∧
     view.application.publicView.observation.defaulted = ∅
 
 /-- Only the deciding player receives a clear input, and its clearance is
 exactly that of the actual native configuration. -/
 theorem clearInput_observe_iff (who : Player)
-    (state : (runtime.reactiveApplication leaks).ProtocolState) :
-    runtime.ClearInput leaks ((runtime.reactiveApplication leaks).observe who state) ↔
-      (runtime.reactiveApplication leaks).actor state = some who ∧
+    (state : ((reactiveApplication timeouts) leaks).ProtocolState) :
+    (ClearInput timeouts) leaks (((reactiveApplication timeouts) leaks).observe who state) ↔
+      ((reactiveApplication timeouts) leaks).actor state = some who ∧
         ∀ control, state = some control → control.execution.application.config.defaulted = ∅ := by
   cases state with
   | none => simp [ClearInput, ReactiveApplication.observe, ReactiveApplication.actor]
   | some control =>
       by_cases active : control.actor = some who
-      · have defaults : (control.execution.observe (runtime.reactiveApplication leaks)
+      · have defaults : (control.execution.observe ((reactiveApplication timeouts) leaks)
             who).application.publicView.observation.defaulted =
           control.execution.application.config.defaulted := rfl
         simp [ClearInput, ReactiveApplication.observe, ReactiveApplication.actor, active, defaults]
@@ -46,8 +50,8 @@ theorem clearInput_observe_iff (who : Player)
 /-- At deciding inputs, clearance and public default are complementary. Inactive
 inputs belong to neither region. -/
 theorem clearInput_iff_not_publicDefaultInput
-    (input : (runtime.reactiveApplication leaks).Info) (deciding : input.isSome) :
-    runtime.ClearInput leaks input ↔ ¬ runtime.PublicDefaultInput leaks input := by
+    (input : ((reactiveApplication timeouts) leaks).Info) (deciding : input.isSome) :
+    (ClearInput timeouts) leaks input ↔ ¬ (PublicDefaultInput timeouts) leaks input := by
   cases input with
   | none => cases deciding
   | some input =>
@@ -57,11 +61,11 @@ theorem clearInput_iff_not_publicDefaultInput
 /-- Equal actual observations at a decision retain the entire default history,
 including the positions of silent automatic completions. -/
 theorem informationFiber_defaults (who : Player)
-    (reference : (runtime.reactiveApplication leaks).Control)
+    (reference : ((reactiveApplication timeouts) leaks).Control)
     (active : reference.actor = some who)
-    (state : (runtime.reactiveApplication leaks).ProtocolState)
-    (same : (runtime.reactiveApplication leaks).observe who state =
-      (runtime.reactiveApplication leaks).observe who (some reference)) :
+    (state : ((reactiveApplication timeouts) leaks).ProtocolState)
+    (same : ((reactiveApplication timeouts) leaks).observe who state =
+      ((reactiveApplication timeouts) leaks).observe who (some reference)) :
     ∀ current, state = some current →
       current.execution.application.config.defaults =
         reference.execution.application.config.defaults := by
@@ -77,22 +81,22 @@ theorem informationFiber_defaults (who : Player)
 /-- Every control with the same deciding observation as a clear reference has
 an empty whole public default set. No receipt or initialization premise is needed. -/
 theorem informationFiber_clear (who : Player)
-    (reference : (runtime.reactiveApplication leaks).Control)
+    (reference : ((reactiveApplication timeouts) leaks).Control)
     (active : reference.actor = some who)
     (clear : reference.execution.application.config.defaulted = ∅)
-    (state : (runtime.reactiveApplication leaks).ProtocolState)
-    (same : (runtime.reactiveApplication leaks).observe who state =
-      (runtime.reactiveApplication leaks).observe who (some reference)) :
+    (state : ((reactiveApplication timeouts) leaks).ProtocolState)
+    (same : ((reactiveApplication timeouts) leaks).observe who state =
+      ((reactiveApplication timeouts) leaks).observe who (some reference)) :
     ∀ current, state = some current → current.execution.application.config.defaulted = ∅ := by
   intro current currentEq
-  have records := runtime.informationFiber_defaults leaks who reference active state same
+  have records := (informationFiber_defaults timeouts) leaks who reference active state same
     current currentEq
   have defaults := congrArg DefaultHistory.defaulted records
   exact defaults.trans clear
 
-variable (menu : (runtime.reactiveApplication leaks).ResponseMenu)
-  (initial : PMF (runtime.reactiveApplication leaks).State) (horizon : Nat)
-  (scheduler : (runtime.reactiveApplication leaks).Scheduler)
+variable (menu : ((reactiveApplication timeouts) leaks).ResponseMenu)
+  (initial : PMF ((reactiveApplication timeouts) leaks).State) (horizon : Nat)
+  (scheduler : ((reactiveApplication timeouts) leaks).Scheduler)
 
 local notation "N" => menu.information initial horizon scheduler
 local notation "E" => menu.protocol initial horizon scheduler
@@ -100,28 +104,28 @@ local notation "E" => menu.protocol initial horizon scheduler
 /-- Every history in a clear decision-information fiber has an empty whole
 native default set, including histories with zero assessment probability. -/
 theorem informationHistory_clear {who : Player} (site : (N).InformationSite who)
-    (clear : runtime.ClearInput leaks site.1)
+    (clear : (ClearInput timeouts) leaks site.1)
     (history : (N).InformationHistory who site.1) :
     ∀ current, history.1.state = some current →
       current.execution.application.config.defaulted = ∅ := by
   have observed := (menu.info initial horizon scheduler who history.1.trace).symm.trans
     history.2
   have actual := observed ▸ clear
-  exact ((runtime.clearInput_observe_iff leaks who history.1.state).mp actual).2
+  exact (((clearInput_observe_iff timeouts) leaks who history.1.state).mp actual).2
 
 /-- A complete information fiber retains the reference's exact public default
 history, independently of which history an assessment supports. -/
 theorem informationHistory_defaults {who : Player} (site : (N).InformationSite who)
-    (reference : (runtime.reactiveApplication leaks).Control)
+    (reference : ((reactiveApplication timeouts) leaks).Control)
     (active : reference.actor = some who)
-    (atSite : site.1 = (runtime.reactiveApplication leaks).observe who (some reference))
+    (atSite : site.1 = ((reactiveApplication timeouts) leaks).observe who (some reference))
     (history : (N).InformationHistory who site.1) :
     ∀ current, history.1.state = some current →
       current.execution.application.config.defaults =
         reference.execution.application.config.defaults := by
   have observed := (menu.info initial horizon scheduler who history.1.trace).symm.trans
     (history.2.trans atSite)
-  exact runtime.informationFiber_defaults leaks who reference active history.1.state observed
+  exact (informationFiber_defaults timeouts) leaks who reference active history.1.state observed
 
 /-- Clearance at a later legal native history implies clearance at every
 preceding history; public default cannot disappear along the path. -/
@@ -133,10 +137,10 @@ theorem clear_before_reaches {first last : (E).History}
     by
   intro current currentEq
   by_contra nonempty
-  have initialDefault : runtime.PublicDefault leaks first.state := by
+  have initialDefault : (PublicDefault timeouts) leaks first.state := by
     rw [currentEq]
     exact nonempty
-  have finalDefault := runtime.publicDefault_of_reaches leaks menu initial horizon scheduler
+  have finalDefault := (publicDefault_of_reaches timeouts) leaks menu initial horizon scheduler
     reached initialDefault
   cases currentLast : last.state with
   | none => rw [currentLast] at finalDefault; exact finalDefault.elim

@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Source.IntendedBetween
-import Vegas.Source.Forfeit
-import Vegas.Source.Accounting
+public import Vegas.Source.IntendedBetween
+public import Vegas.Source.Forfeit
+public import Vegas.Source.Accounting
+
+@[expose] public section
 
 /-! # Play of the intended game and departures from it
 

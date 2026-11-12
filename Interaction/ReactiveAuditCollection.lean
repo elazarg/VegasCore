@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveTrafficAudit
-import Interaction.ReactiveResponseMenu
-import GameTheoryExtensions.Analysis.Protocol.TerminalAudit
-import GameTheoryExtensions.Math.Probability.Support
+public import Interaction.ReactiveTrafficAudit
+public import Interaction.ReactiveResponseMenu
+public import GameTheoryExtensions.Analysis.Protocol.TerminalAudit
+public import GameTheoryExtensions.Math.Probability.Support
+
+@[expose] public section
 
 /-! # Conditional collection from persistent traffic evidence
 

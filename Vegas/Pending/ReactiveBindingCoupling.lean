@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveBindingShadowInvariant
-import Vegas.Pending.ReactiveHiddenResponse
+public import Vegas.Pending.ReactiveBindingShadowInvariant
+public import Vegas.Pending.ReactiveHiddenResponse
+
+@[expose] public section
 
 /-! # Native responses inside the repaired continuation
 
@@ -18,17 +22,17 @@ open Interaction GameTheory.Math.Probability
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
-  (runtime : EventGraphRuntime graph)
+  (timeouts : EventTimeouts graph)
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
 
 private theorem response_other_observation
-    (execution : (runtime.reactiveApplication leaks).Execution) (actor who : Player)
-    (different : who ≠ actor) (response : (runtime.reactiveApplication leaks).Action) :
-    (runtime.reactiveApplication leaks).observePlayer
-      (execution.respond (runtime.reactiveApplication leaks) actor response).application who =
-      (runtime.reactiveApplication leaks).observePlayer execution.application who := by
+    (execution : ((reactiveApplication timeouts) leaks).Execution) (actor who : Player)
+    (different : who ≠ actor) (response : ((reactiveApplication timeouts) leaks).Action) :
+    ((reactiveApplication timeouts) leaks).observePlayer
+      (execution.respond ((reactiveApplication timeouts) leaks) actor response).application who =
+      ((reactiveApplication timeouts) leaks).observePlayer execution.application who := by
   have strong : State.playerView
-      (execution.respond (runtime.reactiveApplication leaks) actor response).application who =
+      (execution.respond ((reactiveApplication timeouts) leaks) actor response).application who =
         execution.application.playerView who := by
     rcases response with ⟨transmission⟩
     cases transmission with
@@ -42,24 +46,24 @@ private theorem response_other_observation
 namespace BindingMemory
 
 /-- Silence keeps the reconstructed own history exactly. -/
-theorem transport_response (memory : BindingMemory runtime leaks)
-    (left right : (runtime.reactiveApplication leaks).Execution) (who : Player)
+theorem transport_response (memory : BindingMemory timeouts leaks)
+    (left right : ((reactiveApplication timeouts) leaks).Execution) (who : Player)
     (lengths : (right.logs who).length = memory.responses.length)
-    (past : memory.restoreRecall runtime leaks (right.logs who) = left.logs who)
-    (observed : memory.shadow.inputView runtime leaks
-      (right.observe (runtime.reactiveApplication leaks) who) =
-        left.observe (runtime.reactiveApplication leaks) who)
-    (response : (runtime.reactiveApplication leaks).Action)
+    (past : memory.restoreRecall timeouts leaks (right.logs who) = left.logs who)
+    (observed : memory.shadow.inputView timeouts leaks
+      (right.observe ((reactiveApplication timeouts) leaks) who) =
+        left.observe ((reactiveApplication timeouts) leaks) who)
+    (response : ((reactiveApplication timeouts) leaks).Action)
     (notSubmitted : ∀ submission, response.transmission ≠ some submission) :
-    let app := runtime.reactiveApplication leaks
-    let remembered := memory.record runtime leaks
-      (memory.shadow.inputView runtime leaks (right.observe app who)) response
+    let app := (reactiveApplication timeouts) leaks
+    let remembered := memory.record timeouts leaks
+      (memory.shadow.inputView timeouts leaks (right.observe app who)) response
     let before := left.respond app who response
     let after := right.respond app who response
-    remembered.restoreRecall runtime leaks (after.logs who) = before.logs who ∧
-      remembered.shadow.inputView runtime leaks (after.observe app who) = before.observe app who ∧
+    remembered.restoreRecall timeouts leaks (after.logs who) = before.logs who ∧
+      remembered.shadow.inputView timeouts leaks (after.observe app who) = before.observe app who ∧
       (after.logs who).length = remembered.responses.length := by
-  let app := runtime.reactiveApplication leaks
+  let app := (reactiveApplication timeouts) leaks
   have receipts : left.receipts = right.receipts :=
     (congrArg ReactiveApplication.PlayerView.receipts observed).symm
   have application := congrArg ReactiveApplication.PlayerView.application observed
@@ -68,7 +72,7 @@ theorem transport_response (memory : BindingMemory runtime leaks)
   | none =>
       refine ⟨?_, observed, ?_⟩
       · simp only [ReactiveApplication.Execution.respond, ↓reduceIte]
-        rw [restoreRecall_record runtime leaks memory _ lengths, past, observed]
+        rw [restoreRecall_record timeouts leaks memory _ lengths, past, observed]
       · simp only [ReactiveApplication.Execution.respond, ↓reduceIte, record,
           List.length_append, List.length_singleton, lengths]
   | some submission => exact (notSubmitted submission rfl).elim
@@ -76,39 +80,39 @@ theorem transport_response (memory : BindingMemory runtime leaks)
 /-- One arbitrary nonowner response preserves the whole reconstructed input
 frame. This includes the private catalog and complete response recall; it does
 not treat network observations merely by separate marginal equality. -/
-theorem foreign_response (memory : BindingMemory runtime leaks)
-    (left right : (runtime.reactiveApplication leaks).Execution) (who actor : Player)
+theorem foreign_response (memory : BindingMemory timeouts leaks)
+    (left right : ((reactiveApplication timeouts) leaks).Execution) (who actor : Player)
     (foreign : actor ≠ who)
-    (past : memory.restoreRecall runtime leaks (right.logs who) = left.logs who)
-    (observed : memory.shadow.inputView runtime leaks
-      (right.observe (runtime.reactiveApplication leaks) who) =
-        left.observe (runtime.reactiveApplication leaks) who)
+    (past : memory.restoreRecall timeouts leaks (right.logs who) = left.logs who)
+    (observed : memory.shadow.inputView timeouts leaks
+      (right.observe ((reactiveApplication timeouts) leaks) who) =
+        left.observe ((reactiveApplication timeouts) leaks) who)
     (network : left.network = right.network)
     (views : ∀ other, other ≠ who →
       left.application.playerView other = right.application.playerView other)
     (logs : ∀ other, other ≠ who → left.logs other = right.logs other)
-    (response : (runtime.reactiveApplication leaks).Action) :
-    let app := runtime.reactiveApplication leaks
+    (response : ((reactiveApplication timeouts) leaks).Action) :
+    let app := (reactiveApplication timeouts) leaks
     let before := left.respond app actor response
     let after := right.respond app actor response
-    memory.restoreRecall runtime leaks (after.logs who) = before.logs who ∧
-      memory.shadow.inputView runtime leaks (after.observe app who) = before.observe app who ∧
+    memory.restoreRecall timeouts leaks (after.logs who) = before.logs who ∧
+      memory.shadow.inputView timeouts leaks (after.observe app who) = before.observe app who ∧
       before.network = after.network ∧ before.receipts = after.receipts ∧
       (∀ other, other ≠ who → before.application.playerView other =
         after.application.playerView other) ∧
       (∀ other, other ≠ who → before.logs other = after.logs other) := by
-  let app := runtime.reactiveApplication leaks
+  let app := (reactiveApplication timeouts) leaks
   let before := left.respond app actor response
   let after := right.respond app actor response
   have receipts : left.receipts = right.receipts :=
     (congrArg ReactiveApplication.PlayerView.receipts observed).symm
-  have others := runtime.reactive_respond_hidden_congr leaks left right who actor foreign network
+  have others := (reactive_respond_hidden_congr timeouts) leaks left right who actor foreign network
     receipts views logs response
-  have leftView := response_other_observation runtime leaks left actor who foreign.symm response
-  have rightView := response_other_observation runtime leaks right actor who foreign.symm response
+  have leftView := response_other_observation timeouts leaks left actor who foreign.symm response
+  have rightView := response_other_observation timeouts leaks right actor who foreign.symm response
   have application := congrArg ReactiveApplication.PlayerView.application observed
-  change memory.restoreRecall runtime leaks (after.logs who) = before.logs who ∧
-    memory.shadow.inputView runtime leaks (after.observe app who) = before.observe app who ∧ _
+  change memory.restoreRecall timeouts leaks (after.logs who) = before.logs who ∧
+    memory.shadow.inputView timeouts leaks (after.observe app who) = before.observe app who ∧ _
   refine ⟨?_, ?_, others⟩
   · rw [app.respond_recall_other right actor who foreign.symm response,
       app.respond_recall_other left actor who foreign.symm response]

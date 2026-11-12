@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketFirstActivationValue
-import Vegas.Game.OnePacketPhasePotential
-import Vegas.Game.OnePacketLocalCompletionValue
-import Vegas.Game.OnePacketEventPhaseLaw
-import Vegas.Game.OnePacketValueTransport
+public import Vegas.Game.OnePacketFirstActivationValue
+public import Vegas.Game.OnePacketPhasePotential
+public import Vegas.Game.OnePacketLocalCompletionValue
+public import Vegas.Game.OnePacketEventPhaseLaw
+public import Vegas.Game.OnePacketValueTransport
+
+@[expose] public section
 
 /-! # Source incentive comparison for a fresh disclosure -/
 
@@ -17,17 +21,18 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L] (setup : Setup (Player := Player) (L := L))
-  (runtime : EventGraphRuntime (graph setup))
+  (timeouts : EventTimeouts (graph setup))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
-  (scheduler : (application setup runtime leaks).Scheduler)
+  (scheduler : (application setup timeouts leaks).Scheduler)
 
-local notation "N" => onePacketModel setup runtime leaks bounds (initialLaw setup) horizon scheduler
+local notation "N" => onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+  scheduler
 local notation "NP" => ReactiveApplication.ResponseMenu.protocol
-  (bounds.onePacketMenu runtime leaks) (initialLaw setup) horizon scheduler
-local notation "Menu" => bounds.onePacketMenu runtime leaks
+  (bounds.onePacketMenu timeouts leaks) (initialLaw setup) horizon scheduler
+local notation "Menu" => bounds.onePacketMenu timeouts leaks
 local notation "Clear" => ReactiveApplication.stateInvariant
-  (app := application setup runtime leaks)
+  (app := application setup timeouts leaks)
     (fun native : EventGraphRuntime.State (graph setup) =>
       EventGraph.Config.defaulted (EventGraphRuntime.State.config native) = ∅)
 
@@ -35,56 +40,56 @@ open Classical in
 /-- An arbitrary current disclosure response gains only the vanishing common
 continuation error at a fresh source decision. -/
 theorem assembled_firstActivation_disclosure_gain_le
-    [(application setup runtime leaks).FiniteNature (initialLaw setup) scheduler]
+    [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
     [∀ who, DecidableEq ((N).InfoState who)]
     (wellFormed : setup.WellFormed) (covers : bounds.CoversOutputValues)
     (capacity : ∀ player, bindingEventCount (graph setup) player < bounds.candidateCount)
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (scale : ℕ → ℝ) (positive : ∀ n, 0 < scale n) (le_one : ∀ n, scale n ≤ 1)
     {slots : Nat}
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup runtime leaks bounds (initialLaw setup)
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
       horizon scheduler slots p))
     (targetSequence : ℕ → (N).BehavioralAssessment)
-    (assembled : OnePacketAssembled setup runtime leaks bounds horizon scheduler sequence scale
+    (assembled : OnePacketAssembled setup timeouts leaks bounds horizon scheduler sequence scale
       positive le_one weights targetSequence) (n : ℕ)
     {delay bound : (graph setup).EventId → Nat}
-    (opportunity : ∀ control : (application setup runtime leaks).Control,
-      (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some
+    (opportunity : ∀ control : (application setup timeouts leaks).Control,
+      (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some
         control) →
       control.execution.application.config.defaulted = ∅ →
-      OpportunityAt runtime leaks control.execution delay)
-    (inclusion : ∀ control : (application setup runtime leaks).Control,
-      (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some
+      OpportunityAt timeouts leaks control.execution delay)
+    (inclusion : ∀ control : (application setup timeouts leaks).Control,
+      (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some
         control) →
       control.execution.application.config.defaulted = ∅ →
-      ProtectedInclusionAt runtime leaks control.execution bound)
-    (timely : runtime.AsyncTimely delay bound)
-    (completes : ∀ control : (application setup runtime leaks).Control,
-      (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some
+      ProtectedInclusionAt timeouts leaks control.execution bound)
+    (timely : (AsyncTimely timeouts) delay bound)
+    (completes : ∀ control : (application setup timeouts leaks).Control,
+      (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some
         control) →
       control.execution.application.config.defaulted = ∅ →
-      (application setup runtime leaks).terminal (some control) →
+      (application setup timeouts leaks).terminal (some control) →
       control.execution.application.config.cut.Terminal)
     {who : Player} (site : (N).InformationSite who)
     (law : PMF ((N).Choice who site.1))
     (history : (N).InformationHistory who site.1)
-    {remaining : Nat} {execution : (application setup runtime leaks).Execution}
+    {remaining : Nat} {execution : (application setup timeouts leaks).Execution}
     (current : history.1.state = some ⟨remaining, some who, execution⟩)
     (atSite : site.1 = some (execution.logs who,
-      execution.observe (application setup runtime leaks) who))
+      execution.observe (application setup timeouts leaks) who))
     (event : (graph setup).EventId)
-    (pending : pendingEvent setup runtime leaks who site.1 = some event)
-    (never : ∀ entry ∈ execution.logs who, ¬ ActivatedAt setup runtime leaks who event entry)
-    (key : LateKey setup runtime leaks) (decided : decidedEvent (runtime := runtime) key = some
+    (pending : pendingEvent setup timeouts leaks who site.1 = some event)
+    (never : ∀ entry ∈ execution.logs who, ¬ ActivatedAt setup timeouts leaks who event entry)
+    (key : LateKey setup timeouts leaks) (decided : decidedEvent (timeouts := timeouts) key = some
       event)
     {payload : L.Ty} {binding : EventGraph.FieldRef (graph setup).layout (.binding who payload)}
     {checks : List (EventGraph.GuardCheck (graph setup).layout payload)}
     (outputEq : (graph setup).outputLayout event = .publication payload)
     (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
       ((graph setup).nodes event) = .resolve who payload binding checks)
-    (ordered : execution.application.config.cut.IsPrefix (siteRank (runtime := runtime) site.1))
+    (ordered : execution.application.config.cut.IsPrefix (siteRank (timeouts := timeouts) site.1))
     {point : ProtocolState setup.program}
-    (decoded : sourceServicePrefix? setup (siteRank (runtime := runtime) site.1)
+    (decoded : sourceServicePrefix? setup (siteRank (timeouts := timeouts) site.1)
       execution.application.config =
       some point)
     (intended : ProtocolState.Intended setup.program point) (reached : IntendedReached setup point)
@@ -103,10 +108,10 @@ theorem assembled_firstActivation_disclosure_gain_le
     let certificate := ((Menu).bounded (initialLaw setup) horizon
       scheduler).wellFoundedHistories
     let stopped := fun final : (NP).History => ¬ Clear final.state ∨
-      DecodedState setup runtime leaks (failureProfile setup.program)
+      DecodedState setup timeouts leaks (failureProfile setup.program)
         (ProtocolState.OwesFailure who setup.program) final.state
     let payoff := fun final : (NP).History => if stopped final then excludedPayoff who else
-      exclusionBase setup runtime parameter utility excludedPayoff leaks final.state who
+      exclusionBase setup timeouts parameter utility excludedPayoff leaks final.state who
     expect ((N).runBehavioralUntil certificate
         (Profile.update (sig := (N).behavioralSignature) common who
           ((common who).withLaw site.1 law)) stopped history.1) payoff -
@@ -117,36 +122,36 @@ theorem assembled_firstActivation_disclosure_gain_le
   let installed := Profile.update (sig := (N).behavioralSignature) common who
     ((common who).withLaw site.1 law)
   let phase := (N).runBehavioralUntil certificate installed
-    (LateStopped setup runtime leaks bounds horizon scheduler (siteRank (runtime :=
-      runtime) site.1)) history.1
+    (LateStopped setup timeouts leaks bounds horizon scheduler (siteRank (timeouts :=
+      timeouts) site.1)) history.1
   let profile := setup.intendedOpeningProfile (sequence n).strategy
   have pendingHere := pending
   rw [atSite] at pendingHere
-  obtain ⟨turn, readyPublic, _owned, _unrecorded⟩ := pendingEvent_spec (runtime := runtime)
+  obtain ⟨turn, readyPublic, _owned, _unrecorded⟩ := pendingEvent_spec (timeouts := timeouts)
     pendingHere
   have ready := (execution.application.publicView_eventReady event).mp readyPublic
   have owned := nodeView_resolve_actor outputEq codeEq
   have pointDecoded := (decodedPoint_eq_of_isPrefix ordered).trans decoded
   have clear := defaulted_eq_empty_of_decodedIntended
     pointDecoded intended
-  have phaseEq := pending_until_eq_clearUntil (runtime := runtime) certificate installed
+  have phaseEq := pending_until_eq_clearUntil (timeouts := timeouts) certificate installed
     history.1 current
     ordered clear event
     ready
-  have physical := disclosure_sourceValue setup runtime leaks bounds horizon scheduler
+  have physical := disclosure_sourceValue setup timeouts leaks bounds horizon scheduler
     completes
     (sequence n)
     (targetSequence n) site pending law history current turn ordered outputEq codeEq decoded
     intended decided parameter utility excludedPayoff readoutBounded
   dsimp only at physical
   change expect phase _ =
-    (1 - expect phase (fun final => if DecisionFailed (runtime := runtime) key final.state then (1
+    (1 - expect phase (fun final => if DecisionFailed (timeouts := timeouts) key final.state then (1
       : ℝ) else 0)) *
       sourcePointValue setup parameter utility excludedPayoff profile who point +
-      expect phase (fun final => if DecisionFailed (runtime := runtime) key final.state then (1 :
+      expect phase (fun final => if DecisionFailed (timeouts := timeouts) key final.state then (1 :
         ℝ) else 0) *
         excludedPayoff who at physical
-  obtain ⟨target, _step, _intended, supports⟩ := disclosure_sourceKernel (runtime := runtime)
+  obtain ⟨target, _step, _intended, supports⟩ := disclosure_sourceKernel (timeouts := timeouts)
     (sequence n) (targetSequence n) site pending law history current turn ordered outputEq codeEq
     decoded intended (fun final trace ended same => by
       have finalDecoded : decodedPoint setup final.execution.application.config = some point := by
@@ -155,8 +160,9 @@ theorem assembled_firstActivation_disclosure_gain_le
       have finalClear := defaulted_eq_empty_of_decodedIntended finalDecoded intended
       rw [completes final trace finalClear ended]
       exact Finset.mem_univ _)
-  have noBad : expect phase (lateBadStop setup runtime leaks bounds horizon scheduler
-      (siteRank (runtime := runtime) site.1) (siteFresh (runtime := runtime) who site.1) event) =
+  have noBad : expect phase (lateBadStop setup timeouts leaks bounds horizon scheduler
+      (siteRank (timeouts := timeouts) site.1) (siteFresh (timeouts := timeouts) who site.1)
+        event) =
         0 := by
     calc
       _ = expect phase (fun _ => (0 : ℝ)) := by
@@ -174,7 +180,7 @@ theorem assembled_firstActivation_disclosure_gain_le
           · exact (notFailed failed).elim
         · rfl
       _ = 0 := expect_constant _ _
-  have tail := assembled_local_completion_value_sub_le setup runtime
+  have tail := assembled_local_completion_value_sub_le setup timeouts
     leaks bounds
     horizon scheduler
     wellFormed covers capacity sequence scale positive le_one weights targetSequence assembled n
@@ -183,8 +189,8 @@ theorem assembled_firstActivation_disclosure_gain_le
     ordered point decoded intended parameter utility excludedPayoff boundNonneg readoutBounded
     excludedBounded
   dsimp only at tail
-  have freshEq : siteFresh (runtime := runtime) who site.1 = fun control : (application setup
-    runtime leaks).Control =>
+  have freshEq : siteFresh (timeouts := timeouts) who site.1 = fun control : (application setup
+    timeouts leaks).Control =>
       ¬ StoreEventFailed control.execution.application.config.store event := by
     funext control
     simp only [siteFresh, pending]
@@ -195,12 +201,12 @@ theorem assembled_firstActivation_disclosure_gain_le
     upper le_upper (fun target reachable => excludedPayoff_le_of_reached setup parameter utility
       excludedPayoff wellFormed below (sequence n).strategy target reachable who) point reached).1
   have probabilityNonneg : 0 ≤ expect phase
-      (fun final => if DecisionFailed (runtime := runtime) key final.state then (1 : ℝ) else 0) :=
+      (fun final => if DecisionFailed (timeouts := timeouts) key final.state then (1 : ℝ) else 0) :=
         by
     apply expect_nonneg
     intro final _
     split <;> norm_num
-  have baseline := OnePacketComparison.assembled_firstActivation_value_lower setup runtime
+  have baseline := OnePacketComparison.assembled_firstActivation_value_lower setup timeouts
     leaks bounds horizon
     scheduler wellFormed covers capacity sequence scale positive le_one weights targetSequence
     assembled n opportunity

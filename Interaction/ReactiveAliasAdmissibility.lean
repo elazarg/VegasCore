@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveAliasImplementation
-import Interaction.ReactiveMenuPolicy
+public import Interaction.ReactiveAliasImplementation
+public import Interaction.ReactiveMenuPolicy
+
+@[expose] public section
 
 /-! # Finite-menu legality of realized alias deviations
 

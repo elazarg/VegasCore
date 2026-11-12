@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheory.Analysis.Protocol.SequentialPerturbation
-import GameTheoryExtensions.Analysis.Protocol.LocalizedEnforcement
-import GameTheoryExtensions.Analysis.ObservableEnforcement
+public import GameTheory.Analysis.Protocol.SequentialPerturbation
+public import GameTheoryExtensions.Analysis.Protocol.LocalizedEnforcement
+public import GameTheoryExtensions.Analysis.ObservableEnforcement
+
+@[expose] public section
 
 /-! # Sequential equilibrium under a terminal audit
 

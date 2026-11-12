@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.PublicFailureEvidence
+public import Vegas.Pending.PublicFailureEvidence
+
+@[expose] public section
 
 /-! # Native public default provenance
 
@@ -120,13 +124,13 @@ private theorem publication_completion_failure (state : State graph) (event : gr
 
 /-- Accepted bindings remain opaque admissions; accepted publication failure records its owner. -/
 theorem handle (valid : ExclusionEvidence low inherited state)
-    (runtime : EventGraphRuntime graph) (message : Message Player (Payload graph))
-    (next : State graph) (accepted : EventGraphRuntime.handle runtime state message = some next) :
+    (timeouts : EventTimeouts graph) (message : Message Player (Payload graph))
+    (next : State graph) (accepted : EventGraphRuntime.handle timeouts state message = some next) :
     ExclusionEvidence low inherited next := by
   classical
-  have footprint := completionStep_handle runtime state next message accepted
+  have footprint := completionStep_handle timeouts state next message accepted
   obtain ⟨event, named, ready, action, supported⟩ :=
-    handle_config_mem_step runtime state next message accepted
+    handle_config_mem_step timeouts state next message accepted
   rcases message with ⟨id, packet⟩
   cases packet with
   | malformed raw => simp [EventGraphRuntime.handle] at accepted
@@ -135,7 +139,7 @@ theorem handle (valid : ExclusionEvidence low inherited state)
       subst event
       obtain ⟨_active, _ready, _timely, owner, payload, outputEq, codeEq, node, _sender,
         _handleOwner, _vacant, _unused, nextEq⟩ :=
-        (handle_commitment_iff runtime state next id actual candidate).mp accepted
+        (handle_commitment_iff timeouts state next id actual candidate).mp accepted
       have acting : graph.actor? actual = some owner :=
         (EventCode.actor_cast outputEq (graph.nodes actual)).symm.trans
           (congrArg EventCode.actor codeEq)
@@ -162,7 +166,7 @@ theorem handle (valid : ExclusionEvidence low inherited state)
       obtain ⟨_active, _ready, _timely, owner, payload, binding, checks, outputEq, codeEq,
         value, result, node, _sender, _handleOwner, _associated, _rawEq, _verified,
         _stored, _resolved, nextEq⟩ :=
-        (handle_opening_iff runtime state next id actual candidate raw).mp accepted
+        (handle_opening_iff timeouts state next id actual candidate raw).mp accepted
       have acting : graph.actor? actual = some owner :=
         (EventCode.actor_cast outputEq (graph.nodes actual)).symm.trans
           (congrArg EventCode.actor codeEq)
@@ -240,13 +244,13 @@ theorem initial (inputs : graph.Inputs) : ExclusionEvidence 0 ∅ (State.initial
 
 /-- A private submission changes neither graph defaults nor public receipt provenance. -/
 theorem submit (valid : ExclusionEvidence low inherited state)
-    (runtime : EventGraphRuntime graph)
+    (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (who : Player) (submission : WitnessedSubmission graph) :
-    ExclusionEvidence low inherited ((runtime.reactiveApplication leaks).submit state who
+    ExclusionEvidence low inherited (((reactiveApplication timeouts) leaks).submit state who
       submission) := by
-  have publicEq := reactiveApplication_submit_publicView runtime leaks state who submission
-  have configEq : ((runtime.reactiveApplication leaks).submit state who submission).config =
+  have publicEq := reactiveApplication_submit_publicView timeouts leaks state who submission
+  have configEq : (((reactiveApplication timeouts) leaks).submit state who submission).config =
       state.config := by
     change (submitStep (submission.call.register state who) who _).config = _
     rw [submitStep_config, (submission.call.register_facts who state).1]
@@ -302,26 +306,26 @@ theorem completeFailure (valid : ExclusionEvidence low inherited state)
   rw [ite_eq_left (State.completeFailure_publicFailure state valid.receipts event ready acting)]
   exact completeFailure_defaulted state event ready owner acting
 
-private theorem expired_eq_completeFailure (runtime : EventGraphRuntime graph)
+private theorem expired_eq_completeFailure (timeouts : EventTimeouts graph)
     (native next : State graph) (event : graph.EventId)
-    (reached : next ∈ (environmentStep runtime native (.expire event)).support)
+    (reached : next ∈ (environmentStep timeouts native (.expire event)).support)
     (changed : next.config ≠ native.config) (owner : Player)
     (acting : graph.actor? event = some owner) :
     ∃ ready : native.config.cut.Ready event, next = native.completeFailure event ready := by
   obtain same | ⟨ready, action, member⟩ :=
-    environmentStep_expire_config_eq_or_mem_step runtime native next event reached
+    environmentStep_expire_config_eq_or_mem_step timeouts native next event reached
   · exact (changed same).elim
   have due : ∃ entered, native.activatedAt event = some entered ∧
-      runtime.deadline event ≤ native.clock - entered := by
+      timeouts.duration event ≤ native.clock - entered := by
     cases activated : native.activatedAt event with
     | none =>
-        rw [environmentStep_expire_of_not_activated runtime _ event ready activated,
+        rw [environmentStep_expire_of_not_activated timeouts _ event ready activated,
           PMF.mem_support_pure_iff] at reached
         exact (changed (by rw [reached])).elim
     | some entered =>
-        by_cases late : runtime.deadline event ≤ native.clock - entered
+        by_cases late : timeouts.duration event ≤ native.clock - entered
         · exact ⟨entered, rfl, late⟩
-        · rw [environmentStep_expire_of_not_due runtime _ event ready entered activated late,
+        · rw [environmentStep_expire_of_not_due timeouts _ event ready entered activated late,
             PMF.mem_support_pure_iff] at reached
           exact (changed (by rw [reached])).elim
   obtain ⟨entered, activated, late⟩ := due
@@ -334,20 +338,20 @@ private theorem expired_eq_completeFailure (runtime : EventGraphRuntime graph)
       rw [ownerless] at acting
       cases acting
   | bind actor payload outputEq codeEq =>
-      rw [environmentStep_expire_bind_eq runtime native event ready entered activated late actor
+      rw [environmentStep_expire_bind_eq timeouts native event ready entered activated late actor
         payload outputEq codeEq node, PMF.mem_support_pure_iff] at reached
       simpa only [State.completeFailure, node] using reached
   | resolve actor payload binding checks outputEq codeEq =>
-      rw [environmentStep_expire_resolve_eq runtime native event ready entered activated late
+      rw [environmentStep_expire_resolve_eq timeouts native event ready entered activated late
         actor payload binding checks outputEq codeEq node, PMF.mem_support_pure_iff] at reached
       simpa only [State.completeFailure, node] using reached
 
 /-- Native chance, clocks and expiry preserve exact public failure provenance. -/
 theorem environmentStep (valid : ExclusionEvidence low inherited state)
-    (runtime : EventGraphRuntime graph) (command : EnvironmentCommand graph) (next : State graph)
-    (reached : next ∈ (EventGraphRuntime.environmentStep runtime state command).support) :
+    (timeouts : EventTimeouts graph) (command : EnvironmentCommand graph) (next : State graph)
+    (reached : next ∈ (EventGraphRuntime.environmentStep timeouts state command).support) :
     ExclusionEvidence low inherited next := by
-  have footprint := completionStep_environmentStep runtime state next command reached
+  have footprint := completionStep_environmentStep timeouts state next command reached
   cases command with
   | advanceClock =>
       simp only [EventGraphRuntime.environmentStep, PMF.mem_support_pure_iff] at reached
@@ -355,17 +359,17 @@ theorem environmentStep (valid : ExclusionEvidence low inherited state)
       exact valid.sameConfig footprint rfl
   | executeSample event =>
       obtain ⟨_clock, cases⟩ :=
-        environmentStep_executeSample_config_activated runtime state next event reached
+        environmentStep_executeSample_config_activated timeouts state next event reached
       rcases cases with same | ⟨ready, action, supported, _activated⟩
       · exact valid.sameConfig footprint same.1
       · cases node : nodeView graph event with
         | bind owner payload outputEq codeEq =>
-            rw [environmentStep_executeSample_of_nonsample runtime state event ready
+            rw [environmentStep_executeSample_of_nonsample timeouts state event ready
               (by intros; simp [node]), PMF.mem_support_pure_iff] at reached
             subst next
             exact valid
         | resolve owner payload binding checks outputEq codeEq =>
-            rw [environmentStep_executeSample_of_nonsample runtime state event ready
+            rw [environmentStep_executeSample_of_nonsample timeouts state event ready
               (by intros; simp [node]), PMF.mem_support_pure_iff] at reached
             subst next
             exact valid
@@ -388,12 +392,12 @@ theorem environmentStep (valid : ExclusionEvidence low inherited state)
       by_cases same : next.config = state.config
       · exact valid.sameConfig footprint same
       · obtain _same | ⟨ready, action, supported⟩ :=
-          environmentStep_expire_config_eq_or_mem_step runtime state next event reached
+          environmentStep_expire_config_eq_or_mem_step timeouts state next event reached
         · exact (same _same).elim
         · cases actor : graph.actor? event with
           | some owner =>
               obtain ⟨ready, rfl⟩ :=
-                expired_eq_completeFailure runtime state next event reached same owner actor
+                expired_eq_completeFailure timeouts state next event reached same owner actor
               exact valid.completeFailure event ready owner actor
           | none =>
               have defaults := EventGraph.Config.step_defaulted_of_actor_none
@@ -409,62 +413,62 @@ theorem environmentStep (valid : ExclusionEvidence low inherited state)
 
 /-- Included authenticated packets are followed by the same native automatic service. -/
 theorem reactiveHandle (valid : ExclusionEvidence low inherited state)
-    (runtime : EventGraphRuntime graph)
+    (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (message : Message Player (WitnessedPacket graph)) (next : State graph)
-    (accepted : (runtime.reactiveApplication leaks).handle state message = some next) :
+    (accepted : ((reactiveApplication timeouts) leaks).handle state message = some next) :
     ExclusionEvidence low inherited next := by
   obtain ⟨native, handled, rfl⟩ := reactiveHandle_call accepted
-  exact (valid.handle runtime _ native handled).drain
+  exact (valid.handle timeouts _ native handled).drain
 
 /-- Environment service and automatic service preserve the same native evidence invariant. -/
 theorem environment (valid : ExclusionEvidence low inherited state)
-    (runtime : EventGraphRuntime graph)
+    (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (command : EnvironmentCommand graph) (next : State graph)
-    (reached : next ∈ ((runtime.reactiveApplication leaks).environment state command).support) :
+    (reached : next ∈ (((reactiveApplication timeouts) leaks).environment state command).support) :
     ExclusionEvidence low inherited next := by
-  change next ∈ ((EventGraphRuntime.environmentStep runtime state command).map State.drain).support
+  change next ∈ ((EventGraphRuntime.environmentStep timeouts state command).map State.drain).support
     at reached
   obtain ⟨native, moved, rfl⟩ := PMF.support_map .. ▸ reached
-  exact (valid.environmentStep runtime command native moved).drain
+  exact (valid.environmentStep timeouts command native moved).drain
 
 /-- Every operation preserves the same native evidence invariant. -/
-theorem invariant (runtime : EventGraphRuntime graph)
+theorem invariant (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)) :
-    (runtime.reactiveApplication leaks).Invariant (ExclusionEvidence low inherited) where
-  submit _state who submission valid := valid.submit runtime leaks who submission
+    ((reactiveApplication timeouts) leaks).Invariant (ExclusionEvidence low inherited) where
+  submit _state who submission valid := valid.submit timeouts leaks who submission
   handle _state message next valid accepted :=
-    valid.reactiveHandle runtime leaks message next accepted
+    valid.reactiveHandle timeouts leaks message next accepted
   environment _state command next valid reached :=
-    valid.environment runtime leaks command next reached
+    valid.environment timeouts leaks command next reached
 
 /-- Every initialized native history has exact public default provenance. -/
-theorem history (runtime : EventGraphRuntime graph)
+theorem history (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (inputs : PMF graph.Inputs) (horizon : Nat)
-    (scheduler : (runtime.reactiveApplication leaks).Scheduler)
-    {state : (runtime.reactiveApplication leaks).ProtocolState}
-    (trace : ((runtime.reactiveApplication leaks).protocol (inputs.map State.initial)
+    (scheduler : ((reactiveApplication timeouts) leaks).Scheduler)
+    {state : ((reactiveApplication timeouts) leaks).ProtocolState}
+    (trace : (((reactiveApplication timeouts) leaks).protocol (inputs.map State.initial)
       horizon scheduler).Trace state) :
     ReactiveApplication.stateInvariant (ExclusionEvidence 0 ∅) state := by
-  apply (invariant runtime leaks).history (inputs.map State.initial) horizon scheduler ?_ trace
+  apply (invariant timeouts leaks).history (inputs.map State.initial) horizon scheduler ?_ trace
   intro state supported
   obtain ⟨input, _member, rfl⟩ := PMF.support_map .. ▸ supported
   exact initial input
 
 /-- At native histories public default membership is exactly owned public failure. -/
-theorem history_defaulted_iff (runtime : EventGraphRuntime graph)
+theorem history_defaulted_iff (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (inputs : PMF graph.Inputs) (horizon : Nat)
-    (scheduler : (runtime.reactiveApplication leaks).Scheduler)
-    {state : (runtime.reactiveApplication leaks).ProtocolState}
-    (trace : ((runtime.reactiveApplication leaks).protocol (inputs.map State.initial)
+    (scheduler : ((reactiveApplication timeouts) leaks).Scheduler)
+    {state : ((reactiveApplication timeouts) leaks).ProtocolState}
+    (trace : (((reactiveApplication timeouts) leaks).protocol (inputs.map State.initial)
       horizon scheduler).Trace state) :
     ReactiveApplication.stateInvariant (fun state : State graph => ∀ owner,
       owner ∈ state.config.defaulted ↔
         ∃ event, graph.actor? event = some owner ∧ state.PublicFailure event) state := by
-  have valid := history runtime leaks inputs horizon scheduler trace
+  have valid := history timeouts leaks inputs horizon scheduler trace
   cases state with
   | none => trivial
   | some control => exact fun owner => valid.defaulted_zero owner

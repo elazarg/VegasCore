@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveMonitoring
+public import Interaction.ReactiveMonitoring
+
+@[expose] public section
 
 /-! # Observing a pending packet without restricting later play
 
@@ -15,7 +19,7 @@ namespace InteractionTests.ReactiveMonitoring
 
 open Interaction GameTheory.Math.Probability
 
-private abbrev app : ReactiveApplication (Fin 3) where
+abbrev app : ReactiveApplication (Fin 3) where
   State := Bool
   Payload := Nat
   Submission := Nat
@@ -33,10 +37,10 @@ private abbrev app : ReactiveApplication (Fin 3) where
       (PMF.pure (pending.map Message.id).toFinset) (PMF.pure ∅)
     else PMF.pure (pending.map Message.id).toFinset
 
-private def sent : app.Execution :=
+def sent : app.Execution :=
   (ReactiveApplication.Execution.initial app false).respond app 0 ⟨some 7⟩
 
-private def message : Message (Fin 3) Nat := ⟨(0, 0), 7⟩
+def message : Message (Fin 3) Nat := ⟨(0, 0), 7⟩
 
 private theorem sampling_half :
     ((app.observePending 2 sent.network.pending).toOuterMeasure

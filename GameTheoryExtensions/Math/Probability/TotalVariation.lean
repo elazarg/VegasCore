@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheoryExtensions.Math.Probability.OptionalDomination
-import GameTheoryExtensions.Math.Probability.Domination
+public import GameTheoryExtensions.Math.Probability.OptionalDomination
+public import GameTheoryExtensions.Math.Probability.Domination
+
+@[expose] public section
 
 /-! # Closeness in total variation
 

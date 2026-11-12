@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketReplaySteps
-import Vegas.Game.OnePacketEnvironmentSteps
+public import Vegas.Game.OnePacketReplaySteps
+public import Vegas.Game.OnePacketEnvironmentSteps
+
+@[expose] public section
 
 /-! # Chance completions and the source chance law
 
@@ -26,7 +30,7 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)} {profile : BehavioralProfile setup.program}
+  {timeouts : EventTimeouts (graph setup)} {profile : BehavioralProfile setup.program}
 
 /-- **A chance completion has the source chance mass.** At a configuration with
 a source residual, completing a chance event decodes to no action, and reaches
@@ -63,8 +67,8 @@ variable [Fintype Player]
 history at the decoded point of a configuration with a source residual. -/
 theorem replayStepMatches_chance (assessment : setup.intendedModel.BehavioralAssessment)
     (who : Player) (history : setup.intendedProtocol.History) (pending : ℝ)
-    (before after : (application setup runtime leaks).Control) (idle : before.actor = none)
-    (joint : Player → Option (application setup runtime leaks).Action) {rank : Nat}
+    (before after : (application setup timeouts leaks).Control) (idle : before.actor = none)
+    (joint : Player → Option (application setup timeouts leaks).Action) {rank : Nat}
     (residual : SourceResidual setup profile rank before.execution.application.config)
     (current : history.state =
       some (residual.lift (ProtocolState.entry residual.program residual.source)))
@@ -73,7 +77,7 @@ theorem replayStepMatches_chance (assessment : setup.intendedModel.BehavioralAss
     (member : after.execution.application.config ∈
       (before.execution.application.config.step event ready action).support)
     (chance : (graph setup).actor? event = none) :
-    ReplayStepMatches setup runtime leaks assessment who history pending (some before) joint
+    ReplayStepMatches setup timeouts leaks assessment who history pending (some before) joint
       (some after) := by
   obtain ⟨decoded, mass⟩ := residual.chanceMass event ready action _ member chance
   obtain ⟨value, _output, changed⟩ :=
@@ -86,7 +90,7 @@ theorem replayStepMatches_chance (assessment : setup.intendedModel.BehavioralAss
     simp only [EventGraph.completion, EventGraph.Config.actualDecision,
       EventGraph.EventCode.actualDecision, ownerless]
     rfl
-  refine replayStepMatches_completion (runtime := runtime) assessment who history pending before
+  refine replayStepMatches_completion (timeouts := timeouts) assessment who history pending before
     after idle joint completion dropped fun legal => ?_
   dsimp only [completion, Option.bind_none] at legal ⊢
   have nobody : ∀ player, (⟨actingJoint setup history.state none, legal⟩ :

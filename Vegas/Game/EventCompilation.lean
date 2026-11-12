@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Compile.EventGraphDeviation
-import Vegas.Game.EventScheduling
-import GameTheory.Core.MixtureSimulationComposition
+public import Vegas.Compile.EventGraphDeviation
+public import Vegas.Game.EventScheduling
+public import GameTheory.Core.MixtureSimulationComposition
+
+@[expose] public section
 
 /-! # Strategic correctness of source-to-graph compilation
 

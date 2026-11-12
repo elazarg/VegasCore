@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RevealServiceRankedReadout
-import Vegas.Pending.CanonicalKeyPublication
-import Vegas.EventGraph.DecisionTwin
-import Vegas.Source.InitialState
-import Vegas.EventGraph.RevealRelaxedScheduling
+public import Vegas.Game.RevealServiceRankedReadout
+public import Vegas.Pending.CanonicalKeyPublication
+public import Vegas.EventGraph.DecisionTwin
+public import Vegas.Source.InitialState
+public import Vegas.EventGraph.RevealRelaxedScheduling
+
+@[expose] public section
 
 /-! # The order-blind reference profile of concurrent reveals
 
@@ -139,11 +143,11 @@ theorem concurrentOutcome_erase {Parameter : Type} (setup : Setup (Player := Pla
 /-- The service's instruction-order readout is the configuration reader at the
 native terminal configuration. -/
 theorem serviceRankedReadout_some (setup : Setup (Player := Player) (L := L))
-    (deadline : (serviceGraph setup .concurrentReveals).EventId → Nat)
+    (duration : (serviceGraph setup .concurrentReveals).EventId → Nat)
     (leaks : MessageNetwork.ObservationRule Player
       (WitnessedPacket (serviceGraph setup .concurrentReveals)))
-    (control : (serviceApplication setup .concurrentReveals deadline leaks).Control) :
-    serviceRankedReadout setup .concurrentReveals deadline leaks (some control) =
+    (control : (serviceApplication setup .concurrentReveals duration leaks).Control) :
+    serviceRankedReadout setup .concurrentReveals duration leaks (some control) =
       concurrentRankedRead setup control.execution.application.config := rfl
 
 end Vegas

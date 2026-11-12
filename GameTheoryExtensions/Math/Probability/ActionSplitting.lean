@@ -1,11 +1,15 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheory.Math.Probability.ConditionalObservation
-import GameTheory.Math.Probability.ExpectationConditioning
-import GameTheoryExtensions.Math.Probability.Uniform
-import GameTheory.Math.Probability.Convergence
-import GameTheoryExtensions.Math.Probability.Support
-import GameTheory.Math.Probability.FiniteUniform
+public import GameTheory.Math.Probability.ConditionalObservation
+public import GameTheory.Math.Probability.ExpectationConditioning
+public import GameTheoryExtensions.Math.Probability.Uniform
+public import GameTheory.Math.Probability.Convergence
+public import GameTheoryExtensions.Math.Probability.Support
+public import GameTheory.Math.Probability.FiniteUniform
+
+@[expose] public section
 
 open GameTheory.Math.Probability
 

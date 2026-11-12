@@ -1,11 +1,15 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Examples.OddsEvensService
-import Vegas.Examples.OddsEvensLedgerClient
-import Vegas.Pending.ReactiveOpeningConformance
-import Vegas.Game.NativeExitContinuation
-import Vegas.Pending.ReactiveCountVerdict
-import GameTheory.Math.Probability.FiniteUniform
+public import Vegas.Examples.OddsEvensService
+public import Vegas.Examples.OddsEvensLedgerClient
+public import Vegas.Pending.ReactiveOpeningConformance
+public import Vegas.Game.NativeExitContinuation
+public import Vegas.Pending.ReactiveCountVerdict
+public import GameTheory.Math.Probability.FiniteUniform
+
+@[expose] public section
 
 open GameTheory.Math.Probability
 
@@ -32,28 +36,28 @@ namespace VegasTests.RuntimeScenarios
 open Vegas Vegas.EventGraphRuntime Vegas.Examples.OddsEvens Interaction
   GameTheory.Math.Probability
 
-private abbrev runtime := Vegas.Examples.OddsEvensService.runtime
-private abbrev app := Vegas.Examples.OddsEvensService.app
-private abbrev event (n : Fin 4) : compiled.EventId := n
-private def initial : app.Execution :=
+abbrev timeouts := Vegas.Examples.OddsEvensService.timeouts
+abbrev app := Vegas.Examples.OddsEvensService.app
+abbrev event (n : Fin 4) : compiled.EventId := n
+def initial : app.Execution :=
   ReactiveApplication.Execution.initial (app := app) (EventGraphRuntime.State.initial
     (setup.eventInputs (Env.empty _)))
 
-private def candidate (who : Player) : Handle compiled := (who, .prepared 0)
-private def raw (bit : Bool) : Raw simpleExpr := ⟨.bool, bit⟩
-private def commit (who : Player) (e : Fin 4) (bit : Bool) : app.Action :=
+def candidate (who : Player) : Handle compiled := (who, .prepared 0)
+def raw (bit : Bool) : Raw simpleExpr := ⟨.bool, bit⟩
+def commit (who : Player) (e : Fin 4) (bit : Bool) : app.Action :=
   ⟨some ⟨⟨.commitment (event e) (candidate who), some (raw bit)⟩, .none⟩⟩
-private def opening (who : Player) (e : Fin 4) (bit : Bool) : app.Action :=
+def opening (who : Player) (e : Fin 4) (bit : Bool) : app.Action :=
   ⟨some ⟨⟨.opening (event e) (candidate who) (raw bit), none⟩,
     .owned ⟨candidate who, raw bit⟩⟩⟩
 
-private def firstCommit (bit : Bool) : app.Execution :=
+def firstCommit (bit : Bool) : app.Execution :=
   (initial.respond app even (commit even 0 bit)).includePending app (even, 0)
 
-private abbrev submitted (bit : Bool) :=
+abbrev submitted (bit : Bool) :=
   (initial.respond app even (commit even 0 bit)).application
 
-private theorem firstReady (bit : Bool) : (submitted bit).config.cut.Ready (event 0) := by
+theorem firstReady (bit : Bool) : (submitted bit).config.cut.Ready (event 0) := by
   change (EventOrder.Cut.empty compiled.order).Ready (event 0)
   decide
 
@@ -63,16 +67,16 @@ private theorem firstUnused (bit : Bool) : (submitted bit).HandleUnused (candida
   | inl input => exact Fin.elim0 input
   | inr e => change none ≠ some (candidate even); simp
 
-private def bound (bit : Bool) : EventGraphRuntime.State compiled :=
+def bound (bit : Bool) : EventGraphRuntime.State compiled :=
   { ((submitted bit).complete (event 0) (firstReady bit) (some (.success bit)) (.success bit)) with
     accepted := Function.update (submitted bit).accepted (.inr (event 0)) (some (candidate even))
     candidates := (submitted bit).candidates.freeze (candidate even) }
 
 private theorem firstAccepted (bit : Bool) :
-    EventGraphRuntime.handle runtime (submitted bit)
+    EventGraphRuntime.handle timeouts (submitted bit)
       ⟨(even, 0), .commitment (event 0) (candidate even)⟩ =
       some (bound bit) := by
-  rw [EventGraphRuntime.handle_commitment_eq runtime (submitted bit) (even, 0) (event 0)
+  rw [EventGraphRuntime.handle_commitment_eq timeouts (submitted bit) (even, 0) (event 0)
     (candidate even) even .bool rfl rfl rfl (firstReady bit) (by change 0 < 6; decide) (by
       change even ∉ (∅ : Finset Player); simp)
     rfl rfl rfl (firstUnused bit)]
@@ -106,7 +110,7 @@ private theorem first_application (bit : Bool) :
       ⟨(even, 0), ⟨.commitment (event 0) (candidate even), none, some ⟨event 0⟩⟩⟩).getD _ = _
   all_goals rw [firstNativeAccepted]; rfl
 
-private def earlyOpening (bit : Bool) : app.Execution :=
+def earlyOpening (bit : Bool) : app.Execution :=
   (firstCommit bit).respond app even (opening even 2 bit)
 
 example (bit : Bool) :
@@ -122,7 +126,7 @@ example (bit : Bool) :
     simp only [earlyOpening, ReactiveApplication.Execution.respond, first_application]
   all_goals decide
 
-private def rejectedOpening (bit : Bool) : app.Execution :=
+def rejectedOpening (bit : Bool) : app.Execution :=
   (earlyOpening bit).includePending app (even, 1)
 
 private theorem rejection (state : app.State) (call : Payload compiled)
@@ -163,7 +167,7 @@ example (bit : Bool) :
       first_application]
   all_goals decide
 
-private def secondSubmitted (e o : Bool) : EventGraphRuntime.State compiled :=
+def secondSubmitted (e o : Bool) : EventGraphRuntime.State compiled :=
   app.submit (bound e) odd
     ⟨⟨.commitment (event 1) (candidate odd), some (raw o)⟩, .none⟩
 
@@ -173,7 +177,7 @@ example (e o : Bool) :
   simp only [ReactiveApplication.Execution.respond, rejected_application]
   rfl
 
-private theorem secondReady (e o : Bool) :
+theorem secondReady (e o : Bool) :
     (secondSubmitted e o).config.cut.Ready (event 1) := by
   cases e <;> cases o <;> decide
 
@@ -185,48 +189,48 @@ private theorem secondUnused (e o : Bool) :
   | inr named =>
       cases e <;> cases o <;> fin_cases named <;> decide
 
-private def bothBound (e o : Bool) : EventGraphRuntime.State compiled :=
+def bothBound (e o : Bool) : EventGraphRuntime.State compiled :=
   { ((secondSubmitted e o).complete (event 1) (secondReady e o) (some (.success o)) (.success
     o)) with
     accepted := Function.update (secondSubmitted e o).accepted (.inr (event 1))
       (some (candidate odd))
     candidates := (secondSubmitted e o).candidates.freeze (candidate odd) }
 
-example (e o : Bool) : EventGraphRuntime.handle runtime (secondSubmitted e o)
+example (e o : Bool) : EventGraphRuntime.handle timeouts (secondSubmitted e o)
     ⟨(odd, 0), .commitment (event 1) (candidate odd)⟩ = some (bothBound e o) := by
-  rw [EventGraphRuntime.handle_commitment_eq runtime (secondSubmitted e o) (odd, 0) (event 1)
+  rw [EventGraphRuntime.handle_commitment_eq timeouts (secondSubmitted e o) (odd, 0) (event 1)
     (candidate odd) odd .bool rfl rfl rfl (secondReady e o) (by change 0 < 6; decide)
     (by cases e <;> cases o <;> decide)
     rfl rfl rfl (secondUnused e o)]
   rfl
 
-private theorem evenOpeningReady (e o : Bool) :
+theorem evenOpeningReady (e o : Bool) :
     (bothBound e o).config.cut.Ready (event 2) := by
   cases e <;> cases o <;> decide
 
-private def evenOpened (e o : Bool) : EventGraphRuntime.State compiled :=
+def evenOpened (e o : Bool) : EventGraphRuntime.State compiled :=
   (bothBound e o).complete (event 2) (evenOpeningReady e o) true (.success e)
 
-example (e o : Bool) : EventGraphRuntime.handle runtime (bothBound e o)
+example (e o : Bool) : EventGraphRuntime.handle timeouts (bothBound e o)
     ⟨(even, 2), .opening (event 2) (candidate even) (raw e)⟩ = some (evenOpened e o) := by
   unfold raw
-  rw [EventGraphRuntime.handle_opening_eq runtime (bothBound e o) (even, 2) (event 2)
+  rw [EventGraphRuntime.handle_opening_eq timeouts (bothBound e o) (even, 2) (event 2)
     (candidate even) even .bool _ _ rfl rfl rfl (evenOpeningReady e o)
     (by change 0 < 6; decide) (by cases e <;> cases o <;> decide)
     rfl rfl rfl e rfl rfl (.success e) rfl]
   rfl
 
-private theorem oddOpeningReady (e o : Bool) :
+theorem oddOpeningReady (e o : Bool) :
     (evenOpened e o).config.cut.Ready (event 3) := by
   cases e <;> cases o <;> decide
 
-private def finished (e o : Bool) : EventGraphRuntime.State compiled :=
+def finished (e o : Bool) : EventGraphRuntime.State compiled :=
   (evenOpened e o).complete (event 3) (oddOpeningReady e o) true (.success o)
 
-example (e o : Bool) : EventGraphRuntime.handle runtime (evenOpened e o)
+example (e o : Bool) : EventGraphRuntime.handle timeouts (evenOpened e o)
     ⟨(odd, 1), .opening (event 3) (candidate odd) (raw o)⟩ = some (finished e o) := by
   unfold raw
-  rw [EventGraphRuntime.handle_opening_eq runtime (evenOpened e o) (odd, 1) (event 3)
+  rw [EventGraphRuntime.handle_opening_eq timeouts (evenOpened e o) (odd, 1) (event 3)
     (candidate odd) odd .bool _ _ rfl rfl rfl (oddOpeningReady e o)
     (by change 0 < 6; decide) (by cases e <;> cases o <;> decide)
     rfl rfl rfl o rfl rfl (.success o) rfl]
@@ -260,7 +264,7 @@ example (other : PublicationResult Bool) (own : Bool) :
   | failure => cases own <;> decide
   | success bit => cases bit <;> cases own <;> decide
 
-private def oddConditionalValue (probability : ℝ) (choice : Bool) : ℝ :=
+def oddConditionalValue (probability : ℝ) (choice : Bool) : ℝ :=
   (1 - probability) * (cash (.success false) (.success choice) odd : ℝ) +
     probability * (cash (.success true) (.success choice) odd : ℝ)
 
@@ -290,7 +294,7 @@ example (other : PublicationResult Bool) (own : Bool) :
   | failure => cases own <;> decide
   | success bit => cases bit <;> cases own <;> decide
 
-private def beforeTimeout (e : Bool) (clock : Nat) : EventGraphRuntime.State compiled :=
+def beforeTimeout (e : Bool) (clock : Nat) : EventGraphRuntime.State compiled :=
   { bound e with clock }
 
 private theorem beforeTimeoutDrain (e : Bool) (clock : Nat) :
@@ -304,30 +308,30 @@ private theorem beforeTimeoutDrain (e : Bool) (clock : Nat) :
 example (e : Bool) (clock : Nat) :
     app.environment (beforeTimeout e clock) .advanceClock =
       PMF.pure (beforeTimeout e (clock + 1)) := by
-  change (environmentStep runtime (beforeTimeout e clock) .advanceClock).map State.drain = _
+  change (environmentStep timeouts (beforeTimeout e clock) .advanceClock).map State.drain = _
   simp only [environmentStep, PMF.pure_map]
   exact congrArg PMF.pure (beforeTimeoutDrain e (clock + 1))
 
-private theorem timeoutReady (e : Bool) :
+theorem timeoutReady (e : Bool) :
     (beforeTimeout e 6).config.cut.Ready (event 1) := by
   cases e <;> decide
 
 example (e : Bool) (clock : Nat) (before : clock < 6) :
     app.environment (beforeTimeout e clock) (.expire (event 1)) =
       PMF.pure (beforeTimeout e clock) := by
-  change (environmentStep runtime (beforeTimeout e clock) (.expire (event 1))).map State.drain = _
-  rw [environmentStep_expire_of_not_due runtime
+  change (environmentStep timeouts (beforeTimeout e clock) (.expire (event 1))).map State.drain = _
+  rw [environmentStep_expire_of_not_due timeouts
     (beforeTimeout e clock) (event 1) (timeoutReady e) 0 rfl
     (by change ¬ 6 ≤ clock - 0; omega), PMF.pure_map]
   exact congrArg PMF.pure (beforeTimeoutDrain e clock)
 
-private def timedOut (e : Bool) : EventGraphRuntime.State compiled :=
+def timedOut (e : Bool) : EventGraphRuntime.State compiled :=
   (beforeTimeout e 6).complete (event 1) (timeoutReady e) none .failure
 
 example (e : Bool) : app.environment (beforeTimeout e 6) (.expire (event 1)) =
     PMF.pure (timedOut e) := by
-  change (environmentStep runtime (beforeTimeout e 6) (.expire (event 1))).map State.drain = _
-  rw [environmentStep_expire_bind_eq runtime _ (event 1)
+  change (environmentStep timeouts (beforeTimeout e 6) (.expire (event 1))).map State.drain = _
+  rw [environmentStep_expire_bind_eq timeouts _ (event 1)
     (timeoutReady e) 0 rfl (by change 6 ≤ 6; decide) odd .bool rfl rfl rfl, PMF.pure_map]
   apply congrArg PMF.pure
   change (timedOut e).drain = timedOut e
@@ -335,16 +339,16 @@ example (e : Bool) : app.environment (beforeTimeout e 6) (.expire (event 1)) =
   intro named
   fin_cases named <;> cases e <;> decide
 
-private theorem survivorReady (e : Bool) : (timedOut e).config.cut.Ready (event 2) := by
+theorem survivorReady (e : Bool) : (timedOut e).config.cut.Ready (event 2) := by
   cases e <;> decide
 
-private def survivorOpened (e : Bool) : EventGraphRuntime.State compiled :=
+def survivorOpened (e : Bool) : EventGraphRuntime.State compiled :=
   (timedOut e).complete (event 2) (survivorReady e) true (.success e)
 
-private theorem automaticReady (e : Bool) : (survivorOpened e).AutomaticReady (event 3) := by
+theorem automaticReady (e : Bool) : (survivorOpened e).AutomaticReady (event 3) := by
   cases e <;> decide
 
-private def survivorFinished (e : Bool) : EventGraphRuntime.State compiled :=
+def survivorFinished (e : Bool) : EventGraphRuntime.State compiled :=
   (survivorOpened e).completeAutomatic (event 3) (automaticReady e)
 
 private theorem survivorDrain (e : Bool) : (survivorOpened e).drain = survivorFinished e := by
@@ -363,7 +367,7 @@ example (e : Bool) : app.handle (timedOut e)
   rw [EventGraphRuntime.reactiveApplication_handle]
   simp only [WitnessedPacket.tokenValid_opening, ↓reduceIte]
   unfold raw
-  rw [EventGraphRuntime.handle_opening_eq runtime (timedOut e) (even, 1) (event 2)
+  rw [EventGraphRuntime.handle_opening_eq timeouts (timedOut e) (even, 1) (event 2)
     (candidate even) even .bool _ _ rfl rfl rfl (survivorReady e)
     (by change 0 < 6; decide) (by cases e <;> decide)
     rfl rfl rfl e rfl rfl (.success e) rfl, Option.map_some]
@@ -379,14 +383,14 @@ example (e : Bool) :
   refine ⟨rfl, rfl, ?_, ?_⟩ <;> cases e <;> decide
 
 example (e : Bool) (remaining : Nat) (actor : Option Player) :
-    exclusionBase setup runtime (fun _ => ()) sourceUtility (fun _ => 0)
+    exclusionBase setup timeouts (fun _ => ()) sourceUtility (fun _ => 0)
       Vegas.Examples.OddsEvensService.leaks
       (some ⟨remaining, actor, {initial with application := timedOut e}⟩) odd = 0 := by
   apply exclusionBase_of_defaulted
   change odd ∈ (timedOut e).config.defaulted
   cases e <;> decide
 
-private def oddCommitPacket : Message Player (WitnessedPacket compiled) :=
+def oddCommitPacket : Message Player (WitnessedPacket compiled) :=
   ⟨(odd, 0), ⟨.commitment (event 1) (candidate odd), none, some ⟨event 1⟩⟩⟩
 
 example (traffic : List (Message Player (WitnessedPacket compiled))) :
@@ -401,11 +405,11 @@ example (traffic : List (Message Player (WitnessedPacket compiled))) :
   · intro other earlier
     exact (noEarlier other earlier).elim
 
-private def oddOpeningPacket (o : Bool) : Message Player (WitnessedPacket compiled) :=
+def oddOpeningPacket (o : Bool) : Message Player (WitnessedPacket compiled) :=
   ⟨(odd, 1), ⟨.opening (event 3) (candidate odd) (raw o),
     some ⟨candidate odd, raw o⟩, some ⟨event 3⟩⟩⟩
 
-private def traffic (e o : Bool) : List (Message Player (WitnessedPacket compiled)) :=
+def traffic (e o : Bool) : List (Message Player (WitnessedPacket compiled)) :=
   [⟨(even, 0), ⟨.commitment (event 0) (candidate even), none, some ⟨event 0⟩⟩⟩,
     ⟨(even, 1), ⟨.opening (event 2) (candidate even) (raw e),
       some ⟨candidate even, raw e⟩, none⟩⟩,
@@ -442,13 +446,13 @@ example (e o : Bool) : ¬ CountPermits (traffic e o)
   intro permitted
   exact Bool.false_ne_true permitted.1
 
-private abbrev client := Vegas.Examples.OddsEvensLedgerClient.policy
+abbrev client := Vegas.Examples.OddsEvensLedgerClient.policy
 
-private def disclosedCommit (bit : Bool) : app.Action :=
+def disclosedCommit (bit : Bool) : app.Action :=
   ⟨some ⟨⟨.commitment (event 0) (candidate even), some (raw bit)⟩,
     .owned ⟨candidate even, raw bit⟩⟩⟩
 
-private def disclosedIncluded (bit : Bool) : app.Execution :=
+def disclosedIncluded (bit : Bool) : app.Execution :=
   (initial.respond app even (disclosedCommit bit)).includePending app (even, 0)
 
 private theorem disclosed_application (bit : Bool) :
@@ -529,7 +533,7 @@ example (bit choice : Bool) : Vegas.Examples.OddsEvensLedgerClient.ordinaryRespo
     change odd ∉ (disclosedIncluded bit).application.config.defaulted
     rw [disclosed_application]
     cases bit <;> decide
-  have correct := runtime.canonicalServiceDecision_binding
+  have correct := (canonicalServiceDecision_binding timeouts)
     Vegas.Examples.OddsEvensService.leaks odd [] nativeView (event 1) .bool
     rfl rfl rfl active 0 selected (PublicationResult.success choice)
   exact correct

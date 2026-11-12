@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheory.Core.MatrixGame
-import GameTheoryExtensions.Math.Probability.Expectation
+public import GameTheory.Core.MatrixGame
+public import GameTheoryExtensions.Math.Probability.Expectation
+
+@[expose] public section
 
 /-! # A zero-sum value does not determine the payout law
 

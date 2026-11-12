@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.CommitmentCandidates
+public import Interaction.CommitmentCandidates
+
+@[expose] public section
 
 namespace InteractionTests.CommitmentCandidates
 

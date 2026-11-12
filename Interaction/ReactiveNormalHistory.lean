@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveNormalRecall
+public import Interaction.ReactiveNormalRecall
+
+@[expose] public section
 
 /-! # Normalizing legal reactive histories
 

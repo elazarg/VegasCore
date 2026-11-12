@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketIntendedProjection
-import Vegas.Source.IntendedPrefixSwap
+public import Vegas.Game.OnePacketIntendedProjection
+public import Vegas.Source.IntendedPrefixSwap
+
+@[expose] public section
 
 /-! # The acting joint of a realized intended step
 

@@ -1,15 +1,19 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Compile
-import Vegas.EventGraph
-import Vegas.Examples
-import Vegas.Expr
-import Vegas.Foundation.Context
-import Vegas.Foundation.ExprInterface
-import Vegas.Foundation.Guard
-import Vegas.Foundation.PartialEnvironment
-import Vegas.Foundation.Probability
-import Vegas.Foundation.Result
-import Vegas.Game
-import Vegas.Pending
-import Vegas.Source
+public import Vegas.Compile
+public import Vegas.EventGraph
+public import Vegas.Examples
+public import Vegas.Expr
+public import Vegas.Foundation.Context
+public import Vegas.Foundation.ExprInterface
+public import Vegas.Foundation.Guard
+public import Vegas.Foundation.PartialEnvironment
+public import Vegas.Foundation.Probability
+public import Vegas.Foundation.Result
+public import Vegas.Game
+public import Vegas.Pending
+public import Vegas.Source
+
+@[expose] public section

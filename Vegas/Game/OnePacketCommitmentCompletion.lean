@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketEventSuccess
-import Vegas.Game.OnePacketFreshSlots
+public import Vegas.Game.OnePacketEventSuccess
+public import Vegas.Game.OnePacketFreshSlots
+
+@[expose] public section
 
 /-! # Fresh slots and the acceptance invariant after a one-packet commitment
 
@@ -28,73 +32,73 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup runtime leaks).Scheduler}
+  {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- **One-packet commitments use fresh slots.** At a history of the one-packet
 game, a transmission of the one-packet menu committing an event to a prepared
 slot of the player carries no evidence, and the slot is fresh before the
 response. -/
-theorem onePacket_commitment_fresh {control : (application setup runtime leaks).Control}
-    (trace : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+theorem onePacket_commitment_fresh {control : (application setup timeouts leaks).Control}
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control))
-    (who : Player) (response : (application setup runtime leaks).Action)
-    (member : response ∈ bounds.onePacketActions runtime leaks who
-      (control.execution.logs who) (control.execution.observe (application setup runtime leaks)
+    (who : Player) (response : (application setup timeouts leaks).Action)
+    (member : response ∈ bounds.onePacketActions timeouts leaks who
+      (control.execution.logs who) (control.execution.observe (application setup timeouts leaks)
         who))
-    (material : (application setup runtime leaks).Submission)
+    (material : (application setup timeouts leaks).Submission)
     (sends : response.transmission = some material) {event : (graph setup).EventId}
     {serial : Nat} (packet : material.call.packet = .commitment event (who, .prepared serial)) :
     control.execution.application.candidates.lookup (who, .prepared serial) = .fresh ∧
       material.evidence = .none := by
-  have rawTrace : ((application setup runtime leaks).protocol (initialLaw setup) horizon
+  have rawTrace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
     scheduler).Trace
       (some control) :=
-    (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup) horizon scheduler
+    (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon scheduler
       trace
-  have recalled := runtime.countRecall_history leaks rawTrace
-  obtain ⟨effective, permitted⟩ := (bounds.mem_onePacketActions runtime leaks who _ _
+  have recalled := (countRecall_history timeouts) leaks rawTrace
+  obtain ⟨effective, permitted⟩ := (bounds.mem_onePacketActions timeouts leaks who _ _
     response).mp member
-  have verdict : CountPermits ((application setup runtime leaks).outputs (control.execution.logs
+  have verdict : CountPermits ((application setup timeouts leaks).outputs (control.execution.logs
     who))
-      (runtime.localEnvelope leaks who (control.execution.logs who)
-        (control.execution.observe (application setup runtime leaks) who) material) := by
+      ((localEnvelope timeouts) leaks who (control.execution.logs who)
+        (control.execution.observe (application setup timeouts leaks) who) material) := by
     rcases permitted with silent | ⟨other, otherSends, counted⟩
     · rw [sends] at silent
       cases silent
     · rw [sends] at otherSends
       cases Option.some.inj otherSends
       exact (countPermits_eq_true_iff _ _).mp counted
-  have callEq : (runtime.localEnvelope leaks who (control.execution.logs who)
-      (control.execution.observe (application setup runtime leaks) who) material).payload.call =
+  have callEq : ((localEnvelope timeouts) leaks who (control.execution.logs who)
+      (control.execution.observe (application setup timeouts leaks) who) material).payload.call =
       material.call.packet := rfl
   have correct := verdict.2.1
   unfold CountCallCorrect at correct
   rw [callEq, packet] at correct
   obtain ⟨_, evidenceNone, _, _, unused⟩ := correct
   refine ⟨?_, ?_⟩
-  · refine ((preparedFresh_history (runtime := runtime) horizon scheduler rawTrace) who
+  · refine ((preparedFresh_history (timeouts := timeouts) horizon scheduler rawTrace) who
       serial).mpr ?_
     rintro ⟨message, input, sender, committed, call⟩
-    have output : message ∈ (application setup runtime leaks).outputs (control.execution.logs
+    have output : message ∈ (application setup timeouts leaks).outputs (control.execution.logs
       who) := by
       rw [← recalled.1 who]
       exact List.mem_filter.mpr ⟨input, by simp [sender]⟩
     have earlier := earlierOwnPacket_of_output rawTrace who
-      ((application setup runtime leaks).packet ((application setup runtime leaks).submit
+      ((application setup timeouts leaks).packet ((application setup timeouts leaks).submit
         control.execution.application who material) who (control.execution.network.known who)
           material) message output
-    rw [← runtime.localEnvelope_eq_of_recall leaks control.execution recalled.1
+    rw [← (localEnvelope_eq_of_recall timeouts) leaks control.execution recalled.1
       recalled.2.1 who material] at earlier
     exact unused message earlier committed call
-  · have normal := (runtime.reactiveNormalization leaks).menu_normal
-      (bounds.rawMenu runtime leaks) who _ _ response effective
+  · have normal := ((reactiveNormalization timeouts) leaks).menu_normal
+      (bounds.rawMenu timeouts leaks) who _ _ response effective
     have materialNormal : material.normalizeReactive who
-        (control.execution.observe (application setup runtime leaks) who).application
+        (control.execution.observe (application setup timeouts leaks) who).application
         (ReactiveApplication.ResponseMenu.knownPackets (control.execution.logs who)
-          (control.execution.observe (application setup runtime leaks) who)) = material := by
+          (control.execution.observe (application setup timeouts leaks) who)) = material := by
       have transmitted := congrArg ReactiveApplication.Action.transmission normal
       rcases response with ⟨transmission⟩
       change transmission = some material at sends
@@ -102,17 +106,17 @@ theorem onePacket_commitment_fresh {control : (application setup runtime leaks).
       exact Option.some.inj transmitted
     have evidence := congrArg WitnessedSubmission.evidence materialNormal
     change EvidenceRequest.canonical (ReactiveApplication.ResponseMenu.knownPackets
-      (control.execution.logs who) (control.execution.observe (application setup runtime leaks)
+      (control.execution.logs who) (control.execution.observe (application setup timeouts leaks)
         who))
       (material.evidence.resolve who (material.call.candidateAfter who
-        (control.execution.observe (application setup runtime leaks) who).application.candidates)
+        (control.execution.observe (application setup timeouts leaks) who).application.candidates)
         (ReactiveApplication.ResponseMenu.knownPackets (control.execution.logs who)
-          (control.execution.observe (application setup runtime leaks) who))) = material.evidence
+          (control.execution.observe (application setup timeouts leaks) who))) = material.evidence
       at evidence
     rw [show material.evidence.resolve who (material.call.candidateAfter who
-        (control.execution.observe (application setup runtime leaks) who).application.candidates)
+        (control.execution.observe (application setup timeouts leaks) who).application.candidates)
         (ReactiveApplication.ResponseMenu.knownPackets (control.execution.logs who)
-          (control.execution.observe (application setup runtime leaks) who)) = none
+          (control.execution.observe (application setup timeouts leaks) who)) = none
       from evidenceNone] at evidence
     exact evidence.symm
 
@@ -122,50 +126,52 @@ one-packet menu committing the event to a prepared slot of who whose meaning
 after the submission is a successful value leaves the acceptance invariant at
 the state it reaches, and the slot's meaning there is that value. -/
 theorem acceptanceInvariant_respond_commitment {remaining : Nat} {who : Player}
-    {execution : (application setup runtime leaks).Execution}
-    (trace : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+    {execution : (application setup timeouts leaks).Execution}
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some ⟨remaining, some who, execution⟩))
     (event : (graph setup).EventId)
     (turn : execution.application.publicView.ownTurn? who = some event)
     {payload : L.Ty} (outputEq : (graph setup).outputLayout event = .binding who payload)
-    (response : (application setup runtime leaks).Action)
-    (member : response ∈ bounds.onePacketActions runtime leaks who
-      (execution.logs who) (execution.observe (application setup runtime leaks) who))
-    (material : (application setup runtime leaks).Submission)
+    (response : (application setup timeouts leaks).Action)
+    (member : response ∈ bounds.onePacketActions timeouts leaks who
+      (execution.logs who) (execution.observe (application setup timeouts leaks) who))
+    (material : (application setup timeouts leaks).Submission)
     (sends : response.transmission = some material) {serial : Nat}
     (packet : material.call.packet = .commitment event (who, .prepared serial))
     {value : L.Val payload}
     (after : material.call.candidateAfter who
-      (execution.observe (application setup runtime leaks) who).application.candidates
+      (execution.observe (application setup timeouts leaks) who).application.candidates
       (.prepared serial) = .openable ⟨payload, value⟩)
-    (afterTrace : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup)
+    (afterTrace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup)
       horizon scheduler).Trace (some ⟨remaining, none,
-        execution.respond (application setup runtime leaks) who response⟩)) :
-    AcceptanceInvariant setup runtime leaks bounds horizon scheduler who
-        (respondEntry setup runtime leaks execution who response)
-        (sentEnvelope setup runtime leaks execution who material) event execution.application.config
+        execution.respond (application setup timeouts leaks) who response⟩)) :
+    AcceptanceInvariant setup timeouts leaks bounds horizon scheduler who
+        (respondEntry setup timeouts leaks execution who response)
+        (sentEnvelope setup timeouts leaks execution who material) event
+          execution.application.config
         (cast (congrArg EventGraph.EventField.Action outputEq.symm) (some (.success value)))
         (cast (congrArg EventGraph.EventField.Value outputEq.symm) (.success value))
-        (some ⟨remaining, none, execution.respond (application setup runtime leaks) who response⟩) ∧
-      (execution.respond (application setup runtime leaks) who
+        (some ⟨remaining, none, execution.respond (application setup timeouts leaks) who
+          response⟩) ∧
+      (execution.respond (application setup timeouts leaks) who
         response).application.candidates.lookup
         (who, .prepared serial) = .openable ⟨payload, value⟩ := by
-  have rawTrace : ((application setup runtime leaks).protocol (initialLaw setup) horizon
+  have rawTrace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
     scheduler).Trace
       (some ⟨remaining, some who, execution⟩) :=
-    (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup) horizon scheduler
+    (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon scheduler
       trace
   have ready := (execution.application.publicView_eventReady event).mp
     (PublicView.ownTurn?_spec _ who event turn).1
-  have evidenceNone := (onePacket_commitment_fresh (runtime := runtime) trace who response member
+  have evidenceNone := (onePacket_commitment_fresh (timeouts := timeouts) trace who response member
     material sends
     packet).2
-  have respondApplication : (execution.respond (application setup runtime leaks) who
+  have respondApplication : (execution.respond (application setup timeouts leaks) who
       response).application =
-      (application setup runtime leaks).submit execution.application who material := by
+      (application setup timeouts leaks).submit execution.application who material := by
     unfold ReactiveApplication.Execution.respond
     rw [sends]
-  have sameConfig : ((application setup runtime leaks).submit execution.application who
+  have sameConfig : ((application setup timeouts leaks).submit execution.application who
       material).config = execution.application.config := by
     change (submitStep (material.call.register execution.application who) who
       material.call.packet).config = _
@@ -174,7 +180,7 @@ theorem acceptanceInvariant_respond_commitment {remaining : Nat} {who : Player}
     split
     · split <;> rfl
     · rfl
-  have lookupAfter : (execution.respond (application setup runtime leaks) who
+  have lookupAfter : (execution.respond (application setup timeouts leaks) who
       response).application.candidates.lookup (who, .prepared serial) =
       .openable ⟨payload, value⟩ := by
     rw [respondApplication]
@@ -182,14 +188,14 @@ theorem acceptanceInvariant_respond_commitment {remaining : Nat} {who : Player}
       material.call.packet).candidates.lookup (who, .prepared serial) = _
     rw [Submission.candidateAfter_eq]
     exact after
-  have bindingResult : (execution.respond (application setup runtime leaks) who
+  have bindingResult : (execution.respond (application setup timeouts leaks) who
       response).application.bindingResult (who, .prepared serial) payload = .success value := by
     simp only [State.bindingResult, lookupAfter, Raw.as?_mk, Option.elim_some]
-  have serials := (application setup runtime leaks).serialsBeforeNext_history scheduler
+  have serials := (application setup timeouts leaks).serialsBeforeNext_history scheduler
     (initialLaw setup) horizon rawTrace
-  have identifiers := (application setup runtime leaks).receipt_identifiers_history
+  have identifiers := (application setup timeouts leaks).receipt_identifiers_history
     (initialLaw setup) horizon scheduler _ rawTrace
-  have callEq : (sentEnvelope setup runtime leaks execution who material).payload.call =
+  have callEq : (sentEnvelope setup timeouts leaks execution who material).payload.call =
       .commitment event (who, .prepared serial) := by
     rcases material with ⟨call, evidence⟩
     change evidence = .none at evidenceNone
@@ -197,11 +203,11 @@ theorem acceptanceInvariant_respond_commitment {remaining : Nat} {who : Player}
     unfold sentEnvelope
     rw [reactiveApplication_packet_none]
     exact packet
-  have witness : AcceptanceWitness event (sentEnvelope setup runtime leaks execution who material)
+  have witness : AcceptanceWitness event (sentEnvelope setup timeouts leaks execution who material)
       execution.application.config
       (cast (congrArg EventGraph.EventField.Action outputEq.symm) (some (.success value)))
       (cast (congrArg EventGraph.EventField.Value outputEq.symm) (.success value))
-      (execution.respond (application setup runtime leaks) who response).application := by
+      (execution.respond (application setup timeouts leaks) who response).application := by
     left
     refine ⟨(who, .prepared serial), who, payload, outputEq, callEq, ?_, ?_, ?_⟩
     · rw [lookupAfter]
@@ -209,10 +215,12 @@ theorem acceptanceInvariant_respond_commitment {remaining : Nat} {who : Player}
       cases impossible
     · rw [bindingResult]
     · rw [bindingResult]
-  refine ⟨⟨⟨afterTrace⟩, recordsEntry_respond (runtime := runtime) execution who _ remaining none,
-    by rw [respondEntry_of_transmission (runtime := runtime) execution who _ material sends], ready,
+  refine ⟨⟨⟨afterTrace⟩, recordsEntry_respond (timeouts := timeouts) execution who _ remaining none,
+    by rw [respondEntry_of_transmission (timeouts := timeouts) execution who _ material sends],
+      ready,
     witness, fun _ => ?_, fun receipt => ?_⟩, lookupAfter⟩
-  · change (execution.respond (application setup runtime leaks) who response).application.config = _
+  · change (execution.respond (application setup timeouts leaks) who
+    response).application.config = _
     rw [respondApplication]
     exact sameConfig
   · exfalso
@@ -228,39 +236,39 @@ theorem acceptanceInvariant_respond_commitment {remaining : Nat} {who : Player}
 /-- A count-permitted commitment sent while its protected inclusion window fits
 is recorded as a fresh call. Only the actual window is needed. -/
 theorem onePacket_commitment_freshCall {bound : (graph setup).EventId → Nat}
-    {remaining : Nat} {who : Player} {execution : (application setup runtime leaks).Execution}
-    (trace : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+    {remaining : Nat} {who : Player} {execution : (application setup timeouts leaks).Execution}
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some ⟨remaining, some who, execution⟩))
     (event : (graph setup).EventId)
     (turn : execution.application.publicView.ownTurn? who = some event)
-    (fits : execution.application.publicView.InclusionFitsDeadline runtime bound event)
+    (fits : execution.application.publicView.InclusionFitsDeadline timeouts bound event)
     {payload : L.Ty} {outputEq : (graph setup).outputLayout event = .binding who payload}
     {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
       ((graph setup).nodes event) = .bind who payload}
     (node : nodeView (graph setup) event = .bind who payload outputEq codeEq)
-    (response : (application setup runtime leaks).Action)
-    (member : response ∈ bounds.onePacketActions runtime leaks who
-      (execution.logs who) (execution.observe (application setup runtime leaks) who))
-    (material : (application setup runtime leaks).Submission)
+    (response : (application setup timeouts leaks).Action)
+    (member : response ∈ bounds.onePacketActions timeouts leaks who
+      (execution.logs who) (execution.observe (application setup timeouts leaks) who))
+    (material : (application setup timeouts leaks).Submission)
     (sends : response.transmission = some material) {serial : Nat}
     (packet : material.call.packet = .commitment event (who, .prepared serial)) :
-    FreshCall setup leaks who event bound (respondEntry setup runtime leaks execution who response)
-      (sentEnvelope setup runtime leaks execution who material) := by
-  have rawTrace : ((application setup runtime leaks).protocol (initialLaw setup) horizon
+    FreshCall setup leaks who event bound (respondEntry setup timeouts leaks execution who response)
+      (sentEnvelope setup timeouts leaks execution who material) := by
+  have rawTrace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
     scheduler).Trace
       (some ⟨remaining, some who, execution⟩) :=
-    (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup) horizon scheduler
+    (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon scheduler
       trace
   have facts := legalFacts setup leaks horizon scheduler _ rawTrace
   have readyView := (PublicView.ownTurn?_spec _ who event turn).1
   have ready := (execution.application.publicView_eventReady event).mp readyView
-  obtain ⟨fresh, evidenceNone⟩ := onePacket_commitment_fresh (runtime := runtime) trace who
+  obtain ⟨fresh, evidenceNone⟩ := onePacket_commitment_fresh (timeouts := timeouts) trace who
     response member material
     sends packet
   have inTime : (match execution.application.activatedAt event with
       | none => False
       | some entered => execution.application.clock - entered <
-          runtime.deadline event) := fits.withinDeadline
+          timeouts.duration event) := fits.withinDeadline
   have vacant : execution.application.accepted (.inr event) = none := by
     cases associated : execution.application.accepted (.inr event) with
     | none => rfl
@@ -277,7 +285,7 @@ theorem onePacket_commitment_freshCall {bound : (graph setup).EventId → Nat}
   subst packet evidenceNone
   refine
     { fresh := ⟨_, sends⟩
-      emitted := respondEntry_of_transmission (runtime := runtime) execution who response _ sends
+      emitted := respondEntry_of_transmission (timeouts := timeouts) execution who response _ sends
         ▸ rfl
       authored := rfl
       addressed := ?_
@@ -287,9 +295,9 @@ theorem onePacket_commitment_freshCall {bound : (graph setup).EventId → Nat}
   · unfold sentEnvelope
     rw [reactiveApplication_packet_none]
     rfl
-  · change runtime.freshServiceAcceptable execution.application.publicView
-      ⟨(who, execution.network.nextSerial who), (application setup runtime leaks).packet
-        ((application setup runtime leaks).submit execution.application who _) who
+  · change (freshServiceAcceptable timeouts) execution.application.publicView
+      ⟨(who, execution.network.nextSerial who), (application setup timeouts leaks).packet
+        ((application setup timeouts leaks).submit execution.application who _) who
         (execution.network.known who) _⟩
     rw [reactiveApplication_packet_none,
       execution.application.publicView_tokenFor_of_ready _ event rfl ready]

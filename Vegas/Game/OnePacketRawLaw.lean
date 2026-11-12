@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketExtension
-import Vegas.Game.OnePacketExclusionPayoff
+public import Vegas.Game.OnePacketExtension
+public import Vegas.Game.OnePacketExclusionPayoff
+
+@[expose] public section
 
 /-! # Intended joint laws through the audited raw runtime -/
 
@@ -16,19 +20,19 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {initial : PMF (runtime.reactiveApplication leaks).State}
-  {scheduler : (runtime.reactiveApplication leaks).Scheduler}
-  [(runtime.reactiveApplication leaks).FiniteNature initial scheduler]
+  {initial : PMF ((reactiveApplication timeouts) leaks).State}
+  {scheduler : ((reactiveApplication timeouts) leaks).Scheduler}
+  [((reactiveApplication timeouts) leaks).FiniteNature initial scheduler]
 
-local notation "menu" => bounds.onePacketMenu runtime leaks
-local notation "raw" => bounds.rawMenu runtime leaks
+local notation "menu" => bounds.onePacketMenu timeouts leaks
+local notation "raw" => bounds.rawMenu timeouts leaks
 local notation "N" => ReactiveApplication.ResponseMenu.information
-  (bounds.onePacketMenu runtime leaks) initial horizon scheduler
+  (bounds.onePacketMenu timeouts leaks) initial horizon scheduler
 local notation "R" => ReactiveApplication.ResponseMenu.information
-  (bounds.rawMenu runtime leaks) initial horizon scheduler
+  (bounds.rawMenu timeouts leaks) initial horizon scheduler
 
 /-- The audited raw extension preserves an intended joint law of a
 native one-packet equilibrium, with zero charges, its complete normalized
@@ -42,12 +46,12 @@ theorem intended_raw_sequentialEquilibrium_of_onePacket {Parameter : Type}
     (equilibrium : native.IsSequentialEquilibriumFor
       ((menu).decisionInformationAntichain initial horizon scheduler)
       (fun who site => native.truncatedContinuationContext site
-        (fun final => exclusionBase setup runtime parameter utility excludedPayoff leaks
+        (fun final => exclusionBase setup timeouts parameter utility excludedPayoff leaks
           final.state who)
         (2 * horizon + 1)))
     (law : ((N).runBehavioral native.strategy (2 * horizon + 1)).map (fun final =>
-        (sourceReadout setup runtime leaks final.state,
-          exclusionBase setup runtime parameter utility excludedPayoff leaks final.state)) =
+        (sourceReadout setup timeouts leaks final.state,
+          exclusionBase setup timeouts parameter utility excludedPayoff leaks final.state)) =
       (setup.intendedModel.runBehavioral source.strategy
         (instructionCount setup.program + 1)).map
         (intendedReadoutExclusion setup parameter utility excludedPayoff))
@@ -57,22 +61,23 @@ theorem intended_raw_sequentialEquilibrium_of_onePacket {Parameter : Type}
     (coverage : CountEvidenceCoverage service observationRate deliveryRate)
     (lowerUtility upperUtility : Player → ℝ)
     (lower_le : ∀ history : ((raw).protocol initial horizon scheduler).History,
-      ∀ terminal, sourceReadout setup runtime leaks history.state = some terminal →
+      ∀ terminal, sourceReadout setup timeouts leaks history.state = some terminal →
         ∀ who, lowerUtility who ≤ utility (setup.parameterOutcome parameter terminal) who)
     (le_upper : ∀ history : ((raw).protocol initial horizon scheduler).History,
-      ∀ terminal, sourceReadout setup runtime leaks history.state = some terminal →
+      ∀ terminal, sourceReadout setup timeouts leaks history.state = some terminal →
         ∀ who, utility (setup.parameterOutcome parameter terminal) who ≤ upperUtility who)
     (deposit : Player → ℝ) (deposit_nonnegative : ∀ who, 0 ≤ deposit who)
     (sufficient : ∀ who,
       max 0 (max (excludedPayoff who) (upperUtility who)) -
           min 0 (min (excludedPayoff who) (lowerUtility who)) ≤
         observationRate who * deliveryRate who * deposit who) :
-    let observe := (runtime.reactiveApplication leaks).stateTraffic
-    let audit := runtime.countAudit leaks service.sample
-    let base := exclusionBase setup runtime parameter utility excludedPayoff leaks
+    let observe := ((reactiveApplication timeouts) leaks).stateTraffic
+    let audit := (countAudit timeouts) leaks service.sample
+    let base := exclusionBase setup timeouts parameter utility excludedPayoff leaks
     let payoff := TerminalAudit.utility base observe audit deposit
     let settle := TerminalAudit.settlement base observe audit deposit
     ∃ target : (R).BehavioralAssessment,
+      bounds.ExtendsOnePacketAssessment timeouts leaks initial horizon scheduler native target ∧
       target.IsSequentialEquilibriumFor
         ((raw).decisionInformationAntichain initial horizon scheduler)
         (fun who site => target.truncatedContinuationContext site
@@ -80,11 +85,11 @@ theorem intended_raw_sequentialEquilibrium_of_onePacket {Parameter : Type}
       (∀ final ∈ ((R).runBehavioral target.strategy (2 * horizon + 1)).support,
         ∀ who, TerminalAudit.charge observe audit final.state who = 0) ∧
       ((R).runBehavioral target.strategy (2 * horizon + 1)).map (fun final =>
-        (runtime.reactiveNormalization leaks).state final.state) =
+        ((reactiveNormalization timeouts) leaks).state final.state) =
           ((N).runBehavioral native.strategy (2 * horizon + 1)).map History.state ∧
       ((R).runBehavioral target.strategy (2 * horizon + 1)).bind
         (fun final => (settle final.state).map fun payoffs =>
-          (sourceReadout setup runtime leaks final.state, payoffs)) =
+          (sourceReadout setup timeouts leaks final.state, payoffs)) =
         (setup.intendedModel.runBehavioral source.strategy
           (instructionCount setup.program + 1)).map
           (intendedReadoutExclusion setup parameter utility excludedPayoff) := by
@@ -94,24 +99,24 @@ theorem intended_raw_sequentialEquilibrium_of_onePacket {Parameter : Type}
     ((menu).bounded initial horizon scheduler).wellFoundedHistories
     ((menu).bounded initial horizon scheduler)
     (fun who final => base final.state who)).mpr equilibrium
-  obtain ⟨target, targetSE, clean, states, joint⟩ :=
-    bounds.onePacket_raw_sequentialEquilibrium runtime leaks initial horizon
+  obtain ⟨target, refinement, targetSE, clean, states, joint⟩ :=
+    bounds.onePacket_raw_sequentialEquilibrium timeouts leaks initial horizon
       scheduler service observationRate deliveryRate delivery_nonnegative coverage base
-      (exclusionBase_normalization setup runtime parameter utility excludedPayoff leaks)
+      (exclusionBase_normalization setup timeouts parameter utility excludedPayoff leaks)
       (fun who => min 0 (min (excludedPayoff who) (lowerUtility who)))
       (fun who => max 0 (max (excludedPayoff who) (upperUtility who))) deposit
-      (fun history who => (exclusionBase_mem_Icc setup runtime parameter utility
+      (fun history who => (exclusionBase_mem_Icc setup timeouts parameter utility
         excludedPayoff leaks
         lowerUtility upperUtility history.state (lower_le history) (le_upper history) who).1)
-      (fun history who => (exclusionBase_mem_Icc setup runtime parameter utility
+      (fun history who => (exclusionBase_mem_Icc setup timeouts parameter utility
         excludedPayoff leaks
         lowerUtility upperUtility history.state (lower_le history) (le_upper history) who).2)
       deposit_nonnegative sufficient native nativeSE
-  refine ⟨target, targetSE, clean, states, ?_⟩
-  let read := fun state : (runtime.reactiveApplication leaks).ProtocolState =>
-    sourceReadout setup runtime leaks state
-  have normalized (state : (runtime.reactiveApplication leaks).ProtocolState) :
-      read ((runtime.reactiveNormalization leaks).state state) = read state := by
+  refine ⟨target, refinement, targetSE, clean, states, ?_⟩
+  let read := fun state : ((reactiveApplication timeouts) leaks).ProtocolState =>
+    sourceReadout setup timeouts leaks state
+  have normalized (state : ((reactiveApplication timeouts) leaks).ProtocolState) :
+      read (((reactiveNormalization timeouts) leaks).state state) = read state := by
     cases state <;> rfl
   have pairs := congrArg (PMF.map (Prod.map read id)) joint
   simp only [PMF.map_bind, PMF.map_comp, Function.comp_def, Prod.map_apply, id_eq,

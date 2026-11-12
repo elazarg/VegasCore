@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveBindingSubmittedResponse
+public import Vegas.Pending.ReactiveBindingSubmittedResponse
+
+@[expose] public section
 
 /-! # Normal forms of counted binding and opening responses -/
 
@@ -12,19 +16,19 @@ open Interaction EventGraph
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {graph : Vegas.EventGraph Player L}
-  (runtime : EventGraphRuntime graph)
+  (timeouts : EventTimeouts graph)
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
 
 /-- A normalized binding response carrying no certificate has exactly the raw
 private opening and no effective evidence request, regardless of slot freshness. -/
 theorem normal_binding_of_absent_evidence (who : Player)
-    (past : List (runtime.reactiveApplication leaks).PlayerEntry)
-    (view : (runtime.reactiveApplication leaks).PlayerView)
+    (past : List ((reactiveApplication timeouts) leaks).PlayerEntry)
+    (view : ((reactiveApplication timeouts) leaks).PlayerView)
     (material : WitnessedSubmission graph) (event : graph.EventId) (candidate : Handle graph)
     (normal : material.normalizeReactive who view.application
       (ReactiveApplication.ResponseMenu.knownPackets past view) = material)
     (packet : material.call.packet = .commitment event candidate)
-    (absent : (runtime.localEnvelope leaks who past view material).payload.evidence = none) :
+    (absent : ((localEnvelope timeouts) leaks who past view material).payload.evidence = none) :
     material = ⟨⟨.commitment event candidate, material.call.opening⟩, .none⟩ := by
   have evidenceNormal := congrArg WitnessedSubmission.evidence normal
   change material.evidence.normalize who
@@ -47,14 +51,14 @@ theorem normal_binding_of_absent_evidence (who : Player)
 /-- Every normalized certified owned opening has the compiler's authentic
 opening normal form, including responses originally requesting forwarded evidence. -/
 theorem normal_opening_of_owned_evidence (who : Player)
-    (past : List (runtime.reactiveApplication leaks).PlayerEntry)
-    (view : (runtime.reactiveApplication leaks).PlayerView)
+    (past : List ((reactiveApplication timeouts) leaks).PlayerEntry)
+    (view : ((reactiveApplication timeouts) leaks).PlayerView)
     (material : WitnessedSubmission graph) (event : graph.EventId)
     (candidate : Handle graph) (raw : Raw L)
     (normal : material.normalizeReactive who view.application
       (ReactiveApplication.ResponseMenu.knownPackets past view) = material)
     (packet : material.call.packet = .opening event candidate raw)
-    (certified : (runtime.localEnvelope leaks who past view material).payload.evidence =
+    (certified : ((localEnvelope timeouts) leaks who past view material).payload.evidence =
       some ⟨candidate, raw⟩)
     (owned : candidate.1 = who)
     (fixed : view.application.candidates candidate.2 = .openable raw) :

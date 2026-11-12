@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Examples.LateLeak.SettleLateIncentives
+public import Vegas.Examples.LateLeak.SettleLateIncentives
+
+@[expose] public section
 
 /-! # Rational play at the late turns of the settle-late game
 

@@ -1,11 +1,15 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketOwnerRecall
-import Vegas.Game.OnePacketFailureBridge
-import Vegas.Game.OnePacketIntendedProjection
-import Vegas.Game.OnePacketCanonicalAcceptance
-import Vegas.Game.OnePacketCertificateField
-import Vegas.EventGraph.ResolutionProvenance
+public import Vegas.Game.OnePacketOwnerRecall
+public import Vegas.Game.OnePacketFailureBridge
+public import Vegas.Game.OnePacketIntendedProjection
+public import Vegas.Game.OnePacketCanonicalAcceptance
+public import Vegas.Game.OnePacketCertificateField
+public import Vegas.EventGraph.ResolutionProvenance
+
+@[expose] public section
 
 /-! # A debt-free late owner is settled
 
@@ -38,10 +42,10 @@ open GameTheory GameTheory.Protocol Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup runtime leaks).Scheduler}
+  {scheduler : (application setup timeouts leaks).Scheduler}
 
 section Inputs
 
@@ -58,7 +62,7 @@ private theorem exists_inputId : ∀ (Γ : SourceCtx Player L) (input : Fin Γ.l
           obtain ⟨other, otherKind, source, rfl⟩ := exists_inputId Γ input
           exact ⟨other, otherKind, .there source, rfl⟩
 
-variable (setup runtime) in
+variable (setup timeouts) in
 /-- A failed initial binding of `who` among some inputs. -/
 def InputFailed (who : Player) (inputs : (graph setup).Inputs) : Prop :=
   ∃ (input : (graph setup).InputId) (payload : L.Ty)
@@ -88,11 +92,11 @@ theorem owesFailure_entry_of_inputFailed {who : Player} (initial : State L setup
       rw [setup.accounts]
       exact mem_commitmentNames source
 
-variable (setup runtime leaks) in
+variable (setup timeouts leaks) in
 /-- **The input-failure record.** The configuration decodes at a prefix, and a
 failed initial binding of `who` makes `who` owe a failure at the decoded
 point. -/
-def InputFailureRecord (who : Player) (execution : (application setup runtime leaks).Execution) :
+def InputFailureRecord (who : Player) (execution : (application setup timeouts leaks).Execution) :
     Prop :=
   ∃ rank, Nonempty (SourceResidual setup (failureProfile setup.program) rank
       execution.application.config) ∧
@@ -104,18 +108,18 @@ omit [Fintype Player] in
 /-- The input-failure record holds at every legal history of the default
 runtime. -/
 theorem inputFailureRecord_serviceInvariant (who : Player)
-    (scheduler : (application setup runtime leaks).Scheduler) :
-    (application setup runtime leaks).ServiceInvariant scheduler (InputFailureRecord setup runtime
+    (scheduler : (application setup timeouts leaks).Scheduler) :
+    (application setup timeouts leaks).ServiceInvariant scheduler (InputFailureRecord setup timeouts
       leaks who) where
   respond execution actor action valid := by
-    have configEq := (runtime.reactive_respond_application leaks execution actor
+    have configEq := ((reactive_respond_application timeouts) leaks execution actor
       action).1
     unfold InputFailureRecord at valid ⊢
     rw [configEq]
     exact valid
   environment execution next command valid _ reached := by
     obtain ⟨rank, ⟨residual⟩, record⟩ := valid
-    have path := (runtime.reactiveApplication_graphSteps leaks).environmentStep execution next
+    have path := ((reactiveApplication_graphSteps timeouts) leaks).environmentStep execution next
       command reached
     have inputsEq := EventGraph.Config.Step.path_inputs_eq path
     obtain ⟨nextRank, ⟨successor⟩⟩ := residual.path path
@@ -131,11 +135,12 @@ omit [Fintype Player] in
 /-- The input-failure record holds at every legal history of the default
 runtime from its initial law. -/
 theorem inputFailureRecord_of_trace (who : Player)
-    {control : (application setup runtime leaks).Control}
-    (trace : ((application setup runtime leaks).protocol (initialLaw setup) horizon scheduler).Trace
+    {control : (application setup timeouts leaks).Control}
+    (trace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+      scheduler).Trace
       (some control)) :
-    InputFailureRecord setup runtime leaks who control.execution :=
-  (inputFailureRecord_serviceInvariant (runtime := runtime) who scheduler).history (initialLaw
+    InputFailureRecord setup timeouts leaks who control.execution :=
+  (inputFailureRecord_serviceInvariant (timeouts := timeouts) who scheduler).history (initialLaw
     setup) horizon
     (fun state supported => by
       obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ supported
@@ -183,29 +188,30 @@ private theorem privateTo_cases {who : Player} {field : (graph setup).Field}
 
 omit [Fintype Player] in
 private theorem reachable_of_trace
-    {control : (application setup runtime leaks).Control}
-    (trace : ((application setup runtime leaks).protocol (initialLaw setup) horizon scheduler).Trace
+    {control : (application setup timeouts leaks).Control}
+    (trace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+      scheduler).Trace
       (some control)) :
     ∃ inputs, control.execution.application.config.Reachable inputs := by
   have native := trace
-  change ((runtime.reactiveApplication leaks).protocol (serviceInitialLaw setup .sequential)
+  change (((reactiveApplication timeouts) leaks).protocol (serviceInitialLaw setup .sequential)
     horizon scheduler).Trace (some control) at native
   rw [serviceInitialLaw_eq_inputs setup] at native
-  obtain ⟨inputs, _supported, valid⟩ := runtime.reactive_history_invariant leaks
+  obtain ⟨inputs, _supported, valid⟩ := (reactive_history_invariant timeouts) leaks
     (setup.initialLaw.map setup.eventInputs) horizon scheduler native
   exact ⟨inputs, valid.reachable⟩
 
 /-- **No private field of a debt-free owner stores a failure.** -/
-theorem noFailure_of_debtFree {control : (application setup runtime leaks).Control}
-    (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control))
+theorem noFailure_of_debtFree {control : (application setup timeouts leaks).Control}
+    (trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some control))
     {who : Player}
-    (debtFree : ∀ point, nativeDecodedState setup runtime leaks (some control) = some point →
+    (debtFree : ∀ point, nativeDecodedState setup timeouts leaks (some control) = some point →
       ¬ ProtocolState.OwesFailure who setup.program point) :
     ∀ field, PrivateTo who field → ∀ value,
       control.execution.application.config.store field = some value →
         ¬ ((graph setup).layout field).IsFailure value := by
   intro field privateTo value stored failed
-  have rawTrace := (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup)
+  have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup)
     horizon scheduler trace
   rcases privateTo_cases privateTo with ⟨payload, layoutEq⟩ | ⟨payload, layoutEq⟩
   · have general : ∀ (kind : EventGraph.EventField Player L)
@@ -216,13 +222,13 @@ theorem noFailure_of_debtFree {control : (application setup runtime leaks).Contr
     have castFailed := general _ layoutEq value failed
     cases field with
     | inl input =>
-        obtain ⟨rank, ⟨residual⟩, record⟩ := inputFailureRecord_of_trace (runtime := runtime) who
+        obtain ⟨rank, ⟨residual⟩, record⟩ := inputFailureRecord_of_trace (timeouts := timeouts) who
           rawTrace
         cases Option.some.inj stored
         exact debtFree _ (decodedPoint_eq residual)
           (record ⟨input, payload, layoutEq, castFailed⟩ _ residual.decode)
     | inr event =>
-        obtain ⟨rank, ⟨residual⟩, record⟩ := failedBindingRecord_history (runtime := runtime)
+        obtain ⟨rank, ⟨residual⟩, record⟩ := failedBindingRecord_history (timeouts := timeouts)
           (failureProfile setup.program) horizon scheduler rawTrace
         have present : (control.execution.application.config.outputs event).isSome := by
           change control.execution.application.config.outputs event = some value at stored
@@ -242,10 +248,10 @@ theorem noFailure_of_debtFree {control : (application setup runtime leaks).Contr
     exact general _ layoutEq value failed
 
 /-- Every completed reveal of a debt-free owner retains an actual disclosure. -/
-theorem disclosed_of_debtFree {control : (application setup runtime leaks).Control}
-    (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control))
+theorem disclosed_of_debtFree {control : (application setup timeouts leaks).Control}
+    (trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some control))
     {who : Player}
-    (debtFree : ∀ point, nativeDecodedState setup runtime leaks (some control) = some point →
+    (debtFree : ∀ point, nativeDecodedState setup timeouts leaks (some control) = some point →
       ¬ ProtocolState.OwesFailure who setup.program point) :
     ∀ completion ∈ control.execution.application.config.history,
       (graph setup).actor? completion.event = some who → ∀ payload
@@ -253,9 +259,9 @@ theorem disclosed_of_debtFree {control : (application setup runtime leaks).Contr
         completion.decision.map (cast (congrArg EventGraph.EventField.Action outputEq)) =
           some true := by
   intro record member owned payload outputEq
-  have rawTrace := (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup)
+  have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup)
     horizon scheduler trace
-  obtain ⟨inputs, reachable⟩ := reachable_of_trace (runtime := runtime) rawTrace
+  obtain ⟨inputs, reachable⟩ := reachable_of_trace (timeouts := timeouts) rawTrace
   have completed := (control.execution.application.config.history_exact record.event).mp
     (List.mem_map_of_mem (f := EventCompletion.event) member)
   obtain ⟨value, stored⟩ := Option.isSome_iff_exists.mp
@@ -273,7 +279,7 @@ theorem disclosed_of_debtFree {control : (application setup runtime leaks).Contr
         exact failed
       have failed : StoreEventFailed control.execution.application.config.store record.event :=
         ⟨value, stored, general _ outputEq value typed⟩
-      obtain ⟨rank, ⟨residual⟩, recordFailure⟩ := SourceFailureRecord.history (runtime := runtime)
+      obtain ⟨rank, ⟨residual⟩, recordFailure⟩ := SourceFailureRecord.history (timeouts := timeouts)
         (failureProfile setup.program) horizon scheduler rawTrace
       exact (debtFree _ (decodedPoint_eq residual)
         (recordFailure record.event completed who owned failed _ residual.decode)).elim
@@ -290,21 +296,21 @@ theorem disclosed_of_debtFree {control : (application setup runtime leaks).Contr
 
 /-- **One own packet per event.** Two packets a player recalls emitting that
 name one event are the same packet. -/
-theorem ownOutput_eq_of_event {control : (application setup runtime leaks).Control}
-    (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control))
+theorem ownOutput_eq_of_event {control : (application setup timeouts leaks).Control}
+    (trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some control))
     (who : Player) (event : (graph setup).EventId)
     {first second : Message Player (WitnessedPacket (graph setup))}
-    (firstMember : first ∈ (application setup runtime leaks).outputs (control.execution.logs who))
-    (secondMember : second ∈ (application setup runtime leaks).outputs (control.execution.logs
+    (firstMember : first ∈ (application setup timeouts leaks).outputs (control.execution.logs who))
+    (secondMember : second ∈ (application setup timeouts leaks).outputs (control.execution.logs
       who))
     (firstNamed : first.payload.call.event? (graph setup) = some event)
     (secondNamed : second.payload.call.event? (graph setup) = some event) : first = second := by
-  have rawTrace := (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup)
+  have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup)
     horizon scheduler trace
-  have clean := (bounds.onePacketMenu_countClean runtime leaks scheduler).history
-    (initialLaw setup) horizon (fun state _ => runtime.countClean_initial leaks state)
+  have clean := (bounds.onePacketMenu_countClean timeouts leaks scheduler).history
+    (initialLaw setup) horizon (fun state _ => (countClean_initial timeouts) leaks state)
     trace
-  have signed := signedCommitments_history runtime leaks (initialLaw setup)
+  have signed := signedCommitments_history timeouts leaks (initialLaw setup)
     (serviceInitialLaw_initialized setup) horizon scheduler rawTrace
   obtain ⟨firstEntry, firstEntryMember, firstEmitted⟩ := List.mem_filterMap.mp firstMember
   obtain ⟨secondEntry, secondEntryMember, secondEmitted⟩ := List.mem_filterMap.mp secondMember
@@ -313,13 +319,13 @@ theorem ownOutput_eq_of_event {control : (application setup runtime leaks).Contr
     secondEmitted).1
   have sameId : second.id = first.id := by
     by_contra different
-    exact onePacket_not_emitsOtherFor (runtime := runtime) bounds trace who event first
+    exact onePacket_not_emitsOtherFor (timeouts := timeouts) bounds trace who event first
       firstMember firstNamed
       secondEntry secondEntryMember
       ⟨second, secondEmitted, secondSender.trans firstSender.symm, secondNamed, different⟩
-  have firstInput := output_mem_inputs_of_trace (runtime := runtime) bounds trace who first
+  have firstInput := output_mem_inputs_of_trace (timeouts := timeouts) bounds trace who first
     firstMember
-  have secondInput := output_mem_inputs_of_trace (runtime := runtime) bounds trace who second
+  have secondInput := output_mem_inputs_of_trace (timeouts := timeouts) bounds trace who second
     secondMember
   have nodup := (clean.1.2.2 who) ▸ List.nodup_range
   exact List.inj_on_of_nodup_map nodup
@@ -335,31 +341,31 @@ section Openable
 whose decoded point `who` owes no failure, and at which some ready event is
 named by none of `who`'s packets, every prepared slot that a packet of `who`
 names is openable. -/
-theorem openable_of_pending {control : (application setup runtime leaks).Control}
-    (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control))
+theorem openable_of_pending {control : (application setup timeouts leaks).Control}
+    (trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some control))
     {who : Player}
-    (debtFree : ∀ point, nativeDecodedState setup runtime leaks (some control) = some point →
+    (debtFree : ∀ point, nativeDecodedState setup timeouts leaks (some control) = some point →
       ¬ ProtocolState.OwesFailure who setup.program point)
     (pending : ∃ event, control.execution.application.config.cut.Ready event ∧
-      ∀ message ∈ (application setup runtime leaks).outputs (control.execution.logs who),
+      ∀ message ∈ (application setup timeouts leaks).outputs (control.execution.logs who),
         message.payload.call.event? (graph setup) ≠ some event)
     (serial : Nat)
-    (named : NamedSlot who ((application setup runtime leaks).outputs (control.execution.logs
+    (named : NamedSlot who ((application setup timeouts leaks).outputs (control.execution.logs
       who))
       serial) :
     ∃ raw, control.execution.application.candidates.lookup (who, .prepared serial) =
       .openable raw := by
   obtain ⟨message, output, event, call⟩ := named
-  have rawTrace := (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup)
+  have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup)
     horizon scheduler trace
-  have clean := (bounds.onePacketMenu_countClean runtime leaks scheduler).history
-    (initialLaw setup) horizon (fun state _ => runtime.countClean_initial leaks state)
+  have clean := (bounds.onePacketMenu_countClean timeouts leaks scheduler).history
+    (initialLaw setup) horizon (fun state _ => (countClean_initial timeouts) leaks state)
     trace
-  have signed := signedCommitments_history runtime leaks (initialLaw setup)
+  have signed := signedCommitments_history timeouts leaks (initialLaw setup)
     (serviceInitialLaw_initialized setup) horizon scheduler rawTrace
   obtain ⟨entry, entryMember, entryEmitted⟩ := List.mem_filterMap.mp output
   obtain ⟨k, inside, entryEq⟩ := List.getElem_of_mem entryMember
-  obtain ⟨_, _, _, _, _, recorded⟩ := recallRecord_of_trace (runtime := runtime) trace control rfl
+  obtain ⟨_, _, _, _, _, recorded⟩ := recallRecord_of_trace (timeouts := timeouts) trace control rfl
     who k inside
   rw [entryEq] at recorded
   have sender := (signed.emissions who entry entryMember message entryEmitted).1
@@ -392,15 +398,15 @@ theorem openable_of_pending {control : (application setup runtime leaks).Control
           change control.execution.application.candidates.lookup (who, .prepared serial) =
             .unopenable at meaning
           -- The committed event is complete.
-          have input := output_mem_inputs_of_trace (runtime := runtime) bounds trace who message
+          have input := output_mem_inputs_of_trace (timeouts := timeouts) bounds trace who message
             output
           have permitted := (countPermits_eq_true_iff _ _).mp (clean.2 message input)
           obtain ⟨tokenEvent, tokenNamed, tokenEq⟩ :=
             (WitnessedPacket.tokenValid_iff _).mp permitted.1
           rw [call] at tokenNamed
           cases Option.some.inj tokenNamed
-          obtain ⟨emittedMessage, emittedEq, _, tokens⟩ := ownedRequestsEmitted_history (runtime
-            := runtime) bounds
+          obtain ⟨emittedMessage, emittedEq, _, tokens⟩ := ownedRequestsEmitted_history (timeouts
+            := timeouts) bounds
             trace who _ entryMember submission rfl
           change emitted = some emittedMessage at emittedEq
           rw [sent] at emittedEq
@@ -432,7 +438,7 @@ theorem openable_of_pending {control : (application setup runtime leaks).Control
           have present := (control.execution.application.config.output_available event).mpr done
           obtain ⟨value, stored⟩ := Option.isSome_iff_exists.mp present
           have privateTo : PrivateTo who (.inr event) := privateTo_of_binding layoutEq
-          have notFailed := noFailure_of_debtFree (runtime := runtime) trace debtFree (.inr event)
+          have notFailed := noFailure_of_debtFree (timeouts := timeouts) trace debtFree (.inr event)
             privateTo value
             stored
           let ref : EventGraph.FieldRef (graph setup).layout (.binding who payload) :=
@@ -452,7 +458,7 @@ theorem openable_of_pending {control : (application setup runtime leaks).Control
             some (cast (congrArg EventGraph.EventField.Value layoutEq) value) at read
           rw [success] at read
           have valid : control.execution.application.BindingInvariant :=
-            (runtime.reactiveBindingInvariant leaks).history (initialLaw setup) horizon
+            ((reactiveBindingInvariant timeouts) leaks).history (initialLaw setup) horizon
               scheduler (fun state member => by
                 obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ member
                 exact State.initial_bindingInvariant _) rawTrace
@@ -460,7 +466,7 @@ theorem openable_of_pending {control : (application setup runtime leaks).Control
           obtain ⟨committed, committedOutput, committedCall⟩ :=
             signed.acceptedSigned event handle accepted
           rw [handleOwner] at committedOutput
-          have sameMessage := ownOutput_eq_of_event (runtime := runtime) trace who event output
+          have sameMessage := ownOutput_eq_of_event (timeouts := timeouts) trace who event output
             committedOutput
             (by rw [call]; rfl) (by rw [committedCall]; rfl)
           subst sameMessage
@@ -473,26 +479,26 @@ theorem openable_of_pending {control : (application setup runtime leaks).Control
 game at whose decoded point `who` owes no failure, and at which some ready event
 is named by none of `who`'s packets, the application state is settled for
 `who` with the slots its own packets name. -/
-theorem ownerSettled_of_trace {control : (application setup runtime leaks).Control}
-    (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control))
+theorem ownerSettled_of_trace {control : (application setup timeouts leaks).Control}
+    (trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some control))
     {who : Player}
-    (debtFree : ∀ point, nativeDecodedState setup runtime leaks (some control) = some point →
+    (debtFree : ∀ point, nativeDecodedState setup timeouts leaks (some control) = some point →
       ¬ ProtocolState.OwesFailure who setup.program point)
     (pending : ∃ event, control.execution.application.config.cut.Ready event ∧
-      ∀ message ∈ (application setup runtime leaks).outputs (control.execution.logs who),
+      ∀ message ∈ (application setup timeouts leaks).outputs (control.execution.logs who),
         message.payload.call.event? (graph setup) ≠ some event) :
-    OwnerSettled who (NamedSlot who ((application setup runtime leaks).outputs
+    OwnerSettled who (NamedSlot who ((application setup timeouts leaks).outputs
       (control.execution.logs who))) control.execution.application where
-  noFailure := noFailure_of_debtFree (runtime := runtime) trace debtFree
+  noFailure := noFailure_of_debtFree (timeouts := timeouts) trace debtFree
   bindAction completion member owner payload outputEq codeEq := by
-    have rawTrace := (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup)
+    have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup)
       horizon scheduler trace
-    obtain ⟨inputs, reachable⟩ := reachable_of_trace (runtime := runtime) rawTrace
+    obtain ⟨inputs, reachable⟩ := reachable_of_trace (timeouts := timeouts) rawTrace
     exact reachable.binding_output completion member owner payload outputEq codeEq
-  disclosed := disclosed_of_debtFree (runtime := runtime) trace debtFree
-  fresh := freshExact_of_trace (runtime := runtime) trace who
-  openable := openable_of_pending (runtime := runtime) trace debtFree pending
-  initial input := initialCandidates_of_trace (runtime := runtime) trace control rfl who input
+  disclosed := disclosed_of_debtFree (timeouts := timeouts) trace debtFree
+  fresh := freshExact_of_trace (timeouts := timeouts) trace who
+  openable := openable_of_pending (timeouts := timeouts) trace debtFree pending
+  initial input := initialCandidates_of_trace (timeouts := timeouts) trace control rfl who input
 
 end Openable
 

@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RevealRunRecords
-import Vegas.Game.RevealPhaseBoundary
+public import Vegas.Game.RevealRunRecords
+public import Vegas.Game.RevealPhaseBoundary
+
+@[expose] public section
 
 /-! # A step of a run of reveals on the ledger
 
@@ -20,7 +24,7 @@ open SourceProgram GameTheory.Math.Probability Interaction EventGraphRuntime Eve
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {mode : EventGraph.ExecutionMode} {deadline : (serviceGraph setup mode).EventId → Nat}
+  {mode : EventGraph.ExecutionMode} {duration : (serviceGraph setup mode).EventId → Nat}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode))}
 
 /-- The deviator records a decision since `origin` only at allowed events. -/
@@ -32,16 +36,16 @@ def DecidesOnly (who : Player) (origin : (serviceGraph setup mode).Config)
       ∀ record, completionOf config event = some record → record.decision = none
 
 /-- The invariant of a step of a run from `origin`, with `n` rounds left. -/
-def RunStepHolds (scheduler : (serviceApplication setup mode deadline leaks).Scheduler)
+def RunStepHolds (scheduler : (serviceApplication setup mode duration leaks).Scheduler)
     (bound : (serviceGraph setup mode).EventId → Nat) (turns : Nat)
     (reference : (serviceGraph setup mode).BehavioralProfile) (who : Player)
-    (deviation : (serviceApplication setup mode deadline leaks).Policy) (horizon : Nat)
+    (deviation : (serviceApplication setup mode duration leaks).Policy) (horizon : Nat)
     (start finish : Nat) (allowed : (serviceGraph setup mode).EventId → Prop)
     (origin : (serviceGraph setup mode).Config) (n : Nat)
-    (current : (serviceApplication setup mode deadline leaks).Execution) : Prop :=
-    current ∈ ((serviceApplication setup mode deadline leaks).roundsFrom
+    (current : (serviceApplication setup mode duration leaks).Execution) : Prop :=
+    current ∈ ((serviceApplication setup mode duration leaks).roundsFrom
       (serviceInitialLaw setup mode) scheduler
-      (Function.update (serviceReferenceTurnPolicy setup mode deadline leaks bound turns
+      (Function.update (serviceReferenceTurnPolicy setup mode duration leaks bound turns
         (firstTurnTiming setup turns mode) reference) who deviation)
       current.environmentRecall.length).support ∧
     current.environmentRecall.length + n ≤ horizon ∧
@@ -56,12 +60,12 @@ def RunStepHolds (scheduler : (serviceApplication setup mode deadline leaks).Sch
 /-- **A round of a step of a run** keeps the step's invariant while the step
 has not stopped. -/
 theorem runStep_round {horizon : Nat}
-    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    {scheduler : (serviceApplication setup mode duration leaks).Scheduler}
     {delay : (serviceGraph setup mode).EventId → Nat}
     (bound : (serviceGraph setup mode).EventId → Nat) (turns : Nat)
-    (contract : AsyncContract (serviceRuntime setup mode deadline) leaks
+    (contract : AsyncContract (serviceTimeouts setup mode duration) leaks
         (serviceInitialLaw setup mode) horizon scheduler delay bound)
-    (timely : AsyncTimely (serviceRuntime setup mode deadline) delay bound)
+    (timely : AsyncTimely (serviceTimeouts setup mode duration) delay bound)
     (reference : (serviceGraph setup mode).BehavioralProfile)
     (decides : ∀ (config : (serviceGraph setup mode).Config)
       (event : (serviceGraph setup mode).EventId) (owner : Player) (payload : L.Ty)
@@ -77,7 +81,7 @@ theorem runStep_round {horizon : Nat}
         reference owner event actor ((serviceGraph setup mode).playerObserve owner config)
           active = PMF.pure (cast (congrArg EventField.Action outputEq.symm)
             (openingAccepted event config.store)))
-    (who : Player) (deviation : (serviceApplication setup mode deadline leaks).Policy)
+    (who : Player) (deviation : (serviceApplication setup mode duration leaks).Policy)
     (start finish : Nat) (shaped : BlockShaped (graph := serviceGraph setup mode) start finish)
     (publications : ∀ event : (serviceGraph setup mode).EventId, start ≤ event.val →
       event.val < finish → ((serviceGraph setup mode).outputLayout event).IsPublication)
@@ -92,18 +96,18 @@ theorem runStep_round {horizon : Nat}
       ¬ stop config.cut → ∀ event, config.cut.Ready event →
         (serviceGraph setup mode).actor? event = some who → allowed event)
 :
-    ∀ (n : Nat) (current : (serviceApplication setup mode deadline leaks).Execution),
+    ∀ (n : Nat) (current : (serviceApplication setup mode duration leaks).Execution),
       RunStepHolds scheduler bound turns reference who deviation horizon start finish allowed
         origin (n + 1) current →
       ¬ stop current.application.config.cut →
-      ∀ next ∈ ((serviceApplication setup mode deadline leaks).round scheduler
-        (Function.update (serviceReferenceTurnPolicy setup mode deadline leaks bound turns
+      ∀ next ∈ ((serviceApplication setup mode duration leaks).round scheduler
+        (Function.update (serviceReferenceTurnPolicy setup mode duration leaks bound turns
           (firstTurnTiming setup turns mode) reference) who deviation) current).support,
         RunStepHolds scheduler bound turns reference who deviation horizon start finish allowed
           origin n next := by
   classical
-  let app := serviceApplication setup mode deadline leaks
-  let players := Function.update (serviceReferenceTurnPolicy setup mode deadline leaks bound
+  let app := serviceApplication setup mode duration leaks
+  let players := Function.update (serviceReferenceTurnPolicy setup mode duration leaks bound
     turns (firstTurnTiming setup turns mode) reference) who deviation
   have notDone (cut : (serviceGraph setup mode).order.Cut) (running : ¬ stop cut) :
       ¬ ∀ event : (serviceGraph setup mode).EventId, event.val < finish →
@@ -113,7 +117,7 @@ theorem runStep_round {horizon : Nat}
     decided⟩ := valid
   have unfinished : ¬ BlockDone finish current.application.config := notDone _ running
   have lengths := app.round_environmentRecall_length scheduler players current next moved
-  have path := reactive_round_graph_steps (serviceRuntime setup mode deadline) leaks scheduler
+  have path := reactive_round_graph_steps (serviceTimeouts setup mode duration) leaks scheduler
     players current next moved
   obtain ⟨trace⟩ := app.raw_trace_roundsFrom (serviceInitialLaw setup mode) horizon scheduler
     players current.environmentRecall.length (by omega) current currentSupported
@@ -166,12 +170,12 @@ accepted, stays inside the run, and records a decision of the deviator only at
 events allowed whenever they are ready, when honest clients open a reveal
 exactly when its opening is accepted. -/
 theorem runStep_facts {horizon : Nat}
-    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    {scheduler : (serviceApplication setup mode duration leaks).Scheduler}
     {delay : (serviceGraph setup mode).EventId → Nat}
     (bound : (serviceGraph setup mode).EventId → Nat) (turns : Nat)
-    (contract : AsyncContract (serviceRuntime setup mode deadline) leaks
+    (contract : AsyncContract (serviceTimeouts setup mode duration) leaks
         (serviceInitialLaw setup mode) horizon scheduler delay bound)
-    (timely : AsyncTimely (serviceRuntime setup mode deadline) delay bound)
+    (timely : AsyncTimely (serviceTimeouts setup mode duration) delay bound)
     (reference : (serviceGraph setup mode).BehavioralProfile)
     (decides : ∀ (config : (serviceGraph setup mode).Config)
       (event : (serviceGraph setup mode).EventId) (owner : Player) (payload : L.Ty)
@@ -187,7 +191,7 @@ theorem runStep_facts {horizon : Nat}
         reference owner event actor ((serviceGraph setup mode).playerObserve owner config)
           active = PMF.pure (cast (congrArg EventField.Action outputEq.symm)
             (openingAccepted event config.store)))
-    (who : Player) (deviation : (serviceApplication setup mode deadline leaks).Policy)
+    (who : Player) (deviation : (serviceApplication setup mode duration leaks).Policy)
     (start finish : Nat) (shaped : BlockShaped (graph := serviceGraph setup mode) start finish)
     (publications : ∀ event : (serviceGraph setup mode).EventId, start ≤ event.val →
       event.val < finish → ((serviceGraph setup mode).outputLayout event).IsPublication)
@@ -195,24 +199,24 @@ theorem runStep_facts {horizon : Nat}
     (stopDone : ∀ cut : (serviceGraph setup mode).order.Cut,
       (∀ event : (serviceGraph setup mode).EventId, event.val < finish →
         event ∈ cut.completed) → stop cut)
-    (execution : (serviceApplication setup mode deadline leaks).Execution)
+    (execution : (serviceApplication setup mode duration leaks).Execution)
     (allowed : (serviceGraph setup mode).EventId → Prop)
     (readyAllowed : ∀ config : (serviceGraph setup mode).Config,
       Relation.ReflTransGen Config.Step execution.application.config config →
       ¬ stop config.cut → ∀ event, config.cut.Ready event →
         (serviceGraph setup mode).actor? event = some who → allowed event)
-    (supported : execution ∈ ((serviceApplication setup mode deadline leaks).roundsFrom
+    (supported : execution ∈ ((serviceApplication setup mode duration leaks).roundsFrom
       (serviceInitialLaw setup mode) scheduler
-      (Function.update (serviceReferenceTurnPolicy setup mode deadline leaks bound turns
+      (Function.update (serviceReferenceTurnPolicy setup mode duration leaks bound turns
         (firstTurnTiming setup turns mode) reference) who deviation)
       execution.environmentRecall.length).support)
     (bounded : execution.environmentRecall.length ≤ horizon)
     (inside : ¬ BlockDone finish execution.application.config →
       InBlock start finish execution.application.config)
     (submissions : HonestBlockSubmissions who start finish execution)
-    (final : (serviceApplication setup mode deadline leaks).Execution)
-    (reached : final ∈ ((serviceApplication setup mode deadline leaks).runUntilHorizon scheduler
-      (Function.update (serviceReferenceTurnPolicy setup mode deadline leaks bound turns
+    (final : (serviceApplication setup mode duration leaks).Execution)
+    (reached : final ∈ ((serviceApplication setup mode duration leaks).runUntilHorizon scheduler
+      (Function.update (serviceReferenceTurnPolicy setup mode duration leaks bound turns
         (firstTurnTiming setup turns mode) reference) who deviation)
       (fun current => stop current.application.config.cut) horizon execution).support) :
     Relation.ReflTransGen Config.Step execution.application.config final.application.config ∧
@@ -222,8 +226,8 @@ theorem runStep_facts {horizon : Nat}
       HonestBlockSubmissions who start finish final ∧
       (¬ BlockDone finish final.application.config →
         InBlock start finish final.application.config) := by
-  let app := serviceApplication setup mode deadline leaks
-  let players := Function.update (serviceReferenceTurnPolicy setup mode deadline leaks bound
+  let app := serviceApplication setup mode duration leaks
+  let players := Function.update (serviceReferenceTurnPolicy setup mode duration leaks bound
     turns (firstTurnTiming setup turns mode) reference) who deviation
   have notDone (cut : (serviceGraph setup mode).order.Cut) (running : ¬ stop cut) :
       ¬ ∀ event : (serviceGraph setup mode).EventId, event.val < finish →

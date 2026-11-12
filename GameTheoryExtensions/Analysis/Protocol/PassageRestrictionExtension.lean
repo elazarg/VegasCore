@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheory.Analysis.Protocol.RestrictionExtension
-import GameTheory.Analysis.Protocol.SubgameLocalization
+public import GameTheory.Analysis.Protocol.RestrictionExtension
+public import GameTheory.Analysis.Protocol.SubgameLocalization
+
+@[expose] public section
 
 /-! # Extension across an action restriction without a common decision depth
 

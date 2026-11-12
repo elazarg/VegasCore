@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveNormalization
+public import Vegas.Pending.ReactiveNormalization
+
+@[expose] public section
 
 /-! # Prescribed graph decisions in one activation
 
@@ -72,11 +76,11 @@ theorem disclosureSubmission_normalize_opening (who : Player) (view : PlayerView
     EvidenceRequest.normalize_owned_nil,
     owned, verified, and_self, ↓reduceIte]
 
-def reactiveDecision (runtime : EventGraphRuntime graph)
+def reactiveDecision (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (who : Player) (event : graph.EventId)
     (action : graph.Action event) (view : PlayerView graph) :
-    (runtime.reactiveApplication leaks).Action where
+    ((reactiveApplication timeouts) leaks).Action where
   transmission := if who ∈ view.publicView.observation.defaulted then none else
     match nodeView graph event with
     | .sample .. => none
@@ -94,13 +98,13 @@ def reactiveDecision (runtime : EventGraphRuntime graph)
 
 /-- The prescribed native decision with private response aliases normalized.
 An omitted binding or withheld publication sends nothing and is settled by expiry. -/
-def serviceDecision (runtime : EventGraphRuntime graph)
+def serviceDecision (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (who : Player) (past : List (runtime.reactiveApplication leaks).PlayerEntry)
-    (view : (runtime.reactiveApplication leaks).PlayerView)
+    (who : Player) (past : List ((reactiveApplication timeouts) leaks).PlayerEntry)
+    (view : ((reactiveApplication timeouts) leaks).PlayerView)
     (event : graph.EventId) (choice : graph.Action event) :
-    (runtime.reactiveApplication leaks).Action :=
-  (runtime.reactiveNormalization leaks).action who past view
-    (runtime.reactiveDecision leaks who event choice view.application)
+    ((reactiveApplication timeouts) leaks).Action :=
+  ((reactiveNormalization timeouts) leaks).action who past view
+    ((reactiveDecision timeouts) leaks who event choice view.application)
 
 end Vegas.EventGraphRuntime

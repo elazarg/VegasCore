@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheory.Core.Equilibrium
-import GameTheory.Math.Probability.ExpectationBind
-import GameTheoryExtensions.Math.Probability.Uniform
-import GameTheory.Math.Probability.FiniteUniform
+public import GameTheory.Core.Equilibrium
+public import GameTheory.Math.Probability.ExpectationBind
+public import GameTheoryExtensions.Math.Probability.Uniform
+public import GameTheory.Math.Probability.FiniteUniform
+
+@[expose] public section
 
 open GameTheory.Math.Probability
 

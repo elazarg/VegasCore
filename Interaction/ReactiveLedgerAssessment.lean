@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveLedgerRealization
-import Interaction.ReactiveResponseEvaluation
-import Interaction.ReactiveRestrictedContinuation
+public import Interaction.ReactiveLedgerRealization
+public import Interaction.ReactiveResponseEvaluation
+public import Interaction.ReactiveRestrictedContinuation
+
+@[expose] public section
 
 /-! # Uniform ledger-client realization of bounded behavioral profiles
 

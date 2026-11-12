@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveAliasBayes
-import Interaction.ReactiveAliasIncentives
-import GameTheory.Analysis.Protocol.Incentives
+public import Interaction.ReactiveAliasBayes
+public import Interaction.ReactiveAliasIncentives
+public import GameTheory.Analysis.Protocol.Incentives
+
+@[expose] public section
 
 /-! # Sequential equilibrium under private response aliases
 

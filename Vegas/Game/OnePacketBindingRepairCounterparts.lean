@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketBindingRepairIteration
-import Vegas.Game.OnePacketDirectedRepairGuard
-import Vegas.Game.OnePacketOwnerSettled
-import Vegas.Game.SourceDebtObservation
+public import Vegas.Game.OnePacketBindingRepairIteration
+public import Vegas.Game.OnePacketDirectedRepairGuard
+public import Vegas.Game.OnePacketOwnerSettled
+public import Vegas.Game.SourceDebtObservation
+
+@[expose] public section
 
 /-! # Counterparts from finite actual hidden-binding repairs
 
@@ -23,10 +27,10 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol Intera
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup runtime leaks).Scheduler}
+  {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- An actual single-owner repair constructor at a forced focal information
 set yields a regular counterpart after finitely many foreign-owner repairs.
@@ -34,19 +38,19 @@ The constructor remains the explicit implementation dependency. -/
 theorem counterpart_of_owner_repairs (wellFormed : setup.WellFormed)
     {assessment : setup.intendedModel.BehavioralAssessment} (mixed : assessment.IsFullyMixed)
     {focal : Player}
-    {site : (onePacketInformation setup runtime leaks bounds horizon scheduler).InformationSite
+    {site : (onePacketInformation setup timeouts leaks bounds horizon scheduler).InformationSite
       focal}
-    {past : List (application setup runtime leaks).PlayerEntry}
-    {view : (application setup runtime leaks).PlayerView}
+    {past : List (application setup timeouts leaks).PlayerEntry}
+    {view : (application setup timeouts leaks).PlayerView}
     (decision : site.1 = some (past, view))
-    (forced : forcedAgent (runtime := runtime) (bounds.onePacketMenu runtime leaks) (initialLaw
+    (forced : forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks) (initialLaw
       setup)
       horizon scheduler focal site.1)
     {event : (graph setup).EventId} (turn : view.application.publicView.ownTurn? focal = some event)
     (history witness :
-      (onePacketInformation setup runtime leaks bounds horizon scheduler).InformationHistory
+      (onePacketInformation setup timeouts leaks bounds horizon scheduler).InformationHistory
         focal (some (past, view)))
-    {original witnessControl : (application setup runtime leaks).Control}
+    {original witnessControl : (application setup timeouts leaks).Control}
     (historyState : history.1.state = some original)
     (witnessState : witness.1.state = some witnessControl)
     {target : ProtocolState setup.program}
@@ -54,50 +58,50 @@ theorem counterpart_of_owner_repairs (wellFormed : setup.WellFormed)
     (free : ∀ player, ¬ ProtocolState.OwesFailure player setup.program target)
     (covered : BindingFieldsCovered bounds)
     (repair : ∀ owner, owner ≠ focal → ∀ current
-      (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some
+      (trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some
         current)),
-      (onePacketInformation setup runtime leaks bounds horizon scheduler).infoOf focal trace =
+      (onePacketInformation setup timeouts leaks bounds horizon scheduler).infoOf focal trace =
         some (past, view) →
-      ∃ repaired : (application setup runtime leaks).Control,
-        ∃ image : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some
+      ∃ repaired : (application setup timeouts leaks).Control,
+        ∃ image : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some
           repaired),
-        ∃ memory : BindingMemory runtime leaks,
+        ∃ memory : BindingMemory timeouts leaks,
           repaired.remaining = current.remaining ∧ repaired.actor = current.actor ∧
-          DirectedBindingFrame (runtime := runtime) memory owner current.execution
+          DirectedBindingFrame (timeouts := timeouts) memory owner current.execution
             repaired.execution ∧
-          operationalRecord setup runtime leaks bounds horizon scheduler trace =
-            operationalRecord setup runtime leaks bounds horizon scheduler image ∧
-          memory.RecordsSubmittedBindings runtime leaks owner
+          operationalRecord setup timeouts leaks bounds horizon scheduler trace =
+            operationalRecord setup timeouts leaks bounds horizon scheduler image ∧
+          memory.RecordsSubmittedBindings timeouts leaks owner
             current.execution repaired.execution) :
-    ∃ counterpart : (onePacketInformation setup runtime leaks bounds horizon
+    ∃ counterpart : (onePacketInformation setup timeouts leaks bounds horizon
       scheduler).InformationHistory
         focal (some (past, view)),
-      RegularTrace setup runtime leaks bounds horizon scheduler assessment focal
+      RegularTrace setup timeouts leaks bounds horizon scheduler assessment focal
         counterpart.1.trace ∧
-      operationalRecord setup runtime leaks bounds horizon scheduler counterpart.1.trace =
-        operationalRecord setup runtime leaks bounds horizon scheduler history.1.trace := by
+      operationalRecord setup timeouts leaks bounds horizon scheduler counterpart.1.trace =
+        operationalRecord setup timeouts leaks bounds horizon scheduler history.1.trace := by
   classical
   obtain ⟨⟨state, trace⟩, seen⟩ := history
   change state = some original at historyState
   subst historyState
   have record : ∀ current
-      (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some
+      (trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some
         current)),
-      (onePacketInformation setup runtime leaks bounds horizon scheduler).infoOf focal trace =
-        some (past, view) → PublicRecord setup runtime focal current := by
+      (onePacketInformation setup timeouts leaks bounds horizon scheduler).infoOf focal trace =
+        some (past, view) → PublicRecord setup timeouts focal current := by
     intro current trace seen
-    exact publicRecord_of_forced_information (runtime := runtime) decision forced
+    exact publicRecord_of_forced_information (timeouts := timeouts) decision forced
       ⟨⟨some current, trace⟩, seen.trans decision.symm⟩ rfl
   obtain ⟨repaired, image, imageSeen, _, _, sameRecord, _, _, successful⟩ :=
-    exists_bindingRepairs_for_owners (runtime := runtime) focal (some (past, view)) original trace
+    exists_bindingRepairs_for_owners (timeouts := timeouts) focal (some (past, view)) original trace
       seen record
       (Finset.univ.erase focal) (by simp)
       (fun owner member => repair owner (by simpa using member))
-  obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (runtime := runtime) (failureProfile
+  obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (timeouts := timeouts) (failureProfile
     setup.program)
-    (bounds.onePacketMenu runtime leaks) horizon scheduler image repaired rfl
+    (bounds.onePacketMenu timeouts leaks) horizon scheduler image repaired rfl
   obtain ⟨counterpart, regular, counterpartRecord⟩ :=
-    counterpart_of_successful_foreign_bindings (runtime := runtime) wellFormed mixed turn
+    counterpart_of_successful_foreign_bindings (timeouts := timeouts) wellFormed mixed turn
       ⟨⟨some repaired, image⟩, imageSeen⟩ witness rfl witnessState (decodedPoint_eq residual)
       witnessDecoded free
       (fun event owner payload layoutEq foreign completed =>
@@ -112,50 +116,50 @@ its forced splice. The responder's own failed bindings may remain unchanged. -/
 theorem exists_bindingRepairs_preserving_responder [DecidableEq (CellTy Player L)]
     (wellFormed : setup.WellFormed)
     {focal responder : Player}
-    {site : (onePacketInformation setup runtime leaks bounds horizon scheduler).InformationSite
+    {site : (onePacketInformation setup timeouts leaks bounds horizon scheduler).InformationSite
       focal}
-    {past : List (application setup runtime leaks).PlayerEntry}
-    {view : (application setup runtime leaks).PlayerView}
+    {past : List (application setup timeouts leaks).PlayerEntry}
+    {view : (application setup timeouts leaks).PlayerView}
     (decision : site.1 = some (past, view))
-    (forced : forcedAgent (runtime := runtime) (bounds.onePacketMenu runtime leaks) (initialLaw
+    (forced : forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks) (initialLaw
       setup)
       horizon scheduler focal site.1)
     (history witness :
-      (onePacketInformation setup runtime leaks bounds horizon scheduler).InformationHistory
+      (onePacketInformation setup timeouts leaks bounds horizon scheduler).InformationHistory
         focal (some (past, view)))
-    {original witnessControl : (application setup runtime leaks).Control}
+    {original witnessControl : (application setup timeouts leaks).Control}
     (historyState : history.1.state = some original)
     (witnessState : witness.1.state = some witnessControl)
     {target : ProtocolState setup.program}
     (witnessDecoded : decodedPoint setup witnessControl.execution.application.config = some target)
     (free : ∀ player, ¬ ProtocolState.OwesFailure player setup.program target)
     (repair : ∀ owner, owner ≠ focal → ∀ current
-      (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some
+      (trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some
         current)),
-      (onePacketInformation setup runtime leaks bounds horizon scheduler).infoOf focal trace =
+      (onePacketInformation setup timeouts leaks bounds horizon scheduler).infoOf focal trace =
         some (past, view) →
-      ∃ repaired : (application setup runtime leaks).Control,
-        ∃ image : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some
+      ∃ repaired : (application setup timeouts leaks).Control,
+        ∃ image : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some
           repaired),
-        ∃ memory : BindingMemory runtime leaks,
+        ∃ memory : BindingMemory timeouts leaks,
           repaired.remaining = current.remaining ∧ repaired.actor = current.actor ∧
-          DirectedBindingFrame (runtime := runtime) memory owner current.execution
+          DirectedBindingFrame (timeouts := timeouts) memory owner current.execution
             repaired.execution ∧
-          operationalRecord setup runtime leaks bounds horizon scheduler trace =
-            operationalRecord setup runtime leaks bounds horizon scheduler image ∧
-          memory.RecordsSubmittedBindings runtime leaks owner
+          operationalRecord setup timeouts leaks bounds horizon scheduler trace =
+            operationalRecord setup timeouts leaks bounds horizon scheduler image ∧
+          memory.RecordsSubmittedBindings timeouts leaks owner
             current.execution repaired.execution) :
-    ∃ repaired : (application setup runtime leaks).Control,
-      ∃ image : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some
+    ∃ repaired : (application setup timeouts leaks).Control,
+      ∃ image : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some
         repaired),
-        (onePacketInformation setup runtime leaks bounds horizon scheduler).infoOf focal image =
+        (onePacketInformation setup timeouts leaks bounds horizon scheduler).infoOf focal image =
           some (past, view) ∧
-        operationalRecord setup runtime leaks bounds horizon scheduler history.1.trace =
-          operationalRecord setup runtime leaks bounds horizon scheduler image ∧
+        operationalRecord setup timeouts leaks bounds horizon scheduler history.1.trace =
+          operationalRecord setup timeouts leaks bounds horizon scheduler image ∧
         (original.execution.logs responder,
-          original.execution.observe (application setup runtime leaks) responder) =
+          original.execution.observe (application setup timeouts leaks) responder) =
         (repaired.execution.logs responder,
-          repaired.execution.observe (application setup runtime leaks) responder) ∧
+          repaired.execution.observe (application setup timeouts leaks) responder) ∧
         original.execution.application.config.store.BindingRefines
           repaired.execution.application.config.store ∧
         ∃ point : ProtocolState setup.program,
@@ -173,49 +177,49 @@ theorem exists_bindingRepairs_preserving_responder [DecidableEq (CellTy Player L
       rw [witnessDecoded, Option.some.injEq] at decoded
       subst decoded
       exact free player
-    obtain ⟨source, replay⟩ := intendedHistory?_isSome_of_debtFree (runtime := runtime) wellFormed
+    obtain ⟨source, replay⟩ := intendedHistory?_isSome_of_debtFree (timeouts := timeouts) wellFormed
       trace
       witnessControl rfl freeWitness
     exact intended_of_history wellFormed source.trace target
-      ((intendedHistory?_state (runtime := runtime) trace replay).trans witnessDecoded)
-  have witnessNative : nativeDecodedState setup runtime leaks witness.1.state = some target := by
+      ((intendedHistory?_state (timeouts := timeouts) trace replay).trans witnessDecoded)
+  have witnessNative : nativeDecodedState setup timeouts leaks witness.1.state = some target := by
     rw [witnessState]
     exact witnessDecoded
   obtain ⟨⟨state, trace⟩, seen⟩ := history
   change state = some original at historyState
   subst historyState
   have record : ∀ current
-      (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some
+      (trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some
         current)),
-      (onePacketInformation setup runtime leaks bounds horizon scheduler).infoOf focal trace =
-        some (past, view) → PublicRecord setup runtime focal current := by
+      (onePacketInformation setup timeouts leaks bounds horizon scheduler).infoOf focal trace =
+        some (past, view) → PublicRecord setup timeouts focal current := by
     intro current trace seen
-    exact publicRecord_of_forced_information (runtime := runtime) decision forced
+    exact publicRecord_of_forced_information (timeouts := timeouts) decision forced
       ⟨⟨some current, trace⟩, seen.trans decision.symm⟩ rfl
   let owners := Finset.univ.filter (fun owner => owner ≠ focal ∧ owner ≠ responder)
   obtain ⟨repaired, image, imageSeen, _, _, sameRecord, outside, preserved, successful⟩ :=
-    exists_bindingRepairs_for_owners (runtime := runtime) focal (some (past, view)) original trace
+    exists_bindingRepairs_for_owners (timeouts := timeouts) focal (some (past, view)) original trace
       seen record
       owners (by simp [owners])
       (fun owner member => repair owner (Finset.mem_filter.mp member).2.1)
-  have ownDebtFree : ∀ point, nativeDecodedState setup runtime leaks (some repaired) = some point →
+  have ownDebtFree : ∀ point, nativeDecodedState setup timeouts leaks (some repaired) = some point →
       ¬ ProtocolState.OwesFailure focal setup.program point := by
     intro point decoded owes
-    exact free focal ((owesFailure_iff_of_infoOf (runtime := runtime)
+    exact free focal ((owesFailure_iff_of_infoOf (timeouts := timeouts)
       ⟨⟨some repaired, image⟩, imageSeen⟩ witness decoded witnessNative).mp owes)
-  obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (runtime := runtime) (failureProfile
+  obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (timeouts := timeouts) (failureProfile
     setup.program)
-    (bounds.onePacketMenu runtime leaks) horizon scheduler image repaired rfl
+    (bounds.onePacketMenu timeouts leaks) horizon scheduler image repaired rfl
   refine ⟨repaired, image, imageSeen, sameRecord, outside responder (by simp [owners]),
     preserved, _, decodedPoint_eq residual, ?_⟩
   apply commitmentCellsSucceed_splicePoint_of_foreign_bindings
     (decodedPoint_eq residual) intended
-  apply foreignBinding_reads_not_failure (runtime := runtime) wellFormed image
+  apply foreignBinding_reads_not_failure (timeouts := timeouts) wellFormed image
   intro event owner payload layoutEq foreign completed
   by_cases own : owner = focal
   · subst owner
     rintro ⟨value, stored, failed⟩
-    exact noFailure_of_debtFree (runtime := runtime) image ownDebtFree (.inr event)
+    exact noFailure_of_debtFree (timeouts := timeouts) image ownDebtFree (.inr event)
       (privateTo_of_binding layoutEq) value stored failed
   · exact not_storeEventFailed_of_outputSucceeded
       (successful owner (by simp [owners, own, foreign]) event payload layoutEq completed)

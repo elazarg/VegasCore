@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketIntendedProjection
-import Vegas.Source.DebtObservation
+public import Vegas.Game.OnePacketIntendedProjection
+public import Vegas.Source.DebtObservation
+
+@[expose] public section
 
 /-! # Own source debt over native information fibers
 
@@ -59,7 +63,7 @@ theorem decodeSourcePrefix?_staticAt {Field : Type} [DecidableEq Field]
       exact decodeSourcePrefix?_staticAt count next _ _ _ _ store history defaults rest read
 
 variable {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
 
 /-- A decoded point is the source prefix decoding at the configuration's
 completed prefix. -/
@@ -85,45 +89,45 @@ variable {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph 
 executions whose decoded points `who` sees through the same projected view agree
 on whether `who` owes a failure there. -/
 theorem owesFailure_iff_of_projectView_eq (who : Player)
-    {first second : (application setup runtime leaks).Execution}
-    {firstPast secondPast : List (application setup runtime leaks).PlayerEntry}
+    {first second : (application setup timeouts leaks).Execution}
+    {firstPast secondPast : List (application setup timeouts leaks).PlayerEntry}
     {firstPoint secondPoint : ProtocolState setup.program}
     (firstDecoded : decodedPoint setup first.application.config = some firstPoint)
     (secondDecoded : decodedPoint setup second.application.config = some secondPoint)
-    (same : projectView setup runtime leaks who
-        (some (firstPast, first.observe (application setup runtime leaks) who)) =
-      projectView setup runtime leaks who
-        (some (secondPast, second.observe (application setup runtime leaks) who))) :
+    (same : projectView setup timeouts leaks who
+        (some (firstPast, first.observe (application setup timeouts leaks) who)) =
+      projectView setup timeouts leaks who
+        (some (secondPast, second.observe (application setup timeouts leaks) who))) :
     ProtocolState.OwesFailure who setup.program firstPoint ↔
       ProtocolState.OwesFailure who setup.program secondPoint := by
   obtain ⟨firstRank, firstOrdered, firstRead⟩ := decodedPoint_isPrefix firstDecoded
   obtain ⟨secondRank, secondOrdered, secondRead⟩ := decodedPoint_isPrefix secondDecoded
-  rw [projectView_observe setup runtime leaks who first firstRank firstOrdered firstPoint firstRead
+  rw [projectView_observe setup timeouts leaks who first firstRank firstOrdered firstPoint firstRead
       firstPast,
-    projectView_observe setup runtime leaks who second secondRank secondOrdered secondPoint
+    projectView_observe setup timeouts leaks who second secondRank secondOrdered secondPoint
       secondRead secondPast]
     at same
   exact ProtocolState.owesFailure_iff_of_observe_eq who setup.program []
     (Revelations.initial setup.context) firstPoint secondPoint (decodedPoint_staticAt firstDecoded)
     (decodedPoint_staticAt secondDecoded) (Option.some.inj same)
 
-variable {menu : (application setup runtime leaks).ResponseMenu}
-  {initial : PMF (application setup runtime leaks).State} {horizon : Nat}
-  {scheduler : (application setup runtime leaks).Scheduler}
+variable {menu : (application setup timeouts leaks).ResponseMenu}
+  {initial : PMF (application setup timeouts leaks).State} {horizon : Nat}
+  {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- A concrete native decision input identifies its current control and displayed view. -/
 theorem control_of_infoOf {who : Player}
-    {past : List (application setup runtime leaks).PlayerEntry}
-    {view : (application setup runtime leaks).PlayerView}
+    {past : List (application setup timeouts leaks).PlayerEntry}
+    {view : (application setup timeouts leaks).PlayerView}
     (native : (menu.protocol initial horizon scheduler).History)
     (seen : (menu.information initial horizon scheduler).infoOf who
       native.trace =
       some (past, view)) :
-    ∃ control : (application setup runtime leaks).Control, native.state = some control ∧
-      control.execution.observe (application setup runtime leaks) who = view := by
+    ∃ control : (application setup timeouts leaks).Control, native.state = some control ∧
+      control.execution.observe (application setup timeouts leaks) who = view := by
   obtain ⟨state, trace⟩ := native
   have observed : (menu.information initial horizon scheduler).infoOf who trace =
-      (application setup runtime leaks).observe who state :=
+      (application setup timeouts leaks).observe who state :=
     menu.info initial horizon scheduler who trace
   rw [observed] at seen
   cases state with
@@ -138,22 +142,22 @@ theorem control_of_infoOf {who : Player}
 an arbitrary native response menu at the same decision input of `who` agree on whether `who`
 owes a failure at their decoded points. -/
 theorem owesFailure_iff_of_infoOf {who : Player}
-    {past : List (application setup runtime leaks).PlayerEntry}
-    {view : (application setup runtime leaks).PlayerView}
+    {past : List (application setup timeouts leaks).PlayerEntry}
+    {view : (application setup timeouts leaks).PlayerView}
     (first second : (menu.information initial horizon scheduler).InformationHistory
       who (some (past, view)))
     {firstPoint secondPoint : ProtocolState setup.program}
-    (firstDecoded : nativeDecodedState setup runtime leaks first.1.state = some firstPoint)
-    (secondDecoded : nativeDecodedState setup runtime leaks second.1.state = some secondPoint) :
+    (firstDecoded : nativeDecodedState setup timeouts leaks first.1.state = some firstPoint)
+    (secondDecoded : nativeDecodedState setup timeouts leaks second.1.state = some secondPoint) :
     ProtocolState.OwesFailure who setup.program firstPoint ↔
       ProtocolState.OwesFailure who setup.program secondPoint := by
-  obtain ⟨firstControl, firstState, firstView⟩ := control_of_infoOf (runtime := runtime) first.1
+  obtain ⟨firstControl, firstState, firstView⟩ := control_of_infoOf (timeouts := timeouts) first.1
     first.2
-  obtain ⟨secondControl, secondState, secondView⟩ := control_of_infoOf (runtime := runtime)
+  obtain ⟨secondControl, secondState, secondView⟩ := control_of_infoOf (timeouts := timeouts)
     second.1 second.2
   rw [firstState] at firstDecoded
   rw [secondState] at secondDecoded
-  refine owesFailure_iff_of_projectView_eq (runtime := runtime) (firstPast := past) (secondPast :=
+  refine owesFailure_iff_of_projectView_eq (timeouts := timeouts) (firstPast := past) (secondPast :=
     past) who
     firstDecoded secondDecoded ?_
   rw [firstView, secondView]

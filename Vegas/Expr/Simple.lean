@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Foundation.ExprInterface
+public import Vegas.Foundation.ExprInterface
+
+@[expose] public section
 
 /-!
 # Concrete Vegas expression layer

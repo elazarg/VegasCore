@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketDirectedRepairOpeningInclusion
-import Vegas.Pending.ReactiveBindingCountedInclusion
+public import Vegas.Game.OnePacketDirectedRepairOpeningInclusion
+public import Vegas.Pending.ReactiveBindingCountedInclusion
+
+@[expose] public section
 
 /-! # Actual complete pending inclusion through directed repair -/
 
@@ -13,10 +17,10 @@ open SourceProgram Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {memory : BindingMemory runtime leaks} {owner : Player}
-  {original repaired : (application setup runtime leaks).Execution}
+  {memory : BindingMemory timeouts leaks} {owner : Player}
+  {original repaired : (application setup timeouts leaks).Execution}
 
 namespace EventGraphRuntime.BindingMemory.Frame
 
@@ -25,12 +29,12 @@ repaired frame in clean one-packet traffic. Ready disclosures read successful
 original bindings; all remaining memory, candidate, acceptance and rejection facts are derived
 from actual signed inputs and the carried submission invariant. -/
 theorem pending_inclusion
-    (frame : Frame runtime leaks memory owner original repaired)
+    (frame : Frame timeouts leaks memory owner original repaired)
     (clear : original.application.config.defaulted = ∅)
     (onlyBindings : memory.shadow.OwnBindings owner)
-    (recorded : memory.RecordsSubmittedBindings runtime leaks owner original repaired)
-    (clean : runtime.CountClean leaks original)
-    (signed : runtime.SignedCommitments leaks original)
+    (recorded : memory.RecordsSubmittedBindings timeouts leaks owner original repaired)
+    (clean : (CountClean timeouts) leaks original)
+    (signed : (SignedCommitments timeouts) leaks original)
     (leftBinding : original.application.BindingInvariant)
     (rightBinding : repaired.application.BindingInvariant)
     (successfulReady : ∀ (event : (graph setup).EventId) (actor : Player) (payload : L.Ty)
@@ -44,10 +48,10 @@ theorem pending_inclusion
       ∃ value, binding.get? original.application.config.store = some (.success value))
     (id : MessageId Player)
     (endpointClear :
-      (original.includePending (application setup runtime leaks) id).application.config.defaulted =
+      (original.includePending (application setup timeouts leaks) id).application.config.defaulted =
         ∅) :
-    let app := application setup runtime leaks
-    Frame runtime leaks memory owner
+    let app := application setup timeouts leaks
+    Frame timeouts leaks memory owner
       { original.includePending app id with environmentRecall := original.environmentRecall ++
         [⟨original.observeEnvironment app, .include id⟩] }
       { repaired.includePending app id with environmentRecall := repaired.environmentRecall ++
@@ -94,12 +98,12 @@ theorem pending_inclusion
                       exact ready
                     have refused (state : EventGraphRuntime.State (graph setup))
                         (notReady : ¬ state.config.cut.Ready event) :
-                        handle runtime state ⟨id, .opening event candidate raw⟩ = none := by
+                        handle timeouts state ⟨id, .opening event candidate raw⟩ = none := by
                       simp only [handle, dite_eq_right notReady, ite_self]
                     exact frame.include_rejected id _ found
-                      (reactiveHandle_none (runtime := runtime) (leaks := leaks)
+                      (reactiveHandle_none (timeouts := timeouts) (leaks := leaks)
                         (refused original.application ready))
-                      (reactiveHandle_none (runtime := runtime) (leaks := leaks)
+                      (reactiveHandle_none (timeouts := timeouts) (leaks := leaks)
                         (refused repaired.application rightNotReady))
 
 end EventGraphRuntime.BindingMemory.Frame

@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveAuditCollection
-import Interaction.ReactiveEnvironmentStep
-import Interaction.ReactiveNormalHistory
+public import Interaction.ReactiveAuditCollection
+public import Interaction.ReactiveEnvironmentStep
+public import Interaction.ReactiveNormalHistory
+
+@[expose] public section
 
 /-! # Reconstructing the traffic audit from existing service recall
 
@@ -117,7 +121,7 @@ private theorem trafficAudit_inputs
       rw [trafficAudit, List.map_append, trafficAudit_inputs initial horizon scheduler prior]
       exact app.transition_traffic_inputs initial horizon scheduler _ _ joint reached
 
-private def trafficReady : app.ProtocolState → Prop
+def trafficReady : app.ProtocolState → Prop
   | none => True
   | some control => control.actor.isSome →
       ∃ past, control.execution.environmentRecall.map EnvironmentEntry.beforeView =

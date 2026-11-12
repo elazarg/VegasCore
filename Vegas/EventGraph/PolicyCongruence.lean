@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.EventGraph.CanonicalStep
+public import Vegas.EventGraph.CanonicalStep
+
+@[expose] public section
 
 /-! # Reachable-policy congruence for canonical execution
 

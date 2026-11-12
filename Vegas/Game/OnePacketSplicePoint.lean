@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketCounterpartGuard
-import Vegas.Game.OnePacketPublicInitialSignal
-import Vegas.Source.PrivateInputsIndependent
+public import Vegas.Game.OnePacketCounterpartGuard
+public import Vegas.Game.OnePacketPublicInitialSignal
+public import Vegas.Source.PrivateInputsIndependent
+
+@[expose] public section
 
 /-! # Splicing two source points for a player
 

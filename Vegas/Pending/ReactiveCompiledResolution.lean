@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactivePolicyFacts
+public import Vegas.Pending.ReactivePolicyFacts
+
+@[expose] public section
 
 /-! # Authentic prescribed resolution responses
 
@@ -18,14 +22,14 @@ open Interaction EventGraph GameTheory.Math.Probability
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
-  (runtime : EventGraphRuntime graph)
+  (timeouts : EventTimeouts graph)
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
 
 /-- A resolution sends silence or an opening of a stored successful binding at
 its accepted owned handle. Its evidence representation is left explicit. -/
 theorem serviceDecision_resolution_cases
-    (who : Player) (past : List (runtime.reactiveApplication leaks).PlayerEntry)
-    (view : (runtime.reactiveApplication leaks).PlayerView)
+    (who : Player) (past : List ((reactiveApplication timeouts) leaks).PlayerEntry)
+    (view : ((reactiveApplication timeouts) leaks).PlayerView)
     (event : graph.EventId) (actor : Player) (payload : L.Ty)
     (binding : FieldRef graph.layout (.binding actor payload))
     (checks : List (GuardCheck graph.layout payload))
@@ -34,7 +38,7 @@ theorem serviceDecision_resolution_cases
       (graph.nodes event) = .resolve actor payload binding checks)
     (node : nodeView graph event = .resolve actor payload binding checks outputEq codeEq)
     (choice : Bool) :
-    let response := runtime.serviceDecision leaks who past view event
+    let response := (serviceDecision timeouts) leaks who past view event
       (cast (congrArg EventField.Action outputEq.symm) choice)
     response = ⟨none⟩ ∨ ∃ candidate value evidence,
       binding.get? view.application.observation.store = some (.success value) ∧
@@ -62,7 +66,7 @@ theorem serviceDecision_resolution_cases
       subst raw
       exact Or.inr ⟨candidate, value, stored, associated, owned, packet⟩
     · exact Or.inl silent
-  change runtime.serviceDecision leaks who past view event action = _ ∨ _
+  change (serviceDecision timeouts) leaks who past view event action = _ ∨ _
   rcases shape with withheld | ⟨candidate, value, result, associated, owned, packet⟩
   · left
     simp only [serviceDecision, reactiveDecision, ite_eq_right inactive, node, withheld,
@@ -73,7 +77,7 @@ theorem serviceDecision_resolution_cases
     let evidence := (first.normalizeReactive who view.application
         (ReactiveApplication.ResponseMenu.knownPackets past view)).evidence
     refine Or.inr ⟨candidate, value, evidence, result, associated, owned, ?_⟩
-    change runtime.serviceDecision leaks who past view event action = _
+    change (serviceDecision timeouts) leaks who past view event action = _
     simp only [serviceDecision, reactiveDecision, ite_eq_right inactive, node, packet,
       Option.map_some,
       disclosureSubmission, WitnessedSubmission.normalizeReactive,

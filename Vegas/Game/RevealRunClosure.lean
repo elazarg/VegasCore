@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RevealPhasing
-import Vegas.Game.RevealBlockGraph
-import Vegas.EventGraph.HonestClosure
+public import Vegas.Game.RevealPhasing
+public import Vegas.Game.RevealBlockGraph
+public import Vegas.EventGraph.HonestClosure
+
+@[expose] public section
 
 /-! # The closure inside a run of reveals
 

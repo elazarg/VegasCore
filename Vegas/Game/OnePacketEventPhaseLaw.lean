@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheoryExtensions.Analysis.Protocol.StoppedTerminalBound
-import Vegas.Game.OnePacketCompletion
-import Vegas.Pending.ReactiveGraphSteps
+public import GameTheoryExtensions.Analysis.Protocol.StoppedTerminalBound
+public import Vegas.Game.OnePacketCompletion
+public import Vegas.Pending.ReactiveGraphSteps
+
+@[expose] public section
 
 /-! # Completion phases before the first public default -/
 
@@ -16,18 +20,18 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup runtime leaks).Scheduler}
+  {scheduler : (application setup timeouts leaks).Scheduler}
 
-local notation "menu" => bounds.onePacketMenu runtime leaks
+local notation "menu" => bounds.onePacketMenu timeouts leaks
 local notation "N" => ReactiveApplication.ResponseMenu.information
-  (MessageBounds.onePacketMenu runtime leaks bounds) (initialLaw setup) horizon scheduler
+  (MessageBounds.onePacketMenu timeouts leaks bounds) (initialLaw setup) horizon scheduler
 local notation "E" => ReactiveApplication.ResponseMenu.protocol menu (initialLaw setup) horizon
   scheduler
 local notation "Clear" => ReactiveApplication.stateInvariant
-  (app := application setup runtime leaks)
+  (app := application setup timeouts leaks)
     (fun native : EventGraphRuntime.State (graph setup) =>
       EventGraph.Config.defaulted (EventGraphRuntime.State.config native) = ∅)
 
@@ -35,19 +39,19 @@ local notation "Clear" => ReactiveApplication.stateInvariant
 entire current-event completion law, including automatic completion. -/
 theorem pending_until_eq_clearUntil
     (certificate : (E).WellFoundedHistories) (players : ∀ player, (N).BehavioralPolicy player)
-    (start : (E).History) {control : (application setup runtime leaks).Control}
+    (start : (E).History) {control : (application setup timeouts leaks).Control}
     (current : start.state = some control) {rank : Nat}
     (ordered : control.execution.application.config.cut.IsPrefix rank)
     (clear : control.execution.application.config.defaulted = ∅)
     (event : (graph setup).EventId)
     (ready : control.execution.application.config.cut.Ready event) :
     (N).runBehavioralUntil certificate players
-        (LateStopped setup runtime leaks bounds horizon scheduler rank) start =
+        (LateStopped setup timeouts leaks bounds horizon scheduler rank) start =
       (N).runBehavioralUntil certificate players
-        (fun final => LateStopped setup runtime leaks bounds horizon scheduler rank final ∨
+        (fun final => LateStopped setup timeouts leaks bounds horizon scheduler rank final ∨
           ¬ Clear final.state) start := by
   classical
-  let late := LateStopped setup runtime leaks bounds horizon scheduler rank
+  let late := LateStopped setup timeouts leaks bounds horizon scheduler rank
   let early := fun final : (E).History => late final ∨ ¬ Clear final.state
   have lower : rank ≤ event.val := Nat.le_of_not_gt fun earlier =>
     ready.1 ((ordered.2 event).mpr earlier)
@@ -55,7 +59,7 @@ theorem pending_until_eq_clearUntil
   have eventRank : event.val = rank := congrArg Fin.val
     (setup.eventGraph.sequentialize_ready_unique _ ready (ordered.ready within))
   suffices agree : ∀ history,
-      (late history ∨ ∃ before : (application setup runtime leaks).Control,
+      (late history ∨ ∃ before : (application setup timeouts leaks).Control,
         history.state = some before ∧
           before.execution.application.config = control.execution.application.config) →
       (N).runBehavioralUntil certificate players late history =
@@ -84,16 +88,16 @@ theorem pending_until_eq_clearUntil
   intro next member
   have extension := (N).mem_support_runBehavioralFrom_one players terminal member
   obtain ⟨joint, _, realized⟩ := extension.1
-  change next.state ∈ ((application setup runtime leaks).transition (initialLaw setup)
+  change next.state ∈ ((application setup timeouts leaks).transition (initialLaw setup)
     horizon scheduler history.state joint).support at realized
   rw [state] at realized
-  obtain ⟨after, afterState, _⟩ := (application setup runtime leaks).transition_recall_prefix
+  obtain ⟨after, afterState, _⟩ := (application setup timeouts leaks).transition_recall_prefix
     (initialLaw setup) horizon scheduler before next.state joint realized
   apply ih next extension.1
   by_cases done : event ∈ after.execution.application.config.cut.completed
   · exact Or.inl ⟨after, afterState, event, done, eventRank⟩
   · have beforeReady : before.execution.application.config.cut.Ready event := configEq.symm ▸ ready
-    have path := reactive_protocol_graph_steps runtime leaks (initialLaw setup) horizon scheduler
+    have path := reactive_protocol_graph_steps timeouts leaks (initialLaw setup) horizon scheduler
       before after joint (afterState ▸ realized)
     exact Or.inr ⟨after, afterState,
       (EventGraph.Config.Step.path_eq_of_ready_of_not_completed event

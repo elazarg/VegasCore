@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Examples.LateLeak.SettleLateConsistency
-import Vegas.Examples.LateLeak.SettleLateRecall
+public import Vegas.Examples.LateLeak.SettleLateConsistency
+public import Vegas.Examples.LateLeak.SettleLateRecall
+
+@[expose] public section
 
 /-! # The settle-late runtime breaks sequential-equilibrium preservation
 

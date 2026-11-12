@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Compile.EventGraphReadout
-import Vegas.EventGraph.Sequential
+public import Vegas.Compile.EventGraphReadout
+public import Vegas.EventGraph.Sequential
+
+@[expose] public section
 
 /-! # Successful terminal decoding implies completed source events
 

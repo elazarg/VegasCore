@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Source.SetupProtocolBehavioral
-import Vegas.Source.InitialState
-import GameTheory.Protocol.SingleMover
-import GameTheory.Protocol.StateKernel
-import GameTheory.Protocol.BehavioralAssessment
+public import Vegas.Source.SetupProtocolBehavioral
+public import Vegas.Source.InitialState
+public import GameTheory.Protocol.SingleMover
+public import GameTheory.Protocol.StateKernel
+public import GameTheory.Protocol.BehavioralAssessment
+
+@[expose] public section
 
 /-! # Source continuation values depend on the source state
 

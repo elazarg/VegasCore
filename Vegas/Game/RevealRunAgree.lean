@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RevealRunStep
-import Vegas.Game.RevealBlockEndpoint
+public import Vegas.Game.RevealRunStep
+public import Vegas.Game.RevealBlockEndpoint
+
+@[expose] public section
 
 /-! # Agreement from the deviator's view of the closure
 

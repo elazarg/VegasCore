@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Compile.EventGraphInputs
-import Vegas.Compile.EventGraphLaw
+public import Vegas.Compile.EventGraphInputs
+public import Vegas.Compile.EventGraphLaw
+
+@[expose] public section
 
 /-! # Whole-program canonical event-graph law
 

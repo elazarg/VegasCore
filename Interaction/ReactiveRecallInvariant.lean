@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveRecall
-import Interaction.ReactiveInvariant
-import Interaction.ReactiveServiceInvariant
+public import Interaction.ReactiveRecall
+public import Interaction.ReactiveInvariant
+public import Interaction.ReactiveServiceInvariant
+
+@[expose] public section
 
 /-! # Monotone application facts in remembered observations
 

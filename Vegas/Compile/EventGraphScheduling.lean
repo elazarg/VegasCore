@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Compile.EventGraphCanonical
+public import Vegas.Compile.EventGraphCanonical
+
+@[expose] public section
 
 /-! # Public scheduling of source-ranked compiled graphs -/
 

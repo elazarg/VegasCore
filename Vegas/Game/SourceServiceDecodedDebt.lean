@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.SourceServiceReachedDecoding
-import Vegas.Pending.ReactiveGraphSteps
-import Vegas.Source.FailedBindingDeviation
+public import Vegas.Game.SourceServiceReachedDecoding
+public import Vegas.Pending.ReactiveGraphSteps
+public import Vegas.Source.FailedBindingDeviation
+
+@[expose] public section
 
 /-! # Step-closed properties at actual native endpoints
 
@@ -24,7 +28,7 @@ open GameTheory GameTheory.Protocol GameTheory.Math.Probability Interaction Even
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {profile : BehavioralProfile setup.program}
 
 /-- A property of source points closed under every source step, whatever the
@@ -82,13 +86,13 @@ theorem SourceResidual.decodedHolds_path
         member
       exact ih next valid
 
-variable (setup runtime) in
+variable (setup timeouts) in
 /-- An initialized native protocol state whose configuration has a source
 residual at a prefix where a step-closed property holds of its decoding. -/
 def DecodedState (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (profile : BehavioralProfile setup.program)
     (property : ProtocolState setup.program → Prop) :
-    (application setup runtime leaks).ProtocolState → Prop
+    (application setup timeouts leaks).ProtocolState → Prop
   | none => False
   | some control => ∃ rank,
       Nonempty (SourceResidual setup profile rank control.execution.application.config) ∧
@@ -100,15 +104,15 @@ responses and scheduler choices. -/
 theorem decodedHolds_transition
     {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
     {property : ProtocolState setup.program → Prop} (closed : StepClosed setup property)
-    (initial : PMF (application setup runtime leaks).State) (horizon : Nat)
-    (scheduler : (application setup runtime leaks).Scheduler)
-    (before after : (application setup runtime leaks).ProtocolState)
-    (joint : Player → Option (application setup runtime leaks).Action)
-    (holds : DecodedState setup runtime leaks profile property before)
-    (reached : after ∈ ((application setup runtime leaks).transition initial horizon scheduler
+    (initial : PMF (application setup timeouts leaks).State) (horizon : Nat)
+    (scheduler : (application setup timeouts leaks).Scheduler)
+    (before after : (application setup timeouts leaks).ProtocolState)
+    (joint : Player → Option (application setup timeouts leaks).Action)
+    (holds : DecodedState setup timeouts leaks profile property before)
+    (reached : after ∈ ((application setup timeouts leaks).transition initial horizon scheduler
       before
       joint).support) :
-    DecodedState setup runtime leaks profile property after := by
+    DecodedState setup timeouts leaks profile property after := by
   cases before with
   | none => exact holds.elim
   | some control =>
@@ -127,7 +131,7 @@ theorem decodedHolds_transition
                 exact ⟨_, same.symm⟩
       obtain ⟨next, rfl⟩ := stays
       exact residual.decodedHolds_path closed decoded
-        (reactive_protocol_graph_steps runtime leaks initial horizon scheduler control next joint
+        (reactive_protocol_graph_steps timeouts leaks initial horizon scheduler control next joint
           reached)
 
 /-- A step-closed source property initialized on every supported setup draw
@@ -137,11 +141,11 @@ theorem decodedState_history_of_stepClosed
     {property : ProtocolState setup.program → Prop} (closed : StepClosed setup property)
     (initialized : ∀ initial ∈ setup.initialLaw.support,
       property (ProtocolState.entry setup.program (Config.initial initial)))
-    (menu : (application setup runtime leaks).ResponseMenu) (horizon : Nat)
-    (scheduler : (application setup runtime leaks).Scheduler) :
+    (menu : (application setup timeouts leaks).ResponseMenu) (horizon : Nat)
+    (scheduler : (application setup timeouts leaks).Scheduler) :
     ∀ {state} (_trace : (menu.protocol (initialLaw setup) horizon scheduler).Trace state)
-      (control : (application setup runtime leaks).Control), state = some control →
-      DecodedState setup runtime leaks profile property (some control) := by
+      (control : (application setup timeouts leaks).Control), state = some control →
+      DecodedState setup timeouts leaks profile property (some control) := by
   intro state trace
   induction trace with
   | start => intro _ current; cases current
@@ -152,7 +156,7 @@ theorem decodedState_history_of_stepClosed
       | none =>
           change some control ∈ ((initialLaw setup).map fun state =>
             some ⟨horizon, none, ReactiveApplication.Execution.initial
-              (application setup runtime leaks) state⟩).support at realized
+              (application setup timeouts leaks) state⟩).support at realized
           obtain ⟨state, supported, same⟩ := PMF.support_map .. ▸ realized
           cases Option.some.inj same
           obtain ⟨initial, member, rfl⟩ := PMF.support_map .. ▸ supported

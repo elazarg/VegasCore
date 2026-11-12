@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.MessagePool
+public import Interaction.MessagePool
+
+@[expose] public section
 
 /-! # Predicates on every message retained by a pool
 

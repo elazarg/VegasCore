@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketOwnerKeyedLate
-import Vegas.Game.OnePacketBaseAssembly
-import GameTheoryExtensions.Math.Probability.ApproximateLumping
+public import Vegas.Game.OnePacketOwnerKeyedLate
+public import Vegas.Game.OnePacketBaseAssembly
+public import GameTheoryExtensions.Math.Probability.ApproximateLumping
+
+@[expose] public section
 
 /-! # Record laws at late deliveries with a common key
 
@@ -31,17 +35,17 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
-  (runtime : EventGraphRuntime (graph setup))
+  (timeouts : EventTimeouts (graph setup))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
-  (scheduler : (application setup runtime leaks).Scheduler)
+  (scheduler : (application setup timeouts leaks).Scheduler)
 
 variable {Public : Type*} {signal : State L setup.context → Public}
 
 local notation "onePacketN" =>
-  onePacketModel setup runtime leaks bounds (initialLaw setup) horizon scheduler
+  onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon scheduler
 
-variable {setup runtime leaks bounds horizon scheduler} in
+variable {setup timeouts leaks bounds horizon scheduler} in
 open Classical in
 /-- At a site with honest counterparts, the irregular reach at a stage is at
 most the irregular ratio times the regular reach. -/
@@ -50,21 +54,21 @@ theorem OnePacketCounterpartInputs.irregular_reach_le
     {targetSequence : ℕ → (onePacketN).BehavioralAssessment} {who : Player}
     {site : (onePacketN).InformationSite who}
     [Fintype ((onePacketN).InformationHistory who site.1)]
-    (inputs : OnePacketCounterpartInputs setup runtime leaks bounds horizon scheduler sequence
+    (inputs : OnePacketCounterpartInputs setup timeouts leaks bounds horizon scheduler sequence
       targetSequence site) (n : ℕ) :
     ∑ history : (onePacketN).InformationHistory who site.1 with
-        ¬ RegularTrace setup runtime leaks bounds horizon scheduler (sequence n) who
+        ¬ RegularTrace setup timeouts leaks bounds horizon scheduler (sequence n) who
           history.1.trace,
       ((onePacketN).historyReachWeight (targetSequence n).strategy history.1).toReal ≤
       (Fintype.card ((onePacketN).InformationHistory who site.1) *
         (inputs.slack * inputs.scale n / inputs.floors n ^ inputs.depth)) *
       ∑ history : (onePacketN).InformationHistory who site.1 with
-          ¬ ¬ RegularTrace setup runtime leaks bounds horizon scheduler (sequence n) who
+          ¬ ¬ RegularTrace setup timeouts leaks bounds horizon scheduler (sequence n) who
             history.1.trace,
         ((onePacketN).historyReachWeight (targetSequence n).strategy history.1).toReal :=
   sum_reach_le_of_counterpart (targetSequence n).strategy
     (fun history : (onePacketN).InformationHistory who site.1 =>
-      ¬ RegularTrace setup runtime leaks bounds horizon scheduler (sequence n) who history.1.trace)
+      ¬ RegularTrace setup timeouts leaks bounds horizon scheduler (sequence n) who history.1.trace)
     (inputs.counterpart n)
     (Fintype.card ((onePacketN).InformationHistory who site.1))
     (div_nonneg (mul_nonneg inputs.slack_nonneg (inputs.scale_nonneg n))
@@ -77,7 +81,7 @@ theorem OnePacketCounterpartInputs.irregular_reach_le
         history irregular)
       (inputs.counterpart_ge n history irregular)
 
-variable {setup runtime leaks bounds horizon scheduler} in
+variable {setup timeouts leaks bounds horizon scheduler} in
 open Classical in
 /-- **Record laws at two late deliveries with one key.** At two late deliveries
 of `who` with the same late-delivery key at which `who` owes no failure, under a
@@ -87,7 +91,7 @@ laws of operational records give every unit payoff of the record expectations
 within `2 ρ / (1 + ρ) + 2 ε / (1 - ε)`, where `ρ` is the sum of the sites'
 irregular ratios and `ε` is the factorization error. -/
 theorem keyedRecord_near
-    [Finite ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+    [Finite ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).History]
     (wellFormed : setup.WellFormed) (independent : setup.PrivateInputsIndependentGiven signal)
     (observable : setup.PublicInitialSignal signal)
@@ -99,27 +103,27 @@ theorem keyedRecord_near
     (bayes : BehavioralAssessment.IsBayesConsistent (onePacketN) (targetSequence n) antichain)
     {who : Player}
     {site₁ site₂ : (onePacketN).InformationSite who}
-    {past₁ past₂ : List (application setup runtime leaks).PlayerEntry}
-    {view₁ view₂ : (application setup runtime leaks).PlayerView}
+    {past₁ past₂ : List (application setup timeouts leaks).PlayerEntry}
+    {view₁ view₂ : (application setup timeouts leaks).PlayerView}
     (firstSite : site₁.1 = some (past₁, view₁)) (secondSite : site₂.1 = some (past₂, view₂))
-    (sameKey : lateKey setup runtime leaks who site₁.1 = lateKey setup runtime leaks who site₂.1)
-    (firstDebtFree : SiteDebtFree setup runtime leaks bounds horizon scheduler site₁)
-    (secondDebtFree : SiteDebtFree setup runtime leaks bounds horizon scheduler site₂)
-    (firstLate : LateDelivery setup runtime leaks who site₁.1)
-    (secondLate : LateDelivery setup runtime leaks who site₂.1)
-    (steps : OperationalSteps setup runtime leaks bounds horizon scheduler sequence
+    (sameKey : lateKey setup timeouts leaks who site₁.1 = lateKey setup timeouts leaks who site₂.1)
+    (firstDebtFree : SiteDebtFree setup timeouts leaks bounds horizon scheduler site₁)
+    (secondDebtFree : SiteDebtFree setup timeouts leaks bounds horizon scheduler site₂)
+    (firstLate : LateDelivery setup timeouts leaks who site₁.1)
+    (secondLate : LateDelivery setup timeouts leaks who site₂.1)
+    (steps : OperationalSteps setup timeouts leaks bounds horizon scheduler sequence
       (fun n => (targetSequence n).strategy) who)
-    (first : OnePacketCounterpartInputs setup runtime leaks bounds horizon scheduler sequence
+    (first : OnePacketCounterpartInputs setup timeouts leaks bounds horizon scheduler sequence
       targetSequence site₁)
-    (second : OnePacketCounterpartInputs setup runtime leaks bounds horizon scheduler sequence
+    (second : OnePacketCounterpartInputs setup timeouts leaks bounds horizon scheduler sequence
       targetSequence site₂)
     (small : (1 + steps.error n) ^ (2 * horizon + 1) - 1 < 1)
-    (payoff : List (Option (OperationalState setup runtime leaks)) → ℝ)
+    (payoff : List (Option (OperationalState setup timeouts leaks)) → ℝ)
     (unit : ∀ record, 0 ≤ payoff record ∧ payoff record ≤ 1) :
     |expect (((targetSequence n).belief who site₁).map fun history =>
-        operationalRecord setup runtime leaks bounds horizon scheduler history.1.trace) payoff -
+        operationalRecord setup timeouts leaks bounds horizon scheduler history.1.trace) payoff -
       expect (((targetSequence n).belief who site₂).map fun history =>
-        operationalRecord setup runtime leaks bounds horizon scheduler history.1.trace) payoff| ≤
+        operationalRecord setup timeouts leaks bounds horizon scheduler history.1.trace) payoff| ≤
       let ρ : ℝ := Nat.card ((onePacketN).InformationHistory who site₁.1) *
           (first.slack * first.scale n / first.floors n ^ first.depth) +
         Nat.card ((onePacketN).InformationHistory who site₂.1) *
@@ -127,7 +131,7 @@ theorem keyedRecord_near
       2 * ρ / (1 + ρ) +
       2 * ((1 + steps.error n) ^ (2 * horizon + 1) - 1) /
         (1 - ((1 + steps.error n) ^ (2 * horizon + 1) - 1)) := by
-  let menu := bounds.onePacketMenu runtime leaks
+  let menu := bounds.onePacketMenu timeouts leaks
   let ε := (1 + steps.error n) ^ (2 * horizon + 1) - 1
   have εNonneg : 0 ≤ ε := by
     have := one_le_pow₀ (n := 2 * horizon + 1)
@@ -137,31 +141,32 @@ theorem keyedRecord_near
   let reach := fun history : (menu.protocol (initialLaw setup) horizon scheduler).History =>
     ((onePacketN).historyReachWeight (targetSequence n).strategy history).toReal
   let base := fun history : (menu.protocol (initialLaw setup) horizon scheduler).History =>
-    othersSourceWeight setup runtime leaks bounds horizon scheduler (sequence n) who history.trace *
-      operationalWeight setup runtime leaks who (steps.mass n)
-        (operationalRecord setup runtime leaks bounds horizon scheduler history.trace)
+    othersSourceWeight setup timeouts leaks bounds horizon scheduler (sequence n) who
+      history.trace *
+      operationalWeight setup timeouts leaks who (steps.mass n)
+        (operationalRecord setup timeouts leaks bounds horizon scheduler history.trace)
   let regular := fun history : (menu.protocol (initialLaw setup) horizon scheduler).History =>
-    RegularTrace setup runtime leaks bounds horizon scheduler (sequence n) who history.trace
+    RegularTrace setup timeouts leaks bounds horizon scheduler (sequence n) who history.trace
   have baseNonneg : ∀ history, 0 ≤ base history := fun history =>
-    mul_nonneg (othersSourceWeight_nonneg (runtime := runtime) _ _ history.trace)
-      (operationalWeight_nonneg setup runtime leaks (steps.mass_nonneg n) _)
-  let scaleOf := fun past : List (application setup runtime leaks).PlayerEntry =>
-    ownerMass setup runtime leaks bounds horizon scheduler ((targetSequence n).strategy who) past
+    mul_nonneg (othersSourceWeight_nonneg (timeouts := timeouts) _ _ history.trace)
+      (operationalWeight_nonneg setup timeouts leaks (steps.mass_nonneg n) _)
+  let scaleOf := fun past : List (application setup timeouts leaks).PlayerEntry =>
+    ownerMass setup timeouts leaks bounds horizon scheduler ((targetSequence n).strategy who) past
   have scaleNonneg : ∀ past, 0 ≤ scaleOf past := fun past =>
-    ownerMassFrom_nonneg setup runtime leaks bounds horizon scheduler _ _ _
+    ownerMassFrom_nonneg setup timeouts leaks bounds horizon scheduler _ _ _
   -- The reach of a regular history is its factored weight.
   have closeAt : ∀ (site : (onePacketN).InformationSite who)
-      {past : List (application setup runtime leaks).PlayerEntry}
-      {view : (application setup runtime leaks).PlayerView}, site.1 = some (past, view) →
+      {past : List (application setup timeouts leaks).PlayerEntry}
+      {view : (application setup timeouts leaks).PlayerView}, site.1 = some (past, view) →
       ∀ history : (onePacketN).InformationHistory who site.1, regular history.1 →
       |reach history.1 - scaleOf past * base history.1| ≤ ε * (scaleOf past * base history.1) := by
     intro site past view atSite history isRegular
-    have recalled : ownerRecall setup runtime leaks who history.1.state = past := by
-      apply ownerRecall_eq_of_infoOf setup runtime leaks (view := view)
-      rw [← onePacket_infoOf (runtime := runtime) who history.1.trace, history.2, atSite]
-    have factored := (onePacketReachFactorization (runtime := runtime) steps).2 n history.1.trace
+    have recalled : ownerRecall setup timeouts leaks who history.1.state = past := by
+      apply ownerRecall_eq_of_infoOf setup timeouts leaks (view := view)
+      rw [← onePacket_infoOf (timeouts := timeouts) who history.1.trace, history.2, atSite]
+    have factored := (onePacketReachFactorization (timeouts := timeouts) steps).2 n history.1.trace
       isRegular
-    have weightEq : factoredWeight (runtime := runtime) sequence (fun n => (targetSequence
+    have weightEq : factoredWeight (timeouts := timeouts) sequence (fun n => (targetSequence
       n).strategy) steps n
         history.1.trace = scaleOf past * base history.1 := by
       unfold factoredWeight
@@ -184,7 +189,7 @@ theorem keyedRecord_near
       informationMass_toReal_eq_sum, tsum_fintype]
   -- The irregular reach is small against the regular reach.
   have irregularAt : ∀ (site : (onePacketN).InformationSite who)
-      (inputs : OnePacketCounterpartInputs setup runtime leaks bounds horizon scheduler sequence
+      (inputs : OnePacketCounterpartInputs setup timeouts leaks bounds horizon scheduler sequence
         targetSequence site),
       ∑' history : (onePacketN).InformationHistory who site.1,
           (if regular history.1 then 0 else reach history.1) ≤
@@ -202,9 +207,9 @@ theorem keyedRecord_near
     exact congrArg _ (sum_congr rfl fun history _ => rfl)
   -- Hence the regular base weights have positive total.
   have positiveBase : ∀ (site : (onePacketN).InformationSite who)
-      {past : List (application setup runtime leaks).PlayerEntry}
-      {view : (application setup runtime leaks).PlayerView}, site.1 = some (past, view) →
-      (inputs : OnePacketCounterpartInputs setup runtime leaks bounds horizon scheduler sequence
+      {past : List (application setup timeouts leaks).PlayerEntry}
+      {view : (application setup timeouts leaks).PlayerView}, site.1 = some (past, view) →
+      (inputs : OnePacketCounterpartInputs setup timeouts leaks bounds horizon scheduler sequence
         targetSequence site) →
       0 < scaleOf past ∧ 0 < ∑' history : (onePacketN).InformationHistory who site.1,
         (if regular history.1 then base history.1 else 0) := by
@@ -290,13 +295,13 @@ theorem keyedRecord_near
     intro site ratio le bound
     refine bound.trans (mul_le_mul_of_nonneg_right le ?_)
     exact tsum_nonneg fun history => by split_ifs <;> simp [reach]
-  have agree := ownerSwap_baseLawAgrees_late (runtime := runtime) signal wellFormed independent
+  have agree := ownerSwap_baseLawAgrees_late (timeouts := timeouts) signal wellFormed independent
     observable
     coversInputs (sequence n)
-    (operationalWeight setup runtime leaks who (steps.mass n)) firstSite
+    (operationalWeight setup timeouts leaks who (steps.mass n)) firstSite
       secondSite
     sameKey firstDebtFree secondDebtFree firstLate secondLate payoff
-  exact recordLaw_near_of_baseLaw (runtime := runtime) (targetSequence n) site₁ site₂ reach base
+  exact recordLaw_near_of_baseLaw (timeouts := timeouts) (targetSequence n) site₁ site₂ reach base
     regular
     (fun _ => ENNReal.toReal_nonneg) (fun history _ => baseNonneg history) bayesAt
     (scaleOf past₁) (scaleOf past₂) ε (ρ₁ + ρ₂) scale₁Pos scale₂Pos small
@@ -304,8 +309,8 @@ theorem keyedRecord_near
     (widen site₁ ρ₁ (by linarith) (irregularAt site₁ first))
     (widen site₂ ρ₂ (by linarith) (irregularAt site₂ second)) payoff unit base₁Pos base₂Pos agree
 
-variable [(application setup runtime leaks).FiniteNature (initialLaw setup) scheduler]
-  [∀ who, DecidableEq ((onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
+variable [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
+  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
     scheduler).InfoState who)]
 
 open Classical in
@@ -313,73 +318,74 @@ open Classical in
 approximates every record payoff in `[0, 1]`, with the same uniformly vanishing error. -/
 theorem OnePacketBaseInputs.lateRecords_of_keyed
     {sequence : ℕ → setup.intendedModel.BehavioralAssessment} {slots : Nat}
-    (inputs : OnePacketBaseInputs setup runtime leaks bounds horizon scheduler sequence slots)
+    (inputs : OnePacketBaseInputs setup timeouts leaks bounds horizon scheduler sequence slots)
     (wellFormed : setup.WellFormed)
     (independent : setup.PrivateInputsIndependentGiven signal)
     (observable : setup.PublicInitialSignal signal)
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup runtime leaks bounds (initialLaw setup)
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
       horizon scheduler slots p))
     (targetSequence : ℕ → (onePacketN).BehavioralAssessment)
-    (assembled : OnePacketAssembled setup runtime leaks bounds horizon scheduler sequence
+    (assembled : OnePacketAssembled setup timeouts leaks bounds horizon scheduler sequence
       inputs.scale
       inputs.scale_pos inputs.scale_le_one weights
         targetSequence)
     (mixed : ∀ n, (targetSequence n).IsFullyMixed)
     (bayes : ∀ n, BehavioralAssessment.IsBayesConsistent (onePacketN) (targetSequence n)
-      ((bounds.onePacketMenu runtime leaks).decisionRecall
+      ((bounds.onePacketMenu timeouts leaks).decisionRecall
         (initialLaw setup) horizon scheduler).decisionInformationAntichain) :
     ∃ beliefDrift : ℕ → ℝ, Tendsto beliefDrift atTop (nhds 0) ∧
-      ∀ n who, ∃ recordLaw : LateKey setup runtime leaks →
-          PMF (List (Option (OperationalState setup runtime leaks))),
+      ∀ n who, ∃ recordLaw : LateKey setup timeouts leaks →
+          PMF (List (Option (OperationalState setup timeouts leaks))),
         ∀ (site : (onePacketN).InformationSite who),
-          ¬ FreeAgent setup runtime leaks bounds (initialLaw setup) horizon scheduler
+          ¬ FreeAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler
             ((onePacketN).agentAt site) →
-          ¬ OwingAgent setup runtime leaks bounds (initialLaw setup) horizon scheduler
+          ¬ OwingAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler
             ((onePacketN).agentAt site) →
-          ownedKeyed (FreeAgent setup runtime leaks bounds (initialLaw setup) horizon scheduler)
-            (LateDeliveryAgent setup runtime leaks bounds (initialLaw setup) horizon scheduler)
+          ownedKeyed (FreeAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler)
+            (LateDeliveryAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler)
             ((onePacketN).agentAt site) →
-          ∀ key, lateKey setup runtime leaks who site.1 = some key →
-          ∀ payoff : List (Option (OperationalState setup runtime leaks)) → ℝ,
+          ∀ key, lateKey setup timeouts leaks who site.1 = some key →
+          ∀ payoff : List (Option (OperationalState setup timeouts leaks)) → ℝ,
             (∀ record, 0 ≤ payoff record ∧ payoff record ≤ 1) →
             |expect (((targetSequence n).belief who site).map fun history =>
-                operationalRecord setup runtime leaks bounds horizon scheduler history.1.trace)
+                operationalRecord setup timeouts leaks bounds horizon scheduler history.1.trace)
                 payoff - expect (recordLaw key) payoff| ≤ beliefDrift n := by
   let LateSite := fun {who : Player} (site : (onePacketN).InformationSite who) =>
-    ¬ FreeAgent setup runtime leaks bounds (initialLaw setup)
+    ¬ FreeAgent setup timeouts leaks bounds (initialLaw setup)
       horizon scheduler ((onePacketN).agentAt site) ∧
-      ¬ OwingAgent setup runtime leaks bounds (initialLaw setup)
+      ¬ OwingAgent setup timeouts leaks bounds (initialLaw setup)
       horizon scheduler ((onePacketN).agentAt site) ∧
-      ownedKeyed (FreeAgent setup runtime leaks bounds (initialLaw setup)
+      ownedKeyed (FreeAgent setup timeouts leaks bounds (initialLaw setup)
       horizon scheduler)
-        (LateDeliveryAgent setup runtime leaks bounds (initialLaw setup) horizon scheduler)
+        (LateDeliveryAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler)
         ((onePacketN).agentAt site)
   -- One site of each key.
-  let recordLaw := fun (n : ℕ) (who : Player) (key : LateKey setup runtime leaks) =>
+  let recordLaw := fun (n : ℕ) (who : Player) (key : LateKey setup timeouts leaks) =>
     if found : ∃ site : (onePacketN).InformationSite who, LateSite site ∧
-        lateKey setup runtime leaks who site.1 = some key then
+        lateKey setup timeouts leaks who site.1 = some key then
       ((targetSequence n).belief who found.choose).map fun history =>
-        operationalRecord setup runtime leaks bounds horizon scheduler history.1.trace
+        operationalRecord setup timeouts leaks bounds horizon scheduler history.1.trace
     else PMF.pure []
-  obtain ⟨beliefDrift, limit, holds⟩ := exists_uniform_of_sites setup runtime leaks bounds horizon
+  obtain ⟨beliefDrift, limit, holds⟩ := exists_uniform_of_sites setup timeouts leaks bounds horizon
     scheduler
-    (fun n who site error => ∀ key, lateKey setup runtime leaks who site.1 = some key →
-      ∀ payoff : List (Option (OperationalState setup runtime leaks)) → ℝ,
+    (fun n who site error => ∀ key, lateKey setup timeouts leaks who site.1 = some key →
+      ∀ payoff : List (Option (OperationalState setup timeouts leaks)) → ℝ,
         (∀ record, 0 ≤ payoff record ∧ payoff record ≤ 1) →
         |expect (((targetSequence n).belief who site).map fun history =>
-            operationalRecord setup runtime leaks bounds horizon scheduler history.1.trace) payoff -
+            operationalRecord setup timeouts leaks bounds horizon scheduler history.1.trace)
+              payoff -
           expect (recordLaw n who key) payoff| ≤ error)
     (fun _ _ _ _ _ le bound key siteKey payoff unit =>
       (bound key siteKey payoff unit).trans le)
     (fun who site => LateSite site)
     (fun who site late => by
       obtain ⟨notFree, notOwing, keyed⟩ := late
-      obtain ⟨⟨past, view⟩, atSite, event, turn⟩ := lateDelivery_input setup runtime leaks keyed.1
-      have forced := forcedAgent_of_not_free setup runtime leaks bounds (initialLaw setup)
+      obtain ⟨⟨past, view⟩, atSite, event, turn⟩ := lateDelivery_input setup timeouts leaks keyed.1
+      have forced := forcedAgent_of_not_free setup timeouts leaks bounds (initialLaw setup)
         horizon scheduler notFree
-      have debtFree := siteDebtFree_of_not_owing setup runtime leaks bounds horizon scheduler
+      have debtFree := siteDebtFree_of_not_owing setup timeouts leaks bounds horizon scheduler
         notOwing
-      have decision := projectedDecision_of_forcedAgent (runtime := runtime) wellFormed forced
+      have decision := projectedDecision_of_forcedAgent (timeouts := timeouts) wellFormed forced
         atSite turn debtFree
       let own := inputs.ownInputs weights targetSequence assembled mixed
         bayes who site notFree
@@ -387,13 +393,13 @@ theorem OnePacketBaseInputs.lateRecords_of_keyed
       let first := inputs.counterpartInputs weights targetSequence assembled
         mixed bayes who
         site notFree notOwing atSite turn
-      obtain ⟨key, siteKey⟩ : ∃ key, lateKey setup runtime leaks who site.1 = some key :=
+      obtain ⟨key, siteKey⟩ : ∃ key, lateKey setup timeouts leaks who site.1 = some key :=
         ⟨_, by rw [atSite]; rfl⟩
       have found : ∃ site' : (onePacketN).InformationSite who, LateSite site' ∧
-          lateKey setup runtime leaks who site'.1 = some key := ⟨site, ⟨notFree, notOwing, keyed⟩,
+          lateKey setup timeouts leaks who site'.1 = some key := ⟨site, ⟨notFree, notOwing, keyed⟩,
             siteKey⟩
       obtain ⟨⟨notFree', notOwing', keyed'⟩, foundKey⟩ := found.choose_spec
-      obtain ⟨⟨past', view'⟩, atSite', event', turn'⟩ := lateDelivery_input setup runtime leaks
+      obtain ⟨⟨past', view'⟩, atSite', event', turn'⟩ := lateDelivery_input setup timeouts leaks
         keyed'.1
       let second := inputs.counterpartInputs weights targetSequence assembled
         mixed bayes who
@@ -405,7 +411,7 @@ theorem OnePacketBaseInputs.lateRecords_of_keyed
         (Nat.card ((onePacketN).InformationHistory who found.choose.1) : ℝ) *
           (second.slack * second.scale n / second.floors n ^ second.depth)
       let formula := fun n => 2 * ρ n / (1 + ρ n) + 2 * ε n / (1 - ε n)
-      have εLimit : Tendsto ε atTop (nhds 0) := (onePacketReachFactorization (runtime := runtime)
+      have εLimit : Tendsto ε atTop (nhds 0) := (onePacketReachFactorization (timeouts := timeouts)
         own.steps).1
       have ρLimit : Tendsto ρ atTop (nhds 0) := by
         simpa using (tendsto_irregularRatio first.negligible _).add
@@ -425,24 +431,24 @@ theorem OnePacketBaseInputs.lateRecords_of_keyed
       · rw [siteKey, Option.some.injEq] at siteKey'
         subst siteKey'
         have lawEq : recordLaw n who key = ((targetSequence n).belief who found.choose).map
-            fun history => operationalRecord setup runtime leaks bounds horizon scheduler
+            fun history => operationalRecord setup timeouts leaks bounds horizon scheduler
               history.1.trace := by
           simp only [recordLaw, found, ↓reduceDIte]
         rw [lawEq]
         by_cases smallAt : ε n < 1
         · simp only [smallAt, ↓reduceIte]
-          exact keyedRecord_near (runtime := runtime) wellFormed independent observable
+          exact keyedRecord_near (timeouts := timeouts) wellFormed independent observable
             inputs.coversInputs n (mixed n)
             (bayes n) atSite atSite' (siteKey.trans foundKey.symm) debtFree
-            (siteDebtFree_of_not_owing setup runtime leaks bounds horizon scheduler notOwing')
+            (siteDebtFree_of_not_owing setup timeouts leaks bounds horizon scheduler notOwing')
               keyed.1
             keyed'.1 own.steps first second smallAt payoff unit
         · simp only [smallAt, ↓reduceIte]
           have := expect_mem_unit (((targetSequence n).belief who site).map
-            fun history => operationalRecord setup runtime leaks bounds horizon scheduler
+            fun history => operationalRecord setup timeouts leaks bounds horizon scheduler
               history.1.trace) payoff unit
           have := expect_mem_unit (((targetSequence n).belief who
-            found.choose).map fun history => operationalRecord setup runtime leaks bounds horizon
+            found.choose).map fun history => operationalRecord setup timeouts leaks bounds horizon
               scheduler history.1.trace) payoff unit
           rw [abs_le]
           constructor <;> linarith)

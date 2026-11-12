@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.DeviationSimulation
-import Vegas.Game.FactorTransfer
+public import Vegas.Game.DeviationSimulation
+public import Vegas.Game.FactorTransfer
+
+@[expose] public section
 
 /-! # A phase that some executions skip
 

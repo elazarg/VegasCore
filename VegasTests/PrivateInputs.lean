@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Source.PrivateInputs
-import Vegas.Pending.EventApplication
-import Vegas.Examples.PrivateValueAuction
-import Vegas.Compile.EventGraphAssembly
+public import Vegas.Source.PrivateInputs
+public import Vegas.Pending.EventApplication
+public import Vegas.Examples.PrivateValueAuction
+public import Vegas.Compile.EventGraphAssembly
+
+@[expose] public section
 
 /-! # Private inputs and initial binding resources
 
@@ -19,7 +23,7 @@ open Vegas Vegas.SourceProgram GameTheory.Math.Probability Interaction
 open Vegas.Examples.PrivateValueAuction
 open Vegas.Examples.CommitRevealAuction (Player)
 
-private def inputOnly (types : Player → Int) : SourceProgram.Setup
+def inputOnly (types : Player → Int) : SourceProgram.Setup
     (Player := Player) (L := simpleExpr) where
   context := context
   namesNodup := by decide
@@ -63,11 +67,11 @@ example (types : Player → Int) (profile : BehavioralProfile program)
     terminal supported
   constructor <;> rw [terminalRef_get, retained] <;> rfl
 
-private abbrev graph := Vegas.toEventGraph program
-private abbrev aliceInput : graph.InputId := ⟨0, by decide⟩
-private abbrev bobInput : graph.InputId := ⟨1, by decide⟩
+abbrev graph := Vegas.toEventGraph program
+abbrev aliceInput : graph.InputId := ⟨0, by decide⟩
+abbrev bobInput : graph.InputId := ⟨1, by decide⟩
 
-private def native (types : Player → Int) : EventGraphRuntime.State graph :=
+def native (types : Player → Int) : EventGraphRuntime.State graph :=
   EventGraphRuntime.State.initial (Vegas.encodeInputs (initial types))
 
 /-- Initial private inputs allocate no accepted commitment handles. -/
@@ -99,21 +103,21 @@ example (types : Player → Int) :
 /-- Valuations create neither bind events nor dummy resolution events. -/
 example : graph.order.eventCount = 4 := rfl
 
-private abbrev bindingContext : SourceCtx Player simpleExpr :=
+abbrev bindingContext : SourceCtx Player simpleExpr :=
   [(0, .commitment .alice .bool), (1, .commitment .alice .bool)]
 
-private def bindingProgram : SourceProgram Player simpleExpr bindingContext {0, 1} :=
+def bindingProgram : SourceProgram Player simpleExpr bindingContext {0, 1} :=
   .reveal 2 .alice 0 (by decide) .here (by decide) <|
   .reveal 3 .alice 1 (by decide) (.there (.there .here)) (by decide) <|
   .ret []
-private abbrev bindingGraph := Vegas.toEventGraph bindingProgram
-private abbrev openableInput : bindingGraph.InputId := ⟨0, by decide⟩
-private abbrev unopenableInput : bindingGraph.InputId := ⟨1, by decide⟩
+abbrev bindingGraph := Vegas.toEventGraph bindingProgram
+abbrev openableInput : bindingGraph.InputId := ⟨0, by decide⟩
+abbrev unopenableInput : bindingGraph.InputId := ⟨1, by decide⟩
 
-private def initialBindings : State simpleExpr bindingContext :=
+def initialBindings : State simpleExpr bindingContext :=
   Env.cons (.success true) (Env.cons .failure (Env.empty (CellVal simpleExpr)))
 
-private def nativeBindings : EventGraphRuntime.State bindingGraph :=
+def nativeBindings : EventGraphRuntime.State bindingGraph :=
   EventGraphRuntime.State.initial (Vegas.encodeInputs initialBindings)
 
 /-- Both successful and unopenable initial bindings retain canonical handles. -/

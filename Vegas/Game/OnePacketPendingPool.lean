@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketCompletionCases
-import Vegas.Game.OnePacketForced
-import Interaction.MessageNetworkIdentity
-import Interaction.ReactiveMessageIdentity
-import Vegas.Game.ServiceSettledEvidence
+public import Vegas.Game.OnePacketCompletionCases
+public import Vegas.Game.OnePacketForced
+public import Interaction.MessageNetworkIdentity
+public import Interaction.ReactiveMessageIdentity
+public import Vegas.Game.ServiceSettledEvidence
+
+@[expose] public section
 
 /-! # Pending packets at forced one-packet histories
 
@@ -25,18 +29,18 @@ open GameTheory GameTheory.Protocol Interaction EventGraphRuntime
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   (bounds : MessageBounds (graph setup))
 
 /-- At a forced native history, every pending packet is an evidence-free
 commitment or an owned opening carrying its exact certificate for a ready event. -/
 theorem onePacket_pending_of_forced (horizon : Nat)
-    (scheduler : (application setup runtime leaks).Scheduler) (who : Player)
-    (history : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+    (scheduler : (application setup timeouts leaks).Scheduler) (who : Player)
+    (history : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).History)
-    (forced : ForcedState setup runtime leaks who history.state)
-    {control : (application setup runtime leaks).Control} (current : history.state = some control)
+    (forced : ForcedState setup timeouts leaks who history.state)
+    {control : (application setup timeouts leaks).Control} (current : history.state = some control)
     (message : Message Player (WitnessedPacket (graph setup)))
     (pending : message ∈ control.execution.network.pending) :
     (∃ event candidate, message.payload.call = .commitment event candidate ∧
@@ -45,15 +49,15 @@ theorem onePacket_pending_of_forced (horizon : Nat)
         message.payload.evidence = some ⟨candidate, raw⟩ ∧
         control.execution.application.config.cut.Ready event ∧
         (graph setup).actor? event = some message.sender := by
-  let app := application setup runtime leaks
+  let app := application setup timeouts leaks
   have trace : (app.protocol (initialLaw setup) horizon scheduler).Trace (some control) :=
-    current ▸ (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup) horizon
+    current ▸ (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon
       scheduler history.trace
-  have clean := (bounds.onePacketMenu_countClean runtime leaks scheduler).history
-    (initialLaw setup) horizon (fun state _ => runtime.countClean_initial leaks state)
+  have clean := (bounds.onePacketMenu_countClean timeouts leaks scheduler).history
+    (initialLaw setup) horizon (fun state _ => (countClean_initial timeouts) leaks state)
     history.trace
   rw [current] at clean forced
-  change runtime.CountClean leaks control.execution at clean
+  change (CountClean timeouts) leaks control.execution at clean
   have facts := settledFacts_history (initialLaw setup) horizon scheduler trace
   have distinct := app.idsDistinct_history scheduler (initialLaw setup) horizon trace
   change control.execution.network.IdsDistinct at distinct
@@ -98,7 +102,7 @@ theorem onePacket_pending_of_forced (horizon : Nat)
           have open_ : event ∉ control.execution.application.config.cut.completed := by
             intro completed
             obtain ⟨rank, point, ordered, decoded, forcedPoint⟩ := forced
-            rcases completed_packet_or_defaulted (runtime := runtime) trace control rfl
+            rcases completed_packet_or_defaulted (timeouts := timeouts) trace control rfl
                 event completed message.sender actor with accepted | ⟨_inactive, failed⟩
             · obtain ⟨other, onLedger, sameSender, otherNamed⟩ := accepted
               have differentIds : message.id ≠ other.id :=

@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RevealService
-import Vegas.Pending.ReactiveFreshCallAcceptance
-import Vegas.Pending.ReactiveCanonicalDecision
-import Vegas.Pending.ReactiveAsyncContract
+public import Vegas.Game.RevealService
+public import Vegas.Pending.ReactiveFreshCallAcceptance
+public import Vegas.Pending.ReactiveCanonicalDecision
+public import Vegas.Pending.ReactiveAsyncContract
+
+@[expose] public section
 
 /-! # Acceptable protected source calls
 
@@ -22,52 +26,52 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
 section RecordedResponses
 variable (setup : Setup (Player := Player) (L := L)) {mode : EventGraph.ExecutionMode}
-  (runtime : EventGraphRuntime (serviceGraph setup mode))
+  (timeouts : EventTimeouts (serviceGraph setup mode))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
 
 /-- The envelope a response transmitting `material` emits. -/
-def sentEnvelope (execution : (runtime.reactiveApplication leaks).Execution) (who : Player)
-    (material : (runtime.reactiveApplication leaks).Submission) :
+def sentEnvelope (execution : ((reactiveApplication timeouts) leaks).Execution) (who : Player)
+    (material : ((reactiveApplication timeouts) leaks).Submission) :
     Message Player (WitnessedPacket (serviceGraph setup mode)) :=
   ⟨(who, execution.network.nextSerial who),
-    (runtime.reactiveApplication leaks).packet
-      ((runtime.reactiveApplication leaks).submit execution.application who material) who
+    ((reactiveApplication timeouts) leaks).packet
+      (((reactiveApplication timeouts) leaks).submit execution.application who material) who
       (execution.network.known who) material⟩
 
 
 /-- The recall entry a response appends: the view it was made from, the
 response, and the envelope it emits. -/
-def respondEntry (execution : (runtime.reactiveApplication leaks).Execution) (who : Player)
-    (response : (runtime.reactiveApplication leaks).Action) :
-      (runtime.reactiveApplication leaks).PlayerEntry :=
-  ⟨execution.observe (runtime.reactiveApplication leaks) who, response,
-    response.transmission.map (sentEnvelope setup runtime leaks execution who)⟩
+def respondEntry (execution : ((reactiveApplication timeouts) leaks).Execution) (who : Player)
+    (response : ((reactiveApplication timeouts) leaks).Action) :
+      ((reactiveApplication timeouts) leaks).PlayerEntry :=
+  ⟨execution.observe ((reactiveApplication timeouts) leaks) who, response,
+    response.transmission.map (sentEnvelope setup timeouts leaks execution who)⟩
 
-variable {setup runtime leaks}
+variable {setup timeouts leaks}
 
 /-- The entry of a transmitting response records its envelope. -/
-theorem respondEntry_of_transmission (execution : (runtime.reactiveApplication leaks).Execution)
-    (who : Player) (response : (runtime.reactiveApplication leaks).Action)
-    (material : (runtime.reactiveApplication leaks).Submission)
+theorem respondEntry_of_transmission (execution : ((reactiveApplication timeouts) leaks).Execution)
+    (who : Player) (response : ((reactiveApplication timeouts) leaks).Action)
+    (material : ((reactiveApplication timeouts) leaks).Submission)
     (submits : response.transmission = some material) :
-    respondEntry setup runtime leaks execution who response =
-      ⟨execution.observe (runtime.reactiveApplication leaks) who, response,
-        some (sentEnvelope setup runtime leaks execution who material)⟩ := by
+    respondEntry setup timeouts leaks execution who response =
+      ⟨execution.observe ((reactiveApplication timeouts) leaks) who, response,
+        some (sentEnvelope setup timeouts leaks execution who material)⟩ := by
   unfold respondEntry
   rw [submits]
   rfl
 end RecordedResponses
 
 variable (setup : Setup (Player := Player) (L := L)) {mode : EventGraph.ExecutionMode}
-  {deadline : (serviceGraph setup mode).EventId → Nat}
+  {duration : (serviceGraph setup mode).EventId → Nat}
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
 
 /-- A fresh call the handler accepts when included in time: the acceptance part
 of the audit's public conformance rule, evaluated on the view its author saw
 when emitting it. -/
-def AcceptableFreshCall (entry : (serviceApplication setup mode deadline leaks).PlayerEntry)
+def AcceptableFreshCall (entry : (serviceApplication setup mode duration leaks).PlayerEntry)
     (message : Message Player (WitnessedPacket (serviceGraph setup mode))) : Prop :=
-  (serviceRuntime setup mode deadline).freshServiceAcceptable
+  (freshServiceAcceptable (serviceTimeouts setup mode duration))
   entry.beforeView.application.publicView message
 
 /-- One recorded fresh call of `owner` for `event`: a fresh submission, sent
@@ -76,7 +80,7 @@ while the event was ready and early enough that an inclusion within
 author saw. -/
 structure FreshCall (owner : Player) (event : (serviceGraph setup mode).EventId)
     (bound : (serviceGraph setup mode).EventId → Nat)
-    (entry : (serviceApplication setup mode deadline leaks).PlayerEntry)
+    (entry : (serviceApplication setup mode duration leaks).PlayerEntry)
     (message : Message Player (WitnessedPacket (serviceGraph setup mode))) : Prop where
   fresh : ∃ material, entry.action.transmission = some material
   emitted : entry.emitted = some message
@@ -84,13 +88,13 @@ structure FreshCall (owner : Player) (event : (serviceGraph setup mode).EventId)
   addressed : message.payload.call.event? (serviceGraph setup mode) = some event
   ready : entry.beforeView.application.publicView.EventReady event
   fits : entry.beforeView.application.publicView.InclusionFitsDeadline
-      (serviceRuntime setup mode deadline) bound event
+      (serviceTimeouts setup mode duration) bound event
   conforming : AcceptableFreshCall setup leaks entry message
 
 /-- An event completes only together with an accepting receipt for `id`, and
 every receipt for `id` is accompanied by an accepting one. -/
 def Settled (event : (serviceGraph setup mode).EventId) (id : MessageId Player)
-    (execution : (serviceApplication setup mode deadline leaks).Execution) : Prop :=
+    (execution : (serviceApplication setup mode duration leaks).Execution) : Prop :=
   (event ∈ execution.application.config.cut.completed → (id, true) ∈ execution.receipts) ∧
     (∀ accepted, (id, accepted) ∈ execution.receipts → (id, true) ∈ execution.receipts) ∧
     ((id, true) ∈ execution.receipts → event ∈ execution.application.config.cut.completed)
@@ -99,11 +103,11 @@ def Settled (event : (serviceGraph setup mode).EventId) (id : MessageId Player)
 emitted by `owner` for the event, is settled. -/
 def SettlesFreshCalls (owner : Player) (event : (serviceGraph setup mode).EventId)
     (bound : (serviceGraph setup mode).EventId → Nat)
-    (execution : (serviceApplication setup mode deadline leaks).Execution) :
+    (execution : (serviceApplication setup mode duration leaks).Execution) :
     Prop :=
   ∀ earlier entry later message, execution.logs owner = earlier ++ entry :: later →
     FreshCall setup leaks owner event bound entry message →
-    (∀ other ∈ earlier ++ later, ¬ EmitsOtherFor (serviceRuntime setup mode deadline) leaks other
+    (∀ other ∈ earlier ++ later, ¬ EmitsOtherFor (serviceTimeouts setup mode duration) leaks other
         event message.id) →
     Settled setup leaks event message.id execution
 

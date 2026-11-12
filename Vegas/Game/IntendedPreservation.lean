@@ -1,12 +1,16 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Source.Exclusion
-import Vegas.Source.SetupProtocolRecall
-import Vegas.Game.SourceInformation
-import Vegas.Game.SourceContinuation
-import GameTheoryExtensions.Analysis.Protocol.PassageRestrictionExtension
-import GameTheoryExtensions.Protocol.ContinuationHorizon
-import GameTheoryExtensions.Protocol.JointDistribution
+public import Vegas.Source.Exclusion
+public import Vegas.Source.SetupProtocolRecall
+public import Vegas.Game.SourceInformation
+public import Vegas.Game.SourceContinuation
+public import GameTheoryExtensions.Analysis.Protocol.PassageRestrictionExtension
+public import GameTheoryExtensions.Protocol.ContinuationHorizon
+public import GameTheoryExtensions.Protocol.JointDistribution
+
+@[expose] public section
 
 /-! # Intended-game preservation
 

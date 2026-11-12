@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveGraphSteps
-import Vegas.Game.RevealServicePayoffs
-import Vegas.Game.SourceServicePrefix
-import GameTheoryExtensions.Analysis.Protocol.StoppedReadout
-import GameTheoryExtensions.Protocol.ContinuationHorizon
+public import Vegas.Pending.ReactiveGraphSteps
+public import Vegas.Game.RevealServicePayoffs
+public import Vegas.Game.SourceServicePrefix
+public import GameTheoryExtensions.Analysis.Protocol.StoppedReadout
+public import GameTheoryExtensions.Protocol.ContinuationHorizon
+
+@[expose] public section
 
 /-! # Completed native source cuts freeze their configuration
 
@@ -22,35 +26,35 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
 /-- Source completion is a predicate on the actual current native cut. -/
-def NativeSourceTerminal : (application setup runtime leaks).ProtocolState → Prop
+def NativeSourceTerminal : (application setup timeouts leaks).ProtocolState → Prop
   | none => False
   | some control => control.execution.application.config.cut.Terminal
 
 /-- Every actual native transition after source completion fixes the entire
 configuration. This does not require honesty, inclusion, service, or completion
 of the scheduler horizon. -/
-theorem sourceTerminal_transition {initial : PMF (application setup runtime
+theorem sourceTerminal_transition {initial : PMF (application setup timeouts
   leaks).State}
-    {horizon : Nat} {scheduler : (application setup runtime leaks).Scheduler}
-    (control : (application setup runtime leaks).Control)
+    {horizon : Nat} {scheduler : (application setup timeouts leaks).Scheduler}
+    (control : (application setup timeouts leaks).Control)
     (terminal : control.execution.application.config.cut.Terminal)
-    (joint : Player → Option (application setup runtime leaks).Action)
-    {after : (application setup runtime leaks).ProtocolState}
-    (reached : after ∈ ((application setup runtime leaks).transition initial
+    (joint : Player → Option (application setup timeouts leaks).Action)
+    {after : (application setup timeouts leaks).ProtocolState}
+    (reached : after ∈ ((application setup timeouts leaks).transition initial
       horizon scheduler
       (some control) joint).support) :
-    ∃ next : (application setup runtime leaks).Control, after = some next ∧
+    ∃ next : (application setup timeouts leaks).Control, after = some next ∧
       next.execution.application.config = control.execution.application.config := by
   rcases control with ⟨remaining, actor, execution⟩
   cases actor with
   | some who =>
       cases (PMF.mem_support_pure_iff _ _).mp reached
       exact ⟨_, rfl, EventGraph.Config.Step.path_eq_of_terminal
-        ((reactiveApplication_graphSteps runtime leaks).respond execution who _) terminal⟩
+        ((reactiveApplication_graphSteps timeouts leaks).respond execution who _) terminal⟩
   | none =>
       cases remaining with
       | zero =>
@@ -61,32 +65,32 @@ theorem sourceTerminal_transition {initial : PMF (application setup runtime
           obtain ⟨next, stepped, rfl⟩ := PMF.support_map .. ▸ moved
           refine ⟨_, rfl, ?_⟩
           exact EventGraph.Config.Step.path_eq_of_terminal
-            ((reactiveApplication_graphSteps runtime leaks).environmentStep
+            ((reactiveApplication_graphSteps timeouts leaks).environmentStep
               execution next command stepped) terminal
 
 variable [Finite Player]
 
 /-- Every supported continuation retains the full completed native graph configuration. -/
-theorem sourceTerminal_config_stable (menu : (application setup runtime leaks).ResponseMenu)
-    (initial : PMF (application setup runtime leaks).State) (horizon : Nat)
-    (scheduler : (application setup runtime leaks).Scheduler)
+theorem sourceTerminal_config_stable (menu : (application setup timeouts leaks).ResponseMenu)
+    (initial : PMF (application setup timeouts leaks).State) (horizon : Nat)
+    (scheduler : (application setup timeouts leaks).Scheduler)
     (certificate : (menu.protocol initial horizon scheduler).WellFoundedHistories)
     (players : ∀ who, (menu.information initial horizon scheduler).BehavioralPolicy who)
     (start : (menu.protocol initial horizon scheduler).History)
-    (control : (application setup runtime leaks).Control) (current : start.state = some control)
+    (control : (application setup timeouts leaks).Control) (current : start.state = some control)
     (terminal : control.execution.application.config.cut.Terminal) :
     ∀ final ∈ ((menu.information initial horizon scheduler).runBehavioralTerminalFrom certificate
         players start).support,
-      ∃ found : (application setup runtime leaks).Control, final.state = some found ∧
+      ∃ found : (application setup timeouts leaks).Control, final.state = some found ∧
         found.execution.application.config = control.execution.application.config := by
-  let closed := fun state : (application setup runtime leaks).ProtocolState =>
-    ∃ found : (application setup runtime leaks).Control, state = some found ∧
+  let closed := fun state : (application setup timeouts leaks).ProtocolState =>
+    ∃ found : (application setup timeouts leaks).Control, state = some found ∧
       found.execution.application.config = control.execution.application.config
   have preserved := InformationModel.runBehavioralTerminalFrom_support_closed
     (menu.information initial horizon scheduler) certificate players closed
     (fun before joint _legal after holds member => by
       obtain ⟨found, rfl, same⟩ := holds
-      obtain ⟨next, nextState, nextConfig⟩ := sourceTerminal_transition (runtime := runtime) found
+      obtain ⟨next, nextState, nextConfig⟩ := sourceTerminal_transition (timeouts := timeouts) found
         (initial := initial) (horizon := horizon) (scheduler := scheduler)
         (same.symm ▸ terminal) joint member
       exact ⟨next, nextState, nextConfig.trans same⟩)
@@ -95,19 +99,19 @@ theorem sourceTerminal_config_stable (menu : (application setup runtime leaks).R
 
 /-- The full source readout stays fixed under every continuation profile once
 the source cut has completed, even while callbacks and network effects continue. -/
-theorem sourceTerminal_readout_stable (menu : (application setup runtime
+theorem sourceTerminal_readout_stable (menu : (application setup timeouts
   leaks).ResponseMenu)
-    (initial : PMF (application setup runtime leaks).State) (horizon : Nat)
-    (scheduler : (application setup runtime leaks).Scheduler)
+    (initial : PMF (application setup timeouts leaks).State) (horizon : Nat)
+    (scheduler : (application setup timeouts leaks).Scheduler)
     (certificate : (menu.protocol initial horizon scheduler).WellFoundedHistories)
     (players : ∀ who, (menu.information initial horizon scheduler).BehavioralPolicy who)
     (start : (menu.protocol initial horizon scheduler).History)
-    (terminal : NativeSourceTerminal (runtime := runtime) (setup := setup) (leaks := leaks)
+    (terminal : NativeSourceTerminal (timeouts := timeouts) (setup := setup) (leaks := leaks)
       start.state) :
     ∀ final ∈ ((menu.information initial horizon scheduler).runBehavioralTerminalFrom certificate
         players start).support,
-      sourceReadout setup runtime leaks final.state = sourceReadout setup
-        runtime leaks start.state := by
+      sourceReadout setup timeouts leaks final.state = sourceReadout setup
+        timeouts leaks start.state := by
   cases current : start.state with
   | none => simp only [NativeSourceTerminal, current] at terminal
   | some control =>
@@ -122,47 +126,47 @@ theorem sourceTerminal_readout_stable (menu : (application setup runtime
 /-- Stopping at actual source completion preserves the exact terminal law of
 the full source readout. Every legal profile is covered; no final-law equality is
 assumed, and ancillary histories or receipts are not projected into this law. -/
-theorem sourceTerminal_readout_law (menu : (application setup runtime
+theorem sourceTerminal_readout_law (menu : (application setup timeouts
   leaks).ResponseMenu)
-    (initial : PMF (application setup runtime leaks).State) (horizon : Nat)
-    (scheduler : (application setup runtime leaks).Scheduler)
+    (initial : PMF (application setup timeouts leaks).State) (horizon : Nat)
+    (scheduler : (application setup timeouts leaks).Scheduler)
     (certificate : (menu.protocol initial horizon scheduler).WellFoundedHistories)
     (players : ∀ who, (menu.information initial horizon scheduler).BehavioralPolicy who)
     (start : (menu.protocol initial horizon scheduler).History) :
     (((menu.information initial horizon scheduler).runBehavioralTerminalFrom certificate players
-        start).map (fun final => sourceReadout setup runtime leaks final.state)) =
+        start).map (fun final => sourceReadout setup timeouts leaks final.state)) =
       (((menu.information initial horizon scheduler).runBehavioralUntil certificate players
-        (fun history => NativeSourceTerminal (runtime := runtime) (setup := setup) (leaks :=
+        (fun history => NativeSourceTerminal (timeouts := timeouts) (setup := setup) (leaks :=
           leaks) history.state)
-        start).map (fun final => sourceReadout setup runtime leaks final.state)) := by
+        start).map (fun final => sourceReadout setup timeouts leaks final.state)) := by
   apply InformationModel.runBehavioralTerminalFrom_map_eq_until_of_stable_readout
     (menu.information initial horizon scheduler) certificate players _ _ _ start
-  exact sourceTerminal_readout_stable (runtime := runtime) menu initial horizon scheduler
+  exact sourceTerminal_readout_stable (timeouts := timeouts) menu initial horizon scheduler
     certificate players
 
 /-- Every finite native continuation from a completed source cut has the pure
 source continuation law. The response menu, initial law and player policies
 are arbitrary, and all source configuration fields are retained. -/
-theorem terminalPrefix_readout_law (menu : (application setup runtime leaks).ResponseMenu)
-    (initial : PMF (application setup runtime leaks).State) (horizon : Nat)
-    (scheduler : (application setup runtime leaks).Scheduler)
+theorem terminalPrefix_readout_law (menu : (application setup timeouts leaks).ResponseMenu)
+    (initial : PMF (application setup timeouts leaks).State) (horizon : Nat)
+    (scheduler : (application setup timeouts leaks).Scheduler)
     (certificate : (menu.protocol initial horizon scheduler).WellFoundedHistories)
     (players : ∀ who, (menu.information initial horizon scheduler).BehavioralPolicy who)
     (start : (menu.protocol initial horizon scheduler).History)
-    (control : (application setup runtime leaks).Control) (state : start.state = some control)
+    (control : (application setup timeouts leaks).Control) (state : start.state = some control)
     (terminal : control.execution.application.config.cut.Terminal)
     (profile : BehavioralProfile setup.program) :
     ((menu.information initial horizon scheduler).runBehavioralTerminalFrom certificate players
-        start).map (fun final => sourceReadout setup runtime leaks final.state) =
+        start).map (fun final => sourceReadout setup timeouts leaks final.state) =
       sourceContinuation setup profile (eventCount setup.program)
         control.execution.application.config := by
-  have stable := sourceTerminal_readout_stable (runtime := runtime) menu initial horizon
+  have stable := sourceTerminal_readout_stable (timeouts := timeouts) menu initial horizon
     scheduler certificate players start (by simpa only [state, NativeSourceTerminal] using terminal)
   rw [sourceContinuation_terminal setup profile _ terminal]
   calc
-    _ = PMF.pure (sourceReadout setup runtime leaks start.state) := by
+    _ = PMF.pure (sourceReadout setup timeouts leaks start.state) := by
       exact (map_congr_on_support _
-        (g := fun _ => sourceReadout setup runtime leaks start.state)
+        (g := fun _ => sourceReadout setup timeouts leaks start.state)
         (fun final supported => stable final supported)).trans (PMF.map_const _ _)
     _ = _ := by
       rw [state, sourceReadout, serviceSourceReadout_eq_decode,

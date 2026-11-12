@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveBindingRepair
-import Interaction.ReactiveImplementationContinuation
-import GameTheory.Math.Probability.ConditionalObservation
-import GameTheory.Math.Probability.ExpectationConditioning
+public import Vegas.Pending.ReactiveBindingRepair
+public import Interaction.ReactiveImplementationContinuation
+public import GameTheory.Math.Probability.ConditionalObservation
+public import GameTheory.Math.Probability.ExpectationConditioning
+
+@[expose] public section
 
 /-! # Owner-local memory for repairing hidden bindings
 
@@ -193,17 +197,17 @@ theorem rememberCompletion_observation (memory : BindingShadow graph)
           (graph.nodes event).defaultEvent leftAction leftValue := sameDefault
       simp [completion, rememberCompletion, same]
 
-variable (runtime : EventGraphRuntime graph)
+variable (timeouts : EventTimeouts graph)
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
 
 def inputView (memory : BindingShadow graph)
-    (observed : (runtime.reactiveApplication leaks).PlayerView) :
-    (runtime.reactiveApplication leaks).PlayerView :=
+    (observed : ((reactiveApplication timeouts) leaks).PlayerView) :
+    ((reactiveApplication timeouts) leaks).PlayerView :=
   { observed with application := memory.view observed.application }
 
 @[simp] theorem inputView_empty
-    (observed : (runtime.reactiveApplication leaks).PlayerView) :
-    (empty : BindingShadow graph).inputView runtime leaks observed = observed := by
+    (observed : ((reactiveApplication timeouts) leaks).PlayerView) :
+    (empty : BindingShadow graph).inputView timeouts leaks observed = observed := by
   cases observed
   simp only [inputView, view_empty]
 
@@ -213,8 +217,8 @@ theorem rememberCompletion_pending (memory : BindingShadow graph)
     (ready : state.config.cut.Ready event)
     (action : graph.Action event) (value : (graph.outputLayout event).Value) :
     (memory.rememberCompletion event action value).view
-      ((runtime.reactiveApplication leaks).observePlayer state who) =
-        memory.view ((runtime.reactiveApplication leaks).observePlayer state who) := by
+      (((reactiveApplication timeouts) leaks).observePlayer state who) =
+        memory.view (((reactiveApplication timeouts) leaks).observePlayer state who) := by
   apply memory.rememberCompletion_unavailable
   · change graph.playerStore who state.config.store (.inr event) = none
     have absent : state.config.outputs event = none := by
@@ -231,9 +235,9 @@ theorem rememberCompletion_pending (memory : BindingShadow graph)
 
 private theorem submitted_view (state : State graph) (who : Player)
     (submission : WitnessedSubmission graph) :
-    (runtime.reactiveApplication leaks).observePlayer
-      ((runtime.reactiveApplication leaks).submit state who submission) who =
-      { (runtime.reactiveApplication leaks).observePlayer state who with
+    ((reactiveApplication timeouts) leaks).observePlayer
+      (((reactiveApplication timeouts) leaks).submit state who submission) who =
+      { ((reactiveApplication timeouts) leaks).observePlayer state who with
         candidates := submission.call.candidateAfter who
           (fun slot => state.candidates.lookup (who, slot)) } := by
   dsimp only [reactiveApplication, State.playerView]
@@ -249,26 +253,26 @@ catalog and original private material. No part of the global state is an input
 to the memory update. Mistyped raw material is included in this statement. -/
 theorem rememberCandidate_submit_view (memory : BindingShadow graph)
     (left right : State graph) (who : Player)
-    (observed : memory.view ((runtime.reactiveApplication leaks).observePlayer right who) =
-      (runtime.reactiveApplication leaks).observePlayer left who)
+    (observed : memory.view (((reactiveApplication timeouts) leaks).observePlayer right who) =
+      ((reactiveApplication timeouts) leaks).observePlayer left who)
     (event : graph.EventId) (serial : Nat) (original repaired : Option (Raw L)) :
-    let before := (runtime.reactiveApplication leaks).observePlayer right who
+    let before := ((reactiveApplication timeouts) leaks).observePlayer right who
     let originalCall : Submission graph := ⟨.commitment event (who, .prepared serial), original⟩
     let repairedCall : Submission graph := ⟨.commitment event (who, .prepared serial), repaired⟩
     let updated := memory.rememberCandidate (.prepared serial)
       (originalCall.candidateAfter who (memory.view before).candidates (.prepared serial))
-    updated.view ((runtime.reactiveApplication leaks).observePlayer
-      ((runtime.reactiveApplication leaks).submit right who ⟨repairedCall, .none⟩) who) =
-      (runtime.reactiveApplication leaks).observePlayer
-        ((runtime.reactiveApplication leaks).submit left who ⟨originalCall, .none⟩) who := by
+    updated.view (((reactiveApplication timeouts) leaks).observePlayer
+      (((reactiveApplication timeouts) leaks).submit right who ⟨repairedCall, .none⟩) who) =
+      ((reactiveApplication timeouts) leaks).observePlayer
+        (((reactiveApplication timeouts) leaks).submit left who ⟨originalCall, .none⟩) who := by
   classical
   dsimp only
   rw [submitted_view, submitted_view]
   have catalog := congrArg PlayerView.candidates observed
   have frame : ∀ (candidates : CandidateSlot graph → CommitmentCandidate (Raw L)),
-      { memory.view ((runtime.reactiveApplication leaks).observePlayer right who) with
+      { memory.view (((reactiveApplication timeouts) leaks).observePlayer right who) with
         candidates := candidates } =
-      { (runtime.reactiveApplication leaks).observePlayer left who with
+      { ((reactiveApplication timeouts) leaks).observePlayer left who with
         candidates := candidates } := fun candidates => congrArg
           (fun view : PlayerView graph => { view with candidates := candidates }) observed
   rw [← frame]
@@ -294,76 +298,76 @@ variable [DecidableEq Player]
 
 /-- Saved inputs and actions contain only data the player already possessed.
 The actual emitted envelopes remain in the protocol's ordinary own recall. -/
-structure BindingMemory (runtime : EventGraphRuntime graph)
+structure BindingMemory (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)) where
   shadow : BindingShadow graph
-  responses : List ((runtime.reactiveApplication leaks).PlayerView ×
-    (runtime.reactiveApplication leaks).Action)
+  responses : List (((reactiveApplication timeouts) leaks).PlayerView ×
+    ((reactiveApplication timeouts) leaks).Action)
 
 namespace BindingMemory
 
-variable (runtime : EventGraphRuntime graph)
+variable (timeouts : EventTimeouts graph)
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
 
-def restoreRecall (memory : BindingMemory runtime leaks)
-    (past : List (runtime.reactiveApplication leaks).PlayerEntry) :
-    List (runtime.reactiveApplication leaks).PlayerEntry :=
+def restoreRecall (memory : BindingMemory timeouts leaks)
+    (past : List ((reactiveApplication timeouts) leaks).PlayerEntry) :
+    List ((reactiveApplication timeouts) leaks).PlayerEntry :=
   List.zipWith (fun entry saved => ⟨saved.1, saved.2, entry.emitted⟩) past memory.responses
 
-def atRecall (past : List (runtime.reactiveApplication leaks).PlayerEntry) :
-    BindingMemory runtime leaks :=
+def atRecall (past : List ((reactiveApplication timeouts) leaks).PlayerEntry) :
+    BindingMemory timeouts leaks :=
   ⟨.empty, past.map fun entry => (entry.beforeView, entry.action)⟩
 
-theorem restoreRecall_atRecall (past : List (runtime.reactiveApplication leaks).PlayerEntry) :
-    (atRecall runtime leaks past).restoreRecall runtime leaks past = past := by
+theorem restoreRecall_atRecall (past : List ((reactiveApplication timeouts) leaks).PlayerEntry) :
+    (atRecall timeouts leaks past).restoreRecall timeouts leaks past = past := by
   induction past with
   | nil => rfl
   | cons entry rest ih =>
       simpa only [atRecall, restoreRecall, List.map_cons, List.zipWith_cons_cons] using
         congrArg (entry :: ·) ih
 
-def record (memory : BindingMemory runtime leaks)
-    (view : (runtime.reactiveApplication leaks).PlayerView)
-    (response : (runtime.reactiveApplication leaks).Action) : BindingMemory runtime leaks :=
+def record (memory : BindingMemory timeouts leaks)
+    (view : ((reactiveApplication timeouts) leaks).PlayerView)
+    (response : ((reactiveApplication timeouts) leaks).Action) : BindingMemory timeouts leaks :=
   { memory with responses := memory.responses ++ [(view, response)] }
 
-theorem restoreRecall_record (memory : BindingMemory runtime leaks)
-    (past : List (runtime.reactiveApplication leaks).PlayerEntry)
+theorem restoreRecall_record (memory : BindingMemory timeouts leaks)
+    (past : List ((reactiveApplication timeouts) leaks).PlayerEntry)
     (lengths : past.length = memory.responses.length)
-    (actual : (runtime.reactiveApplication leaks).PlayerEntry)
-    (view : (runtime.reactiveApplication leaks).PlayerView)
-    (response : (runtime.reactiveApplication leaks).Action) :
-    (memory.record runtime leaks view response).restoreRecall runtime leaks (past ++ [actual]) =
-      memory.restoreRecall runtime leaks past ++ [⟨view, response, actual.emitted⟩] := by
+    (actual : ((reactiveApplication timeouts) leaks).PlayerEntry)
+    (view : ((reactiveApplication timeouts) leaks).PlayerView)
+    (response : ((reactiveApplication timeouts) leaks).Action) :
+    (memory.record timeouts leaks view response).restoreRecall timeouts leaks (past ++ [actual]) =
+      memory.restoreRecall timeouts leaks past ++ [⟨view, response, actual.emitted⟩] := by
   simp only [record, restoreRecall, List.zipWith_append lengths,
     List.zipWith_cons_cons, List.zipWith_nil_left]
 
 /-- Resubmitting the saved original inputs changes no envelope. In particular,
 equal packet payloads suffice even when the submitted private openings differ. -/
-theorem restoreRecall_submit (memory : BindingMemory runtime leaks)
-    (left right : (runtime.reactiveApplication leaks).Execution) (who : Player)
+theorem restoreRecall_submit (memory : BindingMemory timeouts leaks)
+    (left right : ((reactiveApplication timeouts) leaks).Execution) (who : Player)
     (original repaired : WitnessedSubmission graph)
     (lengths : (right.logs who).length = memory.responses.length)
-    (past : memory.restoreRecall runtime leaks (right.logs who) = left.logs who)
-    (observed : memory.shadow.inputView runtime leaks
-      (right.observe (runtime.reactiveApplication leaks) who) =
-        left.observe (runtime.reactiveApplication leaks) who)
+    (past : memory.restoreRecall timeouts leaks (right.logs who) = left.logs who)
+    (observed : memory.shadow.inputView timeouts leaks
+      (right.observe ((reactiveApplication timeouts) leaks) who) =
+        left.observe ((reactiveApplication timeouts) leaks) who)
     (network : left.network = right.network)
     (packet : original.emit
-      ((runtime.reactiveApplication leaks).submit left.application who original) who
+      (((reactiveApplication timeouts) leaks).submit left.application who original) who
         (left.network.known who) =
-      repaired.emit ((runtime.reactiveApplication leaks).submit right.application who repaired)
+      repaired.emit (((reactiveApplication timeouts) leaks).submit right.application who repaired)
         who (right.network.known who)) :
-    (memory.record runtime leaks
-      (memory.shadow.inputView runtime leaks
-        (right.observe (runtime.reactiveApplication leaks) who))
-      ⟨some original⟩).restoreRecall runtime leaks
-        ((right.respond (runtime.reactiveApplication leaks) who
+    (memory.record timeouts leaks
+      (memory.shadow.inputView timeouts leaks
+        (right.observe ((reactiveApplication timeouts) leaks) who))
+      ⟨some original⟩).restoreRecall timeouts leaks
+        ((right.respond ((reactiveApplication timeouts) leaks) who
           ⟨some repaired⟩).logs who) =
-      (left.respond (runtime.reactiveApplication leaks) who
+      (left.respond ((reactiveApplication timeouts) leaks) who
         ⟨some original⟩).logs who := by
   simp only [ReactiveApplication.Execution.respond, ↓reduceIte]
-  rw [restoreRecall_record runtime leaks memory _ lengths, past, observed]
+  rw [restoreRecall_record timeouts leaks memory _ lengths, past, observed]
   congr 3
   change some (⟨(who, right.network.nextSerial who), _⟩ :
     Message Player (WitnessedPacket graph)) =
@@ -377,11 +381,11 @@ open Classical in
 material. Every test and memory update uses the current own input. Recording
 usable bindings keeps their response unchanged and gives one reconstruction
 rule for subsequent inclusion. Other responses are left intact. -/
-def repairResponse (who : Player) (memory : BindingMemory runtime leaks)
-    (actual : (runtime.reactiveApplication leaks).PlayerView)
-    (response : (runtime.reactiveApplication leaks).Action) :
-    (runtime.reactiveApplication leaks).Action × BindingShadow graph :=
-  let original := memory.shadow.inputView runtime leaks actual
+def repairResponse (who : Player) (memory : BindingMemory timeouts leaks)
+    (actual : ((reactiveApplication timeouts) leaks).PlayerView)
+    (response : ((reactiveApplication timeouts) leaks).Action) :
+    ((reactiveApplication timeouts) leaks).Action × BindingShadow graph :=
+  let original := memory.shadow.inputView timeouts leaks actual
   match response.transmission with
   | some ⟨⟨.commitment event (author, .prepared serial), opening⟩, .none⟩ =>
       match nodeView graph event with
@@ -395,7 +399,7 @@ def repairResponse (who : Player) (memory : BindingMemory runtime leaks)
             let decoded := opening.bind (fun raw => raw.as? payload)
             let result := decoded.elim PublicationResult.failure PublicationResult.success
             let replacement := match decoded with
-              | none => runtime.reactiveBinding leaks who event payload
+              | none => (reactiveBinding timeouts) leaks who event payload
                   (.success (L.someValue payload)) serial
               | some _ => response
             (replacement,
@@ -408,37 +412,38 @@ def repairResponse (who : Player) (memory : BindingMemory runtime leaks)
 
 /-- An unusable source binding and a mistyped raw opening take the same local
 repair branch. The remembered candidate is their original raw meaning. -/
-theorem repairResponse_unusable (who : Player) (memory : BindingMemory runtime leaks)
-    (actual : (runtime.reactiveApplication leaks).PlayerView)
+theorem repairResponse_unusable (who : Player) (memory : BindingMemory timeouts leaks)
+    (actual : ((reactiveApplication timeouts) leaks).PlayerView)
     (event : graph.EventId) (payload : L.Ty)
     (outputEq : graph.outputLayout event = .binding who payload)
     (codeEq : cast (congrArg (EventGraph.EventCode graph.layout) outputEq)
       (graph.nodes event) = .bind who payload)
     (node : nodeView graph event = .bind who payload outputEq codeEq)
     (serial : Nat) (opening : Option (Raw L))
-    (originalFresh : (memory.shadow.inputView runtime leaks actual).application.candidates
+    (originalFresh : (memory.shadow.inputView timeouts leaks actual).application.candidates
       (.prepared serial) = .fresh)
     (actualFresh : actual.application.candidates (.prepared serial) = .fresh)
     (unusable : opening.bind (fun raw => raw.as? payload) = none) :
-    (memory.repairResponse runtime leaks who actual
+    (memory.repairResponse timeouts leaks who actual
       ⟨some ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩⟩).1 =
-      runtime.reactiveBinding leaks who event payload (.success (L.someValue payload)) serial := by
+      (reactiveBinding timeouts) leaks who event payload (.success (L.someValue payload)) serial
+        := by
   simp only [repairResponse, node, originalFresh, actualFresh, unusable, and_self, ↓reduceIte]
 
 /-- Uniform private recording does not change a usable binding response. -/
-theorem repairResponse_usable (who : Player) (memory : BindingMemory runtime leaks)
-    (actual : (runtime.reactiveApplication leaks).PlayerView)
+theorem repairResponse_usable (who : Player) (memory : BindingMemory timeouts leaks)
+    (actual : ((reactiveApplication timeouts) leaks).PlayerView)
     (event : graph.EventId) (payload : L.Ty)
     (outputEq : graph.outputLayout event = .binding who payload)
     (codeEq : cast (congrArg (EventGraph.EventCode graph.layout) outputEq)
       (graph.nodes event) = .bind who payload)
     (node : nodeView graph event = .bind who payload outputEq codeEq)
     (serial : Nat) (opening : Option (Raw L))
-    (originalFresh : (memory.shadow.inputView runtime leaks actual).application.candidates
+    (originalFresh : (memory.shadow.inputView timeouts leaks actual).application.candidates
       (.prepared serial) = .fresh)
     (actualFresh : actual.application.candidates (.prepared serial) = .fresh)
     (value : L.Val payload) (usable : opening.bind (fun raw => raw.as? payload) = some value) :
-    (memory.repairResponse runtime leaks who actual
+    (memory.repairResponse timeouts leaks who actual
       ⟨some ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩⟩).1 =
       ⟨some ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩⟩ := by
   simp only [repairResponse, node, originalFresh, actualFresh, usable, and_self, ↓reduceIte]
@@ -448,15 +453,15 @@ open Classical in
 input, not a global execution. The reference recall fixes the continuation's
 initial memory uniformly across all histories in that information set. -/
 def implementation (who : Player)
-    (reference : List (runtime.reactiveApplication leaks).PlayerEntry)
-    (policy : (runtime.reactiveApplication leaks).Policy) :
-    (runtime.reactiveApplication leaks).Implementation (BindingMemory runtime leaks) where
-  initial := PMF.pure (atRecall runtime leaks reference)
+    (reference : List ((reactiveApplication timeouts) leaks).PlayerEntry)
+    (policy : ((reactiveApplication timeouts) leaks).Policy) :
+    ((reactiveApplication timeouts) leaks).Implementation (BindingMemory timeouts leaks) where
+  initial := PMF.pure (atRecall timeouts leaks reference)
   respond memory input :=
-    let past := memory.restoreRecall runtime leaks input.1
-    let view := memory.shadow.inputView runtime leaks input.2
+    let past := memory.restoreRecall timeouts leaks input.1
+    let view := memory.shadow.inputView timeouts leaks input.2
     (policy past view).map fun original =>
-      let repaired := memory.repairResponse runtime leaks who input.2 original
+      let repaired := memory.repairResponse timeouts leaks who input.2 original
       (repaired.1, if input.1.length < reference.length then memory else
         { shadow := repaired.2, responses := memory.responses ++ [(view, original)] })
 

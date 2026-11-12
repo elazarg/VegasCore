@@ -1,13 +1,17 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Examples.OddsEvensService
-import Vegas.Examples.OddsEvensServiceReceipts
-import Vegas.Examples.OddsEvensServiceCompletion
-import Vegas.Examples.OddsEvensServiceOpportunity
-import Vegas.Examples.OddsEvensFairLaw
-import Vegas.Examples.OddsEvensEquilibrium
-import Vegas.Game.SequentialCompilation
-import Vegas.Pending.ThinnedCountCollection
+public import Vegas.Examples.OddsEvensService
+public import Vegas.Examples.OddsEvensServiceReceipts
+public import Vegas.Examples.OddsEvensServiceCompletion
+public import Vegas.Examples.OddsEvensServiceOpportunity
+public import Vegas.Examples.OddsEvensFairLaw
+public import Vegas.Examples.OddsEvensEquilibrium
+public import Vegas.Game.SequentialCompilation
+public import Vegas.Pending.ThinnedCountCollection
+
+@[expose] public section
 
 /-! # Funded raw equilibrium under positive reaction and inclusion latency -/
 
@@ -20,7 +24,7 @@ open SourceProgram EventGraphRuntime Interaction GameTheory GameTheory.Protocol
 
 open OddsEvensService
 
-local notation "rt" => OddsEvensService.runtime
+local notation "rt" => OddsEvensService.timeouts
 local notation "steps" => OddsEvensService.horizon
 local notation "serviceScheduler" => OddsEvensService.scheduler
 
@@ -85,7 +89,7 @@ theorem intended_equilibrium_preserved
       fixture.IntendedSequentialEquilibrium (fun _ => ()) OddsEvens.sourceUtility intended) :
     let raw := OddsEvens.bounds.rawMenu rt leaks
     let observe := app.stateTraffic
-    let audit := (rt).countAudit leaks
+    let audit := countAudit rt leaks
       evidenceService.sample
     let settle := specification.settlement
     ∃ target : (raw.information initial steps serviceScheduler).BehavioralAssessment,
@@ -93,15 +97,12 @@ theorem intended_equilibrium_preserved
         (raw.decisionInformationAntichain initial steps serviceScheduler)
         (raw.bounded initial steps serviceScheduler).wellFoundedHistories
         (fun who final => specification.payoff who final.state) ∧
-      (∀ final ∈ ((raw.information initial steps serviceScheduler).runBehavioral
-          target.strategy (2 * steps + 1)).support,
+      (∀ final ∈ (raw.run initial steps serviceScheduler target.strategy).support,
         ∀ control, final.state = some control →
           control.execution.application.config.defaulted = ∅) ∧
-      (∀ final ∈ ((raw.information initial steps serviceScheduler).runBehavioral
-          target.strategy (2 * steps + 1)).support,
+      (∀ final ∈ (raw.run initial steps serviceScheduler target.strategy).support,
         ∀ who, TerminalAudit.charge observe audit final.state who = 0) ∧
-      ((raw.information initial steps serviceScheduler).runBehavioral target.strategy
-          (2 * steps + 1)).bind
+      (raw.run initial steps serviceScheduler target.strategy).bind
         (fun final => (settle final.state).map fun payoffs =>
           (sourceReadout fixture rt leaks final.state, payoffs)) =
         (fixture.intendedModel.runBehavioral intended.strategy
@@ -119,15 +120,14 @@ theorem intended_equilibrium_preserved
   have noCharges := compiled.noCharges
   have joint := compiled.outcomeLaw
   refine ⟨target, ?_, clear, noCharges, joint⟩
-  exact (target.isSequentialEquilibrium_iff_truncated_of_bounded _ _ _
-    (raw.bounded initial steps serviceScheduler) _).mpr rational
+  exact rational
 
 /-- The actual forced-exit runtime realizes the fair independent-bit source
 assessment, with its complete typed/payoff law and expected payoff one hundred. -/
 theorem fair_equilibrium_exists :
     let raw := OddsEvens.bounds.rawMenu rt leaks
     let observe := app.stateTraffic
-    let audit := (rt).countAudit leaks
+    let audit := countAudit rt leaks
       evidenceService.sample
     let settle := specification.settlement
     ∃ target : (raw.information initial steps serviceScheduler).BehavioralAssessment,
@@ -135,21 +135,17 @@ theorem fair_equilibrium_exists :
         (raw.decisionInformationAntichain initial steps serviceScheduler)
         (raw.bounded initial steps serviceScheduler).wellFoundedHistories
         (fun who final => specification.payoff who final.state) ∧
-      (∀ final ∈ ((raw.information initial steps serviceScheduler).runBehavioral
-          target.strategy (2 * steps + 1)).support,
+      (∀ final ∈ (raw.run initial steps serviceScheduler target.strategy).support,
         ∀ control, final.state = some control →
           control.execution.application.config.defaulted = ∅) ∧
-      (∀ final ∈ ((raw.information initial steps serviceScheduler).runBehavioral
-          target.strategy (2 * steps + 1)).support,
+      (∀ final ∈ (raw.run initial steps serviceScheduler target.strategy).support,
         ∀ who, TerminalAudit.charge observe audit final.state who = 0) ∧
-      ((raw.information initial steps serviceScheduler).runBehavioral target.strategy
-          (2 * steps + 1)).bind
+      (raw.run initial steps serviceScheduler target.strategy).bind
         (fun final => (settle final.state).map fun payoffs =>
           (sourceReadout fixture rt leaks final.state, payoffs)) =
               OddsEvens.uniformJointLaw ∧
       ∀ who, expect (
-        ((raw.information initial steps serviceScheduler).runBehavioral target.strategy
-          (2 * steps + 1)).bind
+        (raw.run initial steps serviceScheduler target.strategy).bind
         (fun final => (settle final.state).map fun payoffs =>
           (sourceReadout fixture rt leaks final.state, payoffs)))
           (fun realized => realized.2 who) = 100 := by

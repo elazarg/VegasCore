@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveBindingSchedule
-import Vegas.Pending.ReactiveContinuationObservation
+public import Vegas.Pending.ReactiveBindingSchedule
+public import Vegas.Pending.ReactiveContinuationObservation
+
+@[expose] public section
 
 /-! # Opening windows after private binding histories
 
@@ -20,21 +24,22 @@ open Interaction GameTheory.Math.Probability
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
 
-theorem bindingTraffic_include_of_handler (runtime : EventGraphRuntime graph)
+theorem bindingTraffic_include_of_handler (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (left right : (runtime.reactiveApplication leaks).Execution) (focal : Player)
-    (same : runtime.bindingTraffic leaks focal left = runtime.bindingTraffic leaks focal right)
+    (left right : ((reactiveApplication timeouts) leaks).Execution) (focal : Player)
+    (same : (bindingTraffic timeouts) leaks focal left = (bindingTraffic timeouts) leaks focal
+      right)
     (id : MessageId Player) (message : Message Player (WitnessedPacket graph))
     (found : left.network.lookup id = some message)
-    (handled : ((runtime.reactiveApplication leaks).handle left.application message).map
+    (handled : (((reactiveApplication timeouts) leaks).handle left.application message).map
         (fun state => state.playerView focal) =
-      ((runtime.reactiveApplication leaks).handle right.application message).map
+      (((reactiveApplication timeouts) leaks).handle right.application message).map
         (fun state => state.playerView focal)) :
-    runtime.bindingTraffic leaks focal
-        (left.includePending (runtime.reactiveApplication leaks) id) =
-      runtime.bindingTraffic leaks focal
-        (right.includePending (runtime.reactiveApplication leaks) id) := by
-  let app := runtime.reactiveApplication leaks
+    (bindingTraffic timeouts) leaks focal
+        (left.includePending ((reactiveApplication timeouts) leaks) id) =
+      (bindingTraffic timeouts) leaks focal
+        (right.includePending ((reactiveApplication timeouts) leaks) id) := by
+  let app := (reactiveApplication timeouts) leaks
   have networks : left.network = right.network := congrArg Prod.fst same
   have receipts : left.receipts = right.receipts := congrArg (fun value => value.2.1) same
   have environments : left.environmentRecall = right.environmentRecall :=
@@ -48,9 +53,9 @@ theorem bindingTraffic_include_of_handler (runtime : EventGraphRuntime graph)
   have rightFound : right.network.lookup id = some message := networks ▸ found
   simp only [bindingTraffic, ReactiveApplication.Execution.includePending,
     MessageNetwork.includePending, found, rightFound]
-  cases first : (runtime.reactiveApplication leaks).handle left.application message with
+  cases first : ((reactiveApplication timeouts) leaks).handle left.application message with
   | none =>
-      cases second : (runtime.reactiveApplication leaks).handle right.application message with
+      cases second : ((reactiveApplication timeouts) leaks).handle right.application message with
       | none =>
           simp only [Option.getD_none, Option.isSome_none]
           exact Prod.ext (by rw [networks]) (Prod.ext (by rw [receipts])
@@ -59,7 +64,7 @@ theorem bindingTraffic_include_of_handler (runtime : EventGraphRuntime graph)
           simp only [first, second, Option.map_none, Option.map_some] at handled
           cases handled
   | some before =>
-      cases second : (runtime.reactiveApplication leaks).handle right.application message with
+      cases second : ((reactiveApplication timeouts) leaks).handle right.application message with
       | none =>
           simp only [first, second, Option.map_none, Option.map_some] at handled
           cases handled
@@ -73,17 +78,18 @@ theorem bindingTraffic_include_of_handler (runtime : EventGraphRuntime graph)
 
 /-- Real clock and expiry commands preserve the focal traffic law.
 Public chance is handled with its source sample, rather than by this lemma. -/
-theorem bindingTraffic_maintenance (runtime : EventGraphRuntime graph)
+theorem bindingTraffic_maintenance (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (left right : (runtime.reactiveApplication leaks).Execution) (focal : Player)
-    (same : runtime.bindingTraffic leaks focal left = runtime.bindingTraffic leaks focal right)
+    (left right : ((reactiveApplication timeouts) leaks).Execution) (focal : Player)
+    (same : (bindingTraffic timeouts) leaks focal left = (bindingTraffic timeouts) leaks focal
+      right)
     (command : EnvironmentCommand graph)
     (maintenance : ∀ event, command ≠ .executeSample event) :
-    (left.environmentStep (runtime.reactiveApplication leaks) (.application command)).map
-        (runtime.bindingTraffic leaks focal) =
-      (right.environmentStep (runtime.reactiveApplication leaks) (.application command)).map
-        (runtime.bindingTraffic leaks focal) := by
-  let app := runtime.reactiveApplication leaks
+    (left.environmentStep ((reactiveApplication timeouts) leaks) (.application command)).map
+        ((bindingTraffic timeouts) leaks focal) =
+      (right.environmentStep ((reactiveApplication timeouts) leaks) (.application command)).map
+        ((bindingTraffic timeouts) leaks focal) := by
+  let app := (reactiveApplication timeouts) leaks
   have networks : left.network = right.network := congrArg Prod.fst same
   have receipts : left.receipts = right.receipts := congrArg (fun value => value.2.1) same
   have environments : left.environmentRecall = right.environmentRecall :=
@@ -99,11 +105,11 @@ theorem bindingTraffic_maintenance (runtime : EventGraphRuntime graph)
       left.application.publicView left.receipts = _
     rw [networks, publics, receipts]
     rfl
-  have changes := maintenance_playerView_congr runtime left.application right.application focal
+  have changes := maintenance_playerView_congr timeouts left.application right.application focal
     command maintenance views
   simp only [ReactiveApplication.Execution.environmentStep, PMF.map_comp]
-  change (((environmentStep runtime left.application command).map State.drain).map _) =
-    (((environmentStep runtime right.application command).map State.drain).map _)
+  change (((environmentStep timeouts left.application command).map State.drain).map _) =
+    (((environmentStep timeouts right.application command).map State.drain).map _)
   rw [PMF.map_comp, PMF.map_comp]
   rw [← PMF.bind_pure_comp, Function.comp_def, ← PMF.bind_pure_comp, Function.comp_def]
   apply bind_eq_of_map_eq _ _ _ _ changes

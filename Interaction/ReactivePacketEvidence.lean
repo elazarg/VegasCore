@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.MessageNetworkInvariant
-import Interaction.ReactiveEnvironmentStep
-import Interaction.ReactiveServiceInvariant
-import Interaction.ReactiveInvariant
+public import Interaction.MessageNetworkInvariant
+public import Interaction.ReactiveEnvironmentStep
+public import Interaction.ReactiveServiceInvariant
+public import Interaction.ReactiveInvariant
+
+@[expose] public section
 
 /-! # Persistent evidence carried by emitted packets
 

@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheory.Analysis.Protocol.CounterfactualReach
+public import GameTheory.Analysis.Protocol.CounterfactualReach
+
+@[expose] public section
 
 /-! # Counterfactual reach at single-mover steps
 

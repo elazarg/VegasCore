@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheory.Tests.IrreversibleFailure
+public import GameTheory.Tests.IrreversibleFailure
+
+@[expose] public section
 
 /-! # Experiments with preservation contracts
 

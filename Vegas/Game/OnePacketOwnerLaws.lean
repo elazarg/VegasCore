@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketLateLumping
-import Vegas.Game.OnePacketLateMasses
-import Vegas.Game.OnePacketOperationalFactors
-import Vegas.Game.OnePacketBindingSite
-import GameTheoryExtensions.Math.Probability.Uniform
+public import Vegas.Game.OnePacketLateLumping
+public import Vegas.Game.OnePacketLateMasses
+public import Vegas.Game.OnePacketOperationalFactors
+public import Vegas.Game.OnePacketBindingSite
+public import GameTheoryExtensions.Math.Probability.Uniform
+
+@[expose] public section
 
 /-! # The owner's law of moves for slot-trembled late components
 
@@ -32,31 +36,31 @@ open GameTheory GameTheory.Protocol GameTheory.Math.Probability Interaction Even
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   [Fintype Player] {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup runtime leaks).Scheduler}
+  {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- **A permitted envelope is first for its event.** Along every history of
 the one-packet game, when the count verdict permits a commitment of the player
 for an event, the player has no pending commitment to it. -/
-theorem commitStatuses_nil_of_permitted {control : (application setup runtime leaks).Control}
-    (trace : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+theorem commitStatuses_nil_of_permitted {control : (application setup timeouts leaks).Control}
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control))
     (who : Player) (event : (graph setup).EventId) (slot : Nat)
-    (permitted : countPermits ((application setup runtime leaks).outputs (control.execution.logs
+    (permitted : countPermits ((application setup timeouts leaks).outputs (control.execution.logs
       who))
-      (slotEnvelope setup runtime leaks who (control.execution.logs who)
-        (control.execution.observe (application setup runtime leaks) who) event slot) = true)
+      (slotEnvelope setup timeouts leaks who (control.execution.logs who)
+        (control.execution.observe (application setup timeouts leaks) who) event slot) = true)
     (payload : L.Ty) :
-    commitStatuses (runtime := runtime) event who payload control.execution.application
+    commitStatuses (timeouts := timeouts) event who payload control.execution.application
       control.execution.network.pending = [] := by
-  have rawTrace : ((application setup runtime leaks).protocol (initialLaw setup) horizon
+  have rawTrace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
     scheduler).Trace
       (some control) :=
-    (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup) horizon scheduler
+    (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon scheduler
       trace
-  have recalled := runtime.countRecall_history leaks rawTrace
+  have recalled := (countRecall_history timeouts) leaks rawTrace
   have facts := settledFacts_history (initialLaw setup) horizon scheduler rawTrace
   have first := ((countPermits_eq_true_iff _ _).mp permitted).2.2
   unfold commitStatuses
@@ -71,18 +75,18 @@ theorem commitStatuses_nil_of_permitted {control : (application setup runtime le
       obtain ⟨namedEq, sender⟩ := owned
       have input : message ∈ control.execution.network.inputs :=
         facts.carried.pending message member
-      have output : message ∈ (application setup runtime leaks).outputs
+      have output : message ∈ (application setup timeouts leaks).outputs
           (control.execution.logs who) := by
         rw [← recalled.1 who]
         exact List.mem_filter.mpr ⟨input, by simp [sender]⟩
       obtain ⟨inOutputs, owner, lower⟩ := earlierOwnPacket_of_output rawTrace who
-        (slotEnvelope setup runtime leaks who (control.execution.logs who)
-          (control.execution.observe (application setup runtime leaks) who) event slot).payload
+        (slotEnvelope setup timeouts leaks who (control.execution.logs who)
+          (control.execution.observe (application setup timeouts leaks) who) event slot).payload
         message output
       apply first message ⟨inOutputs, owner, ?_⟩
       · rw [call, namedEq]
         rfl
-      · change message.id.2 < (application setup runtime leaks).submissionCount
+      · change message.id.2 < (application setup timeouts leaks).submissionCount
           (control.execution.logs who)
         rw [← recalled.2.1 who]
         exact lower
@@ -93,24 +97,24 @@ omit [Fintype Player] in
 /-- A commitment to the binding at a handle whose candidate succeeds, made with
 no pending commitment of the owner to it, moves to that handle. -/
 theorem commitMove_eq_some {event : (graph setup).EventId} {owner : Player} {payload : L.Ty}
-    {execution : (application setup runtime leaks).Execution} {action : (application setup runtime
+    {execution : (application setup timeouts leaks).Execution} {action : (application setup timeouts
       leaks).Action}
-    {submission : (application setup runtime leaks).Submission} {candidate : Handle (graph setup)}
+    {submission : (application setup timeouts leaks).Submission} {candidate : Handle (graph setup)}
     (sent : action.transmission = some submission)
     (call : submission.call.packet = .commitment event candidate)
-    (succeeds : candidateSucceeds ((application setup runtime leaks).submit execution.application
+    (succeeds : candidateSucceeds ((application setup timeouts leaks).submit execution.application
       owner
       submission) candidate payload = true)
-    (empty : commitStatuses (runtime := runtime) event owner payload execution.application
+    (empty : commitStatuses (timeouts := timeouts) event owner payload execution.application
       execution.network.pending = []) :
-    commitMove (runtime := runtime) event owner payload execution action = some (some candidate)
+    commitMove (timeouts := timeouts) event owner payload execution action = some (some candidate)
       := by
-  have committed : ∃ (submission : (application setup runtime leaks).Submission)
+  have committed : ∃ (submission : (application setup timeouts leaks).Submission)
       (candidate : Handle (graph setup)), action.transmission = some submission ∧
       submission.call.packet = .commitment event candidate ∧
-      candidateSucceeds ((application setup runtime leaks).submit execution.application owner
+      candidateSucceeds ((application setup timeouts leaks).submit execution.application owner
         submission) candidate payload = true ∧
-      commitStatuses (runtime := runtime) event owner payload execution.application
+      commitStatuses (timeouts := timeouts) event owner payload execution.application
         execution.network.pending = [] :=
     ⟨submission, candidate, sent, call, succeeds, empty⟩
   have notSilent : ¬ action.transmission = none := by
@@ -129,70 +133,71 @@ theorem commitMove_eq_some {event : (graph setup).EventId} {owner : Player} {pay
 omit [Fintype Player] in
 /-- Silence moves to silence. -/
 theorem commitMove_silent {event : (graph setup).EventId} {owner : Player} {payload : L.Ty}
-    (execution : (application setup runtime leaks).Execution) :
-    commitMove (runtime := runtime) event owner payload execution ⟨none⟩ = some none := by
+    (execution : (application setup timeouts leaks).Execution) :
+    commitMove (timeouts := timeouts) event owner payload execution ⟨none⟩ = some none := by
   unfold commitMove
   rfl
 
 /-- The move of committing at a slot: to the slot's handle when the count
 verdict permits its envelope, and silence otherwise. -/
-def slotMove (execution : (application setup runtime leaks).Execution) (who : Player)
+def slotMove (execution : (application setup timeouts leaks).Execution) (who : Player)
     (event : (graph setup).EventId) (slot : Nat) : Option (Handle (graph setup)) :=
-  if countPermits ((application setup runtime leaks).outputs (execution.logs who))
-      (slotEnvelope setup runtime leaks who (execution.logs who)
-        (execution.observe (application setup runtime leaks) who) event slot) = true then
+  if countPermits ((application setup timeouts leaks).outputs (execution.logs who))
+      (slotEnvelope setup timeouts leaks who (execution.logs who)
+        (execution.observe (application setup timeouts leaks) who) event slot) = true then
     some (who, .prepared slot)
   else none
 
 /-- **The move of a slot-tier choice.** Along every history of the one-packet
 game, at a covered pending binding of the player's turn, committing an
 as-if-honest source choice at a slot within capacity moves as the slot does. -/
-theorem commitMove_slotChoiceOf {control : (application setup runtime leaks).Control}
-    (trace : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+theorem commitMove_slotChoiceOf {control : (application setup timeouts leaks).Control}
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control))
     (assessment : setup.intendedModel.BehavioralAssessment) (who : Player)
     (event : (graph setup).EventId) {payload : L.Ty}
     {outputEq : (graph setup).outputLayout event = .binding who payload}
     {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
       ((graph setup).nodes event) = .bind who payload}
-    (site : CoveredPendingBinding setup runtime leaks bounds assessment who
+    (site : CoveredPendingBinding setup timeouts leaks bounds assessment who
       (control.execution.logs who)
-      (control.execution.observe (application setup runtime leaks) who) event payload outputEq
+      (control.execution.observe (application setup timeouts leaks) who) event payload outputEq
         codeEq)
     (slot : Nat) (capacity : slot < bounds.candidateCount) (choice : Option (OwnAction Player L))
-    (supported : choice ∈ (asIfHonestProfile setup runtime leaks assessment who
+    (supported : choice ∈ (asIfHonestProfile setup timeouts leaks assessment who
       (some (control.execution.logs who,
-        control.execution.observe (application setup runtime leaks) who))).support) :
-    commitMove (runtime := runtime) event who payload control.execution
-        ((slotChoiceOf setup runtime leaks bounds (initialLaw setup) horizon scheduler who
-          (control.execution.logs who) (control.execution.observe (application setup runtime
+        control.execution.observe (application setup timeouts leaks) who))).support) :
+    commitMove (timeouts := timeouts) event who payload control.execution
+        ((slotChoiceOf setup timeouts leaks bounds (initialLaw setup) horizon scheduler who
+          (control.execution.logs who) (control.execution.observe (application setup timeouts
             leaks) who)
           event slot choice).1.getD ⟨none⟩) =
-      some (slotMove (runtime := runtime) control.execution who event slot) := by
+      some (slotMove (timeouts := timeouts) control.execution who event slot) := by
   have covered := site.covered choice supported
-  have membership := slotResponse_mem_onePacket_iff setup runtime leaks bounds who
-    (control.execution.logs who) (control.execution.observe (application setup runtime leaks)
+  have membership := slotResponse_mem_onePacket_iff setup timeouts leaks bounds who
+    (control.execution.logs who) (control.execution.observe (application setup timeouts leaks)
       who) event
     site.node slot capacity choice covered
   obtain ⟨action, encoded, values⟩ := covered
   obtain ⟨value, successful, _⟩ := values who payload outputEq codeEq site.node
   unfold slotMove
-  by_cases permitted : countPermits ((application setup runtime leaks).outputs
-      (control.execution.logs who)) (slotEnvelope setup runtime leaks who
+  by_cases permitted : countPermits ((application setup timeouts leaks).outputs
+      (control.execution.logs who)) (slotEnvelope setup timeouts leaks who
         (control.execution.logs who)
-        (control.execution.observe (application setup runtime leaks) who) event slot) = true
+        (control.execution.observe (application setup timeouts leaks) who) event slot) = true
   · have member := membership.mpr permitted
     simp only [permitted, ↓reduceIte]
-    have chosen : (slotChoiceOf setup runtime leaks bounds (initialLaw setup) horizon scheduler who
-        (control.execution.logs who) (control.execution.observe (application setup runtime
+    have chosen : (slotChoiceOf setup timeouts leaks bounds (initialLaw setup) horizon scheduler who
+        (control.execution.logs who) (control.execution.observe (application setup timeouts
           leaks) who)
-        event slot choice).1 = some (slotResponse setup runtime leaks who
+        event slot choice).1 = some (slotResponse setup timeouts leaks who
           (control.execution.logs who)
-          (control.execution.observe (application setup runtime leaks) who) event slot choice) := by
+          (control.execution.observe (application setup timeouts leaks) who) event slot choice)
+            := by
       simp only [slotChoiceOf, responseChoice, member, ↓reduceDIte]
     rw [chosen, Option.getD_some]
-    obtain ⟨material, transmits, envelope⟩ := slotResponse_transmission setup runtime leaks who
-      (control.execution.logs who) (control.execution.observe (application setup runtime leaks)
+    obtain ⟨material, transmits, envelope⟩ := slotResponse_transmission setup timeouts leaks who
+      (control.execution.logs who) (control.execution.observe (application setup timeouts leaks)
         who)
       event site.node slot choice action encoded (by rw [successful]; rfl)
     have call : material.call.packet = .commitment event (who, .prepared slot) :=
@@ -200,52 +205,52 @@ theorem commitMove_slotChoiceOf {control : (application setup runtime leaks).Con
         message.payload.call) envelope
     have fresh : control.execution.application.candidates.lookup (who, .prepared slot) = .fresh :=
       site.freshOfPermitted slot permitted
-    have bound : slotResponse setup runtime leaks who (control.execution.logs who)
-        (control.execution.observe (application setup runtime leaks) who) event slot choice =
+    have bound : slotResponse setup timeouts leaks who (control.execution.logs who)
+        (control.execution.observe (application setup timeouts leaks) who) event slot choice =
           ⟨some ⟨⟨.commitment event (who, .prepared slot), some ⟨payload, value⟩⟩, .none⟩⟩ := by
-      rw [slotResponse_of_bind setup runtime leaks who (control.execution.logs who)
-        (control.execution.observe (application setup runtime leaks) who) event site.node slot
+      rw [slotResponse_of_bind setup timeouts leaks who (control.execution.logs who)
+        (control.execution.observe (application setup timeouts leaks) who) event site.node slot
         choice action encoded, successful]
       dsimp only
-      rw [runtime.reactiveBinding_normal_of_fresh leaks who _ _ event payload _ slot fresh]
+      rw [(reactiveBinding_normal_of_fresh timeouts) leaks who _ _ event payload _ slot fresh]
       rfl
     rw [bound] at transmits
     have materialEq := Option.some.inj transmits.symm
-    have submitted : (application setup runtime leaks).submit control.execution.application who
+    have submitted : (application setup timeouts leaks).submit control.execution.application who
         material =
-          (control.execution.respond (application setup runtime leaks) who
+          (control.execution.respond (application setup timeouts leaks) who
             ⟨some ⟨⟨.commitment event (who, .prepared slot), some ⟨payload, value⟩⟩,
               .none⟩⟩).application := by
       rw [materialEq]
       rfl
-    have result := submitted_bindingResult runtime leaks control.execution who event
+    have result := submitted_bindingResult timeouts leaks control.execution who event
       payload slot (some ⟨payload, value⟩) fresh
-    apply commitMove_eq_some (runtime := runtime) (submission := material) (by rw [bound]; exact
+    apply commitMove_eq_some (timeouts := timeouts) (submission := material) (by rw [bound]; exact
       transmits) call
     · unfold candidateSucceeds
       rw [submitted]
-      change (match (control.execution.respond (application setup runtime leaks) who
+      change (match (control.execution.respond (application setup timeouts leaks) who
           ⟨some ⟨⟨.commitment event (who, .prepared slot), some ⟨payload, value⟩⟩,
             .none⟩⟩).application.bindingResult (who, .prepared slot) payload with
         | .success _ => true
         | .failure => false) = true
       rw [result]
       simp [Raw.as?]
-    · exact commitStatuses_nil_of_permitted (runtime := runtime) trace who event slot permitted
+    · exact commitStatuses_nil_of_permitted (timeouts := timeouts) trace who event slot permitted
         payload
-  · have notMember : slotResponse setup runtime leaks who (control.execution.logs who)
-        (control.execution.observe (application setup runtime leaks) who) event slot choice ∉
-        bounds.onePacketActions runtime leaks who (control.execution.logs who)
-          (control.execution.observe (application setup runtime leaks) who) :=
+  · have notMember : slotResponse setup timeouts leaks who (control.execution.logs who)
+        (control.execution.observe (application setup timeouts leaks) who) event slot choice ∉
+        bounds.onePacketActions timeouts leaks who (control.execution.logs who)
+          (control.execution.observe (application setup timeouts leaks) who) :=
       fun member => permitted (membership.mp member)
     simp only [permitted, Bool.false_eq_true, ↓reduceIte]
-    have chosen : (slotChoiceOf setup runtime leaks bounds (initialLaw setup) horizon scheduler who
-        (control.execution.logs who) (control.execution.observe (application setup runtime
+    have chosen : (slotChoiceOf setup timeouts leaks bounds (initialLaw setup) horizon scheduler who
+        (control.execution.logs who) (control.execution.observe (application setup timeouts
           leaks) who)
         event slot choice).1 = some ⟨none⟩ := by
       simp only [slotChoiceOf, responseChoice, notMember, ↓reduceDIte]
     rw [chosen, Option.getD_some]
-    exact commitMove_silent (runtime := runtime) control.execution
+    exact commitMove_silent (timeouts := timeouts) control.execution
 
 omit [DecidableEq Player] [IExpr.ResultTypes L] [Fintype Player] in
 /-- The first coordinate of a product law built as a bind is the first law. -/
@@ -259,9 +264,9 @@ private theorem bind_map_pair_map_fst_eq {α β : Type} (first : PMF α) (second
   exact PMF.map_const _ _
 
 /-- The silence choice decodes to silence. -/
-theorem silenceChoice_val (who : Player) (info : (application setup runtime leaks).Info)
+theorem silenceChoice_val (who : Player) (info : (application setup timeouts leaks).Info)
     (active : info.isSome) :
-    (silenceChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler who info).1 =
+    (silenceChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler who info).1 =
       some ⟨none⟩ := by
   rcases info with _ | ⟨past, view⟩
   · cases active
@@ -272,86 +277,88 @@ theorem silenceChoice_val (who : Player) (info : (application setup runtime leak
 /-- The moves of a slot-trembled late component at an execution, apart from its
 uniform tier: the slot tier's moves with weight the square of the scale, then
 silence with weight the scale, then the moves of the late options. -/
-def lateMoves (execution : (application setup runtime leaks).Execution) (who : Player)
+def lateMoves (execution : (application setup timeouts leaks).Execution) (who : Player)
     (event : (graph setup).EventId) (scale : ℝ) (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1)
     {slots : Nat} (options : PMF (LateOption slots)) : PMF (Option (Handle (graph setup))) :=
   mix (scale ^ 2) (sq_nonneg _) (pow_le_one₀ nonnegative le_one)
     ((uniformOn (trembleSlots setup bounds) (trembleSlots_nonempty setup bounds)).map
-      (slotMove (runtime := runtime) execution who event))
+      (slotMove (timeouts := timeouts) execution who event))
     (mix scale nonnegative le_one (PMF.pure none)
       (options.map fun option => option.elim none fun slot =>
-        slotMove (runtime := runtime) execution who event slot.val))
+        slotMove (timeouts := timeouts) execution who event slot.val))
 
 /-- **The moves of a slot-trembled late component.** Along every history of the
 one-packet game, at a covered pending binding of the player's turn, a
 slot-trembled component of a mixture of late options over slots within capacity,
 with silence as its alternative and the slot tier, sorted into moves, is within
 the cube of the scale of the component's moves. -/
-theorem lateComponent_moves_close {control : (application setup runtime leaks).Control}
-    (trace : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+theorem lateComponent_moves_close {control : (application setup timeouts leaks).Control}
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control))
     (assessment : setup.intendedModel.BehavioralAssessment) (who : Player)
     (event : (graph setup).EventId) {payload : L.Ty}
     {outputEq : (graph setup).outputLayout event = .binding who payload}
     {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
       ((graph setup).nodes event) = .bind who payload}
-    (site : CoveredPendingBinding setup runtime leaks bounds assessment who
+    (site : CoveredPendingBinding setup timeouts leaks bounds assessment who
       (control.execution.logs who)
-      (control.execution.observe (application setup runtime leaks) who) event payload outputEq
+      (control.execution.observe (application setup timeouts leaks) who) event payload outputEq
         codeEq)
     {slots : Nat} (slotsLe : slots ≤ bounds.candidateCount) (options : PMF (LateOption slots))
     (scale : ℝ) (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1) :
     PMF.WithinTV (scale ^ 3)
-      ((slotTrembledChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler scale
+      ((slotTrembledChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler scale
           nonnegative le_one who (some (control.execution.logs who,
-            control.execution.observe (application setup runtime leaks) who))
-          (options.bind (lateChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler
+            control.execution.observe (application setup timeouts leaks) who))
+          (options.bind (lateChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler
             assessment who (some (control.execution.logs who,
-              control.execution.observe (application setup runtime leaks) who))))
-          (PMF.pure (silenceChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler
+              control.execution.observe (application setup timeouts leaks) who))))
+          (PMF.pure (silenceChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler
             who
             (some (control.execution.logs who,
-              control.execution.observe (application setup runtime leaks) who))))
-          (slotChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler assessment who
+              control.execution.observe (application setup timeouts leaks) who))))
+          (slotChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+            assessment who
             (some (control.execution.logs who,
-              control.execution.observe (application setup runtime leaks) who)))).map
-        fun choice => commitMove (runtime := runtime) event who payload control.execution
+              control.execution.observe (application setup timeouts leaks) who)))).map
+        fun choice => commitMove (timeouts := timeouts) event who payload control.execution
           (choice.1.getD ⟨none⟩))
-      ((lateMoves (runtime := runtime) (bounds := bounds) control.execution who event scale
+      ((lateMoves (timeouts := timeouts) (bounds := bounds) control.execution who event scale
         nonnegative le_one
         options).map some) := by
   set past := control.execution.logs who
-  set view := control.execution.observe (application setup runtime leaks) who
-  set sort : (onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
+  set view := control.execution.observe (application setup timeouts leaks) who
+  set sort : (onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
     scheduler).Choice who
       (some (past, view)) → Option (Option (Handle (graph setup))) :=
-    fun choice => commitMove (runtime := runtime) event who payload control.execution
+    fun choice => commitMove (timeouts := timeouts) event who payload control.execution
       (choice.1.getD ⟨none⟩)
     with sortEq
   have slotSorted : ∀ slot, slot < bounds.candidateCount →
-      ∀ choice ∈ (asIfHonestProfile setup runtime leaks assessment who (some (past, view))).support,
-        sort (slotChoiceOf setup runtime leaks bounds (initialLaw setup) horizon scheduler who
+      ∀ choice ∈ (asIfHonestProfile setup timeouts leaks assessment who (some (past,
+        view))).support,
+        sort (slotChoiceOf setup timeouts leaks bounds (initialLaw setup) horizon scheduler who
           past view
-          event slot choice) = some (slotMove (runtime := runtime) control.execution who event
+          event slot choice) = some (slotMove (timeouts := timeouts) control.execution who event
             slot) :=
     fun slot capacity choice supported =>
-      commitMove_slotChoiceOf (runtime := runtime) trace assessment who event site slot capacity
+      commitMove_slotChoiceOf (timeouts := timeouts) trace assessment who event site slot capacity
         choice supported
-  have silenceSorted : sort (silenceChoice setup runtime leaks bounds (initialLaw setup) horizon
+  have silenceSorted : sort (silenceChoice setup timeouts leaks bounds (initialLaw setup) horizon
       scheduler who (some (past, view))) = some none := by
-    simp only [sort, silenceChoice_val (runtime := runtime) who (some (past, view)) rfl,
+    simp only [sort, silenceChoice_val (timeouts := timeouts) who (some (past, view)) rfl,
       Option.getD_some]
-    exact commitMove_silent (runtime := runtime) control.execution
-  have slotTier : (slotChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler
+    exact commitMove_silent (timeouts := timeouts) control.execution
+  have slotTier : (slotChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler
     assessment
       who (some (past, view))).map sort =
       ((uniformOn (trembleSlots setup bounds) (trembleSlots_nonempty setup bounds)).map
-        (slotMove (runtime := runtime) control.execution who event)).map some := by
-    rw [slotChoice_eq_map (runtime := runtime) (initial := initialLaw setup) (horizon := horizon)
+        (slotMove (timeouts := timeouts) control.execution who event)).map some := by
+    rw [slotChoice_eq_map (timeouts := timeouts) (initial := initialLaw setup) (horizon := horizon)
         (scheduler := scheduler) site.turn, PMF.map_comp, PMF.map_comp]
     have pairs : uniformOn (trembleSlots setup bounds)
         (trembleSlots_nonempty setup bounds) =
-        (slotPairs setup runtime leaks bounds assessment who past view).map Prod.fst :=
+        (slotPairs setup timeouts leaks bounds assessment who past view).map Prod.fst :=
       (bind_map_pair_map_fst_eq _ _).symm
     rw [pairs, PMF.map_comp]
     apply map_congr_on_support
@@ -363,10 +370,10 @@ theorem lateComponent_moves_close {control : (application setup runtime leaks).C
       (mem_trembleSlots_iff setup bounds site.capacity slot).mp
         ((mem_support_uniformOn_iff _ _).mp chosen)
     exact slotSorted slot capacity choice drawn
-  have mainTier : (options.bind (lateChoice setup runtime leaks bounds (initialLaw setup) horizon
+  have mainTier : (options.bind (lateChoice setup timeouts leaks bounds (initialLaw setup) horizon
       scheduler assessment who (some (past, view)))).map sort =
       (options.map fun option => option.elim none fun slot =>
-        slotMove (runtime := runtime) control.execution who event slot.val).map some := by
+        slotMove (timeouts := timeouts) control.execution who event slot.val).map some := by
     rw [PMF.map_bind, PMF.map_comp, ← PMF.bind_pure_comp]
     congr 1
     funext option
@@ -375,31 +382,32 @@ theorem lateComponent_moves_close {control : (application setup runtime leaks).C
         rw [lateChoice_none, PMF.pure_map, silenceSorted]
         rfl
     | some slot =>
-        rw [lateChoice_some_eq_map (runtime := runtime) (bounds := bounds) (initial := initialLaw
+        rw [lateChoice_some_eq_map (timeouts := timeouts) (bounds := bounds) (initial := initialLaw
           setup)
           (horizon := horizon) (scheduler := scheduler) assessment who past view event site.turn
           slot, PMF.map_comp]
-        have constant : (asIfHonestProfile setup runtime leaks assessment who (some (past,
+        have constant : (asIfHonestProfile setup timeouts leaks assessment who (some (past,
           view))).map
-            (sort ∘ slotChoiceOf setup runtime leaks bounds (initialLaw setup) horizon scheduler
+            (sort ∘ slotChoiceOf setup timeouts leaks bounds (initialLaw setup) horizon scheduler
               who past
               view event slot.val) =
-            (asIfHonestProfile setup runtime leaks assessment who (some (past, view))).map
-              (Function.const _ (some (slotMove (runtime := runtime) control.execution who event
+            (asIfHonestProfile setup timeouts leaks assessment who (some (past, view))).map
+              (Function.const _ (some (slotMove (timeouts := timeouts) control.execution who event
                 slot.val))) :=
           map_congr_on_support _ fun choice supported =>
             slotSorted slot.val (lt_of_lt_of_le slot.isLt slotsLe) choice supported
         rw [constant, PMF.map_const]
         rfl
   have rest : (mix (scale ^ 2) (sq_nonneg _) (pow_le_one₀ nonnegative le_one)
-      (slotChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler assessment who
+      (slotChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler assessment who
         (some (past, view)))
       (mix scale nonnegative le_one
-        (PMF.pure (silenceChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler who
+        (PMF.pure (silenceChoice setup timeouts leaks bounds (initialLaw setup) horizon
+          scheduler who
           (some (past, view))))
-        (options.bind (lateChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler
+        (options.bind (lateChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler
           assessment who (some (past, view)))))).map sort =
-      (lateMoves (runtime := runtime) (bounds := bounds) control.execution who event scale
+      (lateMoves (timeouts := timeouts) (bounds := bounds) control.execution who event scale
         nonnegative le_one
         options).map some := by
     rw [mix_map, mix_map, slotTier, mainTier, PMF.pure_map, silenceSorted]
@@ -412,10 +420,10 @@ theorem lateComponent_moves_close {control : (application setup runtime leaks).C
 /-- The decoded native policy of a menu profile reads the chosen action. -/
 theorem decodeProfile_eq_map
     (profile : ∀ player,
-      (onePacketInformation setup runtime leaks bounds horizon scheduler).BehavioralPolicy player)
-    (who : Player) (past : List (application setup runtime leaks).PlayerEntry)
-    (view : (application setup runtime leaks).PlayerView) :
-    (bounds.onePacketMenu runtime leaks).decodeProfile (initialLaw setup) horizon
+      (onePacketInformation setup timeouts leaks bounds horizon scheduler).BehavioralPolicy player)
+    (who : Player) (past : List (application setup timeouts leaks).PlayerEntry)
+    (view : (application setup timeouts leaks).PlayerView) :
+    (bounds.onePacketMenu timeouts leaks).decodeProfile (initialLaw setup) horizon
         scheduler profile who past view =
       (profile who (some (past, view))).map fun choice => choice.1.getD ⟨none⟩ := by
   unfold ReactiveApplication.ResponseMenu.decodeProfile ReactiveApplication.decodePolicy
@@ -426,66 +434,67 @@ theorem decodeProfile_eq_map
 omit [Fintype Player] in
 /-- Protocol states with the same operational state give every player the same
 late-delivery key. -/
-theorem ofView_congr {first second : (application setup runtime leaks).Control}
-    (same : operationalState setup runtime leaks (some first) = operationalState setup runtime
+theorem ofView_congr {first second : (application setup timeouts leaks).Control}
+    (same : operationalState setup timeouts leaks (some first) = operationalState setup timeouts
       leaks (some second))
     (who : Player) :
-    LateKey.ofView setup runtime leaks who (first.execution.logs who)
-        (first.execution.observe (application setup runtime leaks) who) =
-      LateKey.ofView setup runtime leaks who (second.execution.logs who)
-        (second.execution.observe (application setup runtime leaks) who) :=
+    LateKey.ofView setup timeouts leaks who (first.execution.logs who)
+        (first.execution.observe (application setup timeouts leaks) who) =
+      LateKey.ofView setup timeouts leaks who (second.execution.logs who)
+        (second.execution.observe (application setup timeouts leaks) who) :=
   Option.some.inj (congrFun (congrArg OperationalState.keys (Option.some.inj
     same)) who)
 
 /-- **Slot moves are read off the operational state.** At states of one-packet
 histories with the same operational state, every slot moves alike. -/
 theorem slotMove_congr {remaining : Nat} {actor : Option Player}
-    (firstHistory secondHistory : (onePacketProtocol setup runtime leaks bounds horizon
+    (firstHistory secondHistory : (onePacketProtocol setup timeouts leaks bounds horizon
       scheduler).History)
-    {first second : (application setup runtime leaks).Execution}
+    {first second : (application setup timeouts leaks).Execution}
     (firstCurrent : firstHistory.state = some ⟨remaining, actor, first⟩)
     (secondCurrent : secondHistory.state = some ⟨remaining, actor, second⟩)
-    (same : operationalState setup runtime leaks (some ⟨remaining, actor, first⟩) =
-      operationalState setup runtime leaks (some ⟨remaining, actor, second⟩))
+    (same : operationalState setup timeouts leaks (some ⟨remaining, actor, first⟩) =
+      operationalState setup timeouts leaks (some ⟨remaining, actor, second⟩))
     (who : Player) (event : (graph setup).EventId) :
-    slotMove (runtime := runtime) first who event = slotMove (runtime := runtime) second who event
+    slotMove (timeouts := timeouts) first who event = slotMove (timeouts := timeouts) second who
+      event
       := by
-  have serial (history : (onePacketProtocol setup runtime leaks bounds horizon scheduler).History)
-      {execution : (application setup runtime leaks).Execution}
+  have serial (history : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).History)
+      {execution : (application setup timeouts leaks).Execution}
       (current : history.state = some ⟨remaining, actor, execution⟩) :
-      (application setup runtime leaks).submissionCount (execution.logs who) =
+      (application setup timeouts leaks).submissionCount (execution.logs who) =
         execution.network.nextSerial who := by
-    have rawTrace : ((application setup runtime leaks).protocol (initialLaw setup) horizon
+    have rawTrace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
         scheduler).Trace (some ⟨remaining, actor, execution⟩) :=
-      current ▸ (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup) horizon
+      current ▸ (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon
         scheduler history.trace
-    exact ((runtime.countRecall_history leaks rawTrace).2.1 who).symm
-  have keys := ofView_congr (runtime := runtime) same who
+    exact (((countRecall_history timeouts) leaks rawTrace).2.1 who).symm
+  have keys := ofView_congr (timeouts := timeouts) same who
   have recalled := congrArg LateKey.recalled keys
   simp only [LateKey.ofView] at recalled
   have emitted := congrArg (List.map Prod.snd) recalled
   simp only [List.map_map, Function.comp_def] at emitted
-  have viaMap : ∀ entries : List (application setup runtime leaks).PlayerEntry,
+  have viaMap : ∀ entries : List (application setup timeouts leaks).PlayerEntry,
       entries.filterMap ReactiveApplication.PlayerEntry.emitted =
         (entries.map fun entry => entry.emitted).filterMap id := by
     intro entries
     rw [List.filterMap_map]
     rfl
-  have outputs : (application setup runtime leaks).outputs (first.logs who) =
-      (application setup runtime leaks).outputs (second.logs who) := by
+  have outputs : (application setup timeouts leaks).outputs (first.logs who) =
+      (application setup timeouts leaks).outputs (second.logs who) := by
     unfold ReactiveApplication.outputs
     rw [viaMap, viaMap, emitted]
   have publics : first.application.publicView = second.application.publicView :=
     SameOperational.publicView same
   have networks : first.network = second.network := SameOperational.network same
-  have envelope : ∀ slot, slotEnvelope setup runtime leaks who (first.logs who)
-      (first.observe (application setup runtime leaks) who) event slot =
-      slotEnvelope setup runtime leaks who (second.logs who)
-        (second.observe (application setup runtime leaks) who) event slot := by
+  have envelope : ∀ slot, slotEnvelope setup timeouts leaks who (first.logs who)
+      (first.observe (application setup timeouts leaks) who) event slot =
+      slotEnvelope setup timeouts leaks who (second.logs who)
+        (second.observe (application setup timeouts leaks) who) event slot := by
     intro slot
     unfold slotEnvelope
-    have tokens : (first.observe (application setup runtime leaks) who).application.publicView =
-        (second.observe (application setup runtime leaks) who).application.publicView := publics
+    have tokens : (first.observe (application setup timeouts leaks) who).application.publicView =
+        (second.observe (application setup timeouts leaks) who).application.publicView := publics
     rw [serial firstHistory firstCurrent, serial secondHistory secondCurrent, networks, tokens]
   funext slot
   unfold slotMove
@@ -493,11 +502,11 @@ theorem slotMove_congr {remaining : Nat} {actor : Option Player}
 
 omit [Fintype Player] in
 /-- A key decides at most one binding event, with one payload type. -/
-theorem bindingTurn_of_bindingTurn {key : LateKey setup runtime leaks} {event : (graph
+theorem bindingTurn_of_bindingTurn {key : LateKey setup timeouts leaks} {event : (graph
   setup).EventId}
-    {payload : L.Ty} (turn : BindingTurn (runtime := runtime) key event payload) :
-    bindingTurn (runtime := runtime) key = some (event, payload) := by
-  have exists_ : ∃ decided : (graph setup).EventId × L.Ty, BindingTurn (runtime := runtime) key
+    {payload : L.Ty} (turn : BindingTurn (timeouts := timeouts) key event payload) :
+    bindingTurn (timeouts := timeouts) key = some (event, payload) := by
+  have exists_ : ∃ decided : (graph setup).EventId × L.Ty, BindingTurn (timeouts := timeouts) key
     decided.1 decided.2 :=
     ⟨(event, payload), turn⟩
   unfold bindingTurn
@@ -522,25 +531,25 @@ slot-trembled late component at a representative state of a one-packet history
 with the given operational state and statuses, the owner acting; silence when
 there is none. -/
 def lateBindingMoves {slots : Nat} (scale : ℝ) (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1)
-    (options : LateKey setup runtime leaks → PMF (LateOption slots)) (key : LateKey setup runtime
+    (options : LateKey setup timeouts leaks → PMF (LateOption slots)) (key : LateKey setup timeouts
       leaks)
-    (image : Option (OperationalState setup runtime leaks) × List (MessageId Player × Bool)) :
+    (image : Option (OperationalState setup timeouts leaks) × List (MessageId Player × Bool)) :
     PMF (Option (Handle (graph setup))) :=
-  match bindingTurn (runtime := runtime) key with
+  match bindingTurn (timeouts := timeouts) key with
   | none => PMF.pure none
   | some decided =>
-      if represented : ∃ witness : (onePacketProtocol setup runtime leaks bounds horizon
-          scheduler).History × Nat × (application setup runtime leaks).Execution,
+      if represented : ∃ witness : (onePacketProtocol setup timeouts leaks bounds horizon
+          scheduler).History × Nat × (application setup timeouts leaks).Execution,
           witness.1.state = some ⟨witness.2.1, some key.owner, witness.2.2⟩ ∧
-          (operationalState setup runtime leaks (some ⟨witness.2.1, some key.owner, witness.2.2⟩),
-            commitStatuses (runtime := runtime) decided.1 key.owner decided.2
+          (operationalState setup timeouts leaks (some ⟨witness.2.1, some key.owner, witness.2.2⟩),
+            commitStatuses (timeouts := timeouts) decided.1 key.owner decided.2
               witness.2.2.application
               witness.2.2.network.pending) = image then
-        lateMoves (runtime := runtime) (bounds := bounds) represented.choose.2.2 key.owner
+        lateMoves (timeouts := timeouts) (bounds := bounds) represented.choose.2.2 key.owner
           decided.1 scale nonnegative
-          le_one (options (LateKey.ofView setup runtime leaks key.owner
+          le_one (options (LateKey.ofView setup timeouts leaks key.owner
             (represented.choose.2.2.logs key.owner)
-            (represented.choose.2.2.observe (application setup runtime leaks) key.owner)))
+            (represented.choose.2.2.observe (application setup timeouts leaks) key.owner)))
       else PMF.pure none
 
 /-- **The owner's law of moves for late components.** Suppose that at every
@@ -555,83 +564,85 @@ theorem ownerBindingLaw_of_lateComponents {LateOption' : Type}
     (covers : bounds.CoversOutputValues) (capacity : 1 ≤ bounds.candidateCount)
     {slots : Nat} (slotsLe : slots ≤ bounds.candidateCount)
     (scale : ℝ) (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1)
-    (options : LateKey setup runtime leaks → LateOption' → LateKey setup runtime leaks →
+    (options : LateKey setup timeouts leaks → LateOption' → LateKey setup timeouts leaks →
       PMF (LateOption slots))
-    (key : LateKey setup runtime leaks) (option : LateOption')
+    (key : LateKey setup timeouts leaks) (option : LateOption')
     (profile : ∀ player,
-      (onePacketInformation setup runtime leaks bounds horizon scheduler).BehavioralPolicy player)
-    {allowed : (application setup runtime leaks).ProtocolState → Prop}
-    (shape : ∀ event payload, BindingTurn (runtime := runtime) key event payload →
-      ∀ (history : (onePacketProtocol setup runtime leaks bounds horizon scheduler).History)
-        (remaining : Nat) (execution : (application setup runtime leaks).Execution),
+      (onePacketInformation setup timeouts leaks bounds horizon scheduler).BehavioralPolicy player)
+    {allowed : (application setup timeouts leaks).ProtocolState → Prop}
+    (shape : ∀ event payload, BindingTurn (timeouts := timeouts) key event payload →
+      ∀ (history : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).History)
+        (remaining : Nat) (execution : (application setup timeouts leaks).Execution),
         history.state = some ⟨remaining, some key.owner, execution⟩ →
         allowed history.state →
-        ForcedState setup runtime leaks key.owner history.state →
+        ForcedState setup timeouts leaks key.owner history.state →
         execution.application.config.cut.Ready event →
         profile key.owner (some (execution.logs key.owner,
-            execution.observe (application setup runtime leaks) key.owner)) =
-          slotTrembledChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler scale
+            execution.observe (application setup timeouts leaks) key.owner)) =
+          slotTrembledChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler scale
             nonnegative le_one key.owner (some (execution.logs key.owner,
-              execution.observe (application setup runtime leaks) key.owner))
-            ((options key option (LateKey.ofView setup runtime leaks key.owner
+              execution.observe (application setup timeouts leaks) key.owner))
+            ((options key option (LateKey.ofView setup timeouts leaks key.owner
                 (execution.logs key.owner)
-                (execution.observe (application setup runtime leaks) key.owner))).bind
-              (lateChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler assessment
+                (execution.observe (application setup timeouts leaks) key.owner))).bind
+              (lateChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+                assessment
                 key.owner (some (execution.logs key.owner,
-                  execution.observe (application setup runtime leaks) key.owner))))
-            (PMF.pure (silenceChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler
+                  execution.observe (application setup timeouts leaks) key.owner))))
+            (PMF.pure (silenceChoice setup timeouts leaks bounds (initialLaw setup) horizon
+              scheduler
               key.owner (some (execution.logs key.owner,
-                execution.observe (application setup runtime leaks) key.owner))))
-            (slotChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler assessment
+                execution.observe (application setup timeouts leaks) key.owner))))
+            (slotChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler assessment
               key.owner (some (execution.logs key.owner,
-                execution.observe (application setup runtime leaks) key.owner)))) :
-    OwnerBindingLaw (runtime := runtime) bounds horizon scheduler
-      (fun key option => lateBindingMoves (runtime := runtime) bounds horizon scheduler scale
+                execution.observe (application setup timeouts leaks) key.owner)))) :
+    OwnerBindingLaw (timeouts := timeouts) bounds horizon scheduler
+      (fun key option => lateBindingMoves (timeouts := timeouts) bounds horizon scheduler scale
         nonnegative le_one
         (options key option) key) key option profile (scale ^ 3) allowed := by
   intro event payload turn history remaining execution current allowedState forced ready
-  have decided := bindingTurn_of_bindingTurn (runtime := runtime) turn
+  have decided := bindingTurn_of_bindingTurn (timeouts := timeouts) turn
   obtain ⟨_, ⟨outputEq, codeEq, node⟩, _⟩ := turn
-  have trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace
+  have trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace
       (some ⟨remaining, some key.owner, execution⟩) := current ▸ history.trace
-  have site := onePacket_coveredPendingBinding (runtime := runtime) assessment covers capacity
+  have site := onePacket_coveredPendingBinding (timeouts := timeouts) assessment covers capacity
     trace key.owner event
     (ownTurn?_of_ready setup _ ready (nodeView_bind_actor outputEq codeEq)) node
-  have close := lateComponent_moves_close (runtime := runtime) trace assessment key.owner event
+  have close := lateComponent_moves_close (timeouts := timeouts) trace assessment key.owner event
     site slotsLe
-    (options key option (LateKey.ofView setup runtime leaks key.owner
+    (options key option (LateKey.ofView setup timeouts leaks key.owner
       (execution.logs key.owner)
-      (execution.observe (application setup runtime leaks) key.owner))) scale
+      (execution.observe (application setup timeouts leaks) key.owner))) scale
         nonnegative le_one
   rw [decodeProfile_eq_map, PMF.map_comp,
     shape event payload ⟨‹_›, ⟨outputEq, codeEq, node⟩, ‹_›⟩ history remaining execution current
       allowedState forced ready]
-  have represented : ∃ witness : (onePacketProtocol setup runtime leaks bounds horizon
-      scheduler).History × Nat × (application setup runtime leaks).Execution,
+  have represented : ∃ witness : (onePacketProtocol setup timeouts leaks bounds horizon
+      scheduler).History × Nat × (application setup timeouts leaks).Execution,
       witness.1.state = some ⟨witness.2.1, some key.owner, witness.2.2⟩ ∧
-      (operationalState setup runtime leaks (some ⟨witness.2.1, some key.owner, witness.2.2⟩),
-        commitStatuses (runtime := runtime) event key.owner payload
+      (operationalState setup timeouts leaks (some ⟨witness.2.1, some key.owner, witness.2.2⟩),
+        commitStatuses (timeouts := timeouts) event key.owner payload
           witness.2.2.application
           witness.2.2.network.pending) =
-      (operationalState setup runtime leaks (some ⟨remaining, some key.owner,
+      (operationalState setup timeouts leaks (some ⟨remaining, some key.owner,
         execution⟩),
-        commitStatuses (runtime := runtime) event key.owner payload
+        commitStatuses (timeouts := timeouts) event key.owner payload
           execution.application
           execution.network.pending) :=
     ⟨(history, remaining, execution), current, rfl⟩
-  have movesEq : lateBindingMoves (runtime := runtime) bounds horizon scheduler scale nonnegative
+  have movesEq : lateBindingMoves (timeouts := timeouts) bounds horizon scheduler scale nonnegative
     le_one
       (options key option) key
-      (operationalState setup runtime leaks (some ⟨remaining, some key.owner,
+      (operationalState setup timeouts leaks (some ⟨remaining, some key.owner,
         execution⟩),
-        commitStatuses (runtime := runtime) event key.owner payload
+        commitStatuses (timeouts := timeouts) event key.owner payload
           execution.application
           execution.network.pending) =
-      lateMoves (runtime := runtime) (bounds := bounds) execution key.owner
+      lateMoves (timeouts := timeouts) (bounds := bounds) execution key.owner
         event scale nonnegative le_one
-        (options key option (LateKey.ofView setup runtime leaks key.owner
+        (options key option (LateKey.ofView setup timeouts leaks key.owner
           (execution.logs key.owner)
-          (execution.observe (application setup runtime leaks) key.owner)))
+          (execution.observe (application setup timeouts leaks) key.owner)))
             := by
     unfold lateBindingMoves
     rw [decided]
@@ -644,9 +655,9 @@ theorem ownerBindingLaw_of_lateComponents {LateOption' : Type}
     have same := (Prod.mk.inj chosenImage).1
     have remainingEq : chosenRemaining = remaining := SameOperational.remaining same
     subst remainingEq
-    have moves := slotMove_congr (runtime := runtime) chosenHistory history chosenCurrent current
+    have moves := slotMove_congr (timeouts := timeouts) chosenHistory history chosenCurrent current
       same key.owner event
-    have keys := ofView_congr (runtime := runtime) same key.owner
+    have keys := ofView_congr (timeouts := timeouts) same key.owner
     simp only at moves keys ⊢
     unfold lateMoves
     rw [moves, keys]

@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RevealService
-import Vegas.Compile.EventGraphHistory
-import Vegas.EventGraph.SequentialLaw
+public import Vegas.Game.RevealService
+public import Vegas.Compile.EventGraphHistory
+public import Vegas.EventGraph.SequentialLaw
+
+@[expose] public section
 
 /-! # Source information recovered from native owner observations
 
@@ -23,14 +27,14 @@ open Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L)) {mode : EventGraph.ExecutionMode}
-  {deadline : (serviceGraph setup mode).EventId → Nat}
+  {duration : (serviceGraph setup mode).EventId → Nat}
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
 
 /-- The identity carried in an arbitrary native view is checked before reading
 its dependent observation. At an actual observation that check is reflexive. -/
 def decisionView? {Γ : SourceCtx Player L}
     (refs : ContextRefs (graphLayout setup.program) Γ) (who : Player)
-    (view : (serviceApplication setup mode deadline leaks).PlayerView) : Option
+    (view : (serviceApplication setup mode duration leaks).PlayerView) : Option
     (DecisionView who Γ) :=
   if same : view.application.who = who then
     let observed : (serviceGraph setup mode).PlayerObservation who := same ▸
@@ -44,17 +48,17 @@ def decisionView? {Γ : SourceCtx Player L}
 theorem decisionView?_observe {Γ : SourceCtx Player L}
     (refs : ContextRefs (graphLayout setup.program) Γ) (who : Player)
     (source : Config Player L Γ)
-    (execution : (serviceApplication setup mode deadline leaks).Execution)
+    (execution : (serviceApplication setup mode duration leaks).Execution)
     (store : refs.Agrees source.state execution.application.config.store)
     (history : decodeHistory setup.program
         (execution.application.config.history) = source.history)
     (defaults : execution.application.config.defaults = source.defaults) :
     decisionView? setup leaks refs who
-        (execution.observe (serviceApplication setup mode deadline leaks) who) =
+        (execution.observe (serviceApplication setup mode duration leaks) who) =
       some (source.view who) := by
   unfold decisionView?
   rw [dite_eq_left
-          (show (execution.observe (serviceApplication setup mode deadline leaks)
+          (show (execution.observe (serviceApplication setup mode duration leaks)
           who).application.who = who from rfl)]
   change (decodeObservation? who refs
       ((serviceGraph setup mode).playerStore who execution.application.config.store)).map
@@ -75,7 +79,7 @@ views when the operational compiler invariants hold at both histories. -/
 theorem source_view_eq_of_observe_eq {Γ : SourceCtx Player L}
     (refs : ContextRefs (graphLayout setup.program) Γ) (who : Player)
     (left right : Config Player L Γ)
-    (nativeLeft nativeRight : (serviceApplication setup mode deadline leaks).Execution)
+    (nativeLeft nativeRight : (serviceApplication setup mode duration leaks).Execution)
     (leftStore : refs.Agrees left.state nativeLeft.application.config.store)
     (rightStore : refs.Agrees right.state nativeRight.application.config.store)
     (leftHistory : decodeHistory setup.program
@@ -84,8 +88,8 @@ theorem source_view_eq_of_observe_eq {Γ : SourceCtx Player L}
         (nativeRight.application.config.history) = right.history)
     (leftDefaults : nativeLeft.application.config.defaults = left.defaults)
     (rightDefaults : nativeRight.application.config.defaults = right.defaults)
-    (same : nativeLeft.observe (serviceApplication setup mode deadline leaks) who =
-      nativeRight.observe (serviceApplication setup mode deadline leaks) who) : left.view who =
+    (same : nativeLeft.observe (serviceApplication setup mode duration leaks) who =
+      nativeRight.observe (serviceApplication setup mode duration leaks) who) : left.view who =
           right.view who := by
   have first := decisionView?_observe setup leaks refs who left nativeLeft leftStore
     leftHistory leftDefaults

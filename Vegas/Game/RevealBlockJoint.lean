@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OwnedPhaseJoint
-import Vegas.Game.RevealBlockStart
+public import Vegas.Game.OwnedPhaseJoint
+public import Vegas.Game.RevealBlockStart
+
+@[expose] public section
 
 /-! # The joint law of a block of concurrent reveals
 
@@ -20,7 +24,7 @@ open SourceProgram GameTheory.Math.Probability Interaction EventGraphRuntime Eve
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {mode : EventGraph.ExecutionMode} {deadline : (serviceGraph setup mode).EventId → Nat}
+  {mode : EventGraph.ExecutionMode} {duration : (serviceGraph setup mode).EventId → Nat}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode))}
 
 omit [DecidableEq Player] [IExpr.ResultTypes L] in
@@ -42,7 +46,7 @@ theorem binding_get_of_resolveOutput_success {Field : Type} [DecidableEq Field]
 
 /-- An honest owner has neither a turn nor a submission at an untouched event. -/
 theorem blockCounters_of_untouched {owner : Player} {event : (serviceGraph setup mode).EventId}
-    {execution : (serviceApplication setup mode deadline leaks).Execution}
+    {execution : (serviceApplication setup mode duration leaks).Execution}
     (untouched : Untouched setup leaks event execution)
     (own : OwnSubmissionsAtTurn setup leaks execution owner) :
     blockCounters execution owner event = (0, false) := by
@@ -59,7 +63,7 @@ theorem blockCounters_of_untouched {owner : Player} {event : (serviceGraph setup
   · apply Bool.eq_false_iff.mpr
     intro recorded
     obtain ⟨entry, member, submitted⟩ :=
-      ((serviceRuntime setup mode deadline).eventRecorded_iff leaks _ event).mp recorded
+      ((eventRecorded_iff (serviceTimeouts setup mode duration)) leaks _ event).mp recorded
     exact never entry member (own entry member event submitted)
 
 /-- Equal normalized views agree on which events completed. -/
@@ -78,12 +82,12 @@ a channel read from the view and the hidden accepted outputs of the honest
 reveals, and a successor key and final traffic again of the factored form, when
 honest clients open a reveal exactly when its opening is accepted. -/
 theorem ledgerBlock_joint {horizon : Nat}
-    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    {scheduler : (serviceApplication setup mode duration leaks).Scheduler}
     {delay : (serviceGraph setup mode).EventId → Nat}
     (bound : (serviceGraph setup mode).EventId → Nat) (turns : Nat)
-    (contract : AsyncContract (serviceRuntime setup mode deadline) leaks
+    (contract : AsyncContract (serviceTimeouts setup mode duration) leaks
         (serviceInitialLaw setup mode) horizon scheduler delay bound)
-    (timely : AsyncTimely (serviceRuntime setup mode deadline) delay bound)
+    (timely : AsyncTimely (serviceTimeouts setup mode duration) delay bound)
     (reference : (serviceGraph setup mode).BehavioralProfile)
     (decides : ∀ (config : (serviceGraph setup mode).Config)
       (event : (serviceGraph setup mode).EventId) (owner : Player) (payload : L.Ty)
@@ -99,17 +103,17 @@ theorem ledgerBlock_joint {horizon : Nat}
         reference owner event actor ((serviceGraph setup mode).playerObserve owner config)
           active = PMF.pure (cast (congrArg EventField.Action outputEq.symm)
             (openingAccepted event config.store)))
-    (who : Player) (deviation : (serviceApplication setup mode deadline leaks).Policy)
+    (who : Player) (deviation : (serviceApplication setup mode duration leaks).Policy)
     (start finish : Nat) (shaped : BlockShaped (graph := serviceGraph setup mode) start finish)
     (publications : ∀ event : (serviceGraph setup mode).EventId, start ≤ event.val →
       event.val < finish → ((serviceGraph setup mode).outputLayout event).IsPublication)
     (concurrent : (serviceGraph setup mode).RevealsOnlyConcurrent)
     (flat : BlockFlat (graph := serviceGraph setup mode) start finish)
     {Seed : Type} (prior : PMF Seed)
-    (execution : Seed → (serviceApplication setup mode deadline leaks).Execution)
+    (execution : Seed → (serviceApplication setup mode duration leaks).Execution)
     (supported : ∀ seed ∈ prior.support, execution seed ∈
-      ((serviceApplication setup mode deadline leaks).roundsFrom (serviceInitialLaw setup mode)
-        scheduler (Function.update (serviceReferenceTurnPolicy setup mode deadline leaks bound
+      ((serviceApplication setup mode duration leaks).roundsFrom (serviceInitialLaw setup mode)
+        scheduler (Function.update (serviceReferenceTurnPolicy setup mode duration leaks bound
           turns (firstTurnTiming setup turns mode) reference) who deviation)
         (execution seed).environmentRecall.length).support)
     (bounded : ∀ seed ∈ prior.support, (execution seed).environmentRecall.length ≤ horizon)
@@ -118,15 +122,15 @@ theorem ledgerBlock_joint {horizon : Nat}
     (untouched : ∀ seed ∈ prior.support, ∀ event : (serviceGraph setup mode).EventId,
       start ≤ event.val → event.val < finish → Untouched setup leaks event (execution seed))
     (completes : ∀ seed ∈ prior.support, ∀ final ∈
-      ((serviceApplication setup mode deadline leaks).runUntilHorizon scheduler
-        (Function.update (serviceReferenceTurnPolicy setup mode deadline leaks bound turns
+      ((serviceApplication setup mode duration leaks).runUntilHorizon scheduler
+        (Function.update (serviceReferenceTurnPolicy setup mode duration leaks bound turns
           (firstTurnTiming setup turns mode) reference) who deviation)
         (fun current => BlockDone finish current.application.config) horizon
         (execution seed)).support,
       BlockDone finish final.application.config)
     (noise : Option ((serviceGraph setup mode).PlayerObservation who) → PMF _)
     (factor : prior.map (fun seed => (runKey (execution seed).application.config,
-        (serviceRuntime setup mode deadline).bindingTraffic leaks who (execution seed))) =
+        (bindingTraffic (serviceTimeouts setup mode duration)) leaks who (execution seed))) =
       (prior.map fun seed => runKey (execution seed).application.config).bind fun current =>
         (noise (keyView who current)).map fun extra => (current, extra)) :
     ∃ (channel : Option ((serviceGraph setup mode).PlayerObservation who) ×
@@ -135,46 +139,46 @@ theorem ledgerBlock_joint {horizon : Nat}
       (nextNoise : Option ((serviceGraph setup mode).PlayerObservation who) → PMF _)
       (endKey : RunKey (serviceGraph setup mode) → _ → RunKey (serviceGraph setup mode)),
       (prior.bind fun seed =>
-        ((serviceApplication setup mode deadline leaks).runUntilHorizon scheduler
-          (Function.update (serviceReferenceTurnPolicy setup mode deadline leaks bound turns
+        ((serviceApplication setup mode duration leaks).runUntilHorizon scheduler
+          (Function.update (serviceReferenceTurnPolicy setup mode duration leaks bound turns
             (firstTurnTiming setup turns mode) reference) who deviation)
           (fun current => BlockDone finish current.application.config) horizon
           (execution seed)).map fun final => (runKey (execution seed).application.config,
-            (serviceRuntime setup mode deadline).bindingTraffic leaks who final)) =
+            (bindingTraffic (serviceTimeouts setup mode duration)) leaks who final)) =
         (prior.map fun seed => runKey (execution seed).application.config).bind
           (fun current => (channel (keyView who current, blockHidden who start finish current)).map
             fun extra => (current, extra)) ∧
       (prior.bind fun seed =>
-        ((serviceApplication setup mode deadline leaks).runUntilHorizon scheduler
-          (Function.update (serviceReferenceTurnPolicy setup mode deadline leaks bound turns
+        ((serviceApplication setup mode duration leaks).runUntilHorizon scheduler
+          (Function.update (serviceReferenceTurnPolicy setup mode duration leaks bound turns
             (firstTurnTiming setup turns mode) reference) who deviation)
           (fun current => BlockDone finish current.application.config) horizon
           (execution seed)).map fun final => (runKey final.application.config,
-            (serviceRuntime setup mode deadline).bindingTraffic leaks who final)) =
+            (bindingTraffic (serviceTimeouts setup mode duration)) leaks who final)) =
         (prior.bind fun seed =>
-          ((serviceApplication setup mode deadline leaks).runUntilHorizon scheduler
-            (Function.update (serviceReferenceTurnPolicy setup mode deadline leaks bound turns
+          ((serviceApplication setup mode duration leaks).runUntilHorizon scheduler
+            (Function.update (serviceReferenceTurnPolicy setup mode duration leaks bound turns
               (firstTurnTiming setup turns mode) reference) who deviation)
             (fun current => BlockDone finish current.application.config) horizon
             (execution seed)).map fun final => runKey final.application.config).bind
           (fun current => (nextNoise (keyView who current)).map fun extra => (current, extra)) ∧
       ∀ seed ∈ prior.support, ∀ final ∈
-        ((serviceApplication setup mode deadline leaks).runUntilHorizon scheduler
-          (Function.update (serviceReferenceTurnPolicy setup mode deadline leaks bound turns
+        ((serviceApplication setup mode duration leaks).runUntilHorizon scheduler
+          (Function.update (serviceReferenceTurnPolicy setup mode duration leaks bound turns
             (firstTurnTiming setup turns mode) reference) who deviation)
           (fun current => BlockDone finish current.application.config) horizon
           (execution seed)).support,
         runKey final.application.config = endKey (runKey (execution seed).application.config)
-          ((serviceRuntime setup mode deadline).bindingTraffic leaks who final) := by
+          ((bindingTraffic (serviceTimeouts setup mode duration)) leaks who final) := by
   classical
   let G := serviceGraph setup mode
-  let app := serviceApplication setup mode deadline leaks
-  let runtime := serviceRuntime setup mode deadline
-  let players := Function.update (serviceReferenceTurnPolicy setup mode deadline leaks bound
+  let app := serviceApplication setup mode duration leaks
+  let timeouts := serviceTimeouts setup mode duration
+  let players := Function.update (serviceReferenceTurnPolicy setup mode duration leaks bound
     turns (firstTurnTiming setup turns mode) reference) who deviation
   let run := fun seed => app.runUntilHorizon scheduler players
     (fun current => BlockDone finish current.application.config) horizon (execution seed)
-  let traffic := runtime.bindingTraffic leaks who
+  let traffic := (bindingTraffic timeouts) leaks who
   let key := fun seed => runKey (execution seed).application.config
   let view := fun current : RunKey G => (keyView who current, blockHidden who start finish current)
   let Traffic := MessageNetwork Player app.Payload ×

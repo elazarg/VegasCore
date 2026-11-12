@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheoryExtensions.Analysis.Protocol.CopiedSiteLimit
+public import GameTheoryExtensions.Analysis.Protocol.CopiedSiteLimit
+
+@[expose] public section
 
 /-! # Local values and failure probabilities at an information site
 

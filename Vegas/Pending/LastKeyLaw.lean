@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.CanonicalKeyLaw
-import Vegas.EventGraph.LastSchedulerErasure
+public import Vegas.Pending.CanonicalKeyLaw
+public import Vegas.EventGraph.LastSchedulerErasure
+
+@[expose] public section
 
 /-! # The last-served key law under native automatic completion
 

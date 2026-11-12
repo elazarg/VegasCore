@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Source.Protocol
-import GameTheory.Math.Probability.ConditionalObservation
-import GameTheory.Math.Probability.ExpectationConditioning
+public import Vegas.Source.Protocol
+public import GameTheory.Math.Probability.ConditionalObservation
+public import GameTheory.Math.Probability.ExpectationConditioning
+
+@[expose] public section
 
 /-! # Information-local behavioral policies at a commitment interface
 
@@ -202,7 +206,7 @@ theorem BehavioralPolicy.from_toProtocol {who : Player} :
         exact PMF.map_id _
       · exact from_toProtocol next admission policy.2 permitted
 
-private theorem protocolLaw_idle {who : Player} {Γ : SourceCtx Player L} {O : Finset VarId}
+theorem protocolLaw_idle {who : Player} {Γ : SourceCtx Player L} {O : Finset VarId}
     (program : SourceProgram Player L Γ O) (admission : CommitmentInterface program)
     (view : ProtocolView who program) (inactive : ProtocolView.actor who program view ≠ some who)
     (law : PMF {action : Option (OwnAction Player L) //

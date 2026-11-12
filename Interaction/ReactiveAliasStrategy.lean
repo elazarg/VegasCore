@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveNormalHistory
-import Interaction.ReactiveFiniteAssessment
-import GameTheoryExtensions.Math.Probability.ActionSplitting
+public import Interaction.ReactiveNormalHistory
+public import Interaction.ReactiveFiniteAssessment
+public import GameTheoryExtensions.Math.Probability.ActionSplitting
+
+@[expose] public section
 
 /-! # Common fully mixed strategies for private response aliases
 

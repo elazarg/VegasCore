@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.EventApplication
+public import Vegas.Pending.EventApplication
+
+@[expose] public section
 
 /-! # Native automatic completion after public default
 

@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketHonestRecall
-import Vegas.Game.SourceServiceSiteBridge
-import Vegas.Game.SourceDebtObservation
+public import Vegas.Game.OnePacketHonestRecall
+public import Vegas.Game.SourceServiceSiteBridge
+public import Vegas.Game.SourceDebtObservation
+
+@[expose] public section
 
 /-! # Initialized source laws under the counted native service -/
 
@@ -16,20 +20,22 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)}
-  {horizon : Nat} {scheduler : (application setup runtime leaks).Scheduler}
+  {horizon : Nat} {scheduler : (application setup timeouts leaks).Scheduler}
 
-local notation "menu" => bounds.onePacketMenu runtime leaks
-local notation "N" => onePacketModel setup runtime leaks bounds (initialLaw setup) horizon scheduler
+local notation "menu" => bounds.onePacketMenu timeouts leaks
+local notation "N" => onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+  scheduler
 local notation "E" => ReactiveApplication.ResponseMenu.protocol
-  (bounds.onePacketMenu runtime leaks) (initialLaw setup) horizon scheduler
+  (bounds.onePacketMenu timeouts leaks) (initialLaw setup) horizon scheduler
 
 private theorem first_native_state_law (players : ∀ who, (N).BehavioralPolicy who) :
     ((N).runBehavioralFrom players 1 (E).initHistory).map History.state =
       (initialLaw setup).map (fun native =>
-        some ⟨horizon, none, ReactiveApplication.Execution.initial (application setup runtime leaks)
+        some ⟨horizon, none, ReactiveApplication.Execution.initial (application setup timeouts
+          leaks)
           native⟩) := by
   classical
   have running : ¬ (E).terminal (E).initHistory.state := by change ¬ False; trivial
@@ -39,20 +45,20 @@ private theorem first_native_state_law (players : ∀ who, (N).BehavioralPolicy 
     PMF.pure_bind, map_bindOnSupport]
   simp only [InformationModel.runBehavioralFrom, runRandomizedFor_zero, PMF.pure_map]
   change ((initialLaw setup).map (fun native =>
-      some (⟨horizon, none, ReactiveApplication.Execution.initial (application setup runtime leaks)
-        native⟩ : (application setup runtime leaks).Control))).bindOnSupport
+      some (⟨horizon, none, ReactiveApplication.Execution.initial (application setup timeouts leaks)
+        native⟩ : (application setup timeouts leaks).Control))).bindOnSupport
       (fun state _ => PMF.pure state) = _
   exact PMF.bindOnSupport_pure _
 
 private theorem initial_native_boundary (wellFormed : setup.WellFormed)
     (profile : BehavioralProfile setup.program)
-    (native : (application setup runtime leaks).State) (member : native ∈ (initialLaw
+    (native : (application setup timeouts leaks).State) (member : native ∈ (initialLaw
       setup).support)
     (start : (E).History)
     (state : start.state = some ⟨horizon, none,
-      ReactiveApplication.Execution.initial (application setup runtime leaks) native⟩) :
-    let execution := ReactiveApplication.Execution.initial (application setup runtime leaks) native
-    ∃ point, ReachedBoundary setup runtime leaks horizon scheduler 0 execution ∧
+      ReactiveApplication.Execution.initial (application setup timeouts leaks) native⟩) :
+    let execution := ReactiveApplication.Execution.initial (application setup timeouts leaks) native
+    ∃ point, ReachedBoundary setup timeouts leaks horizon scheduler 0 execution ∧
       sourceServicePrefix? setup 0 native.config = some point ∧
       ProtocolState.Intended setup.program point := by
   intro execution
@@ -77,41 +83,42 @@ private theorem initial_native_boundary_of_step (wellFormed : setup.WellFormed)
     (supported : start ∈ ((N).runBehavioralFrom players 1 (E).initHistory).support) :
     ∃ native ∈ (initialLaw setup).support,
       start.state = some ⟨horizon, none,
-        ReactiveApplication.Execution.initial (application setup runtime leaks) native⟩ ∧
-      ∃ point, ReachedBoundary setup runtime leaks horizon scheduler 0
-          (ReactiveApplication.Execution.initial (application setup runtime leaks) native) ∧
+        ReactiveApplication.Execution.initial (application setup timeouts leaks) native⟩ ∧
+      ∃ point, ReachedBoundary setup timeouts leaks horizon scheduler 0
+          (ReactiveApplication.Execution.initial (application setup timeouts leaks) native) ∧
         sourceServicePrefix? setup 0 native.config = some point ∧
         ProtocolState.Intended setup.program point := by
   have inState := (PMF.mem_support_map_iff History.state _ _).mpr ⟨start, supported, rfl⟩
   rw [first_native_state_law] at inState
   obtain ⟨native, member, same⟩ := (PMF.mem_support_map_iff _ _ _).mp inState
   refine ⟨native, member, same.symm, ?_⟩
-  exact initial_native_boundary (runtime := runtime) wellFormed profile native member start
+  exact initial_native_boundary (timeouts := timeouts) wellFormed profile native member start
     same.symm
 
 variable {delay bound : (graph setup).EventId → Nat}
-  (opportunity : ∀ control : (application setup runtime leaks).Control,
-    ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+  (opportunity : ∀ control : (application setup timeouts leaks).Control,
+    ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control) →
     control.execution.application.config.defaulted = ∅ →
-    OpportunityAt runtime leaks control.execution delay)
-  (inclusion : ∀ control : (application setup runtime leaks).Control,
-    ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+    OpportunityAt timeouts leaks control.execution delay)
+  (inclusion : ∀ control : (application setup timeouts leaks).Control,
+    ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control) →
     control.execution.application.config.defaulted = ∅ →
-    ProtectedInclusionAt runtime leaks control.execution bound)
-  (timely : runtime.AsyncTimely delay bound)
-  (completes : ∀ control : (application setup runtime leaks).Control,
-    ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+    ProtectedInclusionAt timeouts leaks control.execution bound)
+  (timely : (AsyncTimely timeouts) delay bound)
+  (completes : ∀ control : (application setup timeouts leaks).Control,
+    ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control) →
     control.execution.application.config.defaulted = ∅ →
-    (application setup runtime leaks).terminal (some control) →
+    (application setup timeouts leaks).terminal (some control) →
     control.execution.application.config.cut.Terminal)
 
-local notation "NativeModel" => onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
+local notation "NativeModel" => onePacketModel setup timeouts leaks bounds (initialLaw setup)
+  horizon
   scheduler
 local notation "NativeProtocol" => ReactiveApplication.ResponseMenu.protocol
-  (bounds.onePacketMenu runtime leaks) (initialLaw setup) horizon scheduler
+  (bounds.onePacketMenu timeouts leaks) (initialLaw setup) horizon scheduler
 
 include opportunity inclusion timely completes in
 /-- Counted native service makes initialized honest native play preserve the
@@ -122,18 +129,18 @@ theorem counted_honest_initialized_readout_law
     (source : setup.intendedModel.BehavioralAssessment)
     (certificate : (NativeProtocol).WellFoundedHistories) :
     (((NativeModel).runBehavioralTerminalFrom certificate
-      (honestProfile setup runtime leaks bounds (initialLaw setup) horizon scheduler source)
-        (NativeProtocol).initHistory).map (fun final => sourceReadout setup runtime leaks
+      (honestProfile setup timeouts leaks bounds (initialLaw setup) horizon scheduler source)
+        (NativeProtocol).initHistory).map (fun final => sourceReadout setup timeouts leaks
           final.state)) =
       (setup.intendedModel.runBehavioral source.strategy
         (instructionCount setup.program + 1)).map
           (fun final => setup.protocolReadout final.state) :=
     by
   classical
-  let players := honestProfile setup runtime leaks bounds (initialLaw setup) horizon scheduler
+  let players := honestProfile setup timeouts leaks bounds (initialLaw setup) horizon scheduler
     source
   let profile := setup.intendedOpeningProfile source.strategy
-  let continuation : (application setup runtime leaks).ProtocolState →
+  let continuation : (application setup timeouts leaks).ProtocolState →
       PMF (Option (Config Player L setup.program.terminalCtx)) := fun state =>
     state.elim ((setup.run profile).map some) (fun control =>
       sourceContinuation setup profile 0 control.execution.application.config)
@@ -147,19 +154,19 @@ theorem counted_honest_initialized_readout_law
       apply bind_congr_on_support _
       intro start supported
       obtain ⟨native, member, state, point, boundary, decoded, intended⟩ :=
-        initial_native_boundary_of_step (runtime := runtime) wellFormed profile players start
+        initial_native_boundary_of_step (timeouts := timeouts) wellFormed profile players start
           supported
-      have result := counted_honest_boundary_readout_law (runtime := runtime) opportunity
+      have result := counted_honest_boundary_readout_law (timeouts := timeouts) opportunity
         inclusion
         timely completes covers capacity source certificate 0 start
-          (ReactiveApplication.Execution.initial (application setup runtime leaks) native)
+          (ReactiveApplication.Execution.initial (application setup timeouts leaks) native)
           (by simpa [ReactiveApplication.Execution.initial] using state) boundary point decoded
             intended
       simpa only [continuation, state, Option.elim_some] using result
     _ = _ := by
-      have changed := congrArg (fun law : PMF (application setup runtime leaks).ProtocolState =>
+      have changed := congrArg (fun law : PMF (application setup timeouts leaks).ProtocolState =>
         law.bind continuation)
-        (first_native_state_law (runtime := runtime) players)
+        (first_native_state_law (timeouts := timeouts) players)
       simpa only [continuation, PMF.bind_map, Function.comp_def, Option.elim_some,
         ReactiveApplication.Execution.initial] using changed
 
@@ -172,11 +179,11 @@ theorem counted_honest_initialized_not_late
     (source : setup.intendedModel.BehavioralAssessment)
     (certificate : (NativeProtocol).WellFoundedHistories) :
     ∀ fuel history, history ∈ ((NativeModel).runBehavioralFrom
-      (honestProfile setup runtime leaks bounds (initialLaw setup) horizon scheduler source) fuel
+      (honestProfile setup timeouts leaks bounds (initialLaw setup) horizon scheduler source) fuel
         (NativeProtocol).initHistory).support →
-      ∀ who, ¬ LateDelivery setup runtime leaks who ((NativeModel).infoOf who history.trace) := by
+      ∀ who, ¬ LateDelivery setup timeouts leaks who ((NativeModel).infoOf who history.trace) := by
   classical
-  let players := honestProfile setup runtime leaks bounds (initialLaw setup) horizon scheduler
+  let players := honestProfile setup timeouts leaks bounds (initialLaw setup) horizon scheduler
     source
   intro fuel history supported who
   cases fuel with
@@ -190,12 +197,12 @@ theorem counted_honest_initialized_not_late
         (NativeModel).runBehavioralFrom_add players 1 fuel] at supported
       obtain ⟨start, initialMem, continued⟩ := (PMF.mem_support_bind_iff _ _ _).mp supported
       obtain ⟨native, member, state, point, boundary, decoded, intended⟩ :=
-        initial_native_boundary_of_step (runtime := runtime) wellFormed
+        initial_native_boundary_of_step (timeouts := timeouts) wellFormed
           (setup.intendedOpeningProfile source.strategy)
           players start initialMem
-      exact counted_honest_reached_not_late (runtime := runtime) opportunity timely inclusion
+      exact counted_honest_reached_not_late (timeouts := timeouts) opportunity timely inclusion
         completes wellFormed covers capacity source certificate 0 start
-        (ReactiveApplication.Execution.initial (application setup runtime leaks) native)
+        (ReactiveApplication.Execution.initial (application setup timeouts leaks) native)
         (by simpa [ReactiveApplication.Execution.initial] using state) boundary point decoded
         intended fuel history continued who
 
@@ -208,13 +215,13 @@ theorem counted_honest_initialized_intended
     (source : setup.intendedModel.BehavioralAssessment)
     (certificate : (NativeProtocol).WellFoundedHistories) :
     ∀ fuel history, history ∈ ((NativeModel).runBehavioralFrom
-      (honestProfile setup runtime leaks bounds (initialLaw setup) horizon scheduler source) fuel
+      (honestProfile setup timeouts leaks bounds (initialLaw setup) horizon scheduler source) fuel
         (NativeProtocol).initHistory).support →
-      ∀ control : (application setup runtime leaks).Control, history.state = some control →
+      ∀ control : (application setup timeouts leaks).Control, history.state = some control →
         ∃ point, decodedPoint setup control.execution.application.config = some point ∧
           ProtocolState.Intended setup.program point := by
   classical
-  let players := honestProfile setup runtime leaks bounds (initialLaw setup) horizon scheduler
+  let players := honestProfile setup timeouts leaks bounds (initialLaw setup) horizon scheduler
     source
   intro fuel history supported control current
   cases fuel with
@@ -227,12 +234,12 @@ theorem counted_honest_initialized_intended
         (NativeModel).runBehavioralFrom_add players 1 fuel] at supported
       obtain ⟨start, initialMem, continued⟩ := (PMF.mem_support_bind_iff _ _ _).mp supported
       obtain ⟨native, member, state, point, boundary, decoded, intended⟩ :=
-        initial_native_boundary_of_step (runtime := runtime) wellFormed
+        initial_native_boundary_of_step (timeouts := timeouts) wellFormed
           (setup.intendedOpeningProfile source.strategy)
           players start initialMem
-      have sourceLaw := counted_honest_boundary_readout_law (runtime := runtime) opportunity
+      have sourceLaw := counted_honest_boundary_readout_law (timeouts := timeouts) opportunity
         inclusion timely completes covers capacity source certificate 0 start
-          (ReactiveApplication.Execution.initial (application setup runtime leaks) native)
+          (ReactiveApplication.Execution.initial (application setup timeouts leaks) native)
           (by simpa [ReactiveApplication.Execution.initial] using state) boundary point decoded
             intended
       have sourceEq : sourceContinuation setup (setup.intendedOpeningProfile source.strategy) 0

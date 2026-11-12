@@ -13,6 +13,16 @@ supplies the information and continuation bridge for ledger-reading clients.
 
 ## Input and output
 
+Complete reactive execution uses `Interaction.ReactiveApplication.ResponseMenu.run`
+from initialization and `Interaction.ReactiveApplication.ResponseMenu.runFrom`
+from any legal history. The response menu's game form uses that complete
+execution law. `Vegas.AsyncServiceSpec.run` and `Vegas.AsyncServiceSpec.gameForm`
+also supply the service's initial law, scheduler and round horizon. Callers
+provide no evaluator fuel. The execution layer derives its step budget and
+proves agreement with the well-founded terminal law for every profile and
+legal history. The scheduler-round horizon remains part of the runtime model;
+completion of the source game still requires the stated service contract.
+
 `Vegas.ClientSpec` packages the source and runtime premises:
 
 * source well-formedness and private-input independence conditional on a signal
@@ -47,10 +57,56 @@ specification is fixed before selecting the source equilibrium.
 `Vegas.ClientSpec.compile` returns a `ClientCompilation` with:
 
 * a bounded raw-menu assessment with consistent beliefs;
+* one common intended-assessment refinement, covering every intended decision
+  history and retaining its source decision laws and actual replay posteriors;
 * whole-continuation sequential rationality against that menu's behavioral
   policies, including off-path decisions;
 * no public defaults or audit charges on its supported paths;
 * the exact joint full source-configuration/default-history and settled-payoff law.
+
+`ClientCompilation.equilibrium` is the full terminal-play sequential-equilibrium
+predicate, including the same belief-consistency requirement. The complete
+continuation laws take a legal starting history without an additional fuel
+bound or sufficiency proof.
+
+## Assessment correspondence
+
+`ClientCompilation.refinement` records one native one-packet assessment and
+its exact extension to the selected raw assessment. Its
+[`OnePacketAssessmentFidelity`](../Vegas/Game/OnePacketAssessmentFidelity.lean)
+certificate identifies genuine first source decisions: the intended source
+view is displayed, the input is clear and forced, no compatible history owes
+the owner a source failure, and its pending event has no earlier activation.
+At every such site the native choice law equals the canonical realization
+`honestChoice` of the supplied intended strategy. This is pointwise agreement,
+including at sites of zero equilibrium probability.
+
+At clear, forced, debt-free own-turn sites whose projection is an intended
+decision, the actual partial replay law of the native posterior equals the
+supplied intended posterior on complete source histories. Replay failure has
+zero posterior mass. The certificate covers every intended decision history
+with a legal first native activation decoding to the exact same source state;
+every retained native site also has a corresponding raw site.
+
+From any legal clean scheduler boundary decoding to an intended source state,
+the native continuation has the intended full configuration law. The
+[joint continuation law](../Vegas/Game/OnePacketContinuationPayoff.lean)
+also retains the actual exclusion base payoff vector. The initialized
+settled-payoff and no-charge guarantees are the artifact's
+`ClientCompilation.outcomeLaw` and `ClientCompilation.noCharges` fields.
+
+The [audit and raw-alias transport](../Vegas/Game/OnePacketAssessmentExtension.lean)
+retains local strategies and complete normalized-history posteriors at
+corresponding sites, and complete continuation histories when the normalized
+raw starting history equals its embedded one-packet history. This full history
+correspondence is stronger than equality of the decoded source view.
+[Physical fidelity](../Vegas/Game/ClientAssessmentFidelity.lean) carries the
+intended action law and clean-boundary readout continuation through the client
+decoder. No pending-delivery restriction is needed for ordinary clients.
+
+All these properties are proved for the same common limit as the equilibrium
+and stored before `ClientSpec.compile` applies `Classical.choice`. Completion
+of additional operational sites supplies the remaining native behavior.
 
 The artifact exposes physical `clients` and projected
 `ClientCompilation.ledgerClients` over the Interaction callback API. The latter

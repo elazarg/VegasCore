@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveServiceInvariant
-import Interaction.ReactiveEnvironmentStep
+public import Interaction.ReactiveServiceInvariant
+public import Interaction.ReactiveEnvironmentStep
+
+@[expose] public section
 
 /-! # Player output recall and network input history agree
 

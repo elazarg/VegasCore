@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Examples.LateLeak.SettleLateOutcome
-import Vegas.Examples.LateLeak.SettleLateListener
-import Vegas.Examples.LateLeak.SettleLateTurns
-import GameTheoryExtensions.Analysis.Protocol.LastDecision
-import GameTheory.Math.Probability.FiniteUniform
+public import Vegas.Examples.LateLeak.SettleLateOutcome
+public import Vegas.Examples.LateLeak.SettleLateListener
+public import Vegas.Examples.LateLeak.SettleLateTurns
+public import GameTheoryExtensions.Analysis.Protocol.LastDecision
+public import GameTheory.Math.Probability.FiniteUniform
+
+@[expose] public section
 
 open GameTheory.Math.Probability
 

@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.EventGraph.SchedulerErasure
+public import Vegas.EventGraph.SchedulerErasure
+
+@[expose] public section
 
 /-! # Decisions of defaulted players are invisible
 

@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RevealRunPoint
-import Vegas.Game.DeviationSplit
-import Vegas.Game.RevealDeviationSimulation
+public import Vegas.Game.RevealRunPoint
+public import Vegas.Game.DeviationSplit
+public import Vegas.Game.RevealDeviationSimulation
+
+@[expose] public section
 
 /-! # Solitary phases through the closure
 
@@ -21,7 +25,7 @@ open SourceProgram GameTheory.Math.Probability Interaction EventGraphRuntime Eve
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {mode : EventGraph.ExecutionMode} {deadline : (serviceGraph setup mode).EventId → Nat}
+  {mode : EventGraph.ExecutionMode} {duration : (serviceGraph setup mode).EventId → Nat}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode))}
 
 /-- A simulation for a larger set of executions is one for a smaller set. -/
@@ -51,11 +55,11 @@ in the closure of any later configuration, that its owner was defaulted by an
 earlier event. -/
 theorem completed_iff_defaultedBefore (reference : (serviceGraph setup mode).BehavioralProfile)
     (who : Player)
-    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
-    {players : Player → (serviceApplication setup mode deadline leaks).Policy} {horizon : Nat}
+    {scheduler : (serviceApplication setup mode duration leaks).Scheduler}
+    {players : Player → (serviceApplication setup mode duration leaks).Policy} {horizon : Nat}
     {event : (serviceGraph setup mode).EventId} {owner : Player}
     (owned : (serviceGraph setup mode).actor? event = some owner)
-    {execution : (serviceApplication setup mode deadline leaks).Execution}
+    {execution : (serviceApplication setup mode duration leaks).Execution}
     (boundary : PhaseBoundary scheduler players horizon event.val execution)
     {later : (serviceGraph setup mode).Config}
     (path : Relation.ReflTransGen Config.Step execution.application.config later) :
@@ -113,12 +117,12 @@ of concurrent reveals, the deviation is simulated by the last-served erased-key
 laws of normalized graph deviations read at the closure key, once it is from
 the phase boundary at the run's end. -/
 theorem runPoint_simulation {horizon : Nat}
-    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    {scheduler : (serviceApplication setup mode duration leaks).Scheduler}
     {delay : (serviceGraph setup mode).EventId → Nat}
     (bound : (serviceGraph setup mode).EventId → Nat) (turns : Nat)
-    (contract : AsyncContract (serviceRuntime setup mode deadline) leaks
+    (contract : AsyncContract (serviceTimeouts setup mode duration) leaks
         (serviceInitialLaw setup mode) horizon scheduler delay bound)
-    (timely : AsyncTimely (serviceRuntime setup mode deadline) delay bound)
+    (timely : AsyncTimely (serviceTimeouts setup mode duration) delay bound)
     (base : (serviceGraph setup mode).BehavioralProfile)
     (decides : ∀ (config : (serviceGraph setup mode).Config)
       (event : (serviceGraph setup mode).EventId) (owner : Player) (payload : L.Ty)
@@ -136,48 +140,48 @@ theorem runPoint_simulation {horizon : Nat}
           PMF.pure (cast (congrArg EventField.Action outputEq.symm)
             (openingAccepted event config.store)))
     (referenceIndependent : ReadyIndependent ((serviceGraph setup mode).normalizeProfile base))
-    (who : Player) (deviation : (serviceApplication setup mode deadline leaks).Policy)
+    (who : Player) (deviation : (serviceApplication setup mode duration leaks).Policy)
     (independent : ∀ policy, LastIndependent
       ((serviceGraph setup mode).lastDeviationProfile base who policy) who)
     (relaxed : RelaxedOrder (serviceGraph setup mode))
     (concurrent : (serviceGraph setup mode).RevealsOnlyConcurrent) {start finish : Nat}
     (run : RevealRun (serviceGraph setup mode) start finish)
     (tail : DeviationSimulation scheduler
-      (Function.update (serviceReferenceTurnPolicy setup mode deadline leaks bound turns
+      (Function.update (serviceReferenceTurnPolicy setup mode duration leaks bound turns
         (firstTurnTiming setup turns mode) ((serviceGraph setup mode).normalizeProfile base))
         who deviation) horizon readErased
       (fun execution => runKey (closure ((serviceGraph setup mode).normalizeProfile base) who
         execution.application.config))
-      ((serviceRuntime setup mode deadline).bindingTraffic leaks who) (keyView who)
+      ((bindingTraffic (serviceTimeouts setup mode duration)) leaks who) (keyView who)
       (fun policy => keyTarget ((serviceGraph setup mode).lastDeviationProfile base who policy)
         who)
-      (PhaseBoundary scheduler (Function.update (serviceReferenceTurnPolicy setup mode deadline
+      (PhaseBoundary scheduler (Function.update (serviceReferenceTurnPolicy setup mode duration
         leaks bound turns (firstTurnTiming setup turns mode)
         ((serviceGraph setup mode).normalizeProfile base)) who deviation) horizon finish)) :
     ∀ bar, bar ≤ finish →
       DeviationSimulation scheduler
-        (Function.update (serviceReferenceTurnPolicy setup mode deadline leaks bound turns
+        (Function.update (serviceReferenceTurnPolicy setup mode duration leaks bound turns
           (firstTurnTiming setup turns mode) ((serviceGraph setup mode).normalizeProfile base))
           who deviation) horizon readErased
         (fun execution => runKey (closure ((serviceGraph setup mode).normalizeProfile base) who
           execution.application.config))
-        ((serviceRuntime setup mode deadline).bindingTraffic leaks who) (keyView who)
+        ((bindingTraffic (serviceTimeouts setup mode duration)) leaks who) (keyView who)
         (fun policy => keyTarget ((serviceGraph setup mode).lastDeviationProfile base who policy)
           who)
-        (RunPoint scheduler (Function.update (serviceReferenceTurnPolicy setup mode deadline leaks
+        (RunPoint scheduler (Function.update (serviceReferenceTurnPolicy setup mode duration leaks
           bound turns (firstTurnTiming setup turns mode)
           ((serviceGraph setup mode).normalizeProfile base)) who deviation) horizon who start
           finish bar) := by
   classical
   let G := serviceGraph setup mode
   let R := G.normalizeProfile base
-  let app := serviceApplication setup mode deadline leaks
-  let players := Function.update (serviceReferenceTurnPolicy setup mode deadline leaks bound
+  let app := serviceApplication setup mode duration leaks
+  let players := Function.update (serviceReferenceTurnPolicy setup mode duration leaks bound
     turns (firstTurnTiming setup turns mode) R) who deviation
   suffices step : ∀ gap bar, finish - bar = gap → bar ≤ finish →
       DeviationSimulation scheduler players horizon readErased
         (fun execution => runKey (closure R who execution.application.config))
-        ((serviceRuntime setup mode deadline).bindingTraffic leaks who) (keyView who)
+        ((bindingTraffic (serviceTimeouts setup mode duration)) leaks who) (keyView who)
         (fun policy => keyTarget (G.lastDeviationProfile base who policy) who)
         (RunPoint scheduler players horizon who start finish bar) from
     fun bar within => step _ bar rfl within
@@ -203,7 +207,7 @@ theorem runPoint_simulation {horizon : Nat}
       exact this ⟨event, rfl, early, by omega, mine⟩
     have tailTarget : DeviationSimulation scheduler players horizon readErased
         (fun execution => runKey (closure R who execution.application.config))
-        ((serviceRuntime setup mode deadline).bindingTraffic leaks who) (keyView who)
+        ((bindingTraffic (serviceTimeouts setup mode duration)) leaks who) (keyView who)
         (fun policy => keyTarget (G.lastDeviationProfile base who policy) who)
         (RunPoint scheduler players horizon who start finish (target.val + 1)) :=
       ih (finish - (target.val + 1)) (by omega) (target.val + 1) rfl (by omega)

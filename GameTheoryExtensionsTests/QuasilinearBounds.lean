@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheoryExtensions.Analysis.QuasilinearBounds
-import GameTheoryExtensions.Analysis.QuasilinearSettlement
+public import GameTheoryExtensions.Analysis.QuasilinearBounds
+public import GameTheoryExtensions.Analysis.QuasilinearSettlement
+
+@[expose] public section
 
 /-! # Unfinished outcomes and valuation-sensitive exit utility
 
@@ -17,11 +21,11 @@ namespace GameTheoryExtensionsTests.QuasilinearBounds
 
 open GameTheory
 
-private def valuation (outcome : Bool) : ℝ := if outcome then 5 else 3
+def valuation (outcome : Bool) : ℝ := if outcome then 5 else 3
 
-private def transfer (outcome : Bool) : ℝ := if outcome then 11 else 7
+def transfer (outcome : Bool) : ℝ := if outcome then 11 else 7
 
-private def payoff (output : Option Bool) (charged : Bool) : ℝ :=
+def payoff (output : Option Bool) (charged : Bool) : ℝ :=
   output.elim 0 (fun outcome => valuation outcome + transfer outcome) -
     (if charged then 4 else 0)
 
@@ -52,10 +56,10 @@ theorem completed_only_bound_excludes_unfinished :
     cases outcome <;> cases charged <;> norm_num [payoff, valuation, transfer]
   · norm_num [payoff]
 
-private def exitObservation (outcome : Bool) : Bool × (Unit → ℝ) :=
+def exitObservation (outcome : Bool) : Bool × (Unit → ℝ) :=
   (outcome, fun _ => 2)
 
-private def exitValuation (outcome : Bool) (_who : Unit) : ℝ :=
+def exitValuation (outcome : Bool) (_who : Unit) : ℝ :=
   if outcome then 9 else 1
 
 /-- Identical exit cash gives utilities three and eleven when the retained

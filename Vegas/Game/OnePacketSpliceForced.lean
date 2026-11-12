@@ -1,12 +1,16 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketSplicePoint
-import Vegas.Game.OnePacketSwapFiberSum
-import Vegas.Game.OnePacketSwapBaseWeight
-import Vegas.Game.OnePacketCellObservation
-import Vegas.Game.SourceDebtObservation
-import Vegas.Source.FailedBindingDeviation
-import Vegas.Source.IntendedPrefixSwap
+public import Vegas.Game.OnePacketSplicePoint
+public import Vegas.Game.OnePacketSwapFiberSum
+public import Vegas.Game.OnePacketSwapBaseWeight
+public import Vegas.Game.OnePacketCellObservation
+public import Vegas.Game.SourceDebtObservation
+public import Vegas.Source.FailedBindingDeviation
+public import Vegas.Source.IntendedPrefixSwap
+
+@[expose] public section
 
 /-! # Responders along a history at a forced site are forced
 
@@ -42,7 +46,7 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol Intera
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)} [DecidableEq (CellTy Player L)]
+  {timeouts : EventTimeouts (graph setup)} [DecidableEq (CellTy Player L)]
 
 variable {Public : Type*} {signal : State L setup.context → Public}
 
@@ -143,19 +147,19 @@ section Native
 variable [Fintype Player]
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup runtime leaks).Scheduler}
+  {scheduler : (application setup timeouts leaks).Scheduler}
 
 omit [DecidableEq (CellTy Player L)] in
 /-- An initialized history is no prefix of the empty history. -/
-theorem not_tracePrefix_start {control : (application setup runtime leaks).Control}
-    {prior : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control)}
-    (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace none) :
+theorem not_tracePrefix_start {control : (application setup timeouts leaks).Control}
+    {prior : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some control)}
+    (trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace none) :
     ¬ TracePrefix prior trace := by
   intro isPrefix
   have length := isPrefix.length_le
-  rw [trace_eq_start_of_none (runtime := runtime) trace] at length
+  rw [trace_eq_start_of_none (timeouts := timeouts) trace] at length
   have positive : ∀ {state}
-      (prefixTrace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace state),
+      (prefixTrace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace state),
       state = some control → 0 < prefixTrace.length := by
     intro state prefixTrace initialized
     cases prefixTrace with
@@ -175,23 +179,24 @@ theorem forcedState_image_of_tracePrefix (swap : HiddenSwap (graph setup))
       state.swap swap ∈ (initialLaw setup).support)
     (bounded : ∀ handle raw, raw ∈ bounds.values → swap.raw handle raw ∈ bounds.values)
     (failures : ∀ event, swap.values.ExpiryFixed event)
-    (r : Player) {control : (application setup runtime leaks).Control}
-    (prior : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control))
-    {state} {trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace state}
-    (isPrefix : TracePrefix prior trace) (guarded : SwapGuardState setup runtime swap allowed state)
-    (forced : ForcedState setup runtime leaks r (swap.protocolState state)) :
-    ForcedState setup runtime leaks r (some (swap.control control)) := by
-  let symmetry := onePacketSwapSymmetry (runtime := runtime) bounds (initialLaw setup) horizon
+    (r : Player) {control : (application setup timeouts leaks).Control}
+    (prior : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some control))
+    {state} {trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace state}
+    (isPrefix : TracePrefix prior trace) (guarded : SwapGuardState setup timeouts swap allowed
+      state)
+    (forced : ForcedState setup timeouts leaks r (swap.protocolState state)) :
+    ForcedState setup timeouts leaks r (some (swap.control control)) := by
+  let symmetry := onePacketSwapSymmetry (timeouts := timeouts) bounds (initialLaw setup) horizon
     scheduler swap
     initialClosed bounded failures
   induction isPrefix with
   | refl => exact forced
   | @extend source target before earlier joint legal realized ih =>
       cases source with
-      | none => exact (not_tracePrefix_start (runtime := runtime) before earlier).elim
+      | none => exact (not_tracePrefix_start (timeouts := timeouts) before earlier).elim
       | some previous =>
           have guardSource := symmetry.guard_source before legal realized guarded
-          exact ih guardSource (forcedState_of_transition (runtime := runtime)
+          exact ih guardSource (forcedState_of_transition (timeouts := timeouts)
             (symmetry.mapTrace before guardSource) (symmetry.act (some previous) joint)
             (symmetry.realized before legal realized guarded) forced)
 
@@ -203,13 +208,13 @@ theorem swapGuardState_of_tracePrefix (swap : HiddenSwap (graph setup))
       state.swap swap ∈ (initialLaw setup).support)
     (bounded : ∀ handle raw, raw ∈ bounds.values → swap.raw handle raw ∈ bounds.values)
     (failures : ∀ event, swap.values.ExpiryFixed event)
-    {first : (application setup runtime leaks).ProtocolState}
-    {prior : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace first}
-    {state} {trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace state}
-    (isPrefix : TracePrefix prior trace) (guarded : SwapGuardState setup runtime swap allowed
+    {first : (application setup timeouts leaks).ProtocolState}
+    {prior : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace first}
+    {state} {trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace state}
+    (isPrefix : TracePrefix prior trace) (guarded : SwapGuardState setup timeouts swap allowed
       state) :
-    SwapGuardState setup runtime swap allowed first := by
-  let symmetry := onePacketSwapSymmetry (runtime := runtime) bounds (initialLaw setup) horizon
+    SwapGuardState setup timeouts swap allowed first := by
+  let symmetry := onePacketSwapSymmetry (timeouts := timeouts) bounds (initialLaw setup) horizon
     scheduler swap
     initialClosed bounded failures
   induction isPrefix with
@@ -228,8 +233,8 @@ forced for it. -/
 theorem forcedAgent_of_splice (wellFormed : setup.WellFormed)
     (independent : setup.PrivateInputsIndependentGiven signal)
     (observable : setup.PublicInitialSignal signal) (covered : BindingFieldsCovered bounds)
-    {who : Player} {current : (application setup runtime leaks).Control}
-    (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some current))
+    {who : Player} {current : (application setup timeouts leaks).Control}
+    (trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some current))
     {p w : ProtocolState setup.program}
     (decodedP : decodedPoint setup current.execution.application.config = some p)
     {second : setup.intendedProtocol.History} (secondState : second.state = some w)
@@ -242,12 +247,12 @@ theorem forcedAgent_of_splice (wellFormed : setup.WellFormed)
           owner = who)
     {r : Player}
     (succeed : CommitmentCellsSucceed setup p (ProtocolState.splicePoint setup.program r p w))
-    {control : (application setup runtime leaks).Control}
-    (prior : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control))
+    {control : (application setup timeouts leaks).Control}
+    (prior : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some control))
     (isPrefix : TracePrefix prior trace) (different : r ≠ who) :
-    forcedAgent (runtime := runtime) (bounds.onePacketMenu runtime leaks) (initialLaw setup)
+    forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks) (initialLaw setup)
       horizon scheduler
-      r ((application setup runtime leaks).observe r (some control)) := by
+      r ((application setup timeouts leaks).observe r (some control)) := by
   have publicAgree := publicCellsAgree_of_observe sameView
   have shape := ProtocolState.sameShape_of_observe_eq who setup.program p w sameView
   let q := ProtocolState.splicePoint setup.program r p w
@@ -259,18 +264,18 @@ theorem forcedAgent_of_splice (wellFormed : setup.WellFormed)
     EventGraph.ValueSwap.ofPairs_expiryFixed (betweenPairs publicAgreeQ succeedQ)
   -- The swap toward the splice is guarded at the end of the history.
   have drawnP : ∃ initial ∈ setup.initialLaw.support, InitialCellsAt initial p := by
-    obtain ⟨initial, member, _, point, pointEq, found⟩ := decoded_initialCellsAt (runtime :=
-      runtime) trace current rfl
+    obtain ⟨initial, member, _, point, pointEq, found⟩ := decoded_initialCellsAt (timeouts :=
+      timeouts) trace current rfl
     rw [decodedP, Option.some.injEq] at pointEq
     subst pointEq
     exact ⟨initial, member, found⟩
   have drawn := drawn_splicePoint (r := r) independent observable publicAgree drawnP
     (exists_initialCellsAt second.trace secondState)
   have staticP := decodedPoint_staticAt decodedP
-  have guarded : SwapGuardState setup runtime swap (swapAllowed swap) (some current) :=
-    swapGuardState_of_agree (runtime := runtime) drawn trace decodedP
+  have guarded : SwapGuardState setup timeouts swap (swapAllowed swap) (some current) :=
+    swapGuardState_of_agree (timeouts := timeouts) drawn trace decodedP
       (fun event active owner payload binding checks outputEq codeEq view =>
-        cell?_splicePoint_eq_of_agree (bindingCellsAgree_of_decoded (runtime := runtime) (event :=
+        cell?_splicePoint_eq_of_agree (bindingCellsAgree_of_decoded (timeouts := timeouts) (event :=
           event)
           (owner := owner) (payload := payload) (binding := binding) (checks := checks)
           (outputEq := outputEq) (codeEq := codeEq) wellFormed secondState who sameView trace
@@ -279,11 +284,11 @@ theorem forcedAgent_of_splice (wellFormed : setup.WellFormed)
     (betweenPairs publicAgreeQ succeedQ) current.execution.application.accepted covered
   have fixes : swap.Fixes r :=
     fixes_between_of_visible (fun name _ visible => cell?_splicePoint_of_visible publicAgree name
-      visible) (fun _ _ accepted => accepted_owner_of_trace (runtime := runtime) trace accepted)
+      visible) (fun _ _ accepted => accepted_owner_of_trace (timeouts := timeouts) trace accepted)
   -- The image of the end of the history is forced for `r`.
-  have forcedEnd : ForcedState setup runtime leaks r (some (swap.control
+  have forcedEnd : ForcedState setup timeouts leaks r (some (swap.control
     current)) := by
-    refine (forcedState_iff_decodedPoint (runtime := runtime) _).mpr ⟨_, ?_,
+    refine (forcedState_iff_decodedPoint (timeouts := timeouts) _).mpr ⟨_, ?_,
       forcedPoint_splice shape (by
         have status := congrArg (ProtocolView.defaulted who setup.program) sameView
         simpa only [ProtocolState.defaulted_observe] using status) staticP staticW
@@ -292,20 +297,20 @@ theorem forcedAgent_of_splice (wellFormed : setup.WellFormed)
       (EventGraph.ValueSwap.ofPairs (betweenPairs publicAgreeQ succeedQ))) = _
     rw [decodedPoint_betweenPairs, decodedP, Option.map_some]
   -- So is the image of the prefix, which carries `r`'s information there.
-  have guardedPrior := swapGuardState_of_tracePrefix (runtime := runtime) swap
+  have guardedPrior := swapGuardState_of_tracePrefix (timeouts := timeouts) swap
     (initialClosed_swapAllowed swap) bounded failures
     isPrefix guarded
-  have forcedPrior := forcedState_image_of_tracePrefix (runtime := runtime) swap
+  have forcedPrior := forcedState_image_of_tracePrefix (timeouts := timeouts) swap
     (initialClosed_swapAllowed swap)
     bounded failures r prior isPrefix guarded forcedEnd
-  let symmetry := onePacketSwapSymmetry (runtime := runtime) bounds (initialLaw setup) horizon
+  let symmetry := onePacketSwapSymmetry (timeouts := timeouts) bounds (initialLaw setup) horizon
     scheduler swap
     (initialClosed_swapAllowed swap) bounded failures
   refine ⟨⟨_, symmetry.mapTrace prior guardedPrior⟩, ?_, forcedPrior⟩
-  change (onePacketInformation setup runtime leaks bounds horizon scheduler).infoOf r
+  change (onePacketInformation setup timeouts leaks bounds horizon scheduler).infoOf r
     (symmetry.mapTrace prior guardedPrior) = _
   rw [onePacket_infoOf]
-  exact observe_swap_of_fixes (runtime := runtime) swap (initialClosed_swapAllowed swap) bounded
+  exact observe_swap_of_fixes (timeouts := timeouts) swap (initialClosed_swapAllowed swap) bounded
     failures fixes prior
     guardedPrior
 

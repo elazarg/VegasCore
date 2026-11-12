@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketSwapRegular
-import Vegas.Game.OnePacketProjectedDecision
+public import Vegas.Game.OnePacketSwapRegular
+public import Vegas.Game.OnePacketProjectedDecision
+
+@[expose] public section
 
 /-! # Debt-free histories are regular
 
@@ -25,39 +29,39 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol Intera
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup runtime leaks).Scheduler}
+  {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- **Debt-free states are forced** for every player. -/
 theorem forcedState_of_debtFree (wellFormed : setup.WellFormed)
-    {control : (application setup runtime leaks).Control}
-    (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control))
+    {control : (application setup timeouts leaks).Control}
+    (trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some control))
     (free : ∀ point, decodedPoint setup control.execution.application.config = some point →
       ∀ player, ¬ ProtocolState.OwesFailure player setup.program point)
-    (player : Player) : ForcedState setup runtime leaks player (some control) := by
-  obtain ⟨replay, replayed⟩ := intendedHistory?_isSome_of_debtFree (runtime := runtime) wellFormed
+    (player : Player) : ForcedState setup timeouts leaks player (some control) := by
+  obtain ⟨replay, replayed⟩ := intendedHistory?_isSome_of_debtFree (timeouts := timeouts) wellFormed
     trace control rfl
     free
-  obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (runtime := runtime) (failureProfile
+  obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (timeouts := timeouts) (failureProfile
     setup.program)
-    (bounds.onePacketMenu runtime leaks) horizon scheduler trace control rfl
+    (bounds.onePacketMenu timeouts leaks) horizon scheduler trace control rfl
   have decoded := decodedPoint_eq residual
   have replayState : replay.state = decodedPoint setup control.execution.application.config :=
-    intendedHistory?_state (runtime := runtime) trace replayed
+    intendedHistory?_state (timeouts := timeouts) trace replayed
   rw [decoded] at replayState
-  exact (forcedState_iff_decodedPoint (runtime := runtime) control).mpr ⟨_, decoded,
+  exact (forcedState_iff_decodedPoint (timeouts := timeouts) control).mpr ⟨_, decoded,
     forcedPoint_of_intended player (intended_of_history wellFormed replay.trace _ replayState)⟩
 
 private theorem regularTrace_of_debtFree_weight (wellFormed : setup.WellFormed)
     (assessment : setup.intendedModel.BehavioralAssessment) (who : Player) : ∀ {state}
-    (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace state)
-    (control : (application setup runtime leaks).Control), state = some control →
+    (trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace state)
+    (control : (application setup timeouts leaks).Control), state = some control →
     (∀ point, decodedPoint setup control.execution.application.config = some point →
       ∀ player, ¬ ProtocolState.OwesFailure player setup.program point) →
-    0 < othersSourceWeight setup runtime leaks bounds horizon scheduler assessment who trace →
-      RegularTrace setup runtime leaks bounds horizon scheduler assessment who trace
+    0 < othersSourceWeight setup timeouts leaks bounds horizon scheduler assessment who trace →
+      RegularTrace setup timeouts leaks bounds horizon scheduler assessment who trace
   | _, .start, _, _, _, _ => trivial
   | _, .extend (source := before) (target := after) prior joint legal realized, control, current,
       free, positive => by
@@ -66,30 +70,30 @@ private theorem regularTrace_of_debtFree_weight (wellFormed : setup.WellFormed)
           same freeNext
           positiveNext
       subst current
-      change 0 < othersSourceWeight setup runtime leaks bounds horizon scheduler assessment who
+      change 0 < othersSourceWeight setup timeouts leaks bounds horizon scheduler assessment who
         prior *
-        transitionSourceFactor setup runtime leaks assessment who before joint (some control)
+        transitionSourceFactor setup timeouts leaks assessment who before joint (some control)
           at positive
       obtain ⟨priorPos, factorPos⟩ :=
         (pos_and_pos_or_neg_and_neg_of_mul_pos positive).resolve_right fun negative =>
-          absurd negative.1 (not_lt.mpr (othersSourceWeight_nonneg (runtime := runtime) assessment
+          absurd negative.1 (not_lt.mpr (othersSourceWeight_nonneg (timeouts := timeouts) assessment
             who prior))
-      have realizedRaw : some control ∈ ((application setup runtime leaks).transition (initialLaw
+      have realizedRaw : some control ∈ ((application setup timeouts leaks).transition (initialLaw
         setup)
           horizon scheduler before joint).support := realized
       cases before with
       | none =>
-          obtain rfl := trace_eq_start_of_none (runtime := runtime) prior
+          obtain rfl := trace_eq_start_of_none (timeouts := timeouts) prior
           exact ⟨trivial, trivial⟩
       | some current =>
-          have freeCurrent := debtFree_of_transition (runtime := runtime) prior joint realizedRaw
+          have freeCurrent := debtFree_of_transition (timeouts := timeouts) prior joint realizedRaw
             free
           refine ⟨recursive current rfl freeCurrent priorPos, ?_⟩
           intro actor acting other
           have forced := fun player =>
-            forcedState_of_debtFree (runtime := runtime) wellFormed prior freeCurrent player
+            forcedState_of_debtFree (timeouts := timeouts) wellFormed prior freeCurrent player
           refine ⟨⟨⟨⟨_, prior⟩, ?_, forced actor⟩, forced who⟩, ?_⟩
-          · exact (bounds.onePacketMenu runtime leaks).info (initialLaw setup)
+          · exact (bounds.onePacketMenu timeouts leaks).info (initialLaw setup)
               horizon scheduler actor _
           · unfold transitionSourceFactor at factorPos
             simp only [acting, other, ↓reduceIte] at factorPos
@@ -100,24 +104,24 @@ fully mixed assessment: their source weight is the counterfactual reach of their
 intended replay. -/
 theorem othersSourceWeight_pos_of_debtFree (wellFormed : setup.WellFormed)
     {assessment : setup.intendedModel.BehavioralAssessment} (mixed : assessment.IsFullyMixed)
-    (who : Player) {control : (application setup runtime leaks).Control}
-    (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control))
+    (who : Player) {control : (application setup timeouts leaks).Control}
+    (trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some control))
     (free : ∀ point, decodedPoint setup control.execution.application.config = some point →
       ∀ player, ¬ ProtocolState.OwesFailure player setup.program point)
     {event : (graph setup).EventId}
-    (turn : (control.execution.observe (application setup runtime leaks)
+    (turn : (control.execution.observe (application setup timeouts leaks)
       who).application.publicView.ownTurn? who = some event) :
-    0 < othersSourceWeight setup runtime leaks bounds horizon scheduler assessment who trace := by
-  obtain ⟨replay, replayed⟩ := intendedHistory?_isSome_of_debtFree (runtime := runtime) wellFormed
+    0 < othersSourceWeight setup timeouts leaks bounds horizon scheduler assessment who trace := by
+  obtain ⟨replay, replayed⟩ := intendedHistory?_isSome_of_debtFree (timeouts := timeouts) wellFormed
     trace control rfl
     free
-  have forced := forcedState_of_debtFree (runtime := runtime) wellFormed trace free who
-  have matching := actorCompletionsMatch_of_forced (runtime := runtime) assessment who trace
+  have forced := forcedState_of_debtFree (timeouts := timeouts) wellFormed trace free who
+  have matching := actorCompletionsMatch_of_forced (timeouts := timeouts) assessment who trace
     control rfl forced
-  have settled := unsettledContent_eq_one_of_ownTurn (runtime := runtime) assessment who trace
+  have settled := unsettledContent_eq_one_of_ownTurn (timeouts := timeouts) assessment who trace
     forced turn
-  rw [othersSourceWeight_eq_replay (runtime := runtime) assessment who trace replayed
-    (replayMatches_of_actorCompletions (runtime := runtime) assessment who trace matching),
+  rw [othersSourceWeight_eq_replay (timeouts := timeouts) assessment who trace replayed
+    (replayMatches_of_actorCompletions (timeouts := timeouts) assessment who trace matching),
       settled, mul_one]
   exact counterfactualReach_pos_of_mixed mixed who replay
 
@@ -127,16 +131,16 @@ nobody owing a failure, at which `who` has its own ready event, is regular for
 `who`. -/
 theorem regularTrace_of_debtFree (wellFormed : setup.WellFormed)
     {assessment : setup.intendedModel.BehavioralAssessment} (mixed : assessment.IsFullyMixed)
-    (who : Player) {control : (application setup runtime leaks).Control}
-    (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control))
+    (who : Player) {control : (application setup timeouts leaks).Control}
+    (trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some control))
     (free : ∀ point, decodedPoint setup control.execution.application.config = some point →
       ∀ player, ¬ ProtocolState.OwesFailure player setup.program point)
     {event : (graph setup).EventId}
-    (turn : (control.execution.observe (application setup runtime leaks)
+    (turn : (control.execution.observe (application setup timeouts leaks)
       who).application.publicView.ownTurn? who = some event) :
-    RegularTrace setup runtime leaks bounds horizon scheduler assessment who trace :=
-  regularTrace_of_debtFree_weight (runtime := runtime) wellFormed assessment who trace control rfl
+    RegularTrace setup timeouts leaks bounds horizon scheduler assessment who trace :=
+  regularTrace_of_debtFree_weight (timeouts := timeouts) wellFormed assessment who trace control rfl
     free
-    (othersSourceWeight_pos_of_debtFree (runtime := runtime) wellFormed mixed who trace free turn)
+    (othersSourceWeight_pos_of_debtFree (timeouts := timeouts) wellFormed mixed who trace free turn)
 
 end Vegas

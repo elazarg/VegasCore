@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveAnchoredPolicy
-import Interaction.ReactiveRoundReachability
+public import Interaction.ReactiveAnchoredPolicy
+public import Interaction.ReactiveRoundReachability
+
+@[expose] public section
 
 /-! # Legal histories are reached by their own anchored replay
 

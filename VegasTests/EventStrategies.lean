@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.EventCompilation
-import VegasTests.SourceSetup
-import VegasTests.SourceSemantics
-import GameTheoryExtensions.Math.Probability.Uniform
+public import Vegas.Game.EventCompilation
+public import VegasTests.SourceSetup
+public import VegasTests.SourceSemantics
+public import GameTheoryExtensions.Math.Probability.Uniform
+
+@[expose] public section
 
 /-! # Full-source asynchronous strategic regression instances
 
@@ -47,7 +51,7 @@ example (scheduler : SourceSetup.fairSetup.eventGraph.PublicScheduler)
     simpa only [SourceProgram.Setup.eventGame, EventGraph.gameForm,
       PMF.map_bind, PMF.bind_map, PMF.pure_bind, Function.comp_def] using law⟩
 
-private abbrev mixedSetup := SourceSemantics.mixedSetup
+abbrev mixedSetup := SourceSemantics.mixedSetup
 
 instance : mixedSetup.FiniteInitialLaw := ⟨by simp [mixedSetup, SourceSemantics.mixedSetup]⟩
 

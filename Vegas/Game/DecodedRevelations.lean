@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Compile.EventGraphResolutionFields
-import Vegas.Game.SourceSwapAgreement
+public import Vegas.Compile.EventGraphResolutionFields
+public import Vegas.Game.SourceSwapAgreement
+
+@[expose] public section
 
 /-! # Decoded points record the completed reveals
 

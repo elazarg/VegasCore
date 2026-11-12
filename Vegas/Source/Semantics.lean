@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Source.Basic
-import Vegas.Foundation.DefaultHistory
-import GameTheory.Core.Form
+public import Vegas.Source.Basic
+public import Vegas.Foundation.DefaultHistory
+public import GameTheory.Core.Form
+
+@[expose] public section
 
 /-! # Source policies and exact execution
 

@@ -26,11 +26,12 @@ def lean(args):
 
 def ensure_fresh_build():
     """Refuse to audit proofs against missing or outdated target artifacts."""
-    result = subprocess.run(['lake', 'build', '--no-build', 'Paper', 'Tools'], cwd=ROOT,
+    result = subprocess.run(['lake', '--wfail', 'build', '--no-build', 'Paper', 'Tools'], cwd=ROOT,
                             text=True, encoding='utf-8', capture_output=True,
                             timeout=LEAN_TIMEOUT_SECONDS)
     if result.returncode:
-        raise RuntimeError('Paper/Tools build is missing or stale; run lake build Paper Tools.\n'
+        raise RuntimeError('Paper/Tools build is missing or stale, or has warnings; '
+                           'run lake --wfail build Paper Tools.\n'
                            + result.stdout + result.stderr)
 
 
@@ -54,7 +55,9 @@ def audit_files(files, *, source_override=None):
     # Inline the validator after the target's imports. importEnv? retrieves the
     # pristine import environment, before any validator or driver declarations.
     # No tool import, merged headers, loader override or shared build writes occur.
-    tool = tool.replace('import Lean\n', '', 1)
+    # Frontend APIs may arrive through meta imports. Only the validator runs in
+    # a meta scope; each audited file gets a fresh ordinary command state below.
+    tool = '@[expose] public meta section\n' + tool.split('\n@[expose] public section\n', 1)[1]
     directory = ROOT / '.lake/paper-audit'
     directory.mkdir(parents=True, exist_ok=True)
     reports = {}

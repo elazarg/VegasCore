@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Source.Semantics
-import GameTheory.Math.Probability.SelectiveStopping
+public import Vegas.Source.Semantics
+public import GameTheory.Math.Probability.SelectiveStopping
+
+@[expose] public section
 
 /-! # Refusing to open, and when it is worth nothing
 

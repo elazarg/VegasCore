@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.EventApplication
+public import Vegas.Pending.EventApplication
+
+@[expose] public section
 
 /-! # Commitment binding from submission onward
 
@@ -29,18 +33,18 @@ theorem privateStep_lookup_of_not_fresh (state : State graph) (who : Player)
       exact state.candidates.lookup_prepare_eq_of_not_fresh
         candidate who (.prepared serial) raw fixed
 
-theorem handle_lookup_of_not_fresh (runtime : EventGraphRuntime graph)
+theorem handle_lookup_of_not_fresh (timeouts : EventTimeouts graph)
     (state next : State graph) (message : Message Player (Payload graph))
     (candidate : Handle graph) (fixed : state.candidates.lookup candidate ≠ .fresh)
-    (accepted : handle runtime state message = some next) :
+    (accepted : handle timeouts state message = some next) :
     next.candidates.lookup candidate = state.candidates.lookup candidate := by
   rcases message with ⟨id, packet⟩
   cases packet with
   | commitment event selected =>
-      rw [(handle_commitment_tables runtime state next id event selected accepted).1]
+      rw [(handle_commitment_tables timeouts state next id event selected accepted).1]
       exact state.candidates.lookup_freeze_eq_of_not_fresh candidate selected fixed
   | opening event selected raw =>
-      rw [(handle_resolution_tables runtime state next _ (by intros; simp) accepted).2]
+      rw [(handle_resolution_tables timeouts state next _ (by intros; simp) accepted).2]
   | malformed raw => simp [handle] at accepted
 
 end Vegas.EventGraphRuntime

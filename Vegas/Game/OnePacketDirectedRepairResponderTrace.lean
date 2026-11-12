@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketDirectedRepairResponse
-import Vegas.Game.OnePacketPendingLumping
+public import Vegas.Game.OnePacketDirectedRepairResponse
+public import Vegas.Game.OnePacketPendingLumping
+
+@[expose] public section
 
 /-! # Actual responder traces through directed binding repair
 
@@ -22,54 +26,54 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
 /-- Responses can prepare private candidates and emit packets, but they cannot
 change the source value currently delivered by an opening. -/
-theorem deliveredValue_respond (execution : (application setup runtime leaks).Execution)
-    (actor observer : Player) (response : (application setup runtime leaks).Action) :
-    deliveredValue setup runtime leaks observer
-        ((execution.respond (application setup runtime leaks) actor response).observe
-          (application setup runtime leaks) observer) =
-      deliveredValue setup runtime leaks observer
-        (execution.observe (application setup runtime leaks) observer) := by
-  obtain ⟨config, publicView⟩ := runtime.reactive_respond_application leaks execution actor
+theorem deliveredValue_respond (execution : (application setup timeouts leaks).Execution)
+    (actor observer : Player) (response : (application setup timeouts leaks).Action) :
+    deliveredValue setup timeouts leaks observer
+        ((execution.respond (application setup timeouts leaks) actor response).observe
+          (application setup timeouts leaks) observer) =
+      deliveredValue setup timeouts leaks observer
+        (execution.observe (application setup timeouts leaks) observer) := by
+  obtain ⟨config, publicView⟩ := (reactive_respond_application timeouts) leaks execution actor
     response
-  apply deliveredValue_congr (runtime := runtime) observer
+  apply deliveredValue_congr (timeouts := timeouts) observer
   · change
-      (execution.respond (application setup runtime leaks) actor
+      (execution.respond (application setup timeouts leaks) actor
         response).application.publicView.ownTurn?
         observer = execution.application.publicView.ownTurn? observer
     rw [publicView]
   · change ((graph setup).playerObserve observer
-      (execution.respond (application setup runtime leaks) actor
+      (execution.respond (application setup timeouts leaks) actor
         response).application.config).store =
         ((graph setup).playerObserve observer execution.application.config).store
     rw [config]
 
 variable [Fintype Player] {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup runtime leaks).Scheduler}
+  {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- Equality of complete operational records implies equality of the currently
 delivered value for every player, without an additional exposure hypothesis. -/
 theorem deliveredValue_eq_of_operationalRecord
-    {first second : (application setup runtime leaks).Control}
-    (prior : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some first))
-    (imagePrior : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some
+    {first second : (application setup timeouts leaks).Control}
+    (prior : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some first))
+    (imagePrior : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some
       second))
-    (records : operationalRecord setup runtime leaks bounds horizon scheduler prior =
-      operationalRecord setup runtime leaks bounds horizon scheduler imagePrior)
+    (records : operationalRecord setup timeouts leaks bounds horizon scheduler prior =
+      operationalRecord setup timeouts leaks bounds horizon scheduler imagePrior)
     (who : Player) :
-    deliveredValue setup runtime leaks who (first.execution.observe (application setup runtime
+    deliveredValue setup timeouts leaks who (first.execution.observe (application setup timeouts
       leaks) who) =
-      deliveredValue setup runtime leaks who (second.execution.observe (application setup runtime
+      deliveredValue setup timeouts leaks who (second.execution.observe (application setup timeouts
         leaks) who) := by
-  obtain ⟨leftRest, left⟩ := operationalRecord_head (runtime := runtime) prior
-  obtain ⟨rightRest, right⟩ := operationalRecord_head (runtime := runtime) imagePrior
+  obtain ⟨leftRest, left⟩ := operationalRecord_head (timeouts := timeouts) prior
+  obtain ⟨rightRest, right⟩ := operationalRecord_head (timeouts := timeouts) imagePrior
   rw [left, right] at records
   have current := (List.cons.inj records).1
-  have observed := congrArg (fun state : Option (OperationalState setup runtime leaks) =>
+  have observed := congrArg (fun state : Option (OperationalState setup timeouts leaks) =>
     state.bind fun operational => (operational.keys who).map
       LateKey.delivered) current
   simpa only [operationalState, Option.bind_some, lateKey, Option.map_some,
@@ -77,51 +81,51 @@ theorem deliveredValue_eq_of_operationalRecord
 
 namespace DirectedBindingFrame
 
-variable {memory nextMemory : BindingMemory runtime leaks} {owner : Player}
-  {original repaired : (application setup runtime leaks).Execution}
+variable {memory nextMemory : BindingMemory timeouts leaks} {owner : Player}
+  {original repaired : (application setup timeouts leaks).Execution}
 
 /-- Lift a concrete paired responder operation to an actual repaired trace.
 The complete record determines the pre-response delivered value, and actual
 response invariance carries it to the resulting binding frame. -/
-theorem responder_trace (frame : DirectedBindingFrame (runtime := runtime) memory owner original
+theorem responder_trace (frame : DirectedBindingFrame (timeouts := timeouts) memory owner original
   repaired)
     (remaining : Nat) (actor : Player)
-    (prior : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace
+    (prior : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace
       (some ⟨remaining, some actor, original⟩))
-    (imagePrior : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace
+    (imagePrior : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace
       (some ⟨remaining, some actor, repaired⟩))
-    (records : operationalRecord setup runtime leaks bounds horizon scheduler prior =
-      operationalRecord setup runtime leaks bounds horizon scheduler imagePrior)
-    (left right : (application setup runtime leaks).Action)
-    (available : right ∈ bounds.onePacketActions runtime leaks actor
-      (repaired.logs actor) (repaired.observe (application setup runtime leaks) actor))
-    (after : BindingMemory.Frame runtime leaks nextMemory owner
-      (original.respond (application setup runtime leaks) actor left)
-      (repaired.respond (application setup runtime leaks) actor right)) :
-    DirectedBindingFrame (runtime := runtime) nextMemory owner
-        (original.respond (application setup runtime leaks) actor left)
-        (repaired.respond (application setup runtime leaks) actor right) ∧
-      ∃ trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace
-          (some ⟨remaining, none, repaired.respond (application setup runtime leaks) actor right⟩),
-        operationalRecord setup runtime leaks bounds horizon scheduler trace =
-          operationalState setup runtime leaks
-              (some ⟨remaining, none, original.respond (application setup runtime leaks) actor
+    (records : operationalRecord setup timeouts leaks bounds horizon scheduler prior =
+      operationalRecord setup timeouts leaks bounds horizon scheduler imagePrior)
+    (left right : (application setup timeouts leaks).Action)
+    (available : right ∈ bounds.onePacketActions timeouts leaks actor
+      (repaired.logs actor) (repaired.observe (application setup timeouts leaks) actor))
+    (after : BindingMemory.Frame timeouts leaks nextMemory owner
+      (original.respond (application setup timeouts leaks) actor left)
+      (repaired.respond (application setup timeouts leaks) actor right)) :
+    DirectedBindingFrame (timeouts := timeouts) nextMemory owner
+        (original.respond (application setup timeouts leaks) actor left)
+        (repaired.respond (application setup timeouts leaks) actor right) ∧
+      ∃ trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace
+          (some ⟨remaining, none, repaired.respond (application setup timeouts leaks) actor right⟩),
+        operationalRecord setup timeouts leaks bounds horizon scheduler trace =
+          operationalState setup timeouts leaks
+              (some ⟨remaining, none, original.respond (application setup timeouts leaks) actor
                 left⟩) ::
-            operationalRecord setup runtime leaks bounds horizon scheduler prior := by
-  have directed : DirectedBindingFrame (runtime := runtime) nextMemory owner
-      (original.respond (application setup runtime leaks) actor left)
-      (repaired.respond (application setup runtime leaks) actor right) := by
+            operationalRecord setup timeouts leaks bounds horizon scheduler prior := by
+  have directed : DirectedBindingFrame (timeouts := timeouts) nextMemory owner
+      (original.respond (application setup timeouts leaks) actor left)
+      (repaired.respond (application setup timeouts leaks) actor right) := by
     by_cases same : actor = owner
     · subst actor
       exact frame.respond left right after
     · refine ⟨after, ?_⟩
-      rw [(application setup runtime leaks).respond_recall_other original actor owner (Ne.symm
+      rw [(application setup timeouts leaks).respond_recall_other original actor owner (Ne.symm
         same),
-        (application setup runtime leaks).respond_recall_other repaired actor owner (Ne.symm same)]
+        (application setup timeouts leaks).respond_recall_other repaired actor owner (Ne.symm same)]
       exact frame.recalled
   refine ⟨directed, ?_⟩
   let joint := fun player => if player = actor then some right else none
-  have legal : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Legal
+  have legal : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Legal
       (some ⟨remaining, some actor, repaired⟩) joint := by
     constructor
     · simp [onePacketProtocol, ReactiveApplication.ResponseMenu.protocol,
@@ -135,53 +139,53 @@ theorem responder_trace (frame : DirectedBindingFrame (runtime := runtime) memor
       · simp [joint, onePacketProtocol, ReactiveApplication.ResponseMenu.protocol,
           ReactiveApplication.actor, same, Ne.symm same]
   have realized : some ⟨remaining, none,
-      repaired.respond (application setup runtime leaks) actor right⟩ ∈
-      ((onePacketProtocol setup runtime leaks bounds horizon scheduler).step
+      repaired.respond (application setup timeouts leaks) actor right⟩ ∈
+      ((onePacketProtocol setup timeouts leaks bounds horizon scheduler).step
         (some ⟨remaining, some actor, repaired⟩) ⟨joint, legal⟩).support := by
     change _ ∈ (PMF.pure _).support
     simp only [joint, ↓reduceIte, Option.getD_some, PMF.mem_support_pure_iff _ _]
   refine ⟨imagePrior.extend joint legal realized, ?_⟩
-  have delivered := deliveredValue_eq_of_operationalRecord (runtime := runtime) prior imagePrior
+  have delivered := deliveredValue_eq_of_operationalRecord (timeouts := timeouts) prior imagePrior
     records owner
-  have afterDelivered : deliveredValue setup runtime leaks owner
-        ((original.respond (application setup runtime leaks) actor left).observe
-          (application setup runtime leaks) owner) =
-      deliveredValue setup runtime leaks owner
-        ((repaired.respond (application setup runtime leaks) actor right).observe
-          (application setup runtime leaks) owner) := by
+  have afterDelivered : deliveredValue setup timeouts leaks owner
+        ((original.respond (application setup timeouts leaks) actor left).observe
+          (application setup timeouts leaks) owner) =
+      deliveredValue setup timeouts leaks owner
+        ((repaired.respond (application setup timeouts leaks) actor right).observe
+          (application setup timeouts leaks) owner) := by
     rw [deliveredValue_respond, deliveredValue_respond]
     exact delivered
   have stateEq := after.operationalState directed.recalled afterDelivered remaining none
-  change operationalState setup runtime leaks
-      (some ⟨remaining, none, repaired.respond (application setup runtime leaks) actor right⟩) ::
-        operationalRecord setup runtime leaks bounds horizon scheduler imagePrior = _
+  change operationalState setup timeouts leaks
+      (some ⟨remaining, none, repaired.respond (application setup timeouts leaks) actor right⟩) ::
+        operationalRecord setup timeouts leaks bounds horizon scheduler imagePrior = _
   rw [← records, ← stateEq]
 
 /-- Every foreign response transports unchanged through an actual repaired
 history. Its legality follows from equality of the responder's full input. -/
-theorem foreign_response_trace (frame : DirectedBindingFrame (runtime := runtime) memory owner
+theorem foreign_response_trace (frame : DirectedBindingFrame (timeouts := timeouts) memory owner
   original repaired)
     (remaining : Nat) (actor : Player) (foreign : actor ≠ owner)
-    (prior : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace
+    (prior : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace
       (some ⟨remaining, some actor, original⟩))
-    (imagePrior : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace
+    (imagePrior : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace
       (some ⟨remaining, some actor, repaired⟩))
-    (records : operationalRecord setup runtime leaks bounds horizon scheduler prior =
-      operationalRecord setup runtime leaks bounds horizon scheduler imagePrior)
-    (response : (application setup runtime leaks).Action)
-    (available : response ∈ bounds.onePacketActions runtime leaks actor
-      (original.logs actor) (original.observe (application setup runtime leaks) actor)) :
-    DirectedBindingFrame (runtime := runtime) memory owner
-        (original.respond (application setup runtime leaks) actor response)
-        (repaired.respond (application setup runtime leaks) actor response) ∧
-      ∃ trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace
-          (some ⟨remaining, none, repaired.respond (application setup runtime leaks) actor
+    (records : operationalRecord setup timeouts leaks bounds horizon scheduler prior =
+      operationalRecord setup timeouts leaks bounds horizon scheduler imagePrior)
+    (response : (application setup timeouts leaks).Action)
+    (available : response ∈ bounds.onePacketActions timeouts leaks actor
+      (original.logs actor) (original.observe (application setup timeouts leaks) actor)) :
+    DirectedBindingFrame (timeouts := timeouts) memory owner
+        (original.respond (application setup timeouts leaks) actor response)
+        (repaired.respond (application setup timeouts leaks) actor response) ∧
+      ∃ trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace
+          (some ⟨remaining, none, repaired.respond (application setup timeouts leaks) actor
             response⟩),
-        operationalRecord setup runtime leaks bounds horizon scheduler trace =
-          operationalState setup runtime leaks
-              (some ⟨remaining, none, original.respond (application setup runtime leaks) actor
+        operationalRecord setup timeouts leaks bounds horizon scheduler trace =
+          operationalState setup timeouts leaks
+              (some ⟨remaining, none, original.respond (application setup timeouts leaks) actor
                 response⟩) ::
-            operationalRecord setup runtime leaks bounds horizon scheduler prior := by
+            operationalRecord setup timeouts leaks bounds horizon scheduler prior := by
   apply frame.responder_trace remaining actor prior imagePrior records
     response response
   · rw [← frame.logs actor foreign, ← frame.toFrame.foreign_observed actor
@@ -191,34 +195,34 @@ theorem foreign_response_trace (frame : DirectedBindingFrame (runtime := runtime
 
 /-- Silence is an actual legal unchanged owner response, preserving the repair
 frame and the complete operational record while recording the original input. -/
-theorem silence_trace (frame : DirectedBindingFrame (runtime := runtime) memory owner original
+theorem silence_trace (frame : DirectedBindingFrame (timeouts := timeouts) memory owner original
   repaired)
     (remaining : Nat)
-    (prior : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace
+    (prior : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace
       (some ⟨remaining, some owner, original⟩))
-    (imagePrior : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace
+    (imagePrior : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace
       (some ⟨remaining, some owner, repaired⟩))
-    (records : operationalRecord setup runtime leaks bounds horizon scheduler prior =
-      operationalRecord setup runtime leaks bounds horizon scheduler imagePrior) :
-    let response : (application setup runtime leaks).Action := ⟨none⟩
-    let remembered := memory.record runtime leaks
-      (memory.shadow.inputView runtime leaks
-        (repaired.observe (application setup runtime leaks) owner)) response
-    DirectedBindingFrame (runtime := runtime) remembered owner
-        (original.respond (application setup runtime leaks) owner response)
-        (repaired.respond (application setup runtime leaks) owner response) ∧
-      ∃ trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace
-          (some ⟨remaining, none, repaired.respond (application setup runtime leaks) owner
+    (records : operationalRecord setup timeouts leaks bounds horizon scheduler prior =
+      operationalRecord setup timeouts leaks bounds horizon scheduler imagePrior) :
+    let response : (application setup timeouts leaks).Action := ⟨none⟩
+    let remembered := memory.record timeouts leaks
+      (memory.shadow.inputView timeouts leaks
+        (repaired.observe (application setup timeouts leaks) owner)) response
+    DirectedBindingFrame (timeouts := timeouts) remembered owner
+        (original.respond (application setup timeouts leaks) owner response)
+        (repaired.respond (application setup timeouts leaks) owner response) ∧
+      ∃ trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace
+          (some ⟨remaining, none, repaired.respond (application setup timeouts leaks) owner
             response⟩),
-        operationalRecord setup runtime leaks bounds horizon scheduler trace =
-          operationalState setup runtime leaks
-              (some ⟨remaining, none, original.respond (application setup runtime leaks) owner
+        operationalRecord setup timeouts leaks bounds horizon scheduler trace =
+          operationalState setup timeouts leaks
+              (some ⟨remaining, none, original.respond (application setup timeouts leaks) owner
                 response⟩) ::
-            operationalRecord setup runtime leaks bounds horizon scheduler prior := by
+            operationalRecord setup timeouts leaks bounds horizon scheduler prior := by
   intro response remembered
   exact frame.responder_trace remaining owner prior imagePrior records
     response response
-    (bounds.silence_onePacket runtime leaks owner _ _)
+    (bounds.silence_onePacket timeouts leaks owner _ _)
     (frame.toFrame.transport_response response (fun _ impossible => by cases
       impossible))
 

@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketRecallPrefix
-import Vegas.Game.OnePacketDirectedRepairPrefix
+public import Vegas.Game.OnePacketRecallPrefix
+public import Vegas.Game.OnePacketDirectedRepairPrefix
+
+@[expose] public section
 
 /-! # Unfinished foreign events have no earlier activation at an own source turn -/
 
@@ -46,22 +50,22 @@ private theorem prefixes_comparable {Principal : Type} {protocol : ExecutionProt
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup runtime leaks).Scheduler}
+  {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- Every actual ready prefix of an unfinished foreign event lies after a
 focal own source turn on the same trace. Sequential readiness prevents an
 unaccounted earlier readiness episode. -/
 theorem foreign_ready_prefix_after_ownTurn
-    {start before : (application setup runtime leaks).Control}
-    (startTrace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some
+    {start before : (application setup timeouts leaks).Control}
+    (startTrace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some
       start))
-    (beforeTrace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some
+    (beforeTrace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some
       before))
-    {state : (application setup runtime leaks).ProtocolState}
-    {trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace state}
+    {state : (application setup timeouts leaks).ProtocolState}
+    {trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace state}
     (startPrefix : TracePrefix startTrace trace)
     (beforePrefix : TracePrefix beforeTrace trace)
     (focal owner : Player) (different : owner ≠ focal)
@@ -74,7 +78,7 @@ theorem foreign_ready_prefix_after_ownTurn
   rcases prefixes_comparable startPrefix beforePrefix with forward | backward
   · exact forward
   · obtain ⟨after, same, preserved⟩ :=
-      readyOrCompleted_of_tracePrefix (runtime := runtime) beforeTrace backward (Or.inl ready)
+      readyOrCompleted_of_tracePrefix (timeouts := timeouts) beforeTrace backward (Or.inl ready)
     cases Option.some.inj same
     rcases preserved with readyNow | completed
     · have focalFacts := PublicView.ownTurn?_spec _ focal current turn
@@ -86,14 +90,14 @@ theorem foreign_ready_prefix_after_ownTurn
 
 omit [Fintype Player] in
 private theorem first_activated_recall_split (owner : Player) (event : (graph setup).EventId)
-    (past : List (application setup runtime leaks).PlayerEntry)
-    (occurs : ∃ entry ∈ past, ActivatedAt setup runtime leaks owner event entry) :
+    (past : List (application setup timeouts leaks).PlayerEntry)
+    (occurs : ∃ entry ∈ past, ActivatedAt setup timeouts leaks owner event entry) :
     ∃ earlier entry later, past = earlier ++ entry :: later ∧
-      ActivatedAt setup runtime leaks owner event entry ∧
-      ∀ previous ∈ earlier, ¬ ActivatedAt setup runtime leaks owner event previous := by
+      ActivatedAt setup timeouts leaks owner event entry ∧
+      ∀ previous ∈ earlier, ¬ ActivatedAt setup timeouts leaks owner event previous := by
   classical
-  let matching := fun entry : (application setup runtime leaks).PlayerEntry =>
-    decide (ActivatedAt setup runtime leaks owner event entry)
+  let matching := fun entry : (application setup timeouts leaks).PlayerEntry =>
+    decide (ActivatedAt setup timeouts leaks owner event entry)
   have found : ∃ entry, past.find? matching = some entry := by
     cases selected : past.find? matching with
     | none =>
@@ -111,59 +115,60 @@ private theorem first_activated_recall_split (owner : Player) (event : (graph se
 its supported transition and full private recall. Intended submission provenance
 makes that earliest ready activation genuinely pending. -/
 theorem firstActivation_response_prefix_of_recall
-    {control : (application setup runtime leaks).Control}
-    (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control))
+    {control : (application setup timeouts leaks).Control}
+    (trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some control))
     (owner : Player) (event : (graph setup).EventId)
-    (occurs : ∃ entry ∈ control.execution.logs owner, ActivatedAt setup runtime leaks owner
+    (occurs : ∃ entry ∈ control.execution.logs owner, ActivatedAt setup timeouts leaks owner
       event entry)
     (submissions : OwnSubmissionsAtTurn setup leaks control.execution owner) :
-    ∃ (before : (application setup runtime leaks).Control)
-      (prior : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some before))
-      (response : (application setup runtime leaks).Action)
-      (joint : Player → Option (application setup runtime leaks).Action)
-      (legal : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Legal (some
+    ∃ (before : (application setup timeouts leaks).Control)
+      (prior : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some
+        before))
+      (response : (application setup timeouts leaks).Action)
+      (joint : Player → Option (application setup timeouts leaks).Action)
+      (legal : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Legal (some
         before) joint)
       (realized : some ⟨before.remaining, none,
-        before.execution.respond (application setup runtime leaks) owner response⟩ ∈
-        ((onePacketProtocol setup runtime leaks bounds horizon scheduler).step (some before)
+        before.execution.respond (application setup timeouts leaks) owner response⟩ ∈
+        ((onePacketProtocol setup timeouts leaks bounds horizon scheduler).step (some before)
           ⟨joint, legal⟩).support),
       TracePrefix (prior.extend joint legal realized) trace ∧
       before.actor = some owner ∧ joint owner = some response ∧
-      pendingEvent setup runtime leaks owner (some (before.execution.logs owner,
-        before.execution.observe (application setup runtime leaks) owner)) = some event ∧
+      pendingEvent setup timeouts leaks owner (some (before.execution.logs owner,
+        before.execution.observe (application setup timeouts leaks) owner)) = some event ∧
       ∀ previous ∈ before.execution.logs owner,
-        ¬ ActivatedAt setup runtime leaks owner event previous := by
+        ¬ ActivatedAt setup timeouts leaks owner event previous := by
   obtain ⟨earlier, entry, later, split, activated, quiet⟩ :=
-    first_activated_recall_split (runtime := runtime) owner event (control.execution.logs owner)
+    first_activated_recall_split (timeouts := timeouts) owner event (control.execution.logs owner)
       occurs
-  have unrecorded : runtime.eventRecorded leaks earlier event = false := by
-    cases recorded : runtime.eventRecorded leaks earlier event with
+  have unrecorded : (eventRecorded timeouts) leaks earlier event = false := by
+    cases recorded : (eventRecorded timeouts) leaks earlier event with
     | false => rfl
     | true =>
         obtain ⟨previous, recalled, submitted⟩ :=
-          (runtime.eventRecorded_iff leaks _ event).mp recorded
+          ((eventRecorded_iff timeouts) leaks _ event).mp recorded
         have finalMember : previous ∈ control.execution.logs owner := by
           rw [split]
           exact List.mem_append_left _ recalled
         exact (quiet previous recalled (submissions previous finalMember event submitted)).elim
   have remembered : (some (earlier, entry.beforeView), entry.action) ∈
-      (onePacketInformation setup runtime leaks bounds horizon scheduler).ownPlay owner trace := by
+      (onePacketInformation setup timeouts leaks bounds horizon scheduler).ownPlay owner trace := by
     rw [onePacket_ownPlay_recall]
     change (some (earlier, entry.beforeView), entry.action) ∈
-      (application setup runtime leaks).recallOwnPlay (control.execution.logs owner)
+      (application setup timeouts leaks).recallOwnPlay (control.execution.logs owner)
     rw [split]
     simpa only [ReactiveApplication.recallOwnPlay, List.nil_append] using
-      mem_ownPlayFrom (application setup runtime leaks) [] earlier entry later
+      mem_ownPlayFrom (application setup timeouts leaks) [] earlier entry later
   obtain ⟨before, after, prior, joint, legal, realized, isPrefix, observed, chosen⟩ :=
     InformationModel.exists_tracePrefix_of_mem_ownPlay trace remembered
-  have localLegal := (onePacketProtocol setup runtime leaks bounds horizon
+  have localLegal := (onePacketProtocol setup timeouts leaks bounds horizon
     scheduler).legalOption_of_legal
     legal owner
   rw [chosen] at localLegal
   have acting := localLegal.1
   cases before with
   | none =>
-      change (application setup runtime leaks).actor none = some owner at acting
+      change (application setup timeouts leaks).actor none = some owner at acting
       simp only [ReactiveApplication.actor, Option.bind_none] at acting
       cases acting
   | some before =>
@@ -172,24 +177,24 @@ theorem firstActivation_response_prefix_of_recall
       simp only [ReactiveApplication.observe, active, ↓reduceIte] at observed
       have sameRecall : before.execution.logs owner = earlier :=
         congrArg Prod.fst (Option.some.inj observed)
-      have sameView : before.execution.observe (application setup runtime leaks) owner =
+      have sameView : before.execution.observe (application setup timeouts leaks) owner =
         entry.beforeView :=
         congrArg Prod.snd (Option.some.inj observed)
-      have pending := pendingEvent_of_spec (runtime := runtime) (setup := setup) (leaks := leaks)
+      have pending := pendingEvent_of_spec (timeouts := timeouts) (setup := setup) (leaks := leaks)
         activated unrecorded
-      have pendingBefore : pendingEvent setup runtime leaks owner
+      have pendingBefore : pendingEvent setup timeouts leaks owner
           (some (before.execution.logs owner,
-            before.execution.observe (application setup runtime leaks) owner)) = some event := by
+            before.execution.observe (application setup timeouts leaks) owner)) = some event := by
         simpa only [sameRecall, sameView] using pending
       have quietBefore : ∀ previous ∈ before.execution.logs owner,
-          ¬ ActivatedAt setup runtime leaks owner event previous := by
+          ¬ ActivatedAt setup timeouts leaks owner event previous := by
         simpa only [sameRecall] using quiet
       have afterEq : after = some ⟨before.remaining, none,
-          before.execution.respond (application setup runtime leaks) owner entry.action⟩ := by
-        change after ∈ ((application setup runtime leaks).transition (initialLaw setup) horizon
+          before.execution.respond (application setup timeouts leaks) owner entry.action⟩ := by
+        change after ∈ ((application setup timeouts leaks).transition (initialLaw setup) horizon
           scheduler
           (some before) joint).support at realized
-        rw [transition_respond (runtime := runtime) before acting joint, chosen, Option.getD_some,
+        rw [transition_respond (timeouts := timeouts) before acting joint, chosen, Option.getD_some,
           PMF.mem_support_pure_iff] at realized
         exact realized
       subst after

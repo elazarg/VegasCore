@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Examples.OddsEvensFairLaw
-import Vegas.Game.IntendedPreservation
+public import Vegas.Examples.OddsEvensFairLaw
+public import Vegas.Game.IntendedPreservation
+
+@[expose] public section
 
 /-! # The fair equilibrium in the source game allowing failed moves -/
 

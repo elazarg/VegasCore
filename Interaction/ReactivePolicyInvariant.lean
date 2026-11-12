@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveRounds
-import Interaction.ReactiveInvariant
+public import Interaction.ReactiveRounds
+public import Interaction.ReactiveInvariant
+
+@[expose] public section
 
 /-! # Execution invariants under reactive player policies
 

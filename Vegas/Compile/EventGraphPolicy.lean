@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Compile.EventGraphAssembly
-import Vegas.Compile.EventGraphObservation
-import Vegas.EventGraph.Semantics
+public import Vegas.Compile.EventGraphAssembly
+public import Vegas.Compile.EventGraphObservation
+public import Vegas.EventGraph.Semantics
+
+@[expose] public section
 
 /-! # Source policies compiled to event-graph behavioral policies
 

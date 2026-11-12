@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheoryExtensions.Analysis.Enforcement
-import GameTheoryExtensions.Math.Probability.Support
-import GameTheoryExtensions.Math.Probability.Expectation
+public import GameTheoryExtensions.Analysis.Enforcement
+public import GameTheoryExtensions.Math.Probability.Support
+public import GameTheoryExtensions.Math.Probability.Expectation
+
+@[expose] public section
 
 /-! # Undetectable signaling through an allowed public field
 

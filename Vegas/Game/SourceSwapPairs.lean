@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.SourceSwapDecode
-import Vegas.Pending.ValueSwapPairs
+public import Vegas.Game.SourceSwapDecode
+public import Vegas.Pending.ValueSwapPairs
+
+@[expose] public section
 
 /-! # The graph swap between two source program points
 

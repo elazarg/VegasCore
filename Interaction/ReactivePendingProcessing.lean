@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveRounds
+public import Interaction.ReactiveRounds
+
+@[expose] public section
 
 /-! # Processing a pending envelope without activating a player -/
 

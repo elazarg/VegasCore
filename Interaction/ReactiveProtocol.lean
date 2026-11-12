@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveApplication
-import GameTheory.Protocol.Information
-import GameTheory.Protocol.Backward
+public import Interaction.ReactiveApplication
+public import GameTheory.Protocol.Information
+public import GameTheory.Protocol.Backward
+
+@[expose] public section
 
 /-! # A scheduler that activates players explicitly
 

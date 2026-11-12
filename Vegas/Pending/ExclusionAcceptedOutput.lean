@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.PublicFailureEvidence
-import Vegas.Pending.ReactiveAcceptedOutput
+public import Vegas.Pending.PublicFailureEvidence
+public import Vegas.Pending.ReactiveAcceptedOutput
+
+@[expose] public section
 
 /-! # Successful graph outputs exclude public failure evidence -/
 

@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketOwnerSwap
-import Vegas.Pending.OnePacketValueSwap
-import Vegas.Source.PrivateInputsIndependent
+public import Vegas.Game.OnePacketOwnerSwap
+public import Vegas.Pending.OnePacketValueSwap
+public import Vegas.Source.PrivateInputsIndependent
+
+@[expose] public section
 
 /-! # The owner swap on initial draws
 

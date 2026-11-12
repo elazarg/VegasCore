@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.EventGraph.BarrierInformation
+public import Vegas.EventGraph.BarrierInformation
+
+@[expose] public section
 
 /-! # Reveal-relaxed event dependencies
 

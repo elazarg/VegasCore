@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketOwnerPriorSite
-import Vegas.Game.OnePacketOwnerBounds
+public import Vegas.Game.OnePacketOwnerPriorSite
+public import Vegas.Game.OnePacketOwnerBounds
+
+@[expose] public section
 
 /-! # Owner-swap input encodings and restricted guards
 
@@ -26,10 +30,10 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol Intera
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)} [Fintype Player]
+  {timeouts : EventTimeouts (graph setup)} [Fintype Player]
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup runtime leaks).Scheduler}
+  {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- **The image of a history does not depend on the allowed inputs.** -/
 theorem mapTrace_allowed_congr (swap : HiddenSwap (graph setup))
@@ -40,13 +44,14 @@ theorem mapTrace_allowed_congr (swap : HiddenSwap (graph setup))
       state.swap swap ∈ (initialLaw setup).support)
     (bounded : ∀ handle raw, raw ∈ bounds.values → swap.raw handle raw ∈ bounds.values)
     (failures : ∀ event, swap.values.ExpiryFixed event) :
-    ∀ {state} (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace state)
-      (firstGuard : SwapGuardState setup runtime swap first state)
-      (secondGuard : SwapGuardState setup runtime swap second state),
-    (onePacketSwapSymmetry (runtime := runtime) bounds (initialLaw setup) horizon scheduler swap
+    ∀ {state} (trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace
+      state)
+      (firstGuard : SwapGuardState setup timeouts swap first state)
+      (secondGuard : SwapGuardState setup timeouts swap second state),
+    (onePacketSwapSymmetry (timeouts := timeouts) bounds (initialLaw setup) horizon scheduler swap
       firstClosed
         bounded failures).mapTrace trace firstGuard =
-      (onePacketSwapSymmetry (runtime := runtime) bounds (initialLaw setup) horizon scheduler swap
+      (onePacketSwapSymmetry (timeouts := timeouts) bounds (initialLaw setup) horizon scheduler swap
         secondClosed
         bounded failures).mapTrace trace secondGuard
   | _, .start, _, _ => rfl
@@ -59,11 +64,11 @@ omit [Fintype Player] in
 /-- **A guard holds for a smaller allowed set** containing the current inputs. -/
 theorem swapGuardState_inter (swap : HiddenSwap (graph setup))
     {allowed restricted : Set (graph setup).Inputs}
-    {state : (application setup runtime leaks).ProtocolState}
-    (guarded : SwapGuardState setup runtime swap allowed state)
-    (inside : ∀ control : (application setup runtime leaks).Control, state = some control →
+    {state : (application setup timeouts leaks).ProtocolState}
+    (guarded : SwapGuardState setup timeouts swap allowed state)
+    (inside : ∀ control : (application setup timeouts leaks).Control, state = some control →
       control.execution.application.config.inputs ∈ restricted) :
-    SwapGuardState setup runtime swap (allowed ∩ restricted) state := by
+    SwapGuardState setup timeouts swap (allowed ∩ restricted) state := by
   cases state with
   | none => trivial
   | some control =>
@@ -160,24 +165,26 @@ theorem hiddenAgree_iff_inputs {who : Player} {first second : State L setup.cont
 
 /-- **The owner swap between two sites keeps the bounds.** -/
 theorem ownerSwap_bounded_sites (covers : bounds.CoversInputValues) {who : Player}
-    {site₁ site₂ : (onePacketInformation setup runtime leaks bounds horizon
+    {site₁ site₂ : (onePacketInformation setup timeouts leaks bounds horizon
       scheduler).InformationSite who}
-    {past₁ past₂ : List (application setup runtime leaks).PlayerEntry}
-    {view₁ view₂ : (application setup runtime leaks).PlayerView}
+    {past₁ past₂ : List (application setup timeouts leaks).PlayerEntry}
+    {view₁ view₂ : (application setup timeouts leaks).PlayerView}
     (firstSite : site₁.1 = some (past₁, view₁)) (secondSite : site₂.1 = some (past₂, view₂)) :
     ∀ handle raw, raw ∈ bounds.values →
       (ownerSwap who view₁.application view₂.application).raw handle raw ∈ bounds.values := by
   obtain ⟨history₁, -⟩ := site₁.2
   obtain ⟨history₂, -⟩ := site₂.2
-  obtain ⟨control₁, stateEq₁, viewEq₁⟩ := state_of_decision (runtime := runtime) history₁ firstSite
-  obtain ⟨control₂, stateEq₂, viewEq₂⟩ := state_of_decision (runtime := runtime) history₂ secondSite
-  have trace₁ : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some
+  obtain ⟨control₁, stateEq₁, viewEq₁⟩ := state_of_decision (timeouts := timeouts) history₁
+    firstSite
+  obtain ⟨control₂, stateEq₂, viewEq₂⟩ := state_of_decision (timeouts := timeouts) history₂
+    secondSite
+  have trace₁ : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some
     control₁) :=
     stateEq₁ ▸ history₁.1.trace
-  have trace₂ : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some
+  have trace₂ : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some
     control₂) :=
     stateEq₂ ▸ history₂.1.trace
   rw [← viewEq₁, ← viewEq₂]
-  exact ownerSwap_bounded (runtime := runtime) covers who trace₁ trace₂
+  exact ownerSwap_bounded (timeouts := timeouts) covers who trace₁ trace₂
 
 end Vegas

@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.EventGraph.WithholdingCoupling
+public import Vegas.EventGraph.WithholdingCoupling
+
+@[expose] public section
 
 /-! # Opening and withholding at a publication
 

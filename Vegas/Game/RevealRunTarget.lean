@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RevealRunAgree
-import Vegas.Game.LastOwnedPhase
+public import Vegas.Game.RevealRunAgree
+public import Vegas.Game.LastOwnedPhase
+
+@[expose] public section
 
 /-! # The deviator's next reveal in a run
 

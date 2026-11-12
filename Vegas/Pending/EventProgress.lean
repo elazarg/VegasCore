@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.EventInvariant
+public import Vegas.Pending.EventInvariant
+
+@[expose] public section
 
 /-! # Application progress independent of the service driver
 
@@ -56,21 +60,21 @@ theorem ServiceProgress.ready_or_completed {inputs : graph.Inputs} {ticks : Nat}
 
 end State
 
-theorem handle_progress (runtime : EventGraphRuntime graph)
+theorem handle_progress (timeouts : EventTimeouts graph)
     (inputs : graph.Inputs) (state next : State graph)
     (message : Message Player (Payload graph)) (invariant : state.Invariant inputs)
-    (accepted : handle runtime state message = some next) :
+    (accepted : handle timeouts state message = some next) :
     State.ServiceProgress inputs 0 state next := by
-  refine ⟨handle_invariant runtime state next message invariant accepted,
-    handle_completed_subset runtime state next message accepted, ?_, ?_⟩
-  · simpa using (handle_clock_activated runtime state next message accepted).1
-  · exact handle_activatedAt_of_not_completed runtime state next message invariant accepted
+  refine ⟨handle_invariant timeouts state next message invariant accepted,
+    handle_completed_subset timeouts state next message accepted, ?_, ?_⟩
+  · simpa using (handle_clock_activated timeouts state next message accepted).1
+  · exact handle_activatedAt_of_not_completed timeouts state next message invariant accepted
 
 /-- Sampling completes any ready chance event, independently of the service driver. -/
-theorem environmentStep_sample_complete (runtime : EventGraphRuntime graph)
+theorem environmentStep_sample_complete (timeouts : EventTimeouts graph)
     (state next : State graph) (event : graph.EventId)
     (ready : state.config.cut.Ready event) (chance : graph.actor? event = none)
-    (supported : next ∈ (environmentStep runtime state (.executeSample event)).support) :
+    (supported : next ∈ (environmentStep timeouts state (.executeSample event)).support) :
     event ∈ next.config.cut.completed := by
   cases view : nodeView graph event with
   | bind owner payload outputEq codeEq | resolve owner payload binding checks outputEq codeEq =>
@@ -80,7 +84,7 @@ theorem environmentStep_sample_complete (runtime : EventGraphRuntime graph)
       simp only [chance] at ownerEq
       contradiction
   | sample payload law outputEq codeEq =>
-      rw [environmentStep_executeSample_eq runtime state event ready
+      rw [environmentStep_executeSample_eq timeouts state event ready
         payload law outputEq codeEq view, PMF.support_map] at supported
       obtain ⟨config, step, same⟩ := supported
       have configEq := congrArg State.config same
@@ -88,12 +92,12 @@ theorem environmentStep_sample_complete (runtime : EventGraphRuntime graph)
       exact Finset.mem_insert_self _ _
 
 /-- Expiry completes a ready strategic event once its original deadline is due. -/
-theorem environmentStep_expire_complete (runtime : EventGraphRuntime graph)
+theorem environmentStep_expire_complete (timeouts : EventTimeouts graph)
     (state next : State graph) (event : graph.EventId)
     (ready : state.config.cut.Ready event) (strategic : (graph.actor? event).isSome = true)
     (entered : Nat) (activated : state.activatedAt event = some entered)
-    (due : runtime.deadline event ≤ state.clock - entered)
-    (supported : next ∈ (environmentStep runtime state (.expire event)).support) :
+    (due : timeouts.duration event ≤ state.clock - entered)
+    (supported : next ∈ (environmentStep timeouts state (.expire event)).support) :
     event ∈ next.config.cut.completed := by
   cases view : nodeView graph event with
   | sample payload law outputEq codeEq =>
@@ -102,13 +106,13 @@ theorem environmentStep_expire_complete (runtime : EventGraphRuntime graph)
       change graph.actor? event = none at ownerEq
       simp [ownerEq] at strategic
   | bind owner payload outputEq codeEq =>
-      rw [environmentStep_expire_bind_eq runtime state event ready
+      rw [environmentStep_expire_bind_eq timeouts state event ready
         entered activated due owner payload outputEq codeEq view,
         PMF.mem_support_pure_iff _ _] at supported
       rw [supported]
       exact Finset.mem_insert_self _ _
   | resolve owner payload binding checks outputEq codeEq =>
-      rw [environmentStep_expire_resolve_eq runtime state event ready
+      rw [environmentStep_expire_resolve_eq timeouts state event ready
         entered activated due owner payload binding checks outputEq codeEq view,
         PMF.mem_support_pure_iff _ _] at supported
       rw [supported]

@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Source.PublicObservation
+public import Vegas.Source.PublicObservation
+
+@[expose] public section
 
 /-! # Ineffective disclosure choices are private action aliases
 

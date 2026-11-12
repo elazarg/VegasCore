@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Compile.ConcurrentRevealGraph
-import Vegas.Game.ProgramPaymentNash
-import Vegas.Game.IntendedNash
-import Vegas.Source.Utility
+public import Vegas.Compile.ConcurrentRevealGraph
+public import Vegas.Game.ProgramPaymentNash
+public import Vegas.Game.IntendedNash
+public import Vegas.Source.Utility
+
+@[expose] public section
 
 /-! # Intended-game Nash equilibria under every schedule of concurrent reveals
 
@@ -338,7 +342,7 @@ def concurrentReadout (setup : Setup (Player := Player) (L := L))
     ⟨setup.rankedConfig outcome.1 outcome.2, setup.rankedConfig_terminal outcome.1 outcome.2⟩
 
 /-- The source-order readout and payoffs of a concurrent configuration. -/
-private def concurrentObservation (setup : Setup (Player := Player) (L := L)) {Parameter : Type}
+def concurrentObservation (setup : Setup (Player := Player) (L := L)) {Parameter : Type}
     (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
     (excludedPayoff : Player → ℝ) (config : setup.concurrentRevealGraph.Config) :

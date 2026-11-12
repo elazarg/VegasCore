@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketBindingSilence
+public import Vegas.Game.OnePacketBindingSilence
+
+@[expose] public section
 
 /-! # Reading own submissions from emitted envelopes
 
@@ -25,10 +29,10 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {horizon : Nat} {scheduler : (application setup runtime leaks).Scheduler}
-  {control : (application setup runtime leaks).Control}
+  {horizon : Nat} {scheduler : (application setup timeouts leaks).Scheduler}
+  {control : (application setup timeouts leaks).Control}
 
 omit [DecidableEq Player] in
 /-- The public canonical slot depends on the traffic only through its committed
@@ -45,15 +49,16 @@ theorem publicFreshSlot_congr {graph : EventGraph Player L}
 /-- **Emission is transmission.** Along every history of the supplied runtime, a
 recall entry emitted a packet exactly when it transmitted. -/
 theorem history_emitted_isSome
-    (trace : ((application setup runtime leaks).protocol (initialLaw setup) horizon scheduler).Trace
+    (trace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+      scheduler).Trace
       (some control))
-    (who : Player) (entry : (application setup runtime leaks).PlayerEntry)
+    (who : Player) (entry : (application setup timeouts leaks).PlayerEntry)
     (member : entry ∈ control.execution.logs who) :
     entry.emitted.isSome = entry.action.transmission.isSome := by
-  have emitted := (transmissionsEmitted_serviceInvariant (runtime := runtime) scheduler).history
+  have emitted := (transmissionsEmitted_serviceInvariant (timeouts := timeouts) scheduler).history
     (initialLaw setup)
     horizon (fun _ _ _ _ member => (List.not_mem_nil member).elim) trace
-  have signed := signedCommitments_history runtime leaks (initialLaw setup)
+  have signed := signedCommitments_history timeouts leaks (initialLaw setup)
     (serviceInitialLaw_initialized setup) horizon scheduler trace
   cases transmits : entry.action.transmission with
   | none =>
@@ -71,32 +76,34 @@ theorem history_emitted_isSome
 /-- Along every history of the supplied runtime, a player's emitted envelopes
 number its submissions. -/
 theorem history_outputs_length
-    (trace : ((application setup runtime leaks).protocol (initialLaw setup) horizon scheduler).Trace
+    (trace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+      scheduler).Trace
       (some control))
     (who : Player) :
-    ((application setup runtime leaks).outputs (control.execution.logs who)).length =
-      (application setup runtime leaks).submissionCount (control.execution.logs who) := by
+    ((application setup timeouts leaks).outputs (control.execution.logs who)).length =
+      (application setup timeouts leaks).submissionCount (control.execution.logs who) := by
   unfold ReactiveApplication.outputs ReactiveApplication.submissionCount
   rw [List.length_filterMap_eq_countP]
   apply List.countP_congr
   intro entry member
-  rw [history_emitted_isSome (runtime := runtime) trace who entry member]
+  rw [history_emitted_isSome (timeouts := timeouts) trace who entry member]
   unfold ReactiveApplication.Action.isSubmission
   cases entry.action.transmission <;> simp
 
 /-- Along every history of the supplied runtime, a player's recall has submitted
 for an event exactly when one of its emitted envelopes names it. -/
 theorem history_eventRecorded_iff
-    (trace : ((application setup runtime leaks).protocol (initialLaw setup) horizon scheduler).Trace
+    (trace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+      scheduler).Trace
       (some control))
     (who : Player) (event : (graph setup).EventId) :
-    runtime.eventRecorded leaks (control.execution.logs who) event = true ↔
-      ∃ message ∈ (application setup runtime leaks).outputs (control.execution.logs who),
+    (eventRecorded timeouts) leaks (control.execution.logs who) event = true ↔
+      ∃ message ∈ (application setup timeouts leaks).outputs (control.execution.logs who),
         message.payload.call.event? (graph setup) = some event := by
-  have emitted := (transmissionsEmitted_serviceInvariant (runtime := runtime) scheduler).history
+  have emitted := (transmissionsEmitted_serviceInvariant (timeouts := timeouts) scheduler).history
     (initialLaw setup)
     horizon (fun _ _ _ _ member => (List.not_mem_nil member).elim) trace
-  have signed := signedCommitments_history runtime leaks (initialLaw setup)
+  have signed := signedCommitments_history timeouts leaks (initialLaw setup)
     (serviceInitialLaw_initialized setup) horizon scheduler trace
   constructor
   · intro recorded
@@ -127,13 +134,14 @@ theorem history_eventRecorded_iff
 /-- Along every history of the supplied runtime, a player has committed to a
 prepared slot exactly when one of its emitted envelopes commits to it. -/
 theorem history_slotCommitted_iff
-    (trace : ((application setup runtime leaks).protocol (initialLaw setup) horizon scheduler).Trace
+    (trace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+      scheduler).Trace
       (some control))
     (who : Player) (serial : Nat) :
     SlotCommitted control.execution.network.inputs who serial ↔
-      SlotCommitted ((application setup runtime leaks).outputs (control.execution.logs who)) who
+      SlotCommitted ((application setup timeouts leaks).outputs (control.execution.logs who)) who
         serial := by
-  have recalled := runtime.countRecall_history leaks trace
+  have recalled := (countRecall_history timeouts) leaks trace
   rw [← recalled.1 who]
   constructor
   · rintro ⟨message, input, sender, committed⟩
@@ -145,16 +153,17 @@ theorem history_slotCommitted_iff
 runtime, a player's canonical slot is read from its emitted envelopes and its
 number of completed bindings. -/
 theorem history_canonicalFreshSlot
-    (trace : ((application setup runtime leaks).protocol (initialLaw setup) horizon scheduler).Trace
+    (trace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+      scheduler).Trace
       (some control))
     (who : Player) :
-    canonicalFreshSlot who (control.execution.observe (application setup runtime leaks)
+    canonicalFreshSlot who (control.execution.observe (application setup timeouts leaks)
       who).application =
-      publicFreshSlot ((application setup runtime leaks).outputs (control.execution.logs who)) who
+      publicFreshSlot ((application setup timeouts leaks).outputs (control.execution.logs who)) who
         (control.execution.application.publicView.bindingCount who) := by
   change canonicalFreshSlot who (control.execution.application.playerView who) = _
-  rw [canonicalFreshSlot_eq_publicFreshSlot (preparedFresh_history (runtime := runtime) horizon
+  rw [canonicalFreshSlot_eq_publicFreshSlot (preparedFresh_history (timeouts := timeouts) horizon
     scheduler trace)]
-  exact publicFreshSlot_congr (history_slotCommitted_iff (runtime := runtime) trace who) _
+  exact publicFreshSlot_congr (history_slotCommitted_iff (timeouts := timeouts) trace who) _
 
 end Vegas

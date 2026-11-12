@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketLateSuccess
-import Vegas.Game.SourceFailureRecord
+public import Vegas.Game.OnePacketLateSuccess
+public import Vegas.Game.SourceFailureRecord
+
+@[expose] public section
 
 /-! # Intended completion points in native histories -/
 
@@ -14,27 +18,27 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup runtime leaks).Scheduler}
+  {scheduler : (application setup timeouts leaks).Scheduler}
 
 local notation "NP" => ReactiveApplication.ResponseMenu.protocol
-  (bounds.onePacketMenu runtime leaks) (initialLaw setup) horizon scheduler
+  (bounds.onePacketMenu timeouts leaks) (initialLaw setup) horizon scheduler
 
 /-- A completed failed event in a genuine native history retains its owner's
 source obligation, independently of any future service guarantee. -/
 theorem decodedDebt_of_failed_event
-    (history : (NP).History) (control : (application setup runtime leaks).Control)
+    (history : (NP).History) (control : (application setup timeouts leaks).Control)
     (current : history.state = some control) (event : (graph setup).EventId)
     (completed : event ∈ control.execution.application.config.cut.completed)
     (who : Player) (owned : (graph setup).actor? event = some who)
     (failed : StoreEventFailed control.execution.application.config.store event) :
-    DecodedState setup runtime leaks (failureProfile setup.program)
+    DecodedState setup timeouts leaks (failureProfile setup.program)
       (ProtocolState.OwesFailure who setup.program) history.state := by
-  have record := SourceFailureRecord.history (runtime := runtime) (failureProfile setup.program)
+  have record := SourceFailureRecord.history (timeouts := timeouts) (failureProfile setup.program)
     horizon scheduler
-    ((bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup) horizon scheduler
+    ((bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon scheduler
       (current ▸ history.trace))
   obtain ⟨rank, residual, holds⟩ := record
   rw [current]
@@ -43,12 +47,12 @@ theorem decodedDebt_of_failed_event
 /-- A recorded completion point includes the successful intended source
 checkpoint and the predicate used to select that point. -/
 theorem completionPoint_spec
-    (rank : Nat) (fresh : (application setup runtime leaks).Control → Prop)
+    (rank : Nat) (fresh : (application setup timeouts leaks).Control → Prop)
     (history : (NP).History) (point : ProtocolState setup.program)
-    (somePoint : completionPoint setup runtime leaks bounds horizon scheduler rank fresh history =
+    (somePoint : completionPoint setup timeouts leaks bounds horizon scheduler rank fresh history =
       some point) :
-    ∃ control : (application setup runtime leaks).Control, history.state = some control ∧
-      LateStopped setup runtime leaks bounds horizon scheduler rank history ∧
+    ∃ control : (application setup timeouts leaks).Control, history.state = some control ∧
+      LateStopped setup timeouts leaks bounds horizon scheduler rank history ∧
       decodedPoint setup control.execution.application.config = some point ∧
       ProtocolState.Intended setup.program point ∧ fresh control := by
   classical

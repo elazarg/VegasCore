@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheoryExtensions.Analysis.Protocol.StoppedCharge
-import GameTheoryExtensions.Math.Probability.Uniform
-import GameTheory.Math.Probability.FiniteUniform
+public import GameTheoryExtensions.Analysis.Protocol.StoppedCharge
+public import GameTheoryExtensions.Math.Probability.Uniform
+public import GameTheory.Math.Probability.FiniteUniform
+
+@[expose] public section
 
 open GameTheory.Math.Probability
 
@@ -93,13 +97,13 @@ theorem bounded : arena.BoundedHorizon 3 := by
   cases state <;> simp_all [arena, depth]
 
 def forkHistory (bit : Bool) : arena.History :=
-  arena.initHistory.extend (joint := fun _ => none)
+  arena.initHistory.extend (target := Stage.fork bit) (joint := fun _ => none)
     ⟨by decide, fun _ => by simp⟩ (by
       change Stage.fork bit ∈ ((uniformLaw Bool).map Stage.fork).support
       exact PMF.support_map .. ▸ ⟨bit, mem_support_uniformLaw bit, rfl⟩)
 
 def mergedHistory (bit : Bool) : arena.History :=
-  (forkHistory bit).extend (joint := fun _ => none)
+  (forkHistory bit).extend (target := Stage.merged) (joint := fun _ => none)
     ⟨by change Stage.fork bit ≠ Stage.done; simp, fun _ => by simp⟩
     ((PMF.mem_support_pure_iff _ _).mpr rfl)
 

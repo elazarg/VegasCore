@@ -1,11 +1,15 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.IdealCommitments
-import Interaction.MessagePool
-import GameTheoryExtensions.Math.Probability.Support
-import GameTheory.Math.Probability.Mixture
-import GameTheory.Math.Probability.Product
-import GameTheoryExtensions.Math.Probability.Expectation
+public import Interaction.IdealCommitments
+public import Interaction.MessagePool
+public import GameTheoryExtensions.Math.Probability.Support
+public import GameTheory.Math.Probability.Mixture
+public import GameTheory.Math.Probability.Product
+public import GameTheoryExtensions.Math.Probability.Expectation
+
+@[expose] public section
 
 /-! # Commitment traffic in a native pending-message experiment
 

@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketLateCompletionLaw
+public import Vegas.Game.OnePacketLateCompletionLaw
+
+@[expose] public section
 
 /-! # Value-free success after a late commitment
 
@@ -23,10 +27,10 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup runtime leaks).Scheduler}
+  {scheduler : (application setup timeouts leaks).Scheduler}
 
 omit [DecidableEq Player] [Fintype Player] [IExpr.ResultTypes L] in
 private theorem cast_option_some {A B : Type} (same : A = B) (value : A) :
@@ -34,10 +38,10 @@ private theorem cast_option_some {A B : Type} (same : A = B) (value : A) :
   cases same
   rfl
 
-variable (setup runtime leaks) in
+variable (setup timeouts leaks) in
 /-- The event has completed with a failure. -/
 def EventFailedState (event : (graph setup).EventId) :
-    (application setup runtime leaks).ProtocolState → Prop
+    (application setup timeouts leaks).ProtocolState → Prop
   | none => False
   | some control => event ∈ control.execution.application.config.cut.completed ∧
       StoreEventFailed control.execution.application.config.store event
@@ -53,12 +57,12 @@ theorem completionPoint_of_mem_step {rank : Nat} {profile : BehavioralProfile se
     {action : (graph setup).Action event} {target : ProtocolState setup.program}
     (stepEq : ProtocolState.step setup.program point
       (fun _ => decodeEventAction setup.program event action) = PMF.pure target)
-    {fresh : (application setup runtime leaks).Control → Prop}
-    {stop : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
-      scheduler).History} {final : (application setup runtime leaks).Control}
+    {fresh : (application setup timeouts leaks).Control → Prop}
+    {stop : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+      scheduler).History} {final : (application setup timeouts leaks).Control}
     (state : stop.state = some final)
     (inStep : final.execution.application.config ∈ (sent.step event ready action).support) :
-    completionPoint setup runtime leaks bounds horizon scheduler rank fresh stop =
+    completionPoint setup timeouts leaks bounds horizon scheduler rank fresh stop =
       if ProtocolState.Intended setup.program target ∧ fresh final then some target
       else none := by
   have ordered := residual.checkpoint.ordered
@@ -68,7 +72,7 @@ theorem completionPoint_of_mem_step {rank : Nat} {profile : BehavioralProfile se
   cases Option.some.inj beforeDecoded
   rw [stepEq, PMF.mem_support_pure_iff] at reachedPoint
   subst reachedPoint
-  have stopped : LateStopped setup runtime leaks bounds horizon scheduler rank stop := by
+  have stopped : LateStopped setup timeouts leaks bounds horizon scheduler rank stop := by
     refine ⟨final, state, event, ?_, (ready_iff_rank setup sent rank ordered event).mp ready⟩
     rw [sent.step_cut event ready action _ inStep, EventOrder.Cut.mem_complete]
     exact Or.inl rfl
@@ -110,9 +114,9 @@ event completes is one less the probability that terminal play from the
 history fails the event, for every property `fresh` of controls that holds
 exactly when the event has not failed. -/
 theorem expect_completionIndicator_of_openableCommitment
-    (players : ∀ player, ((bounds.onePacketMenu runtime leaks).information
+    (players : ∀ player, ((bounds.onePacketMenu timeouts leaks).information
       (initialLaw setup) horizon scheduler).BehavioralPolicy player)
-    {who : Player} {entry : (application setup runtime leaks).PlayerEntry}
+    {who : Player} {entry : (application setup timeouts leaks).PlayerEntry}
     {message : Message Player (WitnessedPacket (graph setup))} {event : (graph setup).EventId}
     {candidate : Handle (graph setup)} {payload : L.Ty}
     {outputEq : (graph setup).outputLayout event = .binding who payload}
@@ -125,40 +129,41 @@ theorem expect_completionIndicator_of_openableCommitment
     {rank : Nat} {profile : BehavioralProfile setup.program}
     (residual : SourceResidual setup profile rank sent) {point : ProtocolState setup.program}
     (decoded : sourceServicePrefix? setup rank sent = some point)
-    (terminalCompleted : ∀ (final : (application setup runtime leaks).Control),
-      ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+    (terminalCompleted : ∀ (final : (application setup timeouts leaks).Control),
+      ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
         scheduler).Trace (some final) →
-      (application setup runtime leaks).terminal (some final) →
+      (application setup timeouts leaks).terminal (some final) →
       final.execution.application.config = sent →
       event ∈ final.execution.application.config.cut.completed)
     {target : ProtocolState setup.program}
     (stepEq : ProtocolState.step setup.program point
       (fun _ => decodeEventAction setup.program event action) = PMF.pure target)
     (targetIntended : ProtocolState.Intended setup.program target)
-    {fresh : (application setup runtime leaks).Control → Prop}
+    {fresh : (application setup timeouts leaks).Control → Prop}
     (freshIff : ∀ control, fresh control ↔
       ¬ StoreEventFailed control.execution.application.config.store event)
-    (start : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+    (start : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).History)
-    (holds : OpenableCommitmentInvariant setup runtime leaks bounds horizon scheduler who entry
+    (holds : OpenableCommitmentInvariant setup timeouts leaks bounds horizon scheduler who entry
       message
       event candidate outputEq value sent ready action start.state) :
-    expect (((bounds.onePacketMenu runtime leaks).information (initialLaw setup)
+    expect (((bounds.onePacketMenu timeouts leaks).information (initialLaw setup)
         horizon scheduler).runBehavioralUntil
-        ((bounds.onePacketMenu runtime leaks).bounded (initialLaw setup) horizon
+        ((bounds.onePacketMenu timeouts leaks).bounded (initialLaw setup) horizon
           scheduler).wellFoundedHistories players
-        (LateStopped setup runtime leaks bounds horizon scheduler rank) start)
-        (completionIndicator setup runtime leaks bounds horizon scheduler rank fresh) =
-      1 - expect (((bounds.onePacketMenu runtime leaks).information (initialLaw setup)
+        (LateStopped setup timeouts leaks bounds horizon scheduler rank) start)
+        (completionIndicator setup timeouts leaks bounds horizon scheduler rank fresh) =
+      1 - expect (((bounds.onePacketMenu timeouts leaks).information (initialLaw setup)
         horizon scheduler).runBehavioralFrom players (2 * horizon + 1) start)
-        (fun final => if EventFailedState setup runtime leaks event final.state then 1 else 0) := by
-  let menu := bounds.onePacketMenu runtime leaks
+        (fun final => if EventFailedState setup timeouts leaks event final.state then 1 else 0)
+          := by
+  let menu := bounds.onePacketMenu timeouts leaks
   let model := menu.information (initialLaw setup) horizon scheduler
   have horizonBound := menu.bounded (initialLaw setup) horizon scheduler
   let certificate := horizonBound.wellFoundedHistories
-  let stopped := LateStopped setup runtime leaks bounds horizon scheduler rank
+  let stopped := LateStopped setup timeouts leaks bounds horizon scheduler rank
   let failure := fun final : (menu.protocol (initialLaw setup) horizon scheduler).History =>
-    if EventFailedState setup runtime leaks event final.state then (1 : ℝ) else 0
+    if EventFailedState setup timeouts leaks event final.state then (1 : ℝ) else 0
   have failureBounded : ∀ final, |failure final| ≤ 1 := by
     intro final
     simp only [failure]
@@ -178,23 +183,23 @@ theorem expect_completionIndicator_of_openableCommitment
           reachedControl.execution.application.config.store (.inr event) = some stored)
       (fun state joint legal target holds reached => by
         obtain ⟨reachedControl, rfl, keeps⟩ := holds
-        obtain ⟨next, rfl, _⟩ := (application setup runtime leaks).transition_recall_prefix
+        obtain ⟨next, rfl, _⟩ := (application setup timeouts leaks).transition_recall_prefix
           (initialLaw setup) horizon scheduler reachedControl target joint reached
-        have keptStore := (keepsStore_step runtime leaks).transition
+        have keptStore := (keepsStore_step timeouts leaks).transition
           (initialLaw setup) horizon scheduler reachedControl next joint reached
         exact ⟨next, rfl, fun stored storedEq =>
           keptStore (.inr event) stored (keeps stored storedEq)⟩)
       stop ⟨control, state, fun _ storedEq => storedEq⟩
   -- At each stop the completion mass is one exactly when terminal play does not fail.
   have pointwise : ∀ stop ∈ (model.runBehavioralUntil certificate players stopped start).support,
-      completionIndicator setup runtime leaks bounds horizon scheduler rank fresh stop =
+      completionIndicator setup timeouts leaks bounds horizon scheduler rank fresh stop =
         1 - expect (model.runBehavioralTerminalFrom certificate players stop) failure := by
     intro stop member
-    obtain ⟨final, finalState, stepped⟩ := openableCommitment_stop (runtime := runtime) bounds
+    obtain ⟨final, finalState, stepped⟩ := openableCommitment_stop (timeouts := timeouts) bounds
       horizon scheduler
       certificate players codeEq successful ordered terminalCompleted start holds stop member
     rcases stepped with storeFailed | ⟨primary, primaryStep, drained⟩
-    · have pointNone := completionPoint_eq_none_of_not_fresh (runtime := runtime) (rank := rank)
+    · have pointNone := completionPoint_eq_none_of_not_fresh (timeouts := timeouts) (rank := rank)
         (fresh := fresh) finalState (fun freshHere => (freshIff final).mp freshHere storeFailed)
       have always : expect (model.runBehavioralTerminalFrom certificate players stop) failure =
           1 := by
@@ -242,7 +247,7 @@ theorem expect_completionIndicator_of_openableCommitment
       have succeeded := outputSucceeded_of_ref _ event ⟨.inr event, outputEq⟩ rfl read
         (by intro impossible; cases impossible)
       have notFailed := not_storeEventFailed_of_outputSucceeded succeeded
-      have pointEq := completionPoint_of_mem_step (runtime := runtime) (fresh := fresh) residual
+      have pointEq := completionPoint_of_mem_step (timeouts := timeouts) (fresh := fresh) residual
         decoded ready stepEq finalState inStep
       rw [ite_eq_left ⟨targetIntended, (freshIff final).mpr notFailed⟩ ..] at pointEq
       have never : expect (model.runBehavioralTerminalFrom certificate players stop) failure =

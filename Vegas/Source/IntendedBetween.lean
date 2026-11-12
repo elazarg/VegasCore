@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Source.CellSwap
-import Vegas.Source.IntendedGame
-import Vegas.Source.DefaultControl
-import GameTheoryExtensions.Protocol.TracePrefix
+public import Vegas.Source.CellSwap
+public import Vegas.Source.IntendedGame
+public import Vegas.Source.DefaultControl
+public import GameTheoryExtensions.Protocol.TracePrefix
+
+@[expose] public section
 
 /-! # Intended states at a program point differ by a cell swap
 
@@ -98,7 +102,7 @@ variable [DecidableEq (CellTy Player L)]
 
 /-- Two recorded own actions of the same shape: commitments to the same cell
 whose choices are that cell's current values, or the same reveal. -/
-private inductive ActionMatched {Γ : SourceCtx Player L} (first second : State L Γ) :
+inductive ActionMatched {Γ : SourceCtx Player L} (first second : State L Γ) :
     OwnAction Player L → OwnAction Player L → Prop
   | commit {owner : Player} {name : VarId} {payload : L.Ty}
       {firstChoice secondChoice : PublicationResult (L.Val payload)}
@@ -141,7 +145,7 @@ private theorem ActionMatched.swap_action {Γ : SourceCtx Player L} {first secon
 
 /-- Two configurations with equal static metadata and public default records,
 whose action lists match entry by entry. -/
-private def ConfigMatched {Γ : SourceCtx Player L} (first second : Config Player L Γ) : Prop :=
+def ConfigMatched {Γ : SourceCtx Player L} (first second : Config Player L Γ) : Prop :=
   first.registry = second.registry ∧
     @Config.revelations Player L Γ first = @Config.revelations Player L Γ second ∧
     first.defaults = second.defaults ∧
@@ -180,7 +184,7 @@ private theorem ConfigMatched.swap_config {Γ : SourceCtx Player L}
   rw [stateEq, historyEq, registry, revelations, defaults]
 
 /-- Two states at the same program point whose configurations there match. -/
-private def Matched : {Γ : SourceCtx Player L} → {O : Finset VarId} →
+def Matched : {Γ : SourceCtx Player L} → {O : Finset VarId} →
     (program : SourceProgram Player L Γ O) → ProtocolState program → ProtocolState program →
       Prop
   | _, _, .ret _, first, second => ConfigMatched first second
@@ -490,7 +494,7 @@ section Matching
 variable [DecidableEq (CellTy Player L)]
 
 /-- Matched setup states: both before the draw, or matched source states. -/
-private def SetupMatched (setup : Setup (Player := Player) (L := L)) :
+def SetupMatched (setup : Setup (Player := Player) (L := L)) :
     setup.ProtocolState → setup.ProtocolState → Prop
   | none, none => True
   | some first, some second => Matched setup.program first second

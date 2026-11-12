@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketIntendedProjection
-import Vegas.Game.OnePacketFactorization
-import Vegas.Game.OnePacketPrescribedSupport
+public import Vegas.Game.OnePacketIntendedProjection
+public import Vegas.Game.OnePacketFactorization
+public import Vegas.Game.OnePacketPrescribedSupport
+
+@[expose] public section
 
 /-! # Forced states along native histories
 
@@ -25,7 +29,7 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
 
 /-- **Forcedness reaches back over a source step.** A source point from which a
 step reaches a point forced for `who` is forced for `who`. -/
@@ -43,8 +47,8 @@ theorem forcedPoint_of_step {who : Player} {point target : ProtocolState setup.p
 forced for `who`. -/
 theorem forcedState_iff_decodedPoint
     {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-    {who : Player} (control : (application setup runtime leaks).Control) :
-    ForcedState setup runtime leaks who (some control) ↔
+    {who : Player} (control : (application setup timeouts leaks).Control) :
+    ForcedState setup timeouts leaks who (some control) ↔
       ∃ point, decodedPoint setup control.execution.application.config = some point ∧
         ForcedPoint setup who point := by
   constructor
@@ -66,35 +70,35 @@ theorem forcedState_iff_decodedPoint
 variable [Fintype Player]
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup runtime leaks).Scheduler}
+  {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- **Forced states reach back along native transitions.** If a native
 transition of the one-packet game from an initialized state reaches a forced
 state of `who`, that initialized state is forced for `who`. -/
-theorem forcedState_of_transition {who : Player} {before : (application setup runtime
+theorem forcedState_of_transition {who : Player} {before : (application setup timeouts
   leaks).Control}
-    {after : (application setup runtime leaks).ProtocolState}
-    (prior : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some before))
-    (joint : Player → Option (application setup runtime leaks).Action)
-    (realized : after ∈ ((application setup runtime leaks).transition (initialLaw setup) horizon
+    {after : (application setup timeouts leaks).ProtocolState}
+    (prior : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some before))
+    (joint : Player → Option (application setup timeouts leaks).Action)
+    (realized : after ∈ ((application setup timeouts leaks).transition (initialLaw setup) horizon
       scheduler
       (some before) joint).support)
-    (forced : ForcedState setup runtime leaks who after) :
-    ForcedState setup runtime leaks who (some before) := by
+    (forced : ForcedState setup timeouts leaks who after) :
+    ForcedState setup timeouts leaks who (some before) := by
   cases after with
   | none => exact forced.elim
   | some next =>
-      obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (runtime := runtime) (failureProfile
+      obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (timeouts := timeouts) (failureProfile
         setup.program)
-        (bounds.onePacketMenu runtime leaks) horizon scheduler prior before rfl
-      obtain ⟨target, decoded, forcedTarget⟩ := (forcedState_iff_decodedPoint (runtime := runtime)
+        (bounds.onePacketMenu timeouts leaks) horizon scheduler prior before rfl
+      obtain ⟨target, decoded, forcedTarget⟩ := (forcedState_iff_decodedPoint (timeouts := timeouts)
         next).mp forced
-      refine (forcedState_iff_decodedPoint (runtime := runtime) before).mpr ?_
+      refine (forcedState_iff_decodedPoint (timeouts := timeouts) before).mpr ?_
       by_contra denied
       have closed : StepClosed setup (fun point => ¬ ForcedPoint setup who point) := by
         intro point joint target notForced reached forced
         exact notForced (forcedPoint_of_step reached forced)
-      have beforeHolds : DecodedState setup runtime leaks (failureProfile setup.program)
+      have beforeHolds : DecodedState setup timeouts leaks (failureProfile setup.program)
           (fun point => ¬ ForcedPoint setup who point) (some before) := by
         refine ⟨rank, ⟨residual⟩, fun point read forced => ?_⟩
         rw [residual.decode, Option.some.injEq] at read

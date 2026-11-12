@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Source.DisclosureOpening
-import Vegas.Source.IntendedPlay
-import Vegas.Source.ProtocolBehavioralPolicy
+public import Vegas.Source.DisclosureOpening
+public import Vegas.Source.IntendedPlay
+public import Vegas.Source.ProtocolBehavioralPolicy
+
+@[expose] public section
 
 /-! # Authentic source openings
 

@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ExclusionEvidence
+public import Vegas.Pending.ExclusionEvidence
+
+@[expose] public section
 
 /-! # Public failure owners in native execution -/
 
@@ -44,16 +48,16 @@ theorem ExclusionEvidence.failureOwners_eq {state : State graph}
   exact (state.mem_failureOwners owner).trans (valid.defaulted_zero owner).symm
 
 /-- Initialized native histories identify failure owners with graph default membership. -/
-theorem ExclusionEvidence.history_failureOwners_eq (runtime : EventGraphRuntime graph)
+theorem ExclusionEvidence.history_failureOwners_eq (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (inputs : PMF graph.Inputs) (horizon : Nat)
-    (scheduler : (runtime.reactiveApplication leaks).Scheduler)
-    {state : (runtime.reactiveApplication leaks).ProtocolState}
-    (trace : ((runtime.reactiveApplication leaks).protocol (inputs.map State.initial)
+    (scheduler : ((reactiveApplication timeouts) leaks).Scheduler)
+    {state : ((reactiveApplication timeouts) leaks).ProtocolState}
+    (trace : (((reactiveApplication timeouts) leaks).protocol (inputs.map State.initial)
       horizon scheduler).Trace state) :
     ReactiveApplication.stateInvariant
       (fun native : State graph => native.failureOwners = native.config.defaulted) state := by
-  have valid := ExclusionEvidence.history runtime leaks inputs horizon scheduler trace
+  have valid := ExclusionEvidence.history timeouts leaks inputs horizon scheduler trace
   cases state with
   | none => trivial
   | some control => exact valid.failureOwners_eq

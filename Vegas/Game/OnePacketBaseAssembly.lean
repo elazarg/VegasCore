@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketBeliefPartsWiring
-import Vegas.Game.OnePacketOwnIntended
-import Vegas.Game.OnePacketBindingRepairAssembly
-import Vegas.Game.OnePacketRetention
-import Vegas.Game.OnePacketSwapFiberSum
+public import Vegas.Game.OnePacketBeliefPartsWiring
+public import Vegas.Game.OnePacketOwnIntended
+public import Vegas.Game.OnePacketBindingRepairAssembly
+public import Vegas.Game.OnePacketRetention
+public import Vegas.Game.OnePacketSwapFiberSum
+
+@[expose] public section
 
 /-! # Assembling the own and replay inputs of the one-packet certificate
 
@@ -25,25 +29,25 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup runtime leaks).Scheduler}
-  [(application setup runtime leaks).FiniteNature (initialLaw setup) scheduler]
-  [∀ who, DecidableEq ((onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
+  {scheduler : (application setup timeouts leaks).Scheduler}
+  [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
+  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
     scheduler).InfoState who)]
   [Finite setup.intendedProtocol.History]
 
-local instance : Fintype ((bounds.onePacketMenu runtime leaks).protocol
+local instance : Fintype ((bounds.onePacketMenu timeouts leaks).protocol
     (initialLaw setup) horizon scheduler).History :=
-  (bounds.onePacketMenu runtime leaks).historyFintype (initialLaw setup) horizon scheduler
+  (bounds.onePacketMenu timeouts leaks).historyFintype (initialLaw setup) horizon scheduler
 
 local notation "onePacketN" =>
-  onePacketModel setup runtime leaks bounds (initialLaw setup) horizon scheduler
+  onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon scheduler
 
 section BaseInputs
 
-variable (setup runtime leaks bounds horizon scheduler)
+variable (setup timeouts leaks bounds horizon scheduler)
 
 open Classical in
 /-- **The base inputs of the one-packet certificate** for one source sequence:
@@ -72,55 +76,55 @@ structure OnePacketBaseInputs (sequence : ℕ → setup.intendedModel.Behavioral
   /-- **The honest counterparts** at every forced decision input at the player's
   own turn at which the player owes no failure, along every fully mixed Bayes
   sequence of assembled profiles. -/
-  counterpartInputs : ∀ (weights : ℕ → ∀ p, PMF (OnePacketPart setup runtime leaks bounds
+  counterpartInputs : ∀ (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds
     (initialLaw setup) horizon
       scheduler slots p)) (targetSequence : ℕ → (onePacketN).BehavioralAssessment),
-    OnePacketAssembled setup runtime leaks bounds horizon scheduler sequence scale scale_pos
+    OnePacketAssembled setup timeouts leaks bounds horizon scheduler sequence scale scale_pos
       scale_le_one
       weights targetSequence →
     (∀ n, (targetSequence n).IsFullyMixed) →
     (∀ n, BehavioralAssessment.IsBayesConsistent (onePacketN) (targetSequence n)
-      ((bounds.onePacketMenu runtime leaks).decisionRecall
+      ((bounds.onePacketMenu timeouts leaks).decisionRecall
         (initialLaw setup) horizon scheduler).decisionInformationAntichain) →
     ∀ who (site : (onePacketN).InformationSite who),
-      ¬ FreeAgent setup runtime leaks bounds (initialLaw setup)
+      ¬ FreeAgent setup timeouts leaks bounds (initialLaw setup)
         horizon scheduler ((onePacketN).agentAt site) →
-      ¬ OwingAgent setup runtime leaks bounds (initialLaw setup)
+      ¬ OwingAgent setup timeouts leaks bounds (initialLaw setup)
         horizon scheduler ((onePacketN).agentAt site) →
-      ∀ {past : List (application setup runtime leaks).PlayerEntry}
-        {view : (application setup runtime leaks).PlayerView}, site.1 = some (past, view) →
+      ∀ {past : List (application setup timeouts leaks).PlayerEntry}
+        {view : (application setup timeouts leaks).PlayerView}, site.1 = some (past, view) →
       ∀ {event : (graph setup).EventId},
       view.application.publicView.ownTurn? who = some event →
-      OnePacketCounterpartInputs setup runtime leaks bounds horizon scheduler sequence
+      OnePacketCounterpartInputs setup timeouts leaks bounds horizon scheduler sequence
         targetSequence site
   /-- **The own and replay inputs** at every forced decision input at the
   player's own turn at which the player owes no failure, along every fully mixed
   Bayes sequence of assembled profiles. These are the sites with a projected
   decision (`Vegas.projectedDecision_of_forcedAgent`), late deliveries
   included. -/
-  ownInputs : ∀ (weights : ℕ → ∀ p, PMF (OnePacketPart setup runtime leaks bounds
+  ownInputs : ∀ (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds
     (initialLaw setup) horizon
       scheduler slots p)) (targetSequence : ℕ → (onePacketN).BehavioralAssessment),
-    OnePacketAssembled setup runtime leaks bounds horizon scheduler sequence scale scale_pos
+    OnePacketAssembled setup timeouts leaks bounds horizon scheduler sequence scale scale_pos
       scale_le_one
       weights targetSequence →
     (∀ n, (targetSequence n).IsFullyMixed) →
     (∀ n, BehavioralAssessment.IsBayesConsistent (onePacketN) (targetSequence n)
-      ((bounds.onePacketMenu runtime leaks).decisionRecall
+      ((bounds.onePacketMenu timeouts leaks).decisionRecall
         (initialLaw setup) horizon scheduler).decisionInformationAntichain) →
     ∀ who (site : (onePacketN).InformationSite who),
-      ¬ FreeAgent setup runtime leaks bounds (initialLaw setup)
+      ¬ FreeAgent setup timeouts leaks bounds (initialLaw setup)
         horizon scheduler ((onePacketN).agentAt site) →
-      ¬ OwingAgent setup runtime leaks bounds (initialLaw setup)
+      ¬ OwingAgent setup timeouts leaks bounds (initialLaw setup)
         horizon scheduler ((onePacketN).agentAt site) →
-      ∀ {past : List (application setup runtime leaks).PlayerEntry}
-        {view : (application setup runtime leaks).PlayerView} (atSite : site.1 = some (past, view))
+      ∀ {past : List (application setup timeouts leaks).PlayerEntry}
+        {view : (application setup timeouts leaks).PlayerView} (atSite : site.1 = some (past, view))
         {event : (graph setup).EventId},
       view.application.publicView.ownTurn? who = some event →
-      ∀ decision : setup.intendedModel.IsDecisionInfo who (projectView setup runtime leaks who
+      ∀ decision : setup.intendedModel.IsDecisionInfo who (projectView setup timeouts leaks who
         site.1),
-      OnePacketOwnInputs setup runtime leaks bounds horizon scheduler sequence targetSequence site
-        (projectedSite setup runtime leaks decision) atSite rfl
+      OnePacketOwnInputs setup timeouts leaks bounds horizon scheduler sequence targetSequence site
+        (projectedSite setup timeouts leaks decision) atSite rfl
   /-- Some late option sends at a slot. -/
   slots_pos : 0 < slots
 
@@ -128,7 +132,7 @@ omit [Finite setup.intendedProtocol.History] in
 /-- Some prepared slot is bounded, once there is a player. -/
 theorem OnePacketBaseInputs.one_le_candidateCount
     {sequence : ℕ → setup.intendedModel.BehavioralAssessment} {slots : Nat}
-    (inputs : OnePacketBaseInputs setup runtime leaks bounds horizon scheduler sequence slots)
+    (inputs : OnePacketBaseInputs setup timeouts leaks bounds horizon scheduler sequence slots)
     (who : Player) : 1 ≤ bounds.candidateCount :=
   Nat.zero_lt_of_lt (inputs.capacity who)
 
@@ -137,31 +141,31 @@ turn at which the player owes no failure: the honest counterparts and the own
 and replay inputs there. -/
 def OnePacketBaseInputs.beliefInputs {sequence : ℕ → setup.intendedModel.BehavioralAssessment}
     {slots : Nat}
-    (inputs : OnePacketBaseInputs setup runtime leaks bounds horizon scheduler sequence slots)
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup runtime leaks bounds (initialLaw setup)
+    (inputs : OnePacketBaseInputs setup timeouts leaks bounds horizon scheduler sequence slots)
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
       horizon scheduler slots p))
     (targetSequence : ℕ → (onePacketN).BehavioralAssessment)
-    (assembled : OnePacketAssembled setup runtime leaks bounds horizon scheduler sequence
+    (assembled : OnePacketAssembled setup timeouts leaks bounds horizon scheduler sequence
       inputs.scale
       inputs.scale_pos inputs.scale_le_one weights
         targetSequence)
     (mixed : ∀ n, (targetSequence n).IsFullyMixed)
     (bayes : ∀ n, BehavioralAssessment.IsBayesConsistent (onePacketN) (targetSequence n)
-      ((bounds.onePacketMenu runtime leaks).decisionRecall
+      ((bounds.onePacketMenu timeouts leaks).decisionRecall
         (initialLaw setup) horizon scheduler).decisionInformationAntichain)
     (who : Player) (site : (onePacketN).InformationSite who)
-    (forced : ¬ FreeAgent setup runtime leaks bounds (initialLaw setup)
+    (forced : ¬ FreeAgent setup timeouts leaks bounds (initialLaw setup)
       horizon scheduler ((onePacketN).agentAt site))
-    (notOwing : ¬ OwingAgent setup runtime leaks bounds (initialLaw setup)
+    (notOwing : ¬ OwingAgent setup timeouts leaks bounds (initialLaw setup)
       horizon scheduler ((onePacketN).agentAt
       site))
-    {past : List (application setup runtime leaks).PlayerEntry}
-    {view : (application setup runtime leaks).PlayerView} (atSite : site.1 = some (past, view))
+    {past : List (application setup timeouts leaks).PlayerEntry}
+    {view : (application setup timeouts leaks).PlayerView} (atSite : site.1 = some (past, view))
     {event : (graph setup).EventId} (turn : view.application.publicView.ownTurn? who = some event)
-    (decision : setup.intendedModel.IsDecisionInfo who (projectView setup runtime leaks who
+    (decision : setup.intendedModel.IsDecisionInfo who (projectView setup timeouts leaks who
       site.1)) :
-    OnePacketBeliefInputs setup runtime leaks bounds horizon scheduler sequence targetSequence site
-      (projectedSite setup runtime leaks decision) atSite rfl where
+    OnePacketBeliefInputs setup timeouts leaks bounds horizon scheduler sequence targetSequence site
+      (projectedSite setup timeouts leaks decision) atSite rfl where
   toOnePacketCounterpartInputs := inputs.counterpartInputs weights targetSequence assembled mixed
     bayes who site forced notOwing atSite turn
   toOnePacketOwnInputs := inputs.ownInputs weights
@@ -180,61 +184,62 @@ def OnePacketOwnInputs.ofAssembled (wellFormed : setup.WellFormed)
     {scale : ℕ → ℝ} {scale_pos : ∀ n, 0 < scale n} {scale_le_one : ∀ n, scale n ≤ 1}
     (depth : ℕ)
     (scaleEq : ∀ n, scale n = trembleScale
-      (combinedFloor setup runtime leaks bounds horizon scheduler (sequence n)) depth n)
+      (combinedFloor setup timeouts leaks bounds horizon scheduler (sequence n)) depth n)
     (covers : bounds.CoversOutputValues) (coversInputs : bounds.CoversInputValues)
     (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
     {slots : Nat}
-    {weights : ℕ → ∀ p, PMF (OnePacketPart setup runtime leaks bounds (initialLaw setup)
+    {weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
       horizon scheduler slots p)}
     {targetSequence : ℕ → (onePacketN).BehavioralAssessment}
-    (assembled : OnePacketAssembled setup runtime leaks bounds horizon scheduler sequence scale
+    (assembled : OnePacketAssembled setup timeouts leaks bounds horizon scheduler sequence scale
       scale_pos
       scale_le_one weights targetSequence)
     {who : Player} {site : (onePacketN).InformationSite who}
-    (notFree : ¬ FreeAgent setup runtime leaks bounds (initialLaw setup) horizon scheduler
+    (notFree : ¬ FreeAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler
       ((onePacketN).agentAt site))
-    (notOwing : ¬ OwingAgent setup runtime leaks bounds (initialLaw setup) horizon scheduler
+    (notOwing : ¬ OwingAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler
       ((onePacketN).agentAt site))
     {sourceSite : setup.intendedModel.InformationSite who}
-    {past : List (application setup runtime leaks).PlayerEntry}
-    {view : (application setup runtime leaks).PlayerView}
+    {past : List (application setup timeouts leaks).PlayerEntry}
+    {view : (application setup timeouts leaks).PlayerView}
     (atSite : site.1 = some (past, view))
-    (projected : sourceSite.1 = projectView setup runtime leaks who site.1)
+    (projected : sourceSite.1 = projectView setup timeouts leaks who site.1)
     {event : (graph setup).EventId}
     (turn : view.application.publicView.ownTurn? who = some event) :
-    OnePacketOwnInputs setup runtime leaks bounds horizon scheduler sequence targetSequence site
+    OnePacketOwnInputs setup timeouts leaks bounds horizon scheduler sequence targetSequence site
       sourceSite atSite projected := by
   let own : ∀ n (history : (onePacketN).InformationHistory who site.1),
-      RegularTrace setup runtime leaks bounds horizon scheduler (sequence n) who history.1.trace →
-      OwnCompletionsIntended (runtime := runtime) (bounds := bounds) (horizon := horizon)
+      RegularTrace setup timeouts leaks bounds horizon scheduler (sequence n) who history.1.trace →
+      OwnCompletionsIntended (timeouts := timeouts) (bounds := bounds) (horizon := horizon)
         (scheduler := scheduler)
         who history.1.trace := fun _ history _ =>
-    ownCompletionsIntended_of_siteNotOwes (runtime := runtime) wellFormed
-      (siteDebtFree_of_not_owing setup runtime leaks bounds horizon scheduler notOwing) history
-  let steps := assembledOperationalSteps (runtime := runtime) wellFormed sequence scale scale_pos
+    ownCompletionsIntended_of_siteNotOwes (timeouts := timeouts) wellFormed
+      (siteDebtFree_of_not_owing setup timeouts leaks bounds horizon scheduler notOwing) history
+  let steps := assembledOperationalSteps (timeouts := timeouts) wellFormed sequence scale scale_pos
     scale_le_one depth
     scaleEq covers capacity weights assembled who
   let fiberMass : ℕ → ℝ := fun n =>
-    ∑ history with RegularTrace setup runtime leaks bounds horizon scheduler (sequence n) who
+    ∑ history with RegularTrace setup timeouts leaks bounds horizon scheduler (sequence n) who
         history.1.trace ∧
-        replayProjection setup runtime leaks bounds horizon scheduler sourceSite site atSite
+        replayProjection setup timeouts leaks bounds horizon scheduler sourceSite site atSite
           projected
           history = sourceSite.2.choose,
-      operationalWeight setup runtime leaks who (steps.mass n)
-        (operationalRecord setup runtime leaks bounds horizon scheduler history.1.trace)
-  refine OnePacketOwnInputs.ofCertificate (runtime := runtime) wellFormed depth scaleEq covers
+      operationalWeight setup timeouts leaks who (steps.mass n)
+        (operationalRecord setup timeouts leaks bounds horizon scheduler history.1.trace)
+  refine OnePacketOwnInputs.ofCertificate (timeouts := timeouts) wellFormed depth scaleEq covers
     capacity assembled
     atSite projected own fiberMass ?_
   intro n point
-  change _ = ∑ history with RegularTrace setup runtime leaks bounds horizon scheduler (sequence n)
+  change _ = ∑ history with RegularTrace setup timeouts leaks bounds horizon scheduler (sequence n)
     who
       history.1.trace ∧
-      replayProjection setup runtime leaks bounds horizon scheduler sourceSite site atSite projected
+      replayProjection setup timeouts leaks bounds horizon scheduler sourceSite site atSite
+        projected
         history = sourceSite.2.choose,
-    operationalWeight setup runtime leaks who (steps.mass n)
-      (operationalRecord setup runtime leaks bounds horizon scheduler history.1.trace)
-  convert fiber_sum_eq_between (runtime := runtime) (who := who) (steps := steps) wellFormed
-    (forcedAgent_of_not_free setup runtime leaks bounds (initialLaw setup) horizon scheduler
+    operationalWeight setup timeouts leaks who (steps.mass n)
+      (operationalRecord setup timeouts leaks bounds horizon scheduler history.1.trace)
+  convert fiber_sum_eq_between (timeouts := timeouts) (who := who) (steps := steps) wellFormed
+    (forcedAgent_of_not_free setup timeouts leaks bounds (initialLaw setup) horizon scheduler
       notFree) atSite projected
     (own n) (sourceMixed n) turn (bindingFieldsCovered_of_covers covers coversInputs)
     point sourceSite.2.choose using 1
@@ -253,46 +258,46 @@ def OnePacketBaseInputs.ofCounterparts (wellFormed : setup.WellFormed)
     (slots_pos : 0 < bounds.candidateCount)
     (counterparts : ∀
       (weights : ℕ → ∀ p,
-        PMF (OnePacketPart setup runtime leaks bounds (initialLaw setup)
+        PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
           horizon scheduler bounds.candidateCount p))
       (targetSequence : ℕ → (onePacketN).BehavioralAssessment),
-      OnePacketAssembled setup runtime leaks bounds horizon scheduler sequence
+      OnePacketAssembled setup timeouts leaks bounds horizon scheduler sequence
         (fun n => trembleScale
-          (combinedFloor setup runtime leaks bounds horizon scheduler (sequence n)) depth n)
+          (combinedFloor setup timeouts leaks bounds horizon scheduler (sequence n)) depth n)
         (fun n => trembleScale_pos
-          (combinedFloor_pos setup runtime leaks bounds horizon scheduler (sequence n)))
+          (combinedFloor_pos setup timeouts leaks bounds horizon scheduler (sequence n)))
         (fun n => trembleScale_le_one
-          (combinedFloor_pos setup runtime leaks bounds horizon scheduler (sequence n)).le
-          (combinedFloor_le_one setup runtime leaks bounds horizon scheduler (sequence n)))
+          (combinedFloor_pos setup timeouts leaks bounds horizon scheduler (sequence n)).le
+          (combinedFloor_le_one setup timeouts leaks bounds horizon scheduler (sequence n)))
         weights targetSequence →
       (∀ n, (targetSequence n).IsFullyMixed) →
       (∀ n, BehavioralAssessment.IsBayesConsistent (onePacketN) (targetSequence n)
-        ((bounds.onePacketMenu runtime leaks).decisionRecall
+        ((bounds.onePacketMenu timeouts leaks).decisionRecall
           (initialLaw setup) horizon scheduler).decisionInformationAntichain) →
       ∀ who (site : (onePacketN).InformationSite who),
-        ¬ FreeAgent setup runtime leaks bounds (initialLaw setup) horizon scheduler
+        ¬ FreeAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler
       ((onePacketN).agentAt site) →
-        ¬ OwingAgent setup runtime leaks bounds (initialLaw setup) horizon scheduler
+        ¬ OwingAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler
       ((onePacketN).agentAt site) →
-        ∀ {past : List (application setup runtime leaks).PlayerEntry}
-          {view : (application setup runtime leaks).PlayerView}, site.1 = some (past, view) →
+        ∀ {past : List (application setup timeouts leaks).PlayerEntry}
+          {view : (application setup timeouts leaks).PlayerView}, site.1 = some (past, view) →
         ∀ {event : (graph setup).EventId},
         view.application.publicView.ownTurn? who = some event →
-        OnePacketCounterpartInputs setup runtime leaks bounds horizon scheduler sequence
+        OnePacketCounterpartInputs setup timeouts leaks bounds horizon scheduler sequence
           targetSequence
           site) :
-    OnePacketBaseInputs setup runtime leaks bounds horizon scheduler sequence
+    OnePacketBaseInputs setup timeouts leaks bounds horizon scheduler sequence
       bounds.candidateCount where
   scale n := trembleScale
-    (combinedFloor setup runtime leaks bounds horizon scheduler (sequence n)) depth n
+    (combinedFloor setup timeouts leaks bounds horizon scheduler (sequence n)) depth n
   scale_pos n := trembleScale_pos
-    (combinedFloor_pos setup runtime leaks bounds horizon scheduler (sequence n))
+    (combinedFloor_pos setup timeouts leaks bounds horizon scheduler (sequence n))
   scale_le_one n := trembleScale_le_one
-    (combinedFloor_pos setup runtime leaks bounds horizon scheduler (sequence n)).le
-    (combinedFloor_le_one setup runtime leaks bounds horizon scheduler (sequence n))
+    (combinedFloor_pos setup timeouts leaks bounds horizon scheduler (sequence n)).le
+    (combinedFloor_le_one setup timeouts leaks bounds horizon scheduler (sequence n))
   scale_vanishing := tendsto_trembleScale _
-    (fun n => combinedFloor_pos setup runtime leaks bounds horizon scheduler (sequence n))
-    (fun n => combinedFloor_le_one setup runtime leaks bounds horizon scheduler (sequence n))
+    (fun n => combinedFloor_pos setup timeouts leaks bounds horizon scheduler (sequence n))
+    (fun n => combinedFloor_le_one setup timeouts leaks bounds horizon scheduler (sequence n))
   gapBound := gapBound
   gapBound_nonneg := gapBound_nonneg
   covers := covers
@@ -303,28 +308,28 @@ def OnePacketBaseInputs.ofCounterparts (wellFormed : setup.WellFormed)
   ownInputs _weights _targetSequence assembled _mixed _bayes _who _site
     notFree notOwing
       {_past} {_view} atSite {_event} turn _decision :=
-    OnePacketOwnInputs.ofAssembled (runtime := runtime) wellFormed sourceMixed depth (fun _ =>
+    OnePacketOwnInputs.ofAssembled (timeouts := timeouts) wellFormed sourceMixed depth (fun _ =>
       rfl) covers
       coversInputs capacity assembled notFree notOwing atSite rfl turn
   slots_pos := slots_pos
 
 section LateBounds
 
-variable (setup runtime leaks bounds horizon scheduler)
+variable (setup timeouts leaks bounds horizon scheduler)
 
-omit [Fintype Player] [(application setup runtime leaks).FiniteNature (initialLaw setup) scheduler]
+omit [Fintype Player] [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
   [Finite setup.intendedProtocol.History]
-  [∀ who, DecidableEq ((onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
+  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
     scheduler).InfoState who)] in
 /-- A late delivery is a decision input showing the player's own turn. -/
-theorem lateDelivery_input {who : Player} {info : (application setup runtime leaks).Info}
-    (late : LateDelivery setup runtime leaks who info) :
-    ∃ input : List (application setup runtime leaks).PlayerEntry × (application setup runtime
+theorem lateDelivery_input {who : Player} {info : (application setup timeouts leaks).Info}
+    (late : LateDelivery setup timeouts leaks who info) :
+    ∃ input : List (application setup timeouts leaks).PlayerEntry × (application setup timeouts
       leaks).PlayerView,
       info = some input ∧ ∃ event, input.2.application.publicView.ownTurn? who = some event := by
   obtain ⟨past, view, event, atSite, pending, _⟩ := late
   rw [atSite] at pending
-  exact ⟨(past, view), atSite, event, (pendingEvent_spec (runtime := runtime) (setup := setup)
+  exact ⟨(past, view), atSite, event, (pendingEvent_spec (timeouts := timeouts) (setup := setup)
     pending).1⟩
 
 omit [Finite setup.intendedProtocol.History] in
@@ -337,42 +342,42 @@ owner's turn, where the honest counterparts and the intended own completions
 make it vanish (`Vegas.onePacket_unforcedVanishes`). -/
 theorem OnePacketBaseInputs.lateUnforced {sequence : ℕ → setup.intendedModel.BehavioralAssessment}
     {slots : Nat}
-    (inputs : OnePacketBaseInputs setup runtime leaks bounds horizon scheduler sequence slots)
+    (inputs : OnePacketBaseInputs setup timeouts leaks bounds horizon scheduler sequence slots)
     (wellFormed : setup.WellFormed)
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup runtime leaks bounds (initialLaw setup)
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
       horizon scheduler slots p))
     (targetSequence : ℕ → (onePacketN).BehavioralAssessment)
-    (assembled : OnePacketAssembled setup runtime leaks bounds horizon scheduler sequence
+    (assembled : OnePacketAssembled setup timeouts leaks bounds horizon scheduler sequence
       inputs.scale
       inputs.scale_pos inputs.scale_le_one weights
         targetSequence)
     (mixed : ∀ n, (targetSequence n).IsFullyMixed)
     (bayes : ∀ n, BehavioralAssessment.IsBayesConsistent (onePacketN) (targetSequence n)
-      ((bounds.onePacketMenu runtime leaks).decisionRecall
+      ((bounds.onePacketMenu timeouts leaks).decisionRecall
         (initialLaw setup) horizon scheduler).decisionInformationAntichain) :
     ∃ unforcedDrift : ℕ → ℝ, Tendsto unforcedDrift atTop (nhds 0) ∧
       ∀ n who (site : (onePacketN).InformationSite who),
-        ¬ FreeAgent setup runtime leaks bounds (initialLaw setup)
+        ¬ FreeAgent setup timeouts leaks bounds (initialLaw setup)
           horizon scheduler ((onePacketN).agentAt site) →
-        ¬ OwingAgent setup runtime leaks bounds (initialLaw setup)
+        ¬ OwingAgent setup timeouts leaks bounds (initialLaw setup)
           horizon scheduler ((onePacketN).agentAt site) →
-        ownedKeyed (FreeAgent setup runtime leaks bounds (initialLaw setup) horizon scheduler)
-          (LateDeliveryAgent setup runtime leaks bounds (initialLaw setup) horizon scheduler)
+        ownedKeyed (FreeAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler)
+          (LateDeliveryAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler)
           ((onePacketN).agentAt site) →
         expect ((targetSequence n).belief who site) (fun history =>
-          if ForcedState setup runtime leaks who history.1.state then (0 : ℝ) else 1) ≤
+          if ForcedState setup timeouts leaks who history.1.state then (0 : ℝ) else 1) ≤
           unforcedDrift n := by
   let LateSite := fun {who : Player} (site : (onePacketN).InformationSite who) =>
-    ¬ FreeAgent setup runtime leaks bounds (initialLaw setup)
+    ¬ FreeAgent setup timeouts leaks bounds (initialLaw setup)
       horizon scheduler ((onePacketN).agentAt site) ∧
-      ¬ OwingAgent setup runtime leaks bounds (initialLaw setup)
+      ¬ OwingAgent setup timeouts leaks bounds (initialLaw setup)
         horizon scheduler ((onePacketN).agentAt site) ∧
-      ownedKeyed (FreeAgent setup runtime leaks bounds (initialLaw setup) horizon scheduler)
-        (LateDeliveryAgent setup runtime leaks bounds (initialLaw setup) horizon scheduler)
+      ownedKeyed (FreeAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler)
+        (LateDeliveryAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler)
         ((onePacketN).agentAt site)
   let mass := fun (n : ℕ) {who : Player} (site : (onePacketN).InformationSite who) =>
     expect ((targetSequence n).belief who site) (fun history =>
-      if ForcedState setup runtime leaks who history.1.state then (0 : ℝ) else 1)
+      if ForcedState setup timeouts leaks who history.1.state then (0 : ℝ) else 1)
   let agentMass := fun (n : ℕ)
       (agent : (onePacketN).InformationAgent (onePacketN).playedInformation) =>
     if present : ∃ decision : (onePacketN).IsDecisionInfo agent.1 agent.2.1,
@@ -391,16 +396,16 @@ theorem OnePacketBaseInputs.lateUnforced {sequence : ℕ → setup.intendedModel
     by_cases present : ∃ decision : (onePacketN).IsDecisionInfo agent.1 agent.2.1,
         LateSite (⟨agent.2.1, decision⟩ : (onePacketN).InformationSite agent.1)
     · simp only [agentMass, present, ↓reduceDIte]
-      obtain ⟨input, atSite, event, turn⟩ := lateDelivery_input setup runtime leaks present.2.2.2.1
+      obtain ⟨input, atSite, event, turn⟩ := lateDelivery_input setup timeouts leaks present.2.2.2.1
       have notFree := present.2.1
       have notOwing := present.2.2.1
-      have forced := forcedAgent_of_not_free setup runtime leaks bounds (initialLaw setup)
+      have forced := forcedAgent_of_not_free setup timeouts leaks bounds (initialLaw setup)
         horizon scheduler notFree
-      have debtFree := siteDebtFree_of_not_owing setup runtime leaks bounds horizon scheduler
+      have debtFree := siteDebtFree_of_not_owing setup timeouts leaks bounds horizon scheduler
         notOwing
-      have decision := projectedDecision_of_forcedAgent (runtime := runtime) wellFormed forced
+      have decision := projectedDecision_of_forcedAgent (timeouts := timeouts) wellFormed forced
         atSite turn debtFree
-      exact onePacket_unforcedVanishes setup runtime leaks bounds horizon scheduler wellFormed
+      exact onePacket_unforcedVanishes setup timeouts leaks bounds horizon scheduler wellFormed
         mixed bayes
         atSite forced
         (inputs.counterpartInputs weights targetSequence assembled mixed
@@ -423,7 +428,7 @@ end LateBounds
 
 section SetupAssembly
 
-variable (setup runtime leaks bounds horizon scheduler)
+variable (setup timeouts leaks bounds horizon scheduler)
   {Public : Type*} {signal : State L setup.context → Public}
 
 open Classical in
@@ -438,20 +443,20 @@ def OnePacketBaseInputs.ofSetup
     (covers : bounds.CoversOutputValues) (coversInputs : bounds.CoversInputValues)
     (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
     (slots_pos : 0 < bounds.candidateCount) :
-    OnePacketBaseInputs setup runtime leaks bounds horizon scheduler sequence
+    OnePacketBaseInputs setup timeouts leaks bounds horizon scheduler sequence
       bounds.candidateCount := by
-  refine OnePacketBaseInputs.ofCounterparts (runtime := runtime) wellFormed sequence sourceMixed
+  refine OnePacketBaseInputs.ofCounterparts (timeouts := timeouts) wellFormed sequence sourceMixed
     (2 * horizon + 2)
     0 (le_refl 0) covers coversInputs capacity slots_pos ?_
   intro weights targetSequence assembled mixed _bayes who site notFree notOwing
     past view atSite event turn
-  exact OnePacketCounterpartInputs.ofBindingRepairs (runtime := runtime) wellFormed independent
+  exact OnePacketCounterpartInputs.ofBindingRepairs (timeouts := timeouts) wellFormed independent
     observable sourceMixed
     (fun n => trembleScale_pos
-      (combinedFloor_pos setup runtime leaks bounds horizon scheduler (sequence n)))
+      (combinedFloor_pos setup timeouts leaks bounds horizon scheduler (sequence n)))
     (fun n => trembleScale_le_one
-      (combinedFloor_pos setup runtime leaks bounds horizon scheduler (sequence n)).le
-      (combinedFloor_le_one setup runtime leaks bounds horizon scheduler (sequence n)))
+      (combinedFloor_pos setup timeouts leaks bounds horizon scheduler (sequence n)).le
+      (combinedFloor_le_one setup timeouts leaks bounds horizon scheduler (sequence n)))
     (fun _ => rfl) covers coversInputs capacity weights assembled mixed
     notFree notOwing atSite turn
 

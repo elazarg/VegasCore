@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Source.ConditionedInitialHistory
-import Vegas.Source.IntendedPlay
+public import Vegas.Source.ConditionedInitialHistory
+public import Vegas.Source.IntendedPlay
+
+@[expose] public section
 
 /-! # The actual component image of conditioned source histories -/
 

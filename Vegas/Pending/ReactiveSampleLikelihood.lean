@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveBindingLikelihood
-import Vegas.Pending.EventSampleObservation
+public import Vegas.Pending.ReactiveBindingLikelihood
+public import Vegas.Pending.EventSampleObservation
+
+@[expose] public section
 
 /-! # Public sampling preserves the focal traffic correspondence
 
@@ -19,19 +23,20 @@ open Interaction EventGraph GameTheory.Math.Probability
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
-  (runtime : EventGraphRuntime graph)
+  (timeouts : EventTimeouts graph)
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
 
 /-- Coupling the public draw preserves the complete focal traffic readout,
 including the scheduler's true pre-sample observation. -/
 theorem bindingTraffic_sample_result
-    (left right : (runtime.reactiveApplication leaks).Execution) (focal : Player)
-    (same : runtime.bindingTraffic leaks focal left = runtime.bindingTraffic leaks focal right)
+    (left right : ((reactiveApplication timeouts) leaks).Execution) (focal : Player)
+    (same : (bindingTraffic timeouts) leaks focal left = (bindingTraffic timeouts) leaks focal
+      right)
     (event : graph.EventId) (leftReady : left.application.config.cut.Ready event)
     (rightReady : right.application.config.cut.Ready event)
     (payload : L.Ty) (outputEq : graph.outputLayout event = .publicData payload)
     (value : L.Val payload) :
-    let app := runtime.reactiveApplication leaks
+    let app := (reactiveApplication timeouts) leaks
     let after := fun (execution : app.Execution)
         (ready : execution.application.config.cut.Ready event) =>
       { execution with
@@ -40,8 +45,8 @@ theorem bindingTraffic_sample_result
           (cast (congrArg EventField.Value outputEq.symm) value)).drain
         environmentRecall := execution.environmentRecall ++
           [⟨execution.observeEnvironment app, .application (.executeSample event)⟩] }
-    runtime.bindingTraffic leaks focal (after left leftReady) =
-      runtime.bindingTraffic leaks focal (after right rightReady) := by
+    (bindingTraffic timeouts) leaks focal (after left leftReady) =
+      (bindingTraffic timeouts) leaks focal (after right rightReady) := by
   intro app after
   have networks := congrArg Prod.fst same
   have receipts := congrArg (fun data => data.2.1) same
@@ -70,7 +75,7 @@ theorem bindingTraffic_sample_result
               event outputEq (.sample payload law) codeEq]
           rfl)
   have complete := State.drain_playerView_congr _ _ focal completed
-  change runtime.bindingTraffic leaks focal (after left leftReady) = _
+  change (bindingTraffic timeouts) leaks focal (after left leftReady) = _
   have completedPublic : (after left leftReady).application.publicView =
       (after right rightReady).application.publicView := congrArg PlayerView.publicView complete
   dsimp only [after] at completedPublic
@@ -80,8 +85,9 @@ theorem bindingTraffic_sample_result
 /-- Actual public chance uses a common law determined by public data. This
 compares the genuine environment transition, with no independent noise kernel. -/
 theorem bindingTraffic_sample
-    (left right : (runtime.reactiveApplication leaks).Execution) (focal : Player)
-    (same : runtime.bindingTraffic leaks focal left = runtime.bindingTraffic leaks focal right)
+    (left right : ((reactiveApplication timeouts) leaks).Execution) (focal : Player)
+    (same : (bindingTraffic timeouts) leaks focal left = (bindingTraffic timeouts) leaks focal
+      right)
     (event : graph.EventId) (leftReady : left.application.config.cut.Ready event)
     (rightReady : right.application.config.cut.Ready event)
     (payload : L.Ty) (law : PublicDist graph.layout payload)
@@ -89,11 +95,11 @@ theorem bindingTraffic_sample
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
       (graph.nodes event) = .sample payload law)
     (node : nodeView graph event = .sample payload law outputEq codeEq) :
-    (left.environmentStep (runtime.reactiveApplication leaks)
-      (.application (.executeSample event))).map (runtime.bindingTraffic leaks focal) =
-    (right.environmentStep (runtime.reactiveApplication leaks)
-      (.application (.executeSample event))).map (runtime.bindingTraffic leaks focal) := by
-  let app := runtime.reactiveApplication leaks
+    (left.environmentStep ((reactiveApplication timeouts) leaks)
+      (.application (.executeSample event))).map ((bindingTraffic timeouts) leaks focal) =
+    (right.environmentStep ((reactiveApplication timeouts) leaks)
+      (.application (.executeSample event))).map ((bindingTraffic timeouts) leaks focal) := by
+  let app := (reactiveApplication timeouts) leaks
   have publics := congrArg (fun data => data.2.2.2.2.2) same
   have stores : graph.publicStore left.application.config.store =
       graph.publicStore right.application.config.store :=
@@ -113,23 +119,25 @@ theorem bindingTraffic_sample
   have sampleLaw (execution : app.Execution)
       (ready : execution.application.config.cut.Ready event)
       (evaluates : law.eval? execution.application.config.store = some draw) :
-      environmentStep runtime execution.application (.executeSample event) =
+      environmentStep timeouts execution.application (.executeSample event) =
         draw.map (fun value => execution.application.complete event ready
           (cast (congrArg EventField.Action outputEq.symm) PUnit.unit)
           (cast (congrArg EventField.Value outputEq.symm) value)) := by
-    rw [environmentStep_executeSample_eq runtime execution.application event ready payload law
+    rw [environmentStep_executeSample_eq timeouts execution.application event ready payload law
       outputEq codeEq node,
       execution.application.config.step_eq_map_of_code event ready outputEq (.sample payload law)
         codeEq PUnit.unit draw evaluates, PMF.map_comp]
     rfl
   simp only [ReactiveApplication.Execution.environmentStep, PMF.map_comp]
-  change ((environmentStep runtime left.application (.executeSample event)).map State.drain).map
-      _ = ((environmentStep runtime right.application (.executeSample event)).map State.drain).map _
+  change ((environmentStep timeouts left.application (.executeSample event)).map State.drain).map
+      _ = ((environmentStep timeouts right.application (.executeSample event)).map
+        State.drain).map _
   rw [sampleLaw left leftReady leftLaw, sampleLaw right rightReady rightLaw]
   simp only [PMF.map_comp]
   apply map_congr_on_support _
   intro value _
-  exact runtime.bindingTraffic_sample_result leaks left right focal same event leftReady rightReady
+  exact (bindingTraffic_sample_result timeouts) leaks left right focal same event leftReady
+    rightReady
     payload outputEq value
 
 end Vegas.EventGraphRuntime

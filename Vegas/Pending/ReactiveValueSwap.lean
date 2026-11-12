@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.EventValueSwap
-import Vegas.Pending.ReactiveRuntime
+public import Vegas.Pending.EventValueSwap
+public import Vegas.Pending.ReactiveRuntime
+
+@[expose] public section
 
 /-! # Swapping hidden values along reactive executions
 
@@ -30,7 +34,7 @@ open Interaction Vegas.EventGraph
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {graph : Vegas.EventGraph Player L}
-  {runtime : EventGraphRuntime graph}
+  {timeouts : EventTimeouts graph}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)}
 
 namespace State
@@ -92,9 +96,9 @@ end State
 accepted commitment's handle is compatible with the swap at its event, and an
 opening addresses a ready resolution only if the swap fixes the binding it reads
 and every handle accepted for that binding. -/
-def InclusionFixed (runtime : EventGraphRuntime graph) (swap : HiddenSwap graph)
+def InclusionFixed (timeouts : EventTimeouts graph) (swap : HiddenSwap graph)
     (state : State graph) (message : Message Player (Payload graph)) : Prop :=
-  (∀ next event candidate, handle runtime state message = some next →
+  (∀ next event candidate, handle timeouts state message = some next →
     message.payload = .commitment event candidate → BindCompatible swap event candidate) ∧
   ∀ event, (∃ candidate raw, message.payload = .opening event candidate raw) →
     state.config.cut.Ready event → RevealFixed swap state event
@@ -104,74 +108,74 @@ namespace HiddenSwap
 variable (swap : HiddenSwap graph)
 
 /-- The swap of a response: of its transmitted submission. -/
-def action (response : (runtime.reactiveApplication leaks).Action) :
-    (runtime.reactiveApplication leaks).Action :=
+def action (response : ((reactiveApplication timeouts) leaks).Action) :
+    ((reactiveApplication timeouts) leaks).Action :=
   ⟨response.transmission.map (WitnessedSubmission.swap swap)⟩
 
 /-- The swap of a player's view of an execution: of its application view. -/
-def view (observed : (runtime.reactiveApplication leaks).PlayerView) :
-    (runtime.reactiveApplication leaks).PlayerView :=
+def view (observed : ((reactiveApplication timeouts) leaks).PlayerView) :
+    ((reactiveApplication timeouts) leaks).PlayerView :=
   ⟨observed.messages, PlayerView.swap swap observed.application, observed.receipts⟩
 
 /-- The swap of a recall entry: of its view and its action. -/
-def entry (recalled : (runtime.reactiveApplication leaks).PlayerEntry) :
-    (runtime.reactiveApplication leaks).PlayerEntry :=
+def entry (recalled : ((reactiveApplication timeouts) leaks).PlayerEntry) :
+    ((reactiveApplication timeouts) leaks).PlayerEntry :=
   ⟨swap.view recalled.beforeView, swap.action recalled.action, recalled.emitted⟩
 
 /-- **The swap of an execution**: of its application state and of every
 player's recall. -/
-def execution (current : (runtime.reactiveApplication leaks).Execution) :
-    (runtime.reactiveApplication leaks).Execution :=
+def execution (current : ((reactiveApplication timeouts) leaks).Execution) :
+    ((reactiveApplication timeouts) leaks).Execution :=
   ⟨current.application.swap swap, current.network, current.receipts,
     fun who => (current.logs who).map swap.entry, current.environmentRecall⟩
 
-@[simp] theorem execution_application (current : (runtime.reactiveApplication leaks).Execution) :
+@[simp] theorem execution_application (current : ((reactiveApplication timeouts) leaks).Execution) :
     (swap.execution current).application = current.application.swap swap := rfl
 
-@[simp] theorem execution_network (current : (runtime.reactiveApplication leaks).Execution) :
+@[simp] theorem execution_network (current : ((reactiveApplication timeouts) leaks).Execution) :
     (swap.execution current).network = current.network := rfl
 
-@[simp] theorem execution_receipts (current : (runtime.reactiveApplication leaks).Execution) :
+@[simp] theorem execution_receipts (current : ((reactiveApplication timeouts) leaks).Execution) :
     (swap.execution current).receipts = current.receipts := rfl
 
-@[simp] theorem execution_recall (current : (runtime.reactiveApplication leaks).Execution)
+@[simp] theorem execution_recall (current : ((reactiveApplication timeouts) leaks).Execution)
     (who : Player) : (swap.execution current).logs who = (current.logs who).map swap.entry :=
   rfl
 
 @[simp] theorem execution_environmentRecall
-    (current : (runtime.reactiveApplication leaks).Execution) :
+    (current : ((reactiveApplication timeouts) leaks).Execution) :
     (swap.execution current).environmentRecall = current.environmentRecall := rfl
 
 theorem action_involutive :
-    Function.Involutive (swap.action (runtime := runtime) (leaks := leaks)) := by
+    Function.Involutive (swap.action (timeouts := timeouts) (leaks := leaks)) := by
   rintro ⟨transmission⟩
   cases transmission with
   | none => rfl
   | some submission =>
       change (⟨some ((submission.swap swap).swap swap)⟩ :
-        (runtime.reactiveApplication leaks).Action) = _
+        ((reactiveApplication timeouts) leaks).Action) = _
       rw [WitnessedSubmission.swap_involutive swap submission]
 
 theorem view_involutive :
-    Function.Involutive (swap.view (runtime := runtime) (leaks := leaks)) := by
+    Function.Involutive (swap.view (timeouts := timeouts) (leaks := leaks)) := by
   rintro ⟨messages, application, receipts⟩
   change (⟨messages, PlayerView.swap swap (PlayerView.swap swap application), receipts⟩ :
-    (runtime.reactiveApplication leaks).PlayerView) = _
+    ((reactiveApplication timeouts) leaks).PlayerView) = _
   rw [PlayerView.swap_involutive swap application]
 
 theorem entry_involutive :
-    Function.Involutive (swap.entry (runtime := runtime) (leaks := leaks)) := by
+    Function.Involutive (swap.entry (timeouts := timeouts) (leaks := leaks)) := by
   rintro ⟨beforeView, response, emitted⟩
   change (⟨swap.view (swap.view beforeView), swap.action (swap.action response), emitted⟩ :
-    (runtime.reactiveApplication leaks).PlayerEntry) = _
+    ((reactiveApplication timeouts) leaks).PlayerEntry) = _
   rw [swap.view_involutive, swap.action_involutive]
 
 theorem execution_involutive :
-    Function.Involutive (swap.execution (runtime := runtime) (leaks := leaks)) := by
+    Function.Involutive (swap.execution (timeouts := timeouts) (leaks := leaks)) := by
   rintro ⟨application, network, receipts, logs, environmentRecall⟩
   change (⟨(application.swap swap).swap swap, network, receipts,
     fun who => ((logs who).map swap.entry).map swap.entry, environmentRecall⟩ :
-      (runtime.reactiveApplication leaks).Execution) = _
+      ((reactiveApplication timeouts) leaks).Execution) = _
   rw [State.swap_involutive swap application]
   congr 1
   funext who
@@ -180,37 +184,37 @@ theorem execution_involutive :
   exact List.map_congr_left fun recalled _ => swap.entry_involutive recalled
 
 /-- A player's view of the swapped execution is the swap of its view. -/
-theorem observe_execution (current : (runtime.reactiveApplication leaks).Execution)
+theorem observe_execution (current : ((reactiveApplication timeouts) leaks).Execution)
     (who : Player) :
-    (swap.execution current).observe (runtime.reactiveApplication leaks) who =
-      swap.view (current.observe (runtime.reactiveApplication leaks) who) := by
+    (swap.execution current).observe ((reactiveApplication timeouts) leaks) who =
+      swap.view (current.observe ((reactiveApplication timeouts) leaks) who) := by
   change (⟨current.network.observe who, (current.application.swap swap).playerView who,
-    current.receipts⟩ : (runtime.reactiveApplication leaks).PlayerView) = _
+    current.receipts⟩ : ((reactiveApplication timeouts) leaks).PlayerView) = _
   rw [State.swap_playerView]
   rfl
 
 /-- **The scheduler sees no swap.** -/
-theorem observeEnvironment_execution (current : (runtime.reactiveApplication leaks).Execution) :
-    (swap.execution current).observeEnvironment (runtime.reactiveApplication leaks) =
-      current.observeEnvironment (runtime.reactiveApplication leaks) := by
+theorem observeEnvironment_execution (current : ((reactiveApplication timeouts) leaks).Execution) :
+    (swap.execution current).observeEnvironment ((reactiveApplication timeouts) leaks) =
+      current.observeEnvironment ((reactiveApplication timeouts) leaks) := by
   change (⟨current.network.publicView, (current.application.swap swap).publicView,
-    current.receipts⟩ : (runtime.reactiveApplication leaks).EnvironmentView) = _
+    current.receipts⟩ : ((reactiveApplication timeouts) leaks).EnvironmentView) = _
   rw [State.swap_publicView]
   rfl
 
 /-- The evidence request of a response is fixed by the swap. -/
-def RequestFixed (response : (runtime.reactiveApplication leaks).Action) : Prop :=
+def RequestFixed (response : ((reactiveApplication timeouts) leaks).Action) : Prop :=
   ∀ submission, response.transmission = some submission →
     EvidenceRequest.FixedBy swap (WitnessedSubmission.evidence submission)
 
 /-- **A response commutes with the swap** when its evidence request is fixed. -/
-theorem respond_execution (current : (runtime.reactiveApplication leaks).Execution)
-    (who : Player) (response : (runtime.reactiveApplication leaks).Action)
+theorem respond_execution (current : ((reactiveApplication timeouts) leaks).Execution)
+    (who : Player) (response : ((reactiveApplication timeouts) leaks).Action)
     (fixed : swap.RequestFixed response) :
-    (swap.execution current).respond (runtime.reactiveApplication leaks) who
+    (swap.execution current).respond ((reactiveApplication timeouts) leaks) who
         (swap.action response) =
-      swap.execution (current.respond (runtime.reactiveApplication leaks) who response) := by
-  let app := runtime.reactiveApplication leaks
+      swap.execution (current.respond ((reactiveApplication timeouts) leaks) who response) := by
+  let app := (reactiveApplication timeouts) leaks
   rcases response with ⟨transmission⟩
   cases transmission with
   | none =>
@@ -271,44 +275,44 @@ theorem respond_execution (current : (runtime.reactiveApplication leaks).Executi
 
 /-- Inclusion commutes with a failure-fixing swap when the included call satisfies
 its compatibility and resolution conditions. -/
-theorem includePending_execution (current : (runtime.reactiveApplication leaks).Execution)
+theorem includePending_execution (current : ((reactiveApplication timeouts) leaks).Execution)
     (id : MessageId Player)
     (failures : ∀ event, swap.values.ExpiryFixed event)
     (fixed : ∀ envelope, current.network.lookup id = some envelope →
       envelope.payload.tokenValid = true →
-      InclusionFixed runtime swap current.application ⟨envelope.id, envelope.payload.call⟩) :
-    (swap.execution current).includePending (runtime.reactiveApplication leaks) id =
-      swap.execution (current.includePending (runtime.reactiveApplication leaks) id) := by
+      InclusionFixed timeouts swap current.application ⟨envelope.id, envelope.payload.call⟩) :
+    (swap.execution current).includePending ((reactiveApplication timeouts) leaks) id =
+      swap.execution (current.includePending ((reactiveApplication timeouts) leaks) id) := by
   unfold ReactiveApplication.Execution.includePending MessageNetwork.includePending
   simp only [execution_network]
   cases found : current.network.lookup id with
   | none => rfl
   | some envelope =>
-      have handled : (runtime.reactiveApplication leaks).handle
+      have handled : ((reactiveApplication timeouts) leaks).handle
           (current.application.swap swap) envelope =
-          ((runtime.reactiveApplication leaks).handle current.application envelope).map
+          (((reactiveApplication timeouts) leaks).handle current.application envelope).map
             (State.swap swap) := by
         rw [reactiveApplication_handle, reactiveApplication_handle]
         split
         · rename_i valid
           obtain ⟨compatible, openingFixed⟩ := fixed envelope found valid
-          rw [handle_swap runtime swap current.application _ compatible openingFixed]
+          rw [handle_swap timeouts swap current.application _ compatible openingFixed]
           simp only [Option.map_map, Function.comp_def, State.drain_swap swap failures]
         · rfl
       simp only [execution_application]
       rw [handled]
-      cases (runtime.reactiveApplication leaks).handle current.application envelope <;> rfl
+      cases ((reactiveApplication timeouts) leaks).handle current.application envelope <;> rfl
 
 /-- Environment steps commute with a failure-fixing swap when included calls
 satisfy their compatibility and resolution conditions. -/
-theorem environmentStep_execution (current : (runtime.reactiveApplication leaks).Execution)
-    (command : (runtime.reactiveApplication leaks).Command)
+theorem environmentStep_execution (current : ((reactiveApplication timeouts) leaks).Execution)
+    (command : ((reactiveApplication timeouts) leaks).Command)
     (fixed : ∀ id envelope, command = .include id → current.network.lookup id = some envelope →
       envelope.payload.tokenValid = true →
-      InclusionFixed runtime swap current.application ⟨envelope.id, envelope.payload.call⟩)
+      InclusionFixed timeouts swap current.application ⟨envelope.id, envelope.payload.call⟩)
     (failures : ∀ event, swap.values.ExpiryFixed event) :
-    (swap.execution current).environmentStep (runtime.reactiveApplication leaks) command =
-      (current.environmentStep (runtime.reactiveApplication leaks) command).map
+    (swap.execution current).environmentStep ((reactiveApplication timeouts) leaks) command =
+      (current.environmentStep ((reactiveApplication timeouts) leaks) command).map
         swap.execution := by
   unfold ReactiveApplication.Execution.environmentStep
   rw [observeEnvironment_execution, PMF.map_comp]
@@ -327,10 +331,10 @@ theorem environmentStep_execution (current : (runtime.reactiveApplication leaks)
   | application command =>
       simp only [execution_application]
       change PMF.map _ (PMF.map _ (PMF.map State.drain
-        (environmentStep runtime (current.application.swap swap) command))) =
+        (environmentStep timeouts (current.application.swap swap) command))) =
         PMF.map _ (PMF.map _ (PMF.map State.drain
-          (environmentStep runtime current.application command)))
-      rw [environmentStep_swap runtime swap current.application command
+          (environmentStep timeouts current.application command)))
+      rw [environmentStep_swap timeouts swap current.application command
         (fun event _ _ _ _ _ => failures event)]
       simp only [PMF.map_comp, Function.comp_def, State.drain_swap swap failures]
       rfl

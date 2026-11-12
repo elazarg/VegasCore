@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketCounterpartImage
-import Vegas.Game.OnePacketOwnerPriorSite
-import Vegas.Game.OnePacketSplicePoint
-import Vegas.Game.AsyncDeviationForeign
+public import Vegas.Game.OnePacketCounterpartImage
+public import Vegas.Game.OnePacketOwnerPriorSite
+public import Vegas.Game.OnePacketSplicePoint
+public import Vegas.Game.AsyncDeviationForeign
+
+@[expose] public section
 
 /-! # Regular counterparts from successful foreign binding fields
 
@@ -70,7 +74,7 @@ theorem decodeSourcePrefix?_commitment_not_failure (who : Player)
             _ _ _ _ history defaults rest read name owner payload value found foreign
 
 variable {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
 
 /-- Successful foreign binding reads in a native configuration give successful
 foreign commitment cells at its decoded source point. -/
@@ -150,14 +154,14 @@ theorem commitmentCellsSucceed_splicePoint_of_foreign_bindings {responder : Play
 variable [Fintype Player]
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup runtime leaks).Scheduler}
+  {scheduler : (application setup timeouts leaks).Scheduler}
 
 omit [DecidableEq (CellTy Player L)] in
 /-- Once every completed foreign binding succeeds, all present foreign binding
 reads succeed. Initial binding inputs succeed by well-formedness. -/
 theorem foreignBinding_reads_not_failure (wellFormed : setup.WellFormed)
-    {who : Player} {control : (application setup runtime leaks).Control}
-    (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control))
+    {who : Player} {control : (application setup timeouts leaks).Control}
+    (trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some control))
     (successful : ∀ event owner payload,
       (graph setup).outputLayout event = .binding owner payload → owner ≠ who →
       event ∈ control.execution.application.config.cut.completed →
@@ -170,7 +174,7 @@ theorem foreignBinding_reads_not_failure (wellFormed : setup.WellFormed)
   rcases ref with ⟨field, layoutEq⟩
   cases field with
   | inl input =>
-      obtain ⟨initial, member, inputsEq, -⟩ := initialSlots_of_trace (runtime := runtime) trace
+      obtain ⟨initial, member, inputsEq, -⟩ := initialSlots_of_trace (timeouts := timeouts) trace
         control rfl
       have positions : ∀ (Γ : SourceCtx Player L) (position : Fin Γ.length),
           ∃ (name : VarId) (kind : CellTy Player L) (source : HasVar Γ name kind),
@@ -223,12 +227,12 @@ omit [DecidableEq (CellTy Player L)] in
 with the repaired trace's operational record and full focal information. -/
 theorem counterpart_of_successful_foreign_bindings (wellFormed : setup.WellFormed)
     {assessment : setup.intendedModel.BehavioralAssessment} (mixed : assessment.IsFullyMixed)
-    {who : Player} {past : List (application setup runtime leaks).PlayerEntry}
-    {view : (application setup runtime leaks).PlayerView}
+    {who : Player} {past : List (application setup timeouts leaks).PlayerEntry}
+    {view : (application setup timeouts leaks).PlayerView}
     {event : (graph setup).EventId} (turn : view.application.publicView.ownTurn? who = some event)
-    (history witness : (onePacketInformation setup runtime leaks bounds horizon
+    (history witness : (onePacketInformation setup timeouts leaks bounds horizon
       scheduler).InformationHistory who (some (past, view)))
-    {current witnessControl : (application setup runtime leaks).Control}
+    {current witnessControl : (application setup timeouts leaks).Control}
     (historyState : history.1.state = some current)
     (witnessState : witness.1.state = some witnessControl)
     {point target : ProtocolState setup.program}
@@ -240,20 +244,21 @@ theorem counterpart_of_successful_foreign_bindings (wellFormed : setup.WellForme
       event ∈ current.execution.application.config.cut.completed →
       ¬ StoreEventFailed current.execution.application.config.store event)
     (covered : BindingFieldsCovered bounds) :
-    ∃ counterpart : (onePacketInformation setup runtime leaks bounds horizon
+    ∃ counterpart : (onePacketInformation setup timeouts leaks bounds horizon
         scheduler).InformationHistory who (some (past, view)),
-      RegularTrace setup runtime leaks bounds horizon scheduler assessment who counterpart.1.trace ∧
-      operationalRecord setup runtime leaks bounds horizon scheduler counterpart.1.trace =
-        operationalRecord setup runtime leaks bounds horizon scheduler history.1.trace := by
+      RegularTrace setup timeouts leaks bounds horizon scheduler assessment who
+        counterpart.1.trace ∧
+      operationalRecord setup timeouts leaks bounds horizon scheduler counterpart.1.trace =
+        operationalRecord setup timeouts leaks bounds horizon scheduler history.1.trace := by
   classical
   have succeed : CommitmentCellsSucceed setup point target := by
-    have observed (native : (onePacketProtocol setup runtime leaks bounds horizon
+    have observed (native : (onePacketProtocol setup timeouts leaks bounds horizon
       scheduler).History)
-        (seen : (onePacketInformation setup runtime leaks bounds horizon scheduler).infoOf who
+        (seen : (onePacketInformation setup timeouts leaks bounds horizon scheduler).infoOf who
           native.trace = some (past, view))
-        (control : (application setup runtime leaks).Control) (current : native.state = some
+        (control : (application setup timeouts leaks).Control) (current : native.state = some
           control) :
-        control.execution.observe (application setup runtime leaks) who = view := by
+        control.execution.observe (application setup timeouts leaks) who = view := by
       obtain ⟨state, nativeTrace⟩ := native
       change state = some control at current
       subst current
@@ -270,9 +275,9 @@ theorem counterpart_of_successful_foreign_bindings (wellFormed : setup.WellForme
     obtain ⟨⟨state, witnessTrace⟩, witnessInfo⟩ := witness
     change state = some witnessControl at witnessState
     subst witnessState
-    have sameSource := (sourceViewOf_eq_decodedPoint (runtime := runtime) who trace).symm.trans
-      ((congrArg (sourceViewOf setup runtime leaks who) (currentView.trans witnessView.symm)).trans
-        (sourceViewOf_eq_decodedPoint (runtime := runtime) who witnessTrace))
+    have sameSource := (sourceViewOf_eq_decodedPoint (timeouts := timeouts) who trace).symm.trans
+      ((congrArg (sourceViewOf setup timeouts leaks who) (currentView.trans witnessView.symm)).trans
+        (sourceViewOf_eq_decodedPoint (timeouts := timeouts) who witnessTrace))
     rw [decoded, witnessDecoded] at sameSource
     have sameView := Option.some.inj sameSource
     have freeWitness : ∀ point, decodedPoint setup witnessControl.execution.application.config =
@@ -281,15 +286,15 @@ theorem counterpart_of_successful_foreign_bindings (wellFormed : setup.WellForme
       rw [witnessDecoded, Option.some.injEq] at read
       subst read
       exact free player
-    obtain ⟨second, secondReplay⟩ := intendedHistory?_isSome_of_debtFree (runtime := runtime)
+    obtain ⟨second, secondReplay⟩ := intendedHistory?_isSome_of_debtFree (timeouts := timeouts)
       wellFormed witnessTrace
       witnessControl rfl freeWitness
     have secondState : second.state = some target :=
-      (intendedHistory?_state (runtime := runtime) witnessTrace secondReplay).trans witnessDecoded
+      (intendedHistory?_state (timeouts := timeouts) witnessTrace secondReplay).trans witnessDecoded
     exact commitmentCellsSucceed_of_foreign_bindings decoded sameView
       (intended_of_history wellFormed second.trace target secondState)
-      (foreignBinding_reads_not_failure (runtime := runtime) wellFormed trace successful)
-  exact counterpart_of_witness (runtime := runtime) wellFormed mixed turn history witness
+      (foreignBinding_reads_not_failure (timeouts := timeouts) wellFormed trace successful)
+  exact counterpart_of_witness (timeouts := timeouts) wellFormed mixed turn history witness
     historyState witnessState
     decoded witnessDecoded free succeed covered
 

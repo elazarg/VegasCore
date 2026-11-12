@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketDirectedRepairResponse
+public import Vegas.Game.OnePacketDirectedRepairResponse
+
+@[expose] public section
 
 /-! # Actual chance steps through directed binding repair
 
@@ -18,18 +22,18 @@ open GameTheory GameTheory.Math.Probability
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
 namespace DirectedBindingFrame
 
-variable {memory : BindingMemory runtime leaks} {owner : Player}
-  {original repaired : (application setup runtime leaks).Execution}
+variable {memory : BindingMemory timeouts leaks} {owner : Player}
+  {original repaired : (application setup timeouts leaks).Execution}
 
 /-- A supported actual public draw has a supported repaired counterpart with the
 same concrete private-memory frame. The original sample outcome is retained
 jointly with the network, scheduler history, and all foreign decision inputs. -/
-theorem sample_step (frame : DirectedBindingFrame (runtime := runtime) memory owner original
+theorem sample_step (frame : DirectedBindingFrame (timeouts := timeouts) memory owner original
   repaired)
     (clear : original.application.config.defaulted = ∅)
     (onlyBindings : memory.shadow.OwnBindings owner)
@@ -39,13 +43,13 @@ theorem sample_step (frame : DirectedBindingFrame (runtime := runtime) memory ow
     (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
       ((graph setup).nodes event) = .sample payload law)
     (node : nodeView (graph setup) event = .sample payload law outputEq codeEq)
-    (nextOriginal : (application setup runtime leaks).Execution)
-    (left : nextOriginal ∈ (original.environmentStep (application setup runtime leaks)
+    (nextOriginal : (application setup timeouts leaks).Execution)
+    (left : nextOriginal ∈ (original.environmentStep (application setup timeouts leaks)
       (.application (.executeSample event))).support) :
-    ∃ nextRepaired : (application setup runtime leaks).Execution,
-      nextRepaired ∈ (repaired.environmentStep (application setup runtime leaks)
+    ∃ nextRepaired : (application setup timeouts leaks).Execution,
+      nextRepaired ∈ (repaired.environmentStep (application setup timeouts leaks)
         (.application (.executeSample event))).support ∧
-      DirectedBindingFrame (runtime := runtime) memory owner nextOriginal nextRepaired := by
+      DirectedBindingFrame (timeouts := timeouts) memory owner nextOriginal nextRepaired := by
   obtain ⟨coupled, first, second, framed⟩ := frame.toFrame.sample_coupling
     clear onlyBindings
     event ready payload law outputEq codeEq node
@@ -53,7 +57,7 @@ theorem sample_step (frame : DirectedBindingFrame (runtime := runtime) memory ow
     rw [first]
     exact left
   obtain ⟨pair, supported, same⟩ := PMF.support_map .. ▸ firstSupport
-  have right : pair.2 ∈ (repaired.environmentStep (application setup runtime leaks)
+  have right : pair.2 ∈ (repaired.environmentStep (application setup timeouts leaks)
       (.application (.executeSample event))).support := by
     rw [← second, PMF.support_map]
     exact ⟨pair, supported, rfl⟩

@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.EventCommitmentBinding
-import Vegas.Pending.EventStore
+public import Vegas.Pending.EventCommitmentBinding
+public import Vegas.Pending.EventStore
+
+@[expose] public section
 
 /-! # Accepted associations give candidate openings their graph meaning
 

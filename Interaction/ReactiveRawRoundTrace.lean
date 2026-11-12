@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveRoundReachability
-import Interaction.ReactiveHistory
+public import Interaction.ReactiveRoundReachability
+public import Interaction.ReactiveHistory
+
+@[expose] public section
 
 /-! # Rounds of arbitrary players are legal raw histories
 

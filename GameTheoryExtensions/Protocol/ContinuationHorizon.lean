@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheory.Analysis.Protocol.Sequential
-import GameTheory.Analysis.Protocol.CounterfactualDecomposition
-import GameTheory.Protocol.BehavioralTerminal
-import GameTheory.Protocol.RestrictionExecution
+public import GameTheory.Analysis.Protocol.Sequential
+public import GameTheory.Analysis.Protocol.CounterfactualDecomposition
+public import GameTheory.Protocol.BehavioralTerminal
+public import GameTheory.Protocol.RestrictionExecution
+
+@[expose] public section
 
 /-! # Equivalent continuation horizons after a bounded prefix
 

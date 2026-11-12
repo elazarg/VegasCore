@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveHistory
-import GameTheory.Protocol.BehavioralAssessment
+public import Interaction.ReactiveHistory
+public import GameTheory.Protocol.BehavioralAssessment
+
+@[expose] public section
 
 /-! # Reactive decision information supports assessment beliefs
 

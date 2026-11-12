@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.ClientCompiler
+public import Vegas.Game.ClientCompiler
+
+@[expose] public section
 
 /-! # Observable laws and equilibrium outcome coverage of compiled clients
 
@@ -18,21 +22,21 @@ open SourceProgram Interaction EventGraphRuntime GameTheory GameTheory.Protocol
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
-  {setup : Setup (Player := Player) (L := L)} {runtime : EventGraphRuntime (graph setup)}
+  {setup : Setup (Player := Player) (L := L)} {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup runtime leaks).Scheduler}
+  {scheduler : (application setup timeouts leaks).Scheduler}
   {Parameter : Type} {parameter : State L setup.context → Parameter}
   {utility : Parameter × PublicOutcome setup.program → Player → ℝ}
   {excludedPayoff : Player → ℝ}
-  {spec : ClientSpec setup runtime leaks bounds horizon scheduler
+  {spec : ClientSpec setup timeouts leaks bounds horizon scheduler
     parameter utility excludedPayoff}
 
 local notation "Initial" => initialLaw setup
-local notation "app" => application setup runtime leaks
-local notation "raw" => bounds.rawMenu runtime leaks
+local notation "app" => application setup timeouts leaks
+local notation "raw" => bounds.rawMenu timeouts leaks
 local notation "model" => ReactiveApplication.ResponseMenu.information
-  (bounds.rawMenu runtime leaks) Initial horizon scheduler
+  (bounds.rawMenu timeouts leaks) Initial horizon scheduler
 
 namespace ClientCompilation
 
@@ -70,7 +74,7 @@ namespace ClientSpec
 
 /-- Every intended sequential-equilibrium joint law has a runtime equilibrium
 implementation with no public defaults or audit charges on its supported paths. -/
-theorem intended_outcomeLaws_subset (spec : ClientSpec setup runtime leaks bounds
+theorem intended_outcomeLaws_subset (spec : ClientSpec setup timeouts leaks bounds
     horizon scheduler parameter utility excludedPayoff) :
     {law | ∃ intended : setup.intendedModel.BehavioralAssessment,
       setup.IntendedSequentialEquilibrium parameter utility intended ∧
@@ -78,17 +82,17 @@ theorem intended_outcomeLaws_subset (spec : ClientSpec setup runtime leaks bound
           (instructionCount setup.program + 1)).map
           (intendedReadoutExclusion setup parameter utility excludedPayoff) = law} ⊆
     {law | ∃ target : (model).BehavioralAssessment,
-      target.IsSequentialEquilibriumFor
-        ((raw).decisionInformationAntichain Initial horizon scheduler)
-        (fun who site => target.truncatedContinuationContext site
-          (fun final => spec.payoff who final.state) (2 * horizon + 1)) ∧
-      (∀ final ∈ ((model).runBehavioral target.strategy (2 * horizon + 1)).support,
+      target.IsSequentialEquilibrium
+      ((raw).decisionInformationAntichain Initial horizon scheduler)
+      ((raw).bounded Initial horizon scheduler).wellFoundedHistories
+      (fun who final => spec.payoff who final.state) ∧
+      (∀ final ∈ ((raw).run Initial horizon scheduler target.strategy).support,
         ∀ control, final.state = some control →
           control.execution.application.config.defaulted = ∅) ∧
-      (∀ final ∈ ((model).runBehavioral target.strategy (2 * horizon + 1)).support,
+      (∀ final ∈ ((raw).run Initial horizon scheduler target.strategy).support,
         ∀ who, TerminalAudit.charge (app).stateTraffic
-          (runtime.countAudit leaks spec.evidenceService.sample) final.state who = 0) ∧
-      ((model).runBehavioral target.strategy (2 * horizon + 1)).bind
+          ((countAudit timeouts) leaks spec.evidenceService.sample) final.state who = 0) ∧
+      ((raw).run Initial horizon scheduler target.strategy).bind
         (fun final => spec.observation final.state) = law} := by
   rintro law ⟨intended, equilibrium, rfl⟩
   let compiled := spec.compile intended equilibrium

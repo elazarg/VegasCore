@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveInvariant
-import Interaction.MessageNetworkIdentity
-import Interaction.ReactiveEnvironmentStep
-import Interaction.ReactiveServiceInvariant
+public import Interaction.ReactiveInvariant
+public import Interaction.MessageNetworkIdentity
+public import Interaction.ReactiveEnvironmentStep
+public import Interaction.ReactiveServiceInvariant
+
+@[expose] public section
 
 /-! # Public receipts certify payload properties
 

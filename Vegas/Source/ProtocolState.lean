@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Source.Semantics
-import Vegas.Source.CommitmentInterface
+public import Vegas.Source.Semantics
+public import Vegas.Source.CommitmentInterface
+
+@[expose] public section
 
 /-! # Source program points and protocol observations
 

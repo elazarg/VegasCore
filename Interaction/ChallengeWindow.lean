@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheoryExtensions.Math.Probability.Expectation
-import GameTheory.Math.Probability.Bounds
+public import GameTheoryExtensions.Math.Probability.Expectation
+public import GameTheory.Math.Probability.Bounds
+
+@[expose] public section
 
 /-! # Evidence delivery before settlement
 

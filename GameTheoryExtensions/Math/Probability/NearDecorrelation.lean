@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheoryExtensions.Math.Probability.ProductDecorrelation
-import GameTheoryExtensions.Math.Probability.ProductTransport
+public import GameTheoryExtensions.Math.Probability.ProductDecorrelation
+public import GameTheoryExtensions.Math.Probability.ProductTransport
+
+@[expose] public section
 
 /-! # Decorrelation near uncorrelated weights
 

@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Source.Purification
-import Vegas.Examples.CommitRevealAuction
+public import Vegas.Source.Purification
+public import Vegas.Examples.CommitRevealAuction
+
+@[expose] public section
 
 /-! # Purification with integer binding payloads
 

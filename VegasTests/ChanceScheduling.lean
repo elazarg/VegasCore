@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Compile.EventGraphScheduling
-import Vegas.Expr.Simple
+public import Vegas.Compile.EventGraphScheduling
+public import Vegas.Expr.Simple
+
+@[expose] public section
 
 /-! # Exact chance scheduling and a visible-coin policy obstruction
 
@@ -16,16 +20,16 @@ namespace VegasTests.ChanceScheduling
 
 open Vegas EventGraph GameTheory.Math.Probability
 
-private abbrev parallelOrder : EventOrder where
+abbrev parallelOrder : EventOrder where
   eventCount := 2
   predecessors _ := ∅
   predecessor_lt := by simp
 
-private def fairBool : RationalLaw Bool where
+def fairBool : RationalLaw Bool where
   entries := [(false, 1 / 2), (true, 1 / 2)]
   normalized := by norm_num
 
-private def coin {Field : Type} [DecidableEq Field]
+def coin {Field : Type} [DecidableEq Field]
     (layout : Field → EventField Bool simpleExpr) : EventCode layout (.publicData .bool) :=
   .sample (L := simpleExpr) BaseTy.bool {
     schema := []
@@ -35,12 +39,12 @@ private def coin {Field : Type} [DecidableEq Field]
     reads_mem := fun ref => nomatch ref
   }
 
-private def chanceSource : SourceProgram Bool simpleExpr [] ∅ :=
+def chanceSource : SourceProgram Bool simpleExpr [] ∅ :=
   .sample (payload := .bool) 0 (by decide) (.weighted fairBool) <|
   .sample (payload := .bool) 1 (by decide) (.weighted fairBool) <| .ret []
 
-private abbrev chanceGraph := toEventGraph chanceSource
-private def chanceProfile : SourceProgram.BehavioralProfile chanceSource := fun _ => PUnit.unit
+abbrev chanceGraph := toEventGraph chanceSource
+def chanceProfile : SourceProgram.BehavioralProfile chanceSource := fun _ => PUnit.unit
 
 /-- Adaptive public scheduling preserves the complete chance configuration law. -/
 example (scheduler : chanceGraph.PublicScheduler) :
@@ -49,10 +53,10 @@ example (scheduler : chanceGraph.PublicScheduler) :
       SourceProgram.run chanceSource chanceProfile (Env.empty (CellVal simpleExpr)) :=
   scheduled_terminalConfig_law chanceSource scheduler chanceProfile _
 
-private abbrev mixedOutputs : Fin 2 → EventField Bool simpleExpr :=
+abbrev mixedOutputs : Fin 2 → EventField Bool simpleExpr :=
   Fin.cases (.publicData .bool) fun _ => .binding false .bool
 
-private abbrev mixedGraph : Vegas.EventGraph Bool simpleExpr where
+abbrev mixedGraph : Vegas.EventGraph Bool simpleExpr where
   inputCount := 0
   order := parallelOrder
   inputLayout := Fin.elim0
@@ -69,13 +73,13 @@ private abbrev mixedGraph : Vegas.EventGraph Bool simpleExpr where
       exact False.elim (Finset.notMem_empty field member)
   payoffs := []
 
-private abbrev mixedInitial : mixedGraph.Config := Config.initial (fun input => nomatch input)
+abbrev mixedInitial : mixedGraph.Config := Config.initial (fun input => nomatch input)
 
-private theorem mixedReady (event : mixedGraph.EventId) : mixedInitial.cut.Ready event := by
+theorem mixedReady (event : mixedGraph.EventId) : mixedInitial.cut.Ready event := by
   simp [mixedInitial, Config.initial, EventOrder.Cut.Ready, EventOrder.Cut.empty,
     mixedGraph, parallelOrder]
 
-private def visibleCoinPolicy : mixedGraph.BehavioralProfile := fun who event =>
+def visibleCoinPolicy : mixedGraph.BehavioralProfile := fun who event =>
   Fin.cases
     (fun actor _ _ => False.elim (by
       change (none : Option Bool) = some who at actor
@@ -85,7 +89,7 @@ private def visibleCoinPolicy : mixedGraph.BehavioralProfile := fun who event =>
         PMF.pure (some (.success ((observation.store (.inr 0)).getD false))))
       (fun impossible => Fin.elim0 impossible) tail) event
 
-private abbrev sampledTrue : mixedGraph.Config :=
+abbrev sampledTrue : mixedGraph.Config :=
   mixedInitial.complete 0 (mixedReady 0) PUnit.unit true
 
 private theorem initially_active (who : Bool) : who ∉ mixedInitial.defaulted := by

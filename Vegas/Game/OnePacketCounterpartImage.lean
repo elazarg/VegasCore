@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketCounterpartGuard
-import Vegas.Game.OnePacketDebtFreeRegular
-import Vegas.Game.OnePacketSwapFiberSum
-import Vegas.Game.SourceDebtObservation
+public import Vegas.Game.OnePacketCounterpartGuard
+public import Vegas.Game.OnePacketDebtFreeRegular
+public import Vegas.Game.OnePacketSwapFiberSum
+public import Vegas.Game.SourceDebtObservation
+
+@[expose] public section
 
 /-! # Regular counterparts by a swap toward a forced witness
 
@@ -31,22 +35,22 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol Intera
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup runtime leaks).Scheduler}
+  {scheduler : (application setup timeouts leaks).Scheduler}
   [DecidableEq (CellTy Player L)]
 
 omit [DecidableEq (CellTy Player L)] in
 private theorem observe_of_infoOf {who : Player}
-    {past : List (application setup runtime leaks).PlayerEntry}
-    {view : (application setup runtime leaks).PlayerView}
-    (native : (onePacketProtocol setup runtime leaks bounds horizon scheduler).History)
-    (seen : (onePacketInformation setup runtime leaks bounds horizon scheduler).infoOf who
+    {past : List (application setup timeouts leaks).PlayerEntry}
+    {view : (application setup timeouts leaks).PlayerView}
+    (native : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).History)
+    (seen : (onePacketInformation setup timeouts leaks bounds horizon scheduler).infoOf who
       native.trace =
-      some (past, view)) {control : (application setup runtime leaks).Control}
+      some (past, view)) {control : (application setup timeouts leaks).Control}
     (current : native.state = some control) :
-    control.execution.observe (application setup runtime leaks) who = view := by
+    control.execution.observe (application setup timeouts leaks) who = view := by
   obtain ⟨state, trace⟩ := native
   change state = some control at current
   subst current
@@ -65,12 +69,12 @@ field, then some regular history of the input has the operational record of
 `h`. -/
 theorem counterpart_of_witness (wellFormed : setup.WellFormed)
     {assessment : setup.intendedModel.BehavioralAssessment} (mixed : assessment.IsFullyMixed)
-    {who : Player} {past : List (application setup runtime leaks).PlayerEntry}
-    {view : (application setup runtime leaks).PlayerView}
+    {who : Player} {past : List (application setup timeouts leaks).PlayerEntry}
+    {view : (application setup timeouts leaks).PlayerView}
     {event : (graph setup).EventId} (turn : view.application.publicView.ownTurn? who = some event)
-    (history witness : (onePacketInformation setup runtime leaks bounds horizon
+    (history witness : (onePacketInformation setup timeouts leaks bounds horizon
       scheduler).InformationHistory who (some (past, view)))
-    {current witnessControl : (application setup runtime leaks).Control}
+    {current witnessControl : (application setup timeouts leaks).Control}
     (historyState : history.1.state = some current)
     (witnessState : witness.1.state = some witnessControl)
     {p w : ProtocolState setup.program}
@@ -78,13 +82,14 @@ theorem counterpart_of_witness (wellFormed : setup.WellFormed)
     (decodedW : decodedPoint setup witnessControl.execution.application.config = some w)
     (freeW : ∀ player, ¬ ProtocolState.OwesFailure player setup.program w)
     (succeed : CommitmentCellsSucceed setup p w) (covered : BindingFieldsCovered bounds) :
-    ∃ counterpart : (onePacketInformation setup runtime leaks bounds horizon
+    ∃ counterpart : (onePacketInformation setup timeouts leaks bounds horizon
         scheduler).InformationHistory who (some (past, view)),
-      RegularTrace setup runtime leaks bounds horizon scheduler assessment who counterpart.1.trace ∧
-      operationalRecord setup runtime leaks bounds horizon scheduler counterpart.1.trace =
-        operationalRecord setup runtime leaks bounds horizon scheduler history.1.trace := by
-  have currentView := observe_of_infoOf (runtime := runtime) history.1 history.2 historyState
-  have witnessView := observe_of_infoOf (runtime := runtime) witness.1 witness.2 witnessState
+      RegularTrace setup timeouts leaks bounds horizon scheduler assessment who
+        counterpart.1.trace ∧
+      operationalRecord setup timeouts leaks bounds horizon scheduler counterpart.1.trace =
+        operationalRecord setup timeouts leaks bounds horizon scheduler history.1.trace := by
+  have currentView := observe_of_infoOf (timeouts := timeouts) history.1 history.2 historyState
+  have witnessView := observe_of_infoOf (timeouts := timeouts) witness.1 witness.2 witnessState
   obtain ⟨⟨state, trace⟩, seen⟩ := history
   change state = some current at historyState
   subst historyState
@@ -92,9 +97,9 @@ theorem counterpart_of_witness (wellFormed : setup.WellFormed)
   change witnessStateRaw = some witnessControl at witnessState
   subst witnessState
   -- The two decoded points look alike to `who`.
-  have sameSource := (sourceViewOf_eq_decodedPoint (runtime := runtime) who trace).symm.trans
-    ((congrArg (sourceViewOf setup runtime leaks who) (currentView.trans witnessView.symm)).trans
-      (sourceViewOf_eq_decodedPoint (runtime := runtime) who witnessTrace))
+  have sameSource := (sourceViewOf_eq_decodedPoint (timeouts := timeouts) who trace).symm.trans
+    ((congrArg (sourceViewOf setup timeouts leaks who) (currentView.trans witnessView.symm)).trans
+      (sourceViewOf_eq_decodedPoint (timeouts := timeouts) who witnessTrace))
   rw [decodedP, decodedW] at sameSource
   have sameView : ProtocolState.observe who setup.program p =
       ProtocolState.observe who setup.program w := Option.some.inj sameSource
@@ -106,11 +111,11 @@ theorem counterpart_of_witness (wellFormed : setup.WellFormed)
     rw [decodedW, Option.some.injEq] at decoded
     subst decoded
     exact freeW player
-  obtain ⟨second, secondReplay⟩ := intendedHistory?_isSome_of_debtFree (runtime := runtime)
+  obtain ⟨second, secondReplay⟩ := intendedHistory?_isSome_of_debtFree (timeouts := timeouts)
     wellFormed witnessTrace
     witnessControl rfl freeWitness
   have secondState : second.state = some w :=
-    (intendedHistory?_state (runtime := runtime) witnessTrace secondReplay).trans decodedW
+    (intendedHistory?_state (timeouts := timeouts) witnessTrace secondReplay).trans decodedW
   have staticW := decodedPoint_staticAt decodedW
   -- The swap guard at the end of `h`.
   have currentTurn : current.execution.application.publicView.ownTurn? who = some event := by
@@ -121,23 +126,23 @@ theorem counterpart_of_witness (wellFormed : setup.WellFormed)
     (betweenHandlePairs setup p w current.execution.application.accepted)
   have failures : ∀ event, swap.values.ExpiryFixed event :=
     EventGraph.ValueSwap.ofPairs_expiryFixed (betweenPairs publicAgree succeed)
-  have guarded : SwapGuardState setup runtime swap (swapAllowed swap) (some current) :=
-    swapGuardState_of_decoded (runtime := runtime) wellFormed secondState who sameView trace
+  have guarded : SwapGuardState setup timeouts swap (swapAllowed swap) (some current) :=
+    swapGuardState_of_decoded (timeouts := timeouts) wellFormed secondState who sameView trace
       decodedP staticW
       readyOwn rfl
   have bounded := bounded_betweenHandlePairs (p := p) (q := w) (betweenPairs publicAgree succeed)
     current.execution.application.accepted covered
   have fixes : swap.Fixes who :=
-    fixes_between sameView (fun _ _ accepted => accepted_owner_of_trace (runtime := runtime) trace
+    fixes_between sameView (fun _ _ accepted => accepted_owner_of_trace (timeouts := timeouts) trace
       accepted)
-  let symmetry := onePacketSwapSymmetry (runtime := runtime) bounds (initialLaw setup) horizon
+  let symmetry := onePacketSwapSymmetry (timeouts := timeouts) bounds (initialLaw setup) horizon
     scheduler swap
     (initialClosed_swapAllowed swap) bounded failures
-  have imageInfo := infoOf_mapTrace_of_fixes (runtime := runtime) swap (initialClosed_swapAllowed
+  have imageInfo := infoOf_mapTrace_of_fixes (timeouts := timeouts) swap (initialClosed_swapAllowed
     swap) bounded failures
     fixes ⟨some current, trace⟩ guarded seen
   refine ⟨⟨⟨_, symmetry.mapTrace trace guarded⟩, imageInfo⟩, ?_,
-    operationalRecord_mapTrace (runtime := runtime) swap (initialClosed_swapAllowed swap) bounded
+    operationalRecord_mapTrace (timeouts := timeouts) swap (initialClosed_swapAllowed swap) bounded
       failures trace guarded⟩
   -- Nobody owes at the image's decoded point.
   have freeImage : ∀ point, decodedPoint setup (swap.control
@@ -154,14 +159,14 @@ theorem counterpart_of_witness (wellFormed : setup.WellFormed)
     exact freeW player ((ProtocolState.owesFailure_iff_of_sameCells player setup.program _ _ _ w
       (ProtocolState.staticAt_swap _ setup.program _ _ p staticP) staticW same).mp owes)
   have imageTurn : ((swap.control current).execution.observe (application
-    setup runtime leaks)
+    setup timeouts leaks)
       who).application.publicView.ownTurn? who = some event := by
-    change ((swap.execution current.execution).observe (application setup runtime leaks)
+    change ((swap.execution current.execution).observe (application setup timeouts leaks)
       who).application.publicView.ownTurn? who = some event
     rw [HiddenSwap.observe_execution, swap.view_observe_of_fixes fixes,
       currentView]
     exact turn
-  exact regularTrace_of_debtFree (runtime := runtime) wellFormed mixed who (symmetry.mapTrace
+  exact regularTrace_of_debtFree (timeouts := timeouts) wellFormed mixed who (symmetry.mapTrace
     trace guarded)
     freeImage imageTurn
 

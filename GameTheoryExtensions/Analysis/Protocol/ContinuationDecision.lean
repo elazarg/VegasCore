@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheory.Analysis.Protocol.Sequential
-import GameTheoryExtensions.Math.Probability.Expectation
+public import GameTheory.Analysis.Protocol.Sequential
+public import GameTheoryExtensions.Math.Probability.Expectation
+
+@[expose] public section
 
 /-! # Decisions inside actual continuation games
 

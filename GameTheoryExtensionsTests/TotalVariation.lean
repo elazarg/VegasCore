@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheoryExtensions.Math.Probability.TotalVariation
+public import GameTheoryExtensions.Math.Probability.TotalVariation
+
+@[expose] public section
 
 /-! # Total variation transports two arbitrary unclassified outputs -/
 
@@ -10,16 +14,16 @@ namespace GameTheoryExtensionsTests.TotalVariation
 
 open GameTheory.Math.Probability
 
-private def law : PMF (Option Bool) :=
+def law : PMF (Option Bool) :=
   mix (1 / 2) (by norm_num) (by norm_num) (PMF.pure none)
     (mix (1 / 2) (by norm_num) (by norm_num)
       (PMF.pure (some false)) (PMF.pure (some true)))
 
-private def classify : Option Bool → Option Unit
+def classify : Option Bool → Option Unit
   | none => some ()
   | some _ => none
 
-private def read (point : Option Bool) : Bool := point.getD false
+def read (point : Option Bool) : Bool := point.getD false
 
 private theorem class_law : law.map classify =
     mix (1 / 2) (by norm_num) (by norm_num) (PMF.pure (some ())) (PMF.pure none) := by

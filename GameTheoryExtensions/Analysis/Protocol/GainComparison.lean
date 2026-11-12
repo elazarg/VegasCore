@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheory.Math.Probability.ExpectationMixture
+public import GameTheory.Math.Probability.ExpectationMixture
+
+@[expose] public section
 
 /-! # Approximate comparison with source deviation gains
 

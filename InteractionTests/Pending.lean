@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheory.Core.Form
-import Interaction.MessagePool
+public import GameTheory.Core.Form
+public import Interaction.MessagePool
+
+@[expose] public section
 
 /-! # A bounded pending-message interaction
 

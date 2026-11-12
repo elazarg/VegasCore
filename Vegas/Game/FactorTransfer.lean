@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheoryExtensions.Math.Probability.Support
+public import GameTheoryExtensions.Math.Probability.Support
+
+@[expose] public section
 
 /-! # Moving a factored law to a finer key
 

@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheory.Analysis.Protocol.CounterfactualRegret
-import Mathlib.Analysis.SpecificLimits.Basic
+public import GameTheory.Analysis.Protocol.CounterfactualRegret
+public import Mathlib.Analysis.SpecificLimits.Basic
+
+@[expose] public section
 
 /-! # Optimal behavior at a player's last decision
 

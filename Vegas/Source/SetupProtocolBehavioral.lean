@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Source.SetupProtocolEvaluation
-import Vegas.Source.ProtocolBehavioralEvaluation
+public import Vegas.Source.SetupProtocolEvaluation
+public import Vegas.Source.ProtocolBehavioralEvaluation
+
+@[expose] public section
 
 /-! # Behavioral play with private setup
 

@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Examples.OddsEvensSetup
-import Vegas.Game.ConditionedSourceBayes
-import Vegas.Source.Exclusion
+public import Vegas.Examples.OddsEvensSetup
+public import Vegas.Game.ConditionedSourceBayes
+public import Vegas.Source.Exclusion
+
+@[expose] public section
 
 /-! # A common private initial bit in a genuine two-player source game
 

@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.EventGraph.Information
+public import Vegas.EventGraph.Information
+
+@[expose] public section
 
 /-! # Source-ranked recall in reachable event-graph executions
 

@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveImplementation
-import GameTheoryExtensions.Math.Probability.Uniform
-import GameTheory.Core.Deviation
-import GameTheory.Math.Probability.FiniteUniform
+public import Interaction.ReactiveImplementation
+public import GameTheoryExtensions.Math.Probability.Uniform
+public import GameTheory.Core.Deviation
+public import GameTheory.Math.Probability.FiniteUniform
+
+@[expose] public section
 
 open GameTheory.Math.Probability
 
@@ -19,7 +23,7 @@ namespace InteractionTests.ReactiveImplementation
 
 open Interaction GameTheory.Math.Probability
 
-private abbrev app : ReactiveApplication Bool where
+abbrev app : ReactiveApplication Bool where
   State := Unit
   Payload := Bool
   Submission := Bool
@@ -34,24 +38,24 @@ private abbrev app : ReactiveApplication Bool where
   observePublic _ := ()
   observePending _ _ := PMF.pure ∅
 
-private def send (bit : Bool) : app.Action := ⟨some bit⟩
+def send (bit : Bool) : app.Action := ⟨some bit⟩
 
-private def retainedBit : app.Implementation Bool where
+def retainedBit : app.Implementation Bool where
   initial := (uniformLaw _)
   respond bit _ := PMF.pure (send bit, bit)
 
-private def scheduler : app.Scheduler := fun _ _ => PMF.pure (.activate false)
-private def players : Bool → app.Policy := fun _ _ _ => PMF.pure ⟨none⟩
-private def initial : app.Execution := .initial app ()
+def scheduler : app.Scheduler := fun _ _ => PMF.pure (.activate false)
+def players : Bool → app.Policy := fun _ _ _ => PMF.pure ⟨none⟩
+def initial : app.Execution := .initial app ()
 
-private def activated (execution : app.Execution) : app.Execution :=
+def activated (execution : app.Execution) : app.Execution :=
   { execution with environmentRecall := execution.environmentRecall ++
       [⟨execution.observeEnvironment app, .activate false⟩] }
 
-private def once (bit : Bool) : app.Execution :=
+def once (bit : Bool) : app.Execution :=
   (activated initial).respond app false (send bit)
 
-private def twice (bit : Bool) : app.Execution :=
+def twice (bit : Bool) : app.Execution :=
   (activated (once bit)).respond app false (send bit)
 
 theorem private_two (bit : Bool) :
@@ -79,7 +83,7 @@ theorem correlated_packets (bit : Bool) :
     (twice bit).network.pending = [⟨(false, 0), bit⟩, ⟨(false, 1), bit⟩] ∧
       ((twice bit).logs false).length = 2 := ⟨rfl, rfl⟩
 
-private def counter (initialLaw : PMF Nat) : app.Implementation Nat where
+def counter (initialLaw : PMF Nat) : app.Implementation Nat where
   initial := initialLaw
   respond value _ := PMF.pure (⟨none⟩, value + 1)
 

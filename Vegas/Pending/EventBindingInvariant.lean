@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.EventAssociationInvariant
-import Vegas.Pending.ExclusionCompletion
+public import Vegas.Pending.EventAssociationInvariant
+public import Vegas.Pending.ExclusionCompletion
+
+@[expose] public section
 
 /-! # Binding-handle provenance for the event pending runtime
 
@@ -410,10 +414,10 @@ theorem BindingInvariant.acceptBinding {state : State graph}
 end State
 
 /-- Every accepted event packet preserves binding-handle provenance. -/
-theorem handle_bindingInvariant (runtime : EventGraphRuntime graph)
+theorem handle_bindingInvariant (timeouts : EventTimeouts graph)
     (state next : State graph) (message : Message Player (Payload graph))
     (invariant : state.BindingInvariant)
-    (accepted : handle runtime state message = some next) :
+    (accepted : handle timeouts state message = some next) :
     next.BindingInvariant := by
   rcases message with ⟨id, packet⟩
   cases packet with
@@ -421,14 +425,14 @@ theorem handle_bindingInvariant (runtime : EventGraphRuntime graph)
   | commitment event candidate =>
       obtain ⟨_active, ready, _timely, owner, payload, outputEq, _codeEq, _view, _sender,
         handleOwner, _vacant, unused, nextEq⟩ :=
-        (handle_commitment_iff runtime state next id event candidate).mp accepted
+        (handle_commitment_iff timeouts state next id event candidate).mp accepted
       rw [nextEq]
       exact invariant.acceptBinding event ready owner payload outputEq candidate handleOwner unused
   | opening event candidate raw =>
       obtain ⟨ready, action, member, _clock, _activation, _owner, _payload,
         _binding, _checks, outputEq, _codeEq, _view, _action⟩ :=
-        handle_opening_config_step runtime state next id event candidate raw accepted
-      obtain ⟨acceptedEq, candidatesEq⟩ := handle_resolution_tables runtime state next
+        handle_opening_config_step timeouts state next id event candidate raw accepted
+      obtain ⟨acceptedEq, candidatesEq⟩ := handle_resolution_tables timeouts state next
         ⟨id, .opening event candidate raw⟩ (by simp) accepted
       apply bindingInvariant_of_nonbinding_step invariant event ready action member
         acceptedEq candidatesEq
@@ -437,10 +441,10 @@ theorem handle_bindingInvariant (runtime : EventGraphRuntime graph)
       cases bindingEq
 
 /-- Every supported environment command preserves binding provenance. -/
-theorem environmentStep_bindingInvariant (runtime : EventGraphRuntime graph)
+theorem environmentStep_bindingInvariant (timeouts : EventTimeouts graph)
     (state next : State graph) (command : EnvironmentCommand graph)
     (invariant : state.BindingInvariant)
-    (member : next ∈ (environmentStep runtime state command).support) :
+    (member : next ∈ (environmentStep timeouts state command).support) :
     next.BindingInvariant := by
   classical
   cases command with
@@ -452,9 +456,9 @@ theorem environmentStep_bindingInvariant (runtime : EventGraphRuntime graph)
       by_cases ready : state.config.cut.Ready event
       · cases view : nodeView graph event with
         | bind | resolve =>
-            have stepEq : environmentStep runtime state (.executeSample event) =
+            have stepEq : environmentStep timeouts state (.executeSample event) =
                 PMF.pure state := by
-              apply environmentStep_executeSample_of_nonsample runtime state event ready
+              apply environmentStep_executeSample_of_nonsample timeouts state event ready
               intro samplePayload law sampleOutputEq sampleCodeEq sampleEq
               rw [view] at sampleEq
               cases sampleEq
@@ -463,7 +467,7 @@ theorem environmentStep_bindingInvariant (runtime : EventGraphRuntime graph)
             subst next
             exact invariant
         | sample payload law outputEq codeEq =>
-            rw [environmentStep_executeSample_eq runtime state event ready payload law
+            rw [environmentStep_executeSample_eq timeouts state event ready payload law
               outputEq codeEq view, PMF.support_map, Set.mem_image] at member
             obtain ⟨config, configMem, rfl⟩ := member
             apply bindingInvariant_of_nonbinding_step
@@ -475,9 +479,9 @@ theorem environmentStep_bindingInvariant (runtime : EventGraphRuntime graph)
             intro owner bindingPayload bindingEq
             rw [outputEq] at bindingEq
             cases bindingEq
-      · have stepEq : environmentStep runtime state (.executeSample event) =
+      · have stepEq : environmentStep timeouts state (.executeSample event) =
             PMF.pure state := by
-          exact environmentStep_executeSample_of_not_ready runtime state event ready
+          exact environmentStep_executeSample_of_not_ready timeouts state event ready
         rw [stepEq] at member
         simp only [PMF.mem_support_pure_iff _ _] at member
         subst next
@@ -486,22 +490,22 @@ theorem environmentStep_bindingInvariant (runtime : EventGraphRuntime graph)
       by_cases ready : state.config.cut.Ready event
       · cases activated : state.activatedAt event with
         | none =>
-            rw [environmentStep_expire_of_not_activated runtime state event ready activated]
+            rw [environmentStep_expire_of_not_activated timeouts state event ready activated]
               at member
             simp only [PMF.mem_support_pure_iff _ _] at member
             subst next
             exact invariant
         | some entered =>
-            by_cases due : runtime.deadline event ≤ state.clock - entered
+            by_cases due : timeouts.duration event ≤ state.clock - entered
             · cases view : nodeView graph event with
               | sample payload law outputEq codeEq =>
-                  rw [environmentStep_expire_sample_eq runtime state event ready entered
+                  rw [environmentStep_expire_sample_eq timeouts state event ready entered
                     activated due payload law outputEq codeEq view] at member
                   simp only [PMF.mem_support_pure_iff _ _] at member
                   subst next
                   exact invariant
               | bind owner payload outputEq codeEq =>
-                  rw [environmentStep_expire_bind_eq runtime state event ready entered
+                  rw [environmentStep_expire_bind_eq timeouts state event ready entered
                     activated due owner payload outputEq codeEq view] at member
                   simp only [PMF.mem_support_pure_iff _ _] at member
                   subst next
@@ -512,7 +516,7 @@ theorem environmentStep_bindingInvariant (runtime : EventGraphRuntime graph)
                   cases kinds
                   simp
               | resolve owner payload binding checks outputEq codeEq =>
-                  rw [environmentStep_expire_resolve_eq runtime state event ready entered
+                  rw [environmentStep_expire_resolve_eq timeouts state event ready entered
                     activated due owner payload binding checks outputEq codeEq view] at member
                   simp only [PMF.mem_support_pure_iff _ _] at member
                   subst next
@@ -520,12 +524,12 @@ theorem environmentStep_bindingInvariant (runtime : EventGraphRuntime graph)
                   intro bindingOwner bindingPayload bindingEq
                   rw [outputEq] at bindingEq
                   cases bindingEq
-            · rw [environmentStep_expire_of_not_due runtime state event ready entered
+            · rw [environmentStep_expire_of_not_due timeouts state event ready entered
                 activated due] at member
               simp only [PMF.mem_support_pure_iff _ _] at member
               subst next
               exact invariant
-      · rw [environmentStep_expire_of_not_ready runtime state event ready] at member
+      · rw [environmentStep_expire_of_not_ready timeouts state event ready] at member
         simp only [PMF.mem_support_pure_iff _ _] at member
         subst next
         exact invariant

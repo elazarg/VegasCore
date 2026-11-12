@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveSettledVerdict
+public import Vegas.Pending.ReactiveSettledVerdict
+
+@[expose] public section
 
 /-! # The settled content of a packet is fixed once its event is ready
 

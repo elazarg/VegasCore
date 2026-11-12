@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.EventGraph.Validation
-import Interaction.CommitmentCandidates
-import Interaction.MessagePool
-import GameTheory.Math.Probability.Mixture
-import GameTheory.Math.Probability.Product
+public import Vegas.EventGraph.Validation
+public import Interaction.CommitmentCandidates
+public import Interaction.MessagePool
+public import GameTheory.Math.Probability.Mixture
+public import GameTheory.Math.Probability.Product
+
+@[expose] public section
 
 /-! # Event-addressed runtime contract
 
@@ -24,9 +28,10 @@ open GameTheory.Math.Probability Interaction Vegas.EventGraph
 variable {Player : Type} [DecidableEq Player]
 variable {L : IExpr} [R : IExpr.ResultTypes L]
 
-/-- Deadline parameters for one fixed event graph. -/
-structure EventGraphRuntime (graph : Vegas.EventGraph Player L) where
-  deadline : graph.EventId → Nat
+/-- Per-event timeout durations, counted from readiness in clock ticks. -/
+structure EventTimeouts (graph : Vegas.EventGraph Player L) where
+  /-- Clock ticks allowed after an event becomes ready. -/
+  duration : graph.EventId → Nat
 
 namespace EventGraphRuntime
 
@@ -226,17 +231,17 @@ omit R in theorem candidateOfValue_binding_success (kind : EventField Player L)
   simp only [candidateOfValue, ↓reduceIte]
 
 /-- Candidate meaning installed for one initial binding input. -/
-private def initialCandidate (inputs : graph.Inputs) (owner : Player)
+def initialCandidate (inputs : graph.Inputs) (owner : Player)
     (input : graph.InputId) : CommitmentCandidate (Raw L) :=
   candidateOfValue owner (graph.inputLayout input) (inputs input)
 
-private def initialCandidates (inputs : graph.Inputs) :
+def initialCandidates (inputs : graph.Inputs) :
     CommitmentCandidates Player (CandidateSlot graph) (Raw L) where
   table owner slot := match slot with
     | .initial input => initialCandidate inputs owner input
     | .prepared _ => .fresh
 
-private def initialAccepted : AcceptedHandles graph := fun field =>
+def initialAccepted : AcceptedHandles graph := fun field =>
   match field with
   | .inr _ => none
   | .inl input =>
@@ -382,11 +387,11 @@ def bindingResult (state : State graph) (handle : Handle graph) (payload : L.Ty)
 
 /-- Packet inclusion is allowed strictly before this event's relative
 deadline. Expiry becomes effective at the boundary. -/
-def WithinDeadline (runtime : EventGraphRuntime graph) (state : State graph)
+def WithinDeadline (timeouts : EventTimeouts graph) (state : State graph)
     (event : graph.EventId) : Prop :=
   match state.activatedAt event with
   | none => False
-  | some entered => state.clock - entered < runtime.deadline event
+  | some entered => state.clock - entered < timeouts.duration event
 
 end State
 
@@ -508,7 +513,7 @@ theorem submitStep_commitment_fixed (state : State graph) (who : Player)
 /-- Install a binding handle and complete the bind with the immutable meaning
 already associated with that handle. Wrong-typed and unprepared candidates
 produce genuine binding failure without changing packet shape. -/
-private def acceptBinding (state : State graph) (event : graph.EventId)
+def acceptBinding (state : State graph) (event : graph.EventId)
     (ready : state.config.cut.Ready event) (owner : Player) (payload : L.Ty)
     (outputEq : graph.outputLayout event = .binding owner payload)
     (handle : Handle graph) :
@@ -525,7 +530,7 @@ private def acceptBinding (state : State graph) (event : graph.EventId)
 
 /-- Complete one resolution through the deterministic evaluator retained by
 `EventCode`; no handler-local copy of deferred validation exists. -/
-private def acceptResolution (state : State graph) (event : graph.EventId)
+def acceptResolution (state : State graph) (event : graph.EventId)
     (ready : state.config.cut.Ready event) (owner : Player) (payload : L.Ty)
     (binding : FieldRef graph.layout (.binding owner payload))
     (checks : List (GuardCheck graph.layout payload))
@@ -721,7 +726,7 @@ private theorem resolve_complete_mem_step (state : State graph)
     rfl
 
 omit [DecidableEq Player] in
-private theorem resolveOutput?_false_eq_failure_of_ready (state : State graph)
+theorem resolveOutput?_false_eq_failure_of_ready (state : State graph)
     (event : graph.EventId) (ready : state.config.cut.Ready event)
     (owner : Player) (payload : L.Ty)
     (binding : FieldRef graph.layout (.binding owner payload))
@@ -808,14 +813,14 @@ end State
 /-- Event-addressed packet inclusion. Rejected packets remain observable in
 the network and receipt history, but this function changes no contract state
 for them. -/
-def handle (runtime : EventGraphRuntime graph) (state : State graph)
+def handle (timeouts : EventTimeouts graph) (state : State graph)
     (message : Message Player (Payload graph)) : Option (State graph) := by
   classical
   exact if message.sender ∈ state.config.defaulted then none else match message.payload with
   | .malformed _ => none
   | .commitment event handle =>
       if ready : state.config.cut.Ready event then
-        if timely : state.WithinDeadline runtime event then
+        if timely : state.WithinDeadline timeouts event then
           match nodeView graph event with
           | .bind owner payload outputEq _codeEq =>
               if sender : message.sender = owner then
@@ -832,7 +837,7 @@ def handle (runtime : EventGraphRuntime graph) (state : State graph)
       else none
   | .opening event handle raw =>
       if ready : state.config.cut.Ready event then
-        if timely : state.WithinDeadline runtime event then
+        if timely : state.WithinDeadline timeouts event then
           match nodeView graph event with
           | .resolve owner payload binding checks outputEq _codeEq =>
               if sender : message.sender = owner then
@@ -857,7 +862,7 @@ def handle (runtime : EventGraphRuntime graph) (state : State graph)
 /-- A timely authenticated commitment installs its handle and exactly its
 typed immutable meaning. The statement includes failed commitments. -/
 theorem handle_commitment_eq
-    (runtime : EventGraphRuntime graph) (state : State graph)
+    (timeouts : EventTimeouts graph) (state : State graph)
     (id : MessageId Player) (event : graph.EventId) (candidate : Handle graph)
     (owner : Player) (payload : L.Ty)
     (outputEq : graph.outputLayout event = .binding owner payload)
@@ -865,12 +870,12 @@ theorem handle_commitment_eq
       (graph.nodes event) = .bind owner payload)
     (view : nodeView graph event = .bind owner payload outputEq codeEq)
     (ready : state.config.cut.Ready event)
-    (timely : state.WithinDeadline runtime event)
+    (timely : state.WithinDeadline timeouts event)
     (active : id.1 ∉ state.config.defaulted)
     (sender : id.1 = owner) (handleOwner : candidate.1 = owner)
     (vacant : state.accepted (.inr event) = none)
     (unused : state.HandleUnused candidate) :
-    handle runtime state ⟨id, .commitment event candidate⟩ =
+    handle timeouts state ⟨id, .commitment event candidate⟩ =
       some { (state.complete event ready
         (cast (congrArg EventField.Action outputEq.symm)
           (some (state.bindingResult candidate payload)))
@@ -885,7 +890,7 @@ theorem handle_commitment_eq
 /-- A verified opening executes the retained graph resolution kernel,
 including all deferred checks. No extra validator is introduced here. -/
 theorem handle_opening_eq
-    (runtime : EventGraphRuntime graph) (state : State graph)
+    (timeouts : EventTimeouts graph) (state : State graph)
     (id : MessageId Player) (event : graph.EventId) (candidate : Handle graph)
     (owner : Player) (payload : L.Ty)
     (binding : FieldRef graph.layout (.binding owner payload))
@@ -895,7 +900,7 @@ theorem handle_opening_eq
       (graph.nodes event) = .resolve owner payload binding checks)
     (view : nodeView graph event = .resolve owner payload binding checks outputEq codeEq)
     (ready : state.config.cut.Ready event)
-    (timely : state.WithinDeadline runtime event)
+    (timely : state.WithinDeadline timeouts event)
     (active : id.1 ∉ state.config.defaulted)
     (sender : id.1 = owner) (handleOwner : candidate.1 = owner)
     (associated : state.accepted binding.field = some candidate)
@@ -904,7 +909,7 @@ theorem handle_opening_eq
     (stored : binding.get? state.config.store = some (.success value))
     (result : PublicationResult (L.Val payload))
     (resolved : EventCode.resolveOutput? binding checks true state.config.store = some result) :
-    handle runtime state ⟨id, .opening event candidate ⟨payload, value⟩⟩ =
+    handle timeouts state ⟨id, .opening event candidate ⟨payload, value⟩⟩ =
       some (state.complete event ready
         (cast (congrArg EventField.Action outputEq.symm) true)
         (cast (congrArg EventField.Value outputEq.symm) result)) := by
@@ -924,11 +929,11 @@ theorem handle_opening_eq
 
 /-- Commitment acceptance records the frozen handle and its installed binding result,
 including failure. -/
-theorem handle_commitment_iff (runtime : EventGraphRuntime graph) (state next : State graph)
+theorem handle_commitment_iff (timeouts : EventTimeouts graph) (state next : State graph)
     (id : MessageId Player) (event : graph.EventId) (candidate : Handle graph) :
-    handle runtime state ⟨id, .commitment event candidate⟩ = some next ↔
+    handle timeouts state ⟨id, .commitment event candidate⟩ = some next ↔
       id.1 ∉ state.config.defaulted ∧
-      ∃ (ready : state.config.cut.Ready event) (_ : state.WithinDeadline runtime event)
+      ∃ (ready : state.config.cut.Ready event) (_ : state.WithinDeadline timeouts event)
         (owner : Player) (payload : L.Ty)
         (outputEq : graph.outputLayout event = .binding owner payload)
         (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
@@ -951,7 +956,7 @@ theorem handle_commitment_iff (runtime : EventGraphRuntime graph) (state next : 
     refine ⟨active, ?_⟩
     have accepted' := accepted
     by_cases ready : state.config.cut.Ready event
-    · by_cases timely : state.WithinDeadline runtime event
+    · by_cases timely : state.WithinDeadline timeouts event
       · cases view : nodeView graph event with
         | resolve owner payload binding checks outputEq codeEq =>
             simp [handle, Message.sender, active, ready, timely, view] at accepted
@@ -967,7 +972,7 @@ theorem handle_commitment_iff (runtime : EventGraphRuntime graph) (state next : 
               refine ⟨ready, timely, owner, payload, outputEq, codeEq, rfl, sender, handleOwner,
                 vacant, unused, ?_⟩
               exact Option.some.inj (accepted'.symm.trans
-                (handle_commitment_eq runtime state id event candidate owner payload
+                (handle_commitment_eq timeouts state id event candidate owner payload
                   outputEq codeEq view ready timely active sender handleOwner vacant unused))
             · simp_all only [reduceCtorEq]
       · simp [handle, Message.sender, active, ready, timely] at accepted
@@ -975,16 +980,16 @@ theorem handle_commitment_iff (runtime : EventGraphRuntime graph) (state next : 
   · rintro ⟨active, ready, timely, owner, payload, outputEq, codeEq, view, sender, handleOwner,
       vacant, unused, nextEq⟩
     rw [nextEq]
-    exact handle_commitment_eq runtime state id event candidate owner payload outputEq codeEq
+    exact handle_commitment_eq timeouts state id event candidate owner payload outputEq codeEq
       view ready timely active sender handleOwner vacant unused
 
 /-- Opening acceptance records the authenticated typed value and actual
 resolution result, including rejected guards. -/
-theorem handle_opening_iff (runtime : EventGraphRuntime graph) (state next : State graph)
+theorem handle_opening_iff (timeouts : EventTimeouts graph) (state next : State graph)
     (id : MessageId Player) (event : graph.EventId) (candidate : Handle graph) (raw : Raw L) :
-    handle runtime state ⟨id, .opening event candidate raw⟩ = some next ↔
+    handle timeouts state ⟨id, .opening event candidate raw⟩ = some next ↔
       id.1 ∉ state.config.defaulted ∧
-      ∃ (ready : state.config.cut.Ready event) (_ : state.WithinDeadline runtime event)
+      ∃ (ready : state.config.cut.Ready event) (_ : state.WithinDeadline timeouts event)
         (owner : Player) (payload : L.Ty)
         (binding : FieldRef graph.layout (.binding owner payload))
         (checks : List (GuardCheck graph.layout payload))
@@ -1006,7 +1011,7 @@ theorem handle_opening_iff (runtime : EventGraphRuntime graph) (state next : Sta
       simp [handle, Message.sender, inactive] at accepted
     refine ⟨active, ?_⟩
     by_cases ready : state.config.cut.Ready event
-    · by_cases timely : state.WithinDeadline runtime event
+    · by_cases timely : state.WithinDeadline timeouts event
       · cases view : nodeView graph event with
         | bind owner payload outputEq codeEq =>
             simp [handle, Message.sender, active, ready, timely, view] at accepted
@@ -1055,7 +1060,7 @@ theorem handle_opening_iff (runtime : EventGraphRuntime graph) (state next : Sta
                       refine ⟨ready, timely, owner, payload, binding, checks, outputEq,
                         codeEq, value, result, rfl, sender, handleOwner, associated, rfl,
                         lookupEq, stored, resolved, ?_⟩
-                      have direct := handle_opening_eq runtime state id event candidate
+                      have direct := handle_opening_eq timeouts state id event candidate
                         owner payload binding checks outputEq codeEq view ready timely active sender
                         handleOwner associated value lookupEq stored result resolved
                       exact Option.some.inj (accepted'.symm.trans direct)
@@ -1066,21 +1071,21 @@ theorem handle_opening_iff (runtime : EventGraphRuntime graph) (state next : Sta
   · rintro ⟨active, ready, timely, owner, payload, binding, checks, outputEq, codeEq, value, result,
       view, sender, handleOwner, associated, rawEq, verified, stored, resolved, nextEq⟩
     rw [rawEq, nextEq]
-    exact handle_opening_eq runtime state id event candidate owner payload binding checks
+    exact handle_opening_eq timeouts state id event candidate owner payload binding checks
       outputEq codeEq view ready timely active sender handleOwner associated value verified stored
       result resolved
 
 private theorem handle_commitment_config_step
-    (runtime : EventGraphRuntime graph) (state next : State graph)
+    (timeouts : EventTimeouts graph) (state next : State graph)
     (id : MessageId Player) (event : graph.EventId) (candidate : Handle graph)
-    (accepted : handle runtime state ⟨id, .commitment event candidate⟩ = some next) :
+    (accepted : handle timeouts state ⟨id, .commitment event candidate⟩ = some next) :
     ∃ (ready : state.config.cut.Ready event) (action : graph.Action event),
       next.config ∈ (state.config.step event ready action).support ∧
         next.clock = state.clock ∧
         next.activatedAt = State.refreshActivated next.config state.clock state.activatedAt := by
   obtain ⟨active, ready, _timely, owner, payload, outputEq, codeEq, _view, _sender,
     _handleOwner, _vacant, _unused, nextEq⟩ :=
-    (handle_commitment_iff runtime state next id event candidate).mp accepted
+    (handle_commitment_iff timeouts state next id event candidate).mp accepted
   rw [nextEq]
   let result := state.bindingResult candidate payload
   refine ⟨ready, cast (congrArg EventField.Action outputEq.symm) (some result),
@@ -1092,10 +1097,10 @@ private theorem handle_commitment_config_step
 /-- An accepted opening executes its resolution with the original `true`
 action, retaining the precise node and action witnesses. -/
 theorem handle_opening_config_step
-    (runtime : EventGraphRuntime graph) (state next : State graph)
+    (timeouts : EventTimeouts graph) (state next : State graph)
     (id : MessageId Player) (event : graph.EventId) (candidate : Handle graph)
     (raw : Raw L)
-    (accepted : handle runtime state ⟨id, .opening event candidate raw⟩ = some next) :
+    (accepted : handle timeouts state ⟨id, .opening event candidate raw⟩ = some next) :
     ∃ (ready : state.config.cut.Ready event) (action : graph.Action event),
       next.config ∈ (state.config.step event ready action).support ∧
         next.clock = state.clock ∧
@@ -1111,7 +1116,7 @@ theorem handle_opening_config_step
   obtain ⟨active, ready, _timely, owner, payload, binding, checks, outputEq, codeEq, _value,
     result, view, _sender, _handleOwner, _associated, _rawEq, _verified, _stored,
     resolved, nextEq⟩ :=
-    (handle_opening_iff runtime state next id event candidate raw).mp accepted
+    (handle_opening_iff timeouts state next id event candidate raw).mp accepted
   rw [nextEq]
   exact ⟨ready, cast (congrArg EventField.Action outputEq.symm) true,
     resolve_complete_mem_step state event ready owner payload binding checks outputEq codeEq
@@ -1122,40 +1127,40 @@ theorem handle_opening_config_step
 
 /-- Commitment acceptance freezes exactly its addressed handle and installs
 that handle at its event. Authentication binds it to the packet sender. -/
-theorem handle_commitment_tables (runtime : EventGraphRuntime graph)
+theorem handle_commitment_tables (timeouts : EventTimeouts graph)
     (state next : State graph) (id : MessageId Player)
     (event : graph.EventId) (candidate : Handle graph)
-    (accepted : handle runtime state ⟨id, .commitment event candidate⟩ = some next) :
+    (accepted : handle timeouts state ⟨id, .commitment event candidate⟩ = some next) :
     next.candidates = state.candidates.freeze candidate ∧
       next.accepted = Function.update state.accepted (.inr event) (some candidate) ∧
       candidate.1 = id.1 := by
   obtain ⟨_active, _ready, _timely, _owner, _payload, _outputEq, _codeEq, _view, sender,
     handleOwner, _vacant, _unused, nextEq⟩ :=
-    (handle_commitment_iff runtime state next id event candidate).mp accepted
+    (handle_commitment_iff timeouts state next id event candidate).mp accepted
   rw [nextEq]
   exact ⟨rfl, rfl, handleOwner.trans sender.symm⟩
 
 /-- An accepted commitment completes its ready event and installs its handle there. -/
-theorem handle_commitment_accepted (runtime : EventGraphRuntime graph)
+theorem handle_commitment_accepted (timeouts : EventTimeouts graph)
     (state next : State graph) (id : MessageId Player) (event : graph.EventId)
     (candidate : Handle graph)
-    (accepted : handle runtime state ⟨id, .commitment event candidate⟩ = some next) :
+    (accepted : handle timeouts state ⟨id, .commitment event candidate⟩ = some next) :
     state.config.cut.Ready event ∧ state.accepted (.inr event) = none ∧
       next.accepted = Function.update state.accepted (.inr event) (some candidate) ∧
       event ∈ next.config.cut.completed := by
   obtain ⟨_, ready, _, owner, payload, outputEq, codeEq, _, _, _, vacant, _, nextEq⟩ :=
-    (handle_commitment_iff runtime state next id event candidate).mp accepted
-  refine ⟨ready, vacant, (handle_commitment_tables runtime state next id event candidate
+    (handle_commitment_iff timeouts state next id event candidate).mp accepted
+  refine ⟨ready, vacant, (handle_commitment_tables timeouts state next id event candidate
     accepted).2.1, ?_⟩
   rw [nextEq]
   change event ∈ (state.config.cut.complete event ready).completed
   exact (EventOrder.Cut.mem_complete _ _ ready _).mpr (Or.inl rfl)
 
 /-- Resolution traffic never changes accepted binding handles or candidate meanings. -/
-theorem handle_resolution_tables (runtime : EventGraphRuntime graph)
+theorem handle_resolution_tables (timeouts : EventTimeouts graph)
     (state next : State graph) (message : Message Player (Payload graph))
     (noncommitment : ∀ event candidate, message.payload ≠ .commitment event candidate)
-    (accepted : handle runtime state message = some next) :
+    (accepted : handle timeouts state message = some next) :
     next.accepted = state.accepted ∧ next.candidates = state.candidates := by
   rcases message with ⟨id, packet⟩
   cases packet with
@@ -1165,16 +1170,16 @@ theorem handle_resolution_tables (runtime : EventGraphRuntime graph)
       obtain ⟨_active, _ready, _timely, _owner, _payload, _binding, _checks, _outputEq, _codeEq,
         _value, _result, _view, _sender, _handleOwner, _associated, _rawEq, _verified,
         _stored, _resolved, nextEq⟩ :=
-        (handle_opening_iff runtime state next id event candidate raw).mp accepted
+        (handle_opening_iff timeouts state next id event candidate raw).mp accepted
       rw [nextEq]
       exact ⟨rfl, rfl⟩
 
 /-- Every accepted player packet performs exactly one semantic graph step at
 its stable event address. The witness action is the original action retained
 by the ideal configuration, including a sound rejected `true` disclosure. -/
-theorem handle_config_mem_step (runtime : EventGraphRuntime graph)
+theorem handle_config_mem_step (timeouts : EventTimeouts graph)
     (state next : State graph) (message : Message Player (Payload graph))
-    (accepted : handle runtime state message = some next) :
+    (accepted : handle timeouts state message = some next) :
     ∃ event, Payload.event? graph message.payload = some event ∧
       ∃ (ready : state.config.cut.Ready event) (action : graph.Action event),
         next.config ∈ (state.config.step event ready action).support := by
@@ -1183,23 +1188,23 @@ theorem handle_config_mem_step (runtime : EventGraphRuntime graph)
   | malformed raw => simp [handle] at accepted
   | commitment event candidate =>
       obtain ⟨ready, action, member, _, _⟩ :=
-        handle_commitment_config_step runtime state next id event candidate accepted
+        handle_commitment_config_step timeouts state next id event candidate accepted
       exact ⟨event, rfl, ready, action, member⟩
   | opening event candidate raw =>
       obtain ⟨ready, action, member, _, _⟩ :=
-        handle_opening_config_step runtime state next id event candidate raw accepted
+        handle_opening_config_step timeouts state next id event candidate raw accepted
       exact ⟨event, rfl, ready, action, member⟩
 
 /-- Packets addressed to completed events are rejected. -/
-theorem handle_eq_none_of_completed (runtime : EventGraphRuntime graph)
+theorem handle_eq_none_of_completed (timeouts : EventTimeouts graph)
     (state : State graph) (message : Message Player (Payload graph))
     (event : graph.EventId) (addressed : message.payload.event? graph = some event)
-    (completed : event ∈ state.config.cut.completed) : handle runtime state message = none := by
-  cases result : handle runtime state message with
+    (completed : event ∈ state.config.cut.completed) : handle timeouts state message = none := by
+  cases result : handle timeouts state message with
   | none => rfl
   | some next =>
       obtain ⟨named, namedEq, ready, _, _⟩ :=
-        handle_config_mem_step runtime state next message result
+        handle_config_mem_step timeouts state next message result
       have same := Option.some.inj (namedEq.symm.trans addressed)
       subst same
       exact (ready.1 completed).elim
@@ -1207,9 +1212,9 @@ theorem handle_eq_none_of_completed (runtime : EventGraphRuntime graph)
 /-- Every accepted packet preserves the clock and refreshes activation metadata
 around its unique graph completion.  This structural fact complements
 `handle_config_mem_step`; it exposes no private candidate or action data. -/
-theorem handle_clock_activated (runtime : EventGraphRuntime graph)
+theorem handle_clock_activated (timeouts : EventTimeouts graph)
     (state next : State graph) (message : Message Player (Payload graph))
-    (accepted : handle runtime state message = some next) :
+    (accepted : handle timeouts state message = some next) :
     next.clock = state.clock ∧
       next.activatedAt =
         State.refreshActivated next.config state.clock state.activatedAt := by
@@ -1218,16 +1223,16 @@ theorem handle_clock_activated (runtime : EventGraphRuntime graph)
   | malformed raw => simp [handle] at accepted
   | commitment event candidate =>
       obtain ⟨_, _, _, clockEq, activatedEq⟩ :=
-        handle_commitment_config_step runtime state next id event candidate accepted
+        handle_commitment_config_step timeouts state next id event candidate accepted
       exact ⟨clockEq, activatedEq⟩
   | opening event candidate raw =>
       obtain ⟨_, _, _, clockEq, activatedEq, _⟩ :=
-        handle_opening_config_step runtime state next id event candidate raw accepted
+        handle_opening_config_step timeouts state next id event candidate raw accepted
       exact ⟨clockEq, activatedEq⟩
 
 /-- A sample command runs the retained chance kernel once when the addressed
 event is ready. Other event kinds stutter. -/
-private def executeSample (state : State graph) (event : graph.EventId) :
+def executeSample (state : State graph) (event : graph.EventId) :
     PMF (State graph) :=
   if ready : state.config.cut.Ready event then
     match nodeView graph event with
@@ -1242,28 +1247,28 @@ private def executeSample (state : State graph) (event : graph.EventId) :
 
 /-- Expiry is local to one ready strategic event and consumes no other event's
 budget. It completes binds with failure and resolutions with `false`. -/
-private def expire (runtime : EventGraphRuntime graph) (state : State graph)
+def expire (timeouts : EventTimeouts graph) (state : State graph)
     (event : graph.EventId) : State graph :=
   if ready : state.config.cut.Ready event then
     match _activated : state.activatedAt event with
     | none => state
     | some entered =>
-        if _due : runtime.deadline event ≤ state.clock - entered then
+        if _due : timeouts.duration event ≤ state.clock - entered then
           state.completeFailure event ready
         else state
   else state
 
-def environmentStep (runtime : EventGraphRuntime graph) (state : State graph) :
+def environmentStep (timeouts : EventTimeouts graph) (state : State graph) :
     EnvironmentCommand graph → PMF (State graph)
   | .advanceClock => PMF.pure { state with clock := state.clock + 1 }
   | .executeSample event => executeSample state event
-  | .expire event => PMF.pure (expire runtime state event)
+  | .expire event => PMF.pure (expire timeouts state event)
 
 /-- Environment service never changes commitment admission tables. -/
 theorem environmentStep_tables
-    (runtime : EventGraphRuntime graph)
+    (timeouts : EventTimeouts graph)
     (state next : State graph) (command : EnvironmentCommand graph)
-    (member : next ∈ (environmentStep runtime state command).support) :
+    (member : next ∈ (environmentStep timeouts state command).support) :
     next.accepted = state.accepted ∧ next.candidates = state.candidates := by
   cases command with
   | advanceClock =>
@@ -1290,7 +1295,7 @@ theorem environmentStep_tables
         subst next
         exact ⟨rfl, rfl⟩
   | expire event =>
-      change next ∈ (PMF.pure (expire runtime state event)).support at member
+      change next ∈ (PMF.pure (expire timeouts state event)).support at member
       simp only [PMF.mem_support_pure_iff _ _] at member
       subst next
       unfold expire State.completeFailure
@@ -1309,14 +1314,14 @@ theorem environmentStep_tables
 /-- Executing a certified ready sample is exactly the graph chance step, with
 only the runtime activation metadata refreshed around each sampled result. -/
 theorem environmentStep_executeSample_eq
-    (runtime : EventGraphRuntime graph) (state : State graph)
+    (timeouts : EventTimeouts graph) (state : State graph)
     (event : graph.EventId) (ready : state.config.cut.Ready event)
     (payload : L.Ty) (law : PublicDist graph.layout payload)
     (outputEq : graph.outputLayout event = .publicData payload)
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
       (graph.nodes event) = .sample payload law)
     (viewEq : nodeView graph event = .sample payload law outputEq codeEq) :
-    environmentStep runtime state (.executeSample event) =
+    environmentStep timeouts state (.executeSample event) =
       (state.config.step event ready
         (cast (congrArg EventField.Action outputEq.symm) PUnit.unit)).map
           fun config =>
@@ -1326,17 +1331,17 @@ theorem environmentStep_executeSample_eq
   simp only [environmentStep, executeSample, dite_eq_left ready, viewEq]
 
 theorem environmentStep_executeSample_of_not_ready
-    (runtime : EventGraphRuntime graph) (state : State graph)
+    (timeouts : EventTimeouts graph) (state : State graph)
     (event : graph.EventId) (ready : ¬state.config.cut.Ready event) :
-    environmentStep runtime state (.executeSample event) = PMF.pure state := by
+    environmentStep timeouts state (.executeSample event) = PMF.pure state := by
   simp only [environmentStep, executeSample, dite_eq_right ready]
 
 theorem environmentStep_executeSample_of_nonsample
-    (runtime : EventGraphRuntime graph) (state : State graph)
+    (timeouts : EventTimeouts graph) (state : State graph)
     (event : graph.EventId) (ready : state.config.cut.Ready event)
     (view : ∀ payload law outputEq codeEq,
       nodeView graph event ≠ .sample payload law outputEq codeEq) :
-    environmentStep runtime state (.executeSample event) = PMF.pure state := by
+    environmentStep timeouts state (.executeSample event) = PMF.pure state := by
   simp only [environmentStep, executeSample, dite_eq_left ready]
   cases actual : nodeView graph event with
   | bind | resolve => rfl
@@ -1346,16 +1351,16 @@ theorem environmentStep_executeSample_of_nonsample
 /-- Once a ready binding deadline is due, expiry is exactly the binding's
 failure graph completion. -/
 theorem environmentStep_expire_bind_eq
-    (runtime : EventGraphRuntime graph) (state : State graph)
+    (timeouts : EventTimeouts graph) (state : State graph)
     (event : graph.EventId) (ready : state.config.cut.Ready event)
     (entered : Nat) (activated : state.activatedAt event = some entered)
-    (due : runtime.deadline event ≤ state.clock - entered)
+    (due : timeouts.duration event ≤ state.clock - entered)
     (owner : Player) (payload : L.Ty)
     (outputEq : graph.outputLayout event = .binding owner payload)
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
       (graph.nodes event) = .bind owner payload)
     (viewEq : nodeView graph event = .bind owner payload outputEq codeEq) :
-    environmentStep runtime state (.expire event) =
+    environmentStep timeouts state (.expire event) =
       PMF.pure (state.complete event ready
         (cast (congrArg EventField.Action outputEq.symm)
           (none : Option (PublicationResult (L.Val payload))))
@@ -1374,10 +1379,10 @@ theorem environmentStep_expire_bind_eq
 /-- Once a ready resolution deadline is due, expiry executes source FALSE,
 which is total and stores publication failure. -/
 theorem environmentStep_expire_resolve_eq
-    (runtime : EventGraphRuntime graph) (state : State graph)
+    (timeouts : EventTimeouts graph) (state : State graph)
     (event : graph.EventId) (ready : state.config.cut.Ready event)
     (entered : Nat) (activated : state.activatedAt event = some entered)
-    (due : runtime.deadline event ≤ state.clock - entered)
+    (due : timeouts.duration event ≤ state.clock - entered)
     (owner : Player) (payload : L.Ty)
     (binding : FieldRef graph.layout (.binding owner payload))
     (checks : List (GuardCheck graph.layout payload))
@@ -1386,7 +1391,7 @@ theorem environmentStep_expire_resolve_eq
       (graph.nodes event) = .resolve owner payload binding checks)
     (viewEq : nodeView graph event =
       .resolve owner payload binding checks outputEq codeEq) :
-    environmentStep runtime state (.expire event) =
+    environmentStep timeouts state (.expire event) =
       PMF.pure (state.complete event ready
         (cast (congrArg EventField.Action outputEq.symm) false)
         (cast (congrArg EventField.Value outputEq.symm)
@@ -1405,9 +1410,9 @@ theorem environmentStep_expire_resolve_eq
 step at its addressed event. The stutter cases are not-ready, unactivated,
 not-due, or sample events; ready resolution reads make FALSE execution total. -/
 theorem environmentStep_expire_config_eq_or_mem_step
-    (runtime : EventGraphRuntime graph) (state next : State graph)
+    (timeouts : EventTimeouts graph) (state next : State graph)
     (event : graph.EventId)
-    (member : next ∈ (environmentStep runtime state (.expire event)).support) :
+    (member : next ∈ (environmentStep timeouts state (.expire event)).support) :
     next.config = state.config ∨
       ∃ (ready : state.config.cut.Ready event) (action : graph.Action event),
         next.config ∈ (state.config.step event ready action).support := by
@@ -1442,16 +1447,16 @@ theorem environmentStep_expire_config_eq_or_mem_step
   · exact Or.inl rfl
 
 theorem environmentStep_expire_of_not_ready
-    (runtime : EventGraphRuntime graph) (state : State graph)
+    (timeouts : EventTimeouts graph) (state : State graph)
     (event : graph.EventId) (ready : ¬state.config.cut.Ready event) :
-    environmentStep runtime state (.expire event) = PMF.pure state := by
+    environmentStep timeouts state (.expire event) = PMF.pure state := by
   simp only [environmentStep, expire, dite_eq_right ready]
 
 theorem environmentStep_expire_of_not_activated
-    (runtime : EventGraphRuntime graph) (state : State graph)
+    (timeouts : EventTimeouts graph) (state : State graph)
     (event : graph.EventId) (ready : state.config.cut.Ready event)
     (activated : state.activatedAt event = none) :
-    environmentStep runtime state (.expire event) = PMF.pure state := by
+    environmentStep timeouts state (.expire event) = PMF.pure state := by
   simp only [environmentStep, expire, State.completeFailure, dite_eq_left ready]
   split
   · rfl
@@ -1460,11 +1465,11 @@ theorem environmentStep_expire_of_not_activated
     contradiction
 
 theorem environmentStep_expire_of_not_due
-    (runtime : EventGraphRuntime graph) (state : State graph)
+    (timeouts : EventTimeouts graph) (state : State graph)
     (event : graph.EventId) (ready : state.config.cut.Ready event)
     (entered : Nat) (activated : state.activatedAt event = some entered)
-    (due : ¬runtime.deadline event ≤ state.clock - entered) :
-    environmentStep runtime state (.expire event) = PMF.pure state := by
+    (due : ¬timeouts.duration event ≤ state.clock - entered) :
+    environmentStep timeouts state (.expire event) = PMF.pure state := by
   simp only [environmentStep, expire, State.completeFailure, dite_eq_left ready]
   split
   · rename_i actual
@@ -1475,16 +1480,16 @@ theorem environmentStep_expire_of_not_due
     simp only [dite_eq_right due]
 
 theorem environmentStep_expire_sample_eq
-    (runtime : EventGraphRuntime graph) (state : State graph)
+    (timeouts : EventTimeouts graph) (state : State graph)
     (event : graph.EventId) (ready : state.config.cut.Ready event)
     (entered : Nat) (activated : state.activatedAt event = some entered)
-    (due : runtime.deadline event ≤ state.clock - entered)
+    (due : timeouts.duration event ≤ state.clock - entered)
     (payload : L.Ty) (law : PublicDist graph.layout payload)
     (outputEq : graph.outputLayout event = .publicData payload)
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
       (graph.nodes event) = .sample payload law)
     (viewEq : nodeView graph event = .sample payload law outputEq codeEq) :
-    environmentStep runtime state (.expire event) = PMF.pure state := by
+    environmentStep timeouts state (.expire event) = PMF.pure state := by
   simp only [environmentStep, expire, State.completeFailure, dite_eq_left ready]
   split
   · rename_i actual
@@ -1497,9 +1502,9 @@ theorem environmentStep_expire_sample_eq
 /-- A supported sample command either stutters or performs its addressed graph
 step and refreshes activation metadata. -/
 theorem environmentStep_executeSample_config_activated
-    (runtime : EventGraphRuntime graph) (state next : State graph)
+    (timeouts : EventTimeouts graph) (state next : State graph)
     (event : graph.EventId)
-    (member : next ∈ (environmentStep runtime state (.executeSample event)).support) :
+    (member : next ∈ (environmentStep timeouts state (.executeSample event)).support) :
     next.clock = state.clock ∧
       ((next.config = state.config ∧ next.activatedAt = state.activatedAt) ∨
         ∃ (ready : state.config.cut.Ready event) (action : graph.Action event),
@@ -1519,7 +1524,7 @@ theorem environmentStep_executeSample_config_activated
         subst next
         exact ⟨rfl, Or.inl ⟨rfl, rfl⟩⟩
     | sample payload law outputEq codeEq =>
-        rw [environmentStep_executeSample_eq runtime state event ready payload law
+        rw [environmentStep_executeSample_eq timeouts state event ready payload law
           outputEq codeEq view, PMF.support_map] at member
         obtain ⟨config, configMem, rfl⟩ := member
         exact ⟨rfl, Or.inr ⟨ready,
@@ -1533,9 +1538,9 @@ theorem environmentStep_executeSample_config_activated
 /-- A supported expiry command either stutters or performs its addressed graph
 step and refreshes activation metadata. -/
 theorem environmentStep_expire_config_activated
-    (runtime : EventGraphRuntime graph) (state next : State graph)
+    (timeouts : EventTimeouts graph) (state next : State graph)
     (event : graph.EventId)
-    (member : next ∈ (environmentStep runtime state (.expire event)).support) :
+    (member : next ∈ (environmentStep timeouts state (.expire event)).support) :
     next.clock = state.clock ∧
       ((next.config = state.config ∧ next.activatedAt = state.activatedAt) ∨
         ∃ (ready : state.config.cut.Ready event) (action : graph.Action event),
@@ -1545,21 +1550,21 @@ theorem environmentStep_expire_config_activated
   by_cases ready : state.config.cut.Ready event
   · cases activated : state.activatedAt event with
     | none =>
-        rw [environmentStep_expire_of_not_activated runtime state event ready activated,
+        rw [environmentStep_expire_of_not_activated timeouts state event ready activated,
           PMF.mem_support_pure_iff _ _] at member
         subst next
         exact ⟨rfl, Or.inl ⟨rfl, rfl⟩⟩
     | some entered =>
-        by_cases due : runtime.deadline event ≤ state.clock - entered
+        by_cases due : timeouts.duration event ≤ state.clock - entered
         · cases view : nodeView graph event with
           | sample payload law outputEq codeEq =>
-              rw [environmentStep_expire_sample_eq runtime state event ready entered
+              rw [environmentStep_expire_sample_eq timeouts state event ready entered
                 activated due payload law outputEq codeEq view,
                 PMF.mem_support_pure_iff _ _] at member
               subst next
               exact ⟨rfl, Or.inl ⟨rfl, rfl⟩⟩
           | bind owner payload outputEq codeEq =>
-              rw [environmentStep_expire_bind_eq runtime state event ready entered
+              rw [environmentStep_expire_bind_eq timeouts state event ready entered
                 activated due owner payload outputEq codeEq view,
                 PMF.mem_support_pure_iff _ _] at member
               subst next
@@ -1571,7 +1576,7 @@ theorem environmentStep_expire_config_activated
                   bind_complete_mem_step state event ready owner payload outputEq codeEq none,
                 rfl⟩⟩
           | resolve owner payload binding checks outputEq codeEq =>
-              rw [environmentStep_expire_resolve_eq runtime state event ready entered
+              rw [environmentStep_expire_resolve_eq timeouts state event ready entered
                 activated due owner payload binding checks outputEq codeEq view,
                 PMF.mem_support_pure_iff _ _] at member
               subst next
@@ -1581,20 +1586,20 @@ theorem environmentStep_expire_config_activated
                 cast (congrArg EventField.Action outputEq.symm) false,
                 resolve_complete_mem_step state event ready owner payload binding checks
                   outputEq codeEq false .failure (by simpa only [ite_self] using resultEq), rfl⟩⟩
-        · rw [environmentStep_expire_of_not_due runtime state event ready entered
+        · rw [environmentStep_expire_of_not_due timeouts state event ready entered
             activated due, PMF.mem_support_pure_iff _ _] at member
           subst next
           exact ⟨rfl, Or.inl ⟨rfl, rfl⟩⟩
-  · rw [environmentStep_expire_of_not_ready runtime state event ready,
+  · rw [environmentStep_expire_of_not_ready timeouts state event ready,
       PMF.mem_support_pure_iff _ _] at member
     subst next
     exact ⟨rfl, Or.inl ⟨rfl, rfl⟩⟩
 
 /-- Only a sample execution randomizes, and graph chance laws are exact finite
 tables, so every environment step is finitely supported. -/
-theorem environmentStep_support_finite (runtime : EventGraphRuntime graph) (state : State graph)
+theorem environmentStep_support_finite (timeouts : EventTimeouts graph) (state : State graph)
     (command : EnvironmentCommand graph) :
-    (environmentStep runtime state command).support.Finite := by
+    (environmentStep timeouts state command).support.Finite := by
   cases command with
   | executeSample event =>
       change (executeSample state event).support.Finite
@@ -1609,9 +1614,9 @@ theorem environmentStep_support_finite (runtime : EventGraphRuntime graph) (stat
   | _ => simp [environmentStep]
 
 /-- An accepted packet is authored by its event's actor. -/
-theorem handle_sender_actor (runtime : EventGraphRuntime graph)
+theorem handle_sender_actor (timeouts : EventTimeouts graph)
     (state next : State graph) (message : Message Player (Payload graph))
-    (accepted : handle runtime state message = some next) (event : graph.EventId)
+    (accepted : handle timeouts state message = some next) (event : graph.EventId)
     (named : message.payload.event? graph = some event) :
     graph.actor? event = some message.sender := by
   rcases message with ⟨id, packet⟩
@@ -1621,13 +1626,13 @@ theorem handle_sender_actor (runtime : EventGraphRuntime graph)
       have same : actual = event := Option.some.inj named
       subst actual
       obtain ⟨_, _, _, owner, payload, outputEq, codeEq, _, sender, _⟩ :=
-        (handle_commitment_iff runtime state next id event candidate).mp accepted
+        (handle_commitment_iff timeouts state next id event candidate).mp accepted
       exact (nodeView_bind_actor outputEq codeEq).trans (congrArg some sender.symm)
   | opening actual candidate raw =>
       have same : actual = event := Option.some.inj named
       subst actual
       obtain ⟨_, _, _, owner, payload, binding, checks, outputEq, codeEq, _, _, _, sender, _⟩ :=
-        (handle_opening_iff runtime state next id event candidate raw).mp accepted
+        (handle_opening_iff timeouts state next id event candidate raw).mp accepted
       exact (nodeView_resolve_actor outputEq codeEq).trans (congrArg some sender.symm)
 
 end EventGraphRuntime

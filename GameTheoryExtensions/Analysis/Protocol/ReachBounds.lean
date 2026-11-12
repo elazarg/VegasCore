@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheory.Analysis.Protocol.CounterfactualReach
-import GameTheory.Protocol.BehavioralBayes
+public import GameTheory.Analysis.Protocol.CounterfactualReach
+public import GameTheory.Protocol.BehavioralBayes
+
+@[expose] public section
 
 /-! # The reach weight of one history
 

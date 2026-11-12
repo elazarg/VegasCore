@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveNormalRecall
-import Vegas.Pending.ReactiveFiniteResponses
+public import Interaction.ReactiveNormalRecall
+public import Vegas.Pending.ReactiveFiniteResponses
+
+@[expose] public section
 
 /-! # The finite native menus ignore private response aliases
 
@@ -22,21 +26,21 @@ open Interaction
 
 variable {Player : Type} [Fintype Player] [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
-  (bounds : MessageBounds graph) (runtime : EventGraphRuntime graph)
+  (bounds : MessageBounds graph) (timeouts : EventTimeouts graph)
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
 
 theorem rawMenu_eq_of_outputs (who : Player)
-    (first second : List (runtime.reactiveApplication leaks).PlayerEntry)
-    (view : (runtime.reactiveApplication leaks).PlayerView)
-    (same : (runtime.reactiveApplication leaks).outputs first =
-      (runtime.reactiveApplication leaks).outputs second) :
-    (bounds.rawMenu runtime leaks).actions who first view =
-      (bounds.rawMenu runtime leaks).actions who second view := by
+    (first second : List ((reactiveApplication timeouts) leaks).PlayerEntry)
+    (view : ((reactiveApplication timeouts) leaks).PlayerView)
+    (same : ((reactiveApplication timeouts) leaks).outputs first =
+      ((reactiveApplication timeouts) leaks).outputs second) :
+    (bounds.rawMenu timeouts leaks).actions who first view =
+      (bounds.rawMenu timeouts leaks).actions who second view := by
   classical
   have known : ReactiveApplication.ResponseMenu.knownPackets
-      (app := runtime.reactiveApplication leaks) first view =
+      (app := (reactiveApplication timeouts) leaks) first view =
       ReactiveApplication.ResponseMenu.knownPackets
-        (app := runtime.reactiveApplication leaks) second view := by
+        (app := (reactiveApplication timeouts) leaks) second view := by
     simp only [ReactiveApplication.ResponseMenu.knownPackets, same]
   ext response
   rw [rawMenu, ReactiveApplication.ResponseMenu.fromSubmissions_mem,
@@ -46,12 +50,12 @@ theorem rawMenu_eq_of_outputs (who : Player)
   | some submission => simp only [known]
 
 theorem rawMenu_recall (who : Player)
-    (past : List (runtime.reactiveApplication leaks).PlayerEntry)
-    (view : (runtime.reactiveApplication leaks).PlayerView) :
-    (bounds.rawMenu runtime leaks).actions who
-        ((runtime.reactiveNormalization leaks).logs who past) view =
-      (bounds.rawMenu runtime leaks).actions who past view :=
-  bounds.rawMenu_eq_of_outputs runtime leaks who _ _ view
-    ((runtime.reactiveNormalization leaks).recall_outputs who past)
+    (past : List ((reactiveApplication timeouts) leaks).PlayerEntry)
+    (view : ((reactiveApplication timeouts) leaks).PlayerView) :
+    (bounds.rawMenu timeouts leaks).actions who
+        (((reactiveNormalization timeouts) leaks).logs who past) view =
+      (bounds.rawMenu timeouts leaks).actions who past view :=
+  bounds.rawMenu_eq_of_outputs timeouts leaks who _ _ view
+    (((reactiveNormalization timeouts) leaks).recall_outputs who past)
 
 end Vegas.EventGraphRuntime.MessageBounds

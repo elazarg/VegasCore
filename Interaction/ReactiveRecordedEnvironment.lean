@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveResponseMenu
-import Interaction.ReactiveResponseAccounting
-import GameTheoryExtensions.Protocol.TracePrefix
+public import Interaction.ReactiveResponseMenu
+public import Interaction.ReactiveResponseAccounting
+public import GameTheoryExtensions.Protocol.TracePrefix
+
+@[expose] public section
 
 /-! # Actual scheduler origins of remembered environment entries -/
 

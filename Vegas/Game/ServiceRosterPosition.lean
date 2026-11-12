@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.ServiceRoster
+public import Vegas.Game.ServiceRoster
+
+@[expose] public section
 
 /-! # Positions and public block-entry observations in roster plans
 
@@ -105,8 +109,8 @@ section EntrySnapshot
 variable (setup : Setup (Player := Player) (L := L))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
   (rosters : (graph setup).EventId → List Player)
-  (past extra : List (application setup (Vegas.runtime setup) leaks).EnvironmentEntry)
-  (view nextView : (application setup (Vegas.runtime setup) leaks).EnvironmentView)
+  (past extra : List (application setup (Vegas.timeouts setup) leaks).EnvironmentEntry)
+  (view nextView : (application setup (Vegas.timeouts setup) leaks).EnvironmentView)
   (event : (graph setup).EventId)
 
 /-- Before recording a block's first command, the current public view supplies
@@ -132,7 +136,7 @@ theorem rosterBlockCompleted_append
 /-- Recording a command with its current public view preserves the entry test,
 including the first command of a block. -/
 theorem rosterBlockCompleted_record
-    (command : (application setup (Vegas.runtime setup) leaks).Command)
+    (command : (application setup (Vegas.timeouts setup) leaks).Command)
     (position : (rosterPlanPrefix setup rosters event.val).length ≤ past.length) :
     rosterBlockCompleted setup leaks rosters (past ++ [⟨view, command⟩]) nextView event ↔
       rosterBlockCompleted setup leaks rosters past view event := by

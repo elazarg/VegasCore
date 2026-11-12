@@ -1,11 +1,15 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheory.Analysis.Protocol.RestrictionIncentives
-import GameTheory.Analysis.Protocol.SequentialOneShot
-import GameTheoryExtensions.Protocol.ContinuationHorizon
-import GameTheoryExtensions.Analysis.Protocol.UniformPolicyLimit
-import GameTheory.Analysis.Protocol.Incentives
-import GameTheoryExtensions.Analysis.Protocol.ConsistencyCompletion
+public import GameTheory.Analysis.Protocol.RestrictionIncentives
+public import GameTheory.Analysis.Protocol.SequentialOneShot
+public import GameTheoryExtensions.Protocol.ContinuationHorizon
+public import GameTheoryExtensions.Analysis.Protocol.UniformPolicyLimit
+public import GameTheory.Analysis.Protocol.Incentives
+public import GameTheoryExtensions.Analysis.Protocol.ConsistencyCompletion
+
+@[expose] public section
 
 /-! # Sequential equilibrium from local continuation comparisons
 

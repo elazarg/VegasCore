@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Compile.EventGraphState
-import Vegas.Pending.EventApplication
-import Vegas.Source.DisclosureAliases
+public import Vegas.Compile.EventGraphState
+public import Vegas.Pending.EventApplication
+public import Vegas.Source.DisclosureAliases
+
+@[expose] public section
 
 /-! # Full-source steps in the actual native service
 

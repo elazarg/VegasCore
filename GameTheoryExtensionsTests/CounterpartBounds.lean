@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheoryExtensions.Math.Probability.CounterpartBounds
-import Mathlib.Algebra.BigOperators.Fin
-import Mathlib.Tactic.FinCases
-import Mathlib.Tactic.NormNum
+public import GameTheoryExtensions.Math.Probability.CounterpartBounds
+public import Mathlib.Algebra.BigOperators.Fin
+public import Mathlib.Tactic.FinCases
+public import Mathlib.Tactic.NormNum
+
+@[expose] public section
 
 /-! # Two bad histories with one shared good counterpart
 
@@ -18,10 +22,10 @@ namespace GameTheoryExtensionsTests.CounterpartBounds
 
 open GameTheory.Math.Probability Finset
 
-private def weight (history : Fin 3) : ℝ := if history = 2 then 1 else 1 / 4
-private def bad (history : Fin 3) : Prop := history ≠ 2
-private instance : DecidablePred bad := fun history => inferInstanceAs (Decidable (history ≠ 2))
-private def counterpart (_ : Fin 3) : Fin 3 := 2
+def weight (history : Fin 3) : ℝ := if history = 2 then 1 else 1 / 4
+def bad (history : Fin 3) : Prop := history ≠ 2
+instance : DecidablePred bad := fun history => inferInstanceAs (Decidable (history ≠ 2))
+def counterpart (_ : Fin 3) : Fin 3 := 2
 
 private theorem weight_nonnegative (history : Fin 3) : 0 ≤ weight history := by
   unfold weight

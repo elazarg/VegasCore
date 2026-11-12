@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Source.Setup
-import Vegas.Expr.Simple
+public import Vegas.Source.Setup
+public import Vegas.Expr.Simple
+
+@[expose] public section
 
 /-! # A shared-policy private setup regression -/
 
@@ -16,15 +20,15 @@ inductive Player where
   | bob
   deriving DecidableEq
 
-private abbrev secret : VarId := 0
-private abbrev guess : VarId := 1
-private abbrev guessOut : VarId := 2
-private abbrev secretOut : VarId := 3
+abbrev secret : VarId := 0
+abbrev guess : VarId := 1
+abbrev guessOut : VarId := 2
+abbrev secretOut : VarId := 3
 
-private abbrev InitialCtx : SourceCtx Player simpleExpr :=
+abbrev InitialCtx : SourceCtx Player simpleExpr :=
   [(secret, .commitment .alice .bool)]
 
-private def guessGuard : SourceGuard simpleExpr InitialCtx .bob guess .bool where
+def guessGuard : SourceGuard simpleExpr InitialCtx .bob guess .bool where
   schema := []
   schemaNames := by decide
   subjectFresh := by decide
@@ -37,7 +41,7 @@ def program : SourceProgram Player simpleExpr InitialCtx {secret} :=
   .reveal secretOut .alice secret (by decide) (.there (.there .here)) (by decide) <|
   .ret []
 
-private def initialState (bit : Bool) : State simpleExpr InitialCtx :=
+def initialState (bit : Bool) : State simpleExpr InitialCtx :=
   Env.cons (x := secret) (.success bit) (Env.empty (CellVal simpleExpr))
 
 def fairSetup : SourceProgram.Setup (Player := Player) (L := simpleExpr) where

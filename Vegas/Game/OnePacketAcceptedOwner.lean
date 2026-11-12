@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketFactorization
-import Vegas.Pending.ReactiveRuntime
+public import Vegas.Game.OnePacketFactorization
+public import Vegas.Pending.ReactiveRuntime
+
+@[expose] public section
 
 /-! # Accepted handles belong to the owner of their binding
 
@@ -22,15 +26,15 @@ open GameTheory GameTheory.Protocol Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
 omit [Fintype Player] in
-variable (setup runtime leaks) in
+variable (setup timeouts leaks) in
 /-- **Accepted handles are owned** by the owner of their field's binding, at
 every state of the supplied runtime. -/
 theorem acceptedOwned_invariant :
-    (application setup runtime leaks).Invariant (fun state => ∀ field handle,
+    (application setup timeouts leaks).Invariant (fun state => ∀ field handle,
       state.accepted field = some handle →
         ∃ payload, (graph setup).layout field = .binding handle.1 payload) where
   submit state who material held field handle accepted := by
@@ -47,15 +51,15 @@ theorem acceptedOwned_invariant :
         simp [EventGraphRuntime.handle] at call
     | opening named other raw =>
         rw [packet] at call
-        have tables := handle_resolution_tables runtime state native _
+        have tables := handle_resolution_tables timeouts state native _
           (fun _ _ same => by cases same) call
         rw [tables.1] at accepted
         exact held field handle accepted
     | commitment named other =>
         rw [packet] at call
         obtain ⟨_, _, _, owner, payload, outputEq, _, _, _, candidateOwner, _, _, _⟩ :=
-          (handle_commitment_iff runtime state native message.id named other).mp call
-        rw [(handle_commitment_tables runtime state native message.id named other
+          (handle_commitment_iff timeouts state native message.id named other).mp call
+        rw [(handle_commitment_tables timeouts state native message.id named other
           call).2.1] at accepted
         by_cases same : field = .inr named
         · subst same
@@ -65,25 +69,25 @@ theorem acceptedOwned_invariant :
         · rw [Function.update_of_ne same] at accepted
           exact held field handle accepted
   environment state command next held reached field handle accepted := by
-    rw [(reactiveApplication_environment_tables runtime leaks state next command reached).1]
+    rw [(reactiveApplication_environment_tables timeouts leaks state next command reached).1]
       at accepted
     exact held field handle accepted
 
 /-- **Every accepted handle belongs to the owner** of its field's binding, along
 every history of the one-packet game. -/
 theorem accepted_owner_of_trace {bounds : MessageBounds (graph setup)} {horizon : Nat}
-    {scheduler : (application setup runtime leaks).Scheduler} {control : (application setup
-      runtime leaks).Control}
-    (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control))
+    {scheduler : (application setup timeouts leaks).Scheduler} {control : (application setup
+      timeouts leaks).Control}
+    (trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some control))
     {field : (graph setup).Field} {handle : Handle (graph setup)}
     (accepted : control.execution.application.accepted field = some handle) :
     ∃ payload, (graph setup).layout field = .binding handle.1 payload := by
-  have rawTrace : ((application setup runtime leaks).protocol (initialLaw setup) horizon
+  have rawTrace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
     scheduler).Trace
       (some control) :=
-    (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup) horizon scheduler
+    (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon scheduler
       trace
-  refine (acceptedOwned_invariant setup runtime leaks).history (initialLaw setup) horizon scheduler
+  refine (acceptedOwned_invariant setup timeouts leaks).history (initialLaw setup) horizon scheduler
     (fun state member => ?_) rawTrace field handle accepted
   rw [initialLaw, serviceInitialLaw, PMF.support_map] at member
   obtain ⟨_, _, rfl⟩ := member

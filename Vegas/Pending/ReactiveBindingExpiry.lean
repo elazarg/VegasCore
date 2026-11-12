@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveBindingFrameStep
+public import Vegas.Pending.ReactiveBindingFrameStep
+
+@[expose] public section
 
 /-! # Clock padding and expiry across a private binding repair
 
@@ -18,21 +22,21 @@ open Interaction EventGraph GameTheory.Math.Probability
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
-  {runtime : EventGraphRuntime graph}
+  {timeouts : EventTimeouts graph}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)}
-  {memory : BindingMemory runtime leaks} {owner : Player}
-  {original repaired : (runtime.reactiveApplication leaks).Execution}
+  {memory : BindingMemory timeouts leaks} {owner : Player}
+  {original repaired : ((reactiveApplication timeouts) leaks).Execution}
 
 private theorem expiry_application_frame
-    (frame : Frame runtime leaks memory owner original repaired)
+    (frame : Frame timeouts leaks memory owner original repaired)
     (event : graph.EventId)
     (noValue : memory.shadow.values (.inr event) = none)
     (noAction : memory.shadow.actions event = none)
     (left right : State graph)
-    (leftSupport : left ∈ (environmentStep runtime original.application (.expire event)).support)
+    (leftSupport : left ∈ (environmentStep timeouts original.application (.expire event)).support)
     (rightSupport : right ∈
-      (environmentStep runtime repaired.application (.expire event)).support) :
-    Frame runtime leaks memory owner { original with application := left }
+      (environmentStep timeouts repaired.application (.expire event)).support) :
+    Frame timeouts leaks memory owner { original with application := left }
       { repaired with application := right } := by
   have cuts := cut_eq_of_completionOrder_eq original.application.config repaired.application.config
     (congrArg (fun view : PublicView graph => view.observation.completionOrder) frame.publicView)
@@ -49,9 +53,9 @@ private theorem expiry_application_frame
         have rightActivated : repaired.application.activatedAt event = none := by
           rw [← activations]
           exact activated
-        rw [environmentStep_expire_of_not_activated runtime original.application event ready
+        rw [environmentStep_expire_of_not_activated timeouts original.application event ready
           activated, PMF.mem_support_pure_iff _ _] at leftSupport
-        rw [environmentStep_expire_of_not_activated runtime repaired.application event rightReady
+        rw [environmentStep_expire_of_not_activated timeouts repaired.application event rightReady
           rightActivated, PMF.mem_support_pure_iff _ _] at rightSupport
         subst left
         subst right
@@ -60,47 +64,48 @@ private theorem expiry_application_frame
         have rightActivated : repaired.application.activatedAt event = some entered := by
           rw [← activations]
           exact activated
-        by_cases due : runtime.deadline event ≤ original.application.clock - entered
-        · have rightDue : runtime.deadline event ≤ repaired.application.clock - entered := by
+        by_cases due : timeouts.duration event ≤ original.application.clock - entered
+        · have rightDue : timeouts.duration event ≤ repaired.application.clock - entered := by
             rw [← clocks]
             exact due
           cases node : nodeView graph event with
           | sample payload law outputEq codeEq =>
-              rw [environmentStep_expire_sample_eq runtime original.application event ready entered
+              rw [environmentStep_expire_sample_eq timeouts original.application event ready entered
                 activated due payload law outputEq codeEq node,
                   PMF.mem_support_pure_iff _ _] at leftSupport
-              rw [environmentStep_expire_sample_eq runtime repaired.application event rightReady
+              rw [environmentStep_expire_sample_eq timeouts repaired.application event rightReady
                 entered rightActivated rightDue payload law outputEq codeEq node,
                   PMF.mem_support_pure_iff _ _] at rightSupport
               subst left
               subst right
               exact frame
           | bind actor payload outputEq codeEq =>
-              rw [environmentStep_expire_bind_eq runtime original.application event ready entered
+              rw [environmentStep_expire_bind_eq timeouts original.application event ready entered
                 activated due actor payload outputEq codeEq node,
                   PMF.mem_support_pure_iff _ _] at leftSupport
-              rw [environmentStep_expire_bind_eq runtime repaired.application event rightReady
+              rw [environmentStep_expire_bind_eq timeouts repaired.application event rightReady
                 entered rightActivated rightDue actor payload outputEq codeEq node,
                   PMF.mem_support_pure_iff _ _] at rightSupport
               subst left
               subst right
               exact frame.complete_unmodified event ready rightReady noValue noAction _ _
           | resolve actor payload binding checks outputEq codeEq =>
-              rw [environmentStep_expire_resolve_eq runtime original.application event ready entered
+              rw [environmentStep_expire_resolve_eq timeouts original.application event ready
+                entered
                 activated due actor payload binding checks outputEq codeEq node,
                   PMF.mem_support_pure_iff _ _] at leftSupport
-              rw [environmentStep_expire_resolve_eq runtime repaired.application event rightReady
+              rw [environmentStep_expire_resolve_eq timeouts repaired.application event rightReady
                 entered rightActivated rightDue actor payload binding checks outputEq codeEq node,
                   PMF.mem_support_pure_iff _ _] at rightSupport
               subst left
               subst right
               exact frame.complete_unmodified event ready rightReady noValue noAction _ _
-        · have rightNotDue : ¬ runtime.deadline event ≤ repaired.application.clock - entered := by
+        · have rightNotDue : ¬ timeouts.duration event ≤ repaired.application.clock - entered := by
             rw [← clocks]
             exact due
-          rw [environmentStep_expire_of_not_due runtime original.application event ready entered
+          rw [environmentStep_expire_of_not_due timeouts original.application event ready entered
             activated due, PMF.mem_support_pure_iff _ _] at leftSupport
-          rw [environmentStep_expire_of_not_due runtime repaired.application event rightReady
+          rw [environmentStep_expire_of_not_due timeouts repaired.application event rightReady
             entered rightActivated rightNotDue, PMF.mem_support_pure_iff _ _] at rightSupport
           subst left
           subst right
@@ -108,9 +113,9 @@ private theorem expiry_application_frame
   · have rightNotReady : ¬ repaired.application.config.cut.Ready event := by
       rw [← cuts]
       exact ready
-    rw [environmentStep_expire_of_not_ready runtime original.application event ready,
+    rw [environmentStep_expire_of_not_ready timeouts original.application event ready,
       PMF.mem_support_pure_iff _ _] at leftSupport
-    rw [environmentStep_expire_of_not_ready runtime repaired.application event rightNotReady,
+    rw [environmentStep_expire_of_not_ready timeouts repaired.application event rightNotReady,
       PMF.mem_support_pure_iff _ _] at rightSupport
     subst left
     subst right
@@ -120,25 +125,25 @@ private theorem expiry_application_frame
 when the addressed event has no private override. The clear endpoint makes
 automatic completion inert on both sides. -/
 theorem expiry_unmodified
-    (frame : Frame runtime leaks memory owner original repaired)
+    (frame : Frame timeouts leaks memory owner original repaired)
     (event : graph.EventId)
     (noValue : memory.shadow.values (.inr event) = none)
     (noAction : memory.shadow.actions event = none)
-    (left right : (runtime.reactiveApplication leaks).Execution)
-    (leftSupport : left ∈ (original.environmentStep (runtime.reactiveApplication leaks)
+    (left right : ((reactiveApplication timeouts) leaks).Execution)
+    (leftSupport : left ∈ (original.environmentStep ((reactiveApplication timeouts) leaks)
       (.application (.expire event))).support)
     (endpointClear : left.application.config.defaulted = ∅)
-    (rightSupport : right ∈ (repaired.environmentStep (runtime.reactiveApplication leaks)
+    (rightSupport : right ∈ (repaired.environmentStep ((reactiveApplication timeouts) leaks)
       (.application (.expire event))).support) :
-    Frame runtime leaks memory owner left right := by
-  let app := runtime.reactiveApplication leaks
+    Frame timeouts leaks memory owner left right := by
+  let app := (reactiveApplication timeouts) leaks
   simp only [ReactiveApplication.Execution.environmentStep, PMF.map_comp]
     at leftSupport rightSupport
   obtain ⟨leftState, leftMoved, rfl⟩ := PMF.support_map .. ▸ leftSupport
   obtain ⟨rightState, rightMoved, rfl⟩ := PMF.support_map .. ▸ rightSupport
-  change leftState ∈ ((environmentStep runtime original.application (.expire event)).map
+  change leftState ∈ ((environmentStep timeouts original.application (.expire event)).map
     State.drain).support at leftMoved
-  change rightState ∈ ((environmentStep runtime repaired.application (.expire event)).map
+  change rightState ∈ ((environmentStep timeouts repaired.application (.expire event)).map
     State.drain).support at rightMoved
   obtain ⟨leftNative, leftRawMoved, rfl⟩ := PMF.support_map .. ▸ leftMoved
   obtain ⟨rightNative, rightRawMoved, rfl⟩ := PMF.support_map .. ▸ rightMoved
@@ -158,16 +163,16 @@ theorem expiry_unmodified
 
 /-- Public event expiry cannot reveal a repaired hidden binding. -/
 theorem expiry_public
-    (frame : Frame runtime leaks memory owner original repaired)
+    (frame : Frame timeouts leaks memory owner original repaired)
     (onlyBindings : memory.shadow.OwnBindings owner)
     (event : graph.EventId) (visible : (graph.outputLayout event).IsPublic)
-    (left right : (runtime.reactiveApplication leaks).Execution)
-    (leftSupport : left ∈ (original.environmentStep (runtime.reactiveApplication leaks)
+    (left right : ((reactiveApplication timeouts) leaks).Execution)
+    (leftSupport : left ∈ (original.environmentStep ((reactiveApplication timeouts) leaks)
       (.application (.expire event))).support)
     (endpointClear : left.application.config.defaulted = ∅)
-    (rightSupport : right ∈ (repaired.environmentStep (runtime.reactiveApplication leaks)
+    (rightSupport : right ∈ (repaired.environmentStep ((reactiveApplication timeouts) leaks)
       (.application (.expire event))).support) :
-    Frame runtime leaks memory owner left right :=
+    Frame timeouts leaks memory owner left right :=
   frame.expiry_unmodified event (onlyBindings.public_value_none (.inr event) visible)
     (onlyBindings.public_action_none event visible) left right leftSupport endpointClear
       rightSupport

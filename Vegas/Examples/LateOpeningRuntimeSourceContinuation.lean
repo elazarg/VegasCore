@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Examples.LateOpeningRuntimeSource
-import GameTheoryExtensions.Protocol.ContinuationHorizon
+public import Vegas.Examples.LateOpeningRuntimeSource
+public import GameTheoryExtensions.Protocol.ContinuationHorizon
+
+@[expose] public section
 
 /-! # The answer and forced publication in the actual source protocol -/
 
@@ -64,10 +68,10 @@ def boundState (bit : Bool) (label : Fin 3) (answer : Answer) : setup.ProtocolSt
 def finishedState (bit : Bool) (label : Fin 3) (answer : Answer) : setup.ProtocolState :=
   some (.inr (.inr (.inr (revealSuccessor 4 .here (boundConfig bit label answer) true))))
 
-private def bindingJoint (answer : Answer) (who : Player) : Option (OwnAction Player simpleExpr) :=
+def bindingJoint (answer : Answer) (who : Player) : Option (OwnAction Player simpleExpr) :=
   if who = bob then some (.commit bob 3 (.range 0 5) (some (.success answer))) else none
 
-private theorem bindingJointLegal (bit : Bool) (label : Fin 3) (answer : Answer) :
+theorem bindingJointLegal (bit : Bool) (label : Fin 3) (answer : Answer) :
     setup.intendedProtocol.Legal (openedState bit label) (bindingJoint answer) := by
   refine ⟨not_false, ?_⟩
   intro who
@@ -80,7 +84,7 @@ private theorem bindingJointLegal (bit : Bool) (label : Fin 3) (answer : Answer)
         OwnAction.commit bob 3 (BaseTy.range 0 5) (some (.success value))
     exact ⟨rfl, answer, Or.inl (fun _ => rfl), rfl⟩
 
-private theorem binding_step (bit : Bool) (label : Fin 3) (answer : Answer) :
+theorem binding_step (bit : Bool) (label : Fin 3) (answer : Answer) :
     setup.intendedProtocol.step (openedState bit label)
       ⟨bindingJoint answer, bindingJointLegal bit label answer⟩ =
       PMF.pure (boundState bit label answer) := by
@@ -101,10 +105,10 @@ def boundHistory (bit : Bool) (label : Fin 3) (answer : Answer) :
       rw [binding_step]
       exact (PMF.mem_support_pure_iff _ _).mpr rfl)
 
-private def publicationJoint (who : Player) : Option (OwnAction Player simpleExpr) :=
+def publicationJoint (who : Player) : Option (OwnAction Player simpleExpr) :=
   if who = bob then some (.reveal bob 3 true) else none
 
-private theorem publicationJointLegal (bit : Bool) (label : Fin 3) (answer : Answer) :
+theorem publicationJointLegal (bit : Bool) (label : Fin 3) (answer : Answer) :
     setup.intendedProtocol.Legal (boundState bit label answer) publicationJoint := by
   refine ⟨not_false, ?_⟩
   intro who
@@ -116,7 +120,7 @@ private theorem publicationJointLegal (bit : Bool) (label : Fin 3) (answer : Ans
         Set (OwnAction Player simpleExpr))
     exact ⟨rfl, rfl⟩
 
-private theorem publication_step (bit : Bool) (label : Fin 3) (answer : Answer) :
+theorem publication_step (bit : Bool) (label : Fin 3) (answer : Answer) :
     setup.intendedProtocol.step (boundState bit label answer)
       ⟨publicationJoint, publicationJointLegal bit label answer⟩ =
       PMF.pure (finishedState bit label answer) := by

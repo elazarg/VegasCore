@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactivePolicy
+public import Vegas.Pending.ReactivePolicy
+
+@[expose] public section
 
 /-! # Prescribed submissions, recovery choices, and initialized law equality -/
 
@@ -14,15 +18,15 @@ variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
 
 /-- A binding at a fresh owned slot is already in response normal form. -/
-theorem reactiveBinding_normal_of_fresh (runtime : EventGraphRuntime graph)
+theorem reactiveBinding_normal_of_fresh (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (who : Player) (past : List (runtime.reactiveApplication leaks).PlayerEntry)
-    (view : (runtime.reactiveApplication leaks).PlayerView)
+    (who : Player) (past : List ((reactiveApplication timeouts) leaks).PlayerEntry)
+    (view : ((reactiveApplication timeouts) leaks).PlayerView)
     (event : graph.EventId) (payload : L.Ty) (result : PublicationResult (L.Val payload))
     (serial : Nat) (fresh : view.application.candidates (.prepared serial) = .fresh) :
-    (runtime.reactiveNormalization leaks).action who past view
-      (runtime.reactiveBinding leaks who event payload result serial) =
-      runtime.reactiveBinding leaks who event payload result serial := by
+    ((reactiveNormalization timeouts) leaks).action who past view
+      ((reactiveBinding timeouts) leaks who event payload result serial) =
+      (reactiveBinding timeouts) leaks who event payload result serial := by
   simp only [ReactiveApplication.SubmissionNormalization.action, reactiveBinding,
     reactiveNormalization, WitnessedSubmission.normalizeReactive,
     Submission.normalizeReactive, openingEffective, fresh, and_self, ↓reduceIte,
@@ -60,15 +64,15 @@ theorem reactiveResolutionPacket_event {owner : Player} (who : Player) (event : 
     | cases sent
 
 /-- The prescribed translator makes no transmission for an already defaulted owner. -/
-theorem reactiveDecision_defaulted (runtime : EventGraphRuntime graph)
+theorem reactiveDecision_defaulted (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (who : Player) (event : graph.EventId) (action : graph.Action event) (view : PlayerView graph)
     (inactive : who ∈ view.publicView.observation.defaulted) :
-    (runtime.reactiveDecision leaks who event action view).transmission = none := by
+    ((reactiveDecision timeouts) leaks who event action view).transmission = none := by
   simp only [reactiveDecision, ite_eq_left inactive]
 
 /-- A selected binding omission stays silent, independently of available candidate slots. -/
-theorem reactiveDecision_binding_none (runtime : EventGraphRuntime graph)
+theorem reactiveDecision_binding_none (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (who : Player) (event : graph.EventId) (owner : Player) (payload : L.Ty)
     (outputEq : graph.outputLayout event = .binding owner payload)
@@ -76,13 +80,13 @@ theorem reactiveDecision_binding_none (runtime : EventGraphRuntime graph)
       .bind owner payload)
     (node : nodeView graph event = .bind owner payload outputEq codeEq)
     (view : PlayerView graph) :
-    (runtime.reactiveDecision leaks who event
+    ((reactiveDecision timeouts) leaks who event
       (cast (congrArg EventField.Action outputEq.symm)
         (none : Option (PublicationResult (L.Val payload)))) view).transmission = none := by
   simp only [reactiveDecision, node, cast_cast, cast_eq, Option.bind_none, ite_self]
 
 /-- Admitted binding failure sends an opaque handle just as an admitted value does. -/
-theorem reactiveDecision_binding_some (runtime : EventGraphRuntime graph)
+theorem reactiveDecision_binding_some (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (who : Player) (event : graph.EventId) (owner : Player) (payload : L.Ty)
     (outputEq : graph.outputLayout event = .binding owner payload)
@@ -92,9 +96,9 @@ theorem reactiveDecision_binding_some (runtime : EventGraphRuntime graph)
     (view : PlayerView graph) (active : who ∉ view.publicView.observation.defaulted)
     (serial : Nat) (selected : reactiveFreshSlot view = some serial)
     (result : PublicationResult (L.Val payload)) :
-    runtime.reactiveDecision leaks who event
+    (reactiveDecision timeouts) leaks who event
         (cast (congrArg EventField.Action outputEq.symm) (some result)) view =
-      runtime.reactiveBinding leaks who event payload result serial := by
+      (reactiveBinding timeouts) leaks who event payload result serial := by
   simp only [reactiveDecision, ite_eq_right active, node, cast_cast, cast_eq,
     Option.bind_some, selected, Option.map_some]
   rfl

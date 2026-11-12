@@ -1,11 +1,15 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RevealService
-import Vegas.Pending.ReactiveAssociationEvidence
-import Vegas.Pending.ReactiveGuardedResponse
-import Vegas.Pending.ReactiveOnePacketMenu
-import Vegas.Pending.ReactiveOpeningWindow
-import Vegas.Pending.ReactiveSignedCommitments
+public import Vegas.Game.RevealService
+public import Vegas.Pending.ReactiveAssociationEvidence
+public import Vegas.Pending.ReactiveGuardedResponse
+public import Vegas.Pending.ReactiveOnePacketMenu
+public import Vegas.Pending.ReactiveOpeningWindow
+public import Vegas.Pending.ReactiveSignedCommitments
+
+@[expose] public section
 
 /-! # Canonical decisions are permitted first packets
 
@@ -41,8 +45,8 @@ open GameTheory.Math.Probability Interaction EventGraphRuntime
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
-  (runtime : EventGraphRuntime (graph setup)) {mode : EventGraph.ExecutionMode}
-  {deadline : (serviceGraph setup mode).EventId → Nat}
+  (timeouts : EventTimeouts (graph setup)) {mode : EventGraph.ExecutionMode}
+  {duration : (serviceGraph setup mode).EventId → Nat}
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
 
 /-- The service's initial law consists of initial runtime states. -/
@@ -52,24 +56,24 @@ theorem serviceInitialLaw_initialized (state : EventGraphRuntime.State (serviceG
   obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ supported
   exact ⟨_, rfl⟩
 
-variable {setup runtime leaks}
+variable {setup timeouts leaks}
 
 /-- An own output is an earlier own packet of every packet the owner emits
 next. -/
 theorem earlierOwnPacket_of_output {horizon : Nat}
-    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
-    {control : (serviceApplication setup mode deadline leaks).Control}
-    (trace : ((serviceApplication setup mode deadline leaks).protocol
+    {scheduler : (serviceApplication setup mode duration leaks).Scheduler}
+    {control : (serviceApplication setup mode duration leaks).Control}
+    (trace : ((serviceApplication setup mode duration leaks).protocol
       (serviceInitialLaw setup mode) horizon scheduler).Trace (some control))
     (who : Player) (payload : WitnessedPacket (serviceGraph setup mode))
     (other : Message Player (WitnessedPacket (serviceGraph setup mode)))
-    (member : other ∈ (serviceApplication setup mode deadline leaks).outputs
+    (member : other ∈ (serviceApplication setup mode duration leaks).outputs
       (control.execution.logs who)) :
-    EarlierOwnPacket ((serviceApplication setup mode deadline leaks).outputs
+    EarlierOwnPacket ((serviceApplication setup mode duration leaks).outputs
         (control.execution.logs who))
       ⟨(who, control.execution.network.nextSerial who), payload⟩ other := by
-  have recalled := (serviceRuntime setup mode deadline).countRecall_history leaks trace
-  have signed := signedCommitments_history (serviceRuntime setup mode deadline) leaks
+  have recalled := (countRecall_history (serviceTimeouts setup mode duration)) leaks trace
+  have signed := signedCommitments_history (serviceTimeouts setup mode duration) leaks
     (serviceInitialLaw setup mode) (serviceInitialLaw_initialized setup) horizon scheduler trace
   obtain ⟨entry, entryMember, emitted⟩ := List.mem_filterMap.mp member
   have sender := (signed.emissions who entry entryMember other emitted).1
@@ -84,25 +88,25 @@ theorem earlierOwnPacket_of_output {horizon : Nat}
 /-- The packet any own output carries names the event its recalled
 submission named. -/
 theorem output_event {horizon : Nat}
-    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
-    {control : (serviceApplication setup mode deadline leaks).Control}
-    (trace : ((serviceApplication setup mode deadline leaks).protocol
+    {scheduler : (serviceApplication setup mode duration leaks).Scheduler}
+    {control : (serviceApplication setup mode duration leaks).Control}
+    (trace : ((serviceApplication setup mode duration leaks).protocol
       (serviceInitialLaw setup mode) horizon scheduler).Trace (some control))
     (who : Player) (event : (serviceGraph setup mode).EventId)
-    (unsent : (serviceRuntime setup mode deadline).eventRecorded leaks
+    (unsent : (eventRecorded (serviceTimeouts setup mode duration)) leaks
       (control.execution.logs who) event = false)
     (other : Message Player (WitnessedPacket (serviceGraph setup mode)))
-    (member : other ∈ (serviceApplication setup mode deadline leaks).outputs
+    (member : other ∈ (serviceApplication setup mode duration leaks).outputs
       (control.execution.logs who)) :
     other.payload.call.event? (serviceGraph setup mode) ≠ some event := by
-  have signed := signedCommitments_history (serviceRuntime setup mode deadline) leaks
+  have signed := signedCommitments_history (serviceTimeouts setup mode duration) leaks
     (serviceInitialLaw setup mode) (serviceInitialLaw_initialized setup) horizon scheduler trace
   obtain ⟨entry, entryMember, emitted⟩ := List.mem_filterMap.mp member
   obtain ⟨_, material, transmission, call⟩ := signed.emissions who entry entryMember other emitted
-  have notSubmitted : (serviceRuntime setup mode deadline).submittedEvent? leaks entry.action ≠
+  have notSubmitted : (submittedEvent? (serviceTimeouts setup mode duration)) leaks entry.action ≠
       some event := by
     intro submitted
-    have recorded : (serviceRuntime setup mode deadline).eventRecorded leaks
+    have recorded : (eventRecorded (serviceTimeouts setup mode duration)) leaks
         (control.execution.logs who) event = true :=
       List.any_eq_true.mpr ⟨entry, entryMember, by simp [submitted]⟩
     rw [unsent] at recorded
@@ -121,69 +125,70 @@ canonical decision of `who` at its turn `event`, for which its recall has not
 submitted, transmits a packet whose local envelope the count verdict permits
 against `who`'s earlier packets. -/
 theorem canonicalServiceDecision_countPermits {horizon : Nat}
-    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
-    {control : (serviceApplication setup mode deadline leaks).Control}
-    (trace : ((serviceApplication setup mode deadline leaks).protocol
+    {scheduler : (serviceApplication setup mode duration leaks).Scheduler}
+    {control : (serviceApplication setup mode duration leaks).Control}
+    (trace : ((serviceApplication setup mode duration leaks).protocol
       (serviceInitialLaw setup mode) horizon scheduler).Trace (some control))
     (who : Player) (event : (serviceGraph setup mode).EventId)
     (turn : control.execution.application.publicView.ownTurn? who = some event)
-    (unsent : (serviceRuntime setup mode deadline).eventRecorded leaks
+    (unsent : (eventRecorded (serviceTimeouts setup mode duration)) leaks
       (control.execution.logs who) event = false)
     (action : (serviceGraph setup mode).Action event)
-    (material : (serviceApplication setup mode deadline leaks).Submission)
-    (submits : ((serviceRuntime setup mode deadline).canonicalServiceDecision leaks who
+    (material : (serviceApplication setup mode duration leaks).Submission)
+    (submits : ((canonicalServiceDecision (serviceTimeouts setup mode duration)) leaks who
       (control.execution.logs who)
-      (control.execution.observe (serviceApplication setup mode deadline leaks) who) event
+      (control.execution.observe (serviceApplication setup mode duration leaks) who) event
       action).transmission = some material) :
-    countPermits ((serviceApplication setup mode deadline leaks).outputs
+    countPermits ((serviceApplication setup mode duration leaks).outputs
         (control.execution.logs who))
-      ((serviceRuntime setup mode deadline).localEnvelope leaks who (control.execution.logs who)
-        (control.execution.observe (serviceApplication setup mode deadline leaks) who)
+      ((localEnvelope (serviceTimeouts setup mode duration)) leaks who (control.execution.logs who)
+        (control.execution.observe (serviceApplication setup mode duration leaks) who)
         material) = true := by
-  have recalled := (serviceRuntime setup mode deadline).countRecall_history leaks trace
-  have signed := signedCommitments_history (serviceRuntime setup mode deadline) leaks
+  have recalled := (countRecall_history (serviceTimeouts setup mode duration)) leaks trace
+  have signed := signedCommitments_history (serviceTimeouts setup mode duration) leaks
     (serviceInitialLaw setup mode) (serviceInitialLaw_initialized setup) horizon scheduler trace
-  have bindingValid := ((serviceRuntime setup mode deadline).reactiveBindingInvariant leaks).history
+  have bindingValid := ((reactiveBindingInvariant (serviceTimeouts setup mode duration))
+    leaks).history
     (serviceInitialLaw setup mode) horizon scheduler (fun state member => by
       obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ member
       exact State.initial_bindingInvariant _) trace
   have readyView := (PublicView.ownTurn?_spec _ who event turn).1
   have owned := (PublicView.ownTurn?_spec _ who event turn).2
   have ready := (control.execution.application.publicView_eventReady event).mp readyView
-  have activeView := (serviceRuntime setup mode deadline).canonicalServiceDecision_active leaks
+  have activeView := (canonicalServiceDecision_active (serviceTimeouts setup mode duration)) leaks
     who (control.execution.logs who)
-    (control.execution.observe (serviceApplication setup mode deadline leaks) who)
+    (control.execution.observe (serviceApplication setup mode duration leaks) who)
     event action material submits
   have active : who ∉ control.execution.application.config.defaulted := activeView
-  rw [(serviceRuntime setup mode deadline).localEnvelope_eq_of_recall leaks control.execution
+  rw [(localEnvelope_eq_of_recall (serviceTimeouts setup mode duration)) leaks control.execution
     recalled.1 recalled.2.1 who material]
   -- The transmitted packet names the event.
   have named : material.call.packet.event? (serviceGraph setup mode) = some event := by
-    rcases (serviceRuntime setup mode deadline).canonicalServiceDecision_cases leaks who
+    rcases (canonicalServiceDecision_cases (serviceTimeouts setup mode duration)) leaks who
         (control.execution.logs who)
-        (control.execution.observe (serviceApplication setup mode deadline leaks) who) event
+        (control.execution.observe (serviceApplication setup mode duration leaks) who) event
         action with silent | submitted
     · rw [silent] at submits
       cases submits
     · unfold EventGraphRuntime.submittedEvent? at submitted
       rw [submits] at submitted
       exact submitted
-  have packetCall : ((serviceApplication setup mode deadline leaks).packet
-      ((serviceApplication setup mode deadline leaks).submit control.execution.application who
+  have packetCall : ((serviceApplication setup mode duration leaks).packet
+      ((serviceApplication setup mode duration leaks).submit control.execution.application who
         material) who (control.execution.network.known who) material).call =
       material.call.packet := rfl
-  have token : ((serviceApplication setup mode deadline leaks).packet
-      ((serviceApplication setup mode deadline leaks).submit control.execution.application who
+  have token : ((serviceApplication setup mode duration leaks).packet
+      ((serviceApplication setup mode duration leaks).submit control.execution.application who
         material) who (control.execution.network.known who) material).token = some ⟨event⟩ := by
-    rw [(serviceRuntime setup mode deadline).reactiveApplication_packet_token leaks]
+    rw [(reactiveApplication_packet_token (serviceTimeouts setup mode duration)) leaks]
     exact control.execution.application.publicView_tokenFor_of_ready _ event named ready
   apply (countPermits_eq_true_iff _ _).mpr
   refine ⟨(WitnessedPacket.tokenValid_iff _).mpr ⟨event, packetCall ▸ named, token⟩, ?_, ?_⟩
   rotate_left
   · intro other earlier
     change other.payload.call.event? (serviceGraph setup mode) ≠
-      ((serviceApplication setup mode deadline leaks).packet
-        ((serviceApplication setup mode deadline leaks).submit control.execution.application who
+      ((serviceApplication setup mode duration leaks).packet
+        ((serviceApplication setup mode duration leaks).submit control.execution.application who
           material) who (control.execution.network.known who) material).call.event?
         (serviceGraph setup mode)
     rw [packetCall, named]
@@ -202,12 +207,12 @@ theorem canonicalServiceDecision_countPermits {horizon : Nat}
         ⟨cast (congrArg EventGraph.EventField.Action outputEq) action, by simp⟩
       cases choice with
       | none =>
-          rw [(serviceRuntime setup mode deadline).canonicalServiceDecision_binding_none leaks
+          rw [(canonicalServiceDecision_binding_none (serviceTimeouts setup mode duration)) leaks
             actor _ _ event actor payload outputEq codeEq node] at submits
           cases submits
       | some choice =>
         cases selected : canonicalFreshSlot actor
-            (control.execution.observe (serviceApplication setup mode deadline leaks)
+            (control.execution.observe (serviceApplication setup mode duration leaks)
               actor).application with
         | none =>
             simp only [EventGraphRuntime.canonicalServiceDecision,
@@ -217,9 +222,9 @@ theorem canonicalServiceDecision_countPermits {horizon : Nat}
             cases submits
         | some serial =>
             have fresh := canonicalFreshSlot_spec actor _ serial selected
-            rw [(serviceRuntime setup mode deadline).canonicalServiceDecision_binding leaks actor
+            rw [(canonicalServiceDecision_binding (serviceTimeouts setup mode duration)) leaks actor
               (control.execution.logs actor)
-              (control.execution.observe (serviceApplication setup mode deadline leaks) actor) event
+              (control.execution.observe (serviceApplication setup mode duration leaks) actor) event
               payload outputEq codeEq node activeView serial selected choice] at submits
             cases Option.some.inj submits
             rw [reactiveApplication_packet_none]
@@ -232,19 +237,20 @@ theorem canonicalServiceDecision_countPermits {horizon : Nat}
       have actorEq : actor = who :=
         Option.some.inj ((nodeView_resolve_actor outputEq codeEq).symm.trans owned)
       subst actorEq
-      rw [(serviceRuntime setup mode deadline).canonicalServiceDecision_eq_of_not_bind leaks actor
+      rw [(canonicalServiceDecision_eq_of_not_bind (serviceTimeouts setup mode duration)) leaks
+        actor
         (control.execution.logs actor)
-        (control.execution.observe (serviceApplication setup mode deadline leaks) actor) event
+        (control.execution.observe (serviceApplication setup mode duration leaks) actor) event
         action
         (fun _ _ _ _ bind => by rw [node] at bind; cases bind)] at submits
       unfold EventGraphRuntime.serviceDecision EventGraphRuntime.reactiveDecision at submits
       simp only [ite_eq_right activeView, node] at submits
       rcases reactiveResolutionPacket_shape actor event payload binding checks outputEq action
-          (control.execution.observe (serviceApplication setup mode deadline leaks)
+          (control.execution.observe (serviceApplication setup mode duration leaks)
               actor).application with ⟨candidate, raw, packet⟩ | packet
       · obtain ⟨_, isTrue, _, value, localStored, associated, handleOwner, rawEq⟩ :=
           reactiveResolutionPacket_opening_spec actor event payload binding checks outputEq action
-            (control.execution.observe (serviceApplication setup mode deadline leaks)
+            (control.execution.observe (serviceApplication setup mode duration leaks)
                 actor).application event candidate raw packet
         subst rawEq
         have stored : binding.get? control.execution.application.config.store =
@@ -265,13 +271,13 @@ theorem canonicalServiceDecision_countPermits {horizon : Nat}
             cast (congrArg EventGraph.EventField.Action outputEq.symm) true := by
           rw [← isTrue, cast_cast, cast_eq]
         subst actionEq
-        have decision := (serviceRuntime setup mode deadline).serviceDecision_authentic_opening
+        have decision := (serviceDecision_authentic_opening (serviceTimeouts setup mode duration))
             leaks control.execution recalled.1 actor event payload binding checks outputEq codeEq
                 node
             handle value associatedHandle handleOwner fixed active stored
         have materialEq : material =
             (disclosureSubmission (.opening event handle ⟨payload, value⟩)).normalizeReactive
-              actor ((serviceApplication setup mode deadline leaks).observePlayer
+              actor ((serviceApplication setup mode duration leaks).observePlayer
                   control.execution.application actor)
               (control.execution.network.known actor) := by
           have transmission := congrArg ReactiveApplication.Action.transmission decision
@@ -282,26 +288,27 @@ theorem canonicalServiceDecision_countPermits {horizon : Nat}
           cases submits
           rfl
         subst materialEq
-        have packetEq : (serviceApplication setup mode deadline leaks).packet
-            ((serviceApplication setup mode deadline leaks).submit control.execution.application
+        have packetEq : (serviceApplication setup mode duration leaks).packet
+            ((serviceApplication setup mode duration leaks).submit control.execution.application
               actor
             ((disclosureSubmission (.opening event handle ⟨payload, value⟩)).normalizeReactive
-              actor ((serviceApplication setup mode deadline leaks).observePlayer
+              actor ((serviceApplication setup mode duration leaks).observePlayer
                   control.execution.application actor)
               (control.execution.network.known actor)))
             actor (control.execution.network.known actor)
             ((disclosureSubmission (.opening event handle ⟨payload, value⟩)).normalizeReactive
-              actor ((serviceApplication setup mode deadline leaks).observePlayer
+              actor ((serviceApplication setup mode duration leaks).observePlayer
                   control.execution.application actor)
               (control.execution.network.known actor)) =
               ⟨.opening event handle ⟨payload, value⟩, some ⟨handle, ⟨payload, value⟩⟩,
                 control.execution.application.publicView.tokenFor
                   (.opening event handle ⟨payload, value⟩)⟩ := by
           have emitted := WitnessedSubmission.normalizeReactive_emit
-              (serviceRuntime setup mode deadline) leaks control.execution.application actor
+              (serviceTimeouts setup mode duration) leaks control.execution.application actor
               (control.execution.network.known actor)
               (disclosureSubmission (.opening event handle ⟨payload, value⟩))
-          have packet := (serviceRuntime setup mode deadline).windowOpening_packet leaks actor event
+          have packet := (windowOpening_packet (serviceTimeouts setup mode duration)) leaks actor
+            event
               handle ⟨payload, value⟩ control.execution.application
                   (control.execution.network.known actor)
               handleOwner fixed
@@ -327,7 +334,7 @@ theorem canonicalServiceDecision_countPermits {horizon : Nat}
 section OnePacket
 
 variable [Fintype Player] {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   (bounds : MessageBounds (graph setup))
 
@@ -336,28 +343,28 @@ the one-packet game of the supplied runtime, under any scheduler, a canonical
 decision of `who` at its turn `event`, for which its recall has not submitted,
 lies in the one-packet menu whenever the canonical menu retains it. -/
 theorem canonical_mem_onePacket_of_pending {horizon : Nat}
-    {scheduler : (application setup runtime leaks).Scheduler} {control : (application setup
-      runtime leaks).Control}
-    (trace : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+    {scheduler : (application setup timeouts leaks).Scheduler} {control : (application setup
+      timeouts leaks).Control}
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control))
     (who : Player) (event : (graph setup).EventId)
     (turn : control.execution.application.publicView.ownTurn? who = some event)
-    (unsent : runtime.eventRecorded leaks (control.execution.logs who) event = false)
+    (unsent : (eventRecorded timeouts) leaks (control.execution.logs who) event = false)
     (action : (graph setup).Action event)
-    (retained : runtime.canonicalServiceDecision leaks who (control.execution.logs who)
-        (control.execution.observe (application setup runtime leaks) who) event action ∈
-      bounds.canonicalActions runtime leaks who (control.execution.logs who)
-        (control.execution.observe (application setup runtime leaks) who)) :
-    runtime.canonicalServiceDecision leaks who (control.execution.logs who)
-        (control.execution.observe (application setup runtime leaks) who) event action ∈
-      bounds.onePacketActions runtime leaks who (control.execution.logs who)
-        (control.execution.observe (application setup runtime leaks) who) := by
-  have rawTrace : ((application setup runtime leaks).protocol (initialLaw setup) horizon
+    (retained : (canonicalServiceDecision timeouts) leaks who (control.execution.logs who)
+        (control.execution.observe (application setup timeouts leaks) who) event action ∈
+      bounds.canonicalActions timeouts leaks who (control.execution.logs who)
+        (control.execution.observe (application setup timeouts leaks) who)) :
+    (canonicalServiceDecision timeouts) leaks who (control.execution.logs who)
+        (control.execution.observe (application setup timeouts leaks) who) event action ∈
+      bounds.onePacketActions timeouts leaks who (control.execution.logs who)
+        (control.execution.observe (application setup timeouts leaks) who) := by
+  have rawTrace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
     scheduler).Trace
       (some control) :=
-    (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup) horizon scheduler
+    (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon scheduler
       trace
-  exact bounds.canonical_mem_onePacket runtime leaks who _ _ _ retained fun material submits
+  exact bounds.canonical_mem_onePacket timeouts leaks who _ _ _ retained fun material submits
     =>
     canonicalServiceDecision_countPermits rawTrace who event turn unsent action material submits
 

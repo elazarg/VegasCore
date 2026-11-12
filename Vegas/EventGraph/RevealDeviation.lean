@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.EventGraph.SchedulerReplay
-import Vegas.EventGraph.RevealRelaxedScheduling
+public import Vegas.EventGraph.SchedulerReplay
+public import Vegas.EventGraph.RevealRelaxedScheduling
+
+@[expose] public section
 
 /-! # Deviations against concurrent-reveal-oblivious profiles
 

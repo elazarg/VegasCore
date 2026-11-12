@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketActorRecord
-import Vegas.Game.SourceServiceFacts
-import Vegas.Game.SourceServiceCompletion
-import Vegas.Pending.ReactiveSignedCommitments
-import Vegas.Source.FailedBindingDeviation
+public import Vegas.Game.OnePacketActorRecord
+public import Vegas.Game.SourceServiceFacts
+public import Vegas.Game.SourceServiceCompletion
+public import Vegas.Pending.ReactiveSignedCommitments
+public import Vegas.Source.FailedBindingDeviation
+
+@[expose] public section
 
 /-! # Own submissions on one-packet histories are made at the owner's turns
 
@@ -38,18 +42,18 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
-variable (setup runtime leaks) in
+variable (setup timeouts leaks) in
 /-- **The own-turn record.** The configuration decodes at a prefix, and every
 own submission of a player was made at its turn at its event, or that player
 owes a failure at the decoded point. -/
 def OwnTurnRecord (profile : BehavioralProfile setup.program)
-    (execution : (application setup runtime leaks).Execution) : Prop :=
+    (execution : (application setup timeouts leaks).Execution) : Prop :=
   ∃ rank, Nonempty (SourceResidual setup profile rank execution.application.config) ∧
     ∀ who, ∀ entry ∈ execution.logs who, ∀ event,
-      runtime.submittedEvent? leaks entry.action = some event →
+      (submittedEvent? timeouts) leaks entry.action = some event →
         entry.beforeView.application.publicView.ownTurn? who = some event ∨
         DecodedHolds (ProtocolState.OwesFailure who setup.program) rank
           execution.application.config
@@ -61,22 +65,23 @@ history of the one-packet game, every transmitting one-packet response of
 `who` names an event at `who`'s turn, or `who` owes a failure at the decoded
 point. -/
 theorem onePacket_submission_atTurn {horizon : Nat}
-    {scheduler : (application setup runtime leaks).Scheduler} (profile : BehavioralProfile
+    {scheduler : (application setup timeouts leaks).Scheduler} (profile : BehavioralProfile
       setup.program)
-    {rank remaining : Nat} {who : Player} {execution : (application setup runtime leaks).Execution}
-    (trace : ((application setup runtime leaks).protocol (initialLaw setup) horizon scheduler).Trace
+    {rank remaining : Nat} {who : Player} {execution : (application setup timeouts leaks).Execution}
+    (trace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+      scheduler).Trace
       (some ⟨remaining, some who, execution⟩))
     (residual : SourceResidual setup profile rank execution.application.config)
-    (action : (application setup runtime leaks).Action)
-    (member : action ∈ bounds.onePacketActions runtime leaks who (execution.logs who)
-      (execution.observe (application setup runtime leaks) who))
+    (action : (application setup timeouts leaks).Action)
+    (member : action ∈ bounds.onePacketActions timeouts leaks who (execution.logs who)
+      (execution.observe (application setup timeouts leaks) who))
     (event : (graph setup).EventId)
-    (submitted : runtime.submittedEvent? leaks action = some event) :
+    (submitted : (submittedEvent? timeouts) leaks action = some event) :
     execution.application.publicView.ownTurn? who = some event ∨
       DecodedHolds (ProtocolState.OwesFailure who setup.program) rank
         execution.application.config := by
-  let app := application setup runtime leaks
-  rcases ((bounds.mem_onePacketActions runtime leaks who _ _ action).mp member).2 with
+  let app := application setup timeouts leaks
+  rcases ((bounds.mem_onePacketActions timeouts leaks who _ _ action).mp member).2 with
     silent | ⟨material, transmits, permitted⟩
   · unfold EventGraphRuntime.submittedEvent? at submitted
     rw [silent] at submitted
@@ -85,9 +90,9 @@ theorem onePacket_submission_atTurn {horizon : Nat}
     unfold EventGraphRuntime.submittedEvent? at submitted
     rw [transmits] at submitted
     exact submitted
-  obtain ⟨inputRecall, serialRecall, _⟩ := runtime.countRecall_history leaks trace
+  obtain ⟨inputRecall, serialRecall, _⟩ := (countRecall_history timeouts) leaks trace
   have facts := legalFacts setup leaks horizon scheduler ⟨remaining, some who, execution⟩ trace
-  set envelope := runtime.localEnvelope leaks who (execution.logs who)
+  set envelope := (localEnvelope timeouts) leaks who (execution.logs who)
     (execution.observe app who) material with envelopeEq
   obtain ⟨tokenValid, correct, first⟩ := (countPermits_eq_true_iff _ _).mp permitted
   obtain ⟨named, namedEvent, tokenEq⟩ := (WitnessedPacket.tokenValid_iff _).mp tokenValid
@@ -111,7 +116,7 @@ theorem onePacket_submission_atTurn {horizon : Nat}
       (complete predecessor predecessorMember)
   by_cases completed : named ∈ execution.application.config.cut.completed
   · obtain ⟨recordRank, ⟨recordResidual⟩, record⟩ :=
-      actorRecord_history (runtime := runtime) profile horizon scheduler trace
+      actorRecord_history (timeouts := timeouts) profile horizon scheduler trace
     have sameRank := recordResidual.checkpoint.ordered.unique residual.checkpoint.ordered
     subst sameRank
     rcases record named completed who actor with
@@ -145,12 +150,12 @@ of the one-packet game, under every scheduler, every own submission of a player
 was made at its turn at its event, or that player owes a failure at the decoded
 point. -/
 theorem ownTurnRecord_history (profile : BehavioralProfile setup.program) (horizon : Nat)
-    (scheduler : (application setup runtime leaks).Scheduler) :
-    ∀ {state} (_ : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup)
-        horizon scheduler).Trace state) (control : (application setup runtime leaks).Control),
-      state = some control → OwnTurnRecord setup runtime leaks profile control.execution := by
-  let app := application setup runtime leaks
-  let menu := bounds.onePacketMenu runtime leaks
+    (scheduler : (application setup timeouts leaks).Scheduler) :
+    ∀ {state} (_ : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup)
+        horizon scheduler).Trace state) (control : (application setup timeouts leaks).Control),
+      state = some control → OwnTurnRecord setup timeouts leaks profile control.execution := by
+  let app := application setup timeouts leaks
+  let menu := bounds.onePacketMenu timeouts leaks
   intro state trace
   induction trace with
   | start => intro _ initialized; cases initialized
@@ -180,7 +185,7 @@ theorem ownTurnRecord_history (profile : BehavioralProfile setup.program) (horiz
                     ReactiveApplication.actor] at localLegal
               | some action =>
                   rw [selected] at localLegal
-                  have chosen : action ∈ bounds.onePacketActions runtime leaks who
+                  have chosen : action ∈ bounds.onePacketActions timeouts leaks who
                       (execution.logs who) (execution.observe app who) := localLegal.2
                   have responded : some control = some (⟨remaining, none,
                       execution.respond app who action⟩ : app.Control) := by
@@ -191,14 +196,14 @@ theorem ownTurnRecord_history (profile : BehavioralProfile setup.program) (horiz
                     exact realized
                   cases Option.some.inj responded
                   have configEq :=
-                    (runtime.reactive_respond_application leaks execution who action).1
+                    ((reactive_respond_application timeouts) leaks execution who action).1
                   refine ⟨rank, ⟨configEq ▸ residual⟩, fun observer entry entryMember event
                     submitted => ?_⟩
                   change entry ∈ (execution.respond app who action).logs observer at entryMember
                   change _ ∨ DecodedHolds _ rank
                     (execution.respond app who action).application.config
                   rw [configEq]
-                  rw [runtime.respond_recall leaks execution who observer action]
+                  rw [(respond_recall timeouts) leaks execution who observer action]
                     at entryMember
                   split at entryMember
                   · rename_i same
@@ -206,7 +211,7 @@ theorem ownTurnRecord_history (profile : BehavioralProfile setup.program) (horiz
                     rcases List.mem_append.mp entryMember with old | new
                     · exact record observer entry old event submitted
                     · cases List.mem_singleton.mp new
-                      exact onePacket_submission_atTurn (runtime := runtime) bounds profile
+                      exact onePacket_submission_atTurn (timeouts := timeouts) bounds profile
                         rawPrior residual action
                         chosen event submitted
                   · exact record observer entry entryMember event submitted
@@ -221,7 +226,7 @@ theorem ownTurnRecord_history (profile : BehavioralProfile setup.program) (horiz
                   obtain ⟨next, reached, nextEq⟩ := PMF.support_map .. ▸ moved
                   cases nextEq
                   have recallEq := app.environmentStep_recall execution next command reached
-                  have path := (runtime.reactiveApplication_graphSteps leaks).environmentStep
+                  have path := ((reactiveApplication_graphSteps timeouts) leaks).environmentStep
                     execution next command reached
                   obtain ⟨nextRank, ⟨nextResidual⟩⟩ := residual.path path
                   refine ⟨nextRank, ⟨nextResidual⟩, fun who entry entryMember event submitted =>
@@ -241,16 +246,16 @@ history of the one-packet game whose configuration decodes at its completed
 prefix to a point of the intended game, every own submission of every player
 was made at its turn at its event. -/
 theorem onePacket_ownSubmissionsAtTurn {horizon : Nat}
-    {scheduler : (application setup runtime leaks).Scheduler}
-    {control : (application setup runtime leaks).Control}
-    (trace : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+    {scheduler : (application setup timeouts leaks).Scheduler}
+    {control : (application setup timeouts leaks).Control}
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control))
     {rank : Nat} (ordered : control.execution.application.config.cut.IsPrefix rank)
     (point : ProtocolState setup.program)
     (decoded : sourceServicePrefix? setup rank control.execution.application.config = some point)
     (intendedPoint : ProtocolState.Intended setup.program point) (who : Player) :
     OwnSubmissionsAtTurn setup leaks control.execution who := by
-  obtain ⟨recordRank, ⟨residual⟩, record⟩ := ownTurnRecord_history (runtime := runtime) bounds
+  obtain ⟨recordRank, ⟨residual⟩, record⟩ := ownTurnRecord_history (timeouts := timeouts) bounds
     (failureProfile setup.program) horizon scheduler trace control rfl
   have sameRank := EventOrder.Cut.IsPrefix.unique residual.checkpoint.ordered ordered
   subst sameRank
@@ -267,9 +272,9 @@ prefix of `rank`, with every event from `rank` on untouched and a decoding to a
 point of the intended game, ends at a reached boundary: its own submissions
 were made at the owners' turns (`Vegas.onePacket_ownSubmissionsAtTurn`). -/
 theorem reachedBoundary_of_onePacket (bounds : MessageBounds (graph setup))
-    {horizon : Nat} {scheduler : (application setup runtime leaks).Scheduler} {rank : Nat}
-    {anchor : (application setup runtime leaks).Execution}
-    (start : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+    {horizon : Nat} {scheduler : (application setup timeouts leaks).Scheduler} {rank : Nat}
+    {anchor : (application setup timeouts leaks).Execution}
+    (start : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).History)
     (state : start.state = some ⟨horizon - anchor.environmentRecall.length, none, anchor⟩)
     (bounded : anchor.environmentRecall.length ≤ horizon)
@@ -279,13 +284,13 @@ theorem reachedBoundary_of_onePacket (bounds : MessageBounds (graph setup))
     (point : ProtocolState setup.program)
     (decoded : sourceServicePrefix? setup rank anchor.application.config = some point)
     (intendedPoint : ProtocolState.Intended setup.program point) :
-    ReachedBoundary setup runtime leaks horizon scheduler rank anchor := by
-  have trace : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+    ReachedBoundary setup timeouts leaks horizon scheduler rank anchor := by
+  have trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some ⟨horizon - anchor.environmentRecall.length, none, anchor⟩) :=
     state ▸ start.trace
-  exact ⟨⟨(bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup) horizon
+  exact ⟨⟨(bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon
       scheduler trace⟩, bounded, ordered, untouched,
-    onePacket_ownSubmissionsAtTurn (runtime := runtime) bounds trace ordered point decoded
+    onePacket_ownSubmissionsAtTurn (timeouts := timeouts) bounds trace ordered point decoded
       intendedPoint⟩
 
 

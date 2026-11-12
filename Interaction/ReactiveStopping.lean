@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveRoundTrace
+public import Interaction.ReactiveRoundTrace
+
+@[expose] public section
 
 /-! # Scheduler rounds stopped at a predicate
 

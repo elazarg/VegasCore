@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.EventPublicState
+public import Vegas.Pending.EventPublicState
+
+@[expose] public section
 
 /-! # Public evidence of an omitted required binding
 
@@ -64,20 +68,20 @@ theorem State.missedBinding_complete (state : State graph) (event : graph.EventI
 
 /-- Actual binding expiry produces publicly persistent omission evidence.
 The accepted-handle premise is about ledger state, not a watcher's sample. -/
-theorem missedBinding_expire (runtime : EventGraphRuntime graph) (state next : State graph)
+theorem missedBinding_expire (timeouts : EventTimeouts graph) (state next : State graph)
     (event : graph.EventId) (ready : state.config.cut.Ready event)
     (entered : Nat) (activated : state.activatedAt event = some entered)
-    (due : runtime.deadline event ≤ state.clock - entered)
+    (due : timeouts.duration event ≤ state.clock - entered)
     (owner : Player) (payload : L.Ty)
     (outputEq : graph.outputLayout event = .binding owner payload)
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
       (graph.nodes event) = .bind owner payload)
     (node : nodeView graph event = .bind owner payload outputEq codeEq)
     (absent : state.accepted (.inr event) = none)
-    (reached : next ∈ (environmentStep runtime state (.expire event)).support) :
+    (reached : next ∈ (environmentStep timeouts state (.expire event)).support) :
     next.publicView.missedBinding event = true := by
   classical
-  rw [environmentStep_expire_bind_eq runtime state event ready entered activated due owner payload
+  rw [environmentStep_expire_bind_eq timeouts state event ready entered activated due owner payload
     outputEq codeEq node] at reached
   cases (PMF.mem_support_pure_iff _ _).mp reached
   exact state.missedBinding_complete event ready _ _ owner payload outputEq absent

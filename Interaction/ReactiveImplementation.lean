@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveRounds
-import Interaction.ReactiveRecall
-import GameTheory.Protocol.PrivateStrategy
-import GameTheory.Math.Probability.ConditionalObservation
-import GameTheory.Math.Probability.ExpectationConditioning
+public import Interaction.ReactiveRounds
+public import Interaction.ReactiveRecall
+public import GameTheory.Protocol.PrivateStrategy
+public import GameTheory.Math.Probability.ConditionalObservation
+public import GameTheory.Math.Probability.ExpectationConditioning
+
+@[expose] public section
 
 /-! # Private implementations of reactive behavioral policies
 

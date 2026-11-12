@@ -1,12 +1,16 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Examples.ProgramPaymentsRuntimeService
-import Vegas.Game.ProgramPaymentAsyncNash
-import Vegas.Game.SourceProtocolNash
-import Vegas.Pending.ExclusionAcceptedOutput
-import Vegas.Pending.ExclusionEvidence
-import Vegas.Pending.ReactiveAssociationEvidence
-import Vegas.Compile.EventGraphParameterReadout
+public import Vegas.Examples.ProgramPaymentsRuntimeService
+public import Vegas.Game.ProgramPaymentAsyncNash
+public import Vegas.Game.SourceProtocolNash
+public import Vegas.Pending.ExclusionAcceptedOutput
+public import Vegas.Pending.ExclusionEvidence
+public import Vegas.Pending.ReactiveAssociationEvidence
+public import Vegas.Compile.EventGraphParameterReadout
+
+@[expose] public section
 
 /-! # Executable payments change equilibrium in an actual native runtime
 
@@ -95,24 +99,24 @@ def sourceGame (bonus : Int) : UtilityGame Player where
     (fun terminal => (setup bonus).parameterPaymentUtility (runtimeValuation bonus)
       ((setup bonus).parameterOutcome (parameter bonus) terminal) who)
 
-private abbrev bindingEvent (bonus : Int) : (graph (setup bonus)).EventId :=
+abbrev bindingEvent (bonus : Int) : (graph (setup bonus)).EventId :=
   ⟨0, by change 0 < 2; decide⟩
-private abbrev publicationEvent (bonus : Int) : (graph (setup bonus)).EventId :=
+abbrev publicationEvent (bonus : Int) : (graph (setup bonus)).EventId :=
   ⟨1, by change 1 < 2; decide⟩
 
 /-- A successful publication in an initialized raw readout rules out both
 possible public failure witnesses of this two-event program. -/
 private theorem not_defaulted_of_readout_success (bonus : Int)
-    (control : (serviceApplication (setup bonus) .sequential (service bonus).deadline
+    (control : (serviceApplication (setup bonus) .sequential (service bonus).duration
       (leaks bonus)).Control)
-    (trace : ((serviceApplication (setup bonus) .sequential (service bonus).deadline
+    (trace : ((serviceApplication (setup bonus) .sequential (service bonus).duration
       (leaks bonus)).protocol (serviceInitialLaw (setup bonus) .sequential)
         (service bonus).horizon (service bonus).scheduler).Trace (some control))
     (terminal : Config Player simpleExpr (program bonus).terminalCtx)
-    (read : serviceSourceReadout (setup bonus) .sequential (service bonus).deadline
+    (read : serviceSourceReadout (setup bonus) .sequential (service bonus).duration
       (leaks bonus) (some control) = some terminal)
     (published : terminal.state.get .here = .success true) : .alice ∉ terminal.defaulted := by
-  let nativeRuntime := serviceRuntime (setup bonus) .sequential (service bonus).deadline
+  let nativeTimeouts := serviceTimeouts (setup bonus) .sequential (service bonus).duration
   let inputs : PMF (graph (setup bonus)).Inputs :=
     (setup bonus).initialLaw.map (setup bonus).eventInputs
   have initialized : inputs.map EventGraphRuntime.State.initial =
@@ -120,15 +124,15 @@ private theorem not_defaulted_of_readout_success (bonus : Int)
     rw [PMF.map_comp]
     rfl
   rw [← initialized] at trace
-  have valid := reactive_history_invariant nativeRuntime (leaks bonus) inputs
+  have valid := reactive_history_invariant nativeTimeouts (leaks bonus) inputs
     (service bonus).horizon (service bonus).scheduler trace
   obtain ⟨_, _, invariant⟩ := valid
-  have bindings := reactiveBindingInvariant_history nativeRuntime (leaks bonus) inputs
+  have bindings := reactiveBindingInvariant_history nativeTimeouts (leaks bonus) inputs
     (service bonus).horizon (service bonus).scheduler trace
-  have failures := ExclusionEvidence.history nativeRuntime (leaks bonus) inputs
+  have failures := ExclusionEvidence.history nativeTimeouts (leaks bonus) inputs
     (service bonus).horizon (service bonus).scheduler trace
   have defaults := serviceSourceReadout_defaults (setup bonus) .sequential
-    (service bonus).deadline (leaks bonus) control terminal read
+    (service bonus).duration (leaks bonus) control terminal read
   rw [serviceSourceReadout_eq_decode, decodeConfig?] at read
   obtain ⟨state, decoded, same⟩ := Option.map_eq_some_iff.mp read
   have states : state = terminal.state := congrArg Config.state same
@@ -166,13 +170,13 @@ private theorem not_defaulted_of_readout_success (bonus : Int)
   · exact publicationSuccess.not_publicFailure bindings failed
 
 private theorem transfers_eq_publicTransfers_of_readout (bonus : Int)
-    (control : (serviceApplication (setup bonus) .sequential (service bonus).deadline
+    (control : (serviceApplication (setup bonus) .sequential (service bonus).duration
       (leaks bonus)).Control)
-    (trace : ((serviceApplication (setup bonus) .sequential (service bonus).deadline
+    (trace : ((serviceApplication (setup bonus) .sequential (service bonus).duration
       (leaks bonus)).protocol (serviceInitialLaw (setup bonus) .sequential)
         (service bonus).horizon (service bonus).scheduler).Trace (some control))
     (terminal : Config Player simpleExpr (program bonus).terminalCtx)
-    (read : serviceSourceReadout (setup bonus) .sequential (service bonus).deadline
+    (read : serviceSourceReadout (setup bonus) .sequential (service bonus).duration
       (leaks bonus) (some control) = some terminal) :
     (setup bonus).transfers ((program bonus).publicOutcome terminal) =
       (program bonus).publicTransfers ((program bonus).publicOutcome terminal) := by
@@ -209,7 +213,7 @@ theorem realized_payoff_bounds (bonus : Int) :
   intro control trace payoffs supported who
   rw [Enforcement.TerminalAudit.settlement, PMF.support_map] at supported
   obtain ⟨verdict, _, rfl⟩ := supported
-  let output := serviceSourceReadout (setup bonus) .sequential (service bonus).deadline
+  let output := serviceSourceReadout (setup bonus) .sequential (service bonus).duration
     (leaks bonus) (some control)
   change -|(bonus : ℝ) - 1| - 1 ≤ output.elim 0 (fun terminal =>
       (setup bonus).parameterPaymentUtility (runtimeValuation bonus)
@@ -342,7 +346,7 @@ theorem settlement_law (bonus : Int) (choice : Bool) :
     (((model bonus).runBehavioral (clients bonus choice) (fuel bonus)).bind fun history =>
       ((service bonus).paymentSettlement (auditSample bonus) deposit history.state).map
         fun receipts =>
-          ((serviceSourceReadout (setup bonus) .sequential (service bonus).deadline
+          ((serviceSourceReadout (setup bonus) .sequential (service bonus).duration
             (leaks bonus) history.state).map (fun config => (config.state, config.defaults)),
             receipts)) =
       PMF.pure (some ((final bonus choice).state, (final bonus choice).defaults),

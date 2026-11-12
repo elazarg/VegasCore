@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ChallengeWindow
-import GameTheoryExtensions.Math.Probability.Uniform
+public import Interaction.ChallengeWindow
+public import GameTheoryExtensions.Math.Probability.Uniform
+
+@[expose] public section
 
 /-! # Authentic evidence service with imperfect capture and delivery
 
@@ -18,11 +22,11 @@ open GameTheory.Math.Probability
 
 variable {Evidence : Type*}
 
-private def erase {α : Type*} (rate : Set.Icc (0 : ℝ) 1) (values : List α) :
+def erase {α : Type*} (rate : Set.Icc (0 : ℝ) 1) (values : List α) :
     PMF (List α) :=
   mix rate.val rate.property.1 rate.property.2 (PMF.pure values) (PMF.pure [])
 
-private theorem erase_support {α : Type*} (rate : Set.Icc (0 : ℝ) 1)
+theorem erase_support {α : Type*} (rate : Set.Icc (0 : ℝ) 1)
     (values result : List α) (supported : result ∈ (erase rate values).support) :
     result = values ∨ result = [] := by
   have member := support_mix_subset rate.val rate.property.1 rate.property.2

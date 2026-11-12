@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.EventGraph.Sequential
-import Vegas.EventGraph.CanonicalStep
+public import Vegas.EventGraph.Sequential
+public import Vegas.EventGraph.CanonicalStep
+
+@[expose] public section
 
 /-! # Canonical semantics of sequential dependency specialization -/
 

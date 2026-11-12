@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketTrembles
-import GameTheory.Math.Probability.FiniteUniform
-import GameTheoryExtensions.Math.Probability.Uniform
+public import Vegas.Game.OnePacketTrembles
+public import GameTheory.Math.Probability.FiniteUniform
+public import GameTheoryExtensions.Math.Probability.Uniform
+
+@[expose] public section
 
 open GameTheory.Math.Probability
 
@@ -63,7 +67,7 @@ theorem bind_map_pair_apply {α β : Type} (first : PMF α) (second : PMF β) (a
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
-  (runtime : EventGraphRuntime (graph setup))
+  (timeouts : EventTimeouts (graph setup))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
 
 section SlotTier
@@ -81,10 +85,10 @@ theorem trembleSlots_nonempty : (trembleSlots setup bounds).Nonempty :=
 binding, commit an admitted encoded value at the drawn slot, normalized as a
 canonical decision is; at any other event, use the canonical decision of the
 encoded action. Omission and unencodable actions give silence. -/
-def slotResponse (who : Player) (past : List (application setup runtime leaks).PlayerEntry)
-    (view : (application setup runtime leaks).PlayerView) (event : (graph setup).EventId) (slot :
+def slotResponse (who : Player) (past : List (application setup timeouts leaks).PlayerEntry)
+    (view : (application setup timeouts leaks).PlayerView) (event : (graph setup).EventId) (slot :
       Nat)
-    (choice : Option (OwnAction Player L)) : (application setup runtime leaks).Action :=
+    (choice : Option (OwnAction Player L)) : (application setup timeouts leaks).Action :=
   match choice.bind (encodeEventAction? setup.program event) with
   | none => ⟨none⟩
   | some action =>
@@ -93,88 +97,89 @@ def slotResponse (who : Player) (past : List (application setup runtime leaks).P
           match cast (congrArg EventGraph.EventField.Action outputEq) action with
           | none => ⟨none⟩
           | some value =>
-              (runtime.reactiveNormalization leaks).action who past view
-                (runtime.reactiveBinding leaks who event payload value slot)
+              ((reactiveNormalization timeouts) leaks).action who past view
+                ((reactiveBinding timeouts) leaks who event payload value slot)
       | .resolve .. | .sample .. =>
-          runtime.canonicalServiceDecision leaks who past view event action
+          (canonicalServiceDecision timeouts) leaks who past view event action
 
 /-- The slot and source choice of the slot tier: a uniform slot and,
 independently, the as-if-honest choice. -/
 def slotPairs (assessment : setup.intendedModel.BehavioralAssessment) (who : Player)
-    (past : List (application setup runtime leaks).PlayerEntry)
-    (view : (application setup runtime leaks).PlayerView) : PMF (Nat × Option (OwnAction Player
+    (past : List (application setup timeouts leaks).PlayerEntry)
+    (view : (application setup timeouts leaks).PlayerView) : PMF (Nat × Option (OwnAction Player
       L)) :=
   (uniformOn (trembleSlots setup bounds)
       (trembleSlots_nonempty setup bounds)).bind fun slot =>
-    (asIfHonestProfile setup runtime leaks assessment who (some (past, view))).map (Prod.mk slot)
+    (asIfHonestProfile setup timeouts leaks assessment who (some (past, view))).map (Prod.mk slot)
 
 /-- **The value law given a slot is the as-if-honest law.** The slot tier's
 joint law of slot and source choice is the product of the uniform slot law and
 the as-if-honest law. -/
 theorem slotPairs_apply (assessment : setup.intendedModel.BehavioralAssessment) (who : Player)
-    (past : List (application setup runtime leaks).PlayerEntry)
-    (view : (application setup runtime leaks).PlayerView) (slot : Nat)
+    (past : List (application setup timeouts leaks).PlayerEntry)
+    (view : (application setup timeouts leaks).PlayerView) (slot : Nat)
     (choice : Option (OwnAction Player L)) :
-    slotPairs setup runtime leaks bounds assessment who past view (slot, choice) =
+    slotPairs setup timeouts leaks bounds assessment who past view (slot, choice) =
       uniformOn (trembleSlots setup bounds) (trembleSlots_nonempty setup bounds) slot *
-        asIfHonestProfile setup runtime leaks assessment who (some (past, view)) choice :=
+        asIfHonestProfile setup timeouts leaks assessment who (some (past, view)) choice :=
   bind_map_pair_apply _ _ slot choice
 
 /-- The responses of the slot tier at a player view: silence away from the
 player's turn. -/
 def slotTierResponse (assessment : setup.intendedModel.BehavioralAssessment) (who : Player)
-    (past : List (application setup runtime leaks).PlayerEntry)
-    (view : (application setup runtime leaks).PlayerView) : PMF (application setup runtime
+    (past : List (application setup timeouts leaks).PlayerEntry)
+    (view : (application setup timeouts leaks).PlayerView) : PMF (application setup timeouts
       leaks).Action :=
   match view.application.publicView.ownTurn? who with
   | none => PMF.pure ⟨none⟩
-  | some event => (slotPairs setup runtime leaks bounds assessment who past view).map fun pair =>
-      slotResponse setup runtime leaks who past view event pair.1 pair.2
+  | some event => (slotPairs setup timeouts leaks bounds assessment who past view).map fun pair =>
+      slotResponse setup timeouts leaks who past view event pair.1 pair.2
 
-variable [Fintype Player] (initial : PMF (application setup runtime leaks).State) (horizon : Nat)
-  (scheduler : (application setup runtime leaks).Scheduler)
+variable [Fintype Player] (initial : PMF (application setup timeouts leaks).State) (horizon : Nat)
+  (scheduler : (application setup timeouts leaks).Scheduler)
 
 /-- The slot tier as a law over one-packet choices. -/
 def slotChoice (assessment : setup.intendedModel.BehavioralAssessment) (who : Player) :
-    (info : (application setup runtime leaks).Info) →
-      PMF ((onePacketModel setup runtime leaks bounds initial horizon scheduler).Choice who info)
+    (info : (application setup timeouts leaks).Info) →
+      PMF ((onePacketModel setup timeouts leaks bounds initial horizon scheduler).Choice who info)
   | none => PMF.pure ⟨none, rfl⟩
-  | some (past, view) => (slotTierResponse setup runtime leaks bounds assessment who past view).map
-      (responseChoice setup runtime leaks bounds initial horizon scheduler who (some (past, view)))
+  | some (past, view) => (slotTierResponse setup timeouts leaks bounds assessment who past view).map
+      (responseChoice setup timeouts leaks bounds initial horizon scheduler who (some (past, view)))
 
 end SlotTier
 
 section Components
 
 variable [Fintype Player] (bounds : MessageBounds (graph setup))
-  (initial : PMF (application setup runtime leaks).State) (horizon : Nat)
-  (scheduler : (application setup runtime leaks).Scheduler)
+  (initial : PMF (application setup timeouts leaks).State) (horizon : Nat)
+  (scheduler : (application setup timeouts leaks).Scheduler)
 
 /-- **A slot-trembled component.** The cube of the scale on the uniform law
 over the one-packet menu; of the rest, the square of the scale on the slot
 law; of the rest, the scale on the alternative and the remainder on the main
 law. -/
 def slotTrembledChoice (scale : ℝ) (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1)
-    (who : Player) (info : (application setup runtime leaks).Info)
+    (who : Player) (info : (application setup timeouts leaks).Info)
     (main alternative slot :
-      PMF ((onePacketModel setup runtime leaks bounds initial horizon scheduler).Choice who info)) :
-    PMF ((onePacketModel setup runtime leaks bounds initial horizon scheduler).Choice who info) :=
+      PMF ((onePacketModel setup timeouts leaks bounds initial horizon scheduler).Choice who
+        info)) :
+    PMF ((onePacketModel setup timeouts leaks bounds initial horizon scheduler).Choice who info) :=
   mix (scale ^ 3) (pow_nonneg nonnegative 3) (pow_le_one₀ nonnegative le_one)
-    ((bounds.onePacketMenu runtime leaks).uniformPolicy initial horizon scheduler who info)
+    ((bounds.onePacketMenu timeouts leaks).uniformPolicy initial horizon scheduler who info)
     (mix (scale ^ 2) (sq_nonneg _) (pow_le_one₀ nonnegative le_one) slot
       (mix scale nonnegative le_one alternative main))
 
 /-- The real mass a slot-trembled component gives a choice. -/
 theorem slotTrembledChoice_apply_toReal (scale : ℝ) (nonnegative : 0 ≤ scale)
-    (le_one : scale ≤ 1) (who : Player) (info : (application setup runtime leaks).Info)
+    (le_one : scale ≤ 1) (who : Player) (info : (application setup timeouts leaks).Info)
     (main alternative slot :
-      PMF ((onePacketModel setup runtime leaks bounds initial horizon scheduler).Choice who info))
-    (choice : (onePacketModel setup runtime leaks bounds initial horizon scheduler).Choice who
+      PMF ((onePacketModel setup timeouts leaks bounds initial horizon scheduler).Choice who info))
+    (choice : (onePacketModel setup timeouts leaks bounds initial horizon scheduler).Choice who
       info) :
-    (slotTrembledChoice setup runtime leaks bounds initial horizon scheduler scale nonnegative
+    (slotTrembledChoice setup timeouts leaks bounds initial horizon scheduler scale nonnegative
       le_one who
         info main alternative slot choice).toReal =
-      scale ^ 3 * ((bounds.onePacketMenu runtime leaks).uniformPolicy initial horizon
+      scale ^ 3 * ((bounds.onePacketMenu timeouts leaks).uniformPolicy initial horizon
           scheduler who info choice).toReal +
         (1 - scale ^ 3) * (scale ^ 2 * (slot choice).toReal +
           (1 - scale ^ 2) * (scale * (alternative choice).toReal +
@@ -184,14 +189,15 @@ theorem slotTrembledChoice_apply_toReal (scale : ℝ) (nonnegative : 0 ≤ scale
 
 /-- A slot-trembled component with a positive scale is fully supported. -/
 theorem slotTrembledChoice_fullSupport {scale : ℝ} (positive : 0 < scale) (le_one : scale ≤ 1)
-    (who : Player) (info : (application setup runtime leaks).Info)
+    (who : Player) (info : (application setup timeouts leaks).Info)
     (main alternative slot :
-      PMF ((onePacketModel setup runtime leaks bounds initial horizon scheduler).Choice who info)) :
-    FullSupport (slotTrembledChoice setup runtime leaks bounds initial horizon scheduler scale
+      PMF ((onePacketModel setup timeouts leaks bounds initial horizon scheduler).Choice who
+        info)) :
+    FullSupport (slotTrembledChoice setup timeouts leaks bounds initial horizon scheduler scale
       positive.le le_one who info main alternative slot) := by
   intro choice
   let := Fintype.ofFinite
-    ((onePacketModel setup runtime leaks bounds initial horizon scheduler).Choice who info)
+    ((onePacketModel setup timeouts leaks bounds initial horizon scheduler).Choice who info)
   exact mem_support_mix_left _ _ _ (pow_pos positive 3) (mem_support_uniformLaw choice)
 
 private theorem unit_mass {α : Type} (law : PMF α) (a : α) :
@@ -202,23 +208,23 @@ private theorem unit_mass {α : Type} (law : PMF α) (a : α) :
 /-- **The main factor.** A slot-trembled component gives a choice at least
 `(1 - scale³)(1 - scale²)(1 - scale)` times its main mass. -/
 theorem slotTrembledChoice_ge_main {scale : ℝ} (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1)
-    (who : Player) (info : (application setup runtime leaks).Info)
+    (who : Player) (info : (application setup timeouts leaks).Info)
     (main alternative slot :
-      PMF ((onePacketModel setup runtime leaks bounds initial horizon scheduler).Choice who info))
-    (choice : (onePacketModel setup runtime leaks bounds initial horizon scheduler).Choice who
+      PMF ((onePacketModel setup timeouts leaks bounds initial horizon scheduler).Choice who info))
+    (choice : (onePacketModel setup timeouts leaks bounds initial horizon scheduler).Choice who
       info) :
     (1 - scale ^ 3) * (1 - scale ^ 2) * (1 - scale) * (main choice).toReal ≤
-      (slotTrembledChoice setup runtime leaks bounds initial horizon scheduler scale nonnegative
+      (slotTrembledChoice setup timeouts leaks bounds initial horizon scheduler scale nonnegative
         le_one
         who info main alternative slot choice).toReal := by
   rw [slotTrembledChoice_apply_toReal]
-  have uniform := unit_mass ((bounds.onePacketMenu runtime leaks).uniformPolicy initial
+  have uniform := unit_mass ((bounds.onePacketMenu timeouts leaks).uniformPolicy initial
     horizon scheduler who info) choice
   have other := unit_mass alternative choice
   have tier := unit_mass slot choice
   have cube : 0 ≤ 1 - scale ^ 3 := by linarith [pow_le_one₀ (n := 3) nonnegative le_one]
   have square : 0 ≤ 1 - scale ^ 2 := by linarith [pow_le_one₀ (n := 2) nonnegative le_one]
-  have : 0 ≤ scale ^ 3 * ((bounds.onePacketMenu runtime leaks).uniformPolicy initial
+  have : 0 ≤ scale ^ 3 * ((bounds.onePacketMenu timeouts leaks).uniformPolicy initial
       horizon scheduler who info choice).toReal := mul_nonneg (pow_nonneg nonnegative 3) uniform.1
   have : 0 ≤ (1 - scale ^ 3) * (scale ^ 2 * (slot choice).toReal) :=
     mul_nonneg cube (mul_nonneg (sq_nonneg _) tier.1)
@@ -256,18 +262,18 @@ theorem slotFactor_le_one {scale : ℝ} (nonnegative : 0 ≤ scale) (le_one : sc
 /-- The general upper bound: the uniform tier at most the cube of the scale,
 the slot tier at most its square, the alternative at most the scale. -/
 theorem slotTrembledChoice_le {scale : ℝ} (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1)
-    (who : Player) (info : (application setup runtime leaks).Info)
+    (who : Player) (info : (application setup timeouts leaks).Info)
     (main alternative slot :
-      PMF ((onePacketModel setup runtime leaks bounds initial horizon scheduler).Choice who info))
-    (choice : (onePacketModel setup runtime leaks bounds initial horizon scheduler).Choice who
+      PMF ((onePacketModel setup timeouts leaks bounds initial horizon scheduler).Choice who info))
+    (choice : (onePacketModel setup timeouts leaks bounds initial horizon scheduler).Choice who
       info) :
-    (slotTrembledChoice setup runtime leaks bounds initial horizon scheduler scale nonnegative
+    (slotTrembledChoice setup timeouts leaks bounds initial horizon scheduler scale nonnegative
       le_one
         who info main alternative slot choice).toReal ≤
       scale ^ 3 + scale ^ 2 * (slot choice).toReal + scale * (alternative choice).toReal +
         (main choice).toReal := by
   rw [slotTrembledChoice_apply_toReal]
-  have uniform := unit_mass ((bounds.onePacketMenu runtime leaks).uniformPolicy initial
+  have uniform := unit_mass ((bounds.onePacketMenu timeouts leaks).uniformPolicy initial
     horizon scheduler who info) choice
   have other := unit_mass alternative choice
   have tier := unit_mass slot choice
@@ -296,16 +302,17 @@ theorem slotTrembledChoice_le {scale : ℝ} (nonnegative : 0 ≤ scale) (le_one 
 /-- **The full-menu tremble is of the order of the cube of the scale.** A
 choice outside all three laws has mass at most `scale³`. -/
 theorem slotTrembledChoice_le_of_unprescribed {scale : ℝ} (nonnegative : 0 ≤ scale)
-    (le_one : scale ≤ 1) (who : Player) (info : (application setup runtime leaks).Info)
+    (le_one : scale ≤ 1) (who : Player) (info : (application setup timeouts leaks).Info)
     (main alternative slot :
-      PMF ((onePacketModel setup runtime leaks bounds initial horizon scheduler).Choice who info))
-    (choice : (onePacketModel setup runtime leaks bounds initial horizon scheduler).Choice who info)
+      PMF ((onePacketModel setup timeouts leaks bounds initial horizon scheduler).Choice who info))
+    (choice : (onePacketModel setup timeouts leaks bounds initial horizon scheduler).Choice who
+      info)
     (outsideMain : main choice = 0) (outsideAlternative : alternative choice = 0)
     (outsideSlot : slot choice = 0) :
-    (slotTrembledChoice setup runtime leaks bounds initial horizon scheduler scale nonnegative
+    (slotTrembledChoice setup timeouts leaks bounds initial horizon scheduler scale nonnegative
       le_one
         who info main alternative slot choice).toReal ≤ scale ^ 3 := by
-  have bound := slotTrembledChoice_le setup runtime leaks bounds initial horizon scheduler
+  have bound := slotTrembledChoice_le setup timeouts leaks bounds initial horizon scheduler
     nonnegative
     le_one who info main alternative slot choice
   rw [outsideMain, outsideAlternative, outsideSlot, ENNReal.toReal_zero] at bound
@@ -316,13 +323,13 @@ response; the timing deviation is silence; the slot tier keeps the as-if-honest
 value law. -/
 def slotPrescribedComponent (assessment : setup.intendedModel.BehavioralAssessment)
     (scale : ℝ) (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1) (who : Player)
-    (info : (application setup runtime leaks).Info) :
-    PMF ((onePacketModel setup runtime leaks bounds initial horizon scheduler).Choice who info) :=
-  slotTrembledChoice setup runtime leaks bounds initial horizon scheduler scale nonnegative le_one
+    (info : (application setup timeouts leaks).Info) :
+    PMF ((onePacketModel setup timeouts leaks bounds initial horizon scheduler).Choice who info) :=
+  slotTrembledChoice setup timeouts leaks bounds initial horizon scheduler scale nonnegative le_one
     who info
-    (honestChoice setup runtime leaks bounds initial horizon scheduler assessment who info)
-    (PMF.pure (silenceChoice setup runtime leaks bounds initial horizon scheduler who info))
-    (slotChoice setup runtime leaks bounds initial horizon scheduler assessment who info)
+    (honestChoice setup timeouts leaks bounds initial horizon scheduler assessment who info)
+    (PMF.pure (silenceChoice setup timeouts leaks bounds initial horizon scheduler who info))
+    (slotChoice setup timeouts leaks bounds initial horizon scheduler assessment who info)
 
 end Components
 

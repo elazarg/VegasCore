@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactivePacketEvidence
-import Vegas.Pending.ReactiveRuntime
-import Vegas.Pending.EventCommitmentBinding
+public import Interaction.ReactivePacketEvidence
+public import Vegas.Pending.ReactiveRuntime
+public import Vegas.Pending.EventCommitmentBinding
+
+@[expose] public section
 
 /-! # Sound carried opening evidence in the native reactive runtime
 
@@ -20,10 +24,10 @@ open Interaction
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
 
-theorem openingFactInvariant (runtime : EventGraphRuntime graph)
+theorem openingFactInvariant (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (fact : OpeningFact graph) :
-    (runtime.reactiveApplication leaks).Invariant fact.Holds where
+    ((reactiveApplication timeouts) leaks).Invariant fact.Holds where
   submit state who material valid := by
     have fixed : state.candidates.lookup fact.handle ≠ .fresh := by
       rw [valid]
@@ -43,21 +47,21 @@ theorem openingFactInvariant (runtime : EventGraphRuntime graph)
     obtain ⟨native, handled, nextEq⟩ := reactiveHandle_call accepted
     change next.candidates.lookup fact.handle = .openable fact.raw
     rw [← nextEq, native.drain_tables.2.1]
-    exact (handle_lookup_of_not_fresh runtime state native
+    exact (handle_lookup_of_not_fresh timeouts state native
       ⟨message.id, message.payload.call⟩ fact.handle fixed handled).trans valid
   environment state command next valid reached := by
     change next.candidates.lookup fact.handle = .openable fact.raw
-    rw [(reactiveApplication_environment_tables runtime leaks state next command reached).2]
+    rw [(reactiveApplication_environment_tables timeouts leaks state next command reached).2]
     exact valid
 
 /-- Issuance and forwarding instantiate the generic all-history evidence theorem. -/
-def packetEvidence (runtime : EventGraphRuntime graph)
+def packetEvidence (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)) :
-    (runtime.reactiveApplication leaks).PacketEvidence where
+    ((reactiveApplication timeouts) leaks).PacketEvidence where
   Fact := OpeningFact graph
   valid state fact := fact.Holds state
   decode packet := packet.evidence.toList
-  persists := runtime.openingFactInvariant leaks
+  persists := (openingFactInvariant timeouts) leaks
   issued state who known material received fact certified := by
     change fact ∈ (material.emit state who known).evidence.toList at certified
     exact material.emit_sound state who known (by

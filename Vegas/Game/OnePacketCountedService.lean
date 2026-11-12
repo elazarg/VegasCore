@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveDecisionPredecessor
-import Vegas.Game.OnePacketFirstActivation
-import Vegas.Game.SourceServiceAsyncTimeliness
-import Vegas.Pending.ReactiveFirstOpportunity
-import Vegas.Pending.ExclusionNativeFailure
+public import Interaction.ReactiveDecisionPredecessor
+public import Vegas.Game.OnePacketFirstActivation
+public import Vegas.Game.SourceServiceAsyncTimeliness
+public import Vegas.Pending.ReactiveFirstOpportunity
+public import Vegas.Pending.ExclusionNativeFailure
+
+@[expose] public section
 
 /-! # Native clock and settlement facts on actual clear counted histories
 
@@ -21,12 +25,12 @@ open SourceProgram GameTheory.Protocol Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] (setup : Setup (Player := Player) (L := L))
-  (runtime : EventGraphRuntime (graph setup))
+  (timeouts : EventTimeouts (graph setup))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
   (bounds : MessageBounds (graph setup))
 
-local notation "N" => application setup runtime leaks
-local notation "nativeMenu" => MessageBounds.onePacketMenu runtime leaks bounds
+local notation "N" => application setup timeouts leaks
+local notation "nativeMenu" => MessageBounds.onePacketMenu timeouts leaks bounds
 
 /-- Every fresh call settles at every actual clear native counted history under
 pointwise counted inclusion. Service is instantiated only at genuine counted prefixes. -/
@@ -35,7 +39,7 @@ theorem settlesFreshCalls_counted_clear_history
     (inclusion : ∀ control : (N).Control,
       ((nativeMenu).protocol (initialLaw setup) horizon scheduler).Trace (some control) →
       control.execution.application.config.defaulted = ∅ →
-      ProtectedInclusionAt runtime leaks control.execution bound)
+      ProtectedInclusionAt timeouts leaks control.execution bound)
     (owner : Player) (event : (graph setup).EventId)
     (owned : (graph setup).actor? event = some owner) :
     ∀ {state}
@@ -47,7 +51,7 @@ theorem settlesFreshCalls_counted_clear_history
   | _, .extend (source := before) prior joint _ reached, clear => by
       have rawPrior := (nativeMenu).toRawTrace (initialLaw setup) horizon
         scheduler prior
-      have beforeClear := native_clear_before_transition runtime leaks
+      have beforeClear := native_clear_before_transition timeouts leaks
         (initialLaw setup) horizon
         scheduler joint reached clear
       have valid := settlesFreshCalls_counted_clear_history horizon scheduler
@@ -86,7 +90,7 @@ theorem settlesFreshCalls_counted_clear_environment
     (inclusion : ∀ control : (N).Control,
       ((nativeMenu).protocol (initialLaw setup) horizon scheduler).Trace (some control) →
       control.execution.application.config.defaulted = ∅ →
-      ProtectedInclusionAt runtime leaks control.execution bound)
+      ProtectedInclusionAt timeouts leaks control.execution bound)
     (owner : Player) (event : (graph setup).EventId)
     (owned : (graph setup).actor? event = some owner)
     (remaining : Nat) (execution : (N).Execution)
@@ -96,7 +100,7 @@ theorem settlesFreshCalls_counted_clear_environment
     (command : (N).Command) (next : (N).Execution)
     (reached : next ∈ (execution.environmentStep (N) command).support) :
     SettlesFreshCalls setup leaks owner event bound next := by
-  have valid := settlesFreshCalls_counted_clear_history setup runtime leaks bounds horizon
+  have valid := settlesFreshCalls_counted_clear_history setup timeouts leaks bounds horizon
     scheduler bound
     inclusion
     owner event owned prior (by intro current same; cases Option.some.inj same; exact clear)
@@ -113,7 +117,7 @@ theorem prescribed_packet_counted_clear_settles
     (inclusion : ∀ control : (N).Control,
       ((nativeMenu).protocol (initialLaw setup) horizon scheduler).Trace (some control) →
       control.execution.application.config.defaulted = ∅ →
-      ProtectedInclusionAt runtime leaks control.execution bound)
+      ProtectedInclusionAt timeouts leaks control.execution bound)
     (control : (N).Control)
     (trace : ((nativeMenu).protocol (initialLaw setup) horizon scheduler).Trace (some control))
     (clear : control.execution.application.config.defaulted = ∅)
@@ -124,12 +128,12 @@ theorem prescribed_packet_counted_clear_settles
     (split : control.execution.logs owner = earlier ++ entry :: later)
     (call : FreshCall setup leaks owner event bound entry message)
     (sole : ∀ other ∈ earlier ++ later,
-      ¬ EmitsOtherFor runtime leaks other event message.id) :
+      ¬ EmitsOtherFor timeouts leaks other event message.id) :
     (entry.beforeView.application.publicView.clock + bound event <
         control.execution.application.clock → (message.id, true) ∈ control.execution.receipts) ∧
       (event ∈ control.execution.application.config.cut.completed →
         (message.id, true) ∈ control.execution.receipts) := by
-  have settled := settlesFreshCalls_counted_clear_history setup runtime leaks bounds horizon
+  have settled := settlesFreshCalls_counted_clear_history setup timeouts leaks bounds horizon
     scheduler bound
     inclusion
     owner event owned trace (by intro current same; cases Option.some.inj same; exact clear)

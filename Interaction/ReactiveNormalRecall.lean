@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveResponseNormalization
+public import Interaction.ReactiveResponseNormalization
+
+@[expose] public section
 
 /-! # Projecting private response aliases out of recall
 

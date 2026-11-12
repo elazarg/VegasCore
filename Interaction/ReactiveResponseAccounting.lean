@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveHistory
+public import Interaction.ReactiveHistory
+
+@[expose] public section
 
 /-! # Response counts in actual reactive histories
 
@@ -39,7 +43,7 @@ private theorem activationHistory_count_append (execution next : app.Execution)
   | none => simp
   | some owner => by_cases same : owner = who <;> simp [same]
 
-private def Accounted (state : app.ProtocolState) : Prop :=
+def Accounted (state : app.ProtocolState) : Prop :=
   match state with
   | none => True
   | some control =>

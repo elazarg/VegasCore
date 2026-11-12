@@ -1,12 +1,16 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheoryExtensions.Analysis.Protocol.ConsistencyCompletion
-import GameTheory.Protocol.StateKernel
-import GameTheory.Core.Equilibrium
-import GameTheory.Core.Utility
-import GameTheoryExtensions.Math.Probability.Uniform
-import GameTheoryExtensions.Math.Probability.Expectation
-import GameTheory.Math.Probability.FiniteUniform
+public import GameTheoryExtensions.Analysis.Protocol.ConsistencyCompletion
+public import GameTheory.Protocol.StateKernel
+public import GameTheory.Core.Equilibrium
+public import GameTheory.Core.Utility
+public import GameTheoryExtensions.Math.Probability.Uniform
+public import GameTheoryExtensions.Math.Probability.Expectation
+public import GameTheory.Math.Probability.FiniteUniform
+
+@[expose] public section
 
 open GameTheory.Math.Probability
 

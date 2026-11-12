@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.SourceServiceClientPolicy
-import Vegas.Game.SourceServiceSiteBridge
-import Vegas.Game.ServiceHonestLaw
-import Vegas.Compile.EventGraphCanonical
-import Interaction.ReactiveRestrictedContinuation
+public import Vegas.Game.SourceServiceClientPolicy
+public import Vegas.Game.SourceServiceSiteBridge
+public import Vegas.Game.ServiceHonestLaw
+public import Vegas.Compile.EventGraphCanonical
+public import Interaction.ReactiveRestrictedContinuation
+
+@[expose] public section
 
 /-! # Ordinary correctness of the bounded message compiler
 
@@ -32,19 +36,17 @@ theorem firstTurnClientProfile_outcome_law {Outcome : Type*}
     (ordered : (serviceGraph service.setup service.mode).BarrierOrdered)
     (turns : Nat) (source : Profile (service.sourceModel admission).behavioralSignature)
     (observe : State L service.setup.program.terminalCtx × DefaultHistory Player → Outcome) :
-    ((service.rawMenu.information (serviceInitialLaw service.setup service.mode)
-        service.horizon service.scheduler).runBehavioral
+    (service.run service.rawMenu
       (service.clientProfile admission service.rawMenu
-        (firstTurnTiming service.setup turns service.mode) source)
-      (2 * service.horizon + 1)).map
-        (fun final => (serviceSourceReadout service.setup service.mode service.deadline
+        (firstTurnTiming service.setup turns service.mode) source)).map
+        (fun final => (serviceSourceReadout service.setup service.mode service.duration
           service.leaks final.state).map fun terminal =>
             observe (terminal.state, terminal.defaults)) =
       (service.setup.run (service.setup.decodeBehavioralProfile admission source)).map
         (fun terminal => some (observe (terminal.state, terminal.defaults))) := by
-  let app := serviceApplication service.setup service.mode service.deadline service.leaks
+  let app := serviceApplication service.setup service.mode service.duration service.leaks
   let original := service.setup.decodeBehavioralProfile admission source
-  let clients := serviceClientPolicy service.setup service.mode service.deadline service.leaks
+  let clients := serviceClientPolicy service.setup service.mode service.duration service.leaks
     service.bound turns (firstTurnTiming service.setup turns service.mode)
       (normalizeDisclosureProfile service.setup.program original)
   have physical := service.rawMenu.run_restrict_eq_finish
@@ -56,14 +58,11 @@ theorem firstTurnClientProfile_outcome_law {Outcome : Type*}
   have initialized : (service.rawMenu.protocol (serviceInitialLaw service.setup service.mode)
       service.horizon service.scheduler).initHistory.state = none := rfl
   rw [initialized] at physical
-  have states : ((service.rawMenu.information (serviceInitialLaw service.setup service.mode)
-        service.horizon service.scheduler).runBehavioral
+  have states : (service.run service.rawMenu
       (service.clientProfile admission service.rawMenu
-        (firstTurnTiming service.setup turns service.mode) source)
-      (2 * service.horizon + 1)).map (fun final => final.state) =
+        (firstTurnTiming service.setup turns service.mode) source)).map (fun final => final.state) =
       (app.roundsFrom (serviceInitialLaw service.setup service.mode) service.scheduler clients
         service.horizon).map app.finished := by
-    rw [InformationModel.runBehavioral]
     change ((service.rawMenu.information (serviceInitialLaw service.setup service.mode)
         service.horizon service.scheduler).runBehavioralFrom
       (fun who => service.rawMenu.restrictPolicy (serviceInitialLaw service.setup service.mode)
@@ -74,7 +73,7 @@ theorem firstTurnClientProfile_outcome_law {Outcome : Type*}
     simpa only [ReactiveApplication.finish, ReactiveApplication.roundsFrom, PMF.map_bind]
       using physical
   have projected := congrArg (PMF.map (fun final : app.ProtocolState =>
-    (serviceSourceReadout service.setup service.mode service.deadline service.leaks final).map
+    (serviceSourceReadout service.setup service.mode service.duration service.leaks final).map
       fun terminal => observe (terminal.state, terminal.defaults))) states
   simp only [PMF.map_comp, Function.comp_def] at projected
   apply projected.trans
@@ -90,12 +89,10 @@ theorem firstTurnClientProfile_graph_law {Outcome : Type*}
     (ordered : (serviceGraph service.setup service.mode).BarrierOrdered)
     (turns : Nat) (source : Profile (service.sourceModel admission).behavioralSignature)
     (observe : State L service.setup.program.terminalCtx × DefaultHistory Player → Outcome) :
-    ((service.rawMenu.information (serviceInitialLaw service.setup service.mode)
-        service.horizon service.scheduler).runBehavioral
+    (service.run service.rawMenu
       (service.clientProfile admission service.rawMenu
-        (firstTurnTiming service.setup turns service.mode) source)
-      (2 * service.horizon + 1)).map
-        (fun final => (serviceSourceReadout service.setup service.mode service.deadline
+        (firstTurnTiming service.setup turns service.mode) source)).map
+        (fun final => (serviceSourceReadout service.setup service.mode service.duration
           service.leaks final.state).map fun terminal =>
             observe (terminal.state, terminal.defaults)) =
       ((service.setup.eventGraph.canonicalGame

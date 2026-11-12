@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.EventGraph.SchedulerPredraw
+public import Vegas.EventGraph.SchedulerPredraw
+
+@[expose] public section
 
 /-! # Replaying a deterministic public scheduler
 

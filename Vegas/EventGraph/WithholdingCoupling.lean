@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.EventGraph.RevealDeviation
-import GameTheory.Math.Probability.ExpectationBind
+public import Vegas.EventGraph.RevealDeviation
+public import GameTheory.Math.Probability.ExpectationBind
+
+@[expose] public section
 
 /-! # Withholding buys nothing against an exclusion payoff
 

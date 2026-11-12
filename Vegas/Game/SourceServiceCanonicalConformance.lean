@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.SourceServiceCanonicalSlots
-import Vegas.Game.SourceServiceCanonicalAcceptance
-import Vegas.Pending.ReactiveCompiledResolution
+public import Vegas.Game.SourceServiceCanonicalSlots
+public import Vegas.Game.SourceServiceCanonicalAcceptance
+public import Vegas.Pending.ReactiveCompiledResolution
+
+@[expose] public section
 
 /-! # Prescribed fresh calls conform to the audit
 
@@ -26,7 +30,7 @@ open GameTheory.Math.Probability Interaction EventGraphRuntime
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L)) {mode : EventGraph.ExecutionMode}
-  {deadline : (serviceGraph setup mode).EventId → Nat}
+  {duration : (serviceGraph setup mode).EventId → Nat}
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
 
 section Decision
@@ -38,33 +42,34 @@ turn of `who`, within its deadline, with the counted slot fresh, every fresh
 call of the canonical decision satisfies the audit's conformance rule on the
 current public view. -/
 theorem canonicalServiceDecision_freshServiceEnvelope {horizon remaining : Nat}
-    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
-    {who : Player} {middle : (serviceApplication setup mode deadline leaks).Execution}
+    {scheduler : (serviceApplication setup mode duration leaks).Scheduler}
+    {who : Player} {middle : (serviceApplication setup mode duration leaks).Execution}
     (trace :
-        ((serviceApplication setup mode deadline leaks).protocol (serviceInitialLaw setup mode)
+        ((serviceApplication setup mode duration leaks).protocol (serviceInitialLaw setup mode)
         horizon scheduler).Trace (some ⟨remaining, some who, middle⟩))
     (event : (serviceGraph setup mode).EventId)
     (turn : middle.application.publicView.ownTurn? who = some event)
     (within : middle.application.publicView.WithinDeadline
-        (serviceRuntime setup mode deadline) event)
+        (serviceTimeouts setup mode duration) event)
     (fresh : middle.application.candidates.lookup
       (who, .prepared (middle.application.publicView.bindingCount who)) = .fresh)
     (action : (serviceGraph setup mode).Action event)
-    (material : (serviceApplication setup mode deadline leaks).Submission)
+    (material : (serviceApplication setup mode duration leaks).Submission)
     (submits :
-        ((serviceRuntime setup mode deadline).canonicalServiceDecision leaks who (middle.logs who)
-        (middle.observe (serviceApplication setup mode deadline leaks) who) event
+        ((canonicalServiceDecision (serviceTimeouts setup mode duration)) leaks who (middle.logs
+          who)
+        (middle.observe (serviceApplication setup mode duration leaks) who) event
         action).transmission = some material) :
-    (serviceRuntime setup mode deadline).freshServiceEnvelope middle.application.publicView
-      ⟨(who, middle.network.nextSerial who), (serviceApplication setup mode deadline leaks).packet
-        ((serviceApplication setup mode deadline leaks).submit middle.application who material) who
+    (freshServiceEnvelope (serviceTimeouts setup mode duration)) middle.application.publicView
+      ⟨(who, middle.network.nextSerial who), (serviceApplication setup mode duration leaks).packet
+        ((serviceApplication setup mode duration leaks).submit middle.application who material) who
         (middle.network.known who) material⟩ := by
-  let runtime := serviceRuntime setup mode deadline
-  let app := serviceApplication setup mode deadline leaks
+  let timeouts := serviceTimeouts setup mode duration
+  let app := serviceApplication setup mode duration leaks
   have acceptable := canonicalServiceDecision_freshServiceAcceptable trace who event turn within
     action material submits
   have owned := (PublicView.ownTurn?_spec _ who event turn).2
-  have active := runtime.canonicalServiceDecision_active leaks who (middle.logs who)
+  have active := (canonicalServiceDecision_active timeouts) leaks who (middle.logs who)
     (middle.observe app who) event action material submits
   cases node : nodeView (serviceGraph setup mode) event with
   | sample payload law outputEq codeEq =>
@@ -80,13 +85,13 @@ theorem canonicalServiceDecision_freshServiceEnvelope {horizon remaining : Nat}
         ⟨cast (congrArg EventGraph.EventField.Action outputEq) action, by simp⟩
       cases choice with
       | none =>
-          rw [runtime.canonicalServiceDecision_binding_none leaks who (middle.logs who)
+          rw [(canonicalServiceDecision_binding_none timeouts) leaks who (middle.logs who)
             (middle.observe app who) event who payload outputEq codeEq node] at submits
           cases submits
       | some result =>
           have canonical := canonicalFreshSlot_canonical who (middle.observe app who).application
             fresh
-          rw [runtime.canonicalServiceDecision_binding leaks who (middle.logs who)
+          rw [(canonicalServiceDecision_binding timeouts) leaks who (middle.logs who)
             (middle.observe app who) event payload outputEq codeEq node active _ canonical result]
             at submits
           cases Option.some.inj submits
@@ -95,10 +100,10 @@ theorem canonicalServiceDecision_freshServiceEnvelope {horizon remaining : Nat}
       obtain ⟨choice, rfl⟩ : ∃ choice : Bool,
           action = cast (congrArg EventGraph.EventField.Action outputEq.symm) choice :=
         ⟨cast (congrArg EventGraph.EventField.Action outputEq) action, by simp⟩
-      rw [runtime.canonicalServiceDecision_eq_of_not_bind leaks who (middle.logs who)
+      rw [(canonicalServiceDecision_eq_of_not_bind timeouts) leaks who (middle.logs who)
         (middle.observe app who) event _
         (fun _ _ _ _ different => by rw [node] at different; cases different)] at submits
-      rcases runtime.serviceDecision_resolution_cases leaks who (middle.logs who)
+      rcases (serviceDecision_resolution_cases timeouts) leaks who (middle.logs who)
         (middle.observe app who) event actor payload binding checks outputEq codeEq node choice
         with silent | ⟨candidate, value, evidence, _, _, _, responseEq⟩
       · rw [silent] at submits
@@ -113,10 +118,10 @@ section Support
 
 /-- Every fresh call of `who` conforms to the audit on the view it was made
 from. -/
-def FreshCallsConform (execution : (serviceApplication setup mode deadline leaks).Execution)
+def FreshCallsConform (execution : (serviceApplication setup mode duration leaks).Execution)
     (who : Player) : Prop := ∀ entry ∈ execution.logs who, ∀ material message,
     entry.action.transmission = some material → entry.emitted = some message →
-    (serviceRuntime setup mode deadline).freshServiceEnvelope
+    (freshServiceEnvelope (serviceTimeouts setup mode duration))
     entry.beforeView.application.publicView message
 
 variable {setup leaks}
@@ -124,25 +129,25 @@ variable {setup leaks}
 /-- One round keeps the fresh calls of a player following the turn-counted
 policy conforming. -/
 theorem freshCallsConform_round_reference {horizon remaining : Nat}
-    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
-    {players : Player → (serviceApplication setup mode deadline leaks).Policy} {who : Player}
+    {scheduler : (serviceApplication setup mode duration leaks).Scheduler}
+    {players : Player → (serviceApplication setup mode duration leaks).Policy} {who : Player}
     {bound : (serviceGraph setup mode).EventId → Nat} {turns : Nat}
     {timing : TurnTiming setup turns mode}
     {reference : (serviceGraph setup mode).BehavioralProfile}
-    (follows : players who = serviceReferenceTurnPolicy setup mode deadline leaks bound turns timing
+    (follows : players who = serviceReferenceTurnPolicy setup mode duration leaks bound turns timing
         reference who)
-    {execution next : (serviceApplication setup mode deadline leaks).Execution}
+    {execution next : (serviceApplication setup mode duration leaks).Execution}
     (trace :
-        ((serviceApplication setup mode deadline leaks).protocol (serviceInitialLaw setup mode)
+        ((serviceApplication setup mode duration leaks).protocol (serviceInitialLaw setup mode)
         horizon scheduler).Trace (some ⟨remaining + 1, none, execution⟩))
     (atTurn : OwnSubmissionsAtTurn setup leaks execution who)
     (valid : CanonicalSlotsUsed setup leaks execution who)
     (conform : FreshCallsConform setup leaks execution who)
     (reached : next ∈
-        ((serviceApplication setup mode deadline leaks).round scheduler players
+        ((serviceApplication setup mode duration leaks).round scheduler players
         execution).support) :
     FreshCallsConform setup leaks next who := by
-  let app := serviceApplication setup mode deadline leaks
+  let app := serviceApplication setup mode duration leaks
   obtain ⟨command, selected, middle, moved, cases⟩ := round_cases setup leaks reached
   have recallEq := app.environmentStep_recall execution middle command moved
   have conformMiddle : FreshCallsConform setup leaks middle who := by
@@ -203,22 +208,22 @@ theorem freshCallsConform_round_reference {horizon remaining : Nat}
 /-- One round keeps the fresh calls of a player following the turn-counted
 policy conforming. -/
 theorem freshCallsConform_round {horizon remaining : Nat}
-    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
-    {players : Player → (serviceApplication setup mode deadline leaks).Policy} {who : Player}
+    {scheduler : (serviceApplication setup mode duration leaks).Scheduler}
+    {players : Player → (serviceApplication setup mode duration leaks).Policy} {who : Player}
     {bound : (serviceGraph setup mode).EventId → Nat} {turns : Nat}
     {timing : TurnTiming setup turns mode}
     {profile : BehavioralProfile setup.program}
-    (follows : players who = serviceTurnPolicy setup mode deadline leaks bound turns timing
+    (follows : players who = serviceTurnPolicy setup mode duration leaks bound turns timing
         profile who)
-    {execution next : (serviceApplication setup mode deadline leaks).Execution}
+    {execution next : (serviceApplication setup mode duration leaks).Execution}
     (trace :
-        ((serviceApplication setup mode deadline leaks).protocol (serviceInitialLaw setup mode)
+        ((serviceApplication setup mode duration leaks).protocol (serviceInitialLaw setup mode)
         horizon scheduler).Trace (some ⟨remaining + 1, none, execution⟩))
     (atTurn : OwnSubmissionsAtTurn setup leaks execution who)
     (valid : CanonicalSlotsUsed setup leaks execution who)
     (conform : FreshCallsConform setup leaks execution who)
     (reached : next ∈
-        ((serviceApplication setup mode deadline leaks).round scheduler players
+        ((serviceApplication setup mode duration leaks).round scheduler players
         execution).support) :
     FreshCallsConform setup leaks next who := by
   apply freshCallsConform_round_reference
@@ -229,26 +234,26 @@ every reference in which `who` follows the turn-counted policy, deferral
 trembles included, every fresh submission of `who` satisfies the audit's
 public conformance rule on the view it was made from. -/
 theorem sourceServiceTurnPolicy_freshServiceEnvelope_reference
-    (scheduler : (serviceApplication setup mode deadline leaks).Scheduler)
-    (players : Player → (serviceApplication setup mode deadline leaks).Policy) (who : Player)
+    (scheduler : (serviceApplication setup mode duration leaks).Scheduler)
+    (players : Player → (serviceApplication setup mode duration leaks).Policy) (who : Player)
     {bound : (serviceGraph setup mode).EventId → Nat} {turns : Nat}
     (timing : TurnTiming setup turns mode)
     (reference : (serviceGraph setup mode).BehavioralProfile)
-    (follows : players who = serviceReferenceTurnPolicy setup mode deadline leaks bound turns timing
+    (follows : players who = serviceReferenceTurnPolicy setup mode duration leaks bound turns timing
         reference who)
-    (count : Nat) (execution : (serviceApplication setup mode deadline leaks).Execution)
+    (count : Nat) (execution : (serviceApplication setup mode duration leaks).Execution)
     (reached : execution ∈
-        ((serviceApplication setup mode deadline leaks).roundsFrom (serviceInitialLaw setup mode)
+        ((serviceApplication setup mode duration leaks).roundsFrom (serviceInitialLaw setup mode)
         scheduler players count).support)
-    (entry : (serviceApplication setup mode deadline leaks).PlayerEntry)
+    (entry : (serviceApplication setup mode duration leaks).PlayerEntry)
     (member : entry ∈ execution.logs who)
-    (material : (serviceApplication setup mode deadline leaks).Submission)
+    (material : (serviceApplication setup mode duration leaks).Submission)
     (fresh : entry.action.transmission = some material)
     (message : Message Player (WitnessedPacket (serviceGraph setup mode)))
     (emitted : entry.emitted = some message) :
-    (serviceRuntime setup mode deadline).freshServiceEnvelope
+    (freshServiceEnvelope (serviceTimeouts setup mode duration))
     entry.beforeView.application.publicView message := by
-  let app := serviceApplication setup mode deadline leaks
+  let app := serviceApplication setup mode duration leaks
   suffices conform : FreshCallsConform setup leaks execution who from
     conform entry member material message fresh emitted
   clear member
@@ -274,24 +279,24 @@ every profile in which `who` follows the turn-counted policy, deferral
 trembles included, every fresh submission of `who` satisfies the audit's
 public conformance rule on the view it was made from. -/
 theorem sourceServiceTurnPolicy_freshServiceEnvelope
-    (scheduler : (serviceApplication setup mode deadline leaks).Scheduler)
-    (players : Player → (serviceApplication setup mode deadline leaks).Policy) (who : Player)
+    (scheduler : (serviceApplication setup mode duration leaks).Scheduler)
+    (players : Player → (serviceApplication setup mode duration leaks).Policy) (who : Player)
     {bound : (serviceGraph setup mode).EventId → Nat} {turns : Nat}
     (timing : TurnTiming setup turns mode)
     (profile : BehavioralProfile setup.program)
-    (follows : players who = serviceTurnPolicy setup mode deadline leaks bound turns timing
+    (follows : players who = serviceTurnPolicy setup mode duration leaks bound turns timing
         profile who)
-    (count : Nat) (execution : (serviceApplication setup mode deadline leaks).Execution)
+    (count : Nat) (execution : (serviceApplication setup mode duration leaks).Execution)
     (reached : execution ∈
-        ((serviceApplication setup mode deadline leaks).roundsFrom (serviceInitialLaw setup mode)
+        ((serviceApplication setup mode duration leaks).roundsFrom (serviceInitialLaw setup mode)
         scheduler players count).support)
-    (entry : (serviceApplication setup mode deadline leaks).PlayerEntry)
+    (entry : (serviceApplication setup mode duration leaks).PlayerEntry)
     (member : entry ∈ execution.logs who)
-    (material : (serviceApplication setup mode deadline leaks).Submission)
+    (material : (serviceApplication setup mode duration leaks).Submission)
     (fresh : entry.action.transmission = some material)
     (message : Message Player (WitnessedPacket (serviceGraph setup mode)))
     (emitted : entry.emitted = some message) :
-    (serviceRuntime setup mode deadline).freshServiceEnvelope
+    (freshServiceEnvelope (serviceTimeouts setup mode duration))
     entry.beforeView.application.publicView message := by
   apply sourceServiceTurnPolicy_freshServiceEnvelope_reference
     (reference := compileEventProfile setup.program profile) <;> assumption

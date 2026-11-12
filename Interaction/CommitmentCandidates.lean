@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.IdealCommitments
+public import Interaction.IdealCommitments
+
+@[expose] public section
 
 /-! # Write-once commitment candidate catalog
 

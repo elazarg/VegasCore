@@ -3,7 +3,7 @@
 Run the strict build and checks from the repository root:
 
 ```powershell
-lake build
+lake --wfail build
 python scripts/check-paper-audit.py
 python scripts/check-module-boundaries.py
 python scripts/check-lean-options.py
@@ -12,6 +12,10 @@ python -m unittest discover -s scripts -p 'test_*.py'
 python -m unittest scripts.paper_audit_tests
 ```
 
+The strict build rejects compiler warnings and Lake warnings, including replayed
+warnings from cached builds. Local Lean files use explicit module headers and
+public imports; exposed public sections retain definition unfolding. Lean exports
+the checked transitive axiom dependencies used by the paper audit.
 Module checks validate imports, aggregator coverage and architectural layers.
 Source policy rejects admissions, axiom declarations and trust escapes and enforces
 central options. The separate Lean-native paper audit runs after the build: it
@@ -30,8 +34,8 @@ Notation names are checked again when declarations or opens change their scope.
 Data defaults and documented structure fields are supported; proof-valued field
 defaults must be stated as separate named results. Each file uses its own exact
 import header and pristine import environment, before validator declarations.
-Before auditing, `lake build --no-build Paper Tools` rejects missing or stale
-proof artifacts. The isolated driver uses no loader overrides and never
+Before auditing, `lake --wfail build --no-build Paper Tools` rejects missing or
+stale proof artifacts and cached warnings. The isolated driver uses no loader overrides and never
 rebuilds those artifacts. Every Lean
 subprocess has a visible 180-second timeout; no cross-process mutex is needed.
 Native mutation fixtures check coverage, adjacency and explicit statements

@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveAliasLaw
-import Interaction.ReactiveRecallEntries
+public import Interaction.ReactiveAliasLaw
+public import Interaction.ReactiveRecallEntries
+
+@[expose] public section
 
 /-! # Selecting private aliases from one reference recall
 

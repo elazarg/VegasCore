@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.EventGraph.SchedulerErasure
-import GameTheory.Math.Probability.FiniteSampling
+public import Vegas.EventGraph.SchedulerErasure
+public import GameTheory.Math.Probability.FiniteSampling
+
+@[expose] public section
 
 /-! # Predrawing a public scheduler
 

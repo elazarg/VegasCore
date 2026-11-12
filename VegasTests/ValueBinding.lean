@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Source.BindingNormalization
-import Vegas.Expr.Simple
+public import Vegas.Source.BindingNormalization
+public import Vegas.Expr.Simple
+
+@[expose] public section
 
 /-! # Regression for the value-binding translation
 
@@ -21,11 +25,11 @@ open Vegas Vegas.SourceProgram GameTheory.Math.Probability
 
 noncomputable section
 
-private abbrev bid : VarId := 0
-private abbrev bidOut : VarId := 1
+abbrev bid : VarId := 0
+abbrev bidOut : VarId := 1
 
 /-- A guard that accepts every opening. -/
-private def openGuard : SourceGuard (Player := Unit) simpleExpr [] () bid .bool where
+def openGuard : SourceGuard (Player := Unit) simpleExpr [] () bid .bool where
   schema := []
   schemaNames := by decide
   subjectFresh := by decide
@@ -33,16 +37,16 @@ private def openGuard : SourceGuard (Player := Unit) simpleExpr [] () bid .bool 
   reads := fun h => nomatch h
 
 /-- Bind a Boolean, open it, and be paid only for a published value. -/
-private def program : SourceProgram Unit simpleExpr [] ∅ :=
+def program : SourceProgram Unit simpleExpr [] ∅ :=
   .commit bid () (by decide) openGuard <|
   .reveal bidOut () bid (by decide) .here (by decide) <|
   .ret [((), .ite (.isFailure (.var bidOut .here)) (.constInt 0) (.constInt 1))]
 
 /-- Bind an unopenable candidate, then try to open it. -/
-private def failingPolicy : PurePolicy (who := ()) program :=
+def failingPolicy : PurePolicy (who := ()) program :=
   (fun _ _ _ => some .failure, (fun _ _ _ => true, PUnit.unit))
 
-private def profileOf (policy : PurePolicy (who := ()) program) :
+def profileOf (policy : PurePolicy (who := ()) program) :
     program.BehavioralProfile :=
   fun _ => PurePolicy.toBehavioral program policy
 
@@ -79,7 +83,7 @@ example :
 /-- The canonical Boolean is `false`, so a policy that genuinely binds `false`
 and opens it is the case the translation must *not* touch: it looks exactly like
 a replaced binding. Publishing the value pays one. -/
-private def genuinePolicy : PurePolicy (who := ()) program :=
+def genuinePolicy : PurePolicy (who := ()) program :=
   (fun _ _ _ => some (.success false), (fun _ _ _ => true, PUnit.unit))
 
 example :

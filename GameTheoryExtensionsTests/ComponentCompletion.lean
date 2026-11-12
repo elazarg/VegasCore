@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheory.Analysis.Protocol.ComponentCompletion
+public import GameTheory.Analysis.Protocol.ComponentCompletion
+
+@[expose] public section
 
 /-! # Free-agent completion is a component completion
 

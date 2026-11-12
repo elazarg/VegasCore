@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketDecodedCells
-import Vegas.Game.OnePacketDirectedRepairPrefix
-import Vegas.EventGraph.BarrierBlocks
+public import Vegas.Game.OnePacketDecodedCells
+public import Vegas.Game.OnePacketDirectedRepairPrefix
+public import Vegas.EventGraph.BarrierBlocks
+
+@[expose] public section
 
 /-! # Successful reveal bindings along a forced information history -/
 
@@ -16,10 +20,10 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup runtime leaks).Scheduler}
+  {scheduler : (application setup timeouts leaks).Scheduler}
   [DecidableEq (CellTy Player L)]
 
 omit [DecidableEq Player] [Fintype Player] [IExpr.ResultTypes L]
@@ -152,16 +156,16 @@ variable {p q : ProtocolState setup.program}
   (who : Player)
   (sameView : ProtocolState.observe who setup.program p =
     ProtocolState.observe who setup.program q)
-  {final : (application setup runtime leaks).Control}
-  (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some final))
+  {final : (application setup timeouts leaks).Control}
+  (trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some final))
   (decodedP : decodedPoint setup final.execution.application.config = some p)
   (staticQ : ProtocolState.StaticAt setup.program [] (Revelations.initial setup.context) q)
   (readyOwn : ∀ event, final.execution.application.config.cut.Ready event →
     ∀ owner payload binding checks outputEq codeEq,
       nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq →
         owner = who)
-  {before : (application setup runtime leaks).Control}
-  (prior : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some before))
+  {before : (application setup timeouts leaks).Control}
+  (prior : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some before))
   (isPrefix : TracePrefix prior trace)
 
 include wellFormed secondState who sameView trace decodedP staticQ readyOwn prior isPrefix
@@ -193,15 +197,15 @@ theorem binding_success_of_tracePrefix {event : (graph setup).EventId}
     (binding.get?_isSome before.execution.application.config.store available)
   have finalRead := binding.get?_preserved before.execution.application.config.store
     final.execution.application.config.store
-    (fun field value stored => storedValue_of_tracePrefix (runtime := runtime) prior isPrefix
+    (fun field value stored => storedValue_of_tracePrefix (timeouts := timeouts) prior isPrefix
       field value stored)
     result read
   have found := decodedPoint_binding_cell decodedP binding result finalRead
-  obtain ⟨after, finalEq, active⟩ := readyOrCompleted_of_tracePrefix (runtime := runtime) prior
+  obtain ⟨after, finalEq, active⟩ := readyOrCompleted_of_tracePrefix (timeouts := timeouts) prior
     isPrefix
     (Or.inl ready)
   cases Option.some.inj finalEq
-  have agree := bindingCellsAgree_of_decoded (runtime := runtime) wellFormed secondState who
+  have agree := bindingCellsAgree_of_decoded (timeouts := timeouts) wellFormed secondState who
     sameView trace decodedP
     staticQ readyOwn active view
   obtain ⟨value, resultEq⟩ := ProtocolState.cell?_commitment_success

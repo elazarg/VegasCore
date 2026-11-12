@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ExclusionCompletion
+public import Vegas.Pending.ExclusionCompletion
+
+@[expose] public section
 
 /-! # Outputs of automatic completion
 

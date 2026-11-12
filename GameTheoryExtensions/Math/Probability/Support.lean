@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheory.Math.Probability.Support
-import GameTheory.Math.Probability.Conditioning
+public import GameTheory.Math.Probability.Support
+public import GameTheory.Math.Probability.Conditioning
+
+@[expose] public section
 
 /-! # Support-local algebra of probability mass functions
 

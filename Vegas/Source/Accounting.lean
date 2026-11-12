@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Source.Setup
-import Vegas.Source.Metadata
+public import Vegas.Source.Setup
+public import Vegas.Source.Metadata
+
+@[expose] public section
 
 /-! # Revelation accounting
 

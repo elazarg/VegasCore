@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.LastKeyLaw
-import Vegas.EventGraph.LastErasedLaw
+public import Vegas.Pending.LastKeyLaw
+public import Vegas.EventGraph.LastErasedLaw
+
+@[expose] public section
 
 /-! # Native automatic completion and erased keys
 

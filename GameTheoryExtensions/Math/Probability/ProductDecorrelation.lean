@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheoryExtensions.Math.Probability.Expectation
-import GameTheoryExtensions.Math.Probability.ExpectationContraction
+public import GameTheoryExtensions.Math.Probability.Expectation
+public import GameTheoryExtensions.Math.Probability.ExpectationContraction
+
+@[expose] public section
 
 /-! # Decorrelation of a lumped failure from a bounded value
 

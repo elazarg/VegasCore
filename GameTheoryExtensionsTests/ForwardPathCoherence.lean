@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Mathlib.Combinatorics.Quiver.Path
-import Mathlib.Tactic
+public import Mathlib.Combinatorics.Quiver.Path
+public import Mathlib.Tactic
+
+@[expose] public section
 
 /-! # Closed paths do not test coherence of parallel forward paths
 

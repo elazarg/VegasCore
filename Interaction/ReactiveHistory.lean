@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveRecall
-import GameTheory.Protocol.SubgamePerfect
+public import Interaction.ReactiveRecall
+public import GameTheory.Protocol.SubgamePerfect
+
+@[expose] public section
 
 /-! # Recall prefixes along complete reactive histories -/
 

@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.EventGraph.LastSchedulerErasure
-import Vegas.EventGraph.DecisionTwin
-import Vegas.EventGraph.PolicyPatch
+public import Vegas.EventGraph.LastSchedulerErasure
+public import Vegas.EventGraph.DecisionTwin
+public import Vegas.EventGraph.PolicyPatch
+
+@[expose] public section
 
 /-! # The last-served law of erased keys
 
@@ -118,14 +122,6 @@ def lastRun (profile : graph.BehavioralProfile) (who : Player) (config : graph.C
 def lastErasedLaw (profile : graph.BehavioralProfile) (who : Player) (config : graph.Config) :=
   (lastRun profile who config).map erasedKey
 
-omit [DecidableEq Player] in
-private theorem not_terminal_of_ready {config : graph.Config} {event : graph.EventId}
-    (ready : config.cut.Ready event) : ¬ config.cut.Terminal := by
-  intro terminal
-  apply ready.1
-  rw [terminal]
-  exact Finset.mem_univ _
-
 /-- The last-served run takes the step of the event the scheduler picks. -/
 theorem lastRun_step (profile : graph.BehavioralProfile) (who : Player) (config : graph.Config)
     (notTerminal : ¬ config.cut.Terminal) (event : graph.EventId) (ready : config.cut.Ready event)
@@ -194,11 +190,11 @@ theorem lastErasedLaw_patch_step {build tail : graph.BehavioralProfile} {who : P
       actionLaw build config other = actionLaw tail config other)
     (config : graph.Config) (ready : config.cut.Ready event)
     (picked : event = graph.lastPick who config.cut.enabled
-      (enabled_nonempty_of_not_terminal config (not_terminal_of_ready ready))) :
+      (enabled_nonempty_of_not_terminal config ready.not_terminal)) :
     lastErasedLaw build who config =
       (eventStep build config event ready).bind (lastErasedLaw tail who) := by
   unfold lastErasedLaw
-  rw [lastRun_step build who config (not_terminal_of_ready ready) event ready picked,
+  rw [lastRun_step build who config ready.not_terminal event ready picked,
     PMF.map_bind]
   apply bind_congr_on_support _
   intro next member

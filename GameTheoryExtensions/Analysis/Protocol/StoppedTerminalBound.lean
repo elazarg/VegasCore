@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheory.Protocol.BehavioralTerminal
-import GameTheory.Math.Probability.ExpectationComposition
+public import GameTheory.Protocol.BehavioralTerminal
+public import GameTheory.Math.Probability.ExpectationComposition
+
+@[expose] public section
 
 /-! # Play until a stopping set
 

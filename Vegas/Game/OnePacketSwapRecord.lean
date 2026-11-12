@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketSwapSymmetry
-import Vegas.Game.OnePacketFactorization
-import Interaction.ReactiveRecallEntries
-import Interaction.ReactiveRecallInvariant
+public import Vegas.Game.OnePacketSwapSymmetry
+public import Vegas.Game.OnePacketFactorization
+public import Interaction.ReactiveRecallEntries
+public import Interaction.ReactiveRecallInvariant
+
+@[expose] public section
 
 /-! # Hidden swaps keep operational records and the observer's information
 
@@ -33,7 +37,7 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol Intera
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {allowed : Set (graph setup).Inputs}
 
@@ -48,12 +52,12 @@ variable (swap : HiddenSwap (graph setup))
 
 /-- The swap leaves a player's late-delivery key unchanged when every binding
 read at a reveal turn of that player is fixed. -/
-theorem lateKey_swap (who : Player) (past : List (application setup runtime leaks).PlayerEntry)
-    (observed : (application setup runtime leaks).PlayerView)
+theorem lateKey_swap (who : Player) (past : List (application setup timeouts leaks).PlayerEntry)
+    (observed : (application setup timeouts leaks).PlayerView)
     (fixed : ∀ event, observed.application.publicView.ownTurn? who = some event →
       EventGraph.ResolutionFixed swap.values event) :
-    lateKey setup runtime leaks who (some (past.map swap.entry, swap.view observed)) =
-      lateKey setup runtime leaks who (some (past, observed)) := by
+    lateKey setup timeouts leaks who (some (past.map swap.entry, swap.view observed)) =
+      lateKey setup timeouts leaks who (some (past, observed)) := by
   simp only [lateKey, List.map_map]
   congr 2
   · unfold deliveredValue
@@ -81,10 +85,10 @@ end EventGraphRuntime.HiddenSwap
 
 /-- **The swap keeps the operational state** of a guarded protocol state. -/
 theorem operationalState_swap (swap : HiddenSwap (graph setup))
-    (state : (application setup runtime leaks).ProtocolState)
-    (guarded : SwapGuardState setup runtime swap allowed state) :
-    operationalState setup runtime leaks (swap.protocolState state) =
-      operationalState setup runtime leaks state := by
+    (state : (application setup timeouts leaks).ProtocolState)
+    (guarded : SwapGuardState setup timeouts swap allowed state) :
+    operationalState setup timeouts leaks (swap.protocolState state) =
+      operationalState setup timeouts leaks state := by
   cases state with
   | none => rfl
   | some current =>
@@ -110,8 +114,8 @@ theorem operationalState_swap (swap : HiddenSwap (graph setup))
           exact reveal.1
 
 variable [Fintype Player] {bounds : MessageBounds (graph setup)}
-  {initial : PMF (application setup runtime leaks).State} {horizon : Nat}
-  {scheduler : (application setup runtime leaks).Scheduler}
+  {initial : PMF (application setup timeouts leaks).State} {horizon : Nat}
+  {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- **The image of a history has the same operational record.** -/
 theorem operationalRecord_mapTrace (swap : HiddenSwap (graph setup))
@@ -119,20 +123,21 @@ theorem operationalRecord_mapTrace (swap : HiddenSwap (graph setup))
       state.swap swap ∈ (initialLaw setup).support)
     (bounded : ∀ handle raw, raw ∈ bounds.values → swap.raw handle raw ∈ bounds.values)
     (failures : ∀ event, swap.values.ExpiryFixed event) :
-    ∀ {state} (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace state)
-      (guarded : SwapGuardState setup runtime swap allowed state),
-    operationalRecord setup runtime leaks bounds horizon scheduler
-        ((onePacketSwapSymmetry (runtime := runtime) bounds (initialLaw setup) horizon scheduler
+    ∀ {state} (trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace
+      state)
+      (guarded : SwapGuardState setup timeouts swap allowed state),
+    operationalRecord setup timeouts leaks bounds horizon scheduler
+        ((onePacketSwapSymmetry (timeouts := timeouts) bounds (initialLaw setup) horizon scheduler
           swap initialClosed
           bounded failures).mapTrace trace guarded) =
-      operationalRecord setup runtime leaks bounds horizon scheduler trace
+      operationalRecord setup timeouts leaks bounds horizon scheduler trace
   | _, .start, _ => rfl
   | _, .extend (target := target) prior joint isLegal reached, guarded => by
       rw [StateSymmetry.mapTrace_extend]
       simp only [operationalRecord]
       rw [operationalRecord_mapTrace swap initialClosed bounded failures prior]
       congr 1
-      exact operationalState_swap (runtime := runtime) swap target guarded
+      exact operationalState_swap (timeouts := timeouts) swap target guarded
 
 
 namespace EventGraphRuntime.HiddenSwap
@@ -142,13 +147,13 @@ variable (swap : HiddenSwap (graph setup))
 omit [Fintype Player] in
 /-- A swap fixing a player fixes that player's view. -/
 theorem view_observe_of_fixes {who : Player} (fixes : swap.Fixes who)
-    (current : (application setup runtime leaks).Execution) :
-    swap.view (current.observe (application setup runtime leaks) who) =
-      current.observe (application setup runtime leaks) who := by
+    (current : (application setup timeouts leaks).Execution) :
+    swap.view (current.observe (application setup timeouts leaks) who) =
+      current.observe (application setup timeouts leaks) who := by
   obtain ⟨fixedValues, fixedActions, fixedRaw⟩ := fixes
   change (⟨current.network.observe who,
     PlayerView.swap swap (current.application.playerView who), current.receipts⟩ :
-      (application setup runtime leaks).PlayerView) = ⟨current.network.observe who,
+      (application setup timeouts leaks).PlayerView) = ⟨current.network.observe who,
     current.application.playerView who, current.receipts⟩
   congr 1
   unfold PlayerView.swap State.playerView
@@ -161,10 +166,10 @@ theorem view_observe_of_fixes {who : Player} (fixes : swap.Fixes who)
 /-- **A swap fixing a player fixes its one-packet responses**: a permitted
 commitment names a handle of its sender. -/
 theorem action_eq_of_onePacket {bounds : MessageBounds (graph setup)} {who : Player}
-    (fixes : swap.Fixes who) {past : List (application setup runtime leaks).PlayerEntry}
-    {observed : (application setup runtime leaks).PlayerView}
-    {response : (application setup runtime leaks).Action}
-    (member : response ∈ bounds.onePacketActions runtime leaks who past observed) :
+    (fixes : swap.Fixes who) {past : List (application setup timeouts leaks).PlayerEntry}
+    {observed : (application setup timeouts leaks).PlayerView}
+    {response : (application setup timeouts leaks).Action}
+    (member : response ∈ bounds.onePacketActions timeouts leaks who past observed) :
     swap.action response = response := by
   rcases response with ⟨transmission⟩
   cases transmission with
@@ -196,23 +201,23 @@ end EventGraphRuntime.HiddenSwap
 states. -/
 theorem recall_swap_of_fixes (swap : HiddenSwap (graph setup)) {who : Player}
     (fixes : swap.Fixes who)
-    (history : ((bounds.onePacketMenu runtime leaks).protocol initial horizon
+    (history : ((bounds.onePacketMenu timeouts leaks).protocol initial horizon
       scheduler).History)
-    {past : List (application setup runtime leaks).PlayerEntry}
-    {observed : (application setup runtime leaks).PlayerView}
-    (decision : ((bounds.onePacketMenu runtime leaks).information initial horizon
+    {past : List (application setup timeouts leaks).PlayerEntry}
+    {observed : (application setup timeouts leaks).PlayerView}
+    (decision : ((bounds.onePacketMenu timeouts leaks).information initial horizon
       scheduler).infoOf who history.trace = some (past, observed)) :
     past.map swap.entry = past := by
   conv_rhs => rw [← List.map_id past]
   apply List.map_congr_left
   intro recalled member
   obtain ⟨index, inside, rfl⟩ := List.getElem_of_mem member
-  have legal := (bounds.onePacketMenu runtime leaks).recall_entry_legal initial horizon
+  have legal := (bounds.onePacketMenu timeouts leaks).recall_entry_legal initial horizon
     scheduler who history past observed decision index inside
-  have info : ((bounds.onePacketMenu runtime leaks).information initial horizon
-      scheduler).infoOf who history.trace = (application setup runtime leaks).observe who
+  have info : ((bounds.onePacketMenu timeouts leaks).information initial horizon
+      scheduler).infoOf who history.trace = (application setup timeouts leaks).observe who
         history.state :=
-    (bounds.onePacketMenu runtime leaks).info initial horizon scheduler who history.trace
+    (bounds.onePacketMenu timeouts leaks).info initial horizon scheduler who history.trace
   rw [decision] at info
   rcases stateEq : history.state with _ | control
   · rw [stateEq] at info
@@ -222,12 +227,12 @@ theorem recall_swap_of_fixes (swap : HiddenSwap (graph setup)) {who : Player}
       some (control.execution.logs who, control.execution.observe _ who) else none) at info
     split at info
     · cases info
-      have rawTrace := (bounds.onePacketMenu runtime leaks).toRawTrace initial horizon
+      have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace initial horizon
         scheduler (stateEq ▸ history.trace)
-      obtain ⟨before, _, _, viewed⟩ := (application setup runtime leaks).recorded_response_prefix
+      obtain ⟨before, _, _, viewed⟩ := (application setup timeouts leaks).recorded_response_prefix
         initial
         horizon scheduler control rawTrace who _ member
-      change (⟨swap.view _, swap.action _, _⟩ : (application setup runtime leaks).PlayerEntry) = _
+      change (⟨swap.view _, swap.action _, _⟩ : (application setup timeouts leaks).PlayerEntry) = _
       rw [swap.action_eq_of_onePacket fixes legal, viewed,
         swap.view_observe_of_fixes fixes]
       rcases recalledEq : (control.execution.logs who)[index] with ⟨beforeView, action, emitted⟩
@@ -245,29 +250,29 @@ theorem infoOf_mapTrace_of_fixes (swap : HiddenSwap (graph setup))
     (bounded : ∀ handle raw, raw ∈ bounds.values → swap.raw handle raw ∈ bounds.values)
     (failures : ∀ event, swap.values.ExpiryFixed event)
     {who : Player} (fixes : swap.Fixes who)
-    (history : ((bounds.onePacketMenu runtime leaks).protocol initial horizon
-      scheduler).History) (guarded : SwapGuardState setup runtime swap allowed history.state)
-    {past : List (application setup runtime leaks).PlayerEntry}
-    {observed : (application setup runtime leaks).PlayerView}
-    (decision : ((bounds.onePacketMenu runtime leaks).information initial horizon
+    (history : ((bounds.onePacketMenu timeouts leaks).protocol initial horizon
+      scheduler).History) (guarded : SwapGuardState setup timeouts swap allowed history.state)
+    {past : List (application setup timeouts leaks).PlayerEntry}
+    {observed : (application setup timeouts leaks).PlayerView}
+    (decision : ((bounds.onePacketMenu timeouts leaks).information initial horizon
       scheduler).infoOf who history.trace = some (past, observed)) :
-    ((bounds.onePacketMenu runtime leaks).information initial horizon
+    ((bounds.onePacketMenu timeouts leaks).information initial horizon
       scheduler).infoOf who
-      ((onePacketSwapSymmetry (runtime := runtime) bounds initial horizon scheduler swap
+      ((onePacketSwapSymmetry (timeouts := timeouts) bounds initial horizon scheduler swap
         initialClosed
         bounded failures).mapTrace history.trace guarded) = some (past, observed) := by
-  have fixedRecall := recall_swap_of_fixes (runtime := runtime) swap fixes history decision
-  have info : ((bounds.onePacketMenu runtime leaks).information initial horizon
-      scheduler).infoOf who history.trace = (application setup runtime leaks).observe who
+  have fixedRecall := recall_swap_of_fixes (timeouts := timeouts) swap fixes history decision
+  have info : ((bounds.onePacketMenu timeouts leaks).information initial horizon
+      scheduler).infoOf who history.trace = (application setup timeouts leaks).observe who
         history.state :=
-    (bounds.onePacketMenu runtime leaks).info initial horizon scheduler who history.trace
-  have mappedInfo : ((bounds.onePacketMenu runtime leaks).information initial horizon
-      scheduler).infoOf who ((onePacketSwapSymmetry (runtime := runtime) bounds initial horizon
+    (bounds.onePacketMenu timeouts leaks).info initial horizon scheduler who history.trace
+  have mappedInfo : ((bounds.onePacketMenu timeouts leaks).information initial horizon
+      scheduler).infoOf who ((onePacketSwapSymmetry (timeouts := timeouts) bounds initial horizon
         scheduler swap
         initialClosed bounded failures).mapTrace history.trace guarded) =
-      (application setup runtime leaks).observe who (swap.protocolState
+      (application setup timeouts leaks).observe who (swap.protocolState
         history.state) :=
-    (bounds.onePacketMenu runtime leaks).info initial horizon scheduler who _
+    (bounds.onePacketMenu timeouts leaks).info initial horizon scheduler who _
   rw [mappedInfo, ← decision, info]
   rcases history with ⟨state, trace⟩
   cases state with

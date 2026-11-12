@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheoryExtensions.Math.Probability.ProductTransport
+public import GameTheoryExtensions.Math.Probability.ProductTransport
+
+@[expose] public section
 
 /-! # Normalized laws with a common base law
 

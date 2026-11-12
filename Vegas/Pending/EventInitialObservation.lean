@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.EventInvariant
-import Vegas.EventGraph.ObservationStep
+public import Vegas.Pending.EventInvariant
+public import Vegas.EventGraph.ObservationStep
+
+@[expose] public section
 
 /-! # Initial states with equal focal observations
 

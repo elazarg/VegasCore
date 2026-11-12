@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketInitializedLaw
-import Vegas.Game.OnePacketHonestTerminalApproximation
-import Vegas.Game.OnePacketSequentialPreservation
-import Vegas.Game.OnePacketSlotLaw
-import Vegas.Game.SourceDebtObservation
+public import Vegas.Game.OnePacketInitializedLaw
+public import Vegas.Game.OnePacketHonestTerminalApproximation
+public import Vegas.Game.OnePacketSequentialPreservation
+public import Vegas.Game.OnePacketSlotLaw
+public import Vegas.Game.SourceDebtObservation
+
+@[expose] public section
 
 /-! # The common comparison strategy retains honest boundary continuations -/
 
@@ -17,14 +21,15 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L] (setup : Setup (Player := Player) (L := L))
-  (runtime : EventGraphRuntime (graph setup))
+  (timeouts : EventTimeouts (graph setup))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
-  (scheduler : (application setup runtime leaks).Scheduler)
+  (scheduler : (application setup timeouts leaks).Scheduler)
 
-local notation "N" => onePacketModel setup runtime leaks bounds (initialLaw setup) horizon scheduler
+local notation "N" => onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+  scheduler
 local notation "NP" => ReactiveApplication.ResponseMenu.protocol
-  (bounds.onePacketMenu runtime leaks) (initialLaw setup) horizon scheduler
+  (bounds.onePacketMenu timeouts leaks) (initialLaw setup) horizon scheduler
 
 omit [DecidableEq Player] [Fintype Player] [IExpr.ResultTypes L] in
 private theorem apply_eq_one_of_subsingleton {α : Type} [Subsingleton α]
@@ -35,19 +40,20 @@ private theorem apply_eq_one_of_subsingleton {α : Type} [Subsingleton α]
 /-- An actual intended endpoint gives a default-free observation whenever the
 player receives an input. -/
 theorem clearInput_of_intended (history : (NP).History)
-    {control : (application setup runtime leaks).Control}
+    {control : (application setup timeouts leaks).Control}
     (current : history.state = some control) {point : ProtocolState setup.program}
     (decoded : decodedPoint setup control.execution.application.config = some point)
     (intended : ProtocolState.Intended setup.program point) (who : Player) :
     ((N).infoOf who history.trace).isSome →
-      runtime.ClearInput leaks ((N).infoOf who history.trace) := by
+      (ClearInput timeouts) leaks ((N).infoOf who history.trace) := by
   intro deciding
   have observed : (N).infoOf who history.trace =
-      (application setup runtime leaks).observe who history.state :=
-    (bounds.onePacketMenu runtime leaks).info (initialLaw setup) horizon scheduler who history.trace
+      (application setup timeouts leaks).observe who history.state :=
+    (bounds.onePacketMenu timeouts leaks).info (initialLaw setup) horizon scheduler who
+      history.trace
   rw [observed] at deciding ⊢
-  apply (runtime.clearInput_observe_iff leaks who history.state).mpr
-  refine ⟨((application setup runtime leaks).observe_isSome who history.state).mp deciding, ?_⟩
+  apply ((clearInput_observe_iff timeouts) leaks who history.state).mpr
+  refine ⟨((application setup timeouts leaks).observe_isSome who history.state).mp deciding, ?_⟩
   intro found state
   cases Option.some.inj (current.symm.trans state)
   exact defaulted_eq_empty_of_decodedIntended decoded intended
@@ -55,49 +61,49 @@ theorem clearInput_of_intended (history : (NP).History)
 /-- Counted native service makes every reached honest input nonlate and forced,
 so the original common weights retain its honest choice at every future step. -/
 theorem assembled_dominatesHonestFrom_boundary
-    [(application setup runtime leaks).FiniteNature (initialLaw setup) scheduler]
+    [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
     [∀ who, DecidableEq ((N).InfoState who)]
     (wellFormed : setup.WellFormed) (covers : bounds.CoversOutputValues)
     (capacity : ∀ player, bindingEventCount (graph setup) player < bounds.candidateCount)
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (scale : ℕ → ℝ) (positive : ∀ n, 0 < scale n) (le_one : ∀ n, scale n ≤ 1)
     {slots : Nat}
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup runtime leaks bounds (initialLaw setup)
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
       horizon scheduler slots p))
     (targetSequence : ℕ → (N).BehavioralAssessment)
-    (assembled : OnePacketAssembled setup runtime leaks bounds horizon scheduler sequence scale
+    (assembled : OnePacketAssembled setup timeouts leaks bounds horizon scheduler sequence scale
       positive
       le_one weights targetSequence) (n : ℕ)
     {delay bound : (graph setup).EventId → Nat}
-    (opportunity : ∀ control : (application setup runtime leaks).Control,
-      ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+    (opportunity : ∀ control : (application setup timeouts leaks).Control,
+      ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
         scheduler).Trace (some control) →
       control.execution.application.config.defaulted = ∅ →
-      OpportunityAt runtime leaks control.execution delay)
-    (inclusion : ∀ control : (application setup runtime leaks).Control,
-      ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+      OpportunityAt timeouts leaks control.execution delay)
+    (inclusion : ∀ control : (application setup timeouts leaks).Control,
+      ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
         scheduler).Trace (some control) →
       control.execution.application.config.defaulted = ∅ →
-      ProtectedInclusionAt runtime leaks control.execution bound)
-    (timely : runtime.AsyncTimely delay bound)
-    (completes : ∀ control : (application setup runtime leaks).Control,
-      ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+      ProtectedInclusionAt timeouts leaks control.execution bound)
+    (timely : (AsyncTimely timeouts) delay bound)
+    (completes : ∀ control : (application setup timeouts leaks).Control,
+      ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
         scheduler).Trace (some control) →
       control.execution.application.config.defaulted = ∅ →
-      (application setup runtime leaks).terminal (some control) →
+      (application setup timeouts leaks).terminal (some control) →
       control.execution.application.config.cut.Terminal)
     (certificate : (NP).WellFoundedHistories)
-    (rank : Nat) (start : (NP).History) (anchor : (application setup runtime leaks).Execution)
+    (rank : Nat) (start : (NP).History) (anchor : (application setup timeouts leaks).Execution)
     (state : start.state = some ⟨horizon - anchor.environmentRecall.length, none, anchor⟩)
-    (boundary : ReachedBoundary setup runtime leaks horizon scheduler rank anchor)
+    (boundary : ReachedBoundary setup timeouts leaks horizon scheduler rank anchor)
     (point : ProtocolState setup.program)
     (decoded : sourceServicePrefix? setup rank anchor.application.config = some point)
     (intended : ProtocolState.Intended setup.program point) :
-    DominatesHonestFrom setup runtime leaks bounds (initialLaw setup) horizon scheduler
+    DominatesHonestFrom setup timeouts leaks bounds (initialLaw setup) horizon scheduler
       (sequence n) (slotRetention (scale n))
       ((targetSequence n).strategy) start := by
   classical
-  have sourceLaw := counted_honest_boundary_readout_law (runtime := runtime) opportunity inclusion
+  have sourceLaw := counted_honest_boundary_readout_law (timeouts := timeouts) opportunity inclusion
     timely
     completes covers capacity
     (sequence n) certificate rank start anchor state boundary point decoded intended
@@ -113,7 +119,7 @@ theorem assembled_dominatesHonestFrom_boundary
   intro fuel history reached who choice
   by_cases current : history.state = none
   · have observed : (N).infoOf who history.trace = none := by
-      change ((bounds.onePacketMenu runtime leaks).signals (initialLaw setup) horizon
+      change ((bounds.onePacketMenu timeouts leaks).signals (initialLaw setup) horizon
         scheduler).infoOf who history.trace = none
       rw [ReactiveApplication.ResponseMenu.info, current]
       rfl
@@ -130,73 +136,73 @@ theorem assembled_dominatesHonestFrom_boundary
       honest_reached_intended_of_readout_law bounds wellFormed (sequence n)
         certificate start
         point static intended (sourceLaw.trans sourceEq) fuel history reached control controlState
-    have forced : Vegas.forcedAgent (runtime := runtime) (bounds.onePacketMenu runtime leaks)
+    have forced : Vegas.forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks)
         (initialLaw setup) horizon scheduler who ((N).infoOf who history.trace) := by
-      apply forcedAgent_of_history (runtime := runtime) history
+      apply forcedAgent_of_history (timeouts := timeouts) history
       rw [controlState]
-      exact (forcedState_iff_decodedPoint (runtime := runtime) control).mpr
+      exact (forcedState_iff_decodedPoint (timeouts := timeouts) control).mpr
         ⟨decodedPoint, decodedEq, forcedPoint_of_intended who intendedPoint⟩
-    have notLate := counted_honest_reached_not_late (runtime := runtime) opportunity timely
+    have notLate := counted_honest_reached_not_late (timeouts := timeouts) opportunity timely
       inclusion completes
       wellFormed covers capacity
       (sequence n) certificate rank start anchor state boundary point decoded intended fuel
       history reached who
     change slotRetention (scale n) *
-      ((honestChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler (sequence n)
+      ((honestChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler (sequence n)
         who
         ((N).infoOf who history.trace)) choice).toReal ≤
       (((targetSequence n).strategy who ((N).infoOf who history.trace)) choice).toReal
     rw [assembled n]
-    exact onePacketMixture_ge_honest_of_not_late setup runtime leaks bounds horizon scheduler
+    exact onePacketMixture_ge_honest_of_not_late setup timeouts leaks bounds horizon scheduler
       sequence scale positive le_one n
       (weights n)
       notLate ⟨history, rfl⟩ forced
-      (clearInput_of_intended setup runtime leaks bounds horizon scheduler history controlState
+      (clearInput_of_intended setup timeouts leaks bounds horizon scheduler history controlState
         decodedEq intendedPoint who) choice
 
 theorem assembled_dominatesHonestFrom_initialized
-    [(application setup runtime leaks).FiniteNature (initialLaw setup) scheduler]
+    [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
     [∀ who, DecidableEq ((N).InfoState who)]
     (wellFormed : setup.WellFormed) (covers : bounds.CoversOutputValues)
     (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (scale : ℕ → ℝ) (positive : ∀ n, 0 < scale n) (le_one : ∀ n, scale n ≤ 1)
     {slots : Nat}
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup runtime leaks bounds (initialLaw setup)
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
       horizon scheduler slots p))
     (targetSequence : ℕ → (N).BehavioralAssessment)
-    (assembled : OnePacketAssembled setup runtime leaks bounds horizon scheduler sequence scale
+    (assembled : OnePacketAssembled setup timeouts leaks bounds horizon scheduler sequence scale
       positive
       le_one weights targetSequence) (n : ℕ)
     {delay bound : (graph setup).EventId → Nat}
-    (opportunity : ∀ control : (application setup runtime leaks).Control,
-      ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+    (opportunity : ∀ control : (application setup timeouts leaks).Control,
+      ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
         scheduler).Trace (some control) →
       control.execution.application.config.defaulted = ∅ →
-      OpportunityAt runtime leaks control.execution delay)
-    (inclusion : ∀ control : (application setup runtime leaks).Control,
-      ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+      OpportunityAt timeouts leaks control.execution delay)
+    (inclusion : ∀ control : (application setup timeouts leaks).Control,
+      ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
         scheduler).Trace (some control) →
       control.execution.application.config.defaulted = ∅ →
-      ProtectedInclusionAt runtime leaks control.execution bound)
-    (timely : runtime.AsyncTimely delay bound)
-    (completes : ∀ control : (application setup runtime leaks).Control,
-      ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+      ProtectedInclusionAt timeouts leaks control.execution bound)
+    (timely : (AsyncTimely timeouts) delay bound)
+    (completes : ∀ control : (application setup timeouts leaks).Control,
+      ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
         scheduler).Trace (some control) →
       control.execution.application.config.defaulted = ∅ →
-      (application setup runtime leaks).terminal (some control) →
+      (application setup timeouts leaks).terminal (some control) →
       control.execution.application.config.cut.Terminal)
     (certificate : (NP).WellFoundedHistories) :
-    DominatesHonestFrom setup runtime leaks bounds (initialLaw setup) horizon scheduler
+    DominatesHonestFrom setup timeouts leaks bounds (initialLaw setup) horizon scheduler
       (sequence n) (slotRetention (scale n))
       ((targetSequence n).strategy) (NP).initHistory := by
   classical
-  let players := honestProfile setup runtime leaks bounds (initialLaw setup) horizon scheduler
+  let players := honestProfile setup timeouts leaks bounds (initialLaw setup) horizon scheduler
     (sequence n)
   intro fuel history reached who choice
   by_cases empty : history.state = none
   · have observed : (N).infoOf who history.trace = none := by
-      change ((bounds.onePacketMenu runtime leaks).signals (initialLaw setup) horizon
+      change ((bounds.onePacketMenu timeouts leaks).signals (initialLaw setup) horizon
         scheduler).infoOf who history.trace = none
       rw [ReactiveApplication.ResponseMenu.info, empty]
       rfl
@@ -211,69 +217,69 @@ theorem assembled_dominatesHonestFrom_initialized
     rw [unit, unit, ENNReal.toReal_one, mul_one]
     exact slotRetention_le_one (positive n).le (le_one n)
   · obtain ⟨control, current⟩ := Option.ne_none_iff_exists'.mp empty
-    obtain ⟨point, decoded, intended⟩ := counted_honest_initialized_intended (runtime := runtime)
+    obtain ⟨point, decoded, intended⟩ := counted_honest_initialized_intended (timeouts := timeouts)
       opportunity
       inclusion timely
       completes
       wellFormed covers capacity (sequence n) certificate fuel history reached control
         current
-    have forced : Vegas.forcedAgent (runtime := runtime) (bounds.onePacketMenu runtime leaks)
+    have forced : Vegas.forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks)
         (initialLaw setup) horizon scheduler who ((N).infoOf who history.trace) := by
-      apply forcedAgent_of_history (runtime := runtime) history
+      apply forcedAgent_of_history (timeouts := timeouts) history
       rw [current]
-      exact (forcedState_iff_decodedPoint (runtime := runtime) control).mpr
+      exact (forcedState_iff_decodedPoint (timeouts := timeouts) control).mpr
         ⟨point, decoded, forcedPoint_of_intended who intended⟩
-    have notLate := counted_honest_initialized_not_late (runtime := runtime) opportunity inclusion
+    have notLate := counted_honest_initialized_not_late (timeouts := timeouts) opportunity inclusion
       timely
       completes wellFormed covers capacity
       (sequence n) certificate fuel history reached who
     change slotRetention (scale n) *
-      ((honestChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler (sequence n)
+      ((honestChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler (sequence n)
         who
         ((N).infoOf who history.trace)) choice).toReal ≤
       (((targetSequence n).strategy who ((N).infoOf who history.trace)) choice).toReal
     rw [assembled n]
-    exact onePacketMixture_ge_honest_of_not_late setup runtime leaks bounds horizon scheduler
+    exact onePacketMixture_ge_honest_of_not_late setup timeouts leaks bounds horizon scheduler
       sequence scale positive le_one n
       (weights n)
       notLate ⟨history, rfl⟩ forced
-      (clearInput_of_intended setup runtime leaks bounds horizon scheduler history current
+      (clearInput_of_intended setup timeouts leaks bounds horizon scheduler history current
         decoded intended who) choice
 
 
 /-- Common native component mixtures approximate the intended joint terminal configuration
 and fixed-exit payoff law at the horizon response-budget rate. -/
 theorem assembled_initialized_readout_exclusion_withinTV
-    [(application setup runtime leaks).FiniteNature (initialLaw setup) scheduler]
+    [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
     [∀ who, DecidableEq ((N).InfoState who)]
     (wellFormed : setup.WellFormed) (covers : bounds.CoversOutputValues)
     (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (scale : ℕ → ℝ) (positive : ∀ n, 0 < scale n) (le_one : ∀ n, scale n ≤ 1)
     {slots : Nat}
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup runtime leaks bounds (initialLaw setup)
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
       horizon scheduler slots p))
     (targetSequence : ℕ → (N).BehavioralAssessment)
-    (assembled : OnePacketAssembled setup runtime leaks bounds horizon scheduler sequence scale
+    (assembled : OnePacketAssembled setup timeouts leaks bounds horizon scheduler sequence scale
       positive
       le_one weights targetSequence) (n : ℕ)
     {delay bound : (graph setup).EventId → Nat}
-    (opportunity : ∀ control : (application setup runtime leaks).Control,
-      ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+    (opportunity : ∀ control : (application setup timeouts leaks).Control,
+      ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
         scheduler).Trace (some control) →
       control.execution.application.config.defaulted = ∅ →
-      OpportunityAt runtime leaks control.execution delay)
-    (inclusion : ∀ control : (application setup runtime leaks).Control,
-      ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+      OpportunityAt timeouts leaks control.execution delay)
+    (inclusion : ∀ control : (application setup timeouts leaks).Control,
+      ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
         scheduler).Trace (some control) →
       control.execution.application.config.defaulted = ∅ →
-      ProtectedInclusionAt runtime leaks control.execution bound)
-    (timely : runtime.AsyncTimely delay bound)
-    (completes : ∀ control : (application setup runtime leaks).Control,
-      ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+      ProtectedInclusionAt timeouts leaks control.execution bound)
+    (timely : (AsyncTimely timeouts) delay bound)
+    (completes : ∀ control : (application setup timeouts leaks).Control,
+      ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
         scheduler).Trace (some control) →
       control.execution.application.config.defaulted = ∅ →
-      (application setup runtime leaks).terminal (some control) →
+      (application setup timeouts leaks).terminal (some control) →
       control.execution.application.config.cut.Terminal)
     {Parameter : Type} (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
@@ -281,23 +287,23 @@ theorem assembled_initialized_readout_exclusion_withinTV
     PMF.WithinTV ((min (Fintype.card Player) 1 * horizon : ℕ) *
         (1 - slotRetention (scale n)))
       (((N).runBehavioral (targetSequence n).strategy (2 * horizon + 1)).map
-        (readoutExclusion setup runtime leaks bounds (initialLaw setup) horizon scheduler
+        (readoutExclusion setup timeouts leaks bounds (initialLaw setup) horizon scheduler
           parameter utility excludedPayoff))
       ((setup.intendedModel.runBehavioral (sequence n).strategy
         (instructionCount setup.program + 1)).map
           (intendedReadoutExclusion setup parameter utility excludedPayoff)) := by
   classical
-  let certificate := ((bounds.onePacketMenu runtime leaks).bounded (initialLaw setup) horizon
+  let certificate := ((bounds.onePacketMenu timeouts leaks).bounded (initialLaw setup) horizon
     scheduler).wellFoundedHistories
-  have honestLaw := counted_honest_initialized_readout_law (runtime := runtime) opportunity
+  have honestLaw := counted_honest_initialized_readout_law (timeouts := timeouts) opportunity
     inclusion timely completes wellFormed covers capacity (sequence n) certificate
   rw [(N).runBehavioralTerminalFrom_initHistory certificate _
-    ((bounds.onePacketMenu runtime leaks).bounded (initialLaw setup) horizon scheduler)]
+    ((bounds.onePacketMenu timeouts leaks).bounded (initialLaw setup) horizon scheduler)]
     at honestLaw
-  have dominates := assembled_dominatesHonestFrom_initialized setup runtime leaks bounds horizon
+  have dominates := assembled_dominatesHonestFrom_initialized setup timeouts leaks bounds horizon
     scheduler wellFormed covers capacity sequence scale positive le_one weights targetSequence
     assembled n opportunity inclusion timely completes certificate
-  exact onePacket_bounded_readout_exclusion_withinTV setup runtime leaks bounds (initialLaw setup)
+  exact onePacket_bounded_readout_exclusion_withinTV setup timeouts leaks bounds (initialLaw setup)
     horizon scheduler parameter utility excludedPayoff (sequence n) (sequence n).strategy honestLaw
     (slotRetention_nonneg (positive n).le (le_one n))
     (slotRetention_le_one (positive n).le (le_one n)) (targetSequence n).strategy dominates

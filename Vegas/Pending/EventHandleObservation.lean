@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.EventCompletionObservation
+public import Vegas.Pending.EventCompletionObservation
+
+@[expose] public section
 
 /-! # Focal observation of focal-authored packet handling -/
 
@@ -14,11 +18,11 @@ variable {Player : Type} [DecidableEq Player]
 variable {L : IExpr} [IExpr.ResultTypes L]
 variable {graph : Vegas.EventGraph Player L}
 
-private theorem handle_playerView_transport_of_sender (runtime : EventGraphRuntime graph)
+private theorem handle_playerView_transport_of_sender (timeouts : EventTimeouts graph)
     (left right after : State graph) (focal : Player) (message : Message Player (Payload graph))
     (views : left.playerView focal = right.playerView focal) (sender : message.sender = focal)
-    (accepted : handle runtime left message = some after) :
-    ∃ next, handle runtime right message = some next ∧
+    (accepted : handle timeouts left message = some after) :
+    ∃ next, handle timeouts right message = some next ∧
       after.playerView focal = next.playerView focal := by
   have publicEq : left.publicView = right.publicView :=
     congrArg PlayerView.publicView views
@@ -44,8 +48,8 @@ private theorem handle_playerView_transport_of_sender (runtime : EventGraphRunti
   have readyTransport {event : graph.EventId} (ready : left.config.cut.Ready event) :
       right.config.cut.Ready event := by
     simpa only [← cutEq] using ready
-  have timelyTransport {event : graph.EventId} (timely : left.WithinDeadline runtime event) :
-      right.WithinDeadline runtime event := by
+  have timelyTransport {event : graph.EventId} (timely : left.WithinDeadline timeouts event) :
+      right.WithinDeadline timeouts event := by
     unfold State.WithinDeadline at timely ⊢
     rw [← activatedEq, ← clockEq]
     exact timely
@@ -56,7 +60,7 @@ private theorem handle_playerView_transport_of_sender (runtime : EventGraphRunti
   | commitment event candidate =>
       obtain ⟨active, ready, timely, owner, payload, outputEq, codeEq, view, senderOwner,
         handleOwner, vacant, unused, afterEq⟩ :=
-        (handle_commitment_iff runtime left after id event candidate).mp accepted
+        (handle_commitment_iff timeouts left after id event candidate).mp accepted
       have ownerEq : owner = focal := senderOwner.symm.trans sender
       cases ownerEq
       rcases candidate with ⟨candidateOwner, slot⟩
@@ -73,7 +77,7 @@ private theorem handle_playerView_transport_of_sender (runtime : EventGraphRunti
           right.bindingResult (focal, slot) payload := by
         unfold State.bindingResult
         rw [congrFun candidatesEq slot]
-      have rightAccepted := handle_commitment_eq runtime right id event (focal, slot) focal
+      have rightAccepted := handle_commitment_eq timeouts right id event (focal, slot) focal
         payload outputEq codeEq view (readyTransport ready) (timelyTransport timely)
         (by simpa only [← statusEq] using active) senderOwner rfl rightVacant rightUnused
       refine ⟨_, rightAccepted, ?_⟩
@@ -91,7 +95,7 @@ private theorem handle_playerView_transport_of_sender (runtime : EventGraphRunti
       obtain ⟨active, ready, timely, owner, payload, binding, checks, outputEq, codeEq, value,
         result, view, senderOwner, handleOwner, associated, rawEq, verified, stored,
         resolved, afterEq⟩ :=
-        (handle_opening_iff runtime left after id event candidate raw).mp accepted
+        (handle_opening_iff timeouts left after id event candidate raw).mp accepted
       have ownerEq : owner = focal := senderOwner.symm.trans sender
       cases ownerEq
       rcases candidate with ⟨candidateOwner, slot⟩
@@ -114,7 +118,7 @@ private theorem handle_playerView_transport_of_sender (runtime : EventGraphRunti
           ← playerStoreEq,
           EventCode.resolveOutput?_playerStore binding checks left.config.store true]
         exact resolved
-      have rightAccepted := handle_opening_eq runtime right id event (focal, slot) focal
+      have rightAccepted := handle_opening_eq timeouts right id event (focal, slot) focal
         payload binding checks outputEq codeEq view (readyTransport ready)
         (timelyTransport timely) (by simpa only [← statusEq] using active)
         senderOwner rfl rightAssociated value rightVerified rightStored
@@ -134,35 +138,35 @@ private theorem handle_playerView_transport_of_sender (runtime : EventGraphRunti
 two states with equal focal views. Foreign candidate meanings, binding values,
 and supplied graph actions need not agree. -/
 theorem handle_playerView_congr_of_sender
-    (runtime : EventGraphRuntime graph) (left right : State graph) (focal : Player)
+    (timeouts : EventTimeouts graph) (left right : State graph) (focal : Player)
     (message : Message Player (Payload graph))
     (views : left.playerView focal = right.playerView focal)
     (sender : message.sender = focal) :
-    Option.map (fun state => state.playerView focal) (handle runtime left message) =
-      Option.map (fun state => state.playerView focal) (handle runtime right message) := by
-  cases leftEq : handle runtime left message with
+    Option.map (fun state => state.playerView focal) (handle timeouts left message) =
+      Option.map (fun state => state.playerView focal) (handle timeouts right message) := by
+  cases leftEq : handle timeouts left message with
   | none =>
-      cases rightEq : handle runtime right message with
+      cases rightEq : handle timeouts right message with
       | none => rfl
       | some after =>
           obtain ⟨next, impossible, _⟩ :=
-            handle_playerView_transport_of_sender runtime right left after
+            handle_playerView_transport_of_sender timeouts right left after
               focal message views.symm sender rightEq
           rw [leftEq] at impossible
           cases impossible
   | some after =>
       obtain ⟨next, rightEq, equal⟩ :=
-        handle_playerView_transport_of_sender runtime left right after
+        handle_playerView_transport_of_sender timeouts left right after
           focal message views sender leftEq
       rw [rightEq]
       exact congrArg some equal
 
-private theorem handle_commitment_playerView_transport (runtime : EventGraphRuntime graph)
+private theorem handle_commitment_playerView_transport (timeouts : EventTimeouts graph)
     (left right after : State graph) (focal : Player) (id : MessageId Player)
     (event : graph.EventId) (candidate : Handle graph)
     (views : left.playerView focal = right.playerView focal)
-    (accepted : handle runtime left ⟨id, .commitment event candidate⟩ = some after) :
-    ∃ next, handle runtime right ⟨id, .commitment event candidate⟩ = some next ∧
+    (accepted : handle timeouts left ⟨id, .commitment event candidate⟩ = some after) :
+    ∃ next, handle timeouts right ⟨id, .commitment event candidate⟩ = some next ∧
       after.playerView focal = next.playerView focal := by
   have publicEq : left.publicView = right.publicView :=
     congrArg PlayerView.publicView views
@@ -182,9 +186,9 @@ private theorem handle_commitment_playerView_transport (runtime : EventGraphRunt
     (fun slot => right.candidates.lookup (focal, slot)) at candidatesEq
   obtain ⟨active, ready, timely, owner, payload, outputEq, codeEq, view, sender, handleOwner,
     vacant, unused, afterEq⟩ :=
-    (handle_commitment_iff runtime left after id event candidate).mp accepted
+    (handle_commitment_iff timeouts left after id event candidate).mp accepted
   have rightReady : right.config.cut.Ready event := by simpa only [← cutEq] using ready
-  have rightTimely : right.WithinDeadline runtime event := by
+  have rightTimely : right.WithinDeadline timeouts event := by
     unfold State.WithinDeadline at timely ⊢
     rw [← activatedEq, ← clockEq]
     exact timely
@@ -203,7 +207,7 @@ private theorem handle_commitment_playerView_transport (runtime : EventGraphRunt
     cases actualOwner
     unfold State.bindingResult
     rw [congrFun candidatesEq slot]
-  have rightAccepted := handle_commitment_eq runtime right id event candidate owner payload
+  have rightAccepted := handle_commitment_eq timeouts right id event candidate owner payload
     outputEq codeEq view rightReady rightTimely
     (by simpa only [← statusEq] using active) sender handleOwner rightVacant rightUnused
   refine ⟨_, rightAccepted, ?_⟩
@@ -231,26 +235,26 @@ equal focal views, regardless of their sender.  A foreign binding result may
 differ semantically, but both its value and its action are hidden from the
 focal observer. -/
 theorem handle_commitment_playerView_congr
-    (runtime : EventGraphRuntime graph) (left right : State graph) (focal : Player)
+    (timeouts : EventTimeouts graph) (left right : State graph) (focal : Player)
     (id : MessageId Player) (event : graph.EventId) (candidate : Handle graph)
     (views : left.playerView focal = right.playerView focal) :
     Option.map (fun state => state.playerView focal)
-        (handle runtime left ⟨id, .commitment event candidate⟩) =
+        (handle timeouts left ⟨id, .commitment event candidate⟩) =
       Option.map (fun state => state.playerView focal)
-        (handle runtime right ⟨id, .commitment event candidate⟩) := by
-  cases leftEq : handle runtime left ⟨id, .commitment event candidate⟩ with
+        (handle timeouts right ⟨id, .commitment event candidate⟩) := by
+  cases leftEq : handle timeouts left ⟨id, .commitment event candidate⟩ with
   | none =>
-      cases rightEq : handle runtime right ⟨id, .commitment event candidate⟩ with
+      cases rightEq : handle timeouts right ⟨id, .commitment event candidate⟩ with
       | none => rfl
       | some after =>
           obtain ⟨next, impossible, _⟩ :=
-            handle_commitment_playerView_transport runtime right left after
+            handle_commitment_playerView_transport timeouts right left after
               focal id event candidate views.symm rightEq
           rw [leftEq] at impossible
           cases impossible
   | some after =>
       obtain ⟨next, rightEq, equal⟩ :=
-        handle_commitment_playerView_transport runtime left right after
+        handle_commitment_playerView_transport timeouts left right after
           focal id event candidate views leftEq
       rw [rightEq]
       exact congrArg some equal

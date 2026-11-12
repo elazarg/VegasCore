@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Compile.EventGraphReadout
-import Vegas.Compile.EventGraphPolicy
-import Vegas.Source.Forfeit
-import Vegas.EventGraph.PublicationDecision
+public import Vegas.Compile.EventGraphReadout
+public import Vegas.Compile.EventGraphPolicy
+public import Vegas.Source.Forfeit
+public import Vegas.EventGraph.PublicationDecision
+
+@[expose] public section
 
 /-! # Failed publications in the terminal readout
 

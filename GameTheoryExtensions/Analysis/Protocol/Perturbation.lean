@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheoryExtensions.Analysis.Protocol.Bayes
+public import GameTheoryExtensions.Analysis.Protocol.Bayes
+
+@[expose] public section
 
 /-! # Common fully mixed perturbations of behavioral profiles
 

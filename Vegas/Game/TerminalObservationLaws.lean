@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.TerminalObservation
-import GameTheoryExtensions.Math.Probability.TotalVariation
+public import Vegas.Game.TerminalObservation
+public import GameTheoryExtensions.Math.Probability.TotalVariation
+
+@[expose] public section
 
 /-! # Lossless laws of the common terminal observation
 

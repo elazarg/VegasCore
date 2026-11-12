@@ -1,3 +1,7 @@
+module
+
+@[expose] public section
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 /-! # Ideal write-once commitments

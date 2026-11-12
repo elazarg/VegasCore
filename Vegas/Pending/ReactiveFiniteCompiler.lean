@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveBoundedHandles
-import Vegas.Pending.ReactiveCandidateBudget
+public import Vegas.Pending.ReactiveBoundedHandles
+public import Vegas.Pending.ReactiveCandidateBudget
+
+@[expose] public section
 
 /-! # Compiler coverage of finite raw response domains
 

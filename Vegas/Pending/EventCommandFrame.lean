@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.EventInvariant
+public import Vegas.Pending.EventInvariant
+
+@[expose] public section
 
 /-! # Environment commands preserve unrelated strategic events -/
 
@@ -14,12 +18,12 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {graph : Vegas.EventGraph Player L}
 
 /-- A chance command addressed to a strategic event stutters. -/
-theorem environmentStep_executeSample_of_owned (runtime : EventGraphRuntime graph)
+theorem environmentStep_executeSample_of_owned (timeouts : EventTimeouts graph)
     (state : State graph) (event : graph.EventId) (owner : Player)
     (acting : graph.actor? event = some owner) :
-    environmentStep runtime state (.executeSample event) = PMF.pure state := by
+    environmentStep timeouts state (.executeSample event) = PMF.pure state := by
   by_cases ready : state.config.cut.Ready event
-  · apply environmentStep_executeSample_of_nonsample runtime state event ready
+  · apply environmentStep_executeSample_of_nonsample timeouts state event ready
     intro payload law outputEq codeEq _view
     have codeActor := congrArg EventCode.actor codeEq
     rw [EventCode.actor_cast outputEq (graph.nodes event)] at codeActor
@@ -27,15 +31,15 @@ theorem environmentStep_executeSample_of_owned (runtime : EventGraphRuntime grap
       simpa only [EventGraph.actor?, EventCode.actor] using codeActor
     rw [acting] at impossible
     cases impossible
-  · exact environmentStep_executeSample_of_not_ready runtime state event ready
+  · exact environmentStep_executeSample_of_not_ready timeouts state event ready
 
 /-- Only expiry of this exact event can complete an owned event through an
 application environment command. No assumption on other ready actors is needed. -/
-theorem environmentStep_owned_completed_iff (runtime : EventGraphRuntime graph)
+theorem environmentStep_owned_completed_iff (timeouts : EventTimeouts graph)
     (state next : State graph) (command : EnvironmentCommand graph)
     (event : graph.EventId) (owner : Player) (acting : graph.actor? event = some owner)
     (other : command ≠ .expire event)
-    (reached : next ∈ (environmentStep runtime state command).support) :
+    (reached : next ∈ (environmentStep timeouts state command).support) :
     event ∈ next.config.cut.completed ↔ event ∈ state.config.cut.completed := by
   classical
   have stepOther (address : graph.EventId) (different : event ≠ address)
@@ -52,18 +56,18 @@ theorem environmentStep_owned_completed_iff (runtime : EventGraphRuntime graph)
       exact Iff.rfl
   | expire address =>
       have different : event ≠ address := fun same => other (by cases same; rfl)
-      rcases environmentStep_expire_config_eq_or_mem_step runtime state next address reached with
+      rcases environmentStep_expire_config_eq_or_mem_step timeouts state next address reached with
         config | ⟨ready, action, member⟩
       · rw [config]
       · exact stepOther address different ready action member
   | executeSample address =>
       by_cases same : event = address
       · subst address
-        rw [environmentStep_executeSample_of_owned runtime state event owner acting,
+        rw [environmentStep_executeSample_of_owned timeouts state event owner acting,
           PMF.mem_support_pure_iff _ _] at reached
         cases reached
         exact Iff.rfl
-      · obtain ⟨_, effect⟩ := environmentStep_executeSample_config_activated runtime state next
+      · obtain ⟨_, effect⟩ := environmentStep_executeSample_config_activated timeouts state next
           address reached
         rcases effect with ⟨config, _⟩ | ⟨ready, action, member, _⟩
         · rw [config]

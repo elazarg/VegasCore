@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketChanceMass
-import Vegas.EventGraph.OwnedStep
+public import Vegas.Game.OnePacketChanceMass
+public import Vegas.EventGraph.OwnedStep
+
+@[expose] public section
 
 /-! # Completions of events with an actor in the intended replay
 
@@ -28,7 +32,7 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)} {profile : BehavioralProfile setup.program}
+  {timeouts : EventTimeouts (graph setup)} {profile : BehavioralProfile setup.program}
 
 /-- **A completion with an actor is a deterministic source step.** At a
 configuration with a source residual, the source step of the decoded action of
@@ -70,8 +74,8 @@ replayed history at a configuration's source residual, when the other players'
 factor of the recorded decision is the unsettled content before completion. -/
 theorem replayStepMatches_actor (assessment : setup.intendedModel.BehavioralAssessment)
     (who : Player) (history : setup.intendedProtocol.History) (pending : ℝ)
-    (before after : (application setup runtime leaks).Control) (idle : before.actor = none)
-    (joint : Player → Option (application setup runtime leaks).Action) {rank : Nat}
+    (before after : (application setup timeouts leaks).Control) (idle : before.actor = none)
+    (joint : Player → Option (application setup timeouts leaks).Action) {rank : Nat}
     (residual : SourceResidual setup profile rank before.execution.application.config)
     (current : history.state =
       some (residual.lift (ProtocolState.entry residual.program residual.source)))
@@ -89,7 +93,7 @@ theorem replayStepMatches_actor (assessment : setup.intendedModel.BehavioralAsse
           (completion.decision.bind (decodeEventAction setup.program completion.event))),
       setup.intendedModel.opponentsStepProb assessment.strategy who history.trace
         ⟨_, legal⟩ = pending) :
-    ReplayStepMatches setup runtime leaks assessment who history pending (some before) joint
+    ReplayStepMatches setup timeouts leaks assessment who history pending (some before) joint
       (some after) := by
   have mass := residual.actorStepMass completion.event ready action _ member acts
   obtain ⟨value, _output, changed⟩ :=
@@ -108,7 +112,7 @@ theorem replayStepMatches_actor (assessment : setup.intendedModel.BehavioralAsse
     exact decisionEq.symm.trans
       (before.execution.application.config.actualDecision_of_active completion.event actor
         acts active action)
-  refine replayStepMatches_completion (runtime := runtime) assessment who history pending before
+  refine replayStepMatches_completion (timeouts := timeouts) assessment who history pending before
     after idle joint completion dropped fun legal => ?_
   simp only [acts, Option.isSome_some, ↓reduceIte]
   rw [completionMass_of_actor _ _ ready member acts]

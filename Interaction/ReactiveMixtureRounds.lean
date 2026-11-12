@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactivePolicyMixture
-import Interaction.ReactiveStopping
-import Interaction.ReactiveRawRoundTrace
+public import Interaction.ReactivePolicyMixture
+public import Interaction.ReactiveStopping
+public import Interaction.ReactiveRawRoundTrace
+
+@[expose] public section
 
 /-! # Policy mixtures and profile agreement through scheduler rounds
 

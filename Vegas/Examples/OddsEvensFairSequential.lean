@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Examples.OddsEvensFairProfile
-import GameTheory.Analysis.Protocol.InformationLocalization
+public import Vegas.Examples.OddsEvensFairProfile
+public import GameTheory.Analysis.Protocol.InformationLocalization
+
+@[expose] public section
 
 /-! # Root indifference certifies the uniform Odds–Evens assessment -/
 

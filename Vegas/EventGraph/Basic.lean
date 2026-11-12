@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.EventGraph.Order
-import Vegas.EventGraph.Code
-import Vegas.Foundation.DefaultHistory
+public import Vegas.EventGraph.Order
+public import Vegas.EventGraph.Code
+public import Vegas.Foundation.DefaultHistory
+
+@[expose] public section
 
 /-! # Dependency-driven event graphs
 

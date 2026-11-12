@@ -1,13 +1,17 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheoryExtensions.Analysis.Protocol.Perturbation
-import GameTheory.Math.Probability.Convergence
-import GameTheory.Math.Probability.ConditionalObservation
-import GameTheory.Math.Probability.ExpectationConditioning
-import GameTheory.Protocol.DecisionPlan
-import GameTheory.Protocol.FiniteInformation
-import Mathlib.Analysis.SpecificLimits.Basic
-import GameTheory.Analysis.Protocol.AssessmentCompactness
+public import GameTheoryExtensions.Analysis.Protocol.Perturbation
+public import GameTheory.Math.Probability.Convergence
+public import GameTheory.Math.Probability.ConditionalObservation
+public import GameTheory.Math.Probability.ExpectationConditioning
+public import GameTheory.Protocol.DecisionPlan
+public import GameTheory.Protocol.FiniteInformation
+public import Mathlib.Analysis.SpecificLimits.Basic
+public import GameTheory.Analysis.Protocol.AssessmentCompactness
+
+@[expose] public section
 
 /-! # Consistent belief completions with tight laws
 

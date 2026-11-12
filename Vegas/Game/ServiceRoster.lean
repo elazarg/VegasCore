@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RevealServiceRosterPolicy
-import Vegas.Pending.ReactiveService
+public import Vegas.Game.RevealServiceRosterPolicy
+public import Vegas.Pending.ReactiveService
+
+@[expose] public section
 
 /-! # Finite activation rosters in the native service
 
@@ -65,8 +69,8 @@ view supplies the entry observation. -/
 def rosterBlockCompleted (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (rosters : (graph setup).EventId → List Player)
-    (past : List (application setup (Vegas.runtime setup) leaks).EnvironmentEntry)
-    (view : (application setup (Vegas.runtime setup) leaks).EnvironmentView)
+    (past : List (application setup (Vegas.timeouts setup) leaks).EnvironmentEntry)
+    (view : (application setup (Vegas.timeouts setup) leaks).EnvironmentView)
     (event : (graph setup).EventId) : Prop :=
   event ∈ ((past[(rosterPlanPrefix setup rosters event.val).length]?).elim view
     (fun entry => entry.beforeView)).application.observation.completionOrder
@@ -74,8 +78,8 @@ def rosterBlockCompleted (setup : Setup (Player := Player) (L := L))
 instance (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (rosters : (graph setup).EventId → List Player)
-    (past : List (application setup (Vegas.runtime setup) leaks).EnvironmentEntry)
-    (view : (application setup (Vegas.runtime setup) leaks).EnvironmentView)
+    (past : List (application setup (Vegas.timeouts setup) leaks).EnvironmentEntry)
+    (view : (application setup (Vegas.timeouts setup) leaks).EnvironmentView)
     (event : (graph setup).EventId) :
     Decidable (rosterBlockCompleted setup leaks rosters past view event) := by
   unfold rosterBlockCompleted
@@ -86,7 +90,7 @@ entry become waits; all actual roster responses remain available. -/
 def rosterScheduler (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (rosters : (graph setup).EventId → List Player)
-    (network : (runtime setup).NetworkPolicy leaks) : (application setup (Vegas.runtime setup)
+    (network : (NetworkPolicy (timeouts setup)) leaks) : (application setup (Vegas.timeouts setup)
       leaks).Scheduler :=
   fun past view => match (rosterPlan setup rosters)[past.length]? with
     | none => PMF.pure .wait
@@ -94,7 +98,7 @@ def rosterScheduler (setup : Setup (Player := Player) (L := L))
         (if rosterBlockCompleted setup leaks rosters past view event then .wait
           else .application .advanceClock)
     | some (_, instruction) =>
-        (runtime setup).interactionInstruction leaks network past view instruction
+        (interactionInstruction (timeouts setup)) leaks network past view instruction
 
 /-- A finitely supported prior and leak rule make all of the roster service's
 nature branch finitely. The roster never calls its network policy. -/
@@ -102,8 +106,8 @@ instance rosterScheduler_finiteNature (setup : Setup (Player := Player) (L := L)
     [setup.FiniteInitialLaw]
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     [leaks.FiniteSupport] (rosters : (graph setup).EventId → List Player)
-    (network : (runtime setup).NetworkPolicy leaks) :
-    (application setup (Vegas.runtime setup) leaks).FiniteNature (initialLaw setup)
+    (network : (NetworkPolicy (timeouts setup)) leaks) :
+    (application setup (Vegas.timeouts setup) leaks).FiniteNature (initialLaw setup)
       (rosterScheduler setup leaks rosters network) where
   initial_finite := by
     rw [initialLaw, serviceInitialLaw, PMF.support_map]

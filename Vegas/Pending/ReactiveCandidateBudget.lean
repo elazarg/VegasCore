@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveProvenance
-import Interaction.ReactiveServiceInvariant
-import Interaction.ReactiveResponseBudget
-import Vegas.Pending.ReactivePolicy
+public import Interaction.ReactiveProvenance
+public import Interaction.ReactiveServiceInvariant
+public import Interaction.ReactiveResponseBudget
+public import Vegas.Pending.ReactivePolicy
+
+@[expose] public section
 
 /-! # Finite candidate supply from actual response counts
 
@@ -25,22 +29,23 @@ def Payload.preparedCommitment? : Payload graph → Option Nat
   | .commitment _ (_, .prepared serial) => some serial
   | _ => none
 
-def responseCandidateSlot (runtime : EventGraphRuntime graph)
+def responseCandidateSlot (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (response : (runtime.reactiveApplication leaks).Action) : Option Nat :=
+    (response : ((reactiveApplication timeouts) leaks).Action) : Option Nat :=
   match response.transmission with
   | some material => material.call.packet.preparedCommitment?
   | _ => none
 
-def submittedCandidateSlots (runtime : EventGraphRuntime graph)
+def submittedCandidateSlots (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (past : List (runtime.reactiveApplication leaks).PlayerEntry) : List Nat :=
-  (past.map ReactiveApplication.PlayerEntry.action).filterMap (runtime.responseCandidateSlot leaks)
+    (past : List ((reactiveApplication timeouts) leaks).PlayerEntry) : List Nat :=
+  (past.map ReactiveApplication.PlayerEntry.action).filterMap ((responseCandidateSlot timeouts)
+    leaks)
 
-def CandidateRecall (runtime : EventGraphRuntime graph)
+def CandidateRecall (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (execution : (runtime.reactiveApplication leaks).Execution) : Prop :=
-  ∀ who serial, serial ∉ runtime.submittedCandidateSlots leaks (execution.logs who) →
+    (execution : ((reactiveApplication timeouts) leaks).Execution) : Prop :=
+  ∀ who serial, serial ∉ (submittedCandidateSlots timeouts) leaks (execution.logs who) →
     execution.application.candidates.lookup (who, .prepared serial) = .fresh
 
 theorem submission_candidate_other (state : State graph) (sender observer : Player)
@@ -81,32 +86,32 @@ theorem submission_candidate_other (state : State graph) (sender observer : Play
           simp [Submission.register, submitStep, owned]
   | opening | malformed => cases opening <;> rfl
 
-theorem submittedCandidateSlots_respond (runtime : EventGraphRuntime graph)
+theorem submittedCandidateSlots_respond (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (execution : (runtime.reactiveApplication leaks).Execution) (who : Player)
-    (response : (runtime.reactiveApplication leaks).Action) :
-    runtime.submittedCandidateSlots leaks
-        ((execution.respond (runtime.reactiveApplication leaks) who response).logs who) =
-      runtime.submittedCandidateSlots leaks (execution.logs who) ++
-        (runtime.responseCandidateSlot leaks response).toList := by
+    (execution : ((reactiveApplication timeouts) leaks).Execution) (who : Player)
+    (response : ((reactiveApplication timeouts) leaks).Action) :
+    (submittedCandidateSlots timeouts) leaks
+        ((execution.respond ((reactiveApplication timeouts) leaks) who response).logs who) =
+      (submittedCandidateSlots timeouts) leaks (execution.logs who) ++
+        ((responseCandidateSlot timeouts) leaks response).toList := by
   rw [submittedCandidateSlots, ReactiveApplication.respond_actions]
   simp only [List.filterMap_append, List.filterMap_cons, List.filterMap_nil]
-  cases runtime.responseCandidateSlot leaks response <;> rfl
+  cases (responseCandidateSlot timeouts) leaks response <;> rfl
 
-theorem candidateRecall_respond (runtime : EventGraphRuntime graph)
+theorem candidateRecall_respond (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (execution : (runtime.reactiveApplication leaks).Execution) (who : Player)
-    (response : (runtime.reactiveApplication leaks).Action)
-    (valid : runtime.CandidateRecall leaks execution) :
-    runtime.CandidateRecall leaks
-      (execution.respond (runtime.reactiveApplication leaks) who response) := by
+    (execution : ((reactiveApplication timeouts) leaks).Execution) (who : Player)
+    (response : ((reactiveApplication timeouts) leaks).Action)
+    (valid : (CandidateRecall timeouts) leaks execution) :
+    (CandidateRecall timeouts) leaks
+      (execution.respond ((reactiveApplication timeouts) leaks) who response) := by
   intro observer serial absent
-  have old : serial ∉ runtime.submittedCandidateSlots leaks (execution.logs observer) := by
+  have old : serial ∉ (submittedCandidateSlots timeouts) leaks (execution.logs observer) := by
     intro present
     apply absent
     unfold submittedCandidateSlots at present ⊢
     exact List.filterMap_subset _ (List.map_subset _
-      ((runtime.reactiveApplication leaks).respond_recall_mono execution who observer response))
+      (((reactiveApplication timeouts) leaks).respond_recall_mono execution who observer response))
       present
   have fresh := valid observer serial old
   rcases response with ⟨transmission⟩
@@ -118,7 +123,7 @@ theorem candidateRecall_respond (runtime : EventGraphRuntime graph)
       by_cases same : observer = who
       · subst observer
         right
-        rw [runtime.submittedCandidateSlots_respond] at absent
+        rw [(submittedCandidateSlots_respond timeouts)] at absent
         intro selected
         apply absent
         apply List.mem_append_right
@@ -126,52 +131,53 @@ theorem candidateRecall_respond (runtime : EventGraphRuntime graph)
         simp [selected]
       · exact Or.inl same
 
-private theorem candidateRecall_handle (runtime : EventGraphRuntime graph)
+private theorem candidateRecall_handle (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (execution : (runtime.reactiveApplication leaks).Execution) (next : State graph)
+    (execution : ((reactiveApplication timeouts) leaks).Execution) (next : State graph)
     (message : Message Player (WitnessedPacket graph))
-    (valid : runtime.CandidateRecall leaks execution)
-    (issued : execution.Issued (runtime.reactiveApplication leaks) message)
-    (accepted : handle runtime execution.application ⟨message.id, message.payload.call⟩ = some next)
+    (valid : (CandidateRecall timeouts) leaks execution)
+    (issued : execution.Issued ((reactiveApplication timeouts) leaks) message)
+    (accepted : handle timeouts execution.application ⟨message.id, message.payload.call⟩ = some
+      next)
     (who : Player) (serial : Nat)
-    (absent : serial ∉ runtime.submittedCandidateSlots leaks (execution.logs who)) :
+    (absent : serial ∉ (submittedCandidateSlots timeouts) leaks (execution.logs who)) :
     next.candidates.lookup (who, .prepared serial) = .fresh := by
   rcases message with ⟨id, packet, evidence, token⟩
   cases packet with
   | commitment event candidate =>
       obtain ⟨candidates, _, owner⟩ :=
-        handle_commitment_tables runtime _ _ id event candidate accepted
+        handle_commitment_tables timeouts _ _ id event candidate accepted
       have different : (who, Slot.prepared serial) ≠ candidate := by
         intro same
         subst candidate
         change who = id.1 at owner
         subst who
         apply absent
-        refine ReactiveApplication.Issued.mem_response_keys (runtime.reactiveApplication leaks)
-          (runtime.responseCandidateSlot leaks)
+        refine ReactiveApplication.Issued.mem_response_keys ((reactiveApplication timeouts) leaks)
+          ((responseCandidateSlot timeouts) leaks)
           (fun packet : WitnessedPacket graph => packet.call.preparedCommitment?) ?_ issued rfl
         intro response material transmitted state sender known
-        change responseCandidateSlot runtime leaks response =
+        change responseCandidateSlot timeouts leaks response =
           material.call.packet.preparedCommitment?
         simp only [responseCandidateSlot, transmitted]
       rw [candidates, CommitmentCandidates.lookup_freeze_other _ _ _ different]
       exact valid who serial absent
   | opening event candidate raw =>
-      rw [(handle_resolution_tables runtime _ _ _ (by intros; simp) accepted).2]
+      rw [(handle_resolution_tables timeouts _ _ _ (by intros; simp) accepted).2]
       exact valid who serial absent
   | malformed raw => simp [handle] at accepted
 
-theorem candidateRecall_environment (runtime : EventGraphRuntime graph)
+theorem candidateRecall_environment (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (execution next : (runtime.reactiveApplication leaks).Execution)
-    (command : (runtime.reactiveApplication leaks).Command)
-    (valid : runtime.CandidateRecall leaks execution)
-    (provenance : execution.Provenance (runtime.reactiveApplication leaks))
-    (reached : next ∈ (execution.environmentStep (runtime.reactiveApplication leaks)
-      command).support) : runtime.CandidateRecall leaks next := by
+    (execution next : ((reactiveApplication timeouts) leaks).Execution)
+    (command : ((reactiveApplication timeouts) leaks).Command)
+    (valid : (CandidateRecall timeouts) leaks execution)
+    (provenance : execution.Provenance ((reactiveApplication timeouts) leaks))
+    (reached : next ∈ (execution.environmentStep ((reactiveApplication timeouts) leaks)
+      command).support) : (CandidateRecall timeouts) leaks next := by
   intro who serial absent
   rw [ReactiveApplication.environmentStep_recall _ execution next command reached] at absent
-  apply (runtime.reactiveApplication leaks).environmentStep_cases execution next command reached
+  apply ((reactiveApplication timeouts) leaks).environmentStep_cases execution next command reached
     (predicate := fun _ next => next.application.candidates.lookup (who, .prepared serial) = .fresh)
   · exact valid who serial absent
   · exact fun _ _ _ => valid who serial absent
@@ -180,40 +186,40 @@ theorem candidateRecall_environment (runtime : EventGraphRuntime graph)
     cases found : execution.network.lookup id with
     | none => exact valid who serial absent
     | some message =>
-        change (State.candidates (((runtime.reactiveApplication leaks).handle
+        change (State.candidates ((((reactiveApplication timeouts) leaks).handle
           execution.application message).getD execution.application)).lookup
             (who, .prepared serial) = _
-        cases accepted : (runtime.reactiveApplication leaks).handle execution.application
+        cases accepted : ((reactiveApplication timeouts) leaks).handle execution.application
             message with
         | none => exact valid who serial absent
         | some state =>
             change state.candidates.lookup (who, .prepared serial) = .fresh
             obtain ⟨native, handled, drained⟩ := reactiveHandle_call accepted
             rw [← drained, native.drain_tables.2.1]
-            exact candidateRecall_handle runtime leaks execution native message valid
+            exact candidateRecall_handle timeouts leaks execution native message valid
               (provenance.pending message (List.mem_of_find?_eq_some found))
               handled who serial absent
   · intro command state changed
-    rw [(reactiveApplication_environment_tables runtime leaks execution.application state command
+    rw [(reactiveApplication_environment_tables timeouts leaks execution.application state command
       changed).2]
     exact valid who serial absent
 
-theorem candidateRecall_history (runtime : EventGraphRuntime graph)
+theorem candidateRecall_history (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (inputs : PMF graph.Inputs) (horizon : Nat)
-    (scheduler : (runtime.reactiveApplication leaks).Scheduler) :
-    ∀ {state} (_trace : ((runtime.reactiveApplication leaks).protocol
+    (scheduler : ((reactiveApplication timeouts) leaks).Scheduler) :
+    ∀ {state} (_trace : (((reactiveApplication timeouts) leaks).protocol
       (inputs.map State.initial) horizon scheduler).Trace state),
-      ReactiveApplication.serviceInvariant (runtime.CandidateRecall leaks) state := by
-  have invariant : (runtime.reactiveApplication leaks).ServiceInvariant scheduler
-      (fun execution => runtime.CandidateRecall leaks execution ∧
-        execution.Provenance (runtime.reactiveApplication leaks)) := {
+      ReactiveApplication.serviceInvariant ((CandidateRecall timeouts) leaks) state := by
+  have invariant : ((reactiveApplication timeouts) leaks).ServiceInvariant scheduler
+      (fun execution => (CandidateRecall timeouts) leaks execution ∧
+        execution.Provenance ((reactiveApplication timeouts) leaks)) := {
     respond := fun execution who action valid =>
-      ⟨runtime.candidateRecall_respond leaks execution who action valid.1,
-        (runtime.reactiveApplication leaks).respond_provenance execution who action valid.2⟩
+      ⟨(candidateRecall_respond timeouts) leaks execution who action valid.1,
+        ((reactiveApplication timeouts) leaks).respond_provenance execution who action valid.2⟩
     environment := fun execution next command valid _ reached =>
-      ⟨runtime.candidateRecall_environment leaks execution next command valid.1 valid.2 reached,
-        (runtime.reactiveApplication leaks).environment_provenance execution next command
+      ⟨(candidateRecall_environment timeouts) leaks execution next command valid.1 valid.2 reached,
+        ((reactiveApplication timeouts) leaks).environment_provenance execution next command
           valid.2 reached⟩ }
   intro state trace
   have valid := invariant.history (inputs.map State.initial) horizon (by
@@ -227,15 +233,16 @@ theorem candidateRecall_history (runtime : EventGraphRuntime graph)
 
 /-- The least fresh serial is bounded by the owner's response count, regardless
 of the magnitude of the identifiers it previously chose. -/
-theorem reactiveFreshSlot_le_recall (runtime : EventGraphRuntime graph)
+theorem reactiveFreshSlot_le_recall (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (execution : (runtime.reactiveApplication leaks).Execution) (who : Player)
-    (valid : runtime.CandidateRecall leaks execution) :
+    (execution : ((reactiveApplication timeouts) leaks).Execution) (who : Player)
+    (valid : (CandidateRecall timeouts) leaks execution) :
     ∃ serial, serial ≤ (execution.logs who).length ∧
       reactiveFreshSlot
-        (execution.observe (runtime.reactiveApplication leaks) who).application = some serial := by
+        (execution.observe ((reactiveApplication timeouts) leaks) who).application = some serial
+          := by
   classical
-  let used := runtime.submittedCandidateSlots leaks (execution.logs who)
+  let used := (submittedCandidateSlots timeouts) leaks (execution.logs who)
   have count : used.toFinset.card ≤ (execution.logs who).length := by
     exact le_trans (List.toFinset_card_le used)
       ((List.length_filterMap_le _ _).trans (List.length_map _).le)
@@ -254,20 +261,20 @@ theorem reactiveFreshSlot_le_recall (runtime : EventGraphRuntime graph)
 
 /-- A horizon of `horizon` scheduler decisions needs at most that many prepared
 serials per player. The final active response is included in this bound. -/
-theorem reactiveFreshSlot_lt_horizon (runtime : EventGraphRuntime graph)
+theorem reactiveFreshSlot_lt_horizon (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (inputs : PMF graph.Inputs) (horizon : Nat)
-    (scheduler : (runtime.reactiveApplication leaks).Scheduler)
-    (control : (runtime.reactiveApplication leaks).Control)
-    (trace : ((runtime.reactiveApplication leaks).protocol (inputs.map State.initial)
+    (scheduler : ((reactiveApplication timeouts) leaks).Scheduler)
+    (control : ((reactiveApplication timeouts) leaks).Control)
+    (trace : (((reactiveApplication timeouts) leaks).protocol (inputs.map State.initial)
       horizon scheduler).Trace (some control)) (who : Player) (active : control.actor = some who) :
     ∃ serial, serial < horizon ∧ reactiveFreshSlot
-      (control.execution.observe (runtime.reactiveApplication leaks) who).application =
+      (control.execution.observe ((reactiveApplication timeouts) leaks) who).application =
         some serial := by
-  obtain ⟨serial, bounded, selected⟩ := runtime.reactiveFreshSlot_le_recall leaks
-    control.execution who (runtime.candidateRecall_history leaks inputs horizon scheduler trace)
+  obtain ⟨serial, bounded, selected⟩ := (reactiveFreshSlot_le_recall timeouts) leaks
+    control.execution who ((candidateRecall_history timeouts) leaks inputs horizon scheduler trace)
   exact ⟨serial, lt_of_le_of_lt bounded
-    ((runtime.reactiveApplication leaks).active_recall_lt_horizon (inputs.map State.initial)
+    (((reactiveApplication timeouts) leaks).active_recall_lt_horizon (inputs.map State.initial)
       horizon scheduler control trace who active), selected⟩
 
 end Vegas.EventGraphRuntime

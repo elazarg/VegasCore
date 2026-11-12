@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheory.Analysis.Protocol.Sequential
-import GameTheoryExtensions.Math.Probability.CounterpartBounds
-import GameTheoryExtensions.Math.Probability.ProductTransport
+public import GameTheory.Analysis.Protocol.Sequential
+public import GameTheoryExtensions.Math.Probability.CounterpartBounds
+public import GameTheoryExtensions.Math.Probability.ProductTransport
+
+@[expose] public section
 
 /-! # Projected Bayes beliefs through approximate reach factorizations
 

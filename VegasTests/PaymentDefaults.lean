@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.ProgramPaymentAsyncNash
-import Vegas.Examples.ProgramPaymentsRuntimeService
+public import Vegas.Game.ProgramPaymentAsyncNash
+public import Vegas.Examples.ProgramPaymentsRuntimeService
+
+@[expose] public section
 
 /-! # Declared exit receipts override an unconditional payment instruction -/
 
@@ -13,35 +17,35 @@ open Vegas Vegas.SourceProgram Vegas.EventGraphRuntime Interaction
   GameTheory GameTheory.Protocol GameTheory.Math.Probability
 open Vegas.Examples.ProgramPayments
 
-private def guard : SourceGuard simpleExpr [] Player.alice 0 .bool where
+def guard : SourceGuard simpleExpr [] Player.alice 0 .bool where
   schema := []
   schemaNames := by decide
   subjectFresh := by simp
   code := .constBool true
   reads := fun h => nomatch h
 
-private def cashProgram : SourceProgram Player simpleExpr [] ∅ :=
+def cashProgram : SourceProgram Player simpleExpr [] ∅ :=
   .commit 0 .alice (by decide) guard <|
   .reveal 1 .alice 0 (by decide) .here (by decide) <|
   .ret [(.alice, .constInt 5)]
 
-private abbrev cashSetup (exit : Int) : Setup (Player := Player) (L := simpleExpr) :=
+abbrev cashSetup (exit : Int) : Setup (Player := Player) (L := simpleExpr) :=
   { setup 5 with program := cashProgram, exitTransfers := fun _ => exit }
 
-private abbrev cashLeaks (exit : Int) :
+abbrev cashLeaks (exit : Int) :
     MessageNetwork.ObservationRule Player (WitnessedPacket (graph (cashSetup exit))) :=
   fun _ _ => PMF.pure ∅
 
-private abbrev cashBounds (exit : Int) : MessageBounds (graph (cashSetup exit)) where
+abbrev cashBounds (exit : Int) : MessageBounds (graph (cashSetup exit)) where
   candidateCount := 2
   values := Vegas.Examples.ProgramPaymentsRuntime.rawValues
 
-private abbrev cashRosterService (exit : Int) : SourceServiceSpec Player simpleExpr where
+abbrev cashRosterService (exit : Int) : SourceServiceSpec Player simpleExpr where
   setup := cashSetup exit
   leaks := cashLeaks exit
   bounds := cashBounds exit
   rosters := fun _ => [.alice]
-  network := (runtime (cashSetup exit)).idleNetwork (cashLeaks exit)
+  network := (idleNetwork (timeouts (cashSetup exit))) (cashLeaks exit)
   values := Vegas.Examples.ProgramPaymentsRuntime.binding_values_covered 5
   initialValues := by
     intro state supported
@@ -68,13 +72,13 @@ private abbrev cashRosterService (exit : Int) : SourceServiceSpec Player simpleE
     rw [PMF.support_pure]
     exact Set.finite_singleton ∅⟩
 
-private abbrev cashService (exit : Int) := (cashRosterService exit).toAsync
+abbrev cashService (exit : Int) := (cashRosterService exit).toAsync
 
-private def profile (binding : Option (PublicationResult Bool)) (disclose : Bool) :
+def profile (binding : Option (PublicationResult Bool)) (disclose : Bool) :
     BehavioralProfile cashProgram
   | .alice => (fun _ _ _ => PMF.pure binding, (fun _ _ _ => PMF.pure disclose, PUnit.unit))
 
-private def finished (binding : Option (PublicationResult Bool)) (disclose : Bool) :
+def finished (binding : Option (PublicationResult Bool)) (disclose : Bool) :
     Config Player simpleExpr cashProgram.terminalCtx :=
   revealSuccessor 1 .here (commitSuccessor 0 guard (Config.initial initial) binding) disclose
 
@@ -92,10 +96,10 @@ private theorem run_profile (binding : Option (PublicationResult Bool)) (disclos
       rw [PMF.pure_bind]
       rfl
 
-private def admission : CommitmentInterface cashProgram :=
+def admission : CommitmentInterface cashProgram :=
   CommitmentInterface.forfeiture cashProgram
 
-private theorem permitted (binding : Option (PublicationResult Bool)) (disclose : Bool)
+theorem permitted (binding : Option (PublicationResult Bool)) (disclose : Bool)
     (who : Player) : (profile binding disclose who).Admitted cashProgram admission := by
   cases who
   constructor
@@ -105,7 +109,7 @@ private theorem permitted (binding : Option (PublicationResult Bool)) (disclose 
     | some result => cases result <;> trivial
   · trivial
 
-private def auditSample (exit : Int)
+def auditSample (exit : Int)
     (_actual : List (SettledEvidence (cashSetup exit) .sequential)) :
     PMF (List (SettledEvidence (cashSetup exit) .sequential)) := PMF.pure []
 
@@ -134,7 +138,7 @@ private theorem literal_transfers (outcome : PublicOutcome cashProgram) :
   change ((transferAmount [(Player.alice, 5)] Player.alice : Int) : ℝ) = 5
   norm_num [transferAmount]
 
-private def omissionSource (exit : Int) :
+def omissionSource (exit : Int) :
     Profile ((cashSetup exit).informationModel admission).behavioralSignature :=
   (cashSetup exit).encodeBehavioralProfile admission (profile none false) (permitted none false)
 

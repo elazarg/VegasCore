@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactivePolicy
-import Vegas.Pending.EventBindingInvariant
+public import Vegas.Pending.ReactivePolicy
+public import Vegas.Pending.EventBindingInvariant
+
+@[expose] public section
 
 /-! # Authentic compiled disclosures
 
@@ -39,7 +43,7 @@ theorem reactiveResolutionPacket_opening {owner : Player}
 
 /-- Every stored successful binding has authentic opening material in a valid state,
 independently of the guarded publication's eventual result. -/
-theorem reactiveResolutionPacket_provenance (runtime : EventGraphRuntime graph)
+theorem reactiveResolutionPacket_provenance (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (state : State graph) (valid : state.BindingInvariant)
     (owner : Player) (event : graph.EventId) (payload : L.Ty)
@@ -54,12 +58,12 @@ theorem reactiveResolutionPacket_provenance (runtime : EventGraphRuntime graph)
     ∃ candidate, state.accepted binding.field = some candidate ∧ candidate.1 = owner ∧
       state.candidates.lookup candidate = .openable ⟨payload, value⟩ ∧
       reactiveResolutionPacket owner event payload binding checks outputEq action
-        ((runtime.reactiveApplication leaks).observePlayer state owner) =
+        (((reactiveApplication timeouts) leaks).observePlayer state owner) =
           some (.opening event candidate ⟨payload, value⟩) := by
   obtain ⟨candidate, associated, owned, verified⟩ := valid.success_provenance binding value stored
   refine ⟨candidate, associated, owned, verified, ?_⟩
   apply reactiveResolutionPacket_opening owner event payload binding checks outputEq action
-    ((runtime.reactiveApplication leaks).observePlayer state owner)
+    (((reactiveApplication timeouts) leaks).observePlayer state owner)
     active discloses value _ candidate associated owned
   change binding.get? (graph.playerStore owner state.config.store) = _
   rw [binding.get?_playerStore owner state.config.store rfl, stored]

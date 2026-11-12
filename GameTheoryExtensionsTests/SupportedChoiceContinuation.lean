@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheoryExtensions.Analysis.Protocol.SupportedChoiceContinuation
-import GameTheoryExtensions.Math.Probability.Uniform
-import GameTheory.Math.Probability.FiniteUniform
+public import GameTheoryExtensions.Analysis.Protocol.SupportedChoiceContinuation
+public import GameTheoryExtensions.Math.Probability.Uniform
+public import GameTheory.Math.Probability.FiniteUniform
+
+@[expose] public section
 
 open GameTheory.Math.Probability
 
@@ -27,15 +31,15 @@ inductive State where
   | done (answer : Bool)
   deriving DecidableEq, Fintype
 
-private def active : State → Bool → Prop
+def active : State → Bool → Prop
   | .choice _, who => who = false
   | _, _ => False
 
-private def terminal : State → Prop
+def terminal : State → Prop
   | .done _ => True
   | _ => False
 
-private def transition : State → (Bool → Option Bool) → PMF State
+def transition : State → (Bool → Option Bool) → PMF State
   | .chance, _ => (uniformLaw Bool).map State.choice
   | .choice _, joint => PMF.pure (.done ((joint false).getD false))
   | .done answer, _ => PMF.pure (.done answer)
@@ -54,7 +58,7 @@ private def transition : State → (Bool → Option Bool) → PMF State
     intro who
     by_cases acts : active state who <;> simp [acts]
 
-private def signals : InfoSignals arena where
+def signals : InfoSignals arena where
   PublicSignal := State
   PrivateSignal _ := State
   initialPublic := .chance
@@ -78,13 +82,13 @@ private def signals : InfoSignals arena where
     rw [info_state]
     rfl
 
-private def policy (answer : Bool) : ∀ who, model.BehavioralPolicy who := fun who state => by
+def policy (answer : Bool) : ∀ who, model.BehavioralPolicy who := fun who state => by
   classical
   exact if acts : active state who then
     PMF.pure ⟨some answer, acts, Set.mem_univ _⟩
   else PMF.pure ⟨none, acts⟩
 
-private def noisy : ∀ who, model.BehavioralPolicy who := fun who info =>
+def noisy : ∀ who, model.BehavioralPolicy who := fun who info =>
   mix (1 / 2) (by norm_num) (by norm_num) (policy false who info) (policy true who info)
 
 private theorem retained (who : Bool) (info : model.InfoState who)

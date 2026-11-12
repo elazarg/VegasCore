@@ -1,12 +1,16 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketPathwise
-import Vegas.Game.OnePacketActorRecord
-import Vegas.Game.OnePacketEventFailure
-import Vegas.Game.OnePacketEnvironmentSteps
-import Vegas.Game.OnePacketPendingPool
-import Vegas.Pending.ReactiveHiddenInclusion
-import Vegas.Pending.ReactiveAssociationEvidence
+public import Vegas.Game.OnePacketPathwise
+public import Vegas.Game.OnePacketActorRecord
+public import Vegas.Game.OnePacketEventFailure
+public import Vegas.Game.OnePacketEnvironmentSteps
+public import Vegas.Game.OnePacketPendingPool
+public import Vegas.Pending.ReactiveHiddenInclusion
+public import Vegas.Pending.ReactiveAssociationEvidence
+
+@[expose] public section
 
 /-! # One step of the native kernel while a forced owner's event is pending
 
@@ -56,13 +60,13 @@ open GameTheory GameTheory.Protocol GameTheory.Math.Probability Interaction Even
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
 /-- Append a responder's current operational view, with no emission, to its
 recalled views, and clear the actor. -/
-def OperationalState.silent (responder : Player) (state : OperationalState setup runtime leaks) :
-    OperationalState setup runtime leaks :=
+def OperationalState.silent (responder : Player) (state : OperationalState setup timeouts leaks) :
+    OperationalState setup timeouts leaks :=
   { state with
     actor := none
     keys := fun who => if who = responder then (state.keys who).map fun key =>
@@ -70,13 +74,14 @@ def OperationalState.silent (responder : Player) (state : OperationalState setup
         [(key.current, none)] } else state.keys who }
 
 /-- **A silent response on the operational state.** -/
-theorem operationalState_silent (control : (application setup runtime leaks).Control)
+theorem operationalState_silent (control : (application setup timeouts leaks).Control)
     (responder : Player) :
-    operationalState setup runtime leaks (some { control with
+    operationalState setup timeouts leaks (some { control with
       actor := none
-      execution := control.execution.respond (application setup runtime leaks) responder ⟨none⟩ }) =
-      (operationalState setup runtime leaks (some control)).map
-        (OperationalState.silent (runtime := runtime) responder) := by
+      execution := control.execution.respond (application setup timeouts leaks) responder ⟨none⟩
+        }) =
+      (operationalState setup timeouts leaks (some control)).map
+        (OperationalState.silent (timeouts := timeouts) responder) := by
   simp only [operationalState, Option.map_some, OperationalState.silent, Option.some.injEq,
     OperationalState.mk.injEq]
   refine ⟨trivial, trivial, rfl, rfl, rfl, ?_⟩
@@ -87,15 +92,16 @@ theorem operationalState_silent (control : (application setup runtime leaks).Con
       List.map_append, List.map_cons, List.map_nil]
     rfl
   · simp only [same, ↓reduceIte]
-    rw [(application setup runtime leaks).respond_recall_other control.execution responder who same]
+    rw [(application setup timeouts leaks).respond_recall_other control.execution responder who
+      same]
     rfl
 
 /-- A scheduler round on the operational state: the remaining rounds and actor
 are set, and the round's command is recorded with the scheduler's view. -/
 def OperationalState.round (remaining : Nat) (actor : Option Player)
-    (command : (application setup runtime leaks).Command) (state : OperationalState setup runtime
+    (command : (application setup timeouts leaks).Command) (state : OperationalState setup timeouts
       leaks) :
-    OperationalState setup runtime leaks :=
+    OperationalState setup timeouts leaks :=
   { state with
     remaining := remaining
     actor := actor
@@ -106,7 +112,7 @@ def OperationalState.round (remaining : Nat) (actor : Option Player)
 learns the selected pending packets, and every player's current operational
 view reads the new network. -/
 def OperationalState.learn (who : Player) (selected : Finset (MessageId Player))
-    (state : OperationalState setup runtime leaks) : OperationalState setup runtime leaks :=
+    (state : OperationalState setup timeouts leaks) : OperationalState setup timeouts leaks :=
   { state with
     leaked := (state.network.learn who selected).leaked
     keys := fun observer => (state.keys observer).map
@@ -117,14 +123,14 @@ def OperationalState.learn (who : Player) (selected : Finset (MessageId Player))
 
 /-- **An activation on the operational state.** -/
 theorem operationalState_activate (remaining : Nat)
-    (execution : (application setup runtime leaks).Execution)
+    (execution : (application setup timeouts leaks).Execution)
     (who : Player) (selected : Finset (MessageId Player)) :
-    operationalState setup runtime leaks (some ⟨remaining, some who,
+    operationalState setup timeouts leaks (some ⟨remaining, some who,
       { execution with
         network := execution.network.learn who selected
         environmentRecall := execution.environmentRecall ++
-          [⟨execution.observeEnvironment (application setup runtime leaks), .activate who⟩] }⟩) =
-      (operationalState setup runtime leaks (some ⟨remaining + 1, none, execution⟩)).map fun state
+          [⟨execution.observeEnvironment (application setup timeouts leaks), .activate who⟩] }⟩) =
+      (operationalState setup timeouts leaks (some ⟨remaining + 1, none, execution⟩)).map fun state
         =>
         (state.learn who selected).round remaining (some
           who) (.activate who) := by
@@ -135,12 +141,12 @@ theorem operationalState_activate (remaining : Nat)
 
 /-- **Waiting on the operational state.** -/
 theorem operationalState_wait (remaining : Nat)
-    (execution : (application setup runtime leaks).Execution) :
-    operationalState setup runtime leaks (some ⟨remaining, none,
+    (execution : (application setup timeouts leaks).Execution) :
+    operationalState setup timeouts leaks (some ⟨remaining, none,
       { execution with
         environmentRecall := execution.environmentRecall ++
-          [⟨execution.observeEnvironment (application setup runtime leaks), .wait⟩] }⟩) =
-      (operationalState setup runtime leaks (some ⟨remaining + 1, none, execution⟩)).map fun state
+          [⟨execution.observeEnvironment (application setup timeouts leaks), .wait⟩] }⟩) =
+      (operationalState setup timeouts leaks (some ⟨remaining + 1, none, execution⟩)).map fun state
         =>
         state.round remaining none .wait := by
   simp only [operationalState, Option.map_some, OperationalState.round, Option.some.injEq,
@@ -155,12 +161,12 @@ private theorem publicView_ownTurn?_congr {first second : PublicView (graph setu
 
 /-- The delivered value of a view is read from the player's turn and its own
 observation. -/
-theorem deliveredValue_congr (who : Player) {first second : (application setup runtime
+theorem deliveredValue_congr (who : Player) {first second : (application setup timeouts
   leaks).PlayerView}
     (turn : first.application.publicView.ownTurn? who =
       second.application.publicView.ownTurn? who)
     (store : first.application.observation.store = second.application.observation.store) :
-    deliveredValue setup runtime leaks who first = deliveredValue setup runtime leaks who second
+    deliveredValue setup timeouts leaks who first = deliveredValue setup timeouts leaks who second
       := by
   unfold deliveredValue
   rw [turn, store]
@@ -168,7 +174,7 @@ theorem deliveredValue_congr (who : Player) {first second : (application setup r
 /-- A new public contract view on the operational state: the scheduler's view
 and every player's current operational view read it. -/
 def OperationalState.contract (view : PublicView (graph setup))
-    (state : OperationalState setup runtime leaks) : OperationalState setup runtime leaks :=
+    (state : OperationalState setup timeouts leaks) : OperationalState setup timeouts leaks :=
   { state with
     environment := { state.environment with application
       := view }
@@ -179,20 +185,20 @@ def OperationalState.contract (view : PublicView (graph setup))
 /-- **A contract step that keeps the configuration, on the operational
 state.** -/
 theorem operationalState_contract (remaining : Nat)
-    (execution : (application setup runtime leaks).Execution) (next : EventGraphRuntime.State
+    (execution : (application setup timeouts leaks).Execution) (next : EventGraphRuntime.State
       (graph setup))
     (config : next.config = execution.application.config)
     (command : EnvironmentCommand (graph setup)) :
-    operationalState setup runtime leaks (some ⟨remaining, none,
+    operationalState setup timeouts leaks (some ⟨remaining, none,
       { execution with
         application := next
         environmentRecall := execution.environmentRecall ++
-          [⟨execution.observeEnvironment (application setup runtime leaks), .application command⟩]
+          [⟨execution.observeEnvironment (application setup timeouts leaks), .application command⟩]
             }⟩) =
-      (operationalState setup runtime leaks (some ⟨remaining + 1, none, execution⟩)).map fun state
+      (operationalState setup timeouts leaks (some ⟨remaining + 1, none, execution⟩)).map fun state
         =>
-        (state.round remaining none (.application command)).contract (runtime
-          := runtime) next.publicView := by
+        (state.round remaining none (.application command)).contract (timeouts
+          := timeouts) next.publicView := by
   simp only [operationalState, Option.map_some, OperationalState.round,
     OperationalState.contract, Option.some.injEq, OperationalState.mk.injEq]
   refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩ <;> try trivial
@@ -202,15 +208,15 @@ theorem operationalState_contract (remaining : Nat)
     (second := execution.application.publicView)
     (by change (graph setup).publicObserve next.config = _; rw [config]; rfl) observer
   congr 1
-  exact deliveredValue_congr (runtime := runtime) observer turn (by
+  exact deliveredValue_congr (timeouts := timeouts) observer turn (by
     change ((graph setup).playerObserve observer next.config).store = _
     rw [config]
     rfl)
 
 section Congruence
 
-variable {first second : (application setup runtime leaks).Control}
-  (same : operationalState setup runtime leaks (some first) = operationalState setup runtime leaks
+variable {first second : (application setup timeouts leaks).Control}
+  (same : operationalState setup timeouts leaks (some first) = operationalState setup timeouts leaks
     (some second))
 include same
 
@@ -225,21 +231,21 @@ theorem SameOperational.environmentRecall :
   congrArg OperationalState.environmentRecall (Option.some.inj same)
 
 theorem SameOperational.observeEnvironment :
-    first.execution.observeEnvironment (application setup runtime leaks) =
-      second.execution.observeEnvironment (application setup runtime leaks) :=
+    first.execution.observeEnvironment (application setup timeouts leaks) =
+      second.execution.observeEnvironment (application setup timeouts leaks) :=
   congrArg OperationalState.environment (Option.some.inj same)
 
 theorem SameOperational.network : first.execution.network = second.execution.network :=
-  congrArg (OperationalState.network setup runtime leaks) (Option.some.inj same)
+  congrArg (OperationalState.network setup timeouts leaks) (Option.some.inj same)
 
 theorem SameOperational.publicView :
     first.execution.application.publicView = second.execution.application.publicView :=
   congrArg ReactiveApplication.EnvironmentView.application (SameOperational.observeEnvironment
-    (runtime := runtime) same)
+    (timeouts := timeouts) same)
 
 theorem SameOperational.receipts : first.execution.receipts = second.execution.receipts :=
   congrArg ReactiveApplication.EnvironmentView.receipts (SameOperational.observeEnvironment
-    (runtime := runtime) same)
+    (timeouts := timeouts) same)
 
 theorem SameOperational.completed (event : (graph setup).EventId) :
     event ∈ first.execution.application.config.cut.completed ↔
@@ -260,31 +266,31 @@ variable (event : (graph setup).EventId)
 open Classical in
 /-- **The image of a protocol state.** While `event` is pending, the
 operational state; once it has completed, whether its output failed. -/
-def pendingImage : (application setup runtime leaks).ProtocolState →
-    Option (OperationalState setup runtime leaks) ⊕ Bool
+def pendingImage : (application setup timeouts leaks).ProtocolState →
+    Option (OperationalState setup timeouts leaks) ⊕ Bool
   | none => .inl none
   | some control =>
       if event ∈ control.execution.application.config.cut.completed then
         .inr (decide (StoreEventFailed control.execution.application.config.store event))
-      else .inl (operationalState setup runtime leaks (some control))
+      else .inl (operationalState setup timeouts leaks (some control))
 
 variable {event}
 
 open Classical in
-theorem pendingImage_of_pending (control : (application setup runtime leaks).Control)
+theorem pendingImage_of_pending (control : (application setup timeouts leaks).Control)
     (pending : event ∉ control.execution.application.config.cut.completed) :
-    pendingImage (runtime := runtime) event (some control) = .inl (operationalState setup runtime
+    pendingImage (timeouts := timeouts) event (some control) = .inl (operationalState setup timeouts
       leaks (some control)) := by
   simp only [pendingImage, pending, ↓reduceIte]
 
 open Classical in
 /-- A finite graph path preserves the image of an already completed event. -/
-theorem pendingImage_of_path {control control' : (application setup runtime leaks).Control}
+theorem pendingImage_of_path {control control' : (application setup timeouts leaks).Control}
     (path : Relation.ReflTransGen EventGraph.Config.Step
       control.execution.application.config control'.execution.application.config)
     {event : (graph setup).EventId}
     (completed : event ∈ control.execution.application.config.cut.completed) :
-    pendingImage (runtime := runtime) event (some control') = pendingImage (runtime := runtime)
+    pendingImage (timeouts := timeouts) event (some control') = pendingImage (timeouts := timeouts)
       event (some control) := by
   have completed' := EventGraph.Config.Step.path_completed_mono path completed
   have present : (control.execution.application.config.store (.inr event)).isSome := by
@@ -315,12 +321,12 @@ private theorem storeEventFailed_drain (state : EventGraphRuntime.State (graph s
 
 /-- An activation round from a pending state, read through the image. -/
 theorem environmentStep_activate_image (remaining : Nat)
-    (execution : (application setup runtime leaks).Execution)
+    (execution : (application setup timeouts leaks).Execution)
     (pending : event ∉ execution.application.config.cut.completed) (who : Player) :
-    (execution.environmentStep (application setup runtime leaks) (.activate who)).map
-        (fun next => pendingImage (runtime := runtime) event (some ⟨remaining, some who, next⟩)) =
+    (execution.environmentStep (application setup timeouts leaks) (.activate who)).map
+        (fun next => pendingImage (timeouts := timeouts) event (some ⟨remaining, some who, next⟩)) =
       (leaks who execution.network.pending).map fun selected =>
-        .inl ((operationalState setup runtime leaks (some ⟨remaining + 1, none, execution⟩)).map
+        .inl ((operationalState setup timeouts leaks (some ⟨remaining + 1, none, execution⟩)).map
           fun state => (state.learn who selected).round
             remaining (some who) (.activate who)) := by
   unfold ReactiveApplication.Execution.environmentStep
@@ -328,40 +334,40 @@ theorem environmentStep_activate_image (remaining : Nat)
   congr 1
   funext selected
   simp only [Function.comp]
-  rw [pendingImage_of_pending (runtime := runtime) _ pending, ← operationalState_activate]
+  rw [pendingImage_of_pending (timeouts := timeouts) _ pending, ← operationalState_activate]
 
 /-- A waiting round from a pending state, read through the image. -/
 theorem environmentStep_wait_image (remaining : Nat)
-    (execution : (application setup runtime leaks).Execution)
+    (execution : (application setup timeouts leaks).Execution)
     (pending : event ∉ execution.application.config.cut.completed) :
-    (execution.environmentStep (application setup runtime leaks) .wait).map
-        (fun next => pendingImage (runtime := runtime) event (some ⟨remaining, none, next⟩)) =
-      PMF.pure (.inl ((operationalState setup runtime leaks (some ⟨remaining + 1, none,
+    (execution.environmentStep (application setup timeouts leaks) .wait).map
+        (fun next => pendingImage (timeouts := timeouts) event (some ⟨remaining, none, next⟩)) =
+      PMF.pure (.inl ((operationalState setup timeouts leaks (some ⟨remaining + 1, none,
         execution⟩)).map
         fun state => state.round remaining none .wait)) := by
   unfold ReactiveApplication.Execution.environmentStep
   simp only [PMF.pure_map]
-  rw [pendingImage_of_pending (runtime := runtime) _ pending, ← operationalState_wait]
+  rw [pendingImage_of_pending (timeouts := timeouts) _ pending, ← operationalState_wait]
 
 /-- A contract round that keeps a quiescent configuration records the round
 and reads the resulting public contract view. -/
 theorem environmentStep_contract_image (remaining : Nat)
-    (execution : (application setup runtime leaks).Execution)
+    (execution : (application setup timeouts leaks).Execution)
     (pending : event ∉ execution.application.config.cut.completed)
     (command : EnvironmentCommand (graph setup))
     (quiescent : ∀ event, ¬ execution.application.AutomaticReady event)
-    (stays : ∀ next ∈ (EventGraphRuntime.environmentStep runtime execution.application
+    (stays : ∀ next ∈ (EventGraphRuntime.environmentStep timeouts execution.application
       command).support, next.config = execution.application.config) :
-    (execution.environmentStep (application setup runtime leaks) (.application command)).map
-        (fun next => pendingImage (runtime := runtime) event (some ⟨remaining, none, next⟩)) =
-      (EventGraphRuntime.environmentStep runtime execution.application command).map
-        fun next => .inl ((operationalState setup runtime leaks (some ⟨remaining + 1, none,
+    (execution.environmentStep (application setup timeouts leaks) (.application command)).map
+        (fun next => pendingImage (timeouts := timeouts) event (some ⟨remaining, none, next⟩)) =
+      (EventGraphRuntime.environmentStep timeouts execution.application command).map
+        fun next => .inl ((operationalState setup timeouts leaks (some ⟨remaining + 1, none,
           execution⟩)).map
           fun state => (state.round remaining none (.application
             command)).contract
             next.publicView) := by
   unfold ReactiveApplication.Execution.environmentStep
-  change ((((EventGraphRuntime.environmentStep runtime execution.application command).map
+  change ((((EventGraphRuntime.environmentStep timeouts execution.application command).map
     State.drain).map _).map _).map _ = _
   simp only [PMF.map_comp]
   apply map_congr_on_support
@@ -374,7 +380,7 @@ theorem environmentStep_contract_image (remaining : Nat)
     rw [config]
     exact quiescent other)
   rw [drainEq]
-  rw [pendingImage_of_pending (runtime := runtime) _ (by
+  rw [pendingImage_of_pending (timeouts := timeouts) _ (by
       change event ∉ next.config.cut.completed
       rw [config]
       exact pending),
@@ -392,11 +398,11 @@ theorem isFailure_cast_failure {kind : EventGraph.EventField Player L} {payload 
 open Classical in
 /-- Expiring a due publication event fails it, read through the image. -/
 theorem pendingImage_expire_resolve (remaining : Nat) (actor : Option Player)
-    (execution : (application setup runtime leaks).Execution)
+    (execution : (application setup timeouts leaks).Execution)
     (ready : execution.application.config.cut.Ready event)
     {payload : L.Ty} (outputEq : (graph setup).outputLayout event = .publication payload)
-    (entries : List (application setup runtime leaks).EnvironmentEntry) :
-    pendingImage (runtime := runtime) event (some ⟨remaining, actor, { execution with
+    (entries : List (application setup timeouts leaks).EnvironmentEntry) :
+    pendingImage (timeouts := timeouts) event (some ⟨remaining, actor, { execution with
       application := execution.application.complete event ready
         (cast (congrArg EventGraph.EventField.Action outputEq.symm) false)
         (cast (congrArg EventGraph.EventField.Value outputEq.symm)
@@ -418,28 +424,28 @@ theorem pendingImage_expire_resolve (remaining : Nat) (actor : Option Player)
 /-- A raw contract no-op at a quiescent configuration leaves the physical
 image unchanged apart from the recorded round. -/
 theorem environmentStep_stutter_image (remaining : Nat)
-    (execution : (application setup runtime leaks).Execution)
+    (execution : (application setup timeouts leaks).Execution)
     (pending : event ∉ execution.application.config.cut.completed)
     (command : EnvironmentCommand (graph setup))
     (quiescent : ∀ event, ¬ execution.application.AutomaticReady event)
-    (stutter : EventGraphRuntime.environmentStep runtime execution.application command =
+    (stutter : EventGraphRuntime.environmentStep timeouts execution.application command =
       PMF.pure execution.application) :
-    (execution.environmentStep (application setup runtime leaks) (.application command)).map
-        (fun next => pendingImage (runtime := runtime) event (some ⟨remaining, none, next⟩)) =
-      PMF.pure (.inl ((operationalState setup runtime leaks (some ⟨remaining + 1, none,
+    (execution.environmentStep (application setup timeouts leaks) (.application command)).map
+        (fun next => pendingImage (timeouts := timeouts) event (some ⟨remaining, none, next⟩)) =
+      PMF.pure (.inl ((operationalState setup timeouts leaks (some ⟨remaining + 1, none,
         execution⟩)).map
         fun state => (state.round remaining none (.application
           command)).contract
           execution.application.publicView)) := by
-  rw [environmentStep_contract_image (runtime := runtime) remaining execution pending command
+  rw [environmentStep_contract_image (timeouts := timeouts) remaining execution pending command
     quiescent (by
     rw [stutter]
     intro next member
     rw [(PMF.mem_support_pure_iff _ _).mp member]), stutter, PMF.pure_map]
 
 /-- Readiness is read off equal operational states. -/
-theorem SameOperational.ready {first second : (application setup runtime leaks).Control}
-    (same : operationalState setup runtime leaks (some first) = operationalState setup runtime
+theorem SameOperational.ready {first second : (application setup timeouts leaks).Control}
+    (same : operationalState setup timeouts leaks (some first) = operationalState setup timeouts
       leaks (some second))
     (event : (graph setup).EventId) :
     first.execution.application.config.cut.Ready event ↔
@@ -456,10 +462,10 @@ theorem SameOperational.ready {first second : (application setup runtime leaks).
 /-- Expiring a due publication event, read through the image, is the failure
 image surely. -/
 theorem environmentStep_expire_due_image (remaining : Nat)
-    (execution : (application setup runtime leaks).Execution)
+    (execution : (application setup timeouts leaks).Execution)
     (ready : execution.application.config.cut.Ready event) (entered : Nat)
     (activated : execution.application.activatedAt event = some entered)
-    (due : runtime.deadline event ≤ execution.application.clock - entered)
+    (due : timeouts.duration event ≤ execution.application.clock - entered)
     {owner : Player} {payload : L.Ty}
     {binding : EventGraph.FieldRef (graph setup).layout (.binding owner payload)}
     {checks : List (EventGraph.GuardCheck (graph setup).layout payload)}
@@ -467,14 +473,15 @@ theorem environmentStep_expire_due_image (remaining : Nat)
     {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
       ((graph setup).nodes event) = .resolve owner payload binding checks}
     (view : nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq) :
-    (execution.environmentStep (application setup runtime leaks) (.application (.expire event))).map
-        (fun next => pendingImage (runtime := runtime) event (some ⟨remaining, none, next⟩)) =
+    (execution.environmentStep (application setup timeouts leaks) (.application (.expire
+      event))).map
+        (fun next => pendingImage (timeouts := timeouts) event (some ⟨remaining, none, next⟩)) =
           PMF.pure (.inr true) := by
   classical
   unfold ReactiveApplication.Execution.environmentStep
-  change ((((EventGraphRuntime.environmentStep runtime execution.application
+  change ((((EventGraphRuntime.environmentStep timeouts execution.application
     (.expire event)).map State.drain).map _).map _).map _ = _
-  rw [environmentStep_expire_resolve_eq runtime _ event ready entered activated due owner
+  rw [environmentStep_expire_resolve_eq timeouts _ event ready entered activated due owner
     payload binding checks outputEq codeEq view]
   simp only [PMF.pure_map]
   let native := execution.application.complete event ready
@@ -487,23 +494,23 @@ theorem environmentStep_expire_due_image (remaining : Nat)
   congr 1
   change (if event ∈ native.drain.config.cut.completed then
     Sum.inr (decide (StoreEventFailed native.drain.config.store event)) else _) =
-      (Sum.inr true : Option (OperationalState setup runtime leaks) ⊕ Bool)
+      (Sum.inr true : Option (OperationalState setup timeouts leaks) ⊕ Bool)
   rw [ite_eq_left drained, storeEventFailed_drain native completed]
-  have original := pendingImage_expire_resolve (runtime := runtime) remaining none execution
+  have original := pendingImage_expire_resolve (timeouts := timeouts) remaining none execution
     ready outputEq (execution.environmentRecall ++
       [⟨execution.observeEnvironment _, .application (.expire event)⟩])
   change (if event ∈ native.config.cut.completed then
     Sum.inr (decide (StoreEventFailed native.config.store event)) else _) =
-      (Sum.inr true : Option (OperationalState setup runtime leaks) ⊕ Bool) at original
+      (Sum.inr true : Option (OperationalState setup timeouts leaks) ⊕ Bool) at original
   simpa only [completed, ↓reduceIte] using original
 
 /-- **Contract rounds read off the operational state.** While a publication
 event is pending and ready, two quiescent executions with the same operational
 state give every contract command the same law of images. -/
 theorem application_image_congr (remaining : Nat)
-    (first second : (application setup runtime leaks).Execution)
-    (same : operationalState setup runtime leaks (some ⟨remaining + 1, none, first⟩) =
-      operationalState setup runtime leaks (some ⟨remaining + 1, none, second⟩))
+    (first second : (application setup timeouts leaks).Execution)
+    (same : operationalState setup timeouts leaks (some ⟨remaining + 1, none, first⟩) =
+      operationalState setup timeouts leaks (some ⟨remaining + 1, none, second⟩))
     (pending : event ∉ first.application.config.cut.completed)
     (ready : first.application.config.cut.Ready event)
     (firstQuiescent : ∀ event, ¬ first.application.AutomaticReady event)
@@ -516,40 +523,41 @@ theorem application_image_congr (remaining : Nat)
       ((graph setup).nodes event) = .resolve owner payload binding checks}
     (view : nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq)
     (command : EnvironmentCommand (graph setup)) :
-    (first.environmentStep (application setup runtime leaks) (.application command)).map
-        (fun next => pendingImage (runtime := runtime) event (some ⟨remaining, none, next⟩)) =
-      (second.environmentStep (application setup runtime leaks) (.application command)).map
-        (fun next => pendingImage (runtime := runtime) event (some ⟨remaining, none, next⟩)) := by
+    (first.environmentStep (application setup timeouts leaks) (.application command)).map
+        (fun next => pendingImage (timeouts := timeouts) event (some ⟨remaining, none, next⟩)) =
+      (second.environmentStep (application setup timeouts leaks) (.application command)).map
+        (fun next => pendingImage (timeouts := timeouts) event (some ⟨remaining, none, next⟩)) := by
   have pending' : event ∉ second.application.config.cut.completed := fun completed =>
     pending ((SameOperational.completed same event).mpr completed)
   have ready' : second.application.config.cut.Ready event :=
-    (SameOperational.ready (runtime := runtime) same event).mp ready
+    (SameOperational.ready (timeouts := timeouts) same event).mp ready
   have views : first.application.publicView = second.application.publicView :=
     SameOperational.publicView same
   have readyIff : ∀ other, first.application.config.cut.Ready other ↔
-      second.application.config.cut.Ready other := SameOperational.ready (runtime := runtime) same
+      second.application.config.cut.Ready other := SameOperational.ready (timeouts := timeouts) same
   have stutterBoth : ∀ command,
-      EventGraphRuntime.environmentStep runtime first.application command =
+      EventGraphRuntime.environmentStep timeouts first.application command =
         PMF.pure first.application →
-      EventGraphRuntime.environmentStep runtime second.application command =
+      EventGraphRuntime.environmentStep timeouts second.application command =
         PMF.pure second.application →
-      (first.environmentStep (application setup runtime leaks) (.application command)).map
-          (fun next => pendingImage (runtime := runtime) event (some ⟨remaining, none, next⟩)) =
-        (second.environmentStep (application setup runtime leaks) (.application command)).map
-          (fun next => pendingImage (runtime := runtime) event (some ⟨remaining, none, next⟩)) := by
+      (first.environmentStep (application setup timeouts leaks) (.application command)).map
+          (fun next => pendingImage (timeouts := timeouts) event (some ⟨remaining, none, next⟩)) =
+        (second.environmentStep (application setup timeouts leaks) (.application command)).map
+          (fun next => pendingImage (timeouts := timeouts) event (some ⟨remaining, none, next⟩))
+            := by
     intro command firstStutter secondStutter
-    rw [environmentStep_stutter_image (runtime := runtime) remaining first pending command
+    rw [environmentStep_stutter_image (timeouts := timeouts) remaining first pending command
       firstQuiescent firstStutter,
-      environmentStep_stutter_image (runtime := runtime) remaining second pending' command
+      environmentStep_stutter_image (timeouts := timeouts) remaining second pending' command
         secondQuiescent secondStutter, same, views]
   cases command with
   | advanceClock =>
-      rw [environmentStep_contract_image (runtime := runtime) remaining first pending _
+      rw [environmentStep_contract_image (timeouts := timeouts) remaining first pending _
           firstQuiescent (by
           intro next member
           simp only [EventGraphRuntime.environmentStep, PMF.mem_support_pure_iff] at member
           rw [member]),
-        environmentStep_contract_image (runtime := runtime) remaining second pending' _
+        environmentStep_contract_image (timeouts := timeouts) remaining second pending' _
           secondQuiescent (by
           intro next member
           simp only [EventGraphRuntime.environmentStep, PMF.mem_support_pure_iff] at member
@@ -571,13 +579,13 @@ theorem application_image_congr (remaining : Nat)
           setup.eventGraph.sequentialize_ready_unique _ sampledReady ready
         subst sameEvent
         exact stutterBoth _
-          (environmentStep_executeSample_of_nonsample runtime _ sampled ready
+          (environmentStep_executeSample_of_nonsample timeouts _ sampled ready
             (fun _ _ _ _ other => by rw [view] at other; cases other))
-          (environmentStep_executeSample_of_nonsample runtime _ sampled ready'
+          (environmentStep_executeSample_of_nonsample timeouts _ sampled ready'
             (fun _ _ _ _ other => by rw [view] at other; cases other))
       · exact stutterBoth _
-          (environmentStep_executeSample_of_not_ready runtime _ sampled sampledReady)
-          (environmentStep_executeSample_of_not_ready runtime _ sampled
+          (environmentStep_executeSample_of_not_ready timeouts _ sampled sampledReady)
+          (environmentStep_executeSample_of_not_ready timeouts _ sampled
             (fun other => sampledReady ((readyIff sampled).mpr other)))
   | expire expired =>
       by_cases expiredReady : first.application.config.cut.Ready expired
@@ -591,51 +599,51 @@ theorem application_image_congr (remaining : Nat)
         cases activated : first.application.activatedAt expired with
         | none =>
             exact stutterBoth _
-              (environmentStep_expire_of_not_activated runtime _ expired ready activated)
-              (environmentStep_expire_of_not_activated runtime _ expired ready'
+              (environmentStep_expire_of_not_activated timeouts _ expired ready activated)
+              (environmentStep_expire_of_not_activated timeouts _ expired ready'
                 (by rw [← activations]; exact activated))
         | some entered =>
-            by_cases due : runtime.deadline expired ≤ first.application.clock - entered
-            · rw [environmentStep_expire_due_image (runtime := runtime) remaining first ready
+            by_cases due : timeouts.duration expired ≤ first.application.clock - entered
+            · rw [environmentStep_expire_due_image (timeouts := timeouts) remaining first ready
                 entered activated due view,
-                environmentStep_expire_due_image (runtime := runtime) remaining second ready'
+                environmentStep_expire_due_image (timeouts := timeouts) remaining second ready'
                   entered
                   (by rw [← activations]; exact activated) (by rw [← clocks]; exact due) view]
             · exact stutterBoth _
-                (environmentStep_expire_of_not_due runtime _ expired ready entered
+                (environmentStep_expire_of_not_due timeouts _ expired ready entered
                   activated due)
-                (environmentStep_expire_of_not_due runtime _ expired ready' entered
+                (environmentStep_expire_of_not_due timeouts _ expired ready' entered
                   (by rw [← activations]; exact activated) (by rw [← clocks]; exact due))
       · exact stutterBoth _
-          (environmentStep_expire_of_not_ready runtime _ expired expiredReady)
-          (environmentStep_expire_of_not_ready runtime _ expired
+          (environmentStep_expire_of_not_ready timeouts _ expired expiredReady)
+          (environmentStep_expire_of_not_ready timeouts _ expired
             (fun other => expiredReady ((readyIff expired).mpr other)))
 
 /-- Late-delivery keys of views that differ only in their network part and
 receipts agree when the earlier keys agree and the network parts and receipts
 agree. -/
 theorem lateKey_network_congr (who : Player) (firstPast secondPast :
-      List (application setup runtime leaks).PlayerEntry)
-    {first first' second second' : (application setup runtime leaks).PlayerView}
-    (old : lateKey setup runtime leaks who (some (firstPast, first)) =
-      lateKey setup runtime leaks who (some (secondPast, second)))
+      List (application setup timeouts leaks).PlayerEntry)
+    {first first' second second' : (application setup timeouts leaks).PlayerView}
+    (old : lateKey setup timeouts leaks who (some (firstPast, first)) =
+      lateKey setup timeouts leaks who (some (secondPast, second)))
     (firstContract : first'.application = first.application)
     (secondContract : second'.application = second.application)
     (messages : first'.messages = second'.messages)
     (receipts : first'.receipts = second'.receipts) :
-    lateKey setup runtime leaks who (some (firstPast, first')) =
-      lateKey setup runtime leaks who (some (secondPast, second')) := by
+    lateKey setup timeouts leaks who (some (firstPast, first')) =
+      lateKey setup timeouts leaks who (some (secondPast, second')) := by
   simp only [lateKey, Option.some.injEq, LateKey.mk.injEq, operationalView] at old ⊢
   obtain ⟨_, current, recalled, delivered⟩ := old
   refine ⟨trivial, ?_, recalled, ?_⟩
   · rw [firstContract, secondContract, messages, receipts]
     rw [(Prod.mk.inj current).1]
-  · have firstDelivered : deliveredValue setup runtime leaks who first' =
-        deliveredValue setup runtime leaks who first := by
+  · have firstDelivered : deliveredValue setup timeouts leaks who first' =
+        deliveredValue setup timeouts leaks who first := by
       unfold deliveredValue
       rw [firstContract]
-    have secondDelivered : deliveredValue setup runtime leaks who second' =
-        deliveredValue setup runtime leaks who second := by
+    have secondDelivered : deliveredValue setup timeouts leaks who second' =
+        deliveredValue setup timeouts leaks who second := by
       unfold deliveredValue
       rw [secondContract]
     rw [firstDelivered, secondDelivered, delivered]
@@ -645,17 +653,17 @@ While an event is pending, two executions with the same operational state give
 an inclusion the same image when the contract rejects the included packet in
 both, or there is none to include. -/
 theorem include_image_congr (remaining : Nat)
-    (first second : (application setup runtime leaks).Execution)
-    (same : operationalState setup runtime leaks (some ⟨remaining + 1, none, first⟩) =
-      operationalState setup runtime leaks (some ⟨remaining + 1, none, second⟩))
+    (first second : (application setup timeouts leaks).Execution)
+    (same : operationalState setup timeouts leaks (some ⟨remaining + 1, none, first⟩) =
+      operationalState setup timeouts leaks (some ⟨remaining + 1, none, second⟩))
     (pending : event ∉ first.application.config.cut.completed) (id : MessageId Player)
     (rejected : ∀ message, first.network.lookup id = some message →
-      (application setup runtime leaks).handle first.application message = none ∧
-        (application setup runtime leaks).handle second.application message = none) :
-    (first.environmentStep (application setup runtime leaks) (.include id)).map
-        (fun next => pendingImage (runtime := runtime) event (some ⟨remaining, none, next⟩)) =
-      (second.environmentStep (application setup runtime leaks) (.include id)).map
-        (fun next => pendingImage (runtime := runtime) event (some ⟨remaining, none, next⟩)) := by
+      (application setup timeouts leaks).handle first.application message = none ∧
+        (application setup timeouts leaks).handle second.application message = none) :
+    (first.environmentStep (application setup timeouts leaks) (.include id)).map
+        (fun next => pendingImage (timeouts := timeouts) event (some ⟨remaining, none, next⟩)) =
+      (second.environmentStep (application setup timeouts leaks) (.include id)).map
+        (fun next => pendingImage (timeouts := timeouts) event (some ⟨remaining, none, next⟩)) := by
   have networks : first.network = second.network := SameOperational.network same
   have pending' : event ∉ second.application.config.cut.completed := fun completed =>
     pending ((SameOperational.completed same event).mpr completed)
@@ -670,8 +678,9 @@ theorem include_image_congr (remaining : Nat)
   | none =>
       have found' : second.network.lookup id = none := by rw [← networks]; exact found
       simp only [MessageNetwork.includePending, found, found']
-      rw [pendingImage_of_pending (runtime := runtime) _ pending, pendingImage_of_pending (runtime
-        := runtime) _ pending']
+      rw [pendingImage_of_pending (timeouts := timeouts) _ pending, pendingImage_of_pending
+        (timeouts
+        := timeouts) _ pending']
       simp only [operationalState, Sum.inl.injEq, Option.some.injEq, OperationalState.mk.injEq]
       refine ⟨trivial, trivial, ?_, ?_, ?_, ?_⟩
       · rw [recalls, views]
@@ -684,8 +693,9 @@ theorem include_image_congr (remaining : Nat)
       have found' : second.network.lookup id = some message := by rw [← networks]; exact found
       simp only [MessageNetwork.includePending, found, found', firstRejected, secondRejected,
         Option.getD_none, Option.isSome_none]
-      rw [pendingImage_of_pending (runtime := runtime) _ pending, pendingImage_of_pending (runtime
-        := runtime) _ pending']
+      rw [pendingImage_of_pending (timeouts := timeouts) _ pending, pendingImage_of_pending
+        (timeouts
+        := timeouts) _ pending']
       simp only [operationalState, Sum.inl.injEq, Option.some.injEq, OperationalState.mk.injEq]
       have receipts : first.receipts = second.receipts :=
         congrArg ReactiveApplication.EnvironmentView.receipts views
@@ -697,7 +707,7 @@ theorem include_image_congr (remaining : Nat)
         exact congrArg ReactiveApplication.EnvironmentView.application views
       · rw [networks]
       · funext who
-        exact lateKey_network_congr (runtime := runtime) who _ _ (congrFun keys who) rfl rfl
+        exact lateKey_network_congr (timeouts := timeouts) who _ _ (congrFun keys who) rfl rfl
           (by change MessageNetwork.observe _ who = MessageNetwork.observe _ who; rw [networks])
           (by change first.receipts ++ _ = second.receipts ++ _; rw [receipts])
 
@@ -712,11 +722,11 @@ theorem handle_commitment_of_publication_ready (state : EventGraphRuntime.State 
     {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
       ((graph setup).nodes event) = .resolve owner payload binding checks}
     (view : nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq)
-    (message : Message Player (application setup runtime leaks).Payload) {committed : (graph
+    (message : Message Player (application setup timeouts leaks).Payload) {committed : (graph
       setup).EventId}
     {candidate : Handle (graph setup)}
     (call : message.payload.call = .commitment committed candidate) :
-    (application setup runtime leaks).handle state message = none := by
+    (application setup timeouts leaks).handle state message = none := by
   apply reactiveHandle_none
   rw [call]
   by_cases committedReady : state.config.cut.Ready committed
@@ -726,16 +736,16 @@ theorem handle_commitment_of_publication_ready (state : EventGraphRuntime.State 
     simp [handle, committedReady, view]
   · simp [handle, committedReady]
 
-variable (initial : PMF (application setup runtime leaks).State) (horizon : Nat)
-  (scheduler : (application setup runtime leaks).Scheduler) in
+variable (initial : PMF (application setup timeouts leaks).State) (horizon : Nat)
+  (scheduler : (application setup timeouts leaks).Scheduler) in
 /-- **Scheduler rounds read off the operational state.** While a publication
 event is pending and is the only ready event, two quiescent executions with
 the same operational state give a scheduler round the same law of images, provided the
 inclusions of packets other than commitments do. -/
 theorem round_image_congr (remaining : Nat)
-    (first second : (application setup runtime leaks).Execution)
-    (same : operationalState setup runtime leaks (some ⟨remaining + 1, none, first⟩) =
-      operationalState setup runtime leaks (some ⟨remaining + 1, none, second⟩))
+    (first second : (application setup timeouts leaks).Execution)
+    (same : operationalState setup timeouts leaks (some ⟨remaining + 1, none, first⟩) =
+      operationalState setup timeouts leaks (some ⟨remaining + 1, none, second⟩))
     (pending : event ∉ first.application.config.cut.completed)
     (ready : first.application.config.cut.Ready event)
     (firstQuiescent : ∀ event, ¬ first.application.AutomaticReady event)
@@ -749,35 +759,37 @@ theorem round_image_congr (remaining : Nat)
     (view : nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq)
     (inclusion : ∀ id message, first.network.lookup id = some message →
       (∃ committed candidate, message.payload.call = .commitment committed candidate) ∨
-        (first.environmentStep (application setup runtime leaks) (.include id)).map
-            (fun next => pendingImage (runtime := runtime) event (some ⟨remaining, none, next⟩)) =
-          (second.environmentStep (application setup runtime leaks) (.include id)).map
-            (fun next => pendingImage (runtime := runtime) event (some ⟨remaining, none, next⟩))) :
-    ((application setup runtime leaks).transition initial horizon scheduler
-        (some ⟨remaining + 1, none, first⟩) (fun _ => none)).map (pendingImage (runtime :=
-          runtime) event) =
-      ((application setup runtime leaks).transition initial horizon scheduler
-        (some ⟨remaining + 1, none, second⟩) (fun _ => none)).map (pendingImage (runtime :=
-          runtime) event) := by
+        (first.environmentStep (application setup timeouts leaks) (.include id)).map
+            (fun next => pendingImage (timeouts := timeouts) event (some ⟨remaining, none, next⟩)) =
+          (second.environmentStep (application setup timeouts leaks) (.include id)).map
+            (fun next => pendingImage (timeouts := timeouts) event (some ⟨remaining, none,
+              next⟩))) :
+    ((application setup timeouts leaks).transition initial horizon scheduler
+        (some ⟨remaining + 1, none, first⟩) (fun _ => none)).map (pendingImage (timeouts :=
+          timeouts) event) =
+      ((application setup timeouts leaks).transition initial horizon scheduler
+        (some ⟨remaining + 1, none, second⟩) (fun _ => none)).map (pendingImage (timeouts :=
+          timeouts) event) := by
   have pending' : event ∉ second.application.config.cut.completed := fun completed =>
     pending ((SameOperational.completed same event).mpr completed)
   have ready' : second.application.config.cut.Ready event :=
-    (SameOperational.ready (runtime := runtime) same event).mp ready
+    (SameOperational.ready (timeouts := timeouts) same event).mp ready
   have networks : first.network = second.network := SameOperational.network same
   have recalls : first.environmentRecall = second.environmentRecall :=
     SameOperational.environmentRecall same
-  have views : first.observeEnvironment (application setup runtime leaks) =
-      second.observeEnvironment (application setup runtime leaks) :=
-        SameOperational.observeEnvironment (runtime := runtime) same
+  have views : first.observeEnvironment (application setup timeouts leaks) =
+      second.observeEnvironment (application setup timeouts leaks) :=
+        SameOperational.observeEnvironment (timeouts := timeouts) same
   change ((scheduler first.environmentRecall (first.observeEnvironment _)).bind fun command =>
       (first.environmentStep _ command).map fun next =>
-        some (⟨remaining, command.actor? (application setup runtime leaks), next⟩ :
-          (application setup runtime leaks).Control)).map (pendingImage (runtime := runtime)
+        some (⟨remaining, command.actor? (application setup timeouts leaks), next⟩ :
+          (application setup timeouts leaks).Control)).map (pendingImage (timeouts := timeouts)
             event) =
     ((scheduler second.environmentRecall (second.observeEnvironment _)).bind fun command =>
       (second.environmentStep _ command).map fun next =>
-        some (⟨remaining, command.actor? (application setup runtime leaks), next⟩ :
-          (application setup runtime leaks).Control)).map (pendingImage (runtime := runtime) event)
+        some (⟨remaining, command.actor? (application setup timeouts leaks), next⟩ :
+          (application setup timeouts leaks).Control)).map (pendingImage (timeouts := timeouts)
+            event)
   rw [recalls, views, PMF.map_bind, PMF.map_bind]
   congr 1
   funext command
@@ -785,40 +797,42 @@ theorem round_image_congr (remaining : Nat)
   cases command with
   | activate who =>
       change (first.environmentStep _ (.activate who)).map
-          (fun next => pendingImage (runtime := runtime) event (some ⟨remaining, some who, next⟩)) =
+          (fun next => pendingImage (timeouts := timeouts) event (some ⟨remaining, some who,
+            next⟩)) =
         (second.environmentStep _ (.activate who)).map
-          (fun next => pendingImage (runtime := runtime) event (some ⟨remaining, some who, next⟩))
-      rw [environmentStep_activate_image (runtime := runtime) remaining first pending who,
-        environmentStep_activate_image (runtime := runtime) remaining second pending' who,
+          (fun next => pendingImage (timeouts := timeouts) event (some ⟨remaining, some who, next⟩))
+      rw [environmentStep_activate_image (timeouts := timeouts) remaining first pending who,
+        environmentStep_activate_image (timeouts := timeouts) remaining second pending' who,
           networks, same]
   | wait =>
       change (first.environmentStep _ .wait).map
-          (fun next => pendingImage (runtime := runtime) event (some ⟨remaining, none, next⟩)) =
+          (fun next => pendingImage (timeouts := timeouts) event (some ⟨remaining, none, next⟩)) =
         (second.environmentStep _ .wait).map
-          (fun next => pendingImage (runtime := runtime) event (some ⟨remaining, none, next⟩))
-      rw [environmentStep_wait_image (runtime := runtime) remaining first pending,
-        environmentStep_wait_image (runtime := runtime) remaining second pending', same]
+          (fun next => pendingImage (timeouts := timeouts) event (some ⟨remaining, none, next⟩))
+      rw [environmentStep_wait_image (timeouts := timeouts) remaining first pending,
+        environmentStep_wait_image (timeouts := timeouts) remaining second pending', same]
   | «include» id =>
       change (first.environmentStep _ (.include id)).map
-          (fun next => pendingImage (runtime := runtime) event (some ⟨remaining, none, next⟩)) =
+          (fun next => pendingImage (timeouts := timeouts) event (some ⟨remaining, none, next⟩)) =
         (second.environmentStep _ (.include id)).map
-          (fun next => pendingImage (runtime := runtime) event (some ⟨remaining, none, next⟩))
+          (fun next => pendingImage (timeouts := timeouts) event (some ⟨remaining, none, next⟩))
       cases found : first.network.lookup id with
       | none =>
-          exact include_image_congr (runtime := runtime) remaining first second same pending id
+          exact include_image_congr (timeouts := timeouts) remaining first second same pending id
             (fun message member => by rw [found] at member; cases member)
       | some message =>
           rcases inclusion id message found with ⟨committed, candidate, call⟩ | equal
-          · exact include_image_congr (runtime := runtime) remaining first second same pending id
+          · exact include_image_congr (timeouts := timeouts) remaining first second same pending id
               (fun other member => by
                 rw [found] at member
                 cases member
-                exact ⟨handle_commitment_of_publication_ready (runtime := runtime) _ ready view _
+                exact ⟨handle_commitment_of_publication_ready (timeouts := timeouts) _ ready view _
                   call,
-                  handle_commitment_of_publication_ready (runtime := runtime) _ ready' view _ call⟩)
+                  handle_commitment_of_publication_ready (timeouts := timeouts) _ ready' view _
+                    call⟩)
           · exact equal
   | application command =>
-      exact application_image_congr (runtime := runtime) remaining first second same pending ready
+      exact application_image_congr (timeouts := timeouts) remaining first second same pending ready
         firstQuiescent secondQuiescent view command
 
 omit [DecidableEq Player] [IExpr.ResultTypes L] in
@@ -847,14 +861,14 @@ theorem handle_opening_accepted_facts (state next : EventGraphRuntime.State (gra
       ((graph setup).nodes event) = .resolve owner payload binding checks}
     (view : nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq)
     (id : MessageId Player) (candidate : Handle (graph setup)) (raw : Raw L)
-    (accepted : EventGraphRuntime.handle runtime state
+    (accepted : EventGraphRuntime.handle timeouts state
       ⟨id, .opening event candidate raw⟩ = some next) :
-    state.WithinDeadline runtime event ∧ id.1 = owner ∧ candidate.1 = owner ∧
+    state.WithinDeadline timeouts event ∧ id.1 = owner ∧ candidate.1 = owner ∧
       state.accepted binding.field = some candidate ∧
       ∃ value, raw = ⟨payload, value⟩ ∧
         binding.get? state.config.store = some (.success value) := by
-  have active := (handle_opening_iff runtime state next id event candidate raw).mp accepted |>.1
-  by_cases timely : state.WithinDeadline runtime event
+  have active := (handle_opening_iff timeouts state next id event candidate raw).mp accepted |>.1
+  by_cases timely : state.WithinDeadline timeouts event
   · simp only [EventGraphRuntime.handle, Message.sender, ite_eq_right active,
       dite_eq_left ready, dite_eq_left timely, view] at accepted
     split at accepted
@@ -903,17 +917,17 @@ theorem handle_opening_accepted_transfer (first second : EventGraphRuntime.State
     (bindings : binding.get? first.config.store = binding.get? second.config.store)
     (id : MessageId Player) (candidate : Handle (graph setup)) (raw : Raw L)
     {next : EventGraphRuntime.State (graph setup)}
-    (accepted : EventGraphRuntime.handle runtime first
+    (accepted : EventGraphRuntime.handle timeouts first
       ⟨id, .opening event candidate raw⟩ = some next) :
-    ∃ next', EventGraphRuntime.handle runtime second
+    ∃ next', EventGraphRuntime.handle timeouts second
         ⟨id, .opening event candidate raw⟩ = some next' ∧
       event ∈ next.config.cut.completed ∧ event ∈ next'.config.cut.completed ∧
       (StoreEventFailed next.config.store event ↔ StoreEventFailed next'.config.store event) := by
   obtain ⟨timely, sender, owned, associated, value, rawEq, stored⟩ :=
-    handle_opening_accepted_facts (runtime := runtime) first next ready view id candidate raw
+    handle_opening_accepted_facts (timeouts := timeouts) first next ready view id candidate raw
       accepted
   have firstActive :=
-    (handle_opening_iff runtime first next id event candidate raw).mp accepted |>.1
+    (handle_opening_iff timeouts first next id event candidate raw).mp accepted |>.1
   have secondActive : id.1 ∉ second.config.defaulted := by
     have defaults := congrArg (fun view => view.observation.defaults.defaulted) publics
     change first.config.defaulted = second.config.defaulted at defaults
@@ -933,17 +947,17 @@ theorem handle_opening_accepted_transfer (first second : EventGraphRuntime.State
     exact member
   obtain ⟨result, resolved⟩ := Option.isSome_iff_exists.mp available
   obtain ⟨ready', secondTimely, secondAssociated, secondResolved⟩ :=
-    EventGraphRuntime.opening_right_facts runtime first second publics event owner payload
+    EventGraphRuntime.opening_right_facts timeouts first second publics event owner payload
       binding checks candidate ready timely associated value stored secondStored result resolved
   obtain ⟨secondProvenance, secondProvenanceAccepted, _, secondFixed⟩ :=
     secondValid.success_provenance binding value secondStored
   rw [Option.some.inj (secondProvenanceAccepted.symm.trans secondAssociated)] at secondFixed
-  rw [EventGraphRuntime.handle_opening_eq runtime first id event candidate owner payload
+  rw [EventGraphRuntime.handle_opening_eq timeouts first id event candidate owner payload
     binding checks outputEq codeEq view ready timely firstActive sender owned associated value fixed
     stored
     result resolved] at accepted
   cases accepted
-  refine ⟨_, EventGraphRuntime.handle_opening_eq runtime second id event candidate owner
+  refine ⟨_, EventGraphRuntime.handle_opening_eq timeouts second id event candidate owner
     payload binding checks outputEq codeEq view ready' secondTimely secondActive sender owned
     secondAssociated
     value secondFixed secondStored result secondResolved,
@@ -958,9 +972,9 @@ operational state, both satisfying the binding invariant and holding the same
 binding of the event, give the inclusion of an opening of the event the same
 image. -/
 theorem include_opening_image_congr (remaining : Nat)
-    (first second : (application setup runtime leaks).Execution)
-    (same : operationalState setup runtime leaks (some ⟨remaining + 1, none, first⟩) =
-      operationalState setup runtime leaks (some ⟨remaining + 1, none, second⟩))
+    (first second : (application setup timeouts leaks).Execution)
+    (same : operationalState setup timeouts leaks (some ⟨remaining + 1, none, first⟩) =
+      operationalState setup timeouts leaks (some ⟨remaining + 1, none, second⟩))
     (pending : event ∉ first.application.config.cut.completed)
     (ready : first.application.config.cut.Ready event)
     {owner : Player} {payload : L.Ty}
@@ -974,51 +988,52 @@ theorem include_opening_image_congr (remaining : Nat)
     (secondValid : second.application.BindingInvariant)
     (bindings : binding.get? first.application.config.store =
       binding.get? second.application.config.store)
-    (id : MessageId Player) {message : Message Player (application setup runtime leaks).Payload}
+    (id : MessageId Player) {message : Message Player (application setup timeouts leaks).Payload}
     (found : first.network.lookup id = some message)
     {candidate : Handle (graph setup)} {raw : Raw L}
     (call : message.payload.call = .opening event candidate raw) :
-    (first.environmentStep (application setup runtime leaks) (.include id)).map
-        (fun next => pendingImage (runtime := runtime) event (some ⟨remaining, none, next⟩)) =
-      (second.environmentStep (application setup runtime leaks) (.include id)).map
-        (fun next => pendingImage (runtime := runtime) event (some ⟨remaining, none, next⟩)) := by
+    (first.environmentStep (application setup timeouts leaks) (.include id)).map
+        (fun next => pendingImage (timeouts := timeouts) event (some ⟨remaining, none, next⟩)) =
+      (second.environmentStep (application setup timeouts leaks) (.include id)).map
+        (fun next => pendingImage (timeouts := timeouts) event (some ⟨remaining, none, next⟩)) := by
   have publics : first.application.publicView = second.application.publicView :=
     SameOperational.publicView same
   have ready' : second.application.config.cut.Ready event :=
-    (SameOperational.ready (runtime := runtime) same event).mp ready
+    (SameOperational.ready (timeouts := timeouts) same event).mp ready
   have found' : second.network.lookup id = some message := by
     rw [← SameOperational.network same]
     exact found
   have bothRejected
-      (firstRejected : EventGraphRuntime.handle runtime first.application
+      (firstRejected : EventGraphRuntime.handle timeouts first.application
         ⟨message.id, message.payload.call⟩ = none ∨ message.payload.tokenValid = false)
-      (secondRejected : EventGraphRuntime.handle runtime second.application
+      (secondRejected : EventGraphRuntime.handle timeouts second.application
         ⟨message.id, message.payload.call⟩ = none ∨ message.payload.tokenValid = false) :
-      (first.environmentStep (application setup runtime leaks) (.include id)).map
-          (fun next => pendingImage (runtime := runtime) event (some ⟨remaining, none, next⟩)) =
-        (second.environmentStep (application setup runtime leaks) (.include id)).map
-          (fun next => pendingImage (runtime := runtime) event (some ⟨remaining, none, next⟩)) := by
-    apply include_image_congr (runtime := runtime) remaining first second same pending id
+      (first.environmentStep (application setup timeouts leaks) (.include id)).map
+          (fun next => pendingImage (timeouts := timeouts) event (some ⟨remaining, none, next⟩)) =
+        (second.environmentStep (application setup timeouts leaks) (.include id)).map
+          (fun next => pendingImage (timeouts := timeouts) event (some ⟨remaining, none, next⟩))
+            := by
+    apply include_image_congr (timeouts := timeouts) remaining first second same pending id
     intro other member
     rw [found] at member
     cases member
     constructor
     · rcases firstRejected with rejected | invalid
       · exact reactiveHandle_none rejected
-      · exact reactiveApplication_handle_of_not_tokenValid runtime leaks _ _ invalid
+      · exact reactiveApplication_handle_of_not_tokenValid timeouts leaks _ _ invalid
     · rcases secondRejected with rejected | invalid
       · exact reactiveHandle_none rejected
-      · exact reactiveApplication_handle_of_not_tokenValid runtime leaks _ _ invalid
-  cases firstHandle : EventGraphRuntime.handle runtime first.application
+      · exact reactiveApplication_handle_of_not_tokenValid timeouts leaks _ _ invalid
+  cases firstHandle : EventGraphRuntime.handle timeouts first.application
       ⟨message.id, .opening event candidate raw⟩ with
   | none =>
-      cases secondHandle : EventGraphRuntime.handle runtime second.application
+      cases secondHandle : EventGraphRuntime.handle timeouts second.application
           ⟨message.id, .opening event candidate raw⟩ with
       | none =>
           exact bothRejected (Or.inl (by rw [call]; exact firstHandle))
             (Or.inl (by rw [call]; exact secondHandle))
       | some _ =>
-          obtain ⟨_, accepted, _⟩ := handle_opening_accepted_transfer (runtime := runtime)
+          obtain ⟨_, accepted, _⟩ := handle_opening_accepted_transfer (timeouts := timeouts)
             second.application
             first.application publics.symm secondValid firstValid ready' view bindings.symm
             message.id candidate raw secondHandle
@@ -1026,20 +1041,20 @@ theorem include_opening_image_congr (remaining : Nat)
           cases accepted
   | some next =>
       obtain ⟨next', secondHandle, completed, completed', failed⟩ :=
-        handle_opening_accepted_transfer (runtime := runtime) first.application second.application
+        handle_opening_accepted_transfer (timeouts := timeouts) first.application second.application
           publics firstValid
           secondValid ready view bindings message.id candidate raw firstHandle
       cases valid : message.payload.tokenValid with
       | false => exact bothRejected (Or.inr valid) (Or.inr valid)
       | true =>
-          have firstAccepted : (application setup runtime leaks).handle first.application message =
+          have firstAccepted : (application setup timeouts leaks).handle first.application message =
               some next.drain :=
-            (reactiveApplication_handle_of_tokenValid runtime leaks _ _ valid).trans
+            (reactiveApplication_handle_of_tokenValid timeouts leaks _ _ valid).trans
               (by rw [call, firstHandle]; rfl)
-          have secondAccepted : (application setup runtime leaks).handle second.application
+          have secondAccepted : (application setup timeouts leaks).handle second.application
             message =
               some next'.drain :=
-            (reactiveApplication_handle_of_tokenValid runtime leaks _ _ valid).trans
+            (reactiveApplication_handle_of_tokenValid timeouts leaks _ _ valid).trans
               (by rw [call, secondHandle]; rfl)
           unfold ReactiveApplication.Execution.environmentStep
           simp only [PMF.pure_map]
@@ -1070,7 +1085,7 @@ private theorem get?_playerStore_own (store : EventGraph.Store (graph setup).lay
 
 /-- At a ready publication event, the owner's delivered value is its binding
 of the event. -/
-theorem deliveredValue_of_ready (execution : (application setup runtime leaks).Execution)
+theorem deliveredValue_of_ready (execution : (application setup timeouts leaks).Execution)
     (ready : execution.application.config.cut.Ready event)
     {owner : Player} {payload : L.Ty}
     {binding : EventGraph.FieldRef (graph setup).layout (.binding owner payload)}
@@ -1079,7 +1094,7 @@ theorem deliveredValue_of_ready (execution : (application setup runtime leaks).E
     {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
       ((graph setup).nodes event) = .resolve owner payload binding checks}
     (view : nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq) :
-    deliveredValue setup runtime leaks owner (execution.observe (application setup runtime leaks)
+    deliveredValue setup timeouts leaks owner (execution.observe (application setup timeouts leaks)
       owner) =
       some (⟨.binding owner payload, binding.get? execution.application.config.store⟩ :
         Σ kind : EventGraph.EventField Player L, Option kind.Value) := by
@@ -1097,8 +1112,8 @@ theorem deliveredValue_of_ready (execution : (application setup runtime leaks).E
 /-- **The owner's binding of the ready event is operational.** Two protocol
 states with the same operational state hold the same binding of a ready
 publication event: the owner's late-delivery key carries it. -/
-theorem SameOperational.binding {first second : (application setup runtime leaks).Control}
-    (same : operationalState setup runtime leaks (some first) = operationalState setup runtime
+theorem SameOperational.binding {first second : (application setup timeouts leaks).Control}
+    (same : operationalState setup timeouts leaks (some first) = operationalState setup timeouts
       leaks (some second))
     (ready : first.execution.application.config.cut.Ready event)
     {owner : Player} {payload : L.Ty}
@@ -1111,24 +1126,24 @@ theorem SameOperational.binding {first second : (application setup runtime leaks
     binding.get? first.execution.application.config.store =
       binding.get? second.execution.application.config.store := by
   have ready' : second.execution.application.config.cut.Ready event :=
-    (SameOperational.ready (runtime := runtime) same event).mp ready
+    (SameOperational.ready (timeouts := timeouts) same event).mp ready
   have keys := congrFun (congrArg OperationalState.keys (Option.some.inj
     same)) owner
   simp only [lateKey, Option.some.injEq] at keys
   have delivered := congrArg LateKey.delivered keys
-  change deliveredValue setup runtime leaks owner
-      (first.execution.observe (application setup runtime leaks) owner) =
-    deliveredValue setup runtime leaks owner
-      (second.execution.observe (application setup runtime leaks) owner) at delivered
-  rw [deliveredValue_of_ready (runtime := runtime) first.execution ready view,
-    deliveredValue_of_ready (runtime := runtime) second.execution ready' view] at delivered
+  change deliveredValue setup timeouts leaks owner
+      (first.execution.observe (application setup timeouts leaks) owner) =
+    deliveredValue setup timeouts leaks owner
+      (second.execution.observe (application setup timeouts leaks) owner) at delivered
+  rw [deliveredValue_of_ready (timeouts := timeouts) first.execution ready view,
+    deliveredValue_of_ready (timeouts := timeouts) second.execution ready' view] at delivered
   simp only [Option.some.injEq, Sigma.mk.inj_iff, heq_eq_eq, true_and] at delivered
   exact delivered
 
 end Image
 
 variable [Fintype Player] (bounds : MessageBounds (graph setup)) (horizon : Nat)
-  (scheduler : (application setup runtime leaks).Scheduler)
+  (scheduler : (application setup timeouts leaks).Scheduler)
 
 /-- **Other players respond silently while the event is pending.** At a history
 of the one-packet game in a forced state of `owner`, while an event of `owner`
@@ -1136,29 +1151,29 @@ is ready, the control step of any profile at another player's activation is
 that player's silent response, surely. -/
 theorem controlStep_other_of_pending
     (profile : ∀ player,
-      (onePacketInformation setup runtime leaks bounds horizon scheduler).BehavioralPolicy player)
+      (onePacketInformation setup timeouts leaks bounds horizon scheduler).BehavioralPolicy player)
     (owner : Player)
-    (history : (onePacketProtocol setup runtime leaks bounds horizon scheduler).History)
-    (forced : ForcedState setup runtime leaks owner history.state)
-    {control : (application setup runtime leaks).Control} (current : history.state = some control)
+    (history : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).History)
+    (forced : ForcedState setup timeouts leaks owner history.state)
+    {control : (application setup timeouts leaks).Control} (current : history.state = some control)
     {event : (graph setup).EventId} (ready : control.execution.application.config.cut.Ready event)
     (owned : (graph setup).actor? event = some owner) {other : Player}
     (acting : control.actor = some other) (different : other ≠ owner) :
-    (application setup runtime leaks).controlStep (initialLaw setup) horizon scheduler
-        ((bounds.onePacketMenu runtime leaks).decodeProfile (initialLaw setup) horizon
+    (application setup timeouts leaks).controlStep (initialLaw setup) horizon scheduler
+        ((bounds.onePacketMenu timeouts leaks).decodeProfile (initialLaw setup) horizon
           scheduler profile) (some control) =
       PMF.pure (some { control with
         actor := none
-        execution := control.execution.respond (application setup runtime leaks) other ⟨none⟩ })
+        execution := control.execution.respond (application setup timeouts leaks) other ⟨none⟩ })
           := by
-  have silent : ((bounds.onePacketMenu runtime leaks).decodeProfile (initialLaw setup)
+  have silent : ((bounds.onePacketMenu timeouts leaks).decodeProfile (initialLaw setup)
       horizon scheduler profile other (control.execution.logs other)
-      (control.execution.observe (application setup runtime leaks) other)) = PMF.pure ⟨none⟩ := by
+      (control.execution.observe (application setup timeouts leaks) other)) = PMF.pure ⟨none⟩ := by
     apply pmf_eq_pure_of_support_subset_singleton
     intro action chosen
-    have member := (bounds.onePacketMenu runtime leaks).decodeProfile_support
+    have member := (bounds.onePacketMenu timeouts leaks).decodeProfile_support
       (initialLaw setup) horizon scheduler profile other _ _ action chosen
-    have quiet := onePacket_silent_of_pending (runtime := runtime) bounds horizon scheduler owner
+    have quiet := onePacket_silent_of_pending (timeouts := timeouts) bounds horizon scheduler owner
       history forced
       current ready owned other different action member
     rcases action with ⟨transmission⟩
@@ -1171,7 +1186,7 @@ theorem controlStep_other_of_pending
   subst acting
   simp only [ReactiveApplication.actor, Option.bind_some]
   rw [silent, PMF.pure_bind,
-    transition_respond (runtime := runtime) (horizon := horizon) (scheduler := scheduler)
+    transition_respond (timeouts := timeouts) (horizon := horizon) (scheduler := scheduler)
       ⟨remaining, some other, execution⟩ rfl]
   simp only [↓reduceIte, Option.getD_some]
 
@@ -1180,17 +1195,17 @@ decoded profile reaches from the state of a history of the one-packet game is
 the state of a history of the one-packet game. -/
 theorem controlStep_history
     (profile : ∀ player,
-      (onePacketInformation setup runtime leaks bounds horizon scheduler).BehavioralPolicy player)
-    (history : (onePacketProtocol setup runtime leaks bounds horizon scheduler).History)
-    {next : (application setup runtime leaks).ProtocolState}
-    (member : next ∈ ((application setup runtime leaks).controlStep (initialLaw setup) horizon
+      (onePacketInformation setup timeouts leaks bounds horizon scheduler).BehavioralPolicy player)
+    (history : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).History)
+    {next : (application setup timeouts leaks).ProtocolState}
+    (member : next ∈ ((application setup timeouts leaks).controlStep (initialLaw setup) horizon
       scheduler
-      ((bounds.onePacketMenu runtime leaks).decodeProfile (initialLaw setup) horizon
+      ((bounds.onePacketMenu timeouts leaks).decodeProfile (initialLaw setup) horizon
         scheduler profile) history.state).support) :
-    ∃ extended : (onePacketProtocol setup runtime leaks bounds horizon scheduler).History,
+    ∃ extended : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).History,
       extended.state = next := by
-  let protocol := onePacketProtocol setup runtime leaks bounds horizon scheduler
-  by_cases stopped : (application setup runtime leaks).terminal history.state
+  let protocol := onePacketProtocol setup timeouts leaks bounds horizon scheduler
+  by_cases stopped : (application setup timeouts leaks).terminal history.state
   · rcases history with ⟨state, trace⟩
     cases state with
     | none => exact stopped.elim
@@ -1201,21 +1216,21 @@ theorem controlStep_history
         change current = none at idle
         subst remaining idle
         refine ⟨⟨_, trace⟩, ?_⟩
-        have law : (application setup runtime leaks).controlStep (initialLaw setup) horizon
+        have law : (application setup timeouts leaks).controlStep (initialLaw setup) horizon
           scheduler
-            ((bounds.onePacketMenu runtime leaks).decodeProfile (initialLaw setup) horizon
+            ((bounds.onePacketMenu timeouts leaks).decodeProfile (initialLaw setup) horizon
               scheduler profile) (some ⟨0, none, execution⟩) =
             PMF.pure (some ⟨0, none, execution⟩) := rfl
-        change next ∈ ((application setup runtime leaks).controlStep (initialLaw setup) horizon
+        change next ∈ ((application setup timeouts leaks).controlStep (initialLaw setup) horizon
           scheduler
           _ (some ⟨0, none, execution⟩)).support at member
         rw [law, PMF.mem_support_pure_iff] at member
         exact member.symm
-  · cases acting : (application setup runtime leaks).actor history.state with
+  · cases acting : (application setup timeouts leaks).actor history.state with
     | none =>
         have legal : protocol.Legal history.state (fun _ => none) := by
           refine ⟨stopped, fun who => ?_⟩
-          change ¬ (application setup runtime leaks).actor history.state = some who
+          change ¬ (application setup timeouts leaks).actor history.state = some who
           rw [acting]
           exact (Option.some_ne_none _).symm
         have reached : next ∈ (protocol.step history.state ⟨fun _ => none, legal⟩).support := by
@@ -1233,7 +1248,7 @@ theorem controlStep_history
             simp only at member
             rw [PMF.mem_support_bind_iff] at member
             obtain ⟨action, chosen, reached⟩ := member
-            have menu := (bounds.onePacketMenu runtime leaks).decodeProfile_support
+            have menu := (bounds.onePacketMenu timeouts leaks).decodeProfile_support
               (initialLaw setup) horizon scheduler profile who _ _ action chosen
             have legal : protocol.Legal (some control)
                 (fun observer => if observer = who then some action else none) := by
@@ -1243,7 +1258,7 @@ theorem controlStep_history
                 simp only [↓reduceIte]
                 exact ⟨acting, menu⟩
               · simp only [same, ↓reduceIte]
-                change ¬ (application setup runtime leaks).actor (some control) = some observer
+                change ¬ (application setup timeouts leaks).actor (some control) = some observer
                 rw [acting]
                 exact fun equal => same (Option.some.inj equal).symm
             exact ⟨(⟨some control, trace⟩ : protocol.History).extend legal reached, rfl⟩
@@ -1251,12 +1266,13 @@ theorem controlStep_history
 /-- Every contract state of a one-packet history satisfies the binding
 invariant. -/
 theorem bindingInvariant_of_history
-    (history : (onePacketProtocol setup runtime leaks bounds horizon scheduler).History)
-    {control : (application setup runtime leaks).Control} (current : history.state = some control) :
+    (history : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).History)
+    {control : (application setup timeouts leaks).Control} (current : history.state = some
+      control) :
     control.execution.application.BindingInvariant := by
-  have raw := (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup) horizon
+  have raw := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon
     scheduler history.trace
-  have binding := (runtime.reactiveBindingInvariant leaks).history (initialLaw setup)
+  have binding := ((reactiveBindingInvariant timeouts) leaks).history (initialLaw setup)
     horizon scheduler (fun state member => by
       obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ member
       exact State.initial_bindingInvariant _) raw
@@ -1270,14 +1286,14 @@ has the same law of images: every pending packet is a commitment, which the
 contract rejects, or an opening of the ready event, whose inclusion reads only
 public data and the owner's binding. -/
 theorem round_image_congr_of_forced (who : Player) (remaining : Nat)
-    (firstHistory secondHistory : (onePacketProtocol setup runtime leaks bounds horizon
+    (firstHistory secondHistory : (onePacketProtocol setup timeouts leaks bounds horizon
       scheduler).History)
-    {first second : (application setup runtime leaks).Execution}
+    {first second : (application setup timeouts leaks).Execution}
     (firstCurrent : firstHistory.state = some ⟨remaining + 1, none, first⟩)
     (secondCurrent : secondHistory.state = some ⟨remaining + 1, none, second⟩)
-    (forced : ForcedState setup runtime leaks who firstHistory.state)
-    (same : operationalState setup runtime leaks (some ⟨remaining + 1, none, first⟩) =
-      operationalState setup runtime leaks (some ⟨remaining + 1, none, second⟩))
+    (forced : ForcedState setup timeouts leaks who firstHistory.state)
+    (same : operationalState setup timeouts leaks (some ⟨remaining + 1, none, first⟩) =
+      operationalState setup timeouts leaks (some ⟨remaining + 1, none, second⟩))
     {event : (graph setup).EventId}
     (pending : event ∉ first.application.config.cut.completed)
     (ready : first.application.config.cut.Ready event)
@@ -1288,48 +1304,48 @@ theorem round_image_congr_of_forced (who : Player) (remaining : Nat)
     {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
       ((graph setup).nodes event) = .resolve owner payload binding checks}
     (view : nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq) :
-    ((application setup runtime leaks).transition (initialLaw setup) horizon scheduler
-        (some ⟨remaining + 1, none, first⟩) (fun _ => none)).map (pendingImage (runtime :=
-          runtime) event) =
-      ((application setup runtime leaks).transition (initialLaw setup) horizon scheduler
-        (some ⟨remaining + 1, none, second⟩) (fun _ => none)).map (pendingImage (runtime :=
-          runtime) event) := by
-  have firstValid := bindingInvariant_of_history (runtime := runtime) bounds horizon scheduler
+    ((application setup timeouts leaks).transition (initialLaw setup) horizon scheduler
+        (some ⟨remaining + 1, none, first⟩) (fun _ => none)).map (pendingImage (timeouts :=
+          timeouts) event) =
+      ((application setup timeouts leaks).transition (initialLaw setup) horizon scheduler
+        (some ⟨remaining + 1, none, second⟩) (fun _ => none)).map (pendingImage (timeouts :=
+          timeouts) event) := by
+  have firstValid := bindingInvariant_of_history (timeouts := timeouts) bounds horizon scheduler
     firstHistory firstCurrent
   have secondValid :=
-    bindingInvariant_of_history (runtime := runtime) bounds horizon scheduler secondHistory
+    bindingInvariant_of_history (timeouts := timeouts) bounds horizon scheduler secondHistory
       secondCurrent
-  have bindings := SameOperational.binding (runtime := runtime) same ready view
-  have firstRaw := (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup) horizon
+  have bindings := SameOperational.binding (timeouts := timeouts) same ready view
+  have firstRaw := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon
     scheduler (firstCurrent ▸ firstHistory.trace)
-  have secondRaw := (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup) horizon
+  have secondRaw := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon
     scheduler (secondCurrent ▸ secondHistory.trace)
   have firstQuiescent := (legalFacts setup leaks horizon scheduler _ firstRaw).quiescent
   have secondQuiescent := (legalFacts setup leaks horizon scheduler _ secondRaw).quiescent
-  apply round_image_congr (runtime := runtime) (initialLaw setup) horizon scheduler remaining
+  apply round_image_congr (timeouts := timeouts) (initialLaw setup) horizon scheduler remaining
     first second same pending
     ready firstQuiescent secondQuiescent view
   intro id message found
   have member : message ∈ first.network.pending := List.mem_of_find?_eq_some found
-  rcases onePacket_pending_of_forced (runtime := runtime) bounds horizon scheduler who
+  rcases onePacket_pending_of_forced (timeouts := timeouts) bounds horizon scheduler who
     firstHistory forced firstCurrent
       message member with ⟨committed, candidate, call, _⟩ |
       ⟨opened, candidate, raw, call, _, openedReady, _⟩
   · exact Or.inl ⟨committed, candidate, call⟩
   · right
     rw [setup.eventGraph.sequentialize_ready_unique _ openedReady ready] at call
-    exact include_opening_image_congr (runtime := runtime) remaining first second same pending
+    exact include_opening_image_congr (timeouts := timeouts) remaining first second same pending
       ready view firstValid
       secondValid bindings id found call
 
 omit [Fintype Player] in
 /-- Every supported control step follows a finite path of the graph executor. -/
-theorem controlStep_graphSteps (players : Player → (application setup runtime leaks).Policy)
-    (control : (application setup runtime leaks).Control) {next : (application setup runtime
+theorem controlStep_graphSteps (players : Player → (application setup timeouts leaks).Policy)
+    (control : (application setup timeouts leaks).Control) {next : (application setup timeouts
       leaks).ProtocolState}
-    (member : next ∈ ((application setup runtime leaks).controlStep (initialLaw setup) horizon
+    (member : next ∈ ((application setup timeouts leaks).controlStep (initialLaw setup) horizon
       scheduler players (some control)).support) :
-    ∃ control' : (application setup runtime leaks).Control, next = some control' ∧
+    ∃ control' : (application setup timeouts leaks).Control, next = some control' ∧
       Relation.ReflTransGen EventGraph.Config.Step control.execution.application.config
         control'.execution.application.config := by
   rcases control with ⟨remaining, actor, execution⟩
@@ -1341,7 +1357,7 @@ theorem controlStep_graphSteps (players : Player → (application setup runtime 
       | succ remaining =>
           obtain ⟨command, _, moved⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ member)
           obtain ⟨next', supported, rfl⟩ := PMF.support_map .. ▸ moved
-          exact ⟨_, rfl, (runtime.reactiveApplication_graphSteps leaks).environmentStep
+          exact ⟨_, rfl, ((reactiveApplication_graphSteps timeouts) leaks).environmentStep
             execution next' command supported⟩
   | some who =>
       simp only [ReactiveApplication.actor, Option.bind_some] at member
@@ -1349,16 +1365,16 @@ theorem controlStep_graphSteps (players : Player → (application setup runtime 
       obtain ⟨action, _, reached⟩ := member
       refine ⟨_, (PMF.mem_support_pure_iff _ _).mp reached, ?_⟩
       simp only [↓reduceIte, Option.getD_some]
-      rw [(runtime.reactive_respond_application leaks execution who action).1]
+      rw [((reactive_respond_application timeouts) leaks execution who action).1]
 
 
 omit [Fintype Player] in
 /-- A forced point is retained whenever the graph configuration is unchanged. -/
 theorem forcedState_of_config_eq {who : Player}
-    {control control' : (application setup runtime leaks).Control}
-    (forced : ForcedState setup runtime leaks who (some control))
+    {control control' : (application setup timeouts leaks).Control}
+    (forced : ForcedState setup timeouts leaks who (some control))
     (same : control'.execution.application.config = control.execution.application.config) :
-    ForcedState setup runtime leaks who (some control') := by
+    ForcedState setup timeouts leaks who (some control') := by
   obtain ⟨rank, point, ordered, decoded, forcedPoint⟩ := forced
   refine ⟨rank, point, ?_, ?_, forcedPoint⟩
   · rw [same]
@@ -1369,20 +1385,20 @@ theorem forcedState_of_config_eq {who : Player}
 omit [Fintype Player] in
 /-- A finite graph path either completes a ready event or retains its forced point. -/
 theorem forced_or_completed_of_path {who : Player}
-    {control control' : (application setup runtime leaks).Control}
+    {control control' : (application setup timeouts leaks).Control}
     (path : Relation.ReflTransGen EventGraph.Config.Step
       control.execution.application.config control'.execution.application.config)
-    (forced : ForcedState setup runtime leaks who (some control))
+    (forced : ForcedState setup timeouts leaks who (some control))
     {event : (graph setup).EventId} (ready : control.execution.application.config.cut.Ready event) :
     event ∈ control'.execution.application.config.cut.completed ∨
-      (ForcedState setup runtime leaks who (some control') ∧
+      (ForcedState setup timeouts leaks who (some control') ∧
         control'.execution.application.config.cut.Ready event) := by
   by_cases completed : event ∈ control'.execution.application.config.cut.completed
   · exact Or.inl completed
   · have same := EventGraph.Config.Step.path_eq_of_ready_of_not_completed event
       (fun other otherReady => setup.eventGraph.sequentialize_ready_unique _ otherReady ready)
       completed path
-    exact Or.inr ⟨forcedState_of_config_eq (runtime := runtime) forced same,
+    exact Or.inr ⟨forcedState_of_config_eq (timeouts := timeouts) forced same,
       by rw [same]; exact ready⟩
 
 end Vegas

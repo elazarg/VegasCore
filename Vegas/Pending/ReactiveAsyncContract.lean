@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveService
-import Vegas.Pending.EventPublicState
+public import Vegas.Pending.ReactiveService
+public import Vegas.Pending.EventPublicState
+
+@[expose] public section
 
 /-! # The asynchronous service contract
 
@@ -15,7 +19,7 @@ The contract has per-event bounds. `delay event` bounds how many slots an
 owned event may be ready before its owner is activated, and `bound event` how
 many slots an owner's sole packet for a ready event may wait for inclusion.
 Together they make a prescribed packet timely when
-`delay event + bound event < runtime.deadline event`.
+`delay event + bound event < timeouts.duration event`.
 
 Every requirement quantifies over all legal histories of the raw protocol,
 including those in which players deviate. The scheduler is exogenous: it is
@@ -30,56 +34,56 @@ open Interaction
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
-  (runtime : EventGraphRuntime graph)
+  (timeouts : EventTimeouts graph)
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
 
 /-- Some recorded activation of `owner` saw `event` ready, in the readiness
 episode that started at clock `entered`. -/
-def OwnerActivatedSince (history : List (runtime.reactiveApplication leaks).EnvironmentEntry)
+def OwnerActivatedSince (history : List ((reactiveApplication timeouts) leaks).EnvironmentEntry)
     (event : graph.EventId) (owner : Player) (entered : Nat) : Prop :=
   ∃ entry ∈ history, entry.command = .activate owner ∧
     entry.beforeView.application.activatedAt event = some entered ∧
     entry.beforeView.application.EventReady event
 
 /-- The native opportunity condition at a fixed execution. -/
-def OpportunityAt (execution : (runtime.reactiveApplication leaks).Execution)
+def OpportunityAt (execution : ((reactiveApplication timeouts) leaks).Execution)
     (delay : graph.EventId → Nat) : Prop :=
   ∀ event owner entered, graph.actor? event = some owner →
     execution.application.publicView.EventReady event →
     execution.application.activatedAt event = some entered →
     entered + delay event < execution.application.clock →
-    OwnerActivatedSince runtime leaks execution.environmentRecall event owner entered
+    OwnerActivatedSince timeouts leaks execution.environmentRecall event owner entered
 
 /-- **Opportunity within `delay`.** Once an owned event has been ready for more
 than `delay event` slots, its owner has been activated since it became ready.
 Further activations of anyone are allowed. -/
-def Opportunity (initial : PMF (runtime.reactiveApplication leaks).State) (horizon : Nat)
-    (scheduler : (runtime.reactiveApplication leaks).Scheduler)
+def Opportunity (initial : PMF ((reactiveApplication timeouts) leaks).State) (horizon : Nat)
+    (scheduler : ((reactiveApplication timeouts) leaks).Scheduler)
     (delay : graph.EventId → Nat) : Prop :=
-  ∀ (control : (runtime.reactiveApplication leaks).Control),
-    ((runtime.reactiveApplication leaks).protocol initial horizon scheduler).Trace
+  ∀ (control : ((reactiveApplication timeouts) leaks).Control),
+    (((reactiveApplication timeouts) leaks).protocol initial horizon scheduler).Trace
       (some control) →
-    OpportunityAt runtime leaks control.execution delay
+    OpportunityAt timeouts leaks control.execution delay
 
 /-- `entry` emitted a packet authored by the author of `id`, addressed to
 `event`, whose identifier is not `id`: another identifier of the same author
 for the same event. Relayed packets of other authors do not count. -/
-def EmitsOtherFor (entry : (runtime.reactiveApplication leaks).PlayerEntry)
+def EmitsOtherFor (entry : ((reactiveApplication timeouts) leaks).PlayerEntry)
     (event : graph.EventId) (id : MessageId Player) : Prop :=
   ∃ message, entry.emitted = some message ∧ message.sender = id.1 ∧
     message.payload.call.event? graph = some event ∧ message.id ≠ id
 
 /-- The native protected-inclusion condition at a fixed execution, retaining the
 same recalled-packet uniqueness and strict timing premises. -/
-def ProtectedInclusionAt (execution : (runtime.reactiveApplication leaks).Execution)
+def ProtectedInclusionAt (execution : ((reactiveApplication timeouts) leaks).Execution)
     (bound : graph.EventId → Nat) : Prop :=
   ∀ event owner, graph.actor? event = some owner →
-  ∀ (earlier later : List (runtime.reactiveApplication leaks).PlayerEntry) entry message,
+  ∀ (earlier later : List ((reactiveApplication timeouts) leaks).PlayerEntry) entry message,
     execution.logs owner = earlier ++ entry :: later →
     entry.emitted = some message → message.sender = owner →
     message.payload.call.event? graph = some event →
     entry.beforeView.application.publicView.EventReady event →
-    (∀ other ∈ earlier ++ later, ¬ EmitsOtherFor runtime leaks other event message.id) →
+    (∀ other ∈ earlier ++ later, ¬ EmitsOtherFor timeouts leaks other event message.id) →
     event ∉ execution.application.config.cut.completed →
     entry.beforeView.application.publicView.clock + bound event < execution.application.clock →
     ∃ accepted, (message.id, accepted) ∈ execution.receipts
@@ -99,27 +103,27 @@ the protection: the builder distinguishes authors by signature. An owner that
 emits several identifiers for one event deviates from every prescribed client;
 what the scheduler then includes is part of that deviation's law, rather than
 a guarantee of the contract. -/
-def ProtectedInclusion (initial : PMF (runtime.reactiveApplication leaks).State)
-    (horizon : Nat) (scheduler : (runtime.reactiveApplication leaks).Scheduler)
+def ProtectedInclusion (initial : PMF ((reactiveApplication timeouts) leaks).State)
+    (horizon : Nat) (scheduler : ((reactiveApplication timeouts) leaks).Scheduler)
     (bound : graph.EventId → Nat) : Prop :=
-  ∀ (control : (runtime.reactiveApplication leaks).Control),
-    ((runtime.reactiveApplication leaks).protocol initial horizon scheduler).Trace
+  ∀ (control : ((reactiveApplication timeouts) leaks).Control),
+    (((reactiveApplication timeouts) leaks).protocol initial horizon scheduler).Trace
       (some control) →
-    ProtectedInclusionAt runtime leaks control.execution bound
+    ProtectedInclusionAt timeouts leaks control.execution bound
 
 /-- The asynchronous service contract for a fixed horizon and scheduler, with
 per-event reaction bounds `delay` and inclusion bounds `bound`. Finite
 branching of the scheduler is a separate instance (`FiniteNature`). -/
-structure AsyncContract (initial : PMF (runtime.reactiveApplication leaks).State)
-    (horizon : Nat) (scheduler : (runtime.reactiveApplication leaks).Scheduler)
+structure AsyncContract (initial : PMF ((reactiveApplication timeouts) leaks).State)
+    (horizon : Nat) (scheduler : ((reactiveApplication timeouts) leaks).Scheduler)
     (delay bound : graph.EventId → Nat) : Prop where
-  opportunity : Opportunity runtime leaks initial horizon scheduler delay
-  inclusion : ProtectedInclusion runtime leaks initial horizon scheduler bound
-  completes : CompletesPlay runtime leaks initial horizon scheduler
+  opportunity : Opportunity timeouts leaks initial horizon scheduler delay
+  inclusion : ProtectedInclusion timeouts leaks initial horizon scheduler bound
+  completes : CompletesPlay timeouts leaks initial horizon scheduler
 
 /-- Every owned event leaves room for one reaction and one inclusion before its
 deadline. -/
 def AsyncTimely (delay bound : graph.EventId → Nat) : Prop :=
-  ∀ event, (graph.actor? event).isSome → delay event + bound event < runtime.deadline event
+  ∀ event, (graph.actor? event).isSome → delay event + bound event < timeouts.duration event
 
 end Vegas.EventGraphRuntime

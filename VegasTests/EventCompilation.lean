@@ -1,13 +1,17 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Compile.EventGraphAssembly
-import Vegas.Compile.EventGraphDeviation
-import Vegas.Compile.EventGraphHistory
-import Vegas.Compile.EventGraphObservation
-import Vegas.Game.EventCompilation
-import Vegas.Pending.EventApplication
-import Vegas.Pending.ExclusionPolicyLaw
-import VegasTests.SourceSemantics
+public import Vegas.Compile.EventGraphAssembly
+public import Vegas.Compile.EventGraphDeviation
+public import Vegas.Compile.EventGraphHistory
+public import Vegas.Compile.EventGraphObservation
+public import Vegas.Game.EventCompilation
+public import Vegas.Pending.EventApplication
+public import Vegas.Pending.ExclusionPolicyLaw
+public import VegasTests.SourceSemantics
+
+@[expose] public section
 
 /-! # Source-ranked compiler regressions
 
@@ -22,7 +26,7 @@ open Vegas GameTheory.Math.Probability
 
 noncomputable section
 
-private def unrestricted {Γ : SourceCtx Bool simpleExpr} (owner : Bool) (name : VarId) :
+def unrestricted {Γ : SourceCtx Bool simpleExpr} (owner : Bool) (name : VarId) :
     SourceGuard simpleExpr Γ owner name .bool where
   schema := []
   schemaNames := by simp
@@ -30,18 +34,18 @@ private def unrestricted {Γ : SourceCtx Bool simpleExpr} (owner : Bool) (name :
   code := .constBool true
   reads := fun source => nomatch source
 
-private def pairSource : SourceProgram Bool simpleExpr [] ∅ :=
+def pairSource : SourceProgram Bool simpleExpr [] ∅ :=
   .commit 0 false (by decide) (unrestricted false 0) <|
   .commit 1 true (by decide) (unrestricted true 1) <|
   .reveal 2 false 0 (by decide) (.there .here) (by decide) <|
   .reveal 3 true 1 (by decide) (.there .here) (by decide) <|
   .ret []
 
-private def pairGraph := toEventGraph pairSource
-private def pairConfig : pairGraph.Config := .initial (fun input => nomatch input)
-private abbrev first : pairGraph.EventId := ⟨0, by decide⟩
-private abbrev second : pairGraph.EventId := ⟨1, by decide⟩
-private theorem first_ready : pairConfig.cut.Ready first := by decide
+def pairGraph := toEventGraph pairSource
+def pairConfig : pairGraph.Config := .initial (fun input => nomatch input)
+abbrev first : pairGraph.EventId := ⟨0, by decide⟩
+abbrev second : pairGraph.EventId := ⟨1, by decide⟩
+theorem first_ready : pairConfig.cut.Ready first := by decide
 
 example : pairGraph.InformationDiscipline pairGraph.prefixSchema :=
   toEventGraph_informationDiscipline pairSource
@@ -50,7 +54,7 @@ example : pairGraph.InformationDiscipline pairGraph.prefixSchema :=
 example : pairConfig.cut.enabled = {first} := by decide
 example : ¬ pairConfig.cut.Ready second := by decide
 
-private def completedFirst : pairGraph.Config :=
+def completedFirst : pairGraph.Config :=
   pairConfig.complete first first_ready (some (.success false)) (.success false)
 
 private theorem step_first :
@@ -68,12 +72,12 @@ example : completedFirst ∈
   rw [step_first]
   exact (PMF.mem_support_pure_iff _ _).mpr rfl
 
-private def firstRefs : ContextRefs pairGraph.layout
+def firstRefs : ContextRefs pairGraph.layout
     [(0, CellTy.commitment false simpleExpr.bool)] :=
   ContextRefs.cons (outputRef pairSource first)
     (ContextRefs.initial [] (outputLayout pairSource))
 
-private def firstState (choice : Bool) :
+def firstState (choice : Bool) :
     State simpleExpr [(0, CellTy.commitment false simpleExpr.bool)] :=
   Env.cons (PublicationResult.success choice) (Env.empty (CellVal simpleExpr))
 
@@ -91,7 +95,7 @@ example (choice : Bool) :
 example : decodeObservation? (Γ := [(0, CellTy.commitment false simpleExpr.bool)])
     false firstRefs (pairGraph.playerStore false pairConfig.store) = none := rfl
 
-private def pairProfile : SourceProgram.BehavioralProfile pairSource :=
+def pairProfile : SourceProgram.BehavioralProfile pairSource :=
   fun _ =>
     (fun _ _ _ => PMF.pure (some (.success false)),
      (fun _ _ _ => PMF.pure (some (.success true)),
@@ -104,7 +108,7 @@ example (scheduler : pairGraph.PublicScheduler) (profile : pairGraph.BehavioralP
       pairGraph.runPolicies pairGraph.canonicalScheduler profile pairConfig.inputs :=
   toEventGraph_runPolicies_eq pairSource profile scheduler pairGraph.canonicalScheduler _
 
-private def pairSetup : SourceProgram.Setup (Player := Bool) (L := simpleExpr) where
+def pairSetup : SourceProgram.Setup (Player := Bool) (L := simpleExpr) where
   context := []
   namesNodup := by decide
   initialLaw := PMF.pure (Env.empty (CellVal simpleExpr))
@@ -168,15 +172,15 @@ example (scheduler : SourceSemantics.mixedSetup.eventGraph.PublicScheduler)
   scheduled_terminalState_law SourceSemantics.mixedSetup.program scheduler profile
     SourceSemantics.mixedState
 
-private def rejectingGraph := toEventGraph SourceSemantics.falseGuardProgram
+def rejectingGraph := toEventGraph SourceSemantics.falseGuardProgram
 
-private abbrev rejectingBind : rejectingGraph.EventId := ⟨0, by decide⟩
-private abbrev rejectingReveal : rejectingGraph.EventId := ⟨1, by decide⟩
+abbrev rejectingBind : rejectingGraph.EventId := ⟨0, by decide⟩
+abbrev rejectingReveal : rejectingGraph.EventId := ⟨1, by decide⟩
 
-private def rejectingInitial : rejectingGraph.Config :=
+def rejectingInitial : rejectingGraph.Config :=
   .initial (fun input => nomatch input)
 
-private def rejectingBound : rejectingGraph.Config :=
+def rejectingBound : rejectingGraph.Config :=
   rejectingInitial.complete rejectingBind (by decide)
     (some (PublicationResult.success true)) (PublicationResult.success true)
 
@@ -185,7 +189,7 @@ silently replaced by an unrestricted commitment or a valid in-domain value. -/
 example : (rejectingGraph.nodes rejectingReveal).eval? true rejectingBound.store =
     some (PMF.pure (PublicationResult.failure : PublicationResult Bool)) := rfl
 
-private def rejected : rejectingGraph.Config :=
+def rejected : rejectingGraph.Config :=
   rejectingBound.complete rejectingReveal (by decide) true PublicationResult.failure
 
 /-- Public rejection does not erase the player's original disclosure choice
@@ -197,44 +201,44 @@ example : decodeHistory SourceSemantics.falseGuardProgram
      SourceProgram.OwnAction.reveal SourceSemantics.Player.alice 20 true] := by
   rfl
 
-private def defaultChain : SourceProgram Bool simpleExpr [] ∅ :=
+def defaultChain : SourceProgram Bool simpleExpr [] ∅ :=
   .commit 0 false (by decide) (unrestricted false 0) <|
   .reveal 1 false 0 (by decide) .here (by decide) <|
   .commit 2 false (by decide) (unrestricted false 2) <|
   .reveal 3 false 2 (by decide) .here (by decide) <| .ret []
 
-private abbrev defaultGraph := (toEventGraph defaultChain).sequentialize
+abbrev defaultGraph := (toEventGraph defaultChain).sequentialize
 
-private def defaultInitial : EventGraphRuntime.State defaultGraph :=
+def defaultInitial : EventGraphRuntime.State defaultGraph :=
   .initial (encodeInputs (Env.empty (CellVal simpleExpr)))
 
-private def omitted : EventGraphRuntime.State defaultGraph :=
+def omitted : EventGraphRuntime.State defaultGraph :=
   defaultInitial.completeFailure ⟨0, by decide⟩ (by decide)
 
-private theorem firstAutomatic : omitted.AutomaticReady ⟨1, by decide⟩ := by
+theorem firstAutomatic : omitted.AutomaticReady ⟨1, by decide⟩ := by
   constructor
   · decide
   · change false ∈ omitted.config.defaulted
     decide
 
-private def afterFirstAutomatic := omitted.completeAutomatic ⟨1, by decide⟩ firstAutomatic
+def afterFirstAutomatic := omitted.completeAutomatic ⟨1, by decide⟩ firstAutomatic
 
-private theorem secondAutomatic : afterFirstAutomatic.AutomaticReady ⟨2, by decide⟩ := by
+theorem secondAutomatic : afterFirstAutomatic.AutomaticReady ⟨2, by decide⟩ := by
   constructor
   · decide
   · change false ∈ afterFirstAutomatic.config.defaulted
     decide
 
-private def afterSecondAutomatic :=
+def afterSecondAutomatic :=
   afterFirstAutomatic.completeAutomatic ⟨2, by decide⟩ secondAutomatic
 
-private theorem thirdAutomatic : afterSecondAutomatic.AutomaticReady ⟨3, by decide⟩ := by
+theorem thirdAutomatic : afterSecondAutomatic.AutomaticReady ⟨3, by decide⟩ := by
   constructor
   · decide
   · change false ∈ afterSecondAutomatic.config.defaulted
     decide
 
-private def afterThirdAutomatic :=
+def afterThirdAutomatic :=
   afterSecondAutomatic.completeAutomatic ⟨3, by decide⟩ thirdAutomatic
 
 /-- Three automatic instructions retain their own public completion positions. -/

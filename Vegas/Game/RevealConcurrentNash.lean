@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RevealClosureSimulation
-import Vegas.Game.ConcurrentRevealForfeit
-import Vegas.Game.RevealServiceEffectiveOutcomeLaw
+public import Vegas.Game.RevealClosureSimulation
+public import Vegas.Game.ConcurrentRevealForfeit
+public import Vegas.Game.RevealServiceEffectiveOutcomeLaw
+
+@[expose] public section
 
 /-! # Nash equilibria of effective-opening clients with concurrent reveals
 
@@ -214,20 +218,20 @@ payoff law. -/
 theorem ledger_honest_payoff_law (setup : Setup (Player := Player) (L := L)) {Parameter : Type}
     (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ) (forfeit : ℝ)
-    (deadline : (serviceGraph setup .concurrentReveals).EventId → Nat)
+    (duration : (serviceGraph setup .concurrentReveals).EventId → Nat)
     (leaks : MessageNetwork.ObservationRule Player
       (WitnessedPacket (serviceGraph setup .concurrentReveals)))
     {horizon turns : Nat}
-    {scheduler : (serviceApplication setup .concurrentReveals deadline leaks).Scheduler}
+    {scheduler : (serviceApplication setup .concurrentReveals duration leaks).Scheduler}
     {delay bound : (serviceGraph setup .concurrentReveals).EventId → Nat}
-    (contract : AsyncContract (serviceRuntime setup .concurrentReveals deadline) leaks
+    (contract : AsyncContract (serviceTimeouts setup .concurrentReveals duration) leaks
       (serviceInitialLaw setup .concurrentReveals) horizon scheduler delay bound)
-    (timely : AsyncTimely (serviceRuntime setup .concurrentReveals deadline) delay bound)
+    (timely : AsyncTimely (serviceTimeouts setup .concurrentReveals duration) delay bound)
     (source : BehavioralProfile setup.program)
     (disclosing : ∀ who, Disclosing setup.program (source who)) :
-    ((serviceApplication setup .concurrentReveals deadline leaks).roundsFrom
+    ((serviceApplication setup .concurrentReveals duration leaks).roundsFrom
         (serviceInitialLaw setup .concurrentReveals) scheduler
-        (serviceReferenceTurnPolicy setup .concurrentReveals deadline leaks bound turns
+        (serviceReferenceTurnPolicy setup .concurrentReveals duration leaks bound turns
           (firstTurnTiming setup turns .concurrentReveals)
           (concurrentEffectiveReference setup source)) horizon).map
       (fun final => concurrentConfigPayoff setup parameter utility forfeit
@@ -236,7 +240,7 @@ theorem ledger_honest_payoff_law (setup : Setup (Player := Player) (L := L)) {Pa
       concurrentStatePayoff setup parameter utility forfeit (final.state, final.defaults) := by
   have law := congrArg (PMF.map fun pay : Option (Player → ℝ) => fun player =>
       pay.elim 0 fun vector => vector player)
-    (concurrentEffectiveClients_state_law setup deadline leaks (turns := turns) contract timely
+    (concurrentEffectiveClients_state_law setup duration leaks (turns := turns) contract timely
       source disclosing (concurrentStatePayoff setup parameter utility forfeit))
   rw [PMF.map_comp, PMF.map_comp] at law
   refine Eq.trans ?_ law
@@ -252,23 +256,23 @@ of a normalized deviation of the always-open compiled profile. -/
 theorem ledger_deviation_payoff_law (setup : Setup (Player := Player) (L := L))
     {Parameter : Type} (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ) (forfeit : ℝ)
-    (deadline : (serviceGraph setup .concurrentReveals).EventId → Nat)
+    (duration : (serviceGraph setup .concurrentReveals).EventId → Nat)
     (leaks : MessageNetwork.ObservationRule Player
       (WitnessedPacket (serviceGraph setup .concurrentReveals)))
     {horizon turns : Nat}
-    {scheduler : (serviceApplication setup .concurrentReveals deadline leaks).Scheduler}
+    {scheduler : (serviceApplication setup .concurrentReveals duration leaks).Scheduler}
     {delay bound : (serviceGraph setup .concurrentReveals).EventId → Nat}
-    (contract : AsyncContract (serviceRuntime setup .concurrentReveals deadline) leaks
+    (contract : AsyncContract (serviceTimeouts setup .concurrentReveals duration) leaks
       (serviceInitialLaw setup .concurrentReveals) horizon scheduler delay bound)
-    (timely : AsyncTimely (serviceRuntime setup .concurrentReveals deadline) delay bound)
+    (timely : AsyncTimely (serviceTimeouts setup .concurrentReveals duration) delay bound)
     (source : BehavioralProfile setup.program)
     (disclosing : ∀ who, Disclosing setup.program (source who))
     (who : Player)
-    (deviation : (serviceApplication setup .concurrentReveals deadline leaks).Policy) :
+    (deviation : (serviceApplication setup .concurrentReveals duration leaks).Policy) :
     ∃ policy : (serviceGraph setup .concurrentReveals).BehavioralPolicy who,
-      ((serviceApplication setup .concurrentReveals deadline leaks).roundsFrom
+      ((serviceApplication setup .concurrentReveals duration leaks).roundsFrom
           (serviceInitialLaw setup .concurrentReveals) scheduler
-          (Function.update (serviceReferenceTurnPolicy setup .concurrentReveals deadline leaks
+          (Function.update (serviceReferenceTurnPolicy setup .concurrentReveals duration leaks
             bound turns (firstTurnTiming setup turns .concurrentReveals)
             (concurrentEffectiveReference setup source)) who deviation) horizon).map
         (fun final => concurrentConfigPayoff setup parameter utility forfeit
@@ -280,10 +284,10 @@ theorem ledger_deviation_payoff_law (setup : Setup (Player := Player) (L := L))
           (concurrentConfigPayoff setup parameter utility forfeit) := by
   classical
   let G := serviceGraph setup .concurrentReveals
-  let app := serviceApplication setup .concurrentReveals deadline leaks
+  let app := serviceApplication setup .concurrentReveals duration leaks
   have concurrent : G.RevealsOnlyConcurrent :=
     setup.eventGraph.withMode_concurrentReveals_revealsOnlyConcurrent setup.eventGraph_total
-  obtain ⟨policy, law⟩ := closure_deviation_erased_law (deadline := deadline)
+  obtain ⟨policy, law⟩ := closure_deviation_erased_law (duration := duration)
     (leaks := leaks) bound turns contract timely
     (effectiveOpening (compileEventProfile setup.program source))
     (concurrentEffectiveReference_decides setup source)
@@ -314,14 +318,14 @@ theorem ledger_deviation_payoff_law (setup : Setup (Player := Player) (L := L))
       compileEventPolicy_publication setup.program owner (source owner) (disclosing owner) event
         actor publication observation active) who policy
   calc ((app.roundsFrom (serviceInitialLaw setup .concurrentReveals) scheduler
-          (Function.update (serviceReferenceTurnPolicy setup .concurrentReveals deadline leaks
+          (Function.update (serviceReferenceTurnPolicy setup .concurrentReveals duration leaks
             bound turns (firstTurnTiming setup turns .concurrentReveals)
             (concurrentEffectiveReference setup source)) who deviation) horizon).map
         (fun final => concurrentConfigPayoff setup parameter utility forfeit
           final.application.config))
       = ((serviceInitialLaw setup .concurrentReveals).bind fun state =>
           (app.runToHorizon scheduler
-            (Function.update (serviceReferenceTurnPolicy setup .concurrentReveals deadline leaks
+            (Function.update (serviceReferenceTurnPolicy setup .concurrentReveals duration leaks
               bound turns (firstTurnTiming setup turns .concurrentReveals)
               (concurrentEffectiveReference setup source)) who deviation) horizon
             (ReactiveApplication.Execution.initial app state)).map
@@ -389,44 +393,44 @@ theorem concurrentEffectiveClients_deviation_bound (setup : Setup (Player := Pla
         (fun state => utility (setup.parameterOutcome parameter state) who)) ε intended)
     (disclosing : ∀ who, Disclosing setup.program (setup.decodeBehavioralProfile
       (CommitmentInterface.forfeiture setup.program) target who))
-    (deadline : (serviceGraph setup .concurrentReveals).EventId → Nat)
+    (duration : (serviceGraph setup .concurrentReveals).EventId → Nat)
     (leaks : MessageNetwork.ObservationRule Player
       (WitnessedPacket (serviceGraph setup .concurrentReveals)))
     {horizon turns : Nat}
-    {scheduler : (serviceApplication setup .concurrentReveals deadline leaks).Scheduler}
+    {scheduler : (serviceApplication setup .concurrentReveals duration leaks).Scheduler}
     {delay bound : (serviceGraph setup .concurrentReveals).EventId → Nat}
-    (contract : AsyncContract (serviceRuntime setup .concurrentReveals deadline) leaks
+    (contract : AsyncContract (serviceTimeouts setup .concurrentReveals duration) leaks
       (serviceInitialLaw setup .concurrentReveals) horizon scheduler delay bound)
-    (timely : AsyncTimely (serviceRuntime setup .concurrentReveals deadline) delay bound)
+    (timely : AsyncTimely (serviceTimeouts setup .concurrentReveals duration) delay bound)
     (who : Player)
-    (deviation : (serviceApplication setup .concurrentReveals deadline leaks).Policy) :
+    (deviation : (serviceApplication setup .concurrentReveals duration leaks).Policy) :
     extendedExpectedUtility (fun final player =>
         concurrentConfigPayoff setup parameter utility forfeit final.application.config player)
-      who ((serviceApplication setup .concurrentReveals deadline leaks).roundsFrom
+      who ((serviceApplication setup .concurrentReveals duration leaks).roundsFrom
         (serviceInitialLaw setup .concurrentReveals) scheduler
-        (Function.update (serviceReferenceTurnPolicy setup .concurrentReveals deadline leaks bound
+        (Function.update (serviceReferenceTurnPolicy setup .concurrentReveals duration leaks bound
           turns (firstTurnTiming setup turns .concurrentReveals)
           (concurrentEffectiveReference setup (setup.decodeBehavioralProfile
             (CommitmentInterface.forfeiture setup.program) target))) who deviation) horizon) ≤
       extendedExpectedUtility (fun final player =>
         concurrentConfigPayoff setup parameter utility forfeit final.application.config player)
-      who ((serviceApplication setup .concurrentReveals deadline leaks).roundsFrom
+      who ((serviceApplication setup .concurrentReveals duration leaks).roundsFrom
         (serviceInitialLaw setup .concurrentReveals) scheduler
-        (serviceReferenceTurnPolicy setup .concurrentReveals deadline leaks bound turns
+        (serviceReferenceTurnPolicy setup .concurrentReveals duration leaks bound turns
           (firstTurnTiming setup turns .concurrentReveals)
           (concurrentEffectiveReference setup (setup.decodeBehavioralProfile
             (CommitmentInterface.forfeiture setup.program) target))) horizon) + ε := by
   let G := serviceGraph setup .concurrentReveals
   let source := setup.decodeBehavioralProfile (CommitmentInterface.forfeiture setup.program) target
   obtain ⟨policy, deviationLaw⟩ := ledger_deviation_payoff_law setup parameter utility forfeit
-    deadline leaks (turns := turns) contract timely source disclosing who deviation
+    duration leaks (turns := turns) contract timely source disclosing who deviation
   have graphNash := (setup.concurrentReveal_intended_forfeit finite wellFormed parameter utility
     forfeit range intended target agrees ε equilibrium disclosing (G.lastScheduler who)).1
   rw [isεNash_iff] at graphNash
   obtain ⟨_, _, bound⟩ := graphNash who (G.normalizePolicy who policy)
   rw [← G.normalizeProfile_update] at bound
   have viaPayoffs
-      (law : PMF (serviceApplication setup .concurrentReveals deadline leaks).Execution) :
+      (law : PMF (serviceApplication setup .concurrentReveals duration leaks).Execution) :
       extendedExpectedUtility (fun final player =>
           concurrentConfigPayoff setup parameter utility forfeit final.application.config player)
         who law =
@@ -444,7 +448,7 @@ theorem concurrentEffectiveClients_deviation_bound (setup : Setup (Player := Pla
             (setup.concurrentForfeitPayoff parameter utility forfeit)) := by
     rw [extendedExpectedUtility_map]
   rw [viaPayoffs, viaPayoffs, deviationLaw,
-    ledger_honest_payoff_law setup parameter utility forfeit deadline leaks contract timely source
+    ledger_honest_payoff_law setup parameter utility forfeit duration leaks contract timely source
       disclosing,
     ← play_payoff_eq_lastRun setup parameter utility forfeit who,
     ← honest_play_payoff_law setup parameter utility forfeit source disclosing who,
@@ -454,27 +458,27 @@ theorem concurrentEffectiveClients_deviation_bound (setup : Setup (Player := Pla
 /-- **The ledger game with concurrent reveals.** Each player chooses a native
 ledger policy; the outcome is the configuration reached by the horizon. -/
 def concurrentLedgerGame (setup : Setup (Player := Player) (L := L))
-    (deadline : (serviceGraph setup .concurrentReveals).EventId → Nat)
+    (duration : (serviceGraph setup .concurrentReveals).EventId → Nat)
     (leaks : MessageNetwork.ObservationRule Player
       (WitnessedPacket (serviceGraph setup .concurrentReveals)))
-    (scheduler : (serviceApplication setup .concurrentReveals deadline leaks).Scheduler)
+    (scheduler : (serviceApplication setup .concurrentReveals duration leaks).Scheduler)
     (horizon : Nat) : GameForm Player where
-  sig := { Strategy := fun _ => (serviceApplication setup .concurrentReveals deadline leaks).Policy
+  sig := { Strategy := fun _ => (serviceApplication setup .concurrentReveals duration leaks).Policy
            Outcome := (serviceGraph setup .concurrentReveals).Config }
-  play profile := ((serviceApplication setup .concurrentReveals deadline leaks).roundsFrom
+  play profile := ((serviceApplication setup .concurrentReveals duration leaks).roundsFrom
     (serviceInitialLaw setup .concurrentReveals) scheduler profile horizon).map
       fun final => final.application.config
 
 /-- The effective-opening clients of a source profile: each player opens a
 reveal at its first opportunity exactly when the opening would be accepted. -/
 def concurrentLedgerClients (setup : Setup (Player := Player) (L := L))
-    (deadline : (serviceGraph setup .concurrentReveals).EventId → Nat)
+    (duration : (serviceGraph setup .concurrentReveals).EventId → Nat)
     (leaks : MessageNetwork.ObservationRule Player
       (WitnessedPacket (serviceGraph setup .concurrentReveals)))
     (bound : (serviceGraph setup .concurrentReveals).EventId → Nat) (turns : Nat)
     (source : BehavioralProfile setup.program) :
-    Player → (serviceApplication setup .concurrentReveals deadline leaks).Policy :=
-  serviceReferenceTurnPolicy setup .concurrentReveals deadline leaks bound turns
+    Player → (serviceApplication setup .concurrentReveals duration leaks).Policy :=
+  serviceReferenceTurnPolicy setup .concurrentReveals duration leaks bound turns
     (firstTurnTiming setup turns .concurrentReveals) (concurrentEffectiveReference setup source)
 
 /-- Every expectation of a payoff bounded above exists. -/
@@ -533,38 +537,38 @@ theorem concurrentReveal_ledger_isεNash (setup : Setup (Player := Player) (L :=
         (fun state => utility (setup.parameterOutcome parameter state) who)) ε intended)
     (disclosing : ∀ who, Disclosing setup.program (setup.decodeBehavioralProfile
       (CommitmentInterface.forfeiture setup.program) target who))
-    (deadline : (serviceGraph setup .concurrentReveals).EventId → Nat)
+    (duration : (serviceGraph setup .concurrentReveals).EventId → Nat)
     (leaks : MessageNetwork.ObservationRule Player
       (WitnessedPacket (serviceGraph setup .concurrentReveals)))
     {horizon turns : Nat}
-    {scheduler : (serviceApplication setup .concurrentReveals deadline leaks).Scheduler}
+    {scheduler : (serviceApplication setup .concurrentReveals duration leaks).Scheduler}
     {delay bound : (serviceGraph setup .concurrentReveals).EventId → Nat}
-    (contract : AsyncContract (serviceRuntime setup .concurrentReveals deadline) leaks
+    (contract : AsyncContract (serviceTimeouts setup .concurrentReveals duration) leaks
       (serviceInitialLaw setup .concurrentReveals) horizon scheduler delay bound)
-    (timely : AsyncTimely (serviceRuntime setup .concurrentReveals deadline) delay bound) :
-    IsεNash (concurrentLedgerGame setup deadline leaks scheduler horizon)
+    (timely : AsyncTimely (serviceTimeouts setup .concurrentReveals duration) delay bound) :
+    IsεNash (concurrentLedgerGame setup duration leaks scheduler horizon)
       (concurrentConfigPayoff setup parameter utility forfeit) ε
-      (concurrentLedgerClients setup deadline leaks bound turns
+      (concurrentLedgerClients setup duration leaks bound turns
         (setup.decodeBehavioralProfile (CommitmentInterface.forfeiture setup.program) target)) := by
   rw [isεNash_iff]
   intro who replacement
   obtain ⟨top, below⟩ := concurrentConfigPayoff_le setup parameter utility forfeit range who
   refine ⟨hasExpectation_of_le below, hasExpectation_of_le below, ?_⟩
   change extendedExpectedUtility (concurrentConfigPayoff setup parameter utility forfeit) who
-      (((serviceApplication setup .concurrentReveals deadline leaks).roundsFrom
+      (((serviceApplication setup .concurrentReveals duration leaks).roundsFrom
         (serviceInitialLaw setup .concurrentReveals) scheduler
-        (Function.update (concurrentLedgerClients setup deadline leaks bound turns
+        (Function.update (concurrentLedgerClients setup duration leaks bound turns
           (setup.decodeBehavioralProfile (CommitmentInterface.forfeiture setup.program) target))
           who replacement) horizon).map fun final => final.application.config) ≤
     extendedExpectedUtility (concurrentConfigPayoff setup parameter utility forfeit) who
-      (((serviceApplication setup .concurrentReveals deadline leaks).roundsFrom
+      (((serviceApplication setup .concurrentReveals duration leaks).roundsFrom
         (serviceInitialLaw setup .concurrentReveals) scheduler
-        (concurrentLedgerClients setup deadline leaks bound turns
+        (concurrentLedgerClients setup duration leaks bound turns
           (setup.decodeBehavioralProfile (CommitmentInterface.forfeiture setup.program) target))
           horizon).map fun final => final.application.config) + ε
   rw [extendedExpectedUtility_map, extendedExpectedUtility_map]
   exact concurrentEffectiveClients_deviation_bound setup finite wellFormed parameter utility
-    forfeit range intended target agrees ε equilibrium disclosing deadline leaks contract timely
+    forfeit range intended target agrees ε equilibrium disclosing duration leaks contract timely
     who replacement
 
 end Vegas

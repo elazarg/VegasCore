@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Source.Honest
-import Vegas.Expr.Simple
+public import Vegas.Source.Honest
+public import Vegas.Expr.Simple
+
+@[expose] public section
 
 /-! # Regression for honest completion
 
@@ -18,32 +22,32 @@ open Vegas Vegas.SourceProgram GameTheory.Math.Probability
 
 noncomputable section
 
-private abbrev bid : VarId := 0
-private abbrev bidOut : VarId := 1
+abbrev bid : VarId := 0
+abbrev bidOut : VarId := 1
 
 /-- A guard that accepts only a `true` opening. -/
-private def trueGuard : SourceGuard (Player := Unit) simpleExpr [] () bid .bool where
+def trueGuard : SourceGuard (Player := Unit) simpleExpr [] () bid .bool where
   schema := []
   schemaNames := by decide
   subjectFresh := by decide
   code := .var bid .here
   reads := fun h => nomatch h
 
-private def program : SourceProgram Unit simpleExpr [] ∅ :=
+def program : SourceProgram Unit simpleExpr [] ∅ :=
   .commit bid () (by decide) trueGuard <|
   .reveal bidOut () bid (by decide) .here (by decide) <|
   .ret [((), .ite (.isFailure (.var bidOut .here)) (.constInt 0) (.constInt 1))]
 
 /-- Bind the value the guard accepts, and open it. -/
-private def honestPolicy : BehavioralPolicy (who := ()) program :=
+def honestPolicy : BehavioralPolicy (who := ()) program :=
   (fun _ _ _ => PMF.pure (some (.success true)), fun _ _ _ => PMF.pure true, PUnit.unit)
 
 /-- Bind the value the guard rejects, and open it. Still honest: honesty is
 about binding a value and opening it, not about what the guard says. -/
-private def rejectedPolicy : BehavioralPolicy (who := ()) program :=
+def rejectedPolicy : BehavioralPolicy (who := ()) program :=
   (fun _ _ _ => PMF.pure (some (.success false)), fun _ _ _ => PMF.pure true, PUnit.unit)
 
-private def start : Config Unit simpleExpr [] :=
+def start : Config Unit simpleExpr [] :=
   Config.initial (Env.empty (CellVal simpleExpr))
 
 private theorem honestPolicy_honest : Honest program honestPolicy := by

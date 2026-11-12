@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveApplication
+public import Interaction.ReactiveApplication
+
+@[expose] public section
 
 /-! # Policies on the ledger projection of callback views
 

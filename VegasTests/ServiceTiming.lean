@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.ServiceTimingCoupling
+public import Vegas.Game.ServiceTimingCoupling
+
+@[expose] public section
 
 /-! # Product retention improves actual turn-timing error -/
 
