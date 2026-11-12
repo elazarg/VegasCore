@@ -55,7 +55,7 @@ theorem intended_raw_sequentialEquilibrium_preserved
       excludedPayoff spec.wellFormed spec.independent spec.observable spec.opportunity
       spec.inclusion spec.completes spec.timely spec.exitBelow intended equilibrium
       spec.outputValues spec.inputValues spec.capacity
-  obtain ⟨target, targetSE, clean, states, joint⟩ :=
+  obtain ⟨target, _refinement, targetSE, clean, states, joint⟩ :=
     intended_raw_sequentialEquilibrium_of_onePacket (timeouts := timeouts) (initial := Initial)
       parameter utility excludedPayoff intended native nativeSE nativeLaw spec.evidenceService
       spec.observationRate spec.deliveryRate spec.delivery_nonnegative spec.coverage

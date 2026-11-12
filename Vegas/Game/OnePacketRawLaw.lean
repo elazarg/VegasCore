@@ -77,6 +77,7 @@ theorem intended_raw_sequentialEquilibrium_of_onePacket {Parameter : Type}
     let payoff := TerminalAudit.utility base observe audit deposit
     let settle := TerminalAudit.settlement base observe audit deposit
     ∃ target : (R).BehavioralAssessment,
+      bounds.ExtendsOnePacketAssessment timeouts leaks initial horizon scheduler native target ∧
       target.IsSequentialEquilibriumFor
         ((raw).decisionInformationAntichain initial horizon scheduler)
         (fun who site => target.truncatedContinuationContext site
@@ -98,7 +99,7 @@ theorem intended_raw_sequentialEquilibrium_of_onePacket {Parameter : Type}
     ((menu).bounded initial horizon scheduler).wellFoundedHistories
     ((menu).bounded initial horizon scheduler)
     (fun who final => base final.state who)).mpr equilibrium
-  obtain ⟨target, targetSE, clean, states, joint⟩ :=
+  obtain ⟨target, refinement, targetSE, clean, states, joint⟩ :=
     bounds.onePacket_raw_sequentialEquilibrium timeouts leaks initial horizon
       scheduler service observationRate deliveryRate delivery_nonnegative coverage base
       (exclusionBase_normalization setup timeouts parameter utility excludedPayoff leaks)
@@ -111,7 +112,7 @@ theorem intended_raw_sequentialEquilibrium_of_onePacket {Parameter : Type}
         excludedPayoff leaks
         lowerUtility upperUtility history.state (lower_le history) (le_upper history) who).2)
       deposit_nonnegative sufficient native nativeSE
-  refine ⟨target, targetSE, clean, states, ?_⟩
+  refine ⟨target, refinement, targetSE, clean, states, ?_⟩
   let read := fun state : ((reactiveApplication timeouts) leaks).ProtocolState =>
     sourceReadout setup timeouts leaks state
   have normalized (state : ((reactiveApplication timeouts) leaks).ProtocolState) :

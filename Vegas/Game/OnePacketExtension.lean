@@ -183,6 +183,34 @@ theorem onePacketRestriction_extra (who : Player)
       change transmission = some material at sent
       rw [sent]
 
+/-- Exact assessment correspondence through the count-audit extension and
+private raw-response aliases. Every retained decision law and belief is kept,
+including at information sites outside the equilibrium path. -/
+def ExtendsOnePacketAssessment
+    (source : ((bounds.onePacketMenu timeouts leaks).information initial horizon
+      scheduler).BehavioralAssessment)
+    (target : ((bounds.rawMenu timeouts leaks).information initial horizon
+      scheduler).BehavioralAssessment) : Prop :=
+  ∃ effective : ((bounds.menu timeouts leaks).information initial horizon
+      scheduler).BehavioralAssessment,
+    (bounds.onePacketRestriction timeouts leaks initial horizon scheduler).ExtendsProfile
+      source.strategy effective.strategy ∧
+    (∀ who site, effective.belief who
+        ((bounds.onePacketRestriction timeouts leaks initial horizon scheduler).site who site) =
+      (source.belief who site).map
+        ((bounds.onePacketRestriction timeouts leaks initial horizon scheduler).informationHistory
+          who site)) ∧
+    target.strategy = (fun who => bounds.canonicalRawPolicy timeouts leaks
+      initial horizon scheduler who (effective.strategy who)) ∧
+    ∀ who (site : ((bounds.rawMenu timeouts leaks).information initial horizon
+        scheduler).InformationSite who),
+      (target.belief who site).map
+          (((reactiveNormalization timeouts) leaks).informationHistory (bounds.rawMenu timeouts
+            leaks) (bounds.rawMenu_recall timeouts leaks) initial horizon scheduler who site.1) =
+        effective.belief who (((reactiveNormalization timeouts) leaks).site
+          (bounds.rawMenu timeouts leaks) (bounds.rawMenu_recall timeouts leaks)
+            initial horizon scheduler who site)
+
 local instance effectiveHistory_nonempty :
     Nonempty ((bounds.menu timeouts leaks).protocol initial horizon scheduler).History :=
   ⟨((bounds.menu timeouts leaks).protocol initial horizon scheduler).initHistory⟩
@@ -341,6 +369,7 @@ theorem onePacket_raw_sequentialEquilibrium
         (onePacket.decisionInformationAntichain initial horizon scheduler) sourceCertificate
         (fun who final => utility final.state who) →
     ∃ target : (raw.information initial horizon scheduler).BehavioralAssessment,
+      bounds.ExtendsOnePacketAssessment timeouts leaks initial horizon scheduler source target ∧
       target.IsSequentialEquilibriumFor
         (raw.decisionInformationAntichain initial horizon scheduler)
         (fun who site => target.truncatedContinuationContext site
@@ -360,7 +389,7 @@ theorem onePacket_raw_sequentialEquilibrium
   classical
   intro onePacket raw sourceCertificate normalize observe audit payoff settle source equilibrium
   let effective := bounds.menu timeouts leaks
-  obtain ⟨effectiveTarget, effectiveSE, _, _, laws, _, clean⟩ :=
+  obtain ⟨effectiveTarget, effectiveSE, strategies, beliefs, laws, _, clean⟩ :=
     bounds.onePacket_sequentialEquilibrium_extends timeouts leaks initial horizon scheduler service
       observationRate deliveryRate delivery_nonnegative coverage utility lower upper deposit
       (fun history who => lower_le
@@ -372,7 +401,7 @@ theorem onePacket_raw_sequentialEquilibrium
   have truncated := (effectiveTarget.isSequentialEquilibrium_iff_truncated_of_bounded _ _
     (effective.bounded initial horizon scheduler).wellFoundedHistories
     (effective.bounded initial horizon scheduler) _).mp effectiveSE
-  obtain ⟨target, _, targetSE, _, stateLaw⟩ :=
+  obtain ⟨target, canonical, targetSE, rawBeliefs, stateLaw⟩ :=
     bounds.exists_canonicalRaw_sequentialEquilibrium timeouts leaks initial horizon scheduler
       effectiveTarget (fun who state => payoff state who) truncated
   have observation (state : ((reactiveApplication timeouts) leaks).ProtocolState) :
@@ -411,7 +440,8 @@ theorem onePacket_raw_sequentialEquilibrium
         rw [PMF.support_map, ← effectiveLaw] at supported
         obtain ⟨original, reached, rfl⟩ := supported
         exact clean original reached who)
-  refine ⟨target, ?_, ?_, stateLaw.trans effectiveStates, ?_⟩
+  refine ⟨target, ⟨effectiveTarget, strategies, beliefs, canonical, rawBeliefs⟩,
+    ?_, ?_, stateLaw.trans effectiveStates, ?_⟩
   · simpa only [payoffInvariant] using targetSE
   · intro final reached who
     exact rawClean final.state (by
