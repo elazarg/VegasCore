@@ -15,7 +15,7 @@ supplies the information and continuation bridge for ledger-reading clients.
 
 Complete reactive execution uses `Interaction.ReactiveApplication.ResponseMenu.run`
 from initialization and `Interaction.ReactiveApplication.ResponseMenu.runFrom`
-from any legal history. The response menu's `gameForm` uses that complete
+from any legal history. The response menu's game form uses that complete
 execution law. `Vegas.AsyncServiceSpec.run` and `Vegas.AsyncServiceSpec.gameForm`
 also supply the service's initial law, scheduler and round horizon. Callers
 provide no evaluator fuel. The execution layer derives its step budget and

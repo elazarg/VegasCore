@@ -391,7 +391,8 @@ theorem isεBestResponse_of_clientProfile {Parameter : Type}
           honestNative
   have deviationNative' : UtilityIntegrable nativeUtility who
       (service.run menu
-        (service.clientProfile admission menu timing (Profile.update source who alternative))) := deviationNative
+        (service.clientProfile admission menu timing (Profile.update source who alternative))) :=
+    deviationNative
   have honestSource' : UtilityIntegrable sourceUtility who
       ((service.sourceModel admission).runBehavioral source (instructionCount
         service.setup.program + 1)) :=
