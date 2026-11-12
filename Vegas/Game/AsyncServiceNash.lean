@@ -417,7 +417,7 @@ theorem isεBestResponse_of_clientProfile {Parameter : Type}
   change expect _ _ ≤ expect _ _ + _
   simp only [AsyncServiceSpec.run, ReactiveApplication.ResponseMenu.run,
     ReactiveApplication.ResponseMenu.runFrom, InformationModel.runBehavioral,
-    nativeUtility, sourceUtility] at compared honestAbove honestBelow deviationAbove deviationBelow ⊢
+    nativeUtility] at compared honestAbove honestBelow deviationAbove deviationBelow ⊢
   linarith
 
 theorem isεBestResponse_clientProfile_of_firstTurn_bounds_readout {Parameter : Type}
