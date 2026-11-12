@@ -168,9 +168,7 @@ private theorem clientProfile_value_close {Parameter : Type}
       ((serviceAuditObservation (serviceTimeouts service.setup service.mode service.duration))
         service.leaks)
       (serviceSourceAudit service.setup service.mode service.duration service.leaks sample) deposit
-    let native := (menu.information (serviceInitialLaw service.setup service.mode) service.horizon
-      service.scheduler).runBehavioral (service.clientProfile admission menu timing source)
-        (2 * service.horizon + 1)
+    let native := service.run menu (service.clientProfile admission menu timing source)
     let original := (service.sourceModel admission).runBehavioral source
       (instructionCount service.setup.program + 1)
     let sourcePayoff := fun final : (service.setup.executionProtocol
