@@ -1,4 +1,4 @@
-"""Behavioral and mutation tests for the Lean-native paper audit (run after lake build)."""
+"""Behavioral and mutation tests for the paper audit (run after lake --wfail build)."""
 import importlib.util
 from pathlib import Path
 import tempfile

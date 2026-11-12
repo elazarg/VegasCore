@@ -13,7 +13,7 @@ import tomllib
 
 
 def check_central_options(options: dict) -> list[str]:
-    """Require explicit binders and warnings as errors, with sorry warnings on."""
+    """Require explicit binders and compiler warnings as errors, with sorry warnings on."""
     required = {
         "autoImplicit": False,
         "relaxedAutoImplicit": False,

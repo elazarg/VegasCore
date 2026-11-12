@@ -107,7 +107,7 @@ is anchored by the annotated tag
 Run:
 
 ```powershell
-lake build
+lake --wfail build
 python scripts/check-paper-audit.py
 python scripts/check-module-boundaries.py
 python scripts/check-lean-options.py
@@ -116,8 +116,9 @@ python -m unittest discover -s scripts -p 'test_*.py'
 python -m unittest scripts.paper_audit_tests
 ```
 
-Required Lean options are centralized in `lakefile.toml`; warnings fail the
-build. Source policy rejects admissions, axiom declarations and trust escapes.
+Required Lean options are centralized in `lakefile.toml`. The strict build rejects
+compiler and Lake warnings, including cached diagnostics. Source policy rejects
+admissions, axiom declarations and trust escapes.
 The [script guide](scripts/README.md) explains the structural checks and inventories.
 
 Released under the [MIT license](LICENSE).

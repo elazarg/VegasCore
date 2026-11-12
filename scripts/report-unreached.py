@@ -14,7 +14,7 @@ anonymous example must qualify a name when its short spelling has several
 owners. Uses through notation or tactics in other modules stay invisible.
 
 The script elaborates a small Lean program against the built project with
-`lake env lean`, so run it after `lake build`. It reports only; `--strict`
+`lake env lean`, so run it after `lake --wfail build`. It reports only; `--strict`
 makes a nonempty report fail.
 """
 

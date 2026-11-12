@@ -8,7 +8,7 @@
 # Usage: scripts/bump-lean-mathlib.sh v4.32.0
 #
 # This only does the mechanical text substitution + submodule/manifest
-# refresh. After running it you still need to `lake build` and fix any
+# refresh. After running it you still need to `lake --wfail build` and fix any
 # resulting breakage.
 set -euo pipefail
 
