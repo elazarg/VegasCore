@@ -164,6 +164,14 @@ class PaperAuditTests(unittest.TestCase):
             path.write_text(header + 'def Vegas.Paper.RealType : Type := Real\n' + base,
                             encoding='utf-8')
             cls.paths[name] = path
+        meta_header = 'module\n\npublic meta import Lean\n\n@[expose] public section\n\n'
+        ordinary_frontend = ('def Vegas.Paper.frontend : Lean.Elab.Command.CommandElabM Unit :=\n'
+                             '  Lean.Elab.Command.elabCommand Lean.Syntax.missing\n')
+        for name, text in (('meta_imports', base),
+                           ('meta_source_rejected', ordinary_frontend + base)):
+            path = cls.directory / (name + '.lean')
+            path.write_text(meta_header + text, encoding='utf-8')
+            cls.paths[name] = path
         # The real paper does not import the full Lean frontend umbrella.
         # Auditing it catches dependencies that the small fixture headers hide.
         cls.paths['actual_paper'] = ROOT / 'Paper.lean'
@@ -319,6 +327,12 @@ class PaperAuditTests(unittest.TestCase):
         self.assertTrue(any("Unknown identifier `Real`" in e
                             for e in self.reports['lean_only']['errors']),
                         self.reports['lean_only']['errors'])
+
+    def test_validator_meta_scope_does_not_change_the_audited_source_scope(self):
+        self.assertEqual(self.reports['meta_imports']['errors'], [])
+        self.assertTrue(any('imported as `meta`' in error
+                            for error in self.reports['meta_source_rejected']['errors']),
+                        self.reports['meta_source_rejected']['errors'])
 
     def test_rejections_are_policy_diagnostics_and_keep_later_results(self):
         for case in ('class', 'open_pointwise', 'term_open_classical', 'attribute'):

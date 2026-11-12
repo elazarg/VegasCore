@@ -12,7 +12,7 @@ public import Vegas.Compile.EventGraphScheduling
 
 noncomputable section
 
-namespace VegasTests
+namespace VegasTests.AbsorbingFailure
 
 open Vegas Vegas.SourceProgram GameTheory.Math.Probability
 
@@ -158,9 +158,9 @@ example (scheduler : (toEventGraph twoBindings).PublicScheduler) :
       rw [← PMF.map_comp, scheduled_terminalConfig_law]
     _ = _ := unusable_run
 
-end VegasTests
+end VegasTests.AbsorbingFailure
 
-namespace VegasTests
+namespace VegasTests.AbsorbingFailure
 
 open Vegas Vegas.SourceProgram
 
@@ -220,9 +220,9 @@ example : bobAfterOpening none ≠ bobAfterOpening (some .failure) := by
   change [none, none, some false] = [some false, none, none] at record
   cases record
 
-end VegasTests
+end VegasTests.AbsorbingFailure
 
-namespace VegasTests
+namespace VegasTests.AbsorbingFailure
 
 open Vegas Vegas.SourceProgram GameTheory.Math.Probability
 
@@ -273,4 +273,4 @@ example :
   rw [← PMF.map_comp, scheduled_terminalConfig_law]
   exact source_bob_observes_omission
 
-end VegasTests
+end VegasTests.AbsorbingFailure

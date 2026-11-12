@@ -9,7 +9,7 @@ public import Vegas.Expr.Simple
 
 /-! # Binding omission, unusable admission and public default records -/
 
-namespace VegasTests
+namespace VegasTests.EventGraphDefault
 
 open Vegas Vegas.EventGraph GameTheory.Math.Probability
 
@@ -58,9 +58,9 @@ example : (EventCompletion.defaults [admitted, omitted]).events = [some (), none
     EventGraph.completion, EventCode.defaultEvent, EventCode.causesDefault, EventCode.actor,
     twoBindings]⟩
 
-end VegasTests
+end VegasTests.EventGraphDefault
 
-namespace VegasTests
+namespace VegasTests.EventGraphDefault
 
 open Vegas Vegas.EventGraph GameTheory.Math.Probability
 
@@ -172,4 +172,4 @@ example :
     (fun law : PMF (Option (PublicationResult Bool)) => law (some .failure)) same
   simp at contradiction
 
-end VegasTests
+end VegasTests.EventGraphDefault

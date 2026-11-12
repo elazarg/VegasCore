@@ -17,7 +17,7 @@ the exact joint source-configuration and settled-payoff law.
 
 noncomputable section
 
-namespace VegasTests
+namespace VegasTests.ClientCompiler
 
 open Vegas Vegas.SourceProgram Vegas.EventGraphRuntime Interaction
   GameTheory GameTheory.Protocol GameTheory.Math.Probability
@@ -111,4 +111,4 @@ example :
 
 end MonetaryCompilation
 
-end VegasTests
+end VegasTests.ClientCompiler

@@ -18,7 +18,7 @@ The roster scheduler suppresses clock commands for blocks complete at entry.
 
 noncomputable section
 
-namespace VegasTests
+namespace VegasTests.RosterAutomaticCompletion
 
 open Vegas Vegas.SourceProgram Vegas.EventGraphRuntime
   GameTheory.Math.Probability Interaction
@@ -223,4 +223,4 @@ example (setup : Setup (Player := Player) (L := L))
       PMF.pure (.application .advanceClock) := by
   simp only [rosterScheduler, selected, ite_eq_right live]
 
-end VegasTests
+end VegasTests.RosterAutomaticCompletion

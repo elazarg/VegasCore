@@ -55,7 +55,9 @@ def audit_files(files, *, source_override=None):
     # Inline the validator after the target's imports. importEnv? retrieves the
     # pristine import environment, before any validator or driver declarations.
     # No tool import, merged headers, loader override or shared build writes occur.
-    tool = '@[expose] public section\n' + tool.split('\n@[expose] public section\n', 1)[1]
+    # Frontend APIs may arrive through meta imports. Only the validator runs in
+    # a meta scope; each audited file gets a fresh ordinary command state below.
+    tool = '@[expose] public meta section\n' + tool.split('\n@[expose] public section\n', 1)[1]
     directory = ROOT / '.lake/paper-audit'
     directory.mkdir(parents=True, exist_ok=True)
     reports = {}

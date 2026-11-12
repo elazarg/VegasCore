@@ -12,7 +12,7 @@ public import Vegas.Expr.Simple
 
 noncomputable section
 
-namespace VegasTests
+namespace VegasTests.RuntimeDefault
 
 open Vegas Vegas.EventGraph Vegas.EventGraphRuntime GameTheory.Math.Probability Interaction
 
@@ -136,4 +136,4 @@ example : runtimeOmission.config.cut.Ready ⟨1, by decide⟩ ∧
     · rename_i active
       exact (active (by decide)).elim
 
-end VegasTests
+end VegasTests.RuntimeDefault
