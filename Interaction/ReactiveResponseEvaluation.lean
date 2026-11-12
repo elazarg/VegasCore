@@ -37,6 +37,38 @@ theorem decodeProfile_update
 
 variable [Finite Principal]
 
+/-- Complete behavioral history law within the supplied response menu. -/
+def runFrom
+    (profile : (who : Principal) →
+      (menu.information initial horizon scheduler).BehavioralPolicy who)
+    (history : (menu.protocol initial horizon scheduler).History) :=
+  (menu.information initial horizon scheduler).runBehavioralFrom profile (2 * horizon + 1) history
+
+/-- Complete response-menu play from initialization. -/
+def run
+    (profile : (who : Principal) →
+      (menu.information initial horizon scheduler).BehavioralPolicy who) :=
+  menu.runFrom initial horizon scheduler profile
+    (menu.protocol initial horizon scheduler).initHistory
+
+/-- The behavioral game of complete response-menu executions. -/
+abbrev gameForm :=
+  (menu.information initial horizon scheduler).toBehavioralGameForm (2 * horizon + 1)
+
+/-- Complete menu evaluation agrees with the well-founded terminal law at
+every legal history, including histories of unilateral alternatives. -/
+theorem runFrom_eq_terminal
+    (profile : (who : Principal) →
+      (menu.information initial horizon scheduler).BehavioralPolicy who)
+    (history : (menu.protocol initial horizon scheduler).History) :
+    menu.runFrom initial horizon scheduler profile history =
+      (menu.information initial horizon scheduler).runBehavioralTerminalFrom
+        (menu.bounded initial horizon scheduler).wellFoundedHistories profile history :=
+  (InformationModel.runBehavioralTerminalFrom_eq_runBehavioralFrom_of_bounded
+    (menu.information initial horizon scheduler)
+    (menu.bounded initial horizon scheduler).wellFoundedHistories
+    (menu.bounded initial horizon scheduler) profile history).symm
+
 theorem run_eq_finish
     (profile : ∀ who, (menu.information initial horizon scheduler).BehavioralPolicy who)
     (fuel : Nat) (history : (menu.protocol initial horizon scheduler).History)
@@ -88,5 +120,18 @@ theorem run_restrict_control_steps (profile : Principal → app.Policy)
           (app.information initial horizon scheduler) (app.singleMover initial horizon scheduler),
         app.run_map_state]
       rfl
+
+/-- Complete menu play has exactly the physical continuation state law. -/
+theorem runFrom_stateLaw
+    (profile : (who : Principal) →
+      (menu.information initial horizon scheduler).BehavioralPolicy who)
+    (history : (menu.protocol initial horizon scheduler).History) :
+    (menu.runFrom initial horizon scheduler profile history).map History.state =
+      app.finish initial horizon scheduler (menu.decodeProfile initial horizon scheduler profile)
+        history.state := by
+  apply menu.run_eq_finish initial horizon scheduler profile (2 * horizon + 1) history
+  have bound := app.trace_bound initial horizon scheduler
+    (menu.toRawTrace initial horizon scheduler history.trace)
+  omega
 
 end Interaction.ReactiveApplication.ResponseMenu
