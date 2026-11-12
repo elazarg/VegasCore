@@ -212,11 +212,11 @@ theorem ledgerClients_continuation
     ((raw).runFrom Initial horizon scheduler compiled.assessment.strategy history).map
         History.state =
       (app).finish Initial horizon scheduler compiled.ledgerClients history.state := by
-  apply (raw).run_ledgerProfile_eq_finish Initial horizon scheduler unobserved
-    compiled.assessment.strategy (2 * horizon + 1) history
   have bound := (app).trace_bound Initial horizon scheduler
     ((raw).toRawTrace Initial horizon scheduler history.trace)
-  omega
+  have enough : (app).rank horizon history.state ≤ 2 * horizon + 1 := by omega
+  exact (raw).run_ledgerProfile_eq_finish Initial horizon scheduler unobserved
+    compiled.assessment.strategy (2 * horizon + 1) history enough
 
 /-- The initialized physical ledger run has the selected assessment's complete state law. -/
 theorem ledgerClients_stateLaw
