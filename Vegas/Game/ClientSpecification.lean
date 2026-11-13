@@ -168,6 +168,11 @@ structure ClientCompilation (intended : setup.intendedModel.BehavioralAssessment
   assessment : (model).BehavioralAssessment
   refinement : ClientAssessmentRefinement setup timeouts leaks bounds horizon scheduler
     intended assessment
+  nativeEquilibrium : refinement.native.IsSequentialEquilibrium
+    ((bounds.onePacketMenu timeouts leaks).decisionInformationAntichain Initial horizon scheduler)
+    ((bounds.onePacketMenu timeouts leaks).bounded Initial horizon scheduler).wellFoundedHistories
+    (fun who final => exclusionBase setup timeouts parameter utility excludedPayoff leaks
+      final.state who)
   equilibrium : assessment.IsSequentialEquilibrium
     ((raw).decisionInformationAntichain Initial horizon scheduler)
     ((raw).bounded Initial horizon scheduler).wellFoundedHistories

@@ -64,12 +64,15 @@ theorem intended_raw_sequentialEquilibrium_preserved
   have fullSE := (target.isSequentialEquilibrium_iff_truncated_of_bounded _ _
     ((bounds.rawMenu timeouts leaks).bounded Initial horizon scheduler).wellFoundedHistories
     ((bounds.rawMenu timeouts leaks).bounded Initial horizon scheduler) _).mpr targetSE
-  have assessmentRefinement : ClientAssessmentRefinement setup timeouts leaks bounds horizon
+  have fullNativeSE := (native.isSequentialEquilibrium_iff_truncated_of_bounded _ _
+    ((bounds.onePacketMenu timeouts leaks).bounded Initial horizon scheduler).wellFoundedHistories
+    ((bounds.onePacketMenu timeouts leaks).bounded Initial horizon scheduler) _).mpr nativeSE
+  let assessmentRefinement : ClientAssessmentRefinement setup timeouts leaks bounds horizon
       scheduler intended target := ⟨native, fidelity, refinement,
     bounds.exists_raw_site_of_onePacket_site timeouts leaks Initial horizon scheduler,
     MessageBounds.ExtendsOnePacketAssessment.runFrom_history_map bounds timeouts leaks Initial
       horizon scheduler refinement⟩
-  refine ⟨⟨target, assessmentRefinement, fullSE, ?_, clean, joint⟩⟩
+  refine ⟨⟨target, assessmentRefinement, fullNativeSE, fullSE, ?_, clean, joint⟩⟩
   intro final supported control current
   let raw := bounds.rawMenu timeouts leaks
   let normalize := ((reactiveNormalization timeouts) leaks).state
