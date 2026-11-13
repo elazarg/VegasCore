@@ -59,8 +59,9 @@ theorem clients_strategy_at_sourceDecision
   rw [compiled.refinement.fidelity.strategy sourceSite nativeSite realization] at transported
   exact transported
 
-/-- The ordinary physical clients retain the exact intended continuation law from every clean
-decoded source boundary, including a boundary outside equilibrium play. -/
+/-- Physical continuations from represented clean source boundaries retain
+the joint source-configuration and actual settled-payoff law, with no defaults,
+failed reveals or audit charges, including outside equilibrium play. -/
 theorem clients_continuation_at_sourceBoundary
     (rank : Nat)
     (nativeStart : ((one).protocol Initial horizon scheduler).History)
@@ -74,31 +75,26 @@ theorem clients_continuation_at_sourceBoundary
     (point : ProtocolState setup.program)
     (decoded : sourceServicePrefix? setup rank anchor.application.config = some point)
     (pointIntended : ProtocolState.Intended setup.program point) :
-    ((app).finish Initial horizon scheduler compiled.clients rawStart.state).map
-        (sourceReadout setup timeouts leaks) =
-      sourceContinuation setup (setup.intendedOpeningProfile intended.strategy) rank
-        anchor.application.config := by
-  have transported := MessageBounds.ExtendsOnePacketAssessment.runFrom_history_map bounds timeouts
-    leaks Initial horizon scheduler compiled.refinement.extension nativeStart rawStart same
-  have readouts := congrArg (fun law => law.map (fun final =>
-    sourceReadout setup timeouts leaks final.state)) transported
-  have normalRead (history : ((raw).protocol Initial horizon scheduler).History) :
-      sourceReadout setup timeouts leaks
-          (((reactiveNormalization timeouts) leaks).history (raw)
-            (bounds.rawMenu_recall timeouts leaks) Initial horizon scheduler history).state =
-        sourceReadout setup timeouts leaks history.state := by
-    change sourceReadout setup timeouts leaks
-      (((reactiveNormalization timeouts) leaks).state history.state) =
-        sourceReadout setup timeouts leaks history.state
-    cases history.state <;> rfl
-  have retainedRead (history : ((one).protocol Initial horizon scheduler).History) :
-      sourceReadout setup timeouts leaks
-          ((bounds.onePacketRestriction timeouts leaks Initial horizon scheduler).history
-            history).state = sourceReadout setup timeouts leaks history.state := rfl
-  have physical := congrArg (fun law => law.map (sourceReadout setup timeouts leaks))
-    ((raw).runFrom_stateLaw Initial horizon scheduler compiled.assessment.strategy rawStart)
-  simp only [PMF.map_comp, Function.comp_def, normalRead, retainedRead] at readouts physical
-  exact physical.symm.trans (readouts.trans (compiled.refinement.fidelity.continuation rank
-    nativeStart anchor state boundary point decoded pointIntended))
+    ((app).finish Initial horizon scheduler compiled.clients rawStart.state).bind
+        spec.observation =
+      (setup.continuationLaw (setup.intendedOpeningProfile intended.strategy) (some point)).map
+        (fun terminal => (some terminal, utility (setup.parameterOutcome parameter terminal))) ∧
+    ∀ outcome ∈ ((app).finish Initial horizon scheduler compiled.clients rawStart.state).support,
+      ∃ (control : (app).Control) (terminal : Config Player L setup.program.terminalCtx),
+        outcome = some control ∧
+        sourceReadout setup timeouts leaks outcome = some terminal ∧
+        control.execution.application.config.defaulted = ∅ ∧
+        (∀ who, failedReveals setup.program who (publicOutcome setup.program terminal) = 0) ∧
+        ∀ who, TerminalAudit.charge (app).stateTraffic
+          ((countAudit timeouts) leaks spec.evidenceService.sample) outcome who = 0 := by
+  refine ⟨compiled.refinement.physical_continuation_source_settlement spec nativeStart rawStart same
+    rank anchor state boundary point decoded pointIntended, ?_⟩
+  intro outcome supported
+  obtain ⟨control, terminal, current, read, defaults, reveals⟩ :=
+    compiled.refinement.physical_continuation_source_clean spec nativeStart rawStart same rank
+      anchor state boundary point decoded pointIntended outcome supported
+  exact ⟨control, terminal, current, read, defaults, reveals,
+    compiled.refinement.physical_continuation_noCharges spec nativeStart rawStart same outcome
+      supported⟩
 
 end Vegas.ClientCompilation

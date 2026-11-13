@@ -5,6 +5,7 @@ module
 public import Vegas.Game.OnePacketStrategyFidelity
 public import Vegas.Game.OnePacketBeliefFidelity
 public import Vegas.Game.OnePacketContinuationFidelity
+public import Vegas.Game.OnePacketProjectedSite
 public import Interaction.ReactiveResponseEvaluation
 
 @[expose] public section
@@ -39,15 +40,14 @@ local notation "E" => ReactiveApplication.ResponseMenu.protocol
   (bounds.onePacketMenu timeouts leaks) Initial horizon scheduler
 
 open Classical in
-/-- A genuine first native decision at the displayed intended source site,
-in the clear forced region and without an outstanding source failure. -/
+/-- A genuine first native decision at the displayed intended source site
+in the forced region. In well-formed setups its source projection entails
+cleanliness and no own debt. -/
 structure SourceDecisionRealization {who : Player}
     (source : setup.intendedModel.InformationSite who)
     (native : (N).InformationSite who) : Prop where
   projected : source.1 = projectView setup timeouts leaks who native.1
-  clear : ClearInput timeouts leaks native.1
   forced : forcedAgent (timeouts := timeouts) (menu) Initial horizon scheduler who native.1
-  debtFree : SiteDebtFree setup timeouts leaks bounds horizon scheduler native
   first : FirstActivation setup timeouts leaks who native.1
 
 open Classical in
@@ -61,18 +61,15 @@ structure OnePacketAssessmentFidelity
     SourceDecisionRealization setup timeouts leaks bounds horizon scheduler source site →
       native.strategy who site.1 =
         honestChoice setup timeouts leaks bounds Initial horizon scheduler intended who site.1
-  belief : ∀ {who} (site : (N).InformationSite who),
-    ClearInput timeouts leaks site.1 →
+  belief : ∀ {who} (source : setup.intendedModel.InformationSite who)
+    (site : (N).InformationSite who),
+    source.1 = projectView setup timeouts leaks who site.1 →
     forcedAgent (timeouts := timeouts) (menu) Initial horizon scheduler who site.1 →
-    SiteDebtFree setup timeouts leaks bounds horizon scheduler site →
     ∀ {past view}, site.1 = some (past, view) →
     ∀ {event}, view.application.publicView.ownTurn? who = some event →
-    ∀ decision : setup.intendedModel.IsDecisionInfo who
-        (projectView setup timeouts leaks who site.1),
       (native.belief who site).map (fun history =>
         intendedHistory? setup timeouts leaks bounds horizon scheduler history.1.trace) =
-      (intended.belief who (projectedSite setup timeouts leaks decision)).map
-        (fun history => some history.1)
+      (intended.belief who source).map (fun history => some history.1)
   continuation : ∀ (rank : Nat) (start : (E).History)
     (anchor : (application setup timeouts leaks).Execution),
     start.state = some ⟨horizon - anchor.environmentRecall.length, none, anchor⟩ →
@@ -83,11 +80,15 @@ structure OnePacketAssessmentFidelity
           (fun final => sourceReadout setup timeouts leaks final.state) =
         sourceContinuation setup (setup.intendedOpeningProfile intended.strategy) rank
           anchor.application.config
-  coverage : ∀ {who} (source : setup.intendedModel.InformationSite who)
-    (sourceHistory : setup.intendedModel.InformationHistory who source.1),
+  coverage : ∀ {who} (source : setup.intendedModel.InformationSite who),
     ∃ site : (N).InformationSite who,
-      SourceDecisionRealization setup timeouts leaks bounds horizon scheduler source site ∧
+      SourceDecisionRealization setup timeouts leaks bounds horizon scheduler source site
+  replay : ∀ {who} (source : setup.intendedModel.InformationSite who)
+    (site : (N).InformationSite who),
+    SourceDecisionRealization setup timeouts leaks bounds horizon scheduler source site →
+    ∀ sourceHistory : setup.intendedModel.InformationHistory who source.1,
       ∃ history : (N).InformationHistory who site.1,
-        nativeDecodedState setup timeouts leaks history.1.state = sourceHistory.1.state
+        intendedHistory? setup timeouts leaks bounds horizon scheduler history.1.trace =
+          some sourceHistory.1
 
 end Vegas

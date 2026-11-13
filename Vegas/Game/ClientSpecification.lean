@@ -43,6 +43,7 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
 local notation "Initial" => initialLaw setup
 local notation "app" => application setup timeouts leaks
 local notation "raw" => bounds.rawMenu timeouts leaks
+local notation "one" => bounds.onePacketMenu timeouts leaks
 local notation "model" => ReactiveApplication.ResponseMenu.information
   (bounds.rawMenu timeouts leaks) Initial horizon scheduler
 
@@ -161,6 +162,47 @@ structure ClientAssessmentRefinement
 
 variable {setup timeouts leaks bounds horizon scheduler}
 
+/-- Actual settled continuations of one assessment refinement. Matching legal
+histories retain their complete normalized terminal-history/payoff law without
+charges. Clean intended boundaries also retain source readout, ordinary payoff
+and freedom from public defaults and failed reveals. -/
+def ClientContinuationCorrectness
+    (intended : setup.intendedModel.BehavioralAssessment)
+    (assessment : (model).BehavioralAssessment)
+    (refinement : ClientAssessmentRefinement setup timeouts leaks bounds horizon scheduler
+      intended assessment) : Prop :=
+  ∀ (nativeStart : ((one).protocol Initial horizon scheduler).History)
+    (rawStart : ((raw).protocol Initial horizon scheduler).History),
+    ((reactiveNormalization timeouts) leaks).history (raw)
+        (bounds.rawMenu_recall timeouts leaks) Initial horizon scheduler rawStart =
+      (bounds.onePacketRestriction timeouts leaks Initial horizon scheduler).history nativeStart →
+    (∀ final ∈ ((raw).runFrom Initial horizon scheduler assessment.strategy rawStart).support,
+      ∀ who, TerminalAudit.charge (app).stateTraffic
+        ((countAudit timeouts) leaks spec.evidenceService.sample) final.state who = 0) ∧
+    ((raw).runFrom Initial horizon scheduler assessment.strategy rawStart).bind (fun final =>
+      (spec.settlement final.state).map fun payoffs =>
+        (((reactiveNormalization timeouts) leaks).history (raw)
+          (bounds.rawMenu_recall timeouts leaks) Initial horizon scheduler final, payoffs)) =
+      ((one).runFrom Initial horizon scheduler refinement.native.strategy nativeStart).map
+        (fun final =>
+          ((bounds.onePacketRestriction timeouts leaks Initial horizon scheduler).history final,
+            exclusionBase setup timeouts parameter utility excludedPayoff leaks final.state)) ∧
+    ∀ (rank : Nat) (anchor : (app).Execution),
+      nativeStart.state = some ⟨horizon - anchor.environmentRecall.length, none, anchor⟩ →
+      ReachedBoundary setup timeouts leaks horizon scheduler rank anchor →
+      ∀ point, sourceServicePrefix? setup rank anchor.application.config = some point →
+      ProtocolState.Intended setup.program point →
+      (∀ final ∈ ((raw).runFrom Initial horizon scheduler assessment.strategy rawStart).support,
+        ∃ (control : (app).Control) (terminal : Config Player L setup.program.terminalCtx),
+          final.state = some control ∧
+          sourceReadout setup timeouts leaks final.state = some terminal ∧
+          control.execution.application.config.defaulted = ∅ ∧
+          ∀ who, failedReveals setup.program who (publicOutcome setup.program terminal) = 0) ∧
+      ((raw).runFrom Initial horizon scheduler assessment.strategy rawStart).bind
+          (fun final => spec.observation final.state) =
+        (setup.continuationLaw (setup.intendedOpeningProfile intended.strategy) (some point)).map
+          (fun terminal => (some terminal, utility (setup.parameterOutcome parameter terminal)))
+
 /-- A semantic artifact retaining the intended assessment at source decisions,
 certifying equilibrium in the bounded raw response-menu game, and preserving
 the complete source readout and settled payoff law. -/
@@ -168,10 +210,16 @@ structure ClientCompilation (intended : setup.intendedModel.BehavioralAssessment
   assessment : (model).BehavioralAssessment
   refinement : ClientAssessmentRefinement setup timeouts leaks bounds horizon scheduler
     intended assessment
+  nativeEquilibrium : refinement.native.IsSequentialEquilibrium
+    ((bounds.onePacketMenu timeouts leaks).decisionInformationAntichain Initial horizon scheduler)
+    ((bounds.onePacketMenu timeouts leaks).bounded Initial horizon scheduler).wellFoundedHistories
+    (fun who final => exclusionBase setup timeouts parameter utility excludedPayoff leaks
+      final.state who)
   equilibrium : assessment.IsSequentialEquilibrium
     ((raw).decisionInformationAntichain Initial horizon scheduler)
     ((raw).bounded Initial horizon scheduler).wellFoundedHistories
     (fun who final => spec.payoff who final.state)
+  continuation : ClientContinuationCorrectness spec intended assessment refinement
   noDefaults : ∀ final ∈ ((raw).run Initial horizon scheduler assessment.strategy).support,
     ∀ control, final.state = some control → control.execution.application.config.defaulted = ∅
   noCharges : ∀ final ∈ ((raw).run Initial horizon scheduler assessment.strategy).support,

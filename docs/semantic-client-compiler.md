@@ -57,12 +57,15 @@ specification is fixed before selecting the source equilibrium.
 `Vegas.ClientSpec.compile` returns a `ClientCompilation` with:
 
 * a bounded raw-menu assessment with consistent beliefs;
+* sequential equilibrium of the same retained one-packet assessment;
 * one common intended-assessment refinement, covering every intended decision
   history and retaining its source decision laws and actual replay posteriors;
 * whole-continuation sequential rationality against that menu's behavioral
   policies, including off-path decisions;
 * no public defaults or audit charges on its supported paths;
-* the exact joint full source-configuration/default-history and settled-payoff law.
+* the exact joint full source-configuration/default-history and settled-payoff law;
+* actual settled continuation laws at every represented legal history, with
+  source correctness and clean play from represented intended boundaries.
 
 `ClientCompilation.equilibrium` is the full terminal-play sequential-equilibrium
 predicate, including the same belief-consistency requirement. The complete
@@ -75,25 +78,32 @@ bound or sufficiency proof.
 its exact extension to the selected raw assessment. Its
 [`OnePacketAssessmentFidelity`](../Vegas/Game/OnePacketAssessmentFidelity.lean)
 certificate identifies genuine first source decisions: the intended source
-view is displayed, the input is clear and forced, no compatible history owes
-the owner a source failure, and its pending event has no earlier activation.
+view is displayed, the site is forced, and its pending event has no earlier
+activation. In a well-formed setup, the projected intended view entails no
+public default and no own source debt; callers supply neither as a premise.
 At every such site the native choice law equals the canonical realization
 `honestChoice` of the supplied intended strategy. This is pointwise agreement,
 including at sites of zero equilibrium probability.
 
-At clear, forced, debt-free own-turn sites whose projection is an intended
+At forced own-turn sites whose projection is an intended
 decision, the actual partial replay law of the native posterior equals the
 supplied intended posterior on complete source histories. Replay failure has
-zero posterior mass. The certificate covers every intended decision history
-with a legal first native activation decoding to the exact same source state;
-every retained native site also has a corresponding raw site.
+zero posterior mass. Every intended information site has a native realization.
+At each such corresponding native site, every legal history in its intended
+source information set has a native history that replays to it exactly,
+including histories of zero probability under the preserved equilibrium.
+Every retained native site also has a corresponding raw site.
 
 From any legal clean scheduler boundary decoding to an intended source state,
 the native continuation has the intended full configuration law. The
-[joint continuation law](../Vegas/Game/OnePacketContinuationPayoff.lean)
-also retains the actual exclusion base payoff vector. The initialized
-settled-payoff and no-charge guarantees are the artifact's
-`ClientCompilation.outcomeLaw` and `ClientCompilation.noCharges` fields.
+[settled continuation contract](../Vegas/Game/ClientContinuation.lean)
+retains the complete normalized terminal history jointly with the actual
+settled payoff vector, with zero audit charges, from every matching legal
+one-packet/raw history pair. At clean intended source boundaries it retains the
+joint full source configuration and ordinary utility vector, with no defaults
+or failed reveals. The artifact stores this as `ClientCompilation.continuation`,
+in addition to the initialized guarantees in `ClientCompilation.outcomeLaw`
+and `ClientCompilation.noCharges`.
 
 The [audit and raw-alias transport](../Vegas/Game/OnePacketAssessmentExtension.lean)
 retains local strategies and complete normalized-history posteriors at
@@ -101,12 +111,17 @@ corresponding sites, and complete continuation histories when the normalized
 raw starting history equals its embedded one-packet history. This full history
 correspondence is stronger than equality of the decoded source view.
 [Physical fidelity](../Vegas/Game/ClientAssessmentFidelity.lean) carries the
-intended action law and clean-boundary readout continuation through the client
-decoder. No pending-delivery restriction is needed for ordinary clients.
+intended action law and clean-boundary joint settled-payoff law through the
+client decoder, with no defaults, failed reveals or audit charges on supported
+continuations. No pending-delivery restriction is needed for ordinary clients.
 
 All these properties are proved for the same common limit as the equilibrium
 and stored before `ClientSpec.compile` applies `Classical.choice`. Completion
 of additional operational sites supplies the remaining native behavior.
+`ClientCompilation.nativeEquilibrium` retains the full sequential-equilibrium
+certificate of that same one-packet assessment. The auxiliary fully mixed
+reference used to prove exact replay coverage witnesses legal history
+existence; it does not select a different implementation.
 
 The artifact exposes physical `clients` and projected
 `ClientCompilation.ledgerClients` over the Interaction callback API. The latter

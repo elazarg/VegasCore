@@ -129,7 +129,10 @@ public import Vegas.Game.OnePacketSourceCoverage
 public import Vegas.Game.OnePacketRawCoverage
 public import Vegas.Game.OnePacketDecisionRealization
 public import Vegas.Game.OnePacketDecisionCoverage
+public import Vegas.Game.OnePacketProjectedSite
+public import Vegas.Game.OnePacketReplayCoverage
 public import Vegas.Game.ClientAssessmentFidelity
+public import Vegas.Game.ClientContinuation
 public import Vegas.Game.OnePacketFactorBounds
 public import Vegas.Game.OnePacketFactorization
 public import Vegas.Game.OnePacketFailureBridge
