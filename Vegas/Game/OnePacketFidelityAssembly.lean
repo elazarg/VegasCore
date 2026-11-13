@@ -4,6 +4,7 @@ module
 
 public import Vegas.Game.OnePacketAssessmentFidelity
 public import Vegas.Game.OnePacketDecisionCoverage
+public import Vegas.Game.OnePacketReplayCoverage
 
 @[expose] public section
 
@@ -75,23 +76,33 @@ theorem onePacketAssembled_limit_fidelity
     (timely : (AsyncTimely timeouts) delay bound) :
     OnePacketAssessmentFidelity setup timeouts leaks bounds horizon scheduler intended native := by
   classical
-  refine ⟨?_, ?_, ?_, ?_⟩
+  refine ⟨?_, ?_, ?_, ?_, ?_⟩
   · intro who sourceSite site realization
     exact onePacketAssembled_limit_strategy_of_firstActivation setup timeouts leaks bounds horizon
       scheduler sequence scale positive le_one vanishes weights target assembled index increasing
       sourceConverges nativeConverges site sourceSite realization.projected realization.first
-      realization.forced realization.clear
-  · intro who site clear forced debtFree past view atSite event turn decision
+      realization.forced
+      (clearInput_of_projected_intended_site wellFormed sourceSite site realization.projected)
+  · intro who sourceSite site projected forced past view atSite event turn
+    have clear := clearInput_of_projected_intended_site wellFormed sourceSite site projected
+    have debtFree := siteDebtFree_of_projected_intended_site wellFormed sourceSite site projected
     have notFree : ¬ FreeAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler
         ((N).agentAt site) := not_not.mpr ⟨clear, forced⟩
     have notOwing : ¬ OwingAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler
         ((N).agentAt site) := by
       rintro ⟨history, point, decoded, owes⟩
       exact debtFree history point decoded owes
-    exact assembled_limit_belief_replay_law setup timeouts leaks bounds horizon scheduler wellFormed
+    have decision : setup.intendedModel.IsDecisionInfo who
+        (projectView setup timeouts leaks who site.1) := projected ▸ sourceSite.2
+    have sourceEq : projectedSite setup timeouts leaks decision = sourceSite :=
+      Subtype.ext projected.symm
+    have law := assembled_limit_belief_replay_law setup timeouts leaks bounds horizon scheduler
+      wellFormed
       independent observable sequence sourceMixed sourceBayes scale positive le_one scaleEq covers
       coversInputs capacity weights target assembled mixed bayes intended native sourceConverges
       index increasing nativeConverges site notFree notOwing atSite turn decision
+    exact law.trans (congrArg (fun source : setup.intendedModel.InformationSite who =>
+      (intended.belief who source).map (fun history => some history.1)) sourceEq)
   · intro rank start anchor state boundary point decoded pointIntended
     rw [ReactiveApplication.ResponseMenu.runFrom_eq_terminal]
     exact OnePacketComparison.assembled_boundary_readout_law_of_converges wellFormed covers
@@ -105,8 +116,8 @@ theorem onePacketAssembled_limit_fidelity
         ((menu).toRawTrace (initialLaw setup) horizon scheduler trace) ended)
       ((menu).bounded (initialLaw setup) horizon scheduler).wellFoundedHistories rank start anchor
       state boundary point decoded pointIntended
-  · intro who sourceSite sourceHistory
-    exact exists_sourceDecisionRealization_of_intended_history wellFormed
+  · intro who sourceSite
+    exact exists_sourceDecisionRealization wellFormed
       (fun control trace _ => opportunity control
         ((menu).toRawTrace (initialLaw setup) horizon scheduler trace))
       (fun control trace _ => inclusion control
@@ -114,7 +125,11 @@ theorem onePacketAssembled_limit_fidelity
       (fun control trace _ ended => completes control
         ((menu).toRawTrace (initialLaw setup) horizon scheduler trace) ended)
       covers capacity ((menu).bounded (initialLaw setup) horizon scheduler).wellFoundedHistories
-      (sequence 0) (sourceMixed 0) sourceSite sourceHistory
+      (sequence 0) (sourceMixed 0) sourceSite
+  · intro who sourceSite site realization sourceHistory
+    exact exists_native_replay_at_sourceDecision setup timeouts leaks bounds horizon scheduler
+      wellFormed independent observable covers coversInputs capacity (sequence 0) (sourceMixed 0)
+      (sourceBayes 0) sourceSite site realization sourceHistory
 
 omit [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
   [Finite setup.intendedProtocol.History]
@@ -135,14 +150,7 @@ theorem OnePacketAssessmentFidelity.belief_of_realization
     (intended.belief who sourceSite).map (fun history => some history.1) := by
   obtain ⟨past, view, event, atSite, pending, _first⟩ := realization.first
   have turn := (pendingEvent_spec (by simpa only [atSite] using pending)).1
-  have decision : setup.intendedModel.IsDecisionInfo who
-      (projectView setup timeouts leaks who site.1) := realization.projected ▸ sourceSite.2
-  have sourceEq : projectedSite setup timeouts leaks decision = sourceSite :=
-    Subtype.ext realization.projected.symm
-  let replayLaw := fun source : setup.intendedModel.InformationSite who =>
-    (intended.belief who source).map (fun history => some history.1)
-  exact (fidelity.belief site realization.clear realization.forced realization.debtFree atSite
-    turn decision).trans (congrArg replayLaw sourceEq)
+  exact fidelity.belief sourceSite site realization.projected realization.forced atSite turn
 
 omit [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
   [Finite setup.intendedProtocol.History]

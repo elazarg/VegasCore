@@ -5,7 +5,6 @@ module
 public import Vegas.Game.OnePacketAssessmentFidelity
 public import Vegas.Game.OnePacketBoundaryWaiting
 public import Vegas.Game.OnePacketDecodedActor
-public import Vegas.Game.SourceDebtObservation
 
 @[expose] public section
 
@@ -119,23 +118,15 @@ theorem exists_sourceDecisionRealization_of_boundary
   have nativeDecoded : nativeDecodedState setup timeouts leaks callback.state = some point := by
     rw [current]
     exact nextActual
-  refine ⟨site, ⟨?_, ?_, ?_, ?_, ?_⟩, ⟨callback, observed⟩, nativeDecoded⟩
+  refine ⟨site, ⟨?_, ?_, ?_⟩, ⟨callback, observed⟩, nativeDecoded⟩
   · have sourceInfo : source.1 = setup.protocolObserve who (some point) := by
       rw [← sourceHistory.2, setup.intended_info, sourceState]
     exact sourceInfo.trans
       (projectView_observe setup timeouts leaks who execution rank nextOrdered point nextDecoded
         (execution.logs who)).symm
-  · have someInfo : ((N).infoOf who callback.trace).isSome := by rw [observed]; rfl
-    have displayed := OnePacketComparison.clearInput_of_intended setup timeouts leaks bounds
-      horizon scheduler callback current nextActual intended who someInfo
-    simpa only [observed] using displayed
   · refine ⟨callback, observed, ?_⟩
     rw [current]
     exact ⟨rank, point, nextOrdered, nextDecoded, forcedPoint_of_intended who intended⟩
-  · intro other otherPoint otherDecoded owed
-    exact ProtocolState.Intended.not_owesFailure who setup.program point intended
-      ((owesFailure_iff_of_infoOf (timeouts := timeouts) other ⟨callback, observed⟩
-        otherDecoded nativeDecoded).mp owed)
   · exact ⟨execution.logs who, execution.observe (application setup timeouts leaks) who,
       event, rfl, pending, never⟩
 

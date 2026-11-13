@@ -15,6 +15,7 @@ public import Vegas.Game.AsyncServiceRawNash
 public import Vegas.Game.AsyncClientObservables
 public import Vegas.Game.ProgramPaymentAsyncNash
 public import Vegas.Game.ClientCompiler
+public import Vegas.Game.ClientAssessmentFidelity
 public import Vegas.Game.PaymentPreservation
 public import Vegas.Examples.OddsEvensRawEquilibrium
 public import Vegas.Examples.OddsEvensFullSource
@@ -761,8 +762,10 @@ and authentic evidence collection conditions. `ClientCompilation` retains the
 selected raw assessment, its sequential equilibrium, absence of public defaults
 and charges, and the joint complete source-configuration/settled-payoff law.
 Its refinement certificate retains the intended strategy and actual replay
-posterior at genuine source decisions, covers every intended decision history,
-and preserves clean-boundary continuations through the audit and raw aliases.
+posterior at genuine source decisions. Every source history has an exact replay
+preimage at every corresponding native site. The same retained native assessment
+is sequentially rational, and matching continuations preserve complete normalized
+histories jointly with actual settled payoffs through the audit and raw aliases.
 -/
 
 
@@ -858,6 +861,46 @@ theorem Vegas.Paper.compile_ledger_correct
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.compile_ledger_correct
+
+/-- Physical continuations at represented clean source boundaries preserve
+ordinary source utility jointly with the full source configuration, without
+defaults, failed reveals or audit charges, including off-path boundaries. -/
+theorem Vegas.Paper.clients_continuation
+    {spec : ClientSpec setup timeouts leaks bounds horizon scheduler
+      parameter utility excludedPayoff}
+    {intended : setup.intendedModel.BehavioralAssessment}
+    (compiled : ClientCompilation spec intended)
+    (rank : Nat)
+    (nativeStart : ((bounds.onePacketMenu timeouts leaks).protocol Initial horizon
+      scheduler).History)
+    (rawStart : ((raw).protocol Initial horizon scheduler).History)
+    (same : ((reactiveNormalization timeouts) leaks).history (raw)
+      (bounds.rawMenu_recall timeouts leaks) Initial horizon scheduler rawStart =
+      (bounds.onePacketRestriction timeouts leaks Initial horizon scheduler).history nativeStart)
+    (anchor : (app).Execution)
+    (state : nativeStart.state = some ⟨horizon - anchor.environmentRecall.length, none, anchor⟩)
+    (boundary : ReachedBoundary setup timeouts leaks horizon scheduler rank anchor)
+    (point : ProtocolState setup.program)
+    (decoded : sourceServicePrefix? setup rank anchor.application.config = some point)
+    (valid : ProtocolState.Intended setup.program point) :
+    ((app).finish Initial horizon scheduler compiled.clients rawStart.state).bind spec.observation =
+      (setup.continuationLaw (setup.intendedOpeningProfile intended.strategy) (some point)).map
+        (fun terminal => (some terminal, utility (setup.parameterOutcome parameter terminal))) ∧
+    ∀ outcome ∈ ((app).finish Initial horizon scheduler compiled.clients rawStart.state).support,
+      ∃ (control : (app).Control) (terminal : Config Player L setup.program.terminalCtx),
+        outcome = some control ∧
+        sourceReadout setup timeouts leaks outcome = some terminal ∧
+        control.execution.application.config.defaulted = ∅ ∧
+        (∀ who, failedReveals setup.program who (publicOutcome setup.program terminal) = 0) ∧
+        ∀ who, TerminalAudit.charge (app).stateTraffic
+          ((countAudit timeouts) leaks spec.evidenceService.sample) outcome who = 0 :=
+  compiled.clients_continuation_at_sourceBoundary rank nativeStart rawStart same anchor state
+    boundary point decoded valid
+
+/-- info: 'Vegas.Paper.clients_continuation' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.clients_continuation
 
 theorem Vegas.Paper.clients_sequentiallyRational
     {spec : ClientSpec setup timeouts leaks bounds horizon scheduler

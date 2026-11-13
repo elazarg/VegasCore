@@ -3,6 +3,7 @@ module
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 public import Vegas.Game.ClientSpecification
+public import Vegas.Game.ClientContinuation
 public import Vegas.Game.OnePacketEquilibriumPreservation
 public import Vegas.Game.OnePacketRawLaw
 
@@ -72,7 +73,8 @@ theorem intended_raw_sequentialEquilibrium_preserved
     bounds.exists_raw_site_of_onePacket_site timeouts leaks Initial horizon scheduler,
     MessageBounds.ExtendsOnePacketAssessment.runFrom_history_map bounds timeouts leaks Initial
       horizon scheduler refinement⟩
-  refine ⟨⟨target, assessmentRefinement, fullNativeSE, fullSE, ?_, clean, joint⟩⟩
+  refine ⟨⟨target, assessmentRefinement, fullNativeSE, fullSE,
+    assessmentRefinement.continuation_correct spec, ?_, clean, joint⟩⟩
   intro final supported control current
   let raw := bounds.rawMenu timeouts leaks
   let normalize := ((reactiveNormalization timeouts) leaks).state

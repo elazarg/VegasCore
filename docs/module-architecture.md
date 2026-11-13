@@ -89,13 +89,20 @@ a consistent bounded-menu completion uniformly for each source equilibrium.
 The [assessment fidelity contract](../Vegas/Game/OnePacketAssessmentFidelity.lean)
 retains intended decision laws, actual replay posteriors and clean-boundary
 continuations of that common completion. Its assembly owner combines strategy,
-belief and continuation limits; source-history and decision-coverage owners
-prove that every intended decision history has a genuine native realization.
+belief and continuation limits. Projected-site adapters derive cleanliness and
+own-debt freedom from the intended source view. Decision coverage supplies a
+genuine native site for every intended site; exact replay coverage realizes
+every legal history in that source fiber at every corresponding native site.
 The [raw assessment transport](../Vegas/Game/OnePacketAssessmentExtension.lean)
 keeps corresponding local laws and complete normalized history laws through
 the audit and private response aliases. The
 [physical fidelity adapter](../Vegas/Game/ClientAssessmentFidelity.lean) composes
 that certificate with the existing callback decoder.
+The [audited continuation contract](../Vegas/Game/ClientContinuation.lean)
+retains complete normalized histories jointly with actual settled payoff from
+matching legal starts, and clean source/physical continuations with ordinary
+source utility. Its certificate and the retained native SE are stored in the
+compiled artifact before selection.
 [Ledger assessment realization](../Interaction/ReactiveLedgerAssessment.lean)
 identifies complete physical continuations and source-independent client laws.
 The [compiler guide](semantic-client-compiler.md) distinguishes this semantic

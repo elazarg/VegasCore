@@ -40,11 +40,14 @@ The returned artifact also retains the supplied intended assessment through
 [`ClientAssessmentRefinement`](../Vegas/Game/ClientSpecification.lean).
 At genuine first source decisions its strategy is the canonical intended law;
 its actual replay posterior is the intended posterior, including off-path
-sites. Every intended decision history has a legal native realization with
-the same decoded source state and a raw counterpart. Clean source boundaries
-retain their intended continuation readout law, with exact audit/raw-alias
-transport at corresponding histories. These certificates concern the same
-selected assessment as the equilibrium and initialized settled-payoff law.
+sites. Every intended information site has a native realization and raw
+counterpart; at each corresponding native site, every legal source history
+has an exact replay preimage. Matching legal starts preserve complete normalized
+terminal histories jointly with actual settled payoffs and zero charges.
+Clean source boundaries retain ordinary source utility, no defaults and no
+failed reveals, also for decoded physical clients. These certificates and the
+retained one-packet SE concern the same selected assessment as the raw
+equilibrium and initialized settled-payoff law.
 
 The monetary specialization
 `Vegas.intended_raw_programPayments_preserved` in
