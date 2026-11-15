@@ -60,34 +60,8 @@ def concurrentPayoff (setup : Setup (Player := Player) (L := L)) {Parameter : Ty
   if terminal : config.cut.Terminal then
     exclusionUtility setup.program excludedPayoff utility
       (setup.eventParameterOutcome parameter
-        ⟨setup.rankedConfig config terminal, setup.rankedConfig_terminal config terminal⟩) who
+        ⟨rankedConfig config terminal, rankedConfig_terminal config terminal⟩) who
   else excludedPayoff who
-
-omit [DecidableEq Player] in
-private theorem config_eq_of_data_eq {graph : Vegas.EventGraph Player L}
-    {left right : graph.Config} (inputs : left.inputs = right.inputs)
-    (cut : left.cut = right.cut) (outputs : left.outputs = right.outputs)
-    (history : left.history = right.history) : left = right := by
-  cases left
-  cases right
-  simp_all
-
-/-- The source-order recasting depends only on the order-free final state. -/
-theorem rankedConfig_congr (setup : Setup (Player := Player) (L := L))
-    {left right : setup.concurrentRevealGraph.Config} (same : runKey left = runKey right)
-    (leftTerminal : left.cut.Terminal) (rightTerminal : right.cut.Terminal) :
-    setup.rankedConfig left leftTerminal = setup.rankedConfig right rightTerminal := by
-  have store : left.store = right.store := congrArg (fun key => key.2.1) same
-  have records : completionOf left = completionOf right := congrArg (fun key => key.2.2) same
-  apply config_eq_of_data_eq
-  · funext input
-    exact Option.some.inj (congrFun store (.inl input))
-  · rfl
-  · funext event
-    exact congrFun store (.inr event)
-  · change (List.finRange _).filterMap (completionOf left) =
-      (List.finRange _).filterMap (completionOf right)
-    rw [records]
 
 theorem concurrentPayoff_factors (setup : Setup (Player := Player) (L := L)) {Parameter : Type}
     (parameter : State L setup.context → Parameter)
@@ -101,11 +75,11 @@ theorem concurrentPayoff_factors (setup : Setup (Player := Player) (L := L)) {Pa
   by_cases terminal : left.cut.Terminal
   · have rightTerminal : right.cut.Terminal := cut ▸ terminal
     rw [dite_eq_left terminal, dite_eq_left rightTerminal]
-    have outcome : (⟨setup.rankedConfig left terminal, setup.rankedConfig_terminal left terminal⟩ :
+    have outcome : (⟨rankedConfig left terminal, rankedConfig_terminal left terminal⟩ :
           {config : setup.eventGraph.Config // config.cut.Terminal}) =
-        ⟨setup.rankedConfig right rightTerminal,
-          setup.rankedConfig_terminal right rightTerminal⟩ :=
-      Subtype.ext (setup.rankedConfig_congr same terminal rightTerminal)
+        ⟨rankedConfig right rightTerminal,
+          rankedConfig_terminal right rightTerminal⟩ :=
+      Subtype.ext (rankedConfig_congr same terminal rightTerminal)
     rw [outcome]
   · have rightTerminal : ¬ right.cut.Terminal := cut ▸ terminal
     rw [dite_eq_right terminal, dite_eq_right rightTerminal]
@@ -120,7 +94,7 @@ theorem concurrentPayoff_of_defaulted (setup : Setup (Player := Player) (L := L)
   by_cases terminal : config.cut.Terminal
   · rw [dite_eq_left terminal]
     apply exclusionUtility_of_defaulted
-    change who ∈ (setup.rankedConfig config terminal).defaulted
+    change who ∈ (rankedConfig config terminal).defaulted
     rw [defaulted_rankedConfig]
     exact defaulted
   · rw [dite_eq_right terminal]
@@ -216,9 +190,10 @@ theorem expect_concurrentPayoff_canonical (setup : Setup (Player := Player) (L :
     terminal
   simp only [Function.comp_apply, concurrentPayoff, readout, dite_eq_left viewTerminal,
     dite_eq_left terminal]
-  have recast := setup.rankedConfig_fromSequentialConfig reach viewTerminal
-  have outcome : (⟨setup.rankedConfig (setup.concurrentRevealGraph.fromSequentialConfig config)
-        viewTerminal, setup.rankedConfig_terminal _ viewTerminal⟩ :
+  have recast := rankedConfig_fromSequentialConfig
+    (graph := setup.concurrentRevealGraph) reach viewTerminal
+  have outcome : (⟨rankedConfig (setup.concurrentRevealGraph.fromSequentialConfig config)
+        viewTerminal, rankedConfig_terminal _ viewTerminal⟩ :
           {config : setup.eventGraph.Config // config.cut.Terminal}) = ⟨config, terminal⟩ :=
     Subtype.ext recast
   rw [outcome]
@@ -339,7 +314,7 @@ def concurrentReadout (setup : Setup (Player := Player) (L := L))
     (outcome : setup.concurrentRevealGraph.gameSignature.Outcome) :
     Config Player L setup.program.terminalCtx :=
   terminalConfig setup.program
-    ⟨setup.rankedConfig outcome.1 outcome.2, setup.rankedConfig_terminal outcome.1 outcome.2⟩
+    ⟨rankedConfig outcome.1 outcome.2, rankedConfig_terminal outcome.1 outcome.2⟩
 
 /-- The source-order readout and payoffs of a concurrent configuration. -/
 def concurrentObservation (setup : Setup (Player := Player) (L := L)) {Parameter : Type}
@@ -349,7 +324,7 @@ def concurrentObservation (setup : Setup (Player := Player) (L := L)) {Parameter
     Option (Config Player L setup.program.terminalCtx) × (Player → ℝ) :=
   (if terminal : config.cut.Terminal then
       some (terminalConfig setup.program
-        ⟨setup.rankedConfig config terminal, setup.rankedConfig_terminal config terminal⟩)
+        ⟨rankedConfig config terminal, rankedConfig_terminal config terminal⟩)
     else none,
     fun who => setup.concurrentPayoff parameter utility excludedPayoff who config)
 
@@ -367,11 +342,11 @@ private theorem concurrentObservation_factors (setup : Setup (Player := Player) 
   by_cases terminal : left.cut.Terminal
   · have rightTerminal : right.cut.Terminal := cut ▸ terminal
     simp only [dite_eq_left terminal, dite_eq_left rightTerminal]
-    have outcome : (⟨setup.rankedConfig left terminal, setup.rankedConfig_terminal left terminal⟩ :
+    have outcome : (⟨rankedConfig left terminal, rankedConfig_terminal left terminal⟩ :
           {config : setup.eventGraph.Config // config.cut.Terminal}) =
-        ⟨setup.rankedConfig right rightTerminal,
-          setup.rankedConfig_terminal right rightTerminal⟩ :=
-      Subtype.ext (setup.rankedConfig_congr same terminal rightTerminal)
+        ⟨rankedConfig right rightTerminal,
+          rankedConfig_terminal right rightTerminal⟩ :=
+      Subtype.ext (rankedConfig_congr same terminal rightTerminal)
     rw [outcome]
   · have rightTerminal : ¬ right.cut.Terminal := cut ▸ terminal
     simp only [dite_eq_right terminal, dite_eq_right rightTerminal]
@@ -424,9 +399,10 @@ private theorem canonical_concurrentObservation_law (setup : Setup (Player := Pl
   have terminal := setup.eventGraph.runPolicies_terminal _ profile initial config member
   have viewTerminal : (setup.concurrentRevealGraph.fromSequentialConfig config).cut.Terminal :=
     terminal
-  have recast := setup.rankedConfig_fromSequentialConfig reach viewTerminal
-  have outcome : (⟨setup.rankedConfig (setup.concurrentRevealGraph.fromSequentialConfig config)
-        viewTerminal, setup.rankedConfig_terminal _ viewTerminal⟩ :
+  have recast := rankedConfig_fromSequentialConfig
+    (graph := setup.concurrentRevealGraph) reach viewTerminal
+  have outcome : (⟨rankedConfig (setup.concurrentRevealGraph.fromSequentialConfig config)
+        viewTerminal, rankedConfig_terminal _ viewTerminal⟩ :
           {config : setup.eventGraph.Config // config.cut.Terminal}) = ⟨config, terminal⟩ :=
     Subtype.ext recast
   simp only [Function.comp_apply, concurrentObservation, concurrentPayoff, readout,

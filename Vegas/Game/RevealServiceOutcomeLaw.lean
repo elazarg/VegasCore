@@ -36,19 +36,20 @@ theorem concurrentRankedRead_fromSequential (setup : Setup (Player := Player) (L
       some (terminalConfig setup.program ⟨config, terminal⟩) := by
   have viewTerminal : (setup.concurrentRevealGraph.fromSequentialConfig config).cut.Terminal :=
     terminal
-  have recast := setup.rankedConfig_fromSequentialConfig reach viewTerminal
+  have recast := rankedConfig_fromSequentialConfig
+    (graph := setup.concurrentRevealGraph) reach viewTerminal
   unfold concurrentRankedRead
   rw [ite_eq_left viewTerminal]
   have viaRanked : decodeConfig? setup.program setup.program
       (ContextRefs.initial setup.context (outputLayout setup.program))
       (Revelations.initial setup.context) [] (outputEmbedding setup.program)
       (setup.concurrentRevealGraph.fromSequentialConfig config).store
-      (Setup.rankedHistory (graph := setup.concurrentRevealGraph)
+      (EventGraph.rankedHistory (graph := setup.concurrentRevealGraph)
         (setup.concurrentRevealGraph.fromSequentialConfig config)) =
     decodeConfig? setup.program setup.program
       (ContextRefs.initial setup.context (outputLayout setup.program))
       (Revelations.initial setup.context) [] (outputEmbedding setup.program)
-      (setup.rankedConfig _ viewTerminal).store (setup.rankedConfig _ viewTerminal).history := by
+      (rankedConfig _ viewTerminal).store (rankedConfig _ viewTerminal).history := by
     congr 1
     funext field
     cases field <;> rfl
@@ -81,8 +82,8 @@ theorem concurrentStateRead_erase (setup : Setup (Player := Player) (L := L)) {O
     (read : State L setup.program.terminalCtx × DefaultHistory Player → Outcome)
     (config : (serviceGraph setup .concurrentReveals).Config) :
     concurrentStateRead setup read config.erase = concurrentStateRead setup read config := by
-  have defaultsEq : Vegas.EventCompletion.defaults (Setup.rankedHistory config.erase) =
-      Vegas.EventCompletion.defaults (Setup.rankedHistory config) := by
+  have defaultsEq : Vegas.EventCompletion.defaults (EventGraph.rankedHistory config.erase) =
+      Vegas.EventCompletion.defaults (EventGraph.rankedHistory config) := by
     rw [rankedHistory_erase]
     unfold Vegas.EventCompletion.defaults
     simp only [List.map_map, Function.comp_def, eraseCompletion_defaultEvent]

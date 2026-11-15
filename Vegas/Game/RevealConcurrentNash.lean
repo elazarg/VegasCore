@@ -62,13 +62,13 @@ theorem concurrentRankedRead_terminal (setup : Setup (Player := Player) (L := L)
     concurrentRankedRead setup config = some (setup.concurrentReadout ⟨config, terminal⟩) := by
   unfold concurrentRankedRead
   rw [ite_eq_left terminal]
-  have storeEq : (setup.rankedConfig config terminal).store = config.store := by
+  have storeEq : (rankedConfig config terminal).store = config.store := by
     funext field
     cases field <;> rfl
   have decoded := decodeConfig?_terminal setup.program
-    ⟨setup.rankedConfig config terminal, setup.rankedConfig_terminal config terminal⟩
-  change decodeConfig? _ _ _ _ _ _ (setup.rankedConfig config terminal).store
-    (setup.rankedConfig config terminal).history = _ at decoded
+    ⟨rankedConfig config terminal, rankedConfig_terminal config terminal⟩
+  change decodeConfig? _ _ _ _ _ _ (rankedConfig config terminal).store
+    (rankedConfig config terminal).history = _ at decoded
   rw [storeEq] at decoded
   exact decoded
 

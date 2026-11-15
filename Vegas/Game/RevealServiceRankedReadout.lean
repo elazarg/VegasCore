@@ -44,7 +44,7 @@ def serviceRankedReadout (state : (serviceApplication setup mode duration leaks)
       Vegas.decodeConfig? setup.program setup.program
         (ContextRefs.initial setup.context (outputLayout setup.program))
         (Revelations.initial setup.context) [] (outputEmbedding setup.program) config.store
-        (Setup.rankedHistory (graph := serviceGraph setup mode) config)
+        (EventGraph.rankedHistory (graph := serviceGraph setup mode) config)
     else none
 
 omit [DecidableEq Player] in
@@ -53,7 +53,7 @@ theorem rankedHistory_eq_of_rankSort {graph : Vegas.EventGraph Player L}
     (config : graph.Config)
     (ordered : graph.rankSort (config.history.map EventCompletion.event) =
       config.history.map EventCompletion.event) :
-    Setup.rankedHistory config = config.history := by
+    EventGraph.rankedHistory config = config.history := by
   have records : ∀ completion ∈ config.history,
       completionOf config completion.event = some completion := fun completion member =>
     (completionOf_eq_some_iff config completion.event completion).mpr ⟨member, rfl⟩
@@ -70,7 +70,7 @@ theorem rankedHistory_eq_of_rankSort {graph : Vegas.EventGraph Player L}
           ← config.history_exact]
         exact member
       simp [member, absent]
-  unfold Setup.rankedHistory
+  unfold EventGraph.rankedHistory
   rw [restricted]
   change (graph.rankSort (config.history.map EventCompletion.event)).filterMap _ = _
   rw [ordered, List.filterMap_map]

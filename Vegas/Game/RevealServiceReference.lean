@@ -79,7 +79,7 @@ def concurrentRankedRead (setup : Setup (Player := Player) (L := L))
     Vegas.decodeConfig? setup.program setup.program
       (ContextRefs.initial setup.context (outputLayout setup.program))
       (Revelations.initial setup.context) [] (outputEmbedding setup.program) config.store
-      (Setup.rankedHistory (graph := serviceGraph setup .concurrentReveals) config)
+      (EventGraph.rankedHistory (graph := serviceGraph setup .concurrentReveals) config)
   else none
 
 /-- The instruction-order reader depends only on the order-free key. -/
@@ -90,17 +90,17 @@ theorem concurrentRankedRead_congr (setup : Setup (Player := Player) (L := L))
   have cut : left.cut = right.cut := congrArg Prod.fst same
   have store : left.store = right.store := congrArg (fun key => key.2.1) same
   have records : completionOf left = completionOf right := congrArg (fun key => key.2.2) same
-  have history : Setup.rankedHistory left = Setup.rankedHistory right := by
-    unfold Setup.rankedHistory
+  have history : EventGraph.rankedHistory left = EventGraph.rankedHistory right := by
+    unfold EventGraph.rankedHistory
     rw [records]
   unfold concurrentRankedRead
   rw [cut, store, history]
 
 /-- The ranked history of an erasure is the erased ranked history. -/
 theorem rankedHistory_erase {graph : EventGraph Player L} (config : graph.Config) :
-    Setup.rankedHistory config.erase =
-      (Setup.rankedHistory config).map (graph.eraseCompletion config.defaulted) := by
-  unfold Setup.rankedHistory
+    EventGraph.rankedHistory config.erase =
+      (EventGraph.rankedHistory config).map (graph.eraseCompletion config.defaulted) := by
+  unfold EventGraph.rankedHistory
   simp only [completionOf_erase]
   generalize List.finRange graph.order.eventCount = events
   induction events with
@@ -122,8 +122,8 @@ theorem concurrentOutcome_erase {Parameter : Type} (setup : Setup (Player := Pla
     (parameter : State L setup.context → Parameter)
     (config : (serviceGraph setup .concurrentReveals).Config) :
     concurrentOutcome setup parameter config.erase = concurrentOutcome setup parameter config := by
-  have defaultsEq : Vegas.EventCompletion.defaults (Setup.rankedHistory config.erase) =
-      Vegas.EventCompletion.defaults (Setup.rankedHistory config) := by
+  have defaultsEq : Vegas.EventCompletion.defaults (EventGraph.rankedHistory config.erase) =
+      Vegas.EventCompletion.defaults (EventGraph.rankedHistory config) := by
     rw [rankedHistory_erase]
     unfold Vegas.EventCompletion.defaults
     simp only [List.map_map, Function.comp_def, eraseCompletion_defaultEvent]

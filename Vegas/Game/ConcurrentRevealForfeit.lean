@@ -33,7 +33,7 @@ def concurrentForfeitPayoff (setup : Setup (Player := Player) (L := L)) {Paramet
     (outcome : setup.concurrentRevealGraph.gameSignature.Outcome) (who : Player) : ℝ :=
   forfeitUtility setup.program forfeit utility
     (setup.eventParameterOutcome parameter
-      ⟨setup.rankedConfig outcome.1 outcome.2, setup.rankedConfig_terminal outcome.1 outcome.2⟩)
+      ⟨rankedConfig outcome.1 outcome.2, rankedConfig_terminal outcome.1 outcome.2⟩)
     who
 
 /-- A defaulted player of a reachable concurrent terminal configuration has
@@ -44,7 +44,7 @@ theorem failedReveals_pos_of_concurrent_defaulted (setup : Setup (Player := Play
     (defaulted : who ∈ config.defaulted) :
     1 ≤ failedReveals setup.program who (publicOutcome setup.program
       (terminalConfig setup.program
-        ⟨setup.rankedConfig config terminal, setup.rankedConfig_terminal config terminal⟩)) := by
+        ⟨rankedConfig config terminal, rankedConfig_terminal config terminal⟩)) := by
   obtain ⟨reveal, actor, publication, failed⟩ := failed_publication_of_defaulted
     (graph := setup.concurrentRevealGraph) (toEventGraph_bindingsRevealed setup.program) reach
     terminal defaulted
@@ -89,9 +89,9 @@ theorem concurrentForfeitPayoff_le (setup : Setup (Player := Player) (L := L))
       setup.concurrentPayoff parameter utility (leastUtility utility) who outcome.1 := by
   have nonnegative : 0 ≤ forfeit := by
     have := range (setup.eventParameterOutcome parameter
-      ⟨setup.rankedConfig outcome.1 outcome.2, setup.rankedConfig_terminal _ _⟩)
+      ⟨rankedConfig outcome.1 outcome.2, rankedConfig_terminal _ _⟩)
       (setup.eventParameterOutcome parameter
-      ⟨setup.rankedConfig outcome.1 outcome.2, setup.rankedConfig_terminal _ _⟩) who
+      ⟨rankedConfig outcome.1 outcome.2, rankedConfig_terminal _ _⟩) who
     linarith
   unfold concurrentForfeitPayoff concurrentPayoff forfeitUtility
   rw [dite_eq_left outcome.2]
@@ -99,32 +99,32 @@ theorem concurrentForfeitPayoff_le (setup : Setup (Player := Player) (L := L))
   by_cases defaulted : who ∈ outcome.1.defaulted
   · have failed := setup.failedReveals_pos_of_concurrent_defaulted reach outcome.2 defaulted
     have shown : who ∈ (setup.eventParameterOutcome parameter
-        ⟨setup.rankedConfig outcome.1 outcome.2,
-          setup.rankedConfig_terminal outcome.1 outcome.2⟩).2.defaulted := by
-      change who ∈ (setup.rankedConfig outcome.1 outcome.2).defaulted
+        ⟨rankedConfig outcome.1 outcome.2,
+          rankedConfig_terminal outcome.1 outcome.2⟩).2.defaulted := by
+      change who ∈ (rankedConfig outcome.1 outcome.2).defaulted
       rw [defaulted_rankedConfig]
       exact defaulted
     rw [ite_eq_left shown]
     have least := sub_forfeit_le_leastUtility utility range who
       (setup.eventParameterOutcome parameter
-        ⟨setup.rankedConfig outcome.1 outcome.2, setup.rankedConfig_terminal _ _⟩)
+        ⟨rankedConfig outcome.1 outcome.2, rankedConfig_terminal _ _⟩)
     have count : (1 : ℝ) ≤ (failedReveals setup.program who (publicOutcome setup.program
-      (terminalConfig setup.program ⟨setup.rankedConfig outcome.1 outcome.2,
-        setup.rankedConfig_terminal _ _⟩)) : ℝ) := by exact_mod_cast failed
+      (terminalConfig setup.program ⟨rankedConfig outcome.1 outcome.2,
+        rankedConfig_terminal _ _⟩)) : ℝ) := by exact_mod_cast failed
     change _ - forfeit * (failedReveals setup.program who (publicOutcome setup.program
-      (terminalConfig setup.program ⟨setup.rankedConfig outcome.1 outcome.2,
-        setup.rankedConfig_terminal _ _⟩)) : ℝ) ≤ _
+      (terminalConfig setup.program ⟨rankedConfig outcome.1 outcome.2,
+        rankedConfig_terminal _ _⟩)) : ℝ) ≤ _
     nlinarith
   · have hidden : who ∉ (setup.eventParameterOutcome parameter
-        ⟨setup.rankedConfig outcome.1 outcome.2,
-          setup.rankedConfig_terminal outcome.1 outcome.2⟩).2.defaulted := by
-      change who ∉ (setup.rankedConfig outcome.1 outcome.2).defaulted
+        ⟨rankedConfig outcome.1 outcome.2,
+          rankedConfig_terminal outcome.1 outcome.2⟩).2.defaulted := by
+      change who ∉ (rankedConfig outcome.1 outcome.2).defaulted
       rw [defaulted_rankedConfig]
       exact defaulted
     rw [ite_eq_right hidden]
     have : (0 : ℝ) ≤ forfeit * (failedReveals setup.program who
-        (setup.eventParameterOutcome parameter ⟨setup.rankedConfig outcome.1 outcome.2,
-          setup.rankedConfig_terminal _ _⟩).2 : ℝ) :=
+        (setup.eventParameterOutcome parameter ⟨rankedConfig outcome.1 outcome.2,
+          rankedConfig_terminal _ _⟩).2 : ℝ) :=
       mul_nonneg nonnegative (Nat.cast_nonneg _)
     linarith
 

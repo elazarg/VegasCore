@@ -153,8 +153,8 @@ theorem concurrentReveal_intended_ledger (setup : Setup (Player := Player) (L :=
   have graphDefaults : ∀ outcome ∈ graphPlay.support, outcome.1.defaulted = ∅ := by
     intro outcome supported
     have clean := (graphClean outcome supported).1
-    change (setup.rankedConfig outcome.1 outcome.2).defaulted = ∅ at clean
-    rwa [setup.defaulted_rankedConfig] at clean
+    change (rankedConfig outcome.1 outcome.2).defaulted = ∅ at clean
+    rwa [defaulted_rankedConfig] at clean
   have graphObserve : ∀ outcome ∈ graphPlay.support,
       observe outcome.1 = (some (setup.concurrentReadout outcome),
         setup.concurrentForfeitPayoff parameter utility forfeit outcome) := by
@@ -187,9 +187,9 @@ theorem concurrentReveal_intended_ledger (setup : Setup (Player := Player) (L :=
     rw [concurrentRankedRead_terminal setup config.erase terminal] at read
     have defaults := congrArg (fun final : Config Player L setup.program.terminalCtx =>
       final.defaulted) (Option.some.inj read)
-    change (setup.rankedConfig config.erase terminal).defaulted =
+    change (rankedConfig config.erase terminal).defaulted =
       (setup.concurrentReadout outcome).defaulted at defaults
-    rw [setup.defaulted_rankedConfig, EventGraph.Config.erase_defaulted,
+    rw [defaulted_rankedConfig, EventGraph.Config.erase_defaulted,
       (graphClean outcome present).1] at defaults
     exact defaults
   refine ⟨concurrentReveal_ledger_isεNash setup finite wellFormed parameter utility forfeit range
