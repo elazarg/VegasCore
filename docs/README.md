@@ -6,6 +6,8 @@ The maintained development centers on checked non-concurrent SE preservation.
 * [Two-player instance, imperfect audit and funding](sequential-se-instances.md).
 * [Correlated-prior analysis and common-signal route](sequential-correlated-prior-analysis.md).
 * [Module ownership and reuse](module-architecture.md).
+* [Event dependencies, information order and actor service](event-graph-dependencies.md).
+* [Concurrent commitments: checked graph result and native obligations](concurrent-commitment-preservation.md).
 * [Source semantics](source-semantics.md).
 * [Absorbing defaults and the compiler tower](source-absorbing-failure.md).
 * [Ledger-client correctness and observation scope](ledger-client-correctness.md).

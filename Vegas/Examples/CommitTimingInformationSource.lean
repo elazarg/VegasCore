@@ -373,8 +373,8 @@ private theorem honestSourceProfile_opens
     (profile : ∀ who, setup.intendedModel.BehavioralPolicy who) (view) (active) :
     (honestSourceProfile profile alice).2.2.1 rfl view active = PMF.pure true := by
   have disclosing : Disclosing program (honestSourceProfile profile alice) :=
-    BehavioralPolicy.disclosing_fromProtocol setup.program _ _
-      (fun atView => setup.intendedSourceProfile_notRefusal profile alice (some atView))
+    setup.intendedSourceProfile_disclosing (CommitmentInterface.values setup.program)
+      profile alice
   exact eq_pure_true_of_false_not_mem (disclosing.1 rfl view active)
 
 private theorem honestSourceProfile_alice_value

@@ -2,9 +2,9 @@ module
 
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
+public import GameTheoryExtensions.Analysis.UtilityComparison
 public import Vegas.Game.ConcurrentRevealNash
-public import Vegas.Compile.BindingReveal
-public import Vegas.Compile.RevealFailureReadout
+public import Vegas.Game.GraphForfeit
 
 @[expose] public section
 
@@ -25,137 +25,6 @@ namespace Vegas.SourceProgram.Setup
 open Vegas.EventGraph GameTheory GameTheory.Math.Probability
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
-
-/-- The forfeited utility of a concurrent outcome, read in instruction order. -/
-def concurrentForfeitPayoff (setup : Setup (Player := Player) (L := L)) {Parameter : Type}
-    (parameter : State L setup.context → Parameter)
-    (utility : Parameter × PublicOutcome setup.program → Player → ℝ) (forfeit : ℝ)
-    (outcome : setup.revealRelaxedGraph.gameSignature.Outcome) (who : Player) : ℝ :=
-  forfeitUtility setup.program forfeit utility
-    (setup.eventParameterOutcome parameter
-      ⟨rankedConfig (graph := setup.revealRelaxedGraph) outcome.1 outcome.2,
-          rankedConfig_terminal (graph := setup.revealRelaxedGraph) outcome.1 outcome.2⟩)
-    who
-
-/-- A defaulted player of a reachable concurrent terminal configuration has
-failed a reveal in the source-order readout. -/
-theorem failedReveals_pos_of_concurrent_defaulted (setup : Setup (Player := Player) (L := L))
-    {inputs : setup.revealRelaxedGraph.Inputs} {config : setup.revealRelaxedGraph.Config}
-    (reach : Config.Reachable inputs config) (terminal : config.cut.Terminal) {who : Player}
-    (defaulted : who ∈ config.defaulted) :
-    1 ≤ failedReveals setup.program who (publicOutcome setup.program
-      (terminalConfig setup.program
-        ⟨rankedConfig (graph := setup.revealRelaxedGraph) config terminal, rankedConfig_terminal
-            (graph := setup.revealRelaxedGraph) config terminal⟩)) := by
-  obtain ⟨reveal, actor, publication, failed⟩ := failed_publication_of_defaulted
-    (graph := setup.revealRelaxedGraph) (toInformationGraph_bindingsRevealed setup.program) reach
-    terminal defaulted
-  exact failedReveals_pos_of_failed_output setup.program _ reveal who publication
-    ((eventOwner?_eq_actor setup.program reveal).trans actor) failed
-
-/-- The least utility of a player, an exit payoff no greater than any utility. -/
-def leastUtility {Outcome : Type} (utility : Outcome → Player → ℝ) (who : Player) : ℝ :=
-  ⨅ outcome, utility outcome who
-
-omit [DecidableEq Player] [IExpr.ResultTypes L] in
-theorem leastUtility_le {Outcome : Type} (utility : Outcome → Player → ℝ) {forfeit : ℝ}
-    (range : ∀ high low who, utility high who - utility low who ≤ forfeit) (who : Player)
-    (outcome : Outcome) : leastUtility utility who ≤ utility outcome who := by
-  apply ciInf_le
-  refine ⟨utility outcome who - forfeit, ?_⟩
-  rintro _ ⟨other, rfl⟩
-  have := range outcome other who
-  linarith
-
-omit [DecidableEq Player] [IExpr.ResultTypes L] in
-theorem sub_forfeit_le_leastUtility {Outcome : Type} (utility : Outcome → Player → ℝ)
-    {forfeit : ℝ} (range : ∀ high low who, utility high who - utility low who ≤ forfeit)
-    (who : Player) (outcome : Outcome) :
-    utility outcome who - forfeit ≤ leastUtility utility who := by
-  have : Nonempty Outcome := ⟨outcome⟩
-  apply le_ciInf
-  intro other
-  have := range outcome other who
-  linarith
-
-/-- On a reachable concurrent terminal configuration, the forfeited utility is
-at most the exclusion utility with the least utility as exit payoff. -/
-theorem concurrentForfeitPayoff_le (setup : Setup (Player := Player) (L := L))
-    {Parameter : Type} (parameter : State L setup.context → Parameter)
-    (utility : Parameter × PublicOutcome setup.program → Player → ℝ) {forfeit : ℝ}
-    (range : ∀ high low who, utility high who - utility low who ≤ forfeit)
-    {inputs : setup.revealRelaxedGraph.Inputs}
-    (outcome : setup.revealRelaxedGraph.gameSignature.Outcome)
-    (reach : Config.Reachable inputs outcome.1) (who : Player) :
-    setup.concurrentForfeitPayoff parameter utility forfeit outcome who ≤
-      setup.concurrentPayoff parameter utility (leastUtility utility) who outcome.1 := by
-  have nonnegative : 0 ≤ forfeit := by
-    have := range (setup.eventParameterOutcome parameter
-      ⟨rankedConfig (graph := setup.revealRelaxedGraph) outcome.1 outcome.2,
-          rankedConfig_terminal (graph := setup.revealRelaxedGraph) _ _⟩)
-      (setup.eventParameterOutcome parameter
-      ⟨rankedConfig (graph := setup.revealRelaxedGraph) outcome.1 outcome.2,
-          rankedConfig_terminal (graph := setup.revealRelaxedGraph) _ _⟩) who
-    linarith
-  unfold concurrentForfeitPayoff concurrentPayoff forfeitUtility
-  rw [dite_eq_left outcome.2]
-  unfold exclusionUtility
-  by_cases defaulted : who ∈ outcome.1.defaulted
-  · have failed := setup.failedReveals_pos_of_concurrent_defaulted reach outcome.2 defaulted
-    have shown : who ∈ (setup.eventParameterOutcome parameter
-        ⟨rankedConfig (graph := setup.revealRelaxedGraph) outcome.1 outcome.2,
-          rankedConfig_terminal (graph := setup.revealRelaxedGraph) outcome.1
-              outcome.2⟩).2.defaulted := by
-      change who ∈ (rankedConfig (graph := setup.revealRelaxedGraph) outcome.1 outcome.2).defaulted
-      rw [defaulted_rankedConfig]
-      exact defaulted
-    rw [ite_eq_left shown]
-    have least := sub_forfeit_le_leastUtility utility range who
-      (setup.eventParameterOutcome parameter
-        ⟨rankedConfig (graph := setup.revealRelaxedGraph) outcome.1 outcome.2,
-            rankedConfig_terminal (graph := setup.revealRelaxedGraph) _ _⟩)
-    have count : (1 : ℝ) ≤ (failedReveals setup.program who (publicOutcome setup.program
-      (terminalConfig setup.program ⟨rankedConfig (graph := setup.revealRelaxedGraph) outcome.1
-          outcome.2,
-        rankedConfig_terminal (graph := setup.revealRelaxedGraph) _ _⟩)) : ℝ) := by
-            exact_mod_cast failed
-    change _ - forfeit * (failedReveals setup.program who (publicOutcome setup.program
-      (terminalConfig setup.program ⟨rankedConfig (graph := setup.revealRelaxedGraph) outcome.1
-          outcome.2,
-        rankedConfig_terminal (graph := setup.revealRelaxedGraph) _ _⟩)) : ℝ) ≤ _
-    nlinarith
-  · have hidden : who ∉ (setup.eventParameterOutcome parameter
-        ⟨rankedConfig (graph := setup.revealRelaxedGraph) outcome.1 outcome.2,
-          rankedConfig_terminal (graph := setup.revealRelaxedGraph) outcome.1
-              outcome.2⟩).2.defaulted := by
-      change who ∉ (rankedConfig (graph := setup.revealRelaxedGraph) outcome.1 outcome.2).defaulted
-      rw [defaulted_rankedConfig]
-      exact defaulted
-    rw [ite_eq_right hidden]
-    have : (0 : ℝ) ≤ forfeit * (failedReveals setup.program who
-        (setup.eventParameterOutcome parameter ⟨rankedConfig (graph := setup.revealRelaxedGraph)
-            outcome.1 outcome.2,
-          rankedConfig_terminal (graph := setup.revealRelaxedGraph) _ _⟩).2 : ℝ) :=
-      mul_nonneg nonnegative (Nat.cast_nonneg _)
-    linarith
-
-/-- A supported concurrent outcome is reachable from its initial inputs. -/
-theorem concurrent_play_reachable (setup : Setup (Player := Player) (L := L))
-    (scheduler : setup.revealRelaxedGraph.PublicScheduler)
-    (profile : setup.revealRelaxedGraph.BehavioralProfile)
-    (outcome : setup.revealRelaxedGraph.gameSignature.Outcome)
-    (supported : outcome ∈ ((setup.revealRelaxedGraph.gameForm setup.concurrentInputs
-      scheduler).play profile).support) :
-    ∃ inputs, Config.Reachable inputs outcome.1 := by
-  change outcome ∈ (setup.concurrentInputs.bind _).support at supported
-  rw [PMF.support_bind] at supported
-  simp only [Set.mem_iUnion] at supported
-  obtain ⟨initial, _, member⟩ := supported
-  have inRun : outcome.1 ∈ (setup.revealRelaxedGraph.runPolicies scheduler profile
-      initial).support := by
-    rw [← setup.revealRelaxedGraph.terminalOutcomes_map_val, PMF.support_map]
-    exact ⟨outcome, member, rfl⟩
-  exact ⟨initial, setup.revealRelaxedGraph.run_reachable initial _ outcome.1 inRun⟩
 
 /-- **Intended-game Nash under every schedule of concurrent reveals, with the
 forfeit pass.** For a well-formed setup with finite commitment payload types, a
@@ -182,34 +51,40 @@ theorem concurrentReveal_intended_forfeit (setup : Setup (Player := Player) (L :
     (disclosing : ∀ who, Disclosing setup.program (setup.decodeBehavioralProfile
       (CommitmentInterface.forfeiture setup.program) target who))
     (scheduler : setup.revealRelaxedGraph.PublicScheduler) :
-    IsεNash (setup.revealRelaxedGraph.gameForm setup.concurrentInputs scheduler)
-        (setup.concurrentForfeitPayoff parameter utility forfeit) ε
+    IsεNash (setup.revealRelaxedGraph.gameForm (setup.graphInputs setup.revealDependencies)
+        scheduler)
+        (setup.graphForfeitPayoff setup.revealDependencies parameter utility forfeit) ε
         (setup.revealRelaxedGraph.normalizeProfile (compileEventProfile setup.program
           (setup.decodeBehavioralProfile (CommitmentInterface.forfeiture setup.program)
             target))) ∧
-      (∀ outcome ∈ ((setup.revealRelaxedGraph.gameForm setup.concurrentInputs scheduler).play
+      (∀ outcome ∈ ((setup.revealRelaxedGraph.gameForm (setup.graphInputs setup.revealDependencies)
+          scheduler).play
           (setup.revealRelaxedGraph.normalizeProfile (compileEventProfile setup.program
             (setup.decodeBehavioralProfile (CommitmentInterface.forfeiture setup.program)
               target)))).support,
-        (setup.concurrentReadout outcome).defaulted = ∅ ∧
+        (setup.graphReadout setup.revealDependencies outcome).defaulted = ∅ ∧
           ∀ who, failedReveals setup.program who
-            (publicOutcome setup.program (setup.concurrentReadout outcome)) = 0) ∧
-      ((setup.revealRelaxedGraph.gameForm setup.concurrentInputs scheduler).play
+            (publicOutcome setup.program (setup.graphReadout setup.revealDependencies outcome)) =
+                0) ∧
+      ((setup.revealRelaxedGraph.gameForm (setup.graphInputs setup.revealDependencies)
+          scheduler).play
           (setup.revealRelaxedGraph.normalizeProfile (compileEventProfile setup.program
             (setup.decodeBehavioralProfile (CommitmentInterface.forfeiture setup.program)
-              target)))).map (fun outcome => (some (setup.concurrentReadout outcome),
-            setup.concurrentForfeitPayoff parameter utility forfeit outcome)) =
+              target)))).map (fun outcome => (some (setup.graphReadout setup.revealDependencies
+                  outcome),
+            setup.graphForfeitPayoff setup.revealDependencies parameter utility forfeit outcome)) =
         (setup.intendedModel.runBehavioral intended (instructionCount setup.program + 1)).map
           (fun final => (setup.protocolReadout final.state, fun who =>
             (setup.protocolReadout final.state).elim 0
               (fun state => utility (setup.parameterOutcome parameter state) who))) := by
   let honest := setup.revealRelaxedGraph.normalizeProfile (compileEventProfile setup.program
     (setup.decodeBehavioralProfile (CommitmentInterface.forfeiture setup.program) target))
-  let game := setup.revealRelaxedGraph.gameForm setup.concurrentInputs scheduler
+  let game := setup.revealRelaxedGraph.gameForm (setup.graphInputs setup.revealDependencies)
+      scheduler
   let exitPayoff := leastUtility utility
   let exclusion : setup.revealRelaxedGraph.gameSignature.Outcome → Player → ℝ :=
     fun outcome who =>
-    setup.concurrentPayoff parameter utility exitPayoff who outcome.1
+    setup.graphPayoff setup.revealDependencies parameter utility exitPayoff who outcome.1
   have nashExclusion := setup.concurrentReveal_intended_isεNash finite wellFormed parameter
     utility exitPayoff (fun outcome who => leastUtility_le utility range who outcome) intended
     target agrees ε equilibrium disclosing scheduler
@@ -217,11 +92,12 @@ theorem concurrentReveal_intended_forfeit (setup : Setup (Player := Player) (L :
     exitPayoff (fun outcome who => leastUtility_le utility range who outcome) intended target
     agrees ε equilibrium disclosing scheduler
   have clean : ∀ outcome ∈ (game.play honest).support,
-      (setup.concurrentReadout outcome).defaulted = ∅ ∧
+      (setup.graphReadout setup.revealDependencies outcome).defaulted = ∅ ∧
         ∀ who, failedReveals setup.program who
-          (publicOutcome setup.program (setup.concurrentReadout outcome)) = 0 := by
+          (publicOutcome setup.program (setup.graphReadout setup.revealDependencies outcome)) = 0
+              := by
     intro outcome supported
-    have pair : (some (setup.concurrentReadout outcome), exclusion outcome) ∈
+    have pair : (some (setup.graphReadout setup.revealDependencies outcome), exclusion outcome) ∈
         ((setup.intendedModel.runBehavioral intended (instructionCount setup.program + 1)).map
           (fun final => (setup.protocolReadout final.state, fun who =>
             (setup.protocolReadout final.state).elim 0
@@ -234,79 +110,32 @@ theorem concurrentReveal_intended_forfeit (setup : Setup (Player := Player) (L :
     exact ⟨Finset.eq_empty_iff_forall_notMem.mpr fun who =>
       setup.not_defaulted_of_intendedState intendedState who read,
       fun who => setup.failedReveals_eq_zero_of_intendedState intendedState who read⟩
-  -- On honest play the two utilities agree.
   have honestEq : ∀ outcome ∈ (game.play honest).support,
-      setup.concurrentForfeitPayoff parameter utility forfeit outcome = exclusion outcome := by
+      setup.graphForfeitPayoff setup.revealDependencies parameter utility forfeit outcome =
+          exclusion outcome := by
     intro outcome supported
-    have pair : (some (setup.concurrentReadout outcome), exclusion outcome) ∈
-        ((setup.intendedModel.runBehavioral intended (instructionCount setup.program + 1)).map
-          (fun final => (setup.protocolReadout final.state, fun who =>
-            (setup.protocolReadout final.state).elim 0
-              (fun state => utility (setup.parameterOutcome parameter state) who)))).support := by
-      rw [← lawExclusion, PMF.support_map]
-      exact ⟨outcome, supported, rfl⟩
-    rw [PMF.support_map] at pair
-    obtain ⟨final, _, same⟩ := pair
-    have read : setup.protocolReadout final.state = some (setup.concurrentReadout outcome) :=
-      congrArg Prod.fst same
-    have payoffs : exclusion outcome = fun who => (setup.protocolReadout final.state).elim 0
-        (fun state => utility (setup.parameterOutcome parameter state) who) :=
-      (congrArg Prod.snd same).symm
     funext who
-    have clean := setup.failedReveals_eq_zero_of_intendedState
-      (setup.intendedState_trace wellFormed final.trace) who read
-    rw [congrFun payoffs who]
-    simp only [read, Option.elim_some]
-    unfold concurrentForfeitPayoff forfeitUtility
-    change _ - forfeit * (failedReveals setup.program who
-      (publicOutcome setup.program (setup.concurrentReadout outcome)) : ℝ) = _
-    rw [clean]
-    simp only [Nat.cast_zero, mul_zero, sub_zero]
-    rfl
+    apply setup.graphForfeitPayoff_eq_graphPayoff_of_clean setup.revealDependencies
+      parameter utility forfeit exitPayoff outcome who
+    · rw [(clean outcome supported).1]
+      exact Finset.notMem_empty who
+    · exact (clean outcome supported).2 who
   refine ⟨?_, clean, ?_⟩
-  · rw [IsεNash, isNash_iff] at nashExclusion ⊢
-    intro who deviation
-    have support (chosen : Profile game.sig) : (game.play chosen).support.Finite :=
-      setup.revealRelaxedGraph.gameForm_play_support_finite _
-        setup.concurrentInputs_support_finite scheduler chosen
-        ((toInformationGraph_finiteActions setup.program finite).profileFiniteSupport chosen)
-    let deviating := Profile.update (sig := game.sig) honest who deviation
-    have forfeitHonest : UtilityIntegrable (setup.concurrentForfeitPayoff parameter utility
-        forfeit) who (game.play honest) := payoffIntegrable_of_finite_support _ _ (support _)
-    have forfeitDeviation : UtilityIntegrable (setup.concurrentForfeitPayoff parameter utility
-        forfeit) who (game.play deviating) := payoffIntegrable_of_finite_support _ _ (support _)
-    have exclusionHonest : UtilityIntegrable exclusion who (game.play honest) :=
-      payoffIntegrable_of_finite_support _ _ (support _)
-    have exclusionDeviation : UtilityIntegrable exclusion who (game.play deviating) :=
-      payoffIntegrable_of_finite_support _ _ (support _)
-    obtain ⟨_, _, preference⟩ := nashExclusion who deviation
-    have real : expectedUtility exclusion who (game.play deviating) ≤
-        expectedUtility exclusion who (game.play honest) + ε := by
-      have lifted : ((expectedUtility exclusion who (game.play deviating) : ℝ) : EReal) ≤
-          ((expectedUtility exclusion who (game.play honest) : ℝ) : EReal) + (ε : EReal) := by
-        rw [← extendedExpectedUtility_eq exclusionHonest,
-          ← extendedExpectedUtility_eq exclusionDeviation]
-        exact preference
-      exact_mod_cast lifted
-    refine ⟨forfeitHonest.hasExpectation, forfeitDeviation.hasExpectation, ?_⟩
-    rw [extendedExpectedUtility_eq forfeitHonest, extendedExpectedUtility_eq forfeitDeviation]
-    refine EReal.coe_le_coe_iff.mpr ?_ |>.trans_eq (EReal.coe_add _ _)
-    have below : expectedUtility (setup.concurrentForfeitPayoff parameter utility forfeit) who
-        (game.play deviating) ≤ expectedUtility exclusion who (game.play deviating) := by
-      unfold expectedUtility
-      apply expect_mono _ forfeitDeviation exclusionDeviation
-      intro outcome supported
-      obtain ⟨inputs, reach⟩ := setup.concurrent_play_reachable scheduler deviating outcome
-        supported
-      exact setup.concurrentForfeitPayoff_le parameter utility range outcome reach who
-    have same : expectedUtility (setup.concurrentForfeitPayoff parameter utility forfeit) who
-        (game.play honest) = expectedUtility exclusion who (game.play honest) := by
-      unfold expectedUtility
-      apply expect_congr_on_support
-      intro outcome supported
-      rw [honestEq outcome supported]
-    rw [same]
-    exact below.trans real
+  · apply nashExclusion.of_utility_le_on_support
+    · intro who outcome supported
+      exact congrFun (honestEq outcome supported) who
+    · intro who deviation outcome supported
+      obtain ⟨inputs, reach⟩ := setup.graph_play_reachable setup.revealDependencies scheduler
+        (Profile.update (sig := game.sig) honest who deviation) outcome supported
+      exact setup.graphForfeitPayoff_le setup.revealDependencies parameter utility range outcome
+        reach who
+    · intro who deviation
+      apply UtilityIntegrable.hasExpectation
+      apply payoffIntegrable_of_finite_support
+      exact setup.revealRelaxedGraph.gameForm_play_support_finite _
+        (setup.graphInputs_support_finite setup.revealDependencies) scheduler
+        (Profile.update (sig := game.sig) honest who deviation)
+        ((toInformationGraph_finiteActions setup.program finite).profileFiniteSupport _)
   · rw [← lawExclusion]
     apply map_congr_on_support _
     intro outcome supported

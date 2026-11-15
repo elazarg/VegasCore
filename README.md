@@ -15,6 +15,7 @@ source policy. The manuscript is maintained separately in `overleaf/`.
 | Result | Checked scope |
 | --- | --- |
 | `Vegas.intended_raw_sequentialEquilibrium_preserved` | Intended-game SE extends to the bounded raw-menu game of the forced-exit contract on the sequential graph with finite catalogues covering every binding, publication and initial-input value, under a finitely branching asynchronous builder, arbitrary finitely branching pending observation, conditional independence of initial private data given a public signal, and funded count-audit coverage. The realized joint outcome/payoff law is preserved and no player is excluded or charged on the implementing path. |
+| `Vegas.SourceProgram.Setup.compileIntendedExtension_forfeit` | Source-prefix graph clients preserve intended ε-Nash equilibrium with independent bindings and reveals concurrent, for every disclosing intended extension and every public scheduler of any dependency choice retaining the required barriers. The complete source-configuration/payoff law is preserved, with no defaults or failed reveals; private inputs may be correlated. |
 | `Vegas.concurrentReveal_intended_ledger` | Under every timely asynchronous service scheduler, first-turn effective-opening clients preserve intended ε-Nash equilibrium with concurrent independent reveals, against arbitrary native policies. The complete source-configuration/payoff law is preserved, with no defaults, failed reveals or audit deposit. |
 | `Vegas.intended_raw_programPayments_preserved` | Every supplied compilation and its exact physical clients retain executable receipts jointly with initial inputs, typed terminal state and public results. |
 | `Vegas.EventGraphRuntime.MessageBounds.onePacket_raw_sequentialEquilibrium` | Extension from the one-permitted-packet game to the bounded raw response menu of the same native application and scheduler, for normalization-invariant utilities, authentic count-evidence coverage and deposits covering the legal-history payoff spread. |
@@ -49,9 +50,10 @@ The compiler lowers source instructions to a typed dataflow graph. Its
 information-preserving compilation adds total source order: every public graph
 scheduler then produces the same event plan
 (`Vegas.toInformationGraph_policyPlan_eq`). The checked source-law and Nash
-correspondence results use that information graph. Relaxing independent reveals
-of different owners permits real scheduling choices; the intended Nash
-preservation theorem covers those choices while bindings remain source ordered.
+correspondence results use that information graph. Composable binding and reveal
+relaxations permit real scheduling choices. Prescribed source-prefix clients
+preserve intended Nash equilibrium for both relaxations on the graph; the native
+ledger result permits concurrent reveals.
 See the [dependency design](docs/event-graph-dependencies.md).
 Source execution and the native runtime
 share absorbing public defaults; the runtime mechanically
@@ -65,10 +67,10 @@ They compare those clients with canonical execution of the compiled graph,
 under the asynchronous service and timing premises. No finite wire catalogue,
 equilibrium or audit premise is required. The
 [bounded-menu compiler laws](Vegas/Game/CompilerCorrectness.lean) realize this
-observation on the sequential compiled graph. A dependency mode satisfying the
-public-barrier certificate yields that identical graph; the certificate does
-not supply another compiler mode. Generic nonordered graph results and their
-regressions remain separate library interfaces.
+observation on the source information graph. Dependency choices and actor-service
+conditions have separate APIs; the full-source physical compiler uses the
+information graph directly. Generic graph results and their regressions also
+cover less restrictive dependencies.
 [Operational refinement](Vegas/Pending/GraphRefinement.lean) separately covers
 arbitrary raw responses. The [completion guide](docs/compiler-correctness-plan.md)
 records their hypotheses and the optional stronger graph-policy interface.
@@ -96,8 +98,9 @@ modules and inspect signatures with `python lean-defs.py` before adding machiner
 
 The [research archive](docs/archives.md) preserves the broader concurrent work,
 proof experiments and earlier design documents at fixed revisions, with a
-restart guide. The broader concurrent-binding and sequential-equilibrium targets remain
-separate from the checked concurrent-reveal Nash theorem.
+restart guide. Native concurrent-binding and concurrent sequential-equilibrium
+preservation remain open. The [concurrent-commitment guide](docs/concurrent-commitment-preservation.md)
+separates these obligations from the checked graph Nash theorem.
 
 ## Build and validate
 

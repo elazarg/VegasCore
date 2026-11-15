@@ -11,6 +11,7 @@ public import Vegas.EventGraph.BindingRefinement
 public import Vegas.EventGraph.DependencyRelaxation
 public import Vegas.EventGraph.BindingSubmission
 public import Vegas.EventGraph.CanonicalStep
+public import Vegas.EventGraph.CanonicalPrefix
 public import Vegas.EventGraph.Code
 public import Vegas.EventGraph.Commutation
 public import Vegas.EventGraph.CommutationRecall
@@ -18,6 +19,7 @@ public import Vegas.EventGraph.NormalizedPolicy
 public import Vegas.EventGraph.PrefixPolicy
 public import Vegas.EventGraph.PrefixReplay
 public import Vegas.EventGraph.PrefixDeviation
+public import Vegas.EventGraph.PrefixNash
 public import Vegas.EventGraph.RankedConfig
 public import Vegas.EventGraph.SchedulerErasure
 public import Vegas.EventGraph.RevealRelaxedScheduling

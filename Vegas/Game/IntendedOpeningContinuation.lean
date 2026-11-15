@@ -49,18 +49,21 @@ theorem intendedOpening_step_closed [Fintype Player]
         (fun who => ?_) stepped⟩
     have chosen := drawn who
     have disclosing : Disclosing setup.program (setup.decodeBehavioralProfile
-        (CommitmentInterface.values setup.program) (setup.intendedSourceProfile intended) who) :=
-      BehavioralPolicy.disclosing_fromProtocol setup.program _ _
-        (fun view => setup.intendedSourceProfile_notRefusal intended who (some view))
+        (CommitmentInterface.values setup.program) (setup.intendedSourceProfile
+          (CommitmentInterface.values setup.program) intended) who) :=
+      setup.intendedSourceProfile_disclosing (CommitmentInterface.values setup.program)
+        intended who
     change joint who ∈ (((setup.decodeBehavioralProfile (CommitmentInterface.values setup.program)
-      (setup.intendedSourceProfile intended) who).authenticOpening setup.program).protocolAction
+      (setup.intendedSourceProfile (CommitmentInterface.values setup.program) intended)
+        who).authenticOpening setup.program).protocolAction
         setup.program
           (ProtocolState.observe who setup.program state)).support at chosen
     rw [BehavioralPolicy.protocolAction_authenticOpening setup.program _ disclosing state
       static intendedState] at chosen
     change joint who ∈ ((BehavioralPolicy.fromProtocol setup.program
       (CommitmentInterface.values setup.program)
-      (fun view => setup.intendedSourceProfile intended who (some view))).protocolAction
+      (fun view => setup.intendedSourceProfile (CommitmentInterface.values setup.program) intended
+        who (some view))).protocolAction
         setup.program (ProtocolState.observe who setup.program state)).support at chosen
     rw [BehavioralPolicy.protocolAction_fromProtocol, PMF.support_map] at chosen
     obtain ⟨choice, member, same⟩ := chosen

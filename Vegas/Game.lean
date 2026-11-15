@@ -11,6 +11,7 @@ public import Vegas.Game.AsyncServiceDeviationBound
 public import Vegas.Game.AsyncServiceNash
 public import Vegas.Game.AsyncServiceRawNash
 public import Vegas.Game.AsyncServiceSpec
+public import Vegas.Game.BindingWindowTransport
 public import Vegas.Game.ConditionedSourceBayes
 public import Vegas.Game.ConditionedSourceReach
 public import Vegas.Game.CompilerCorrectness
@@ -25,7 +26,11 @@ public import Vegas.Game.IntendedCommitGain
 public import Vegas.Game.IntendedAuthenticOpening
 public import Vegas.Game.IntendedNash
 public import Vegas.Game.IntendedOpeningContinuation
-public import Vegas.Game.IntendedOpeningExtension
+public import Vegas.Game.GraphPayoff
+public import Vegas.Game.GraphForfeit
+public import Vegas.Game.SourcePrefixNash
+public import Vegas.Game.SourcePrefixForfeit
+public import Vegas.Game.IntendedSourceProfile
 public import Vegas.Game.IntendedPreservation
 public import Vegas.Game.OnePacketAcceptedInjective
 public import Vegas.Game.OnePacketAcceptedOwner
@@ -407,7 +412,7 @@ public import Vegas.Game.OnePacketKeyedCommitmentComparisons
 public import Vegas.Game.OnePacketKeyedComparisons
 public import Vegas.Game.SequentialCompilation
 public import Vegas.Game.ConcurrentRevealNash
-public import Vegas.Game.IntendedOpeningExtension
+public import Vegas.Game.IntendedSourceProfile
 public import Vegas.Game.ConcurrentRevealForfeit
 public import Vegas.Game.RevealServiceRankedReadout
 public import Vegas.Game.RevealServiceReference

@@ -2,10 +2,12 @@ module
 
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
+public import Vegas.Compile.PublicationPolicy
 public import Vegas.Source.Safety
 public import Vegas.Game.IntendedNash
 public import Vegas.Game.ConcurrentRevealPreservation
-public import Vegas.Game.IntendedOpeningExtension
+public import Vegas.Game.SourcePrefixForfeit
+public import Vegas.Game.IntendedSourceProfile
 public import Vegas.Game.SourceProtocolNash
 public import Vegas.Compile.EventGraphScheduling
 public import Vegas.Game.EventCompilation
@@ -243,13 +245,27 @@ theorem Vegas.Paper.intended_forfeit_sequentialEquilibrium_preserved
 
 local notation "forfeiture" => CommitmentInterface.forfeiture setup.program
 
+omit [Finite Player] initialFinite in
+/-- The source information order permits both independent-reveal and
+independent-binding relaxation while retaining the preservation barriers. -/
+theorem Vegas.Paper.concurrent_dependencies :
+    setup.informationGraph.relaxReveals.relaxBindings.RevealRelaxedOrdered :=
+  setup.informationGraph.relaxReveals.relaxBindings_revealRelaxedOrdered
+    (setup.informationGraph.relaxReveals_revealRelaxedOrdered
+      (toInformationGraph_barrierOrdered setup.program).revealRelaxedOrdered)
+
+/-- info: 'Vegas.Paper.concurrent_dependencies' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.concurrent_dependencies
+
 include finite wellFormed initialFinite in
-/-- With independent reveals concurrent, the order-blind compiled clients of a
-disclosing extension of an intended `ε`-Nash equilibrium are an `ε`-Nash
-equilibrium of the forfeited utility under every public scheduler, with
-outcomes read in instruction order, and they have the intended joint law of
-terminal configuration and payoff. -/
-theorem Vegas.Paper.concurrentReveal_intended_forfeit
+/-- Prescribed clients of every disclosing intended extension preserve its Nash error,
+complete configuration/payoff law and clean play for all dependency choices retaining
+reveal-relaxed barriers, including concurrent private bindings and reveals. -/
+theorem Vegas.Paper.intended_concurrent_forfeit
+    (deps : setup.dataflowGraph.Dependencies)
+    (relaxed : (setup.dataflowGraph.withDependencies deps).RevealRelaxedOrdered)
     (range : ∀ high low who, utility high who - utility low who ≤ forfeit)
     (intended : Profile setup.intendedModel.behavioralSignature)
     (target : Profile (setup.informationModel forfeiture).behavioralSignature)
@@ -258,42 +274,47 @@ theorem Vegas.Paper.concurrentReveal_intended_forfeit
       (fun final => readoutPayoff setup base final.state) ε intended)
     (disclosing : ∀ who, Disclosing setup.program
       (setup.decodeBehavioralProfile forfeiture target who))
-    (scheduler : setup.revealRelaxedGraph.PublicScheduler) :
-    IsεNash (setup.revealRelaxedGraph.gameForm setup.concurrentInputs scheduler)
-        (setup.concurrentForfeitPayoff parameter utility forfeit) ε
-        (setup.revealRelaxedGraph.normalizeProfile (compileEventProfile setup.program
-          (setup.decodeBehavioralProfile forfeiture target))) ∧
-      (∀ outcome ∈ ((setup.revealRelaxedGraph.gameForm setup.concurrentInputs scheduler).play
-          (setup.revealRelaxedGraph.normalizeProfile (compileEventProfile setup.program
-            (setup.decodeBehavioralProfile forfeiture target)))).support,
-        (setup.concurrentReadout outcome).defaulted = ∅ ∧
-          NoFailedReveals setup (setup.concurrentReadout outcome)) ∧
-      ((setup.revealRelaxedGraph.gameForm setup.concurrentInputs scheduler).play
-          (setup.revealRelaxedGraph.normalizeProfile (compileEventProfile setup.program
-            (setup.decodeBehavioralProfile forfeiture target)))).map
-          (fun outcome => (some (setup.concurrentReadout outcome),
-            setup.concurrentForfeitPayoff parameter utility forfeit outcome)) =
+    (scheduler : (setup.dataflowGraph.withDependencies deps).PublicScheduler) :
+    IsεNash ((setup.dataflowGraph.withDependencies deps).gameForm (setup.graphInputs deps)
+        scheduler) (setup.graphForfeitPayoff deps parameter utility forfeit) ε
+        (compilePrescribedProfile setup.program deps
+          (setup.decodeBehavioralProfile forfeiture target)) ∧
+      (∀ outcome ∈ (((setup.dataflowGraph.withDependencies deps).gameForm (setup.graphInputs deps)
+          scheduler).play (compilePrescribedProfile setup.program deps
+            (setup.decodeBehavioralProfile forfeiture target))).support,
+        (setup.graphReadout deps outcome).defaulted = ∅ ∧
+          NoFailedReveals setup (setup.graphReadout deps outcome)) ∧
+      (((setup.dataflowGraph.withDependencies deps).gameForm (setup.graphInputs deps)
+          scheduler).play (compilePrescribedProfile setup.program deps
+            (setup.decodeBehavioralProfile forfeiture target))).map
+          (fun outcome => (some (setup.graphReadout deps outcome),
+            setup.graphForfeitPayoff deps parameter utility forfeit outcome)) =
         (setup.intendedModel.runBehavioral intended horizon).map
           (fun final => (setup.protocolReadout final.state,
             readoutPayoff setup base final.state)) ∧
-      (∀ who event (actor : setup.revealRelaxedGraph.actor? event = some who),
-        (publication : (setup.revealRelaxedGraph.outputLayout event).IsPublication) →
-          ∀ (observation : setup.revealRelaxedGraph.PlayerObservation who)
+      (setup.dataflowGraph.withDependencies deps).SubmitsBindings
+        (compilePrescribedProfile setup.program deps
+          (setup.decodeBehavioralProfile forfeiture target)) ∧
+      (∀ who event (actor : (setup.dataflowGraph.withDependencies deps).actor? event = some who),
+        (publication : ((setup.dataflowGraph.withDependencies deps).outputLayout
+          event).IsPublication) →
+          ∀ (observation : (setup.dataflowGraph.withDependencies deps).PlayerObservation who)
             (active : who ∉ observation.defaulted),
-            compileEventPolicy setup.program who (setup.decodeBehavioralProfile forfeiture target
-              who) event actor observation active =
-              PMF.pure (EventGraph.EventField.openAction _ publication)) := by
-  obtain ⟨nash, clean, law⟩ := setup.concurrentReveal_intended_forfeit finite wellFormed parameter
-    utility forfeit range intended target agrees ε equilibrium disclosing scheduler
-  exact ⟨nash, clean, law, fun who event actor publication observation active =>
-    compileEventPolicy_publication setup.program who
-      (setup.decodeBehavioralProfile forfeiture target who) (disclosing who) event actor
-      publication observation active⟩
+            compilePrescribedProfile setup.program deps
+              (setup.decodeBehavioralProfile forfeiture target) who event actor observation active =
+                PMF.pure (EventGraph.EventField.openAction _ publication)) := by
+  obtain ⟨nash, clean, law⟩ := setup.compileIntendedExtension_forfeit deps relaxed finite wellFormed
+    parameter utility forfeit range intended target agrees disclosing ε equilibrium scheduler
+  exact ⟨nash, clean, law,
+    compilePrescribedProfile_submits setup.program deps _,
+    fun who event actor publication observation active =>
+      compilePrescribedProfile_publication setup.program deps _ disclosing who event actor
+        publication observation active⟩
 
-/-- info: 'Vegas.Paper.concurrentReveal_intended_forfeit' depends on axioms:
+/-- info: 'Vegas.Paper.intended_concurrent_forfeit' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.Paper.concurrentReveal_intended_forfeit
+#print axioms Vegas.Paper.intended_concurrent_forfeit
 
 include finite wellFormed initialFinite in
 /-- The effective-opening clients preserve intended approximate Nash equilibrium,

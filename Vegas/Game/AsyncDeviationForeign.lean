@@ -712,7 +712,7 @@ private theorem decided_binding_response
     decidedOpportunity_transmits _ active unrecorded fits _ decision]
   rfl
 
-private theorem binding_response_matched
+theorem binding_response_matched
     {horizon leftRemaining rightRemaining : Nat}
     {scheduler : (serviceApplication setup deps duration leaks).Scheduler}
     {bound : (serviceGraph setup deps).EventId → Nat}

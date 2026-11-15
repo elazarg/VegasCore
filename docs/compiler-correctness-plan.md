@@ -80,8 +80,7 @@ interfaces rather than premises of these direct physical laws.
 A total reader may jointly retain the initial cells, entire terminal state,
 public defaults, public result and executable payout list. The unfinished result
 has zero probability under these service premises. The graph comparison uses
-canonical execution of the original compiled graph, even when the ledger uses
-its sequential dependency mode. It does not assert scheduler independence for
+canonical execution of the source information graph used by these ledger clients. It does not assert scheduler independence for
 arbitrary graph policies that inspect chronological completion order.
 
 Raw operational safety needs no timeliness assumption. Its terminal availability

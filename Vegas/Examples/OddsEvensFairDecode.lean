@@ -33,7 +33,7 @@ def secondInfo : setup.ProtocolView odd := some (.inr (.inl secondCommitView))
 def sourceDecoded (profile : ∀ who, setup.intendedModel.BehavioralPolicy who) :
     BehavioralProfile program :=
   setup.decodeBehavioralProfile (CommitmentInterface.values setup.program)
-    (setup.intendedSourceProfile profile)
+    (setup.intendedSourceProfile (CommitmentInterface.values setup.program) profile)
 
 theorem first_commit_decoded (profile : ∀ who, setup.intendedModel.BehavioralPolicy who) :
     commitKernel (sourceDecoded profile) firstCommitView (by decide) =
@@ -54,15 +54,15 @@ theorem second_commit_decoded (profile : ∀ who, setup.intendedModel.Behavioral
 theorem sourceDecoded_disclosing
     (profile : ∀ who, setup.intendedModel.BehavioralPolicy who) (who : Player) :
     Disclosing program (sourceDecoded profile who) :=
-  BehavioralPolicy.disclosing_fromProtocol setup.program _ _
-    (fun view => setup.intendedSourceProfile_notRefusal profile who (some view))
+  setup.intendedSourceProfile_disclosing (CommitmentInterface.values setup.program)
+    profile who
 
 theorem sourceDecoded_admitted
     (profile : ∀ who, setup.intendedModel.BehavioralPolicy who) (who : Player) :
     (sourceDecoded profile who).Admitted program
       (CommitmentInterface.values setup.program) :=
   ((setup.behavioralPolicyEquiv (CommitmentInterface.values setup.program) who).symm
-    (setup.intendedSourceProfile profile who)).2
+    (setup.intendedSourceProfile (CommitmentInterface.values setup.program) profile who)).2
 
 /-- The initialized intended protocol and its decoded source policies have the
 same complete source-configuration law. -/
@@ -72,16 +72,19 @@ theorem sourceDecoded_run (profile : ∀ who, setup.intendedModel.BehavioralPoli
       (setup.run (sourceDecoded profile)).map some := by
   let admission := CommitmentInterface.values setup.program
   let restriction := setup.intendedRestriction admission
-  have agrees : restriction.ExtendsProfile profile (setup.intendedSourceProfile profile) :=
+  have agrees : restriction.ExtendsProfile profile (setup.intendedSourceProfile
+    (CommitmentInterface.values setup.program) profile) :=
     fun _ _ => rfl
-  have law := restriction.initialized_law profile (setup.intendedSourceProfile profile) agrees
+  have law := restriction.initialized_law profile (setup.intendedSourceProfile
+    (CommitmentInterface.values setup.program) profile) agrees
     (instructionCount setup.program + 1)
   have encoded :
       (fun who => setup.toProtocolBehavioralPolicy admission who (sourceDecoded profile who)
-        (sourceDecoded_admitted profile who)) = setup.intendedSourceProfile profile := by
+        (sourceDecoded_admitted profile who)) = setup.intendedSourceProfile
+          (CommitmentInterface.values setup.program) profile := by
     funext who
     exact (setup.behavioralPolicyEquiv admission who).apply_symm_apply
-      (setup.intendedSourceProfile profile who)
+      (setup.intendedSourceProfile (CommitmentInterface.values setup.program) profile who)
   have source := setup.protocol_runBehavioral_eq admission (sourceDecoded profile)
     (sourceDecoded_admitted profile)
   rw [InformationModel.runSingleMoverBehavioralFrom_eq_runBehavioralFrom, encoded] at source

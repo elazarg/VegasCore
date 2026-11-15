@@ -120,7 +120,7 @@ private theorem concurrentReference_initial_law (setup : Setup (Player := Player
     source
   have sourceLaw := canonical_setup_law setup source
   rw [← sourceLaw, PMF.map_comp]
-  change _ = (setup.concurrentInputs.bind
+  change _ = ((setup.graphInputs setup.revealDependencies).bind
     (setup.informationGraph.terminalOutcomes setup.informationGraph.canonicalScheduler
       compiled)).map _
   change _ = ((setup.initialLaw.map fun initial => setup.eventInputs initial).bind
