@@ -25,7 +25,8 @@ variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
 
 theorem rosterPlan_getElem_block (setup : Setup (Player := Player) (L := L))
-    (rosters : (graph setup).EventId → List Player) (event : (graph setup).EventId)
+    (rosters : setup.informationGraph.EventId → List Player) (event :
+      setup.informationGraph.EventId)
     (offset : Nat) (inside : offset < (rosterBlock setup rosters event).length) :
     (rosterPlan setup rosters)[(rosterPlanPrefix setup rosters event.val).length + offset]? =
       ((rosterBlock setup rosters event)[offset]?).map (Prod.mk event) := by
@@ -36,7 +37,8 @@ theorem rosterPlan_getElem_block (setup : Setup (Player := Player) (L := L))
     List.getElem?_map]
 
 theorem rosterPlan_length_block (setup : Setup (Player := Player) (L := L))
-    (rosters : (graph setup).EventId → List Player) (event : (graph setup).EventId) :
+    (rosters : setup.informationGraph.EventId → List Player) (event :
+      setup.informationGraph.EventId) :
     (rosterPlanPrefix setup rosters event.val).length +
         (rosterBlock setup rosters event).length ≤ (rosterPlan setup rosters).length := by
   obtain ⟨suffix, split⟩ := rosterPlan_split setup rosters event
@@ -45,13 +47,15 @@ theorem rosterPlan_length_block (setup : Setup (Player := Player) (L := L))
   omega
 
 theorem rosterPlanPrefix_eventCount (setup : Setup (Player := Player) (L := L))
-    (rosters : (graph setup).EventId → List Player) :
-    rosterPlanPrefix setup rosters (graph setup).order.eventCount = rosterPlan setup rosters := by
+    (rosters : setup.informationGraph.EventId → List Player) :
+    rosterPlanPrefix setup rosters setup.informationGraph.order.eventCount = rosterPlan setup
+      rosters := by
   simp only [rosterPlanPrefix, rosterPlan]
   rw [List.take_of_length_le (by simp only [List.length_finRange]; omega)]
 
 theorem rosterBlock_roster (setup : Setup (Player := Player) (L := L))
-    (rosters : (graph setup).EventId → List Player) (event : (graph setup).EventId)
+    (rosters : setup.informationGraph.EventId → List Player) (event :
+      setup.informationGraph.EventId)
     (offset : Nat) (inside : offset < (rosters event).length) :
     (rosterBlock setup rosters event)[offset]? =
       some (.player ((rosters event)[offset]'inside)) := by
@@ -61,7 +65,8 @@ theorem rosterBlock_roster (setup : Setup (Player := Player) (L := L))
   rfl
 
 theorem rosterBlock_ending (setup : Setup (Player := Player) (L := L))
-    (rosters : (graph setup).EventId → List Player) (event : (graph setup).EventId)
+    (rosters : setup.informationGraph.EventId → List Player) (event :
+      setup.informationGraph.EventId)
     (offset : Nat) :
     (rosterBlock setup rosters event)[(rosters event).length + offset]? =
       (rosterPhaseEnding setup event)[offset]? := by
@@ -69,37 +74,37 @@ theorem rosterBlock_ending (setup : Setup (Player := Player) (L := L))
   simp only [List.length_map, Nat.add_sub_cancel_left]
 
 theorem rosterPhaseEnding_first (setup : Setup (Player := Player) (L := L))
-    (event : (graph setup).EventId) :
-    (rosterPhaseEnding setup event)[0]? = some (match (graph setup).actor? event with
+    (event : setup.informationGraph.EventId) :
+    (rosterPhaseEnding setup event)[0]? = some (match setup.informationGraph.actor? event with
       | none => .sample event
       | some owner => .includeLatest event owner) := by
   unfold rosterPhaseEnding
-  cases (graph setup).actor? event <;> rfl
+  cases setup.informationGraph.actor? event <;> rfl
 
 theorem rosterPhaseEnding_tick (setup : Setup (Player := Player) (L := L))
-    (event : (graph setup).EventId) (index : Nat) (inside : index < event.val + 1) :
+    (event : setup.informationGraph.EventId) (index : Nat) (inside : index < event.val + 1) :
     (rosterPhaseEnding setup event)[index + 1]? = some .tick := by
   have shape : rosterPhaseEnding setup event =
-      (match (graph setup).actor? event with
+      (match setup.informationGraph.actor? event with
         | none => ServiceInstruction.sample event
         | some owner => .includeLatest event owner) ::
         (List.replicate (event.val + 1) .tick ++ [.expire event]) := by
     unfold rosterPhaseEnding
-    cases (graph setup).actor? event <;> rfl
+    cases setup.informationGraph.actor? event <;> rfl
   rw [shape, List.getElem?_cons_succ,
     List.getElem?_append_left (by simpa only [List.length_replicate] using inside),
     List.getElem?_replicate_of_lt inside]
 
 theorem rosterPhaseEnding_expire (setup : Setup (Player := Player) (L := L))
-    (event : (graph setup).EventId) :
+    (event : setup.informationGraph.EventId) :
     (rosterPhaseEnding setup event)[event.val + 2]? = some (.expire event) := by
   have shape : rosterPhaseEnding setup event =
-      (match (graph setup).actor? event with
+      (match setup.informationGraph.actor? event with
         | none => ServiceInstruction.sample event
         | some owner => .includeLatest event owner) ::
         (List.replicate (event.val + 1) .tick ++ [.expire event]) := by
     unfold rosterPhaseEnding
-    cases (graph setup).actor? event <;> rfl
+    cases setup.informationGraph.actor? event <;> rfl
   rw [shape, List.getElem?_cons_succ,
     List.getElem?_append_right (by simp only [List.length_replicate]; omega)]
   simp only [List.length_replicate, Nat.sub_self, List.getElem?_cons_zero]
@@ -107,11 +112,11 @@ theorem rosterPhaseEnding_expire (setup : Setup (Player := Player) (L := L))
 section EntrySnapshot
 
 variable (setup : Setup (Player := Player) (L := L))
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-  (rosters : (graph setup).EventId → List Player)
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
+  (rosters : setup.informationGraph.EventId → List Player)
   (past extra : List (application setup (Vegas.timeouts setup) leaks).EnvironmentEntry)
   (view nextView : (application setup (Vegas.timeouts setup) leaks).EnvironmentView)
-  (event : (graph setup).EventId)
+  (event : setup.informationGraph.EventId)
 
 /-- Before recording a block's first command, the current public view supplies
 its entry observation. -/

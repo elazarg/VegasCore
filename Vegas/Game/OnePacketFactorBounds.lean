@@ -54,8 +54,8 @@ theorem cube_le_slotError_of_slot_ge {scale floor content : ℝ} (nonnegative : 
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
 
 theorem silenceFactor_mem (after : LateKey setup timeouts leaks) :
     0 ≤ silenceFactor (timeouts := timeouts) after ∧ silenceFactor (timeouts := timeouts) after
@@ -91,10 +91,10 @@ theorem honestFactor_mem (before after : LateKey setup timeouts leaks) :
     · exact pendingBindingHonestFactor_mem (timeouts := timeouts) before after
     · exact transmitFactor_mem (timeouts := timeouts) after
 
-variable (bounds : MessageBounds (graph setup))
+variable (bounds : MessageBounds setup.informationGraph)
 
 theorem pendingBindingSlotFactor_mem (before after : LateKey setup timeouts leaks)
-    (event : (graph setup).EventId) :
+    (event : setup.informationGraph.EventId) :
     0 ≤ pendingBindingSlotFactor (timeouts := timeouts) bounds before after event ∧
       pendingBindingSlotFactor (timeouts := timeouts) bounds before after event ≤ 1 := by
   classical

@@ -47,7 +47,7 @@ structure EventCompletion {Player : Type} {L : IExpr} [IExpr.ResultTypes L]
 /-- A finite typed event graph. Numeric event ids witness one topological
 ranking, while execution may select any event ready at the current cut.
 
-`reads_available` is local structural evidence, not a whole-run simulation
+`Vegas.EventGraph.reads_available` is local structural evidence, not a whole-run simulation
 hypothesis: every field read by a node is either an input or is produced by a
 declared predecessor. -/
 structure EventGraph (Player : Type) (L : IExpr) [IExpr.ResultTypes L] where

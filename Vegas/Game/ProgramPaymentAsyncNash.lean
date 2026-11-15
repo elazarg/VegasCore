@@ -29,32 +29,39 @@ variable (service : AsyncServiceSpec Player L)
 
 /-- Program-determined receipts on the runtime's typed source readout. -/
 def paymentTransfers :=
-  serviceBaseUtility service.setup service.mode service.duration service.leaks
+  serviceBaseUtility service.setup service.setup.informationDependencies service.duration
+    service.leaks
     (fun terminal => service.setup.transfers (service.setup.program.publicOutcome terminal))
 
 /-- Private valuation uses the same readout, independently of the money reader. -/
 def paymentValuation {Parameter : Type}
     (parameter : State L service.setup.context → Parameter)
     (valuation : Parameter × PublicOutcome service.setup.program → Player → ℝ) :=
-  serviceBaseUtility service.setup service.mode service.duration service.leaks
+  serviceBaseUtility service.setup service.setup.informationDependencies service.duration
+    service.leaks
     (fun terminal => valuation (service.setup.parameterOutcome parameter terminal))
 
 /-- Actual randomized receipts after the evidence-based deposit audit. -/
 def paymentSettlement
-    (sample : List (SettledEvidence service.setup service.mode) →
-      PMF (List (SettledEvidence service.setup service.mode))) (deposit : Player → ℝ) :=
+    (sample : List (SettledEvidence service.setup service.setup.informationDependencies) →
+      PMF (List (SettledEvidence service.setup service.setup.informationDependencies))) (deposit :
+        Player → ℝ) :=
   TerminalAudit.settlement service.paymentTransfers
-    ((serviceAuditObservation (serviceTimeouts service.setup service.mode service.duration))
+    ((serviceAuditObservation (serviceTimeouts service.setup service.setup.informationDependencies
+      service.duration))
       service.leaks)
-    (serviceSourceAudit service.setup service.mode service.duration service.leaks sample) deposit
+    (serviceSourceAudit service.setup service.setup.informationDependencies service.duration
+      service.leaks sample) deposit
 
 /-- Expected valuation plus actual monetary settlement, conditional on a runtime state. -/
 def paymentExpectedUtility {Parameter : Type}
     (parameter : State L service.setup.context → Parameter)
     (valuation : Parameter × PublicOutcome service.setup.program → Player → ℝ)
-    (sample : List (SettledEvidence service.setup service.mode) →
-      PMF (List (SettledEvidence service.setup service.mode))) (deposit : Player → ℝ)
-    (state : (serviceApplication service.setup service.mode service.duration
+    (sample : List (SettledEvidence service.setup service.setup.informationDependencies) →
+      PMF (List (SettledEvidence service.setup service.setup.informationDependencies))) (deposit :
+        Player → ℝ)
+    (state : (serviceApplication service.setup service.setup.informationDependencies
+      service.duration
       service.leaks).ProtocolState) (who : Player) : ℝ :=
   expect (service.paymentSettlement sample deposit state)
     (fun receipts => service.paymentValuation parameter valuation state who + receipts who)
@@ -64,34 +71,42 @@ holds on every runtime state, including unfinished states and deviations. -/
 theorem paymentExpectedUtility_eq {Parameter : Type}
     (parameter : State L service.setup.context → Parameter)
     (valuation : Parameter × PublicOutcome service.setup.program → Player → ℝ)
-    (sample : List (SettledEvidence service.setup service.mode) →
-      PMF (List (SettledEvidence service.setup service.mode))) (deposit : Player → ℝ) :
+    (sample : List (SettledEvidence service.setup service.setup.informationDependencies) →
+      PMF (List (SettledEvidence service.setup service.setup.informationDependencies))) (deposit :
+        Player → ℝ) :
     service.paymentExpectedUtility parameter valuation sample deposit =
       TerminalAudit.utility
-        (serviceBaseUtility service.setup service.mode service.duration service.leaks
+        (serviceBaseUtility service.setup service.setup.informationDependencies service.duration
+          service.leaks
           (fun terminal => service.setup.parameterPaymentUtility valuation
             (service.setup.parameterOutcome parameter terminal)))
-        ((serviceAuditObservation (serviceTimeouts service.setup service.mode service.duration))
+        ((serviceAuditObservation (serviceTimeouts service.setup
+          service.setup.informationDependencies service.duration))
           service.leaks)
-        (serviceSourceAudit service.setup service.mode service.duration service.leaks sample)
+        (serviceSourceAudit service.setup service.setup.informationDependencies service.duration
+          service.leaks sample)
         deposit := by
   have combined :
       (fun state who => service.paymentValuation parameter valuation state who +
         service.paymentTransfers state who) =
-      serviceBaseUtility service.setup service.mode service.duration service.leaks
+      serviceBaseUtility service.setup service.setup.informationDependencies service.duration
+        service.leaks
         (fun terminal => service.setup.parameterPaymentUtility valuation
           (service.setup.parameterOutcome parameter terminal)) := by
     funext state who
     simp only [paymentValuation, paymentTransfers, serviceBaseUtility]
-    cases serviceSourceReadout service.setup service.mode service.duration service.leaks state
+    cases serviceSourceReadout service.setup service.setup.informationDependencies service.duration
+      service.leaks state
       <;> simp only [Option.elim_none, Option.elim_some, zero_add,
         Setup.parameterPaymentUtility_parameterOutcome]
   funext state who
   exact (TerminalAudit.settlement_expect_monetaryUtility
     (service.paymentValuation parameter valuation) service.paymentTransfers
-    ((serviceAuditObservation (serviceTimeouts service.setup service.mode service.duration))
+    ((serviceAuditObservation (serviceTimeouts service.setup service.setup.informationDependencies
+      service.duration))
       service.leaks)
-    (serviceSourceAudit service.setup service.mode service.duration service.leaks sample)
+    (serviceSourceAudit service.setup service.setup.informationDependencies service.duration
+      service.leaks sample)
     deposit state who).trans (by rw [combined])
 
 /-- Declared bounds on valuation, instruction-payment sums, and deposits provide the
@@ -107,25 +122,31 @@ theorem payment_within_of_bounds {Parameter : Type}
     (valuation : Parameter × PublicOutcome service.setup.program → Player → ℝ)
     (valuationLow valuationHigh transferLow transferHigh depositBound : ℝ)
     (valuation_bounds : ∀ control,
-      ((serviceApplication service.setup service.mode service.duration service.leaks).protocol
-        (serviceInitialLaw service.setup service.mode) service.horizon service.scheduler).Trace
+      ((serviceApplication service.setup service.setup.informationDependencies service.duration
+        service.leaks).protocol
+        (serviceInitialLaw service.setup service.setup.informationDependencies) service.horizon
+          service.scheduler).Trace
           (some control) →
-      ∀ terminal, serviceSourceReadout service.setup service.mode service.duration service.leaks
+      ∀ terminal, serviceSourceReadout service.setup service.setup.informationDependencies
+        service.duration service.leaks
         (some control) = some terminal → ∀ who,
       valuationLow ≤ valuation (service.setup.parameterOutcome parameter terminal) who ∧
         valuation (service.setup.parameterOutcome parameter terminal) who ≤ valuationHigh)
     (transfer_bounds : ∀ control,
-      ((serviceApplication service.setup service.mode service.duration service.leaks).protocol
-        (serviceInitialLaw service.setup service.mode) service.horizon service.scheduler).Trace
+      ((serviceApplication service.setup service.setup.informationDependencies service.duration
+        service.leaks).protocol
+        (serviceInitialLaw service.setup service.setup.informationDependencies) service.horizon
+          service.scheduler).Trace
           (some control) →
-      ∀ terminal, serviceSourceReadout service.setup service.mode service.duration service.leaks
+      ∀ terminal, serviceSourceReadout service.setup service.setup.informationDependencies
+        service.duration service.leaks
         (some control) = some terminal → ∀ who,
       transferLow ≤ (transferAmount (service.setup.program.evaluatePayoffs terminal.state)
         who : ℝ) ∧
         (transferAmount (service.setup.program.evaluatePayoffs terminal.state) who : ℝ) ≤
           transferHigh)
-    (sample : List (SettledEvidence service.setup service.mode) →
-      PMF (List (SettledEvidence service.setup service.mode)))
+    (sample : List (SettledEvidence service.setup service.setup.informationDependencies) →
+      PMF (List (SettledEvidence service.setup service.setup.informationDependencies)))
     (deposit : Player → ℝ)
     (deposit_bounds : ∀ who, 0 ≤ deposit who ∧ deposit who ≤ depositBound) :
     service.SettlementRange parameter (service.setup.parameterPaymentUtility valuation)
@@ -138,7 +159,8 @@ theorem payment_within_of_bounds {Parameter : Type}
   intro control trace payoffs supported who
   rw [TerminalAudit.settlement, PMF.support_map] at supported
   obtain ⟨verdict, _, rfl⟩ := supported
-  let base := serviceBaseUtility service.setup service.mode service.duration service.leaks
+  let base := serviceBaseUtility service.setup service.setup.informationDependencies
+    service.duration service.leaks
     (fun terminal => service.setup.parameterPaymentUtility valuation
       (service.setup.parameterOutcome parameter terminal))
   have baseBounds :
@@ -146,7 +168,8 @@ theorem payment_within_of_bounds {Parameter : Type}
         base (some control) who ∧ base (some control) who ≤
       max 0 (valuationHigh + max transferHigh (service.setup.exitTransfers who : ℝ)) := by
     unfold base serviceBaseUtility
-    cases readout : serviceSourceReadout service.setup service.mode service.duration
+    cases readout : serviceSourceReadout service.setup service.setup.informationDependencies
+      service.duration
         service.leaks (some control) with
     | none => exact ⟨min_le_left _ _, le_max_left _ _⟩
     | some terminal =>
@@ -181,14 +204,13 @@ the actual audited monetary settlement. Each direction has the existing loss
 `2 * timing.deferralError * range`, against all bounded raw-menu deviations. -/
 theorem payment_rawClientProfile_isεNash_approximate {Parameter : Type}
     (admission : CommitmentInterface service.setup.program)
-    (ordered : (serviceGraph service.setup service.mode).BarrierOrdered)
     (parameter : State L service.setup.context → Parameter)
     (valuation : Parameter × PublicOutcome service.setup.program → Player → ℝ)
-    (sample : List (SettledEvidence service.setup service.mode) →
-      PMF (List (SettledEvidence service.setup service.mode)))
+    (sample : List (SettledEvidence service.setup service.setup.informationDependencies) →
+      PMF (List (SettledEvidence service.setup service.setup.informationDependencies)))
     (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
     (deposit : Player → ℝ) (nonnegative : ∀ who, 0 ≤ deposit who)
-    {turns : Nat} (timing : TurnTiming service.setup turns service.mode)
+    {turns : Nat} (timing : TurnTiming service.setup turns service.setup.informationDependencies)
     (low : Player → ℝ) (range : ℝ)
     (within : service.SettlementRange parameter
       (service.setup.parameterPaymentUtility valuation) sample deposit low
@@ -214,7 +236,7 @@ theorem payment_rawClientProfile_isεNash_approximate {Parameter : Type}
             (service.setup.parameterOutcome parameter terminal) who))
         (ε + 2 * timing.deferralError * range) source) := by
   rw [service.paymentExpectedUtility_eq]
-  exact service.isεNash_rawClientProfile_approximate admission ordered parameter
+  exact service.isεNash_rawClientProfile_approximate admission parameter
     (service.setup.parameterPaymentUtility valuation) sample authentic deposit
     nonnegative timing low range within ε source
 
@@ -223,11 +245,10 @@ reflect the same Nash error for valuation plus the actual monetary settlement.
 Bounds include the existing unfinished outcome and both possible audit charges. -/
 theorem payment_firstTurnClientProfile_isεNash_iff {Parameter : Type}
     (admission : CommitmentInterface service.setup.program)
-    (ordered : (serviceGraph service.setup service.mode).BarrierOrdered)
     (parameter : State L service.setup.context → Parameter)
     (valuation : Parameter × PublicOutcome service.setup.program → Player → ℝ)
-    (sample : List (SettledEvidence service.setup service.mode) →
-      PMF (List (SettledEvidence service.setup service.mode)))
+    (sample : List (SettledEvidence service.setup service.setup.informationDependencies) →
+      PMF (List (SettledEvidence service.setup service.setup.informationDependencies)))
     (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
     (deposit : Player → ℝ) (nonnegative : ∀ who, 0 ≤ deposit who)
     (turns : Nat) (low : Player → ℝ) (range : ℝ)
@@ -239,14 +260,14 @@ theorem payment_firstTurnClientProfile_isεNash_iff {Parameter : Type}
       (fun history who => service.paymentExpectedUtility parameter valuation sample deposit
         history.state who) ε
       (service.clientProfile admission service.rawMenu
-        (firstTurnTiming service.setup turns service.mode) source) ↔
+        (firstTurnTiming service.setup turns service.setup.informationDependencies) source) ↔
     IsεNash ((service.sourceModel admission).toBehavioralGameForm
         (instructionCount service.setup.program + 1))
       (fun final who => (service.setup.protocolReadout final.state).elim 0
         (fun terminal => service.setup.parameterPaymentUtility valuation
           (service.setup.parameterOutcome parameter terminal) who)) ε source := by
   rw [service.paymentExpectedUtility_eq]
-  exact service.isεNash_firstTurnClientProfile_iff admission ordered parameter
+  exact service.isεNash_firstTurnClientProfile_iff admission parameter
     (service.setup.parameterPaymentUtility valuation) sample authentic deposit
     nonnegative turns low range within ε source
 
@@ -256,22 +277,23 @@ precedes valuation
 and does not assume equilibrium or independent audit verdicts. -/
 theorem payment_firstTurnClientProfile_settlement_law
     (admission : CommitmentInterface service.setup.program)
-    (ordered : (serviceGraph service.setup service.mode).BarrierOrdered)
-    (sample : List (SettledEvidence service.setup service.mode) →
-      PMF (List (SettledEvidence service.setup service.mode)))
+    (sample : List (SettledEvidence service.setup service.setup.informationDependencies) →
+      PMF (List (SettledEvidence service.setup service.setup.informationDependencies)))
     (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
     (deposit : Player → ℝ) (turns : Nat)
     (source : Profile (service.sourceModel admission).behavioralSignature) :
     ((service.run service.rawMenu
       (service.clientProfile admission service.rawMenu
-        (firstTurnTiming service.setup turns service.mode) source)).bind fun final =>
+        (firstTurnTiming service.setup turns service.setup.informationDependencies) source)).bind
+          fun final =>
         (service.paymentSettlement sample deposit final.state).map fun receipts =>
-          ((serviceSourceReadout service.setup service.mode service.duration service.leaks
+          ((serviceSourceReadout service.setup service.setup.informationDependencies
+            service.duration service.leaks
             final.state).map (fun config => (config.state, config.defaults)), receipts)) =
       (service.setup.run (service.setup.decodeBehavioralProfile admission source)).map
         (fun terminal => (some (terminal.state, terminal.defaults), fun who =>
           service.setup.transfers (service.setup.program.publicOutcome terminal) who)) := by
-  exact service.firstTurnClientProfile_settlement_law admission ordered
+  exact service.firstTurnClientProfile_settlement_law admission
     (fun _ => ()) (fun outcome => service.setup.transfers outcome.2)
     sample authentic deposit turns source
 

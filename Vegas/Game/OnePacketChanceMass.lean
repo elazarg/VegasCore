@@ -30,18 +30,18 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)} {profile : BehavioralProfile setup.program}
+  {timeouts : EventTimeouts setup.informationGraph} {profile : BehavioralProfile setup.program}
 
 /-- **A chance completion has the source chance mass.** At a configuration with
 a source residual, completing a chance event decodes to no action, and reaches
 a configuration with the probability that the source step from the residual's
 point gives its decoded point. -/
-theorem SourceResidual.chanceMass {rank : Nat} {before : (graph setup).Config}
+theorem SourceResidual.chanceMass {rank : Nat} {before : setup.informationGraph.Config}
     (residual : SourceResidual setup profile rank before)
-    (event : (graph setup).EventId) (ready : before.cut.Ready event)
-    (action : (graph setup).Action event) (after : (graph setup).Config)
+    (event : setup.informationGraph.EventId) (ready : before.cut.Ready event)
+    (action : setup.informationGraph.Action event) (after : setup.informationGraph.Config)
     (member : after ∈ (before.step event ready action).support)
-    (chance : (graph setup).actor? event = none) :
+    (chance : setup.informationGraph.actor? event = none) :
     decodeEventAction setup.program event action = none ∧
       (((ProtocolState.step setup.program
           (residual.lift (ProtocolState.entry residual.program residual.source))
@@ -51,7 +51,7 @@ theorem SourceResidual.chanceMass {rank : Nat} {before : (graph setup).Config}
     have owner := decodeEventAction_owner setup.program event action
     rw [eventOwner?_eq_actor] at owner
     change (decodeEventAction setup.program event action).map sourceActionOwner =
-      (graph setup).actor? event at owner
+      setup.informationGraph.actor? event at owner
     rw [chance] at owner
     exact Option.map_eq_none_iff.mp owner
   obtain ⟨next, _reached, mass⟩ := residual.step_mass event ready action after member
@@ -61,7 +61,7 @@ theorem SourceResidual.chanceMass {rank : Nat} {before : (graph setup).Config}
 
 
 variable [Fintype Player]
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
 
 /-- **A chance completion matches** in the intended replay, from a replayed
 history at the decoded point of a configuration with a source residual. -/
@@ -72,21 +72,22 @@ theorem replayStepMatches_chance (assessment : setup.intendedModel.BehavioralAss
     (residual : SourceResidual setup profile rank before.execution.application.config)
     (current : history.state =
       some (residual.lift (ProtocolState.entry residual.program residual.source)))
-    {event : (graph setup).EventId} (ready : before.execution.application.config.cut.Ready event)
-    {action : (graph setup).Action event}
+    {event : setup.informationGraph.EventId} (ready : before.execution.application.config.cut.Ready
+      event)
+    {action : setup.informationGraph.Action event}
     (member : after.execution.application.config ∈
       (before.execution.application.config.step event ready action).support)
-    (chance : (graph setup).actor? event = none) :
+    (chance : setup.informationGraph.actor? event = none) :
     ReplayStepMatches setup timeouts leaks assessment who history pending (some before) joint
       (some after) := by
   obtain ⟨decoded, mass⟩ := residual.chanceMass event ready action _ member chance
   obtain ⟨value, _output, changed⟩ :=
     before.execution.application.config.step_completion event ready action _ member
-  let completion : (graph setup).Completion := ⟨event, none, none⟩
+  let completion : setup.informationGraph.Completion := ⟨event, none, none⟩
   have dropped : after.execution.application.config.history.drop
       before.execution.application.config.history.length = [completion] := by
     rw [changed, List.drop_left]
-    have ownerless : ((graph setup).nodes event).actor = none := chance
+    have ownerless : (setup.informationGraph.nodes event).actor = none := chance
     simp only [EventGraph.completion, EventGraph.Config.actualDecision,
       EventGraph.EventCode.actualDecision, ownerless]
     rfl
@@ -102,7 +103,7 @@ theorem replayStepMatches_chance (assessment : setup.intendedModel.BehavioralAss
     simp [actingJoint]
   have opponents := setup.intendedModel.opponentsStepProb_eq_one_of_none assessment.strategy
     who history.trace _ nobody
-  change _ * (if ((graph setup).actor? event).isSome then 1 else pending) = _
+  change _ * (if (setup.informationGraph.actor? event).isSome then 1 else pending) = _
   simp only [chance, Option.isSome_none, Bool.false_eq_true, ↓reduceIte]
   rw [completionMass_of_chance _ _ ready member chance]
   unfold counterfactualStepProb

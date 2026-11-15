@@ -21,8 +21,8 @@ open SourceProgram Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
 
 namespace DirectedBindingFrame
 
@@ -35,13 +35,14 @@ needed. At non-reveal turns there is no delivered value on either side. -/
 theorem deliveredValue_of_successful
     (frame : DirectedBindingFrame (timeouts := timeouts) memory owner original repaired)
     (unfailed : ∀ event payload
-      (binding : EventGraph.FieldRef (graph setup).layout (.binding owner payload))
-      (checks : List (EventGraph.GuardCheck (graph setup).layout payload))
-      (outputEq : (graph setup).outputLayout event = .publication payload)
-      (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-        ((graph setup).nodes event) = .resolve owner payload binding checks),
+      (binding : EventGraph.FieldRef setup.informationGraph.layout (.binding owner payload))
+      (checks : List (EventGraph.GuardCheck setup.informationGraph.layout payload))
+      (outputEq : setup.informationGraph.outputLayout event = .publication payload)
+      (codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+        (setup.informationGraph.nodes event) = .resolve owner payload binding checks),
       original.application.publicView.ownTurn? owner = some event →
-      nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq →
+      nodeView setup.informationGraph event = .resolve owner payload binding checks outputEq codeEq
+        →
       ∃ value, binding.get? original.application.config.store = some (.success value)) :
     deliveredValue setup timeouts leaks owner (original.observe (application setup timeouts leaks)
       owner) =
@@ -60,7 +61,7 @@ theorem deliveredValue_of_successful
   cases turn : original.application.publicView.ownTurn? owner with
   | none => rfl
   | some event =>
-      cases node : nodeView (graph setup) event with
+      cases node : nodeView setup.informationGraph event with
       | bind | sample => simp only [node]
       | resolve actor payload binding checks outputEq codeEq =>
           have owned := (original.application.publicView.ownTurn?_spec owner event turn).2
@@ -72,8 +73,10 @@ theorem deliveredValue_of_successful
             binding value stored
           simp only [node]
           congr 2
-          change binding.get? ((graph setup).playerStore owner original.application.config.store) =
-            binding.get? ((graph setup).playerStore owner repaired.application.config.store)
+          change binding.get? (setup.informationGraph.playerStore owner
+            original.application.config.store) =
+            binding.get? (setup.informationGraph.playerStore owner
+              repaired.application.config.store)
           rw [binding.get?_playerStore owner _ rfl, binding.get?_playerStore owner _ rfl,
             stored, repairedStored]
 

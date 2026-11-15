@@ -67,7 +67,7 @@ example (types : Player → Int) (profile : BehavioralProfile program)
     terminal supported
   constructor <;> rw [terminalRef_get, retained] <;> rfl
 
-abbrev graph := Vegas.toEventGraph program
+abbrev graph := Vegas.toInformationGraph program
 abbrev aliceInput : graph.InputId := ⟨0, by decide⟩
 abbrev bobInput : graph.InputId := ⟨1, by decide⟩
 
@@ -110,7 +110,7 @@ def bindingProgram : SourceProgram Player simpleExpr bindingContext {0, 1} :=
   .reveal 2 .alice 0 (by decide) .here (by decide) <|
   .reveal 3 .alice 1 (by decide) (.there (.there .here)) (by decide) <|
   .ret []
-abbrev bindingGraph := Vegas.toEventGraph bindingProgram
+abbrev bindingGraph := Vegas.toInformationGraph bindingProgram
 abbrev openableInput : bindingGraph.InputId := ⟨0, by decide⟩
 abbrev unopenableInput : bindingGraph.InputId := ⟨1, by decide⟩
 

@@ -32,12 +32,12 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
 
 variable (setup timeouts leaks) in
 /-- The owner's turn was `event` at the view a recall entry was taken at. -/
-def ActivatedAt (who : Player) (event : (graph setup).EventId)
+def ActivatedAt (who : Player) (event : setup.informationGraph.EventId)
     (entry : (application setup timeouts leaks).PlayerEntry) : Prop :=
   entry.beforeView.application.publicView.ownTurn? who = some event
 
@@ -89,7 +89,7 @@ theorem recordsEntry_transition (who : Player) (entry : (application setup timeo
 
 section Opportunity
 
-variable [Fintype Player] (setup timeouts leaks) (bounds : MessageBounds (graph setup))
+variable [Fintype Player] (setup timeouts leaks) (bounds : MessageBounds setup.informationGraph)
 
 local notation "N" => application setup timeouts leaks
 local notation "nativeMenu" => MessageBounds.onePacketMenu timeouts leaks bounds
@@ -97,7 +97,7 @@ local notation "nativeMenu" => MessageBounds.onePacketMenu timeouts leaks bounds
 /-- Every first actual native counted callback fits the original inclusion deadline
 under pointwise counted opportunity, including arbitrary prior source counterfactuals. -/
 theorem firstActivation_inclusionFits_of_counted_opportunity
-    (horizon : Nat) (scheduler : (N).Scheduler) (delay bound : (graph setup).EventId → Nat)
+    (horizon : Nat) (scheduler : (N).Scheduler) (delay bound : setup.informationGraph.EventId → Nat)
     (opportunity : ∀ control : (N).Control,
       ((nativeMenu).protocol (initialLaw setup) horizon scheduler).Trace (some control) →
       control.execution.application.config.defaulted = ∅ →
@@ -108,7 +108,7 @@ theorem firstActivation_inclusionFits_of_counted_opportunity
     {remaining : Nat} {who : Player} {execution : (N).Execution}
     (current : state = some ⟨remaining, some who, execution⟩)
     (clear : execution.application.config.defaulted = ∅)
-    (event : (graph setup).EventId)
+    (event : setup.informationGraph.EventId)
     (turn : execution.application.publicView.ownTurn? who = some event)
     (never : ∀ entry ∈ execution.logs who,
       ¬ ActivatedAt setup timeouts leaks who event entry) :
@@ -118,16 +118,17 @@ theorem firstActivation_inclusionFits_of_counted_opportunity
     (nativeMenu).decision_predecessor (initialLaw setup) horizon service trace current
   have spec := PublicView.ownTurn?_spec _ who event turn
   have ready := (execution.application.publicView_eventReady event).mp spec.1
-  have strategic : ((graph setup).actor? event).isSome = true := by rw [spec.2]; rfl
+  have strategic : (setup.informationGraph.actor? event).isSome = true := by rw [spec.2]; rfl
   have previousTrace := (nativeMenu).toRawTrace (initialLaw setup) horizon service countedTrace
   have inputTrace := previousTrace
   change (((reactiveApplication timeouts) leaks).protocol
-    (serviceInitialLaw setup .sequential) horizon service).Trace _ at inputTrace
-  rw [serviceInitialLaw_eq_inputs setup] at inputTrace
+    (initialLaw setup) horizon service).Trace _ at inputTrace
+  rw [initialLaw, serviceInitialLaw_eq_inputs (deps := setup.informationDependencies) setup]
+    at inputTrace
   have valid := (reactive_history_invariant timeouts) leaks
     (setup.initialLaw.map setup.eventInputs) horizon service inputTrace
   change ∃ draw ∈ (setup.initialLaw.map setup.eventInputs).support,
-    previous.application.Invariant draw at valid
+    State.Invariant (graph := setup.informationGraph) draw previous.application at valid
   obtain ⟨draw, _, invariant⟩ := valid
   rw [applicationEq] at invariant
   obtain ⟨entered, activated⟩ := invariant.activatedAt_eq_some_of_ready_actor event ready strategic
@@ -136,8 +137,9 @@ theorem firstActivation_inclusionFits_of_counted_opportunity
     exact clear
   have actual := opportunity ⟨remaining + 1, none, previous⟩ countedTrace previousClear
   have fits := inclusionFitsDeadline_of_unrecalled_turn timeouts leaks
-    (initialLaw setup) horizon service (serviceGraph_revealRelaxedOrdered setup .sequential)
-    ⟨remaining + 1, none, previous⟩ previousTrace rfl delay bound timely actual event who spec.2
+    (initialLaw setup) horizon service
+    ⟨remaining + 1, none, previous⟩ previousTrace rfl delay bound timely actual event
+    (setup.informationGraph.sequentialize_solitary event).ownerSolitary who spec.2
     (by rw [applicationEq]; exact spec.1) entered (by rw [applicationEq]; exact activated)
     (fun entry remembered => never entry (recallEq ▸ remembered))
   change previous.application.publicView.InclusionFitsDeadline timeouts bound event at fits

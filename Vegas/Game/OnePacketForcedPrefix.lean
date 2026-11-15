@@ -29,7 +29,7 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
+  {timeouts : EventTimeouts setup.informationGraph}
 
 /-- **Forcedness reaches back over a source step.** A source point from which a
 step reaches a point forced for `who` is forced for `who`. -/
@@ -46,7 +46,7 @@ theorem forcedPoint_of_step {who : Player} {point target : ProtocolState setup.p
 /-- A forced state of `who` is an initialized state whose decoded point is
 forced for `who`. -/
 theorem forcedState_iff_decodedPoint
-    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
     {who : Player} (control : (application setup timeouts leaks).Control) :
     ForcedState setup timeouts leaks who (some control) ↔
       ∃ point, decodedPoint setup control.execution.application.config = some point ∧
@@ -68,8 +68,8 @@ theorem forcedState_iff_decodedPoint
     · cases decoded
 
 variable [Fintype Player]
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- **Forced states reach back along native transitions.** If a native

@@ -59,9 +59,9 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] (setup : Setup (Player := Player) (L := L))
-  (timeouts : EventTimeouts (graph setup))
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-  (bounds : MessageBounds (graph setup)) (horizon : Nat)
+  (timeouts : EventTimeouts setup.informationGraph)
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
+  (bounds : MessageBounds setup.informationGraph) (horizon : Nat)
   (scheduler : (application setup timeouts leaks).Scheduler)
 
 /-- **Matching actor completions.** At every completion of an event with an
@@ -78,11 +78,11 @@ def ActorCompletionsMatch (assessment : setup.intendedModel.BehavioralAssessment
           history →
           ∀ (current next : (application setup timeouts leaks).Control), before = some current →
             after = some next → current.actor = none →
-            ∀ (completion : (graph setup).Completion)
+            ∀ (completion : setup.informationGraph.Completion)
               (_ready : current.execution.application.config.cut.Ready completion.event),
               next.execution.application.config.history.drop
                 current.execution.application.config.history.length = [completion] →
-              ∀ actor, (graph setup).actor? completion.event = some actor →
+              ∀ actor, setup.informationGraph.actor? completion.event = some actor →
               ∀ legal : setup.intendedProtocol.Legal history.state
                   (actingJoint setup history.state
                     (completion.decision.bind (decodeEventAction setup.program completion.event))),
@@ -144,7 +144,7 @@ theorem replayMatches_of_actorCompletions
                   | nil =>
                       obtain ⟨ready, action, member⟩ :=
                         EventGraph.Config.Step.path_singleton path completion dropped
-                      cases owner : (graph setup).actor? completion.event with
+                      cases owner : setup.informationGraph.actor? completion.event with
                       | none =>
                           exact replayStepMatches_chance (timeouts := timeouts) assessment who
                             history _ control next acting joint residual current ready member owner

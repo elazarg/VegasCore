@@ -29,24 +29,29 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (admission : CommitmentInterface service.setup.program)
 
 /-- The actual raw client's common terminal observation, including realized audit settlement. -/
-def clientSettlementLaw {turns : Nat} (timing : TurnTiming service.setup turns service.mode)
+def clientSettlementLaw {turns : Nat} (timing : TurnTiming service.setup turns
+  service.setup.informationDependencies)
     (source : Profile (service.sourceModel admission).behavioralSignature)
-    (sample : List (SettledEvidence service.setup service.mode) →
-      PMF (List (SettledEvidence service.setup service.mode)))
+    (sample : List (SettledEvidence service.setup service.setup.informationDependencies) →
+      PMF (List (SettledEvidence service.setup service.setup.informationDependencies)))
     (utility : State L service.setup.program.terminalCtx × DefaultHistory Player → Player → ℝ)
     (deposit : Player → ℝ) :
     PMF (TerminalObservation service.setup) :=
   let settle := TerminalAudit.settlement
-    (serviceBaseUtility service.setup service.mode service.duration service.leaks
+    (serviceBaseUtility service.setup service.setup.informationDependencies service.duration
+      service.leaks
       (fun config => utility (config.state, config.defaults)))
-    ((serviceAuditObservation (serviceTimeouts service.setup service.mode service.duration))
+    ((serviceAuditObservation (serviceTimeouts service.setup service.setup.informationDependencies
+      service.duration))
       service.leaks)
-    (serviceSourceAudit service.setup service.mode service.duration service.leaks sample) deposit
+    (serviceSourceAudit service.setup service.setup.informationDependencies service.duration
+      service.leaks sample) deposit
   (service.run service.rawMenu
       (service.clientProfile admission service.rawMenu timing source)).bind fun final =>
         (settle final.state).map fun payoffs =>
           TerminalObservation.read service.setup
-            ((serviceSourceReadout service.setup service.mode service.duration service.leaks
+            ((serviceSourceReadout service.setup service.setup.informationDependencies
+              service.duration service.leaks
               final.state).map (fun config => (config.state, config.defaults))) payoffs
 
 /-- The source law uses the same fixed terminal-input and public-result reader. -/
@@ -61,21 +66,22 @@ def sourceSettlementLaw
 /-- Every source profile's raw clients reproduce its joint law within the
 product deferral error. Neither rationality nor a payoff-range premise is needed. -/
 theorem clientSettlementLaw_withinTV
-    (ordered : (serviceGraph service.setup service.mode).BarrierOrdered)
-    {turns : Nat} (timing : TurnTiming service.setup turns service.mode)
+    {turns : Nat} (timing : TurnTiming service.setup turns service.setup.informationDependencies)
     (source : Profile (service.sourceModel admission).behavioralSignature)
-    (sample : List (SettledEvidence service.setup service.mode) →
-      PMF (List (SettledEvidence service.setup service.mode)))
+    (sample : List (SettledEvidence service.setup service.setup.informationDependencies) →
+      PMF (List (SettledEvidence service.setup service.setup.informationDependencies)))
     (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
     (utility : State L service.setup.program.terminalCtx × DefaultHistory Player → Player → ℝ)
     (deposit : Player → ℝ) :
     PMF.WithinTV timing.deferralError
       (service.clientSettlementLaw admission timing source sample utility deposit)
       (service.sourceSettlementLaw admission source utility) := by
-  have close := sourceServiceClients_clientPolicy_settlement_lawError service.contract
+  have close := sourceServiceClients_clientPolicy_settlement_lawError
+    (fun event => (service.setup.dataflowGraph.sequentialize_solitary event).ownerSolitary)
+    service.contract
     timing
     (service.setup.decodeBehavioralProfile admission source)
-    (firstTurn_readout_law service.setup service.leaks ordered service.contract service.timely
+    (firstTurn_readout_law service.setup service.leaks service.contract service.timely
       turns _ (fun _ => BehavioralPolicy.normalizeDisclosures_authentic _ _)) service.rawMenu
     (service.rawMenu_admits admission timing source) sample authentic utility deposit
   convert close.map (Function.uncurry (TerminalObservation.read service.setup)) using 1 <;>
@@ -86,11 +92,10 @@ theorem clientSettlementLaw_withinTV
 /-- A source event's probability lower bound loses at most the deferral error
 under the actual raw client law, including the realized settlement. -/
 theorem clientSettlementLaw_event_lower_bound
-    (ordered : (serviceGraph service.setup service.mode).BarrierOrdered)
-    {turns : Nat} (timing : TurnTiming service.setup turns service.mode)
+    {turns : Nat} (timing : TurnTiming service.setup turns service.setup.informationDependencies)
     (source : Profile (service.sourceModel admission).behavioralSignature)
-    (sample : List (SettledEvidence service.setup service.mode) →
-      PMF (List (SettledEvidence service.setup service.mode)))
+    (sample : List (SettledEvidence service.setup service.setup.informationDependencies) →
+      PMF (List (SettledEvidence service.setup service.setup.informationDependencies)))
     (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
     (utility : State L service.setup.program.terminalCtx × DefaultHistory Player → Player → ℝ)
     (deposit : Player → ℝ)
@@ -101,7 +106,7 @@ theorem clientSettlementLaw_event_lower_bound
     lower - timing.deferralError ≤
       ((service.clientSettlementLaw admission timing source sample utility deposit).toOuterMeasure
         event).toReal := by
-  have close := service.clientSettlementLaw_withinTV admission ordered timing source sample
+  have close := service.clientSettlementLaw_withinTV admission timing source sample
     authentic utility deposit
   have gap := (abs_le.mp (close event)).1
   linarith
@@ -109,11 +114,10 @@ theorem clientSettlementLaw_event_lower_bound
 /-- A bounded observable's source expectation lower bound transfers with error
 equal to the deferral probability times its range width. Integration is explicit. -/
 theorem clientSettlementLaw_expect_lower_bound
-    (ordered : (serviceGraph service.setup service.mode).BarrierOrdered)
-    {turns : Nat} (timing : TurnTiming service.setup turns service.mode)
+    {turns : Nat} (timing : TurnTiming service.setup turns service.setup.informationDependencies)
     (source : Profile (service.sourceModel admission).behavioralSignature)
-    (sample : List (SettledEvidence service.setup service.mode) →
-      PMF (List (SettledEvidence service.setup service.mode)))
+    (sample : List (SettledEvidence service.setup service.setup.informationDependencies) →
+      PMF (List (SettledEvidence service.setup service.setup.informationDependencies)))
     (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
     (utility : State L service.setup.program.terminalCtx × DefaultHistory Player → Player → ℝ)
     (deposit : Player → ℝ)
@@ -144,7 +148,7 @@ theorem clientSettlementLaw_expect_lower_bound
     (fun result member => absolute result (Or.inl member)),
     payoffIntegrable_of_bounded_on_support _ _
       (fun result member => absolute result (Or.inr member)), ?_⟩
-  have close := service.clientSettlementLaw_withinTV admission ordered timing source sample
+  have close := service.clientSettlementLaw_withinTV admission timing source sample
     authentic utility deposit
   have gap := close.symm.expect_sub_le observable low width
     (fun result member => bounded result member.symm)

@@ -46,7 +46,7 @@ private theorem exists_inputId : ∀ (Γ : SourceCtx Player L) (input : Fin Γ.l
 theorem privateTo_inl_iff (who : Player) {name : VarId} {kind : CellTy Player L}
     (source : HasVar setup.context name kind) :
     PrivateTo who (setup := setup) (.inl (inputId source)) ↔ kind.hiddenOwner? = some who := by
-  have layoutEq : (graph setup).layout (.inl (inputId source)) = cellField kind :=
+  have layoutEq : setup.informationGraph.layout (.inl (inputId source)) = cellField kind :=
     inputLayout_inputId source
   unfold PrivateTo EventGraph.fieldVisibleTo EventGraph.fieldPublic
   rw [layoutEq]
@@ -60,13 +60,13 @@ theorem privateTo_inl_iff (who : Player) {name : VarId} {kind : CellTy Player L}
 /-- At a private field where both views hold values that are not failures, the
 owner swap sends the first view's value to the second's. -/
 theorem pairSwap_ownerValuePair_of_present (who : Player)
-    {first second : PlayerView (graph setup)} {field : (graph setup).Field}
+    {first second : PlayerView setup.informationGraph} {field : setup.informationGraph.Field}
     (privateTo : PrivateTo who field)
-    {left right : ((graph setup).layout field).Value}
+    {left right : (setup.informationGraph.layout field).Value}
     (firstStore : first.observation.store field = some left)
     (secondStore : second.observation.store field = some right)
-    (leftOk : ¬ ((graph setup).layout field).IsFailure left)
-    (rightOk : ¬ ((graph setup).layout field).IsFailure right) :
+    (leftOk : ¬ (setup.informationGraph.layout field).IsFailure left)
+    (rightOk : ¬ (setup.informationGraph.layout field).IsFailure right) :
     EventGraph.pairSwap (ownerValuePair who first second field) left = right := by
   classical
   unfold ownerValuePair
@@ -82,23 +82,24 @@ inputs of a draw `first` and the second view those of a draw `second` at every
 input private to `who`, and no such stored value is a failure, the owner swap
 sends the inputs of `first` to the inputs of the draw with `who`'s hidden cells
 from `second` and every other cell from `first`. -/
-theorem ownerSwap_inputs_splice (who : Player) {firstView secondView : PlayerView (graph setup)}
+theorem ownerSwap_inputs_splice (who : Player) {firstView secondView : PlayerView
+  setup.informationGraph}
     (first second : State L setup.context)
     (firstStore : ∀ input, PrivateTo who (setup := setup) (.inl input) →
       firstView.observation.store (.inl input) = some (setup.eventInputs first input))
     (secondStore : ∀ input, PrivateTo who (setup := setup) (.inl input) →
       secondView.observation.store (.inl input) = some (setup.eventInputs second input))
     (firstOk : ∀ input, PrivateTo who (setup := setup) (.inl input) →
-      ¬ ((graph setup).layout (.inl input)).IsFailure (setup.eventInputs first input))
+      ¬ (setup.informationGraph.layout (.inl input)).IsFailure (setup.eventInputs first input))
     (secondOk : ∀ input, PrivateTo who (setup := setup) (.inl input) →
-      ¬ ((graph setup).layout (.inl input)).IsFailure (setup.eventInputs second input)) :
+      ¬ (setup.informationGraph.layout (.inl input)).IsFailure (setup.eventInputs second input)) :
     (ownerSwap who firstView secondView).inputs (setup.eventInputs first) =
       setup.eventInputs (splice who second first) := by
   funext input
   obtain ⟨name, kind, source, rfl⟩ := exists_inputId setup.context input
   change EventGraph.pairSwap (ownerValuePair who firstView secondView (.inl (inputId source)))
     (setup.eventInputs first (inputId source)) = _
-  have layoutEq : (graph setup).layout (.inl (inputId source)) = cellField kind :=
+  have layoutEq : setup.informationGraph.layout (.inl (inputId source)) = cellField kind :=
     inputLayout_inputId source
   have splicedValue := encodeInputs_get (splice who second first : State L setup.context) source
   change cast _ (setup.eventInputs (splice who second first) (inputId source)) = _

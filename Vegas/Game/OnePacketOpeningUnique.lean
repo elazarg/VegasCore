@@ -26,8 +26,8 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
   {horizon : Nat} {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- **The transmitting disclosure.** Along every history of the supplied runtime,
@@ -38,19 +38,21 @@ theorem disclosure_transmits_form {control : (application setup timeouts leaks).
     (trace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace
       (some control))
-    (who : Player) (event : (graph setup).EventId)
-    {payload : L.Ty} {binding : EventGraph.FieldRef (graph setup).layout (.binding who payload)}
-    {checks : List (EventGraph.GuardCheck (graph setup).layout payload)}
-    {outputEq : (graph setup).outputLayout event = .publication payload}
-    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .resolve who payload binding checks}
-    (node : nodeView (graph setup) event = .resolve who payload binding checks outputEq codeEq)
+    (who : Player) (event : setup.informationGraph.EventId)
+    {payload : L.Ty} {binding : EventGraph.FieldRef setup.informationGraph.layout (.binding who
+      payload)}
+    {checks : List (EventGraph.GuardCheck setup.informationGraph.layout payload)}
+    {outputEq : setup.informationGraph.outputLayout event = .publication payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .resolve who payload binding checks}
+    (node : nodeView setup.informationGraph event = .resolve who payload binding checks outputEq
+      codeEq)
     (material : (application setup timeouts leaks).Submission)
     (sends : ((canonicalServiceDecision timeouts) leaks who (control.execution.logs who)
       (control.execution.observe (application setup timeouts leaks) who) event
       (cast (congrArg EventGraph.EventField.Action outputEq.symm) true)).transmission =
         some material) :
-    ∃ (handle : Handle (graph setup)) (value : L.Val payload),
+    ∃ (handle : Handle setup.informationGraph) (value : L.Val payload),
       control.execution.application.accepted binding.field = some handle ∧ handle.1 = who ∧
       control.execution.application.candidates.lookup handle = .openable ⟨payload, value⟩ ∧
       reactiveResolutionPacket who event payload binding checks outputEq
@@ -70,7 +72,7 @@ theorem disclosure_transmits_form {control : (application setup timeouts leaks).
         (control.execution.observe (application setup timeouts leaks) who).application
         event handle raw packet
     subst rawEq
-    change binding.get? ((graph setup).playerStore who
+    change binding.get? (setup.informationGraph.playerStore who
       control.execution.application.config.store) = some (.success value) at stored
     rw [EventGraph.FieldRef.get?_playerStore binding who _ rfl] at stored
     obtain ⟨provenance, acceptedProvenance, _, openable⟩ :=
@@ -91,7 +93,8 @@ theorem resolved_fact_holds {control : (application setup timeouts leaks).Contro
     (trace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace
       (some control))
-    (who : Player) (request : EvidenceRequest (graph setup)) (fact : OpeningFact (graph setup))
+    (who : Player) (request : EvidenceRequest setup.informationGraph) (fact : OpeningFact
+      setup.informationGraph)
     (resolved : request.resolve who
       (control.execution.observe (application setup timeouts leaks) who).application.candidates
       (ReactiveApplication.ResponseMenu.knownPackets (control.execution.logs who)
@@ -140,19 +143,21 @@ theorem disclosure_normal_form {control : (application setup timeouts leaks).Con
     (trace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace
       (some control))
-    (who : Player) (event : (graph setup).EventId)
-    {payload : L.Ty} {binding : EventGraph.FieldRef (graph setup).layout (.binding who payload)}
-    {checks : List (EventGraph.GuardCheck (graph setup).layout payload)}
-    {outputEq : (graph setup).outputLayout event = .publication payload}
-    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .resolve who payload binding checks}
-    (node : nodeView (graph setup) event = .resolve who payload binding checks outputEq codeEq)
+    (who : Player) (event : setup.informationGraph.EventId)
+    {payload : L.Ty} {binding : EventGraph.FieldRef setup.informationGraph.layout (.binding who
+      payload)}
+    {checks : List (EventGraph.GuardCheck setup.informationGraph.layout payload)}
+    {outputEq : setup.informationGraph.outputLayout event = .publication payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .resolve who payload binding checks}
+    (node : nodeView setup.informationGraph event = .resolve who payload binding checks outputEq
+      codeEq)
     (material : (application setup timeouts leaks).Submission)
     (sends : ((canonicalServiceDecision timeouts) leaks who (control.execution.logs who)
       (control.execution.observe (application setup timeouts leaks) who) event
       (cast (congrArg EventGraph.EventField.Action outputEq.symm) true)).transmission =
         some material) :
-    ∃ (handle : Handle (graph setup)) (value : L.Val payload),
+    ∃ (handle : Handle setup.informationGraph) (value : L.Val payload),
       control.execution.application.accepted binding.field = some handle ∧ handle.1 = who ∧
       control.execution.application.candidates.lookup handle = .openable ⟨payload, value⟩ ∧
       (canonicalServiceDecision timeouts) leaks who (control.execution.logs who)
@@ -186,7 +191,7 @@ theorem disclosure_normal_form {control : (application setup timeouts leaks).Con
     EvidenceRequest.resolve, Submission.candidateAfter, owner, verified, and_self,
     ↓reduceIte]
 
-variable [Fintype Player] {bounds : MessageBounds (graph setup)}
+variable [Fintype Player] {bounds : MessageBounds setup.informationGraph}
 
 /-- **The offered opening is the disclosure.** Along every history of the
 one-packet game, at a reveal of the player's turn, when its canonical
@@ -198,13 +203,15 @@ value. -/
 theorem onePacket_opening_eq_disclosure {control : (application setup timeouts leaks).Control}
     (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control))
-    (who : Player) (event : (graph setup).EventId)
-    {payload : L.Ty} {binding : EventGraph.FieldRef (graph setup).layout (.binding who payload)}
-    {checks : List (EventGraph.GuardCheck (graph setup).layout payload)}
-    {outputEq : (graph setup).outputLayout event = .publication payload}
-    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .resolve who payload binding checks}
-    (node : nodeView (graph setup) event = .resolve who payload binding checks outputEq codeEq)
+    (who : Player) (event : setup.informationGraph.EventId)
+    {payload : L.Ty} {binding : EventGraph.FieldRef setup.informationGraph.layout (.binding who
+      payload)}
+    {checks : List (EventGraph.GuardCheck setup.informationGraph.layout payload)}
+    {outputEq : setup.informationGraph.outputLayout event = .publication payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .resolve who payload binding checks}
+    (node : nodeView setup.informationGraph event = .resolve who payload binding checks outputEq
+      codeEq)
     (disclosed : (application setup timeouts leaks).Submission)
     (sendsDisclosure : ((canonicalServiceDecision timeouts) leaks who
       (control.execution.logs who) (control.execution.observe (application setup timeouts leaks)
@@ -217,7 +224,7 @@ theorem onePacket_opening_eq_disclosure {control : (application setup timeouts l
         who))
     (material : (application setup timeouts leaks).Submission)
     (sends : response.transmission = some material)
-    (named : material.call.packet.event? (graph setup) = some event) :
+    (named : material.call.packet.event? setup.informationGraph = some event) :
     response = (canonicalServiceDecision timeouts) leaks who (control.execution.logs who)
       (control.execution.observe (application setup timeouts leaks) who) event
       (cast (congrArg EventGraph.EventField.Action outputEq.symm) true) := by

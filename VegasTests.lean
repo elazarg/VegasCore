@@ -6,6 +6,7 @@ public import VegasTests.AbsorbingFailure
 public import VegasTests.ChanceScheduling
 public import VegasTests.ConditionalPublicPrior
 public import VegasTests.CompilerCorrectness
+public import VegasTests.DependencyLayers
 public import VegasTests.Disclosure
 public import VegasTests.DisclosureNormalization
 public import VegasTests.EventCompilation

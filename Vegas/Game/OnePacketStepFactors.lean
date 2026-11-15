@@ -31,14 +31,14 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
 
 namespace LateKey
 
 open Classical in
 /-- The key's pending event: its turn, unless one of its envelopes names it. -/
-def pending (key : LateKey setup timeouts leaks) : Option (graph setup).EventId :=
+def pending (key : LateKey setup timeouts leaks) : Option setup.informationGraph.EventId :=
   key.turn.filter fun event => !decide (key.Recorded
     event)
 
@@ -63,11 +63,11 @@ def honestFactor (before after : LateKey setup timeouts leaks) : ℝ :=
   match before.pending with
   | none => 1
   | some event =>
-      match nodeView (graph setup) event with
+      match nodeView setup.informationGraph event with
       | .bind .. => pendingBindingHonestFactor (timeouts := timeouts) before after
       | _ => transmitFactor (timeouts := timeouts) after
 
-variable [Fintype Player] (bounds : MessageBounds (graph setup))
+variable [Fintype Player] (bounds : MessageBounds setup.informationGraph)
 
 /-- **The slot-tier factor.** One without a pending event; at a pending binding,
 the uniform tremble slot; at a pending reveal, the disclosure. -/
@@ -75,7 +75,7 @@ def slotTierFactor (before after : LateKey setup timeouts leaks) : ℝ :=
   match before.pending with
   | none => 1
   | some event =>
-      match nodeView (graph setup) event with
+      match nodeView setup.informationGraph event with
       | .bind .. => pendingBindingSlotFactor (timeouts := timeouts) bounds before after event
       | _ => transmitFactor (timeouts := timeouts) after
 
@@ -91,11 +91,11 @@ def lateOptionFactor {slots : Nat} (before after : LateKey setup timeouts leaks)
       match before.pending with
       | none => silenceFactor (timeouts := timeouts) after
       | some event =>
-          match nodeView (graph setup) event with
+          match nodeView setup.informationGraph event with
           | .bind .. =>
               match (after.lastEmitted.map fun message =>
                 message.payload.call :
-                  Option (Payload (graph setup))) with
+                  Option (Payload setup.informationGraph)) with
               | some (.commitment _ (_, .prepared committed)) =>
                   if committed = slot.val then 1 else 0
               | _ => if slot.val < bounds.candidateCount ∧

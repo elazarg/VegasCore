@@ -54,31 +54,31 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
 /-- The compiled graph game under the supplied public scheduler. -/
 def eventGame (setup : Setup (Player := Player) (L := L))
-    (scheduler : setup.eventGraph.PublicScheduler) : GameForm Player :=
-  setup.eventGraph.gameForm
+    (scheduler : setup.informationGraph.PublicScheduler) : GameForm Player :=
+  setup.informationGraph.gameForm
     (setup.initialLaw.map fun initial => setup.eventInputs initial) scheduler
 
 /-- The same compiled game under its canonical scheduler. -/
 def canonicalEventGame (setup : Setup (Player := Player) (L := L)) : GameForm Player :=
-  setup.eventGame setup.eventGraph.canonicalScheduler
+  setup.eventGame setup.informationGraph.canonicalScheduler
 
-/-- Generated dependencies make every public scheduler's full outcome law identical. -/
+/-- The information graph gives every public scheduler the same full outcome law. -/
 theorem eventGame_play_eq (setup : Setup (Player := Player) (L := L))
-    (first second : setup.eventGraph.PublicScheduler)
-    (profile : setup.eventGraph.BehavioralProfile) :
+    (first second : setup.informationGraph.PublicScheduler)
+    (profile : setup.informationGraph.BehavioralProfile) :
     (setup.eventGame first).play profile = (setup.eventGame second).play profile := by
   unfold eventGame EventGraph.gameForm
   simp only [PMF.bind_map]
   apply bind_congr_on_support _
   intro initial _
-  exact toEventGraph_terminalOutcomes_eq setup.program profile first second _
+  exact toInformationGraph_terminalOutcomes_eq setup.program profile first second _
 
 /-- Scheduling preserves every terminal observation with unchanged player strategies.
 Each unilateral deviation has the same law as that one deviation canonically. -/
 def eventSchedulingSimulationOn {Observation : Type}
     (setup : Setup (Player := Player) (L := L))
-    (scheduler : setup.eventGraph.PublicScheduler)
-    (observe : setup.eventGraph.gameSignature.Outcome → Observation) :
+    (scheduler : setup.informationGraph.PublicScheduler)
+    (observe : setup.informationGraph.gameSignature.Outcome → Observation) :
     GameForm.MixtureSimulationOn setup.canonicalEventGame (setup.eventGame scheduler)
       observe observe (fun _ _ => True) where
   compileStrategy _ strategy := strategy
@@ -86,7 +86,7 @@ def eventSchedulingSimulationOn {Observation : Type}
     change ((setup.eventGame scheduler).play profile).map observe =
       (setup.canonicalEventGame.play profile).map observe
     exact congrArg (PMF.map observe)
-      (setup.eventGame_play_eq scheduler setup.eventGraph.canonicalScheduler profile)
+      (setup.eventGame_play_eq scheduler setup.informationGraph.canonicalScheduler profile)
   compiled_considered _ _ := trivial
   deviation_mixture profile who replacement _ := by
     refine ⟨PMF.pure replacement, ?_⟩
@@ -94,6 +94,6 @@ def eventSchedulingSimulationOn {Observation : Type}
     change ((setup.eventGame scheduler).play (Profile.update profile who replacement)).map observe =
       (setup.canonicalEventGame.play (Profile.update profile who replacement)).map observe
     exact congrArg (PMF.map observe)
-      (setup.eventGame_play_eq scheduler setup.eventGraph.canonicalScheduler _)
+      (setup.eventGame_play_eq scheduler setup.informationGraph.canonicalScheduler _)
 
 end Vegas.SourceProgram.Setup

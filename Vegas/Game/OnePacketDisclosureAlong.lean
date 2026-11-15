@@ -36,24 +36,26 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
 
 /-- **Completing a failing reveal fails it.** From a configuration with a source
 residual at which a reveal of `owner` is ready and resolves to a failure whether
 disclosed or not, every completion of the reveal decodes to a point at which
 `owner`'s reveal failed. -/
 theorem revealFailed_of_failing_step {profile : BehavioralProfile setup.program} {rank : Nat}
-    {config after : (graph setup).Config} (residual : SourceResidual setup profile rank config)
-    {event : (graph setup).EventId} (ready : config.cut.Ready event) {owner : Player}
-    {payload : L.Ty} {binding : EventGraph.FieldRef (graph setup).layout (.binding owner payload)}
-    {checks : List (EventGraph.GuardCheck (graph setup).layout payload)}
-    {outputEq : (graph setup).outputLayout event = .publication payload}
-    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .resolve owner payload binding checks}
+    {config after : setup.informationGraph.Config} (residual : SourceResidual setup profile rank
+      config)
+    {event : setup.informationGraph.EventId} (ready : config.cut.Ready event) {owner : Player}
+    {payload : L.Ty} {binding : EventGraph.FieldRef setup.informationGraph.layout (.binding owner
+      payload)}
+    {checks : List (EventGraph.GuardCheck setup.informationGraph.layout payload)}
+    {outputEq : setup.informationGraph.outputLayout event = .publication payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .resolve owner payload binding checks}
     (failing : ∀ disclose, EventGraph.EventCode.resolveOutput? binding checks disclose
       config.store = some .failure)
-    (action : (graph setup).Action event)
+    (action : setup.informationGraph.Action event)
     (member : after ∈ (config.step event ready action).support) :
     ∃ point, decodedPoint setup after = some point ∧
       ProtocolState.RevealFailed owner setup.program point := by
@@ -69,12 +71,13 @@ theorem revealFailed_of_failing_step {profile : BehavioralProfile setup.program}
   obtain ⟨next, _⟩ := residual.step event ready action after member'
   have atEvent : config.cut.IsPrefix event.val :=
     ⟨event.isLt.le, fun query =>
-      setup.eventGraph.sequentialize_mem_completed_iff_lt_of_ready _ ready⟩
+      setup.informationGraph.sequentialize_mem_completed_iff_lt_of_ready _ ready⟩
   have atRank := atEvent.unique residual.checkpoint.ordered
   subst atRank
   have nextDecoded := next.decode
   unfold sourceServicePrefix? serviceSourcePrefix? at nextDecoded
-  have owned : (graph setup).actor? event = some owner := nodeView_resolve_actor outputEq codeEq
+  have owned : setup.informationGraph.actor? event = some owner := nodeView_resolve_actor outputEq
+    codeEq
   refine ⟨_, decodedPoint_eq next, ProtocolState.revealFailed_of_decode_failure setup.program
     event.val (event.val + 1) (ContextRefs.initial setup.context (outputLayout setup.program)) []
     (Revelations.initial setup.context) (outputRef setup.program) _ _ _ _ event.isLt
@@ -84,7 +87,7 @@ theorem revealFailed_of_failing_step {profile : BehavioralProfile setup.program}
   change (config.complete event ready _ _).outputs event = _
   rw [EventGraph.Config.complete_output_same]
 
-variable [Fintype Player] {bounds : MessageBounds (graph setup)} {horizon : Nat}
+variable [Fintype Player] {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- **A failing reveal fails or waits.** If a reveal of `owner` is ready at a
@@ -93,13 +96,14 @@ every later state of every extension the configuration is unchanged, or the
 decoded point shows `owner`'s reveal failed. -/
 theorem revealFailed_along {control : (application setup timeouts leaks).Control}
     (prior : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some control))
-    {event : (graph setup).EventId} (ready : control.execution.application.config.cut.Ready event)
+    {event : setup.informationGraph.EventId} (ready :
+      control.execution.application.config.cut.Ready event)
     {owner : Player} {payload : L.Ty}
-    {binding : EventGraph.FieldRef (graph setup).layout (.binding owner payload)}
-    {checks : List (EventGraph.GuardCheck (graph setup).layout payload)}
-    {outputEq : (graph setup).outputLayout event = .publication payload}
-    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .resolve owner payload binding checks}
+    {binding : EventGraph.FieldRef setup.informationGraph.layout (.binding owner payload)}
+    {checks : List (EventGraph.GuardCheck setup.informationGraph.layout payload)}
+    {outputEq : setup.informationGraph.outputLayout event = .publication payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .resolve owner payload binding checks}
     (failing : ∀ disclose, EventGraph.EventCode.resolveOutput? binding checks disclose
       control.execution.application.config.store = some .failure) :
     ∀ {state} {trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace
@@ -112,7 +116,7 @@ theorem revealFailed_along {control : (application setup timeouts leaks).Control
   have closed : StepClosed setup (ProtocolState.RevealFailed owner setup.program) :=
     fun state joint target failed reached =>
       ProtocolState.revealFailed_step owner setup.program state joint target failed reached
-  have propagate {first last : (graph setup).Config} {rank : Nat}
+  have propagate {first last : setup.informationGraph.Config} {rank : Nat}
       (residual : SourceResidual setup (failureProfile setup.program) rank first)
       (point : ProtocolState setup.program) (decoded : decodedPoint setup first = some point)
       (failed : ProtocolState.RevealFailed owner setup.program point)
@@ -153,7 +157,7 @@ theorem revealFailed_along {control : (application setup timeouts leaks).Control
               have failingPrevious : ∀ disclose, EventGraph.EventCode.resolveOutput? binding
                   checks disclose previous.execution.application.config.store =
                     some .failure := by simpa only [same] using failing
-              have otherEq := setup.eventGraph.sequentialize_ready_unique _ otherReady
+              have otherEq := setup.informationGraph.sequentialize_ready_unique _ otherReady
                 readyPrevious
               subst otherEq
               obtain ⟨point, decoded, failed⟩ :=
@@ -178,7 +182,8 @@ theorem disclosureResolves_along (wellFormed : setup.WellFormed) {who : Player}
       ProtocolState.observe who setup.program w)
     (readyOwn : ∀ event, current.execution.application.config.cut.Ready event →
       ∀ owner payload binding checks outputEq codeEq,
-        nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq →
+        nodeView setup.informationGraph event = .resolve owner payload binding checks outputEq
+          codeEq →
           owner = who)
     {control : (application setup timeouts leaks).Control}
     (prior : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some control))
@@ -204,7 +209,8 @@ theorem disclosureResolves_along (wellFormed : setup.WellFormed) {who : Player}
       checks), (control.execution.application.config.store field).isSome = true := by
     intro field member
     apply control.execution.application.config.read_available ready
-    rw [← EventGraph.EventCode.readFields_cast outputEq ((graph setup).nodes event), codeEq]
+    rw [← EventGraph.EventCode.readFields_cast outputEq (setup.informationGraph.nodes event),
+      codeEq]
     exact member
   have available : (EventGraph.EventCode.resolveOutput? binding checks true
       control.execution.application.config.store).isSome = true :=
@@ -225,7 +231,7 @@ theorem disclosureResolves_along (wellFormed : setup.WellFormed) {who : Player}
         (control.execution.logs owner)
         (control.execution.observe (application setup timeouts leaks) owner) event owner payload
           binding checks outputEq codeEq node active value _ candidate accepted candidateOwner
-      change binding.get? ((graph setup).playerStore owner
+      change binding.get? (setup.informationGraph.playerStore owner
         control.execution.application.config.store) = _
       rw [EventGraph.FieldRef.get?_playerStore binding owner _ rfl, stored]
   | failure =>

@@ -34,37 +34,42 @@ open GameTheory GameTheory.Protocol GameTheory.Math.Probability Interaction Even
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
 
 /-- The owner of a key has sent no packet naming the event. -/
-def UnsentFor (key : LateKey setup timeouts leaks) (event : (graph setup).EventId) : Prop :=
+def UnsentFor (key : LateKey setup timeouts leaks) (event : setup.informationGraph.EventId) : Prop
+  :=
   ∀ entry ∈ key.recalled, ∀ message, entry.2 = some message →
-    message.payload.call.event? (graph setup) ≠ some event
+    message.payload.call.event? setup.informationGraph ≠ some event
 
 /-- **A binding turn of a key.** It is the key owner's turn at the event in
 the key's public view, the event binds a value of the owner of the payload
 type, and the owner has sent nothing for it. -/
-def BindingTurn (key : LateKey setup timeouts leaks) (event : (graph setup).EventId) (payload :
+def BindingTurn (key : LateKey setup timeouts leaks) (event : setup.informationGraph.EventId)
+  (payload :
   L.Ty) :
     Prop :=
   key.current.1.ownTurn? key.owner = some event ∧
-    (∃ (outputEq : (graph setup).outputLayout event = .binding key.owner
+    (∃ (outputEq : setup.informationGraph.outputLayout event = .binding key.owner
       payload)
-      (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-        ((graph setup).nodes event) = .bind key.owner payload),
-      nodeView (graph setup) event = .bind key.owner payload outputEq codeEq) ∧
+      (codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+        (setup.informationGraph.nodes event) = .bind key.owner payload),
+      nodeView setup.informationGraph event = .bind key.owner payload outputEq codeEq) ∧
     UnsentFor (timeouts := timeouts) key event
 
 open Classical in
 /-- The binding event a key decides, with its payload type, if any. -/
-def bindingTurn (key : LateKey setup timeouts leaks) : Option ((graph setup).EventId × L.Ty) :=
-  if turn : ∃ decided : (graph setup).EventId × L.Ty, BindingTurn (timeouts := timeouts) key
+def bindingTurn (key : LateKey setup timeouts leaks) : Option (setup.informationGraph.EventId ×
+  L.Ty) :=
+  if turn : ∃ decided : setup.informationGraph.EventId × L.Ty, BindingTurn (timeouts := timeouts)
+    key
     decided.1 decided.2 then
     some turn.choose
   else none
 
-theorem bindingTurn_spec {key : LateKey setup timeouts leaks} {decided : (graph setup).EventId ×
+theorem bindingTurn_spec {key : LateKey setup timeouts leaks} {decided :
+  setup.informationGraph.EventId ×
   L.Ty}
     (found : bindingTurn (timeouts := timeouts) key = some decided) : BindingTurn (timeouts :=
       timeouts) key decided.1 decided.2 := by
@@ -76,12 +81,12 @@ theorem bindingTurn_spec {key : LateKey setup timeouts leaks} {decided : (graph 
   · cases found
 
 /-- The event a key decides: its publication event, else its binding event. -/
-def decidedEvent (key : LateKey setup timeouts leaks) : Option (graph setup).EventId :=
+def decidedEvent (key : LateKey setup timeouts leaks) : Option setup.informationGraph.EventId :=
   match turnEvent (timeouts := timeouts) key with
   | some event => some event
   | none => (bindingTurn (timeouts := timeouts) key).map Prod.fst
 
-variable [Fintype Player] {bounds : MessageBounds (graph setup)} {horizon : Nat}
+variable [Fintype Player] {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- At a history of a site, an event that is the key owner's turn is ready. -/
@@ -95,7 +100,8 @@ theorem ready_of_ownTurn {who : Player}
       site.1)
     {control : (application setup timeouts leaks).Control} (current : history.1.state = some
       control)
-    {event : (graph setup).EventId} (owned : key.current.1.ownTurn? key.owner = some event) :
+    {event : setup.informationGraph.EventId} (owned : key.current.1.ownTurn? key.owner = some
+      event) :
     control.execution.application.config.cut.Ready event := by
   obtain ⟨_, keyEq⟩ := lateKey_of_history (timeouts := timeouts) siteKey history current
   simp only [lateKey, Option.some.injEq] at keyEq
@@ -115,7 +121,8 @@ theorem commitStatuses_nil_of_unsent {who : Player}
       site.1)
     {control : (application setup timeouts leaks).Control} (current : history.1.state = some
       control)
-    {event : (graph setup).EventId} (unsent : UnsentFor (timeouts := timeouts) key event) (payload :
+    {event : setup.informationGraph.EventId} (unsent : UnsentFor (timeouts := timeouts) key event)
+      (payload :
       L.Ty) :
     commitStatuses (timeouts := timeouts) event who payload control.execution.application
       control.execution.network.pending = [] := by
@@ -127,7 +134,8 @@ theorem commitStatuses_nil_of_unsent {who : Player}
     current ▸ (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon
       scheduler history.1.trace
   obtain ⟨inputRecall, _, _⟩ := (countRecall_history timeouts) leaks trace
-  have facts := settledFacts_history (initialLaw setup) horizon scheduler trace
+  have facts := settledFacts_history ((toInformationGraph_barrierOrdered
+    setup.program).revealRelaxedOrdered.actorSerial) (initialLaw setup) horizon scheduler trace
   unfold commitStatuses
   rw [List.filterMap_eq_nil_iff]
   intro message member
@@ -214,7 +222,7 @@ open Classical in
 /-- A scheduler round at a pending binding from an operational state and
 statuses, read off a representative execution with the binding ready; the
 image itself when there is none. -/
-def bindingRoundKernel (event : (graph setup).EventId) (owner : Player) (payload : L.Ty)
+def bindingRoundKernel (event : setup.informationGraph.EventId) (owner : Player) (payload : L.Ty)
     (remaining : Nat)
     (image : Option (OperationalState setup timeouts leaks) × List (MessageId Player × Bool)) :
     PMF (BindingImage (timeouts := timeouts) (setup := setup) (leaks := leaks)) :=
@@ -233,9 +241,9 @@ variable (horizon scheduler) in
 /-- **The kernel at a pending binding.** Completed and uninitialized images
 stay put; the owner's step follows its law of moves; another player keeps
 silence; a scheduler round is read off a representative. -/
-def bindingKernel (event : (graph setup).EventId) (owner : Player) (payload : L.Ty)
+def bindingKernel (event : setup.informationGraph.EventId) (owner : Player) (payload : L.Ty)
     (moves : Option (OperationalState setup timeouts leaks) × List (MessageId Player × Bool) →
-      PMF (Option (Handle (graph setup)))) :
+      PMF (Option (Handle setup.informationGraph))) :
     BindingImage (timeouts := timeouts) (setup := setup) (leaks := leaks) →
       PMF (BindingImage (timeouts := timeouts) (setup := setup) (leaks := leaks))
   | .inr failed => PMF.pure (.inr failed)
@@ -259,7 +267,7 @@ def decisionKernel {LateOption : Type}
       PMF (PendingImage (timeouts := timeouts) (setup := setup) (leaks := leaks)))
     (moves : LateKey setup timeouts leaks → LateOption →
       Option (OperationalState setup timeouts leaks) × List (MessageId Player × Bool) →
-        PMF (Option (Handle (graph setup))))
+        PMF (Option (Handle setup.informationGraph)))
     (key : LateKey setup timeouts leaks) (option : LateOption) :
     DecisionImage (timeouts := timeouts) (setup := setup) (leaks := leaks) →
       PMF (DecisionImage (timeouts := timeouts) (setup := setup) (leaks := leaks)) :=
@@ -285,7 +293,7 @@ the operational state and statuses. -/
 def OwnerBindingLaw {LateOption : Type}
     (moves : LateKey setup timeouts leaks → LateOption →
       Option (OperationalState setup timeouts leaks) × List (MessageId Player × Bool) →
-        PMF (Option (Handle (graph setup))))
+        PMF (Option (Handle setup.informationGraph)))
     (key : LateKey setup timeouts leaks) (option : LateOption)
     (profile : ∀ player,
       (onePacketInformation setup timeouts leaks bounds horizon scheduler).BehavioralPolicy player)
@@ -311,7 +319,8 @@ def OwnerBindingLaw {LateOption : Type}
 
 omit [Fintype Player] in
 /-- The decided event is the key owner's turn. -/
-theorem ownTurn_of_decidedEvent {key : LateKey setup timeouts leaks} {event : (graph setup).EventId}
+theorem ownTurn_of_decidedEvent {key : LateKey setup timeouts leaks} {event :
+  setup.informationGraph.EventId}
     (decided : decidedEvent (timeouts := timeouts) key = some event) : key.current.1.ownTurn?
       key.owner = some event := by
   unfold decidedEvent at decided
@@ -497,14 +506,15 @@ variation of the binding kernel, provided the owner's law of moves is within
 theorem bindingKernel_close {LateOption : Type}
     (moves : LateKey setup timeouts leaks → LateOption →
       Option (OperationalState setup timeouts leaks) × List (MessageId Player × Bool) →
-        PMF (Option (Handle (graph setup))))
+        PMF (Option (Handle setup.informationGraph)))
     (key : LateKey setup timeouts leaks) (option : LateOption)
     (profile : ∀ player,
       (onePacketInformation setup timeouts leaks bounds horizon scheduler).BehavioralPolicy player)
     {δ : ℝ} (nonneg : 0 ≤ δ) {allowed : (application setup timeouts leaks).ProtocolState → Prop}
     (law : OwnerBindingLaw (timeouts := timeouts) bounds horizon scheduler moves key option profile
       δ allowed)
-    {event : (graph setup).EventId} {payload : L.Ty} (turn : BindingTurn (timeouts := timeouts) key
+    {event : setup.informationGraph.EventId} {payload : L.Ty} (turn : BindingTurn (timeouts :=
+      timeouts) key
       event payload)
     (history : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).History)
     {control : (application setup timeouts leaks).Control} (current : history.state = some control)
@@ -667,7 +677,7 @@ theorem decisionKernel_close {LateOption : Type}
       PMF (PendingImage (timeouts := timeouts) (setup := setup) (leaks := leaks)))
     (moves : LateKey setup timeouts leaks → LateOption →
       Option (OperationalState setup timeouts leaks) × List (MessageId Player × Bool) →
-        PMF (Option (Handle (graph setup))))
+        PMF (Option (Handle setup.informationGraph)))
     (key : LateKey setup timeouts leaks) (option : LateOption)
     (profile : ∀ player,
       (onePacketInformation setup timeouts leaks bounds horizon scheduler).BehavioralPolicy player)

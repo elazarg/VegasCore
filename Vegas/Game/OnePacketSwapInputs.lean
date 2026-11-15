@@ -44,7 +44,7 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol Intera
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
+  {timeouts : EventTimeouts setup.informationGraph}
 
 section Replay
 
@@ -122,11 +122,11 @@ first to the draw of the second.** -/
 theorem inputs_betweenPairs {p q : ProtocolState setup.program}
     {publicAgree : PublicCellsAgree setup p q} {succeed : CommitmentCellsSucceed setup p q}
     {first second : State L setup.context} (firstCells : InitialCellsAt first p)
-    (secondCells : InitialCellsAt second q) (input : (graph setup).InputId) :
+    (secondCells : InitialCellsAt second q) (input : setup.informationGraph.InputId) :
     (EventGraph.ValueSwap.ofPairs (betweenPairs publicAgree succeed)).value (.inl input)
         (setup.eventInputs first input) = setup.eventInputs second input := by
   obtain ⟨name, kind, source, rfl⟩ := exists_inputId setup.context input
-  have layoutEq : (graph setup).layout (.inl (inputId source)) = cellField kind :=
+  have layoutEq : setup.informationGraph.layout (.inl (inputId source)) = cellField kind :=
     inputLayout_inputId source
   apply (cast_inj (congrArg EventGraph.EventField.Value layoutEq)).mp
   change cast _ (EventGraph.pairSwap (betweenPair setup p q (.inl (inputId source)))
@@ -159,7 +159,8 @@ private theorem extendIntended?_reached {history result : setup.intendedProtocol
   · cases extended
 
 variable [Fintype Player] {leaks : MessageNetwork.ObservationRule Player
-    (WitnessedPacket (graph setup))} {bounds : MessageBounds (graph setup)} {horizon : Nat}
+    (WitnessedPacket setup.informationGraph)} {bounds : MessageBounds setup.informationGraph}
+      {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- **The inputs along a replay.** Along a native history with an intended
@@ -226,7 +227,7 @@ theorem inputs_mem_swapAllowed {first second : setup.intendedProtocol.History}
     {p q : ProtocolState setup.program} (firstState : first.state = some p)
     (secondState : second.state = some q)
     {publicAgree : PublicCellsAgree setup p q} {succeed : CommitmentCellsSucceed setup p q}
-    (handlePairs : Handle (graph setup) → Option (Raw L × Raw L))
+    (handlePairs : Handle setup.informationGraph → Option (Raw L × Raw L))
     (compatible : (HiddenSwap.ofPairs (betweenPairs publicAgree succeed)
       handlePairs).InitialHandlesCompatible)
     {control : (application setup timeouts leaks).Control}
@@ -240,7 +241,7 @@ theorem inputs_mem_swapAllowed {first second : setup.intendedProtocol.History}
   cases pointEq
   obtain ⟨other, otherMember, otherFound⟩ := exists_initialCellsAt second.trace secondState
   have drawnMember : ∀ draw ∈ setup.initialLaw.support,
-      EventGraphRuntime.State.initial (graph := graph setup) (setup.eventInputs draw) ∈
+      EventGraphRuntime.State.initial (graph := setup.informationGraph) (setup.eventInputs draw) ∈
         (initialLaw setup).support := fun draw drawMember => by
     rw [initialLaw, serviceInitialLaw, PMF.support_map]
     exact ⟨draw, drawMember, rfl⟩

@@ -24,14 +24,15 @@ open SourceProgram GameTheory GameTheory.Protocol Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
 
 private theorem canonical_sent_decodes
     (execution : (application setup timeouts leaks).Execution) (who : Player)
-    (event : (graph setup).EventId)
+    (event : setup.informationGraph.EventId)
     (turn : execution.application.publicView.ownTurn? who = some event)
-    (action : (graph setup).Action event) (material : (application setup timeouts leaks).Submission)
+    (action : setup.informationGraph.Action event) (material : (application setup timeouts
+      leaks).Submission)
     (submits : ((canonicalServiceDecision timeouts) leaks who (execution.logs who)
       (execution.observe (application setup timeouts leaks) who) event action).transmission =
         some material) :
@@ -56,7 +57,7 @@ private theorem canonical_sent_decodes
   · obtain ⟨candidate, owner, payload, layoutEq, call, _fixed, decision, _output⟩ := binding
     change material.call.packet = .commitment event candidate at call
     rw [call, decision]
-    cases node : nodeView (graph setup) event with
+    cases node : nodeView setup.informationGraph event with
     | bind actor other outputEq codeEq =>
         have kinds := outputEq.symm.trans layoutEq
         obtain ⟨rfl, rfl⟩ := EventGraph.EventField.binding.inj kinds
@@ -72,7 +73,7 @@ private theorem canonical_sent_decodes
     change material.call.packet = .opening event candidate raw at call
     simp only [call, callContent, node, decision]
 
-variable [Fintype Player] {bounds : MessageBounds (graph setup)} {horizon : Nat}
+variable [Fintype Player] {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- A supported source-main response has positive source content.

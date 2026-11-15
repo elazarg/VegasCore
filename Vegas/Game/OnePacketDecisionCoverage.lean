@@ -26,16 +26,16 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 local notation "N" => onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
   scheduler
 
 variable (wellFormed : setup.WellFormed)
-  {delay bound : (graph setup).EventId → Nat}
+  {delay bound : setup.informationGraph.EventId → Nat}
   (opportunity : ∀ control : (application setup timeouts leaks).Control,
     ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon scheduler).Trace
       (some control) → control.execution.application.config.defaulted = ∅ →
@@ -51,7 +51,7 @@ variable (wellFormed : setup.WellFormed)
     (application setup timeouts leaks).terminal (some control) →
     control.execution.application.config.cut.Terminal)
   (covers : bounds.CoversOutputValues)
-  (capacity : ∀ player, bindingEventCount (graph setup) player < bounds.candidateCount)
+  (capacity : ∀ player, bindingEventCount setup.informationGraph player < bounds.candidateCount)
   (certificate : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup)
     horizon scheduler).WellFoundedHistories)
   (reference : setup.intendedModel.BehavioralAssessment) (full : reference.IsFullyMixed)

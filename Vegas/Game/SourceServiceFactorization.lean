@@ -31,21 +31,21 @@ variable {Player : Type} [DecidableEq Player]
 /-- Correlated initial draws with the same source view have identical native
 traffic projections, including the genuine owned initial candidate catalogue. -/
 theorem source_initial_traffic_eq
-    (setup : Setup (Player := Player) (L := L)) {mode : EventGraph.ExecutionMode}
-    {duration : (serviceGraph setup mode).EventId → Nat}
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
+    (setup : Setup (Player := Player) (L := L)) {deps : setup.dataflowGraph.Dependencies}
+    {duration : (serviceGraph setup deps).EventId → Nat}
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup deps)))
     (focal : Player) (left right : State L setup.context)
     (same : (Config.initial left).view focal = (Config.initial right).view focal) :
-    (bindingTraffic (serviceTimeouts setup mode duration)) leaks focal
-        (ReactiveApplication.Execution.initial (serviceApplication setup mode duration leaks)
-          (EventGraphRuntime.State.initial (graph := serviceGraph setup mode)
+    (bindingTraffic (serviceTimeouts setup deps duration)) leaks focal
+        (ReactiveApplication.Execution.initial (serviceApplication setup deps duration leaks)
+          (EventGraphRuntime.State.initial (graph := serviceGraph setup deps)
               (setup.eventInputs left))) =
-      (bindingTraffic (serviceTimeouts setup mode duration)) leaks focal
-        (ReactiveApplication.Execution.initial (serviceApplication setup mode duration leaks)
-          (EventGraphRuntime.State.initial (graph := serviceGraph setup mode)
+      (bindingTraffic (serviceTimeouts setup deps duration)) leaks focal
+        (ReactiveApplication.Execution.initial (serviceApplication setup deps duration leaks)
+          (EventGraphRuntime.State.initial (graph := serviceGraph setup deps)
               (setup.eventInputs right))) := by
-  have first := SourceCheckpoint.initial (mode := mode) setup left
-  have second := SourceCheckpoint.initial (mode := mode) setup right
+  have first := SourceCheckpoint.initial (deps := deps) setup left
+  have second := SourceCheckpoint.initial (deps := deps) setup right
   have observed := checkpoint_playerObservation_eq_of_order setup _ 0
     (ContextRefs.initial_coversPrefix setup.program) focal _ _ _ _
     EventGraph.Config.Reachable.initial EventGraph.Config.Reachable.initial
@@ -53,18 +53,18 @@ theorem source_initial_traffic_eq
     (by change focal ∉ (∅ : Finset Player); simp)
     (by rfl) first.ordered second.ordered first.agrees second.agrees first.history
     second.history (by rfl) (by rfl) same
-  have publics : (EventGraphRuntime.State.initial (graph := serviceGraph setup mode)
+  have publics : (EventGraphRuntime.State.initial (graph := serviceGraph setup deps)
         (setup.eventInputs left)).publicView =
-      (EventGraphRuntime.State.initial (graph := serviceGraph setup mode)
+      (EventGraphRuntime.State.initial (graph := serviceGraph setup deps)
         (setup.eventInputs right)).publicView :=
-    EventGraphRuntime.State.initial_publicView_eq_of_observation (graph := serviceGraph setup mode)
+    EventGraphRuntime.State.initial_publicView_eq_of_observation (graph := serviceGraph setup deps)
         focal (setup.eventInputs left) (setup.eventInputs right) observed
   have candidates := EventGraphRuntime.State.initial_candidates_eq_of_observation
-    (graph := serviceGraph setup mode) focal (setup.eventInputs left)
+    (graph := serviceGraph setup deps) focal (setup.eventInputs left)
     (setup.eventInputs right) observed
-  have views : (EventGraphRuntime.State.initial (graph := serviceGraph setup mode)
+  have views : (EventGraphRuntime.State.initial (graph := serviceGraph setup deps)
         (setup.eventInputs left)).playerView focal =
-      (EventGraphRuntime.State.initial (graph := serviceGraph setup mode)
+      (EventGraphRuntime.State.initial (graph := serviceGraph setup deps)
         (setup.eventInputs right)).playerView focal := by
     unfold EventGraphRuntime.State.playerView
     congr 1
@@ -75,24 +75,24 @@ theorem source_initial_traffic_eq
 /-- Initial native traffic factors through the focal source view for the
 supplied initial law, without an independence assumption on private types. -/
 theorem source_initial_traffic_factorization
-    (setup : Setup (Player := Player) (L := L)) {mode : EventGraph.ExecutionMode}
-    {duration : (serviceGraph setup mode).EventId → Nat}
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
+    (setup : Setup (Player := Player) (L := L)) {deps : setup.dataflowGraph.Dependencies}
+    {duration : (serviceGraph setup deps).EventId → Nat}
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup deps)))
     (focal : Player) :
     ∃ noise : DecisionView focal setup.context → PMF _,
       setup.initialLaw.map (fun initial =>
         (Config.initial initial,
-          (bindingTraffic (serviceTimeouts setup mode duration)) leaks focal
-            (ReactiveApplication.Execution.initial (serviceApplication setup mode duration leaks)
-              (EventGraphRuntime.State.initial (graph := serviceGraph setup mode)
+          (bindingTraffic (serviceTimeouts setup deps duration)) leaks focal
+            (ReactiveApplication.Execution.initial (serviceApplication setup deps duration leaks)
+              (EventGraphRuntime.State.initial (graph := serviceGraph setup deps)
                 (setup.eventInputs initial))))) =
       (setup.initialLaw.map Config.initial).bind fun source =>
         (noise (source.view focal)).map fun extra => (source, extra) := by
   classical
   let read := fun initial : State L setup.context =>
-    (bindingTraffic (serviceTimeouts setup mode duration)) leaks focal
-      (ReactiveApplication.Execution.initial (serviceApplication setup mode duration leaks)
-        (EventGraphRuntime.State.initial (graph := serviceGraph setup mode)
+    (bindingTraffic (serviceTimeouts setup deps duration)) leaks focal
+      (ReactiveApplication.Execution.initial (serviceApplication setup deps duration leaks)
+        (EventGraphRuntime.State.initial (graph := serviceGraph setup deps)
             (setup.eventInputs initial)))
   let noise := fun view : DecisionView focal setup.context =>
     if present : ∃ initial ∈ setup.initialLaw.support,

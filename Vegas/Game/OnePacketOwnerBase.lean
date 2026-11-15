@@ -30,14 +30,14 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol Intera
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)} [Fintype Player]
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {timeouts : EventTimeouts setup.informationGraph} [Fintype Player]
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- **The image of a history does not depend on the allowed inputs.** -/
-theorem mapTrace_allowed_congr (swap : HiddenSwap (graph setup))
-    {first second : Set (graph setup).Inputs}
+theorem mapTrace_allowed_congr (swap : HiddenSwap setup.informationGraph)
+    {first second : Set setup.informationGraph.Inputs}
     (firstClosed : ∀ state ∈ (initialLaw setup).support, state.config.inputs ∈ first →
       state.swap swap ∈ (initialLaw setup).support)
     (secondClosed : ∀ state ∈ (initialLaw setup).support, state.config.inputs ∈ second →
@@ -62,8 +62,8 @@ theorem mapTrace_allowed_congr (swap : HiddenSwap (graph setup))
 
 omit [Fintype Player] in
 /-- **A guard holds for a smaller allowed set** containing the current inputs. -/
-theorem swapGuardState_inter (swap : HiddenSwap (graph setup))
-    {allowed restricted : Set (graph setup).Inputs}
+theorem swapGuardState_inter (swap : HiddenSwap setup.informationGraph)
+    {allowed restricted : Set setup.informationGraph.Inputs}
     {state : (application setup timeouts leaks).ProtocolState}
     (guarded : SwapGuardState setup timeouts swap allowed state)
     (inside : ∀ control : (application setup timeouts leaks).Control, state = some control →
@@ -92,30 +92,33 @@ theorem eventInputs_injective :
 omit [Fintype Player] in
 /-- The mass of the initial state of a draw is the mass of the draw. -/
 theorem initialLaw_initial (draw : State L setup.context) :
-    initialLaw setup (EventGraphRuntime.State.initial (graph := graph setup)
+    initialLaw setup (EventGraphRuntime.State.initial (graph := setup.informationGraph)
         (setup.eventInputs draw)) =
       setup.initialLaw draw := by
   have injective : Function.Injective fun draw : State L setup.context =>
-      EventGraphRuntime.State.initial (graph := graph setup) (setup.eventInputs draw) := by
+      EventGraphRuntime.State.initial (graph := setup.informationGraph) (setup.eventInputs draw) :=
+        by
     intro first second same
     apply eventInputs_injective
-    exact congrArg (fun state : EventGraphRuntime.State (graph setup) => state.config.inputs)
+    exact congrArg (fun state : EventGraphRuntime.State setup.informationGraph =>
+      state.config.inputs)
       same
   exact GameTheory.Math.Probability.pmf_map_apply_of_injective setup.initialLaw injective draw
 
 omit [Fintype Player] in
 /-- A state of the initial law's support is the initial state of its inputs. -/
-theorem eq_initial_of_mem_support {state : EventGraphRuntime.State (graph setup)}
+theorem eq_initial_of_mem_support {state : EventGraphRuntime.State setup.informationGraph}
     (member : state ∈ (initialLaw setup).support) :
     ∃ draw ∈ setup.initialLaw.support,
-      state = EventGraphRuntime.State.initial (graph := graph setup) (setup.eventInputs draw) := by
+      state = EventGraphRuntime.State.initial (graph := setup.informationGraph) (setup.eventInputs
+        draw) := by
   rw [initialLaw, serviceInitialLaw, PMF.support_map] at member
   obtain ⟨draw, drawMember, rfl⟩ := member
   exact ⟨draw, drawMember, rfl⟩
 
 
 omit [Fintype Player] in
-private theorem hidden_of_privateTo' {who : Player} {input : (graph setup).InputId}
+private theorem hidden_of_privateTo' {who : Player} {input : setup.informationGraph.InputId}
     (privateTo : PrivateTo who (setup := setup) (.inl input)) :
     ∃ (name : VarId) (kind : CellTy Player L) (source : HasVar setup.context name kind),
       inputId source = input ∧ kind.hiddenOwner? = some who := by

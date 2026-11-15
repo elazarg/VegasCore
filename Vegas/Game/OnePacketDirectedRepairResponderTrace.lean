@@ -26,8 +26,8 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
 
 /-- Responses can prepare private candidates and emit packets, but they cannot
 change the source value currently delivered by an opening. -/
@@ -46,13 +46,13 @@ theorem deliveredValue_respond (execution : (application setup timeouts leaks).E
         response).application.publicView.ownTurn?
         observer = execution.application.publicView.ownTurn? observer
     rw [publicView]
-  · change ((graph setup).playerObserve observer
+  · change (setup.informationGraph.playerObserve observer
       (execution.respond (application setup timeouts leaks) actor
         response).application.config).store =
-        ((graph setup).playerObserve observer execution.application.config).store
+        (setup.informationGraph.playerObserve observer execution.application.config).store
     rw [config]
 
-variable [Fintype Player] {bounds : MessageBounds (graph setup)} {horizon : Nat}
+variable [Fintype Player] {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- Equality of complete operational records implies equality of the currently

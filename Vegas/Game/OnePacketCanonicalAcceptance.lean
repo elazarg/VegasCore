@@ -27,16 +27,16 @@ open GameTheory.Math.Probability Interaction EventGraphRuntime
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)} {mode : EventGraph.ExecutionMode}
-  {duration : (serviceGraph setup mode).EventId → Nat}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode))}
+  {timeouts : EventTimeouts setup.informationGraph} {deps : setup.dataflowGraph.Dependencies}
+  {duration : (serviceGraph setup deps).EventId → Nat}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup deps))}
 
 section OnePacket
 
 variable [Fintype Player] {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  (bounds : MessageBounds (graph setup))
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  (bounds : MessageBounds setup.informationGraph)
 
 /-- **One packet per event.** At a history of the one-packet game of the
 supplied runtime, under any scheduler, no entry of a player's recall emits a
@@ -46,10 +46,10 @@ theorem onePacket_not_emitsOtherFor {horizon : Nat}
       timeouts leaks).Control}
     (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control))
-    (who : Player) (event : (graph setup).EventId)
-    (message : Message Player (WitnessedPacket (graph setup)))
+    (who : Player) (event : setup.informationGraph.EventId)
+    (message : Message Player (WitnessedPacket setup.informationGraph))
     (member : message ∈ (application setup timeouts leaks).outputs (control.execution.logs who))
-    (named : message.payload.call.event? (graph setup) = some event)
+    (named : message.payload.call.event? setup.informationGraph = some event)
     (entry : (application setup timeouts leaks).PlayerEntry) (_ : entry ∈ control.execution.logs
       who) :
     ¬ EmitsOtherFor timeouts leaks entry event message.id := by
@@ -72,7 +72,7 @@ theorem onePacket_not_emitsOtherFor {horizon : Nat}
   have otherMember : other ∈ (application setup timeouts leaks).outputs (control.execution.logs
     who) :=
     List.mem_filterMap.mpr ⟨entry, by assumption, emitted⟩
-  have inputOf (packet : Message Player (WitnessedPacket (graph setup)))
+  have inputOf (packet : Message Player (WitnessedPacket setup.informationGraph))
       (output : packet ∈ (application setup timeouts leaks).outputs (control.execution.logs who)) :
       packet ∈ control.execution.network.inputs := by
     rw [← recalled.1 who] at output
@@ -83,13 +83,13 @@ theorem onePacket_not_emitsOtherFor {horizon : Nat}
     apply different
     exact Prod.ext (otherSender.trans messageSender.symm) same
   -- The later of the two packets is not first for the event.
-  have firstFor (packet earlierPacket : Message Player (WitnessedPacket (graph setup)))
+  have firstFor (packet earlierPacket : Message Player (WitnessedPacket setup.informationGraph))
       (packetInput : packet ∈ control.execution.network.inputs)
       (earlierInput : earlierPacket ∈ control.execution.network.inputs)
       (sameSender : earlierPacket.sender = packet.sender)
       (lower : earlierPacket.id.2 < packet.id.2) :
-      earlierPacket.payload.call.event? (graph setup) ≠
-        packet.payload.call.event? (graph setup) := by
+      earlierPacket.payload.call.event? setup.informationGraph ≠
+        packet.payload.call.event? setup.informationGraph := by
     have permitted := (countPermits_eq_true_iff _ _).mp (clean.2 packet packetInput)
     exact permitted.2.2 earlierPacket ⟨earlierInput, sameSender, lower⟩
   rcases Nat.lt_or_gt_of_ne serials with lower | higher

@@ -30,11 +30,13 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
 
 /-- **At an own turn every ready reveal is own.** -/
-theorem readyOwn_of_ownTurn (state : EventGraphRuntime.State (graph setup)) {who : Player}
-    {turnEvent : (graph setup).EventId} (turn : state.publicView.ownTurn? who = some turnEvent) :
+theorem readyOwn_of_ownTurn (state : EventGraphRuntime.State setup.informationGraph) {who : Player}
+    {turnEvent : setup.informationGraph.EventId} (turn : state.publicView.ownTurn? who = some
+      turnEvent) :
     ∀ event, state.config.cut.Ready event →
       ∀ owner payload binding checks outputEq codeEq,
-        nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq →
+        nodeView setup.informationGraph event = .resolve owner payload binding checks outputEq
+          codeEq →
           owner = who := by
   intro event ready owner payload binding checks outputEq codeEq _
   obtain ⟨turnReady, turnActor⟩ := PublicView.ownTurn?_spec _ who turnEvent turn
@@ -67,7 +69,7 @@ theorem pairSwap_commitmentRawPair_comm (cell : VarId × CellTy Player L) :
 /-- **The swap between two points does not depend on their order.** -/
 theorem hiddenSwap_between_comm {publicAgree : PublicCellsAgree setup p q}
     {succeed : CommitmentCellsSucceed setup p q} {publicAgree' : PublicCellsAgree setup q p}
-    {succeed' : CommitmentCellsSucceed setup q p} (table : AcceptedHandles (graph setup)) :
+    {succeed' : CommitmentCellsSucceed setup q p} (table : AcceptedHandles setup.informationGraph) :
     HiddenSwap.ofPairs (betweenPairs publicAgree' succeed') (betweenHandlePairs setup q p table) =
       HiddenSwap.ofPairs (betweenPairs publicAgree succeed)
         (betweenHandlePairs setup p q table) := by
@@ -90,7 +92,8 @@ alike. -/
 theorem betweenPairs_visible {who : Player}
     (sameView : ProtocolState.observe who setup.program p =
       ProtocolState.observe who setup.program q)
-    {field : (graph setup).Field} (visible : (graph setup).fieldVisibleTo who field) :
+    {field : setup.informationGraph.Field} (visible : setup.informationGraph.fieldVisibleTo who
+      field) :
     (betweenPairs publicAgree succeed).pair field = none := by
   have seen : (cellField (fieldCell setup field).2).VisibleTo who :=
     (layout_fieldCell setup field) ▸ visible
@@ -102,9 +105,9 @@ when every accepted handle belongs to the owner of its field. -/
 theorem fixes_between {who : Player}
     (sameView : ProtocolState.observe who setup.program p =
       ProtocolState.observe who setup.program q)
-    {table : AcceptedHandles (graph setup)}
+    {table : AcceptedHandles setup.informationGraph}
     (owned : ∀ field handle, table field = some handle →
-      ∃ payload, (graph setup).layout field = .binding handle.1 payload) :
+      ∃ payload, setup.informationGraph.layout field = .binding handle.1 payload) :
     (HiddenSwap.ofPairs (betweenPairs publicAgree succeed)
       (betweenHandlePairs setup p q table)).Fixes who := by
   refine ⟨fun field visible => ?_, fun event acting => ?_, fun slot => ?_⟩
@@ -113,13 +116,13 @@ theorem fixes_between {who : Player}
     rfl
   · change (betweenPairs publicAgree succeed).action event = id
     unfold EventGraph.SwapPairs.action
-    cases nodeView (graph setup) event with
+    cases nodeView setup.informationGraph event with
     | resolve | sample => rfl
     | bind owner payload outputEq codeEq =>
         rw [nodeView_bind_actor outputEq codeEq] at acting
         cases Option.some.inj acting
-        have visible : (graph setup).fieldVisibleTo who (.inr event) := by
-          change ((graph setup).outputLayout event).VisibleTo who
+        have visible : setup.informationGraph.fieldVisibleTo who (.inr event) := by
+          change (setup.informationGraph.outputLayout event).VisibleTo who
           rw [outputEq]
           rfl
         rw [betweenPairs_visible sameView visible]

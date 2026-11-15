@@ -48,9 +48,9 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 open Classical in
@@ -97,8 +97,9 @@ the event: a slot-trembled mixture of late options, or silence. -/
 def LateOwnerShape (assessment : setup.intendedModel.BehavioralAssessment) {scale : ℝ}
     (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1) (slots : Nat)
     (installed : ∀ player, (onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
-      scheduler).BehavioralPolicy player) (who : Player) (event : (graph setup).EventId)
-    (sent : (graph setup).Config) (past : List (application setup timeouts leaks).PlayerEntry) :
+      scheduler).BehavioralPolicy player) (who : Player) (event : setup.informationGraph.EventId)
+    (sent : setup.informationGraph.Config) (past : List (application setup timeouts
+      leaks).PlayerEntry) :
       Prop :=
   ∀ (history : ((bounds.onePacketMenu timeouts leaks).protocol
       (initialLaw setup) horizon scheduler).History) (later : Nat)
@@ -133,7 +134,7 @@ recall extends the start's by the entry of a response there. -/
 def LateOwnerShapeFrom (assessment : setup.intendedModel.BehavioralAssessment) {scale : ℝ}
     (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1) (slots : Nat)
     (installed : ∀ player, (onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
-      scheduler).BehavioralPolicy player) (who : Player) (event : (graph setup).EventId)
+      scheduler).BehavioralPolicy player) (who : Player) (event : setup.informationGraph.EventId)
     (start : (application setup timeouts leaks).Execution) : Prop :=
   ∀ (history : ((bounds.onePacketMenu timeouts leaks).protocol
       (initialLaw setup) horizon scheduler).History) (later : Nat)
@@ -172,7 +173,7 @@ the decision. -/
 theorem LateOwnerShape.from {assessment : setup.intendedModel.BehavioralAssessment}
     {scale : ℝ} {nonnegative : 0 ≤ scale} {le_one : scale ≤ 1} {slots : Nat}
     {installed : ∀ player, (onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
-      scheduler).BehavioralPolicy player} {who : Player} {event : (graph setup).EventId}
+      scheduler).BehavioralPolicy player} {who : Player} {event : setup.informationGraph.EventId}
     {start : (application setup timeouts leaks).Execution}
     (shape : LateOwnerShape setup timeouts leaks bounds horizon scheduler assessment nonnegative
       le_one
@@ -184,7 +185,7 @@ theorem LateOwnerShape.from {assessment : setup.intendedModel.BehavioralAssessme
 omit [Fintype Player] in
 /-- At a decision of the owner while it has sent nothing, the configuration is
 the one it decodes at, and the event is ready and the owner's turn there. -/
-theorem lateUnsent_facts {who : Player} {event : (graph setup).EventId}
+theorem lateUnsent_facts {who : Player} {event : setup.informationGraph.EventId}
     {execution : (application setup timeouts leaks).Execution}
     (turn : execution.application.publicView.ownTurn? who = some event)
     {rank : Nat} (ordered : execution.application.config.cut.IsPrefix rank)
@@ -231,11 +232,11 @@ theorem lateBinding_exitBound
       scheduler).History)
     {remaining : Nat} {who : Player} {execution : (application setup timeouts leaks).Execution}
     (current : start.state = some ⟨remaining, some who, execution⟩)
-    {event : (graph setup).EventId} {payload : L.Ty}
-    {outputEq : (graph setup).outputLayout event = .binding who payload}
-    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .bind who payload}
-    (node : nodeView (graph setup) event = .bind who payload outputEq codeEq)
+    {event : setup.informationGraph.EventId} {payload : L.Ty}
+    {outputEq : setup.informationGraph.outputLayout event = .binding who payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .bind who payload}
+    (node : nodeView setup.informationGraph event = .bind who payload outputEq codeEq)
     (turn : execution.application.publicView.ownTurn? who = some event)
     (unrecorded : (eventRecorded timeouts) leaks (execution.logs who) event = false)
     {rank : Nat} (ordered : execution.application.config.cut.IsPrefix rank)
@@ -614,7 +615,7 @@ theorem lateBinding_exitBound
                   slot
                 choice) = some event := by
               have call : material.call.packet = .commitment event (who, .prepared slot) :=
-                congrArg (fun message : Message Player (WitnessedPacket (graph setup)) =>
+                congrArg (fun message : Message Player (WitnessedPacket setup.informationGraph) =>
                   message.payload.call) envelope
               unfold EventGraphRuntime.submittedEvent?
               rw [transmits]
@@ -747,11 +748,11 @@ theorem lateBinding_completionPointLaw
       scheduler).History)
     {remaining : Nat} {who : Player} {execution : (application setup timeouts leaks).Execution}
     (current : start.state = some ⟨remaining, some who, execution⟩)
-    {event : (graph setup).EventId} {payload : L.Ty}
-    {outputEq : (graph setup).outputLayout event = .binding who payload}
-    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .bind who payload}
-    (node : nodeView (graph setup) event = .bind who payload outputEq codeEq)
+    {event : setup.informationGraph.EventId} {payload : L.Ty}
+    {outputEq : setup.informationGraph.outputLayout event = .binding who payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .bind who payload}
+    (node : nodeView setup.informationGraph event = .bind who payload outputEq codeEq)
     (turn : execution.application.publicView.ownTurn? who = some event)
     (unrecorded : (eventRecorded timeouts) leaks (execution.logs who) event = false)
     {rank : Nat} (ordered : execution.application.config.cut.IsPrefix rank)
@@ -926,7 +927,8 @@ theorem lateBinding_completionPointLaw
     have encodedSource : encodeEventAction? setup.program event source = some action := encoded
     have decodeEq := decodeEventAction_encodeEventAction?_eq_some setup.program event source
       action encodedSource
-    have owned : (graph setup).actor? event = some who := nodeView_bind_actor outputEq codeEq
+    have owned : setup.informationGraph.actor? event = some who := nodeView_bind_actor outputEq
+      codeEq
     have pointDecoded : decodedPoint setup reached.application.config = some point :=
       (decodedPoint_eq residual).trans (residual.decode.symm.trans decodedHere)
     have acts := (decodedPoint_actor_of_history who

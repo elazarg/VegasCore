@@ -29,9 +29,9 @@ open GameTheory GameTheory.Protocol GameTheory.Math.Probability Interaction Even
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  [Fintype Player] {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  [Fintype Player] {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 open Classical in
@@ -261,7 +261,7 @@ def onePacketLateLumpingOn
       PMF (PendingImage (timeouts := timeouts) (setup := setup) (leaks := leaks)))
     (moves : LateKey setup timeouts leaks → LateOption →
       Option (OperationalState setup timeouts leaks) × List (MessageId Player × Bool) →
-        PMF (Option (Handle (graph setup))))
+        PMF (Option (Handle setup.informationGraph)))
     (allowed : (onePacketInformation setup timeouts leaks bounds horizon scheduler).InformationSite
       who →
       (application setup timeouts leaks).ProtocolState → Prop)

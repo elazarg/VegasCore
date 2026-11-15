@@ -31,7 +31,7 @@ before applying the setup's declared exit transfer. -/
 theorem eventGame_paymentSum_approximate_nash_iff
     (setup : Setup (Player := Player) (L := L))
     (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw]
-    (scheduler : setup.eventGraph.PublicScheduler)
+    (scheduler : setup.informationGraph.PublicScheduler)
     (valuation : PublicOutcome setup.program → Player → ℝ)
     (ε : ℝ) (profile : BehavioralProfile setup.program) :
     IsεNash (setup.eventGame scheduler)
@@ -54,12 +54,12 @@ theorem eventGame_paymentSum_approximate_nash_iff
 
 /-- Actual graph receipts replace the instruction sum after public default. -/
 def eventTransfers (setup : Setup (Player := Player) (L := L))
-    (outcome : setup.eventGraph.gameSignature.Outcome) (who : Player) : ℝ :=
+    (outcome : setup.informationGraph.gameSignature.Outcome) (who : Player) : ℝ :=
   if who ∈ outcome.1.defaulted then (setup.exitTransfers who : ℝ)
   else (transferAmount (terminalPayouts setup.program outcome) who : ℝ)
 
 @[simp] theorem eventTransfers_eq_transfers (setup : Setup (Player := Player) (L := L))
-    (outcome : setup.eventGraph.gameSignature.Outcome) (who : Player) :
+    (outcome : setup.informationGraph.gameSignature.Outcome) (who : Player) :
     setup.eventTransfers outcome who = setup.transfers (setup.eventPublicOutcome outcome) who := by
   simp only [eventTransfers, Setup.transfers, eventPublicOutcome, publicTransfers,
     publicPayoffs_publicOutcome, terminalPayouts_eq_source, terminalConfig]
@@ -69,7 +69,7 @@ def eventTransfers (setup : Setup (Player := Player) (L := L))
 theorem eventGame_payment_approximate_nash_iff
     (setup : Setup (Player := Player) (L := L))
     (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw]
-    (scheduler : setup.eventGraph.PublicScheduler)
+    (scheduler : setup.informationGraph.PublicScheduler)
     (valuation : PublicOutcome setup.program → Player → ℝ)
     (ε : ℝ) (profile : BehavioralProfile setup.program) :
     IsεNash (setup.eventGame scheduler)
@@ -136,7 +136,7 @@ theorem parameterProtocol_isεNash_iff {Parameter : Type} [Finite Player]
 compiled execution, without publishing either to any policy. -/
 def eventParameterOutcome {Parameter : Type} (setup : Setup (Player := Player) (L := L))
     (parameter : State L setup.context → Parameter)
-    (outcome : setup.eventGraph.gameSignature.Outcome) :
+    (outcome : setup.informationGraph.gameSignature.Outcome) :
     Parameter × PublicOutcome setup.program :=
   setup.parameterOutcome parameter (terminalConfig setup.program outcome)
 
@@ -169,7 +169,7 @@ of source deviations drawn before private setup. No policy gains an observation.
 def parameterEventSimulation {Parameter : Type}
     (setup : Setup (Player := Player) (L := L))
     (parameter : State L setup.context → Parameter)
-    (scheduler : setup.eventGraph.PublicScheduler) :
+    (scheduler : setup.informationGraph.PublicScheduler) :
     GameForm.MixtureSimulationOn (setup.parameterGameForm parameter)
       (setup.eventGame scheduler) id (setup.eventParameterOutcome parameter)
       (fun _ _ => True) :=
@@ -184,7 +184,7 @@ theorem parameterEventGame_approximate_nash_iff {Parameter : Type}
     (setup : Setup (Player := Player) (L := L))
     (parameter : State L setup.context → Parameter)
     (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw]
-    (scheduler : setup.eventGraph.PublicScheduler)
+    (scheduler : setup.informationGraph.PublicScheduler)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
     (ε : ℝ) (profile : BehavioralProfile setup.program) :
     IsεNash (setup.eventGame scheduler)
@@ -202,7 +202,7 @@ theorem parameterEventGame_payment_approximate_nash_iff {Parameter : Type}
     (setup : Setup (Player := Player) (L := L))
     (parameter : State L setup.context → Parameter)
     (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw]
-    (scheduler : setup.eventGraph.PublicScheduler)
+    (scheduler : setup.informationGraph.PublicScheduler)
     (valuation : Parameter × PublicOutcome setup.program → Player → ℝ)
     (ε : ℝ) (profile : BehavioralProfile setup.program) :
     IsεNash (setup.eventGame scheduler)

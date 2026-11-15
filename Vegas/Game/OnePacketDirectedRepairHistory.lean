@@ -22,9 +22,9 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- An actual image history of a single owner's private binding repair. The
@@ -66,20 +66,21 @@ theorem repair_binding_history
       (prior : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some
         before)),
       TracePrefix prior history.1.trace →
-      ∀ (event : (graph setup).EventId) (actor : Player) (payload : L.Ty)
-        (binding : EventGraph.FieldRef (graph setup).layout (.binding actor payload))
-        (checks : List (EventGraph.GuardCheck (graph setup).layout payload))
-        (outputEq : (graph setup).outputLayout event = .publication payload)
-        (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-          ((graph setup).nodes event) = .resolve actor payload binding checks),
-        nodeView (graph setup) event = .resolve actor payload binding checks outputEq codeEq →
+      ∀ (event : setup.informationGraph.EventId) (actor : Player) (payload : L.Ty)
+        (binding : EventGraph.FieldRef setup.informationGraph.layout (.binding actor payload))
+        (checks : List (EventGraph.GuardCheck setup.informationGraph.layout payload))
+        (outputEq : setup.informationGraph.outputLayout event = .publication payload)
+        (codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+          (setup.informationGraph.nodes event) = .resolve actor payload binding checks),
+        nodeView setup.informationGraph event = .resolve actor payload binding checks outputEq
+          codeEq →
         before.execution.application.config.cut.Ready event →
         ∃ value, binding.get? before.execution.application.config.store = some (.success value))
     (accepted : ∀ (before : (application setup timeouts leaks).Control)
       (prior : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some
         before)),
       TracePrefix prior history.1.trace → ∀ event actor payload,
-      (graph setup).outputLayout event = .binding actor payload →
+      setup.informationGraph.outputLayout event = .binding actor payload →
       event ∈ before.execution.application.config.cut.completed →
       before.execution.application.accepted (.inr event) ≠ none) :
     Nonempty (BindingRepairHistory (timeouts := timeouts) owner history.1.trace final) := by

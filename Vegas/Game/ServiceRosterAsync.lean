@@ -25,8 +25,8 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
 /-- A sole authored response for a ready event receives a receipt before time advances. -/
 theorem rosterScheduler_protectedInclusion (setup : Setup (Player := Player) (L := L))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-    (rosters : (graph setup).EventId → List Player)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
+    (rosters : setup.informationGraph.EventId → List Player)
     (network : (NetworkPolicy (timeouts setup)) leaks) :
     ProtectedInclusion (timeouts setup) leaks (initialLaw setup) (rosterPlan setup rosters).length
       (rosterScheduler setup leaks rosters network) (fun _ => 0) :=
@@ -35,8 +35,8 @@ theorem rosterScheduler_protectedInclusion (setup : Setup (Player := Player) (L 
 
 /-- The fixed command horizon completes the graph under arbitrary responses. -/
 theorem rosterScheduler_completesPlay (setup : Setup (Player := Player) (L := L))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-    (rosters : (graph setup).EventId → List Player)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
+    (rosters : setup.informationGraph.EventId → List Player)
     (network : (NetworkPolicy (timeouts setup)) leaks) :
     CompletesPlay (timeouts setup) leaks (initialLaw setup) (rosterPlan setup rosters).length
       (rosterScheduler setup leaks rosters network) :=
@@ -46,8 +46,8 @@ theorem rosterScheduler_completesPlay (setup : Setup (Player := Player) (L := L)
 /-- The roster scheduler supplies rank-bounded activation, zero-time protected
 inclusion and terminal completion. Each event's actor must occur in its roster. -/
 theorem rosterScheduler_asyncContract (setup : Setup (Player := Player) (L := L))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-    (rosters : (graph setup).EventId → List Player)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
+    (rosters : setup.informationGraph.EventId → List Player)
     (network : (NetworkPolicy (timeouts setup)) leaks)
     (opportunities : ActorOpportunities setup rosters) :
     AsyncContract (timeouts setup) leaks (initialLaw setup) (rosterPlan setup rosters).length

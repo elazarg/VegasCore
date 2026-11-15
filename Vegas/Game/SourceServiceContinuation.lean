@@ -26,8 +26,8 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
 /-- The whole-program terminal reader factors through the existing suffix
 configuration reader and the source-position embedding. -/
-theorem SourceResidual.terminal_readout {rank : Nat} {config : (graph setup).Config}
-    (residual : SourceResidual setup profile rank config) (final : (graph setup).Config) :
+theorem SourceResidual.terminal_readout {rank : Nat} {config : setup.informationGraph.Config}
+    (residual : SourceResidual setup profile rank config) (final : setup.informationGraph.Config) :
     setup.protocolReadout (sourceServicePrefix? setup (eventCount setup.program) final) =
       (decodeConfig? setup.program residual.program residual.refs residual.source.revelations
         residual.source.registry residual.embedding final.store final.history).bind fun terminal =>
@@ -47,23 +47,23 @@ variable [Finite Player]
 
 /-- Finishing the ordinary compiled graph has exactly the full source
 continuation law at its actual decoded source position. -/
-theorem SourceResidual.runPlan_readout_law {rank : Nat} {config : (graph setup).Config}
+theorem SourceResidual.runPlan_readout_law {rank : Nat} {config : setup.informationGraph.Config}
     (residual : SourceResidual setup profile rank config) :
-    ((graph setup).runPlan
-      ((graph setup).policyPlan (compileEventProfile setup.program profile)
-        (graph setup).canonicalScheduler) config.remaining config).map
+    (setup.informationGraph.runPlan
+      (setup.informationGraph.policyPlan (compileEventProfile setup.program profile)
+        setup.informationGraph.canonicalScheduler) config.remaining config).map
       (fun final => decodeConfig? setup.program setup.program
         (ContextRefs.initial setup.context (outputLayout setup.program))
         (Revelations.initial setup.context) [] (outputEmbedding setup.program)
         final.store final.history) = sourceContinuation setup profile rank config := by
   let := Fintype.ofFinite Player
-  let run := (graph setup).runPlan
-    ((graph setup).policyPlan (compileEventProfile setup.program profile)
-      (graph setup).canonicalScheduler) config.remaining config
-  let read := fun final : (graph setup).Config => decodeConfig? setup.program setup.program
+  let run := setup.informationGraph.runPlan
+    (setup.informationGraph.policyPlan (compileEventProfile setup.program profile)
+      setup.informationGraph.canonicalScheduler) config.remaining config
+  let read := fun final : setup.informationGraph.Config => decodeConfig? setup.program setup.program
     (ContextRefs.initial setup.context (outputLayout setup.program))
     (Revelations.initial setup.context) [] (outputEmbedding setup.program) final.store final.history
-  let tailRead := fun final : (graph setup).Config =>
+  let tailRead := fun final : setup.informationGraph.Config =>
     decodeConfig? setup.program residual.program residual.refs residual.source.revelations
       residual.source.registry residual.embedding final.store final.history
   let law := fun point : ProtocolState residual.program =>
@@ -100,7 +100,8 @@ theorem SourceResidual.runPlan_readout_law {rank : Nat} {config : (graph setup).
         (residual.lift (ProtocolState.terminalState residual.program terminal))) :=
     ProtocolState.continuationLaw_terminal setup.program profile _
       (residual.lift_terminal _ (ProtocolState.terminal_terminalState _ terminal))
-  have readEq (final : (graph setup).Config) : read final = (tailRead final).bind fun terminal =>
+  have readEq (final : setup.informationGraph.Config) : read final = (tailRead final).bind fun
+    terminal =>
       ProtocolState.readout setup.program
         (residual.lift (ProtocolState.terminalState residual.program terminal)) := by
     have decoded := residual.terminal_readout final

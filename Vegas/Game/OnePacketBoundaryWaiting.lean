@@ -23,13 +23,13 @@ open SourceProgram GameTheory.Protocol GameTheory.Math.Probability Interaction E
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
 
 variable [Fintype Player]
-  {bounds : MessageBounds (graph setup)}
+  {bounds : MessageBounds setup.informationGraph}
   {horizon : Nat} {scheduler : (application setup timeouts leaks).Scheduler}
-  {delay bound : (graph setup).EventId → Nat}
+  {delay bound : setup.informationGraph.EventId → Nat}
   (opportunity : ∀ control : (application setup timeouts leaks).Control,
     ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control) →
@@ -53,8 +53,8 @@ theorem counted_waiting_environment
     {point : ProtocolState setup.program}
     (decoded : sourceServicePrefix? setup rank execution.application.config = some point)
     (intendedPoint : ProtocolState.Intended setup.program point)
-    (owner : Player) (event : (graph setup).EventId)
-    (owned : (graph setup).actor? event = some owner)
+    (owner : Player) (event : setup.informationGraph.EventId)
+    (owned : setup.informationGraph.actor? event = some owner)
     (ready : execution.application.config.cut.Ready event)
     (never : ∀ entry ∈ execution.logs owner, ¬ ActivatedAt setup timeouts leaks owner event entry)
     (command : (application setup timeouts leaks).Command) (next : (application setup timeouts
@@ -66,7 +66,7 @@ theorem counted_waiting_environment
   have rawTrace := (Menu).toRawTrace (initialLaw setup) horizon scheduler trace
   have facts := legalFacts setup leaks horizon scheduler _ rawTrace
   have safe : ∀ message ∈ execution.network.pending, message.sender = owner →
-      message.payload.call.event? (graph setup) ≠ some event := by
+      message.payload.call.event? setup.informationGraph ≠ some event := by
     intro message pending sender named
     have recorded := eventRecorded_of_pending setup leaks rawTrace owner event message
       pending sender named
@@ -79,8 +79,9 @@ theorem counted_waiting_environment
       ((setup.initialLaw.map setup.eventInputs).map State.initial) horizon scheduler).Trace
         (some ⟨remaining + 1, none, execution⟩) := by
     have initialEq : initialLaw setup =
-        (setup.initialLaw.map setup.eventInputs).map (State.initial (graph := graph setup)) :=
-      serviceInitialLaw_eq_inputs (mode := .sequential) setup
+        (setup.initialLaw.map setup.eventInputs).map (State.initial (graph :=
+          setup.informationGraph)) :=
+      serviceInitialLaw_eq_inputs (deps := setup.informationDependencies) setup
     rw [← initialEq]
     exact rawTrace
   obtain ⟨inputs, _supported, invariant⟩ := (reactive_history_invariant timeouts) leaks
@@ -93,8 +94,9 @@ theorem counted_waiting_environment
     apply Nat.lt_of_not_ge
     intro due
     obtain ⟨entry, remembered, activatedAt⟩ := due_owner_recalled_turn_of_opportunity
-      timeouts leaks timely (serviceGraph_revealRelaxedOrdered setup .sequential)
-      _ rawTrace rfl (opportunity _ trace clear) event owner owned ready entered activated due
+      timeouts leaks timely _ rawTrace rfl (opportunity _ trace clear) event
+      (setup.informationGraph.sequentialize_solitary event).ownerSolitary
+      owner owned ready entered activated due
     exact never entry remembered activatedAt
   have same := environment_waiting_config timeouts leaks execution next command event owner ready
     owned within facts.quiescent safe reached
@@ -109,8 +111,8 @@ private theorem counted_waiting_transition
     {point : ProtocolState setup.program}
     (decoded : sourceServicePrefix? setup rank control.execution.application.config = some point)
     (intendedPoint : ProtocolState.Intended setup.program point)
-    (owner : Player) (event : (graph setup).EventId)
-    (owned : (graph setup).actor? event = some owner)
+    (owner : Player) (event : setup.informationGraph.EventId)
+    (owned : setup.informationGraph.actor? event = some owner)
     (ready : control.execution.application.config.cut.Ready event)
     (never : ∀ entry ∈ control.execution.logs owner,
       ¬ ActivatedAt setup timeouts leaks owner event entry)
@@ -179,8 +181,8 @@ theorem counted_waiting_until_firstActivation
     {point : ProtocolState setup.program}
     (decoded : sourceServicePrefix? setup rank execution.application.config = some point)
     (intendedPoint : ProtocolState.Intended setup.program point)
-    (owner : Player) (event : (graph setup).EventId)
-    (owned : (graph setup).actor? event = some owner)
+    (owner : Player) (event : setup.informationGraph.EventId)
+    (owned : setup.informationGraph.actor? event = some owner)
     (ready : execution.application.config.cut.Ready event)
     (never : ∀ entry ∈ execution.logs owner, ¬ ActivatedAt setup timeouts leaks owner event
       entry) :
@@ -271,8 +273,8 @@ theorem counted_boundary_firstActivation
     {point : ProtocolState setup.program}
     (decoded : sourceServicePrefix? setup rank execution.application.config = some point)
     (intendedPoint : ProtocolState.Intended setup.program point)
-    (owner : Player) (event : (graph setup).EventId) (atRank : event.val = rank)
-    (owned : (graph setup).actor? event = some owner) :
+    (owner : Player) (event : setup.informationGraph.EventId) (atRank : event.val = rank)
+    (owned : setup.informationGraph.actor? event = some owner) :
     ∀ stopped ∈ (((Menu).information (initialLaw setup) horizon
       scheduler).runBehavioralUntil certificate players
         (fun history => (application setup timeouts leaks).actor history.state = some owner)
@@ -302,10 +304,8 @@ theorem counted_boundary_firstActivation
   subst actor
   have trace : ((Menu).protocol (initialLaw setup) horizon scheduler).Trace
       (some ⟨remaining, some owner, anchor⟩) := state ▸ stopped.trace
-  have turn : anchor.application.publicView.ownTurn? owner = some event := by
-    apply PublicView.ownTurn?_of_ownTurn
-    exact State.ownTurn_of_ready _ (serviceGraph_revealRelaxedOrdered setup .sequential) owner event
-      ((anchor.application.publicView_eventReady event).mpr (same ▸ ready)) owned
+  have turn : anchor.application.publicView.ownTurn? owner = some event :=
+    ownTurn?_of_ready setup anchor.application (same ▸ ready) owned
   have finalNever : ∀ entry ∈ anchor.logs owner,
       ¬ ActivatedAt setup timeouts leaks owner event entry := by
     rw [recalledEq]

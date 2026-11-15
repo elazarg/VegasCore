@@ -31,37 +31,41 @@ service graph: the compiled profile, opening a reveal exactly when the opening
 would be accepted, read in instruction order. -/
 def concurrentEffectiveReference (setup : Setup (Player := Player) (L := L))
     (source : BehavioralProfile setup.program) :
-    (serviceGraph setup .concurrentReveals).BehavioralProfile :=
-  (serviceGraph setup .concurrentReveals).normalizeProfile
+    setup.revealRelaxedGraph.BehavioralProfile :=
+  setup.revealRelaxedGraph.normalizeProfile
     (effectiveOpening (compileEventProfile setup.program source))
 
 /-- The effective-opening reference is ready independent. -/
 theorem concurrentEffectiveReference_readyIndependent
     (setup : Setup (Player := Player) (L := L)) (source : BehavioralProfile setup.program) :
     ReadyIndependent (concurrentEffectiveReference setup source) :=
-  (setup.eventGraph.withMode_concurrentReveals_revealsOnlyConcurrent
-    setup.eventGraph_total).readyIndependent_normalizeProfile_of_footprint _
+  (setup.informationGraph.relaxReveals_revealsOnlyConcurrent
+    setup.informationGraph_total).readyIndependent_normalizeProfile_of_footprint _
     (effectiveOpening_footprint _)
 
 /-- The effective-opening reference opens a reveal exactly when the opening
 would be accepted. -/
 theorem concurrentEffectiveReference_decides (setup : Setup (Player := Player) (L := L))
     (source : BehavioralProfile setup.program)
-    (config : (serviceGraph setup .concurrentReveals).Config)
-    (event : (serviceGraph setup .concurrentReveals).EventId) (owner : Player) (payload : L.Ty)
-    (binding : FieldRef (serviceGraph setup .concurrentReveals).layout (.binding owner payload))
-    (checks : List (GuardCheck (serviceGraph setup .concurrentReveals).layout payload))
-    (outputEq : (serviceGraph setup .concurrentReveals).outputLayout event = .publication payload)
-    (codeEq : cast (congrArg (EventCode (serviceGraph setup .concurrentReveals).layout) outputEq)
-      ((serviceGraph setup .concurrentReveals).nodes event) =
+    (config : setup.revealRelaxedGraph.Config)
+    (event : setup.revealRelaxedGraph.EventId) (owner : Player) (payload :
+      L.Ty)
+    (binding : FieldRef setup.revealRelaxedGraph.layout (.binding owner
+      payload))
+    (checks : List (GuardCheck setup.revealRelaxedGraph.layout payload))
+    (outputEq : setup.revealRelaxedGraph.outputLayout event = .publication
+      payload)
+    (codeEq : cast (congrArg (EventCode setup.revealRelaxedGraph.layout)
+      outputEq)
+      (setup.revealRelaxedGraph.nodes event) =
         .resolve owner payload binding checks)
-    (node : nodeView (serviceGraph setup .concurrentReveals) event =
+    (node : nodeView setup.revealRelaxedGraph event =
       .resolve owner payload binding checks outputEq codeEq)
-    (actor : (serviceGraph setup .concurrentReveals).actor? event = some owner)
-    (active : owner ∉ ((serviceGraph setup .concurrentReveals).playerObserve owner
+    (actor : setup.revealRelaxedGraph.actor? event = some owner)
+    (active : owner ∉ (setup.revealRelaxedGraph.playerObserve owner
       config).defaulted) :
     concurrentEffectiveReference setup source owner event actor
-        ((serviceGraph setup .concurrentReveals).playerObserve owner config) active =
+        (setup.revealRelaxedGraph.playerObserve owner config) active =
       PMF.pure (cast (congrArg EventField.Action outputEq.symm)
         (openingAccepted event config.store)) :=
   normalize_effectiveOpening_publication _ config node actor active
@@ -81,9 +85,9 @@ for every readout that ignores the decisions of defaulted players. -/
 theorem concurrentEffectiveReference_outcomeLaw (setup : Setup (Player := Player) (L := L))
     (source : BehavioralProfile setup.program)
     (disclosing : ∀ who, Disclosing setup.program (source who)) {Outcome : Type*}
-    (read : (serviceGraph setup .concurrentReveals).Config → Outcome)
+    (read : setup.revealRelaxedGraph.Config → Outcome)
     (invariant : ∀ config, read config.erase = read config)
-    (config : (serviceGraph setup .concurrentReveals).Config) :
+    (config : setup.revealRelaxedGraph.Config) :
     outcomeLaw (concurrentEffectiveReference setup source) read config =
       outcomeLaw (concurrentReference setup source) read config :=
   (concurrentEffectiveReference_twins setup source disclosing).runPlan_map_of_erase_invariant
@@ -96,38 +100,38 @@ reference of a disclosing source profile have, read in instruction order, the
 source law of every observation of the typed terminal state and public default
 history. -/
 theorem concurrentEffectiveClients_state_law (setup : Setup (Player := Player) (L := L))
-    (duration : (serviceGraph setup .concurrentReveals).EventId → Nat)
+    (duration : setup.revealRelaxedGraph.EventId → Nat)
     (leaks : MessageNetwork.ObservationRule Player
-      (WitnessedPacket (serviceGraph setup .concurrentReveals)))
+      (WitnessedPacket setup.revealRelaxedGraph))
     {horizon turns : Nat}
-    {scheduler : (serviceApplication setup .concurrentReveals duration leaks).Scheduler}
-    {delay bound : (serviceGraph setup .concurrentReveals).EventId → Nat}
-    (contract : AsyncContract (serviceTimeouts setup .concurrentReveals duration) leaks
-      (serviceInitialLaw setup .concurrentReveals) horizon scheduler delay bound)
-    (timely : AsyncTimely (serviceTimeouts setup .concurrentReveals duration) delay bound)
+    {scheduler : (serviceApplication setup setup.revealDependencies duration leaks).Scheduler}
+    {delay bound : setup.revealRelaxedGraph.EventId → Nat}
+    (contract : AsyncContract (serviceTimeouts setup setup.revealDependencies duration) leaks
+      (serviceInitialLaw setup setup.revealDependencies) horizon scheduler delay bound)
+    (timely : AsyncTimely (serviceTimeouts setup setup.revealDependencies duration) delay bound)
     (source : BehavioralProfile setup.program)
     (disclosing : ∀ who, Disclosing setup.program (source who))
     {Outcome : Type*} (read : State L setup.program.terminalCtx × DefaultHistory Player → Outcome) :
-    ((serviceApplication setup .concurrentReveals duration leaks).roundsFrom
-        (serviceInitialLaw setup .concurrentReveals) scheduler
-        (serviceReferenceTurnPolicy setup .concurrentReveals duration leaks bound turns
-          (firstTurnTiming setup turns .concurrentReveals)
+    ((serviceApplication setup setup.revealDependencies duration leaks).roundsFrom
+        (serviceInitialLaw setup setup.revealDependencies) scheduler
+        (serviceReferenceTurnPolicy setup setup.revealDependencies duration leaks bound turns
+          (firstTurnTiming setup turns setup.revealDependencies)
           (concurrentEffectiveReference setup source))
         horizon).map (fun final =>
-          (serviceRankedReadout setup .concurrentReveals duration leaks
-            ((serviceApplication setup .concurrentReveals duration leaks).finished final)).map
+          (serviceRankedReadout setup setup.revealDependencies duration leaks
+            ((serviceApplication setup setup.revealDependencies duration leaks).finished final)).map
             (fun config => read (config.state, config.defaults))) =
       (setup.run source).map (fun final => some (read (final.state, final.defaults))) := by
-  have keyed (left right : (serviceGraph setup .concurrentReveals).Config)
+  have keyed (left right : setup.revealRelaxedGraph.Config)
       (same : runKey left = runKey right) :
       concurrentStateRead setup read left = concurrentStateRead setup read right := by
     unfold concurrentStateRead
     rw [concurrentRankedRead_congr setup same]
   have law := effective_roundsFrom_outcomeLaw (duration := duration) (leaks := leaks)
     (turns := turns) contract timely
-    (setup.eventGraph.withMode_concurrentReveals_revealsOnlyConcurrent setup.eventGraph_total)
-    (fun _ notPublication => setup.eventGraph.withMode_concurrentReveals_leading
-      setup.eventGraph_total notPublication)
+    (setup.informationGraph.relaxReveals_revealsOnlyConcurrent setup.informationGraph_total)
+    (fun _ notPublication => setup.informationGraph.relaxReveals_leading
+      setup.informationGraph_total notPublication)
     (concurrentEffectiveReference setup source)
     (concurrentEffectiveReference_readyIndependent setup source)
     (concurrentEffectiveReference_decides setup source)

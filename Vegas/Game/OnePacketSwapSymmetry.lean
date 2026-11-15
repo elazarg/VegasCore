@@ -44,18 +44,19 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol Intera
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {allowed : Set (graph setup).Inputs}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {allowed : Set setup.informationGraph.Inputs}
 
 /-- **The allowed inputs of a swap**: the inputs of an initial state the swap
 sends into the support of the initial law. -/
-def swapAllowed (swap : HiddenSwap (graph setup)) : Set (graph setup).Inputs :=
+def swapAllowed (swap : HiddenSwap setup.informationGraph) : Set setup.informationGraph.Inputs :=
   {inputs | ∃ state ∈ (initialLaw setup).support, state.config.inputs = inputs ∧
     state.swap swap ∈ (initialLaw setup).support}
 
 /-- An initial state is the initial state of its inputs. -/
-private theorem eq_initial_of_mem_initialLaw {state : EventGraphRuntime.State (graph setup)}
+private theorem eq_initial_of_mem_initialLaw {state : EventGraphRuntime.State
+  setup.informationGraph}
     (member : state ∈ (initialLaw setup).support) :
     state = EventGraphRuntime.State.initial state.config.inputs := by
   rw [initialLaw, serviceInitialLaw, PMF.support_map] at member
@@ -63,7 +64,7 @@ private theorem eq_initial_of_mem_initialLaw {state : EventGraphRuntime.State (g
   rfl
 
 /-- **The initial law is closed under the swap at the allowed inputs.** -/
-theorem initialClosed_swapAllowed (swap : HiddenSwap (graph setup)) :
+theorem initialClosed_swapAllowed (swap : HiddenSwap setup.informationGraph) :
     ∀ state ∈ (initialLaw setup).support, state.config.inputs ∈ swapAllowed swap →
       state.swap swap ∈ (initialLaw setup).support := by
   rintro state member ⟨other, otherMember, sameInputs, swapped⟩
@@ -71,7 +72,7 @@ theorem initialClosed_swapAllowed (swap : HiddenSwap (graph setup)) :
   exact swapped
 
 /-- **The allowed inputs are closed under the swap.** -/
-theorem swapAllowed_closed (swap : HiddenSwap (graph setup)) :
+theorem swapAllowed_closed (swap : HiddenSwap setup.informationGraph) :
     ∀ inputs ∈ swapAllowed swap,
       (fun input => swap.values.value (.inl input) (inputs input)) ∈ swapAllowed swap := by
   rintro inputs ⟨state, member, rfl, swapped⟩
@@ -79,7 +80,7 @@ theorem swapAllowed_closed (swap : HiddenSwap (graph setup)) :
 
 namespace EventGraphRuntime.HiddenSwap
 
-variable (swap : HiddenSwap (graph setup))
+variable (swap : HiddenSwap setup.informationGraph)
 
 /-- The swap of a control state: of its execution. -/
 def control (current : (application setup timeouts leaks).Control) : (application setup timeouts
@@ -147,7 +148,8 @@ end EventGraphRuntime.HiddenSwap
 
 variable (setup timeouts) in
 /-- **The swap guard** at an execution of the supplied runtime. -/
-structure SwapGuard (swap : HiddenSwap (graph setup)) (allowed : Set (graph setup).Inputs)
+structure SwapGuard (swap : HiddenSwap setup.informationGraph) (allowed : Set
+  setup.informationGraph.Inputs)
     (current : (application setup timeouts leaks).Execution) : Prop where
   inputs : current.application.config.inputs ∈ allowed
   compatible : ∀ event candidate,
@@ -163,13 +165,14 @@ structure SwapGuard (swap : HiddenSwap (graph setup)) (allowed : Set (graph setu
 
 variable (setup timeouts) in
 /-- The swap guard at a protocol state; nothing is asked before setup. -/
-def SwapGuardState (swap : HiddenSwap (graph setup)) (allowed : Set (graph setup).Inputs) :
+def SwapGuardState (swap : HiddenSwap setup.informationGraph) (allowed : Set
+  setup.informationGraph.Inputs) :
     (application setup timeouts leaks).ProtocolState → Prop
   | none => True
   | some current => SwapGuard setup timeouts swap allowed current.execution
 
 /-- Accepted handles are never removed. -/
-def AcceptedGrows (before after : EventGraphRuntime.State (graph setup)) : Prop :=
+def AcceptedGrows (before after : EventGraphRuntime.State setup.informationGraph) : Prop :=
   ∀ field candidate, before.accepted field = some candidate → after.accepted field = some candidate
 
 variable (leaks) in
@@ -179,7 +182,7 @@ theorem acceptedGrows_step :
   submit state who material field candidate held := by
     change (submitStep (material.call.register state who) who
       material.call.packet).accepted field = _
-    have registered := congrArg (fun view : PublicView (graph setup) => view.accepted)
+    have registered := congrArg (fun view : PublicView setup.informationGraph => view.accepted)
       (material.call.register_facts who state).2
     change (material.call.register state who).accepted = state.accepted at registered
     rw [submitStep_accepted, registered]
@@ -213,13 +216,13 @@ theorem acceptedGrows_step :
     exact held
 
 /-- Every handle accepted at an event completed it. -/
-def AcceptedCompleted (state : EventGraphRuntime.State (graph setup)) : Prop :=
+def AcceptedCompleted (state : EventGraphRuntime.State setup.informationGraph) : Prop :=
   ∀ event candidate, state.accepted (.inr event) = some candidate →
     event ∈ state.config.cut.completed
 
 /-- A handle newly accepted by an operation was accepted at an event ready
 before and completed after. -/
-def AcceptedFresh (before after : EventGraphRuntime.State (graph setup)) : Prop :=
+def AcceptedFresh (before after : EventGraphRuntime.State setup.informationGraph) : Prop :=
   ∀ field candidate, after.accepted field = some candidate → before.accepted field = none →
     ∃ event, field = .inr event ∧ before.config.cut.Ready event ∧
       event ∈ after.config.cut.completed
@@ -233,7 +236,7 @@ theorem acceptedFresh_step :
   submit state who material field candidate held vacant := by
     change (submitStep (material.call.register state who) who
       material.call.packet).accepted field = _ at held
-    have registered := congrArg (fun view : PublicView (graph setup) => view.accepted)
+    have registered := congrArg (fun view : PublicView setup.informationGraph => view.accepted)
       (material.call.register_facts who state).2
     change (material.call.register state who).accepted = state.accepted at registered
     rw [submitStep_accepted, registered, vacant] at held
@@ -303,19 +306,20 @@ instance : InitialAcceptedCompleted (timeouts := timeouts) (leaks := leaks) (ini
     cases field
 
 /-- A resolution fixed at a later state was fixed earlier. -/
-theorem revealFixed_of_grows (swap : HiddenSwap (graph setup))
-    {before after : EventGraphRuntime.State (graph setup)} (grows : AcceptedGrows before after)
-    (event : (graph setup).EventId) (fixed : RevealFixed swap after event) :
+theorem revealFixed_of_grows (swap : HiddenSwap setup.informationGraph)
+    {before after : EventGraphRuntime.State setup.informationGraph} (grows : AcceptedGrows before
+      after)
+    (event : setup.informationGraph.EventId) (fixed : RevealFixed swap after event) :
     RevealFixed swap before event := by
   unfold RevealFixed at fixed ⊢
-  cases view : nodeView (graph setup) event with
+  cases view : nodeView setup.informationGraph event with
   | bind | sample => trivial
   | resolve owner payload binding checks outputEq codeEq =>
       rw [view] at fixed
       exact ⟨fixed.1, fun candidate held => fixed.2 candidate (grows _ _ held)⟩
 
 /-- **The swap guard reaches back** along every transition. -/
-theorem swapGuard_of_transition (swap : HiddenSwap (graph setup))
+theorem swapGuard_of_transition (swap : HiddenSwap setup.informationGraph)
     (initial : PMF (application setup timeouts leaks).State) (horizon : Nat)
     (scheduler : (application setup timeouts leaks).Scheduler)
     (before after : (application setup timeouts leaks).Control)
@@ -365,9 +369,9 @@ theorem swapGuard_of_transition (swap : HiddenSwap (graph setup))
 /-- Including a packet with a valid token satisfies the inclusion conditions
 when the source is guarded and the accepted handles after inclusion are
 compatible. -/
-theorem inclusionFixed_of_guard (swap : HiddenSwap (graph setup))
+theorem inclusionFixed_of_guard (swap : HiddenSwap setup.informationGraph)
     (current : (application setup timeouts leaks).Execution) (id : MessageId Player)
-    (envelope : Message Player (WitnessedPacket (graph setup)))
+    (envelope : Message Player (WitnessedPacket setup.informationGraph))
     (found : current.network.lookup id = some envelope)
     (valid : envelope.payload.tokenValid = true)
     (sourceGuard : SwapGuard setup timeouts swap allowed current)
@@ -396,8 +400,9 @@ theorem inclusionFixed_of_guard (swap : HiddenSwap (graph setup))
 /-- **An expiry at a guarded target keeps its failure**: the expired event has
 no accepted handle before, since accepted handles completed their events, so
 the guard at the target fixes its failure. -/
-theorem expiryFixed_of_guard (swap : HiddenSwap (graph setup))
-    (current next : (application setup timeouts leaks).Execution) (event : (graph setup).EventId)
+theorem expiryFixed_of_guard (swap : HiddenSwap setup.informationGraph)
+    (current next : (application setup timeouts leaks).Execution) (event :
+      setup.informationGraph.EventId)
     (entered : Nat)
     (stepped : next ∈ (current.environmentStep (application setup timeouts leaks)
       (.application (.expire event))).support)
@@ -412,7 +417,7 @@ theorem expiryFixed_of_guard (swap : HiddenSwap (graph setup))
     cases held : current.application.accepted (.inr event) with
     | none => rfl
     | some candidate => exact absurd (valid event candidate held) ready.1
-  cases view : nodeView (graph setup) event with
+  cases view : nodeView setup.informationGraph event with
   | bind owner payload outputEq codeEq =>
       unfold ReactiveApplication.Execution.environmentStep at stepped
       simp only [PMF.support_map, Set.mem_image] at stepped
@@ -442,7 +447,7 @@ theorem expiryFixed_of_guard (swap : HiddenSwap (graph setup))
         cases bindingEq
 
 /-- **Transitions into guarded states commute with the swap.** -/
-theorem transition_swap (swap : HiddenSwap (graph setup))
+theorem transition_swap (swap : HiddenSwap setup.informationGraph)
     (initial : PMF (application setup timeouts leaks).State)
     (initialClosed : ∀ state ∈ initial.support, state.config.inputs ∈ allowed →
       state.swap swap ∈ initial.support)
@@ -542,7 +547,7 @@ theorem transition_swap (swap : HiddenSwap (graph setup))
                 · exact failures
 
 /-- A response recorded at a guarded state has a fixed evidence request. -/
-theorem requestFixed_of_respond (swap : HiddenSwap (graph setup))
+theorem requestFixed_of_respond (swap : HiddenSwap setup.informationGraph)
     (current : (application setup timeouts leaks).Execution) (who : Player)
     (response : (application setup timeouts leaks).Action)
     (guarded : SwapGuard setup timeouts swap allowed
@@ -561,9 +566,10 @@ theorem requestFixed_of_respond (swap : HiddenSwap (graph setup))
 variable [Fintype Player]
 
 /-- **The guard holds before every transition into a guarded state.** -/
-theorem swapGuardState_of_step (bounds : MessageBounds (graph setup))
+theorem swapGuardState_of_step (bounds : MessageBounds setup.informationGraph)
     (initial : PMF (application setup timeouts leaks).State) (horizon : Nat)
-    (scheduler : (application setup timeouts leaks).Scheduler) (swap : HiddenSwap (graph setup))
+    (scheduler : (application setup timeouts leaks).Scheduler) (swap : HiddenSwap
+      setup.informationGraph)
     {source target : (application setup timeouts leaks).ProtocolState}
     {joint : Player → Option (application setup timeouts leaks).Action}
     (isLegal : ((bounds.onePacketMenu timeouts leaks).protocol initial horizon
@@ -583,7 +589,7 @@ theorem swapGuardState_of_step (bounds : MessageBounds (graph setup))
 
 /-- **Accepted handles completed their events** along every history from an
 initial law whose states have this property. -/
-theorem acceptedCompleted_of_trace (bounds : MessageBounds (graph setup))
+theorem acceptedCompleted_of_trace (bounds : MessageBounds setup.informationGraph)
     (initial : PMF (application setup timeouts leaks).State) (horizon : Nat)
     (scheduler : (application setup timeouts leaks).Scheduler)
     [InitialAcceptedCompleted (timeouts := timeouts) (leaks := leaks) initial] :
@@ -612,10 +618,11 @@ theorem acceptedCompleted_of_trace (bounds : MessageBounds (graph setup))
 
 /-- A failure-fixing hidden swap is a guarded state symmetry when the initial
 law and bounded values are closed under it. -/
-def onePacketSwapSymmetry (bounds : MessageBounds (graph setup))
+def onePacketSwapSymmetry (bounds : MessageBounds setup.informationGraph)
     (initial : PMF (application setup timeouts leaks).State)
     (horizon : Nat)
-    (scheduler : (application setup timeouts leaks).Scheduler) (swap : HiddenSwap (graph setup))
+    (scheduler : (application setup timeouts leaks).Scheduler) (swap : HiddenSwap
+      setup.informationGraph)
     (initialClosed : ∀ state ∈ initial.support, state.config.inputs ∈ allowed →
       state.swap swap ∈ initial.support)
     (bounded : ∀ handle raw, raw ∈ bounds.values → swap.raw handle raw ∈ bounds.values)
@@ -680,10 +687,11 @@ def onePacketSwapSymmetry (bounds : MessageBounds (graph setup))
       source target joint reached guarded
 
 /-- **The one-packet swap symmetry is involutive.** -/
-theorem onePacketSwapSymmetry_involutive (bounds : MessageBounds (graph setup))
+theorem onePacketSwapSymmetry_involutive (bounds : MessageBounds setup.informationGraph)
     (initial : PMF (application setup timeouts leaks).State)
     (horizon : Nat)
-    (scheduler : (application setup timeouts leaks).Scheduler) (swap : HiddenSwap (graph setup))
+    (scheduler : (application setup timeouts leaks).Scheduler) (swap : HiddenSwap
+      setup.informationGraph)
     (initialClosed : ∀ state ∈ initial.support, state.config.inputs ∈ allowed →
       state.swap swap ∈ initial.support)
     (bounded : ∀ handle raw, raw ∈ bounds.values → swap.raw handle raw ∈ bounds.values)

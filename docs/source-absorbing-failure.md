@@ -131,11 +131,9 @@ inclusion and completion, with the strict reaction-plus-inclusion timing margin.
 
 [CompilerCorrectness](../Vegas/Game/CompilerCorrectness.lean) realizes those
 laws in bounded menus under their value-coverage and capacity interfaces.
-The mode-parametric interfaces require public-barrier ordering.
-`serviceGraph_eq_sequential` in [RevealService](../Vegas/Game/RevealService.lean)
-identifies every such compiled service graph with the sequential graph, so this
-premise supplies no additional concurrent compiler mode. The lower graph APIs
-also support genuinely nonordered executions; their raw reveal-order laws can
+These full-source interfaces use the source information graph.
+The [dependency design](event-graph-dependencies.md) also supports genuinely
+nonordered executions; their raw reveal-order laws can
 differ, as checked in
 [ConcurrentRevealOrderLaw](../Vegas/Examples/ConcurrentRevealOrderLaw.lean).
 [AsyncDeviationReadout](../Vegas/Game/AsyncDeviationReadout.lean)

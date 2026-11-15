@@ -202,7 +202,7 @@ def fieldName {Γ : SourceCtx Player L} {openNames : Finset VarId}
 
 theorem nodes_resolution_name {Γ : SourceCtx Player L} {openNames : Finset VarId}
     (program : SourceProgram Player L Γ openNames) (event : Fin (eventCount program)) :
-    (((toEventGraph program).nodes event).resolutionField?).map (fieldName program) =
+    (((toInformationGraph program).nodes event).resolutionField?).map (fieldName program) =
       resolutionName? program event := by
   rw [← revealedCell_map_fst]
   apply compileRankedNodes_resolution_label Prod.fst
@@ -215,9 +215,9 @@ theorem nodes_resolution_name {Γ : SourceCtx Player L} {openNames : Finset VarI
 This holds for the full source language, including guards and fresh bindings. -/
 theorem resolution_field_injective {Γ : SourceCtx Player L} {openNames : Finset VarId}
     (program : SourceProgram Player L Γ openNames) (left right : Fin (eventCount program))
-    (field : (toEventGraph program).Field)
-    (first : ((toEventGraph program).nodes left).resolutionField? = some field)
-    (second : ((toEventGraph program).nodes right).resolutionField? = some field) :
+    (field : (toInformationGraph program).Field)
+    (first : ((toInformationGraph program).nodes left).resolutionField? = some field)
+    (second : ((toInformationGraph program).nodes right).resolutionField? = some field) :
     left = right := by
   apply resolutionName_injective program left right (fieldName program field)
   · rw [← nodes_resolution_name, first]

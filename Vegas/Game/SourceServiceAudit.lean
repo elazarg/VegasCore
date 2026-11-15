@@ -31,20 +31,20 @@ variable {Player : Type} [DecidableEq Player]
 /-- Authenticated audit evidence: the contract's settled record and one signed
 packet. Neither the broadcaster nor the time of transmission is part of it. -/
 abbrev SettledEvidence (setup : Setup (Player := Player) (L := L))
-    (mode : EventGraph.ExecutionMode := .sequential) :=
-  SettledRecord (serviceGraph setup mode) × Message Player (WitnessedPacket (serviceGraph setup
-    mode))
+    (deps : setup.dataflowGraph.Dependencies := setup.informationDependencies) :=
+  SettledRecord (serviceGraph setup deps) × Message Player (WitnessedPacket (serviceGraph setup
+    deps))
 
 /-- A terminal audit of signed packets against the settled record. The sample is
 authenticated separately; its verdict denotes an actually collected charge
 under the declared inclusion and escrow service contract. -/
 def serviceSourceAudit
-    (setup : Setup (Player := Player) (L := L)) (mode : EventGraph.ExecutionMode)
-    (duration : (serviceGraph setup mode).EventId → Nat)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
-    (sample : List (SettledEvidence setup mode) → PMF (List (SettledEvidence setup mode))) :=
-  (serviceAudit (serviceTimeouts setup mode duration)) leaks fun record =>
-    (serviceApplication setup mode duration leaks).sampledTrafficAudit
+    (setup : Setup (Player := Player) (L := L)) (deps : setup.dataflowGraph.Dependencies)
+    (duration : (serviceGraph setup deps).EventId → Nat)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup deps)))
+    (sample : List (SettledEvidence setup deps) → PMF (List (SettledEvidence setup deps))) :=
+  (serviceAudit (serviceTimeouts setup deps duration)) leaks fun record =>
+    (serviceApplication setup deps duration leaks).sampledTrafficAudit
       (fun traffic => (record, traffic.envelope))
       (fun evidence => evidence.2.sender) (fun evidence => evidence.1.permits evidence.2) sample
 

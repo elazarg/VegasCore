@@ -65,8 +65,10 @@ def runtimeValuation (bonus : Int) : Unit × PublicOutcome (program bonus) → P
   fun outcome => valuation bonus outcome.2
 
 /-- The authentic audit samples all available settled evidence. -/
-def auditSample (bonus : Int) (actual : List (SettledEvidence (setup bonus) .sequential)) :
-    PMF (List (SettledEvidence (setup bonus) .sequential)) := PMF.pure actual
+def auditSample (bonus : Int) (actual : List (SettledEvidence (setup bonus) (setup
+  bonus).informationDependencies)) :
+    PMF (List (SettledEvidence (setup bonus) (setup bonus).informationDependencies)) := PMF.pure
+      actual
 
 theorem audit_authentic (bonus : Int) :
     ∀ actual observed, observed ∈ (auditSample bonus actual).support → observed ⊆ actual := by
@@ -78,14 +80,16 @@ theorem audit_authentic (bonus : Int) :
 def deposit : Player → ℝ := fun _ => 1
 
 abbrev model (bonus : Int) :=
-  (service bonus).rawMenu.information (serviceInitialLaw (setup bonus) .sequential)
+  (service bonus).rawMenu.information (serviceInitialLaw (setup bonus) (setup
+    bonus).informationDependencies)
     (service bonus).horizon (service bonus).scheduler
 
 abbrev fuel (bonus : Int) := 2 * (service bonus).horizon + 1
 
 def clients (bonus : Int) (choice : Bool) : Profile (model bonus).behavioralSignature :=
   (service bonus).clientProfile (admission bonus) (service bonus).rawMenu
-    (firstTurnTiming (setup bonus) 1 .sequential) (sourceProfile bonus choice)
+    (firstTurnTiming (setup bonus) 1 (setup bonus).informationDependencies) (sourceProfile bonus
+      choice)
 
 def runtimeGame (bonus : Int) : UtilityGame Player where
   form := (model bonus).toBehavioralGameForm (fuel bonus)
@@ -99,28 +103,33 @@ def sourceGame (bonus : Int) : UtilityGame Player where
     (fun terminal => (setup bonus).parameterPaymentUtility (runtimeValuation bonus)
       ((setup bonus).parameterOutcome (parameter bonus) terminal) who)
 
-abbrev bindingEvent (bonus : Int) : (graph (setup bonus)).EventId :=
+abbrev bindingEvent (bonus : Int) : ((setup bonus).informationGraph).EventId :=
   ⟨0, by change 0 < 2; decide⟩
-abbrev publicationEvent (bonus : Int) : (graph (setup bonus)).EventId :=
+abbrev publicationEvent (bonus : Int) : ((setup bonus).informationGraph).EventId :=
   ⟨1, by change 1 < 2; decide⟩
 
 /-- A successful publication in an initialized raw readout rules out both
 possible public failure witnesses of this two-event program. -/
 private theorem not_defaulted_of_readout_success (bonus : Int)
-    (control : (serviceApplication (setup bonus) .sequential (service bonus).duration
+    (control : (serviceApplication (setup bonus) (setup bonus).informationDependencies (service
+      bonus).duration
       (leaks bonus)).Control)
-    (trace : ((serviceApplication (setup bonus) .sequential (service bonus).duration
-      (leaks bonus)).protocol (serviceInitialLaw (setup bonus) .sequential)
+    (trace : ((serviceApplication (setup bonus) (setup bonus).informationDependencies (service
+      bonus).duration
+      (leaks bonus)).protocol (serviceInitialLaw (setup bonus) (setup
+        bonus).informationDependencies)
         (service bonus).horizon (service bonus).scheduler).Trace (some control))
     (terminal : Config Player simpleExpr (program bonus).terminalCtx)
-    (read : serviceSourceReadout (setup bonus) .sequential (service bonus).duration
+    (read : serviceSourceReadout (setup bonus) (setup bonus).informationDependencies (service
+      bonus).duration
       (leaks bonus) (some control) = some terminal)
     (published : terminal.state.get .here = .success true) : .alice ∉ terminal.defaulted := by
-  let nativeTimeouts := serviceTimeouts (setup bonus) .sequential (service bonus).duration
-  let inputs : PMF (graph (setup bonus)).Inputs :=
+  let nativeTimeouts := serviceTimeouts (setup bonus) (setup bonus).informationDependencies
+    (service bonus).duration
+  let inputs : PMF ((setup bonus).informationGraph).Inputs :=
     (setup bonus).initialLaw.map (setup bonus).eventInputs
   have initialized : inputs.map EventGraphRuntime.State.initial =
-      serviceInitialLaw (setup bonus) .sequential := by
+      serviceInitialLaw (setup bonus) (setup bonus).informationDependencies := by
     rw [PMF.map_comp]
     rfl
   rw [← initialized] at trace
@@ -131,7 +140,7 @@ private theorem not_defaulted_of_readout_success (bonus : Int)
     (service bonus).horizon (service bonus).scheduler trace
   have failures := ExclusionEvidence.history nativeTimeouts (leaks bonus) inputs
     (service bonus).horizon (service bonus).scheduler trace
-  have defaults := serviceSourceReadout_defaults (setup bonus) .sequential
+  have defaults := serviceSourceReadout_defaults (setup bonus) (setup bonus).informationDependencies
     (service bonus).duration (leaks bonus) control terminal read
   rw [serviceSourceReadout_eq_decode, decodeConfig?] at read
   obtain ⟨state, decoded, same⟩ := Option.map_eq_some_iff.mp read
@@ -142,11 +151,12 @@ private theorem not_defaulted_of_readout_success (bonus : Int)
   have publication := agree (HasVar.here :
     HasVar (program bonus).terminalCtx 1 (.publication .bool))
   rw [states, published] at publication
-  let binding : FieldRef (graph (setup bonus)).layout (.binding Player.alice .bool) :=
+  let binding : FieldRef ((setup bonus).informationGraph).layout (.binding Player.alice .bool) :=
     ⟨.inr (bindingEvent bonus), rfl⟩
-  obtain ⟨checks, code⟩ : ∃ checks : List (GuardCheck (graph (setup bonus)).layout BaseTy.bool),
-      (graph (setup bonus)).nodes (publicationEvent bonus) =
-        EventCode.resolve (layout := (graph (setup bonus)).layout)
+  obtain ⟨checks, code⟩ : ∃ checks : List (GuardCheck ((setup bonus).informationGraph).layout
+    BaseTy.bool),
+      ((setup bonus).informationGraph).nodes (publicationEvent bonus) =
+        EventCode.resolve (layout := ((setup bonus).informationGraph).layout)
           Player.alice BaseTy.bool binding checks := by
     refine ⟨?_, ?_⟩
     swap
@@ -157,7 +167,7 @@ private theorem not_defaulted_of_readout_success (bonus : Int)
     (by intro impossible; cases impossible)
   have publicationSuccess := outputSucceeded_of_ref _ (publicationEvent bonus)
     (⟨.inr (publicationEvent bonus), rfl⟩ :
-      FieldRef (graph (setup bonus)).layout (.publication .bool)) rfl publication
+      FieldRef ((setup bonus).informationGraph).layout (.publication .bool)) rfl publication
     (by intro impossible; cases impossible)
   intro inactive
   have nativeInactive : Player.alice ∈ control.execution.application.config.defaulted := by
@@ -170,13 +180,17 @@ private theorem not_defaulted_of_readout_success (bonus : Int)
   · exact publicationSuccess.not_publicFailure bindings failed
 
 private theorem transfers_eq_publicTransfers_of_readout (bonus : Int)
-    (control : (serviceApplication (setup bonus) .sequential (service bonus).duration
+    (control : (serviceApplication (setup bonus) (setup bonus).informationDependencies (service
+      bonus).duration
       (leaks bonus)).Control)
-    (trace : ((serviceApplication (setup bonus) .sequential (service bonus).duration
-      (leaks bonus)).protocol (serviceInitialLaw (setup bonus) .sequential)
+    (trace : ((serviceApplication (setup bonus) (setup bonus).informationDependencies (service
+      bonus).duration
+      (leaks bonus)).protocol (serviceInitialLaw (setup bonus) (setup
+        bonus).informationDependencies)
         (service bonus).horizon (service bonus).scheduler).Trace (some control))
     (terminal : Config Player simpleExpr (program bonus).terminalCtx)
-    (read : serviceSourceReadout (setup bonus) .sequential (service bonus).duration
+    (read : serviceSourceReadout (setup bonus) (setup bonus).informationDependencies (service
+      bonus).duration
       (leaks bonus) (some control) = some terminal) :
     (setup bonus).transfers ((program bonus).publicOutcome terminal) =
       (program bonus).publicTransfers ((program bonus).publicOutcome terminal) := by
@@ -213,7 +227,8 @@ theorem realized_payoff_bounds (bonus : Int) :
   intro control trace payoffs supported who
   rw [Enforcement.TerminalAudit.settlement, PMF.support_map] at supported
   obtain ⟨verdict, _, rfl⟩ := supported
-  let output := serviceSourceReadout (setup bonus) .sequential (service bonus).duration
+  let output := serviceSourceReadout (setup bonus) (setup bonus).informationDependencies (service
+    bonus).duration
     (leaks bonus) (some control)
   change -|(bonus : ℝ) - 1| - 1 ≤ output.elim 0 (fun terminal =>
       (setup bonus).parameterPaymentUtility (runtimeValuation bonus)
@@ -255,7 +270,7 @@ theorem runtime_source_isNash_iff (bonus : Int) (choice : Bool) :
       IsNash (sourceGame bonus).form (euPreference (sourceGame bonus).utility)
         (sourceProfile bonus choice) := by
   have correspondence := (service bonus).payment_firstTurnClientProfile_isεNash_iff
-    (admission bonus) (setup bonus).eventGraph.sequentialize_barrierOrdered
+    (admission bonus)
     (parameter bonus) (runtimeValuation bonus) (auditSample bonus) (audit_authentic bonus)
     deposit (fun _ => by norm_num [deposit]) 1 (fun _ => -|(bonus : ℝ) - 1| - 1)
     (2 * |(bonus : ℝ) - 1| + 1) (realized_payoff_bounds bonus) 0 (sourceProfile bonus choice)
@@ -346,13 +361,14 @@ theorem settlement_law (bonus : Int) (choice : Bool) :
     (((model bonus).runBehavioral (clients bonus choice) (fuel bonus)).bind fun history =>
       ((service bonus).paymentSettlement (auditSample bonus) deposit history.state).map
         fun receipts =>
-          ((serviceSourceReadout (setup bonus) .sequential (service bonus).duration
+          ((serviceSourceReadout (setup bonus) (setup bonus).informationDependencies (service
+            bonus).duration
             (leaks bonus) history.state).map (fun config => (config.state, config.defaults)),
             receipts)) =
       PMF.pure (some ((final bonus choice).state, (final bonus choice).defaults),
         fun _ : Player => ((if choice then bonus else 0 : Int) : ℝ)) := by
   have law := (service bonus).payment_firstTurnClientProfile_settlement_law
-    (admission bonus) (setup bonus).eventGraph.sequentialize_barrierOrdered
+    (admission bonus)
     (auditSample bonus) (audit_authentic bonus) deposit 1 (sourceProfile bonus choice)
   change _ = ((setup bonus).run ((setup bonus).decodeBehavioralProfile (admission bonus)
     (sourceProfile bonus choice))).map (fun terminal =>

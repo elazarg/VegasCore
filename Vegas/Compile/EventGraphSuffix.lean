@@ -42,7 +42,7 @@ structure CompiledSuffix
   nodeEq : ∀ index,
     cast (congrArg (Vegas.EventGraph.EventCode (graphLayout whole))
         (embedding.layout_eq index))
-      ((toEventGraph whole).nodes (embedding.event index)) =
+      ((toInformationGraph whole).nodes (embedding.event index)) =
       (compileRankedNodes program refs revelations registry embedding
         refsBefore index).code
 

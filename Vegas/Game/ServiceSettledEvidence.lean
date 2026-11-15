@@ -35,33 +35,33 @@ variable {Player : Type} [DecidableEq Player]
 section Facts
 
 variable (setup : Setup (Player := Player) (L := L))
-  {mode : EventGraph.ExecutionMode}
-  {duration : (serviceGraph setup mode).EventId → Nat}
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
+  {deps : setup.dataflowGraph.Dependencies}
+  {duration : (serviceGraph setup deps).EventId → Nat}
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup deps)))
 
 /-- An envelope the network has carried as an input. -/
-def Emitted (execution : (serviceApplication setup mode duration leaks).Execution)
-    (message : Message Player (WitnessedPacket (serviceGraph setup mode))) : Prop :=
+def Emitted (execution : (serviceApplication setup deps duration leaks).Execution)
+    (message : Message Player (WitnessedPacket (serviceGraph setup deps))) : Prop :=
   message ∈ execution.network.inputs
 
 /-- One scheduler command keeps the inputs and the next serials. It either keeps
 the ledger and receipts and lets the network only learn, or includes one pending
 envelope with its receipt. -/
 theorem environmentStep_shape
-    (execution next : (serviceApplication setup mode duration leaks).Execution)
-    (command : (serviceApplication setup mode duration leaks).Command)
+    (execution next : (serviceApplication setup deps duration leaks).Execution)
+    (command : (serviceApplication setup deps duration leaks).Command)
     (reached : next ∈
-        (execution.environmentStep (serviceApplication setup mode duration leaks)
+        (execution.environmentStep (serviceApplication setup deps duration leaks)
         command).support) : next.network.inputs = execution.network.inputs ∧
     next.network.nextSerial = execution.network.nextSerial ∧
     ((next.receipts = execution.receipts ∧ next.network.ledger = execution.network.ledger ∧ ∀ safe :
-        Message Player (WitnessedPacket (serviceGraph setup mode)) → Prop,
+        Message Player (WitnessedPacket (serviceGraph setup deps)) → Prop,
         execution.network.Satisfies safe → next.network.Satisfies safe) ∨ ∃ id message,
         execution.network.lookup id = some message ∧ next.network =
         (execution.network.includePending id).2 ∧ next.receipts = execution.receipts ++
-        [(id, ((serviceApplication setup mode duration leaks).handle execution.application
+        [(id, ((serviceApplication setup deps duration leaks).handle execution.application
         message).isSome)] ∧ next.application =
-        ((serviceApplication setup mode duration leaks).handle execution.application
+        ((serviceApplication setup deps duration leaks).handle execution.application
             message).getD execution.application) := by
   unfold ReactiveApplication.Execution.environmentStep at reached
   rw [PMF.support_map] at reached
@@ -81,12 +81,12 @@ theorem environmentStep_shape
   | «include» id =>
       cases (PMF.mem_support_pure_iff _ _).mp supported
       change
-          (execution.includePending (serviceApplication setup mode duration leaks)
+          (execution.includePending (serviceApplication setup deps duration leaks)
               id).network.inputs = _ ∧
-          (execution.includePending (serviceApplication setup mode duration leaks)
+          (execution.includePending (serviceApplication setup deps duration leaks)
               id).network.nextSerial = _ ∧
-          (((execution.includePending (serviceApplication setup mode duration leaks) id).receipts =
-              _ ∧ (execution.includePending (serviceApplication setup mode duration leaks)
+          (((execution.includePending (serviceApplication setup deps duration leaks) id).receipts =
+              _ ∧ (execution.includePending (serviceApplication setup deps duration leaks)
               id).network.ledger = _ ∧ _) ∨ _)
       unfold ReactiveApplication.Execution.includePending MessageNetwork.includePending
       cases found : execution.network.lookup id with
@@ -97,11 +97,11 @@ theorem environmentStep_shape
 
 /-- The facts every legal history keeps, for every scheduler and arbitrary
 responses, that tie the receipts and tokens to the traffic. -/
-structure SettledFacts (execution : (serviceApplication setup mode duration leaks).Execution) :
+structure SettledFacts (execution : (serviceApplication setup deps duration leaks).Execution) :
     Prop where
   serials : execution.network.SerialsBeforeNext
   unique : execution.network.UniqueIds
-  receipts : execution.ReceiptsSound (serviceApplication setup mode duration leaks) (fun _ => True)
+  receipts : execution.ReceiptsSound (serviceApplication setup deps duration leaks) (fun _ => True)
   /-- Every envelope the network holds was an input. -/
   carried : execution.network.Satisfies (Emitted setup leaks execution)
   /-- Every allocated identifier was emitted. -/
@@ -110,21 +110,21 @@ structure SettledFacts (execution : (serviceApplication setup mode duration leak
   /-- A readiness token names an event whose prerequisites have completed. -/
   issued : ∀ message, Emitted setup leaks execution message → ∀ token,
     message.payload.token = some token →
-    ∀ predecessor ∈ (serviceGraph setup mode).order.predecessors token.event,
+    ∀ predecessor ∈ (serviceGraph setup deps).order.predecessors token.event,
       predecessor ∈ execution.application.config.cut.completed
   /-- An accepting receipt names a ledger envelope with a valid token, whose
   event has completed and whose sender is that event's actor. -/
   accepted : ∀ id, (id, true) ∈ execution.receipts →
     ∃ message ∈ execution.network.ledger, message.id = id ∧
       message.payload.tokenValid = true ∧
-      ∃ event, message.payload.call.event? (serviceGraph setup mode) = some event ∧
+      ∃ event, message.payload.call.event? (serviceGraph setup deps) = some event ∧
         event ∈ execution.application.config.cut.completed ∧
-        (serviceGraph setup mode).actor? event = some message.sender
+        (serviceGraph setup deps).actor? event = some message.sender
   /-- The contract accepts at most one identifier per event. -/
   single : ∀ first ∈ execution.network.ledger, ∀ second ∈ execution.network.ledger,
     (first.id, true) ∈ execution.receipts → (second.id, true) ∈ execution.receipts →
-    ∀ event, first.payload.call.event? (serviceGraph setup mode) = some event →
-      second.payload.call.event? (serviceGraph setup mode) = some event → first.id = second.id
+    ∀ event, first.payload.call.event? (serviceGraph setup deps) = some event →
+      second.payload.call.event? (serviceGraph setup deps) = some event → first.id = second.id
   /-- Once a later identifier of an author is accepted, the event of each of the
   author's earlier identifiers with a valid token for an event the author acts
   at has completed. -/
@@ -132,15 +132,15 @@ structure SettledFacts (execution : (serviceApplication setup mode duration leak
     Emitted setup leaks execution later → earlier.sender = later.sender →
     earlier.id.2 < later.id.2 → (later.id, true) ∈ execution.receipts →
     earlier.payload.tokenValid = true →
-    ∀ event, earlier.payload.call.event? (serviceGraph setup mode) = some event →
-      (serviceGraph setup mode).actor? event = some earlier.sender →
+    ∀ event, earlier.payload.call.event? (serviceGraph setup deps) = some event →
+      (serviceGraph setup deps).actor? event = some earlier.sender →
       event ∈ execution.application.config.cut.completed
 
 variable {setup leaks}
 
 /-- A receipt names an identifier on the ledger. -/
 theorem SettledFacts.receipt_published
-    {execution : (serviceApplication setup mode duration leaks).Execution}
+    {execution : (serviceApplication setup deps duration leaks).Execution}
     (facts : SettledFacts setup leaks execution) {id : MessageId Player} {accepted : Bool}
     (receipt : (id, accepted) ∈ execution.receipts) :
     id ∈ execution.network.ledger.map Message.id := by
@@ -159,9 +159,9 @@ theorem SettledFacts.receipt_published
 
 /-- Two emitted envelopes with one identifier are equal. -/
 theorem SettledFacts.emitted_unique
-    {execution : (serviceApplication setup mode duration leaks).Execution}
+    {execution : (serviceApplication setup deps duration leaks).Execution}
     (facts : SettledFacts setup leaks execution)
-    {first second : Message Player (WitnessedPacket (serviceGraph setup mode))}
+    {first second : Message Player (WitnessedPacket (serviceGraph setup deps))}
     (firstEmitted : Emitted setup leaks execution first)
     (secondEmitted : Emitted setup leaks execution second) (same : first.id = second.id) :
     first = second := by
@@ -170,20 +170,20 @@ theorem SettledFacts.emitted_unique
 
 /-- An emitted envelope's serial is below its author's next serial. -/
 theorem SettledFacts.emitted_serial
-    {execution : (serviceApplication setup mode duration leaks).Execution}
+    {execution : (serviceApplication setup deps duration leaks).Execution}
     (facts : SettledFacts setup leaks execution)
-    {message : Message Player (WitnessedPacket (serviceGraph setup mode))}
+    {message : Message Player (WitnessedPacket (serviceGraph setup deps))}
     (emitted : Emitted setup leaks execution message) :
     message.id.2 < execution.network.nextSerial message.id.1 := by
   exact facts.serials.inputs message emitted
 
-theorem settledFacts_initial (state : (serviceApplication setup mode duration leaks).State) :
+theorem settledFacts_initial (state : (serviceApplication setup deps duration leaks).State) :
     SettledFacts setup leaks
-        (ReactiveApplication.Execution.initial (serviceApplication setup mode duration leaks)
+        (ReactiveApplication.Execution.initial (serviceApplication setup deps duration leaks)
       state) where
   serials := MessageNetwork.SerialsBeforeNext.empty
   unique := MessageNetwork.UniqueIds.empty
-  receipts := (serviceApplication setup mode duration leaks).receiptsSound_initial _ state
+  receipts := (serviceApplication setup deps duration leaks).receiptsSound_initial _ state
   carried := MessageNetwork.Satisfies.empty
   allocated := by
     intro who serial lower
@@ -202,12 +202,12 @@ theorem settledFacts_initial (state : (serviceApplication setup mode duration le
     simp [Emitted, ReactiveApplication.Execution.initial, MessageNetwork.empty] at emitted
 
 /-- A response only appends inputs. -/
-theorem respond_emitted_mono (execution : (serviceApplication setup mode duration leaks).Execution)
-    (who : Player) (action : (serviceApplication setup mode duration leaks).Action)
-    {message : Message Player (WitnessedPacket (serviceGraph setup mode))}
+theorem respond_emitted_mono (execution : (serviceApplication setup deps duration leaks).Execution)
+    (who : Player) (action : (serviceApplication setup deps duration leaks).Action)
+    {message : Message Player (WitnessedPacket (serviceGraph setup deps))}
     (emitted : Emitted setup leaks execution message) :
     Emitted setup leaks
-        (execution.respond (serviceApplication setup mode duration leaks) who action) message := by
+        (execution.respond (serviceApplication setup deps duration leaks) who action) message := by
   rcases action with ⟨transmission⟩
   cases transmission with
   | none => exact emitted
@@ -219,17 +219,17 @@ theorem respond_emitted_mono (execution : (serviceApplication setup mode duratio
 
 /-- A response emits fresh at most the responder's next identifier; any other new
 input is an envelope the network already carried. -/
-theorem respond_emitted {execution : (serviceApplication setup mode duration leaks).Execution}
+theorem respond_emitted {execution : (serviceApplication setup deps duration leaks).Execution}
     (_facts : SettledFacts setup leaks execution) (who : Player)
-    (action : (serviceApplication setup mode duration leaks).Action)
-    (message : Message Player (WitnessedPacket (serviceGraph setup mode)))
+    (action : (serviceApplication setup deps duration leaks).Action)
+    (message : Message Player (WitnessedPacket (serviceGraph setup deps)))
     (emitted : Emitted setup leaks
-        (execution.respond (serviceApplication setup mode duration leaks) who action) message) :
+        (execution.respond (serviceApplication setup deps duration leaks) who action) message) :
     Emitted setup leaks execution message ∨
       ∃ material, action.transmission = some material ∧
         message = ⟨(who, execution.network.nextSerial who),
-          (serviceApplication setup mode duration leaks).packet
-          ((serviceApplication setup mode duration leaks).submit
+          (serviceApplication setup deps duration leaks).packet
+          ((serviceApplication setup deps duration leaks).submit
             execution.application who material) who (execution.network.known who) material⟩ := by
   rcases action with ⟨transmission⟩
   cases transmission with
@@ -244,13 +244,13 @@ theorem respond_emitted {execution : (serviceApplication setup mode duration lea
 
 /-- A response advances only the responder's next serial, and only by a fresh
 submission. -/
-theorem respond_nextSerial (execution : (serviceApplication setup mode duration leaks).Execution)
-    (who : Player) (action : (serviceApplication setup mode duration leaks).Action)
+theorem respond_nextSerial (execution : (serviceApplication setup deps duration leaks).Execution)
+    (who : Player) (action : (serviceApplication setup deps duration leaks).Action)
     (observer : Player) :
-    (execution.respond (serviceApplication setup mode duration leaks) who action).network.nextSerial
+    (execution.respond (serviceApplication setup deps duration leaks) who action).network.nextSerial
     observer = execution.network.nextSerial observer ∨
     ((∃ material, action.transmission = some material) ∧ observer = who ∧
-        (execution.respond (serviceApplication setup mode duration leaks) who
+        (execution.respond (serviceApplication setup deps duration leaks) who
         action).network.nextSerial observer =
           execution.network.nextSerial who + 1) := by
   rcases action with ⟨transmission⟩
@@ -267,14 +267,14 @@ theorem respond_nextSerial (execution : (serviceApplication setup mode duration 
 
 /-- The token a submission's emission carries names an event whose
 prerequisites have completed. -/
-theorem packet_token_issued (state : (serviceApplication setup mode duration leaks).State)
-    (who : Player) (known : List (Message Player (WitnessedPacket (serviceGraph setup mode))))
-    (material : (serviceApplication setup mode duration leaks).Submission)
-    (token : ReadinessToken (serviceGraph setup mode))
+theorem packet_token_issued (state : (serviceApplication setup deps duration leaks).State)
+    (who : Player) (known : List (Message Player (WitnessedPacket (serviceGraph setup deps))))
+    (material : (serviceApplication setup deps duration leaks).Submission)
+    (token : ReadinessToken (serviceGraph setup deps))
     (carried :
-        ((serviceApplication setup mode duration leaks).packet
-        ((serviceApplication setup mode duration leaks).submit state who material) who known
-        material).token = some token) : ∀ predecessor ∈ (serviceGraph setup mode).order.predecessors
+        ((serviceApplication setup deps duration leaks).packet
+        ((serviceApplication setup deps duration leaks).submit state who material) who known
+        material).token = some token) : ∀ predecessor ∈ (serviceGraph setup deps).order.predecessors
     token.event,
       predecessor ∈ state.config.cut.completed := by
   rw [reactiveApplication_packet_token] at carried
@@ -284,23 +284,23 @@ theorem packet_token_issued (state : (serviceApplication setup mode duration lea
   intro predecessor member
   exact (state.config.history_exact predecessor).mp (settled predecessor member)
 
-theorem settledFacts_respond (execution : (serviceApplication setup mode duration leaks).Execution)
+theorem settledFacts_respond (execution : (serviceApplication setup deps duration leaks).Execution)
     (facts : SettledFacts setup leaks execution) (who : Player)
-    (action : (serviceApplication setup mode duration leaks).Action) :
+    (action : (serviceApplication setup deps duration leaks).Action) :
     SettledFacts setup leaks
-        (execution.respond (serviceApplication setup mode duration leaks) who action) := by
-  let app := serviceApplication setup mode duration leaks
+        (execution.respond (serviceApplication setup deps duration leaks) who action) := by
+  let app := serviceApplication setup deps duration leaks
   have configEq :=
-      ((reactive_respond_application (serviceTimeouts setup mode duration)) leaks execution who
+      ((reactive_respond_application (serviceTimeouts setup deps duration)) leaks execution who
           action).1
   have receiptsEq := app.respond_receipts execution who action
   have ledgerEq := app.respond_ledger execution who action
   have identity := (app.messageIdentityInvariant (fun _ _ => PMF.pure .wait)).respond execution
     who action ⟨facts.serials, facts.unique⟩
-  have fresh : ∀ material (token : ReadinessToken (serviceGraph setup mode)),
+  have fresh : ∀ material (token : ReadinessToken (serviceGraph setup deps)),
       (app.packet (app.submit execution.application who material) who
         (execution.network.known who) material).token = some token →
-      ∀ predecessor ∈ (serviceGraph setup mode).order.predecessors token.event,
+      ∀ predecessor ∈ (serviceGraph setup deps).order.predecessors token.event,
         predecessor ∈ execution.application.config.cut.completed :=
     fun material token carried =>
       packet_token_issued execution.application who _ material token carried
@@ -372,8 +372,8 @@ theorem settledFacts_respond (execution : (serviceApplication setup mode duratio
 
 /-- An included envelope carries its lookup identifier and lands on the ledger. -/
 theorem includePending_found
-    (network : MessageNetwork Player (WitnessedPacket (serviceGraph setup mode)))
-    (id : MessageId Player) (message : Message Player (WitnessedPacket (serviceGraph setup mode)))
+    (network : MessageNetwork Player (WitnessedPacket (serviceGraph setup deps)))
+    (id : MessageId Player) (message : Message Player (WitnessedPacket (serviceGraph setup deps)))
     (found : network.lookup id = some message) : message.id = id ∧ message ∈ network.pending ∧
       (network.includePending id).2.ledger = network.ledger ++ [message] := by
   refine ⟨?_, List.mem_of_find?_eq_some found, ?_⟩
@@ -383,36 +383,37 @@ theorem includePending_found
 
 /-- What an accepting inclusion establishes: the envelope's token is valid, its
 event was ready and has completed, and its sender is the event's actor. -/
-theorem accepted_inclusion (state next : (serviceApplication setup mode duration leaks).State)
-    (message : Message Player (WitnessedPacket (serviceGraph setup mode)))
-    (handled : (serviceApplication setup mode duration leaks).handle state message = some next) :
+theorem accepted_inclusion (state next : (serviceApplication setup deps duration leaks).State)
+    (message : Message Player (WitnessedPacket (serviceGraph setup deps)))
+    (handled : (serviceApplication setup deps duration leaks).handle state message = some next) :
     message.payload.tokenValid = true ∧
-      ∃ event, message.payload.call.event? (serviceGraph setup mode) = some event ∧
+      ∃ event, message.payload.call.event? (serviceGraph setup deps) = some event ∧
         state.config.cut.Ready event ∧ event ∈ next.config.cut.completed ∧
-        (serviceGraph setup mode).actor? event = some message.sender := by
+        (serviceGraph setup deps).actor? event = some message.sender := by
   obtain ⟨valid, native, call, drained⟩ := reactiveApplication_handle_eq_some
-    (serviceTimeouts setup mode duration) leaks state next message handled
+    (serviceTimeouts setup deps duration) leaks state next message handled
   obtain ⟨event, named, ready, action, member⟩ :=
-    handle_config_mem_step (serviceTimeouts setup mode duration) state native _ call
+    handle_config_mem_step (serviceTimeouts setup deps duration) state native _ call
   refine ⟨valid, event, named, ready, ?_, handle_sender_actor
-    (serviceTimeouts setup mode duration) state native _ call event named⟩
+    (serviceTimeouts setup deps duration) state native _ call event named⟩
   rw [← drained]
   apply native.drainFuel_completed_subset native.config.remaining
   rw [state.config.step_cut event ready action native.config member]
   exact Finset.mem_insert_self _ _
 
 theorem settledFacts_environment
-    (execution next : (serviceApplication setup mode duration leaks).Execution)
-    (command : (serviceApplication setup mode duration leaks).Command)
+    (serial : (serviceGraph setup deps).ActorSerial)
+    (execution next : (serviceApplication setup deps duration leaks).Execution)
+    (command : (serviceApplication setup deps duration leaks).Command)
     (facts : SettledFacts setup leaks execution)
     (reached : next ∈
-        (execution.environmentStep (serviceApplication setup mode duration leaks)
+        (execution.environmentStep (serviceApplication setup deps duration leaks)
         command).support) :
     SettledFacts setup leaks next := by
-  let app := serviceApplication setup mode duration leaks
+  let app := serviceApplication setup deps duration leaks
   obtain ⟨inputsEq, serialEq, effect⟩ :=
     environmentStep_shape setup leaks execution next command reached
-  have path := (reactiveApplication_graphSteps (serviceTimeouts setup mode duration)
+  have path := (reactiveApplication_graphSteps (serviceTimeouts setup deps duration)
     leaks).environmentStep execution next command reached
   have identity := (app.messageIdentityInvariant (fun _ _ => PMF.pure command)).environment
     execution next command ⟨facts.serials, facts.unique⟩ (by simp) reached
@@ -511,11 +512,11 @@ theorem settledFacts_environment
           · exact List.mem_singleton.mp new
       intro first firstMember second secondMember firstAccepted secondAccepted event
         firstNamed secondNamed
-      have readyFresh : ∀ (other : Message Player (WitnessedPacket (serviceGraph setup mode))),
+      have readyFresh : ∀ (other : Message Player (WitnessedPacket (serviceGraph setup deps))),
           other ∈ execution.network.ledger → (other.id, true) ∈ execution.receipts →
-          other.payload.call.event? (serviceGraph setup mode) = some event →
+          other.payload.call.event? (serviceGraph setup deps) = some event →
           (app.handle execution.application message).isSome = true →
-          message.payload.call.event? (serviceGraph setup mode) = some event → False := by
+          message.payload.call.event? (serviceGraph setup deps) = some event → False := by
         intro other otherMember otherAccepted otherNamed isSome messageNamed
         obtain ⟨after, handled⟩ := Option.isSome_iff_exists.mp isSome
         obtain ⟨_, readyEvent, named, ready, _, _⟩ :=
@@ -572,29 +573,31 @@ theorem settledFacts_environment
             change message.id.1 = earlier.id.1
             rw [messageId, ← identified]
             exact sameSender.symm
-          cases (serviceGraph_revealRelaxedOrdered setup mode).ready_actor_unique
+          cases serial.ready_actor_unique
             execution.application.config.cut readyEarlier ready owned (actor.trans
               (congrArg some senders))
           rw [applicationEq, handled]
           exact completed
 
 theorem settledFacts_serviceInvariant
-    (scheduler : (serviceApplication setup mode duration leaks).Scheduler) :
-    (serviceApplication setup mode duration leaks).ServiceInvariant scheduler
+    (serial : (serviceGraph setup deps).ActorSerial)
+    (scheduler : (serviceApplication setup deps duration leaks).Scheduler) :
+    (serviceApplication setup deps duration leaks).ServiceInvariant scheduler
     (SettledFacts setup leaks) where
   respond execution who action facts := settledFacts_respond execution facts who action
   environment execution next command facts _ reached :=
-    settledFacts_environment execution next command facts reached
+    settledFacts_environment serial execution next command facts reached
 
 /-- The settled facts hold at every legal history, for every scheduler and
 arbitrary responses. -/
-theorem settledFacts_history (initial : PMF (serviceApplication setup mode duration leaks).State)
-    (horizon : Nat) (scheduler : (serviceApplication setup mode duration leaks).Scheduler)
-    {control : (serviceApplication setup mode duration leaks).Control}
+theorem settledFacts_history (serial : (serviceGraph setup deps).ActorSerial)
+    (initial : PMF (serviceApplication setup deps duration leaks).State)
+    (horizon : Nat) (scheduler : (serviceApplication setup deps duration leaks).Scheduler)
+    {control : (serviceApplication setup deps duration leaks).Control}
     (trace :
-        ((serviceApplication setup mode duration leaks).protocol initial horizon scheduler).Trace
+        ((serviceApplication setup deps duration leaks).protocol initial horizon scheduler).Trace
         (some control)) : SettledFacts setup leaks control.execution :=
-    (settledFacts_serviceInvariant scheduler).history initial horizon
+    (settledFacts_serviceInvariant serial scheduler).history initial horizon
     (fun state _ => settledFacts_initial state) trace
 
 end Facts

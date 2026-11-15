@@ -74,9 +74,9 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  [Fintype Player] (bounds : MessageBounds (graph setup)) (horizon : Nat)
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  [Fintype Player] (bounds : MessageBounds setup.informationGraph) (horizon : Nat)
   (scheduler : (application setup timeouts leaks).Scheduler)
 
 variable (setup timeouts leaks) in
@@ -89,10 +89,11 @@ configuration is `start`, and once it has completed `who` owes a failure at the
 decoded point. -/
 def UnintendedCommitmentInvariant (profile : BehavioralProfile setup.program) (who : Player)
     (entry : (application setup timeouts leaks).PlayerEntry)
-    (message : Message Player (WitnessedPacket (graph setup))) (event : (graph setup).EventId)
-    (candidate : Handle (graph setup)) {payload : L.Ty}
-    (outputEq : (graph setup).outputLayout event = .binding who payload)
-    (start : (graph setup).Config) (point : ProtocolState setup.program) :
+    (message : Message Player (WitnessedPacket setup.informationGraph)) (event :
+      setup.informationGraph.EventId)
+    (candidate : Handle setup.informationGraph) {payload : L.Ty}
+    (outputEq : setup.informationGraph.outputLayout event = .binding who payload)
+    (start : setup.informationGraph.Config) (point : ProtocolState setup.program) :
     (application setup timeouts leaks).ProtocolState → Prop
   | none => False
   | some control =>
@@ -141,12 +142,13 @@ the one-packet game, from a configuration decoding to a point intended for
 `who` at which `event` is ready. -/
 theorem unintendedCommitmentInvariant_transition (profile : BehavioralProfile setup.program)
     {who : Player} {entry : (application setup timeouts leaks).PlayerEntry}
-    {message : Message Player (WitnessedPacket (graph setup))} {event : (graph setup).EventId}
-    {candidate : Handle (graph setup)} {payload : L.Ty}
-    {outputEq : (graph setup).outputLayout event = .binding who payload}
-    (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .bind who payload)
-    {start : (graph setup).Config} {point : ProtocolState setup.program}
+    {message : Message Player (WitnessedPacket setup.informationGraph)} {event :
+      setup.informationGraph.EventId}
+    {candidate : Handle setup.informationGraph} {payload : L.Ty}
+    {outputEq : setup.informationGraph.outputLayout event = .binding who payload}
+    (codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .bind who payload)
+    {start : setup.informationGraph.Config} {point : ProtocolState setup.program}
     (decoded : decodedPoint setup start = some point)
     (intendedFor : ProtocolState.IntendedFor who setup.program point)
     (startReady : start.cut.Ready event)
@@ -178,7 +180,8 @@ theorem unintendedCommitmentInvariant_transition (profile : BehavioralProfile se
           have kept := (keepsFixedCandidates_step timeouts leaks).transition
             (initialLaw setup) horizon scheduler control next joint reached
           have lookupEq := kept candidate fixed
-          have owned : (graph setup).actor? event = some who := nodeView_bind_actor outputEq codeEq
+          have owned : setup.informationGraph.actor? event = some who := nodeView_bind_actor
+            outputEq codeEq
           have path := reactive_protocol_graph_steps timeouts leaks (initialLaw setup) horizon
             scheduler control next joint reached
           by_cases old : event ∈ control.execution.application.config.cut.completed
@@ -201,7 +204,7 @@ theorem unintendedCommitmentInvariant_transition (profile : BehavioralProfile se
               have readyEvent : control.execution.application.config.cut.Ready event :=
                 atStart.symm ▸ startReady
               have eventEq : completed = event :=
-                setup.eventGraph.sequentialize_ready_unique _ ready readyEvent
+                setup.informationGraph.sequentialize_ready_unique _ ready readyEvent
               subst completed
               have middleDone : event ∈ middle.cut.completed := by
                 rw [control.execution.application.config.step_cut event ready action _ member,
@@ -245,7 +248,8 @@ theorem unintendedCommitmentInvariant_transition (profile : BehavioralProfile se
                 rw [primaryEq]
                 exact Function.update_self ..
               have retained := store_value_of_path rest (.inr event) _ stored
-              have read : (⟨.inr event, outputEq⟩ : EventGraph.FieldRef (graph setup).layout
+              have read : (⟨.inr event, outputEq⟩ : EventGraph.FieldRef
+                setup.informationGraph.layout
                   (.binding who payload)).get? next.execution.application.config.store =
                     some (choice.getD .failure) := by
                 simp only [EventGraph.FieldRef.get?]
@@ -324,14 +328,15 @@ theorem onePacket_commitment_facts {who : Player}
       leaks).Action}
     (member : response ∈ bounds.onePacketActions timeouts leaks who past view)
     {material : (application setup timeouts leaks).Submission}
-    (sends : response.transmission = some material) {event : (graph setup).EventId}
-    {candidate : Handle (graph setup)}
+    (sends : response.transmission = some material) {event : setup.informationGraph.EventId}
+    {candidate : Handle setup.informationGraph}
     (packet : material.call.packet = .commitment event candidate) :
     candidate.1 = who ∧ (∃ serial, candidate.2 = .prepared serial) ∧
-      ∃ (payload : L.Ty) (outputEq : (graph setup).outputLayout event = .binding who payload)
-        (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-          ((graph setup).nodes event) = .bind who payload),
-        nodeView (graph setup) event = .bind who payload outputEq codeEq := by
+      ∃ (payload : L.Ty) (outputEq : setup.informationGraph.outputLayout event = .binding who
+        payload)
+        (codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+          (setup.informationGraph.nodes event) = .bind who payload),
+        nodeView setup.informationGraph event = .bind who payload outputEq codeEq := by
   obtain ⟨_, either⟩ := (bounds.mem_onePacketActions timeouts leaks who past view
     response).mp member
   rcases either with silent | ⟨material', transmits, permitted⟩
@@ -347,7 +352,7 @@ theorem onePacket_commitment_facts {who : Player}
   obtain ⟨owned, _, candidateOwner, prepared, _⟩ := correct
   refine ⟨candidateOwner, prepared, ?_⟩
   unfold bindingOwnedBy at owned
-  cases node : nodeView (graph setup) event with
+  cases node : nodeView setup.informationGraph event with
   | bind owner payload outputEq codeEq =>
       rw [outputEq] at owned
       have ownerEq : owner = who := of_decide_eq_true owned
@@ -374,9 +379,11 @@ def IntendedCommitment {who : Player}
   ∃ (past : List (application setup timeouts leaks).PlayerEntry)
     (view : (application setup timeouts leaks).PlayerView) (response : (application setup timeouts
       leaks).Action)
-    (material : (application setup timeouts leaks).Submission) (event : (graph setup).EventId)
+    (material : (application setup timeouts leaks).Submission) (event :
+      setup.informationGraph.EventId)
     (serial : Nat) (payload : L.Ty)
-    (outputEq : (graph setup).outputLayout event = .binding who payload) (value : L.Val payload),
+    (outputEq : setup.informationGraph.outputLayout event = .binding who payload) (value : L.Val
+      payload),
     site.1 = some (past, view) ∧ choice.1 = some response ∧
       response.transmission = some material ∧
       material.call.packet = .commitment event (who, .prepared serial) ∧

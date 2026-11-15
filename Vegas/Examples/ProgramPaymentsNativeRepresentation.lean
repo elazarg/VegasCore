@@ -21,7 +21,7 @@ open ProgramPayments ProgramPaymentsRuntime
 open EventGraphRuntime Interaction GameTheory.Math.Probability
 open GameTheory.Protocol
 
-abbrev nativeGraph := Vegas.graph (setup 2)
+abbrev nativeGraph := (setup 2).informationGraph
 abbrev app := application (setup 2) (Vegas.timeouts (setup 2)) (leaks 2)
 
 instance : NeZero nativeGraph.order.eventCount := ⟨by decide⟩

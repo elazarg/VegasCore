@@ -33,9 +33,9 @@ variable {Player : Type} [DecidableEq Player]
 /-- The position-free datum of a decision: the event whose phase the execution
 is in, that event's readiness, and that it is the only ready event. -/
 structure ReadySite (setup : Setup (Player := Player) (L := L))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
     (execution : (application setup (Vegas.timeouts setup) leaks).Execution) where
-  event : (graph setup).EventId
+  event : setup.informationGraph.EventId
   ready : execution.application.config.cut.Ready event
   sole : execution.application.publicView.SoleReady event
 
@@ -44,7 +44,7 @@ structure ReadySite (setup : Setup (Player := Player) (L := L))
 section Initialized
 
 variable (setup : Setup (Player := Player) (L := L))
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
 
 /-- The source continuation from the initial boundary, averaged over the
 native prior, is the source law. -/
@@ -65,22 +65,22 @@ end Initialized
 /-- The complete clients preserve every observation of the original source's
 typed state and public defaults once their first-turn source law holds. -/
 theorem sourceServiceClientPolicy_outcome_law_of_firstTurn
-    {setup : Setup (Player := Player) (L := L)} {mode : EventGraph.ExecutionMode}
-    {duration : (serviceGraph setup mode).EventId → Nat}
-    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode))}
-    {horizon turns : Nat} {scheduler : (serviceApplication setup mode duration leaks).Scheduler}
-    {bound : (serviceGraph setup mode).EventId → Nat}
+    {setup : Setup (Player := Player) (L := L)} {deps : setup.dataflowGraph.Dependencies}
+    {duration : (serviceGraph setup deps).EventId → Nat}
+    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup deps))}
+    {horizon turns : Nat} {scheduler : (serviceApplication setup deps duration leaks).Scheduler}
+    {bound : (serviceGraph setup deps).EventId → Nat}
     (original : BehavioralProfile setup.program)
-    (terminal : FirstTurnSourceLaw setup mode duration leaks horizon scheduler bound turns
+    (terminal : FirstTurnSourceLaw setup deps duration leaks horizon scheduler bound turns
       (normalizeDisclosureProfile setup.program original))
     {Outcome : Type*}
     (read : State L setup.program.terminalCtx × DefaultHistory Player → Outcome) :
-    ((serviceApplication setup mode duration leaks).roundsFrom (serviceInitialLaw setup mode)
-      scheduler (serviceClientPolicy setup mode duration leaks bound turns
-        (firstTurnTiming setup turns mode) (normalizeDisclosureProfile setup.program original))
+    ((serviceApplication setup deps duration leaks).roundsFrom (serviceInitialLaw setup deps)
+      scheduler (serviceClientPolicy setup deps duration leaks bound turns
+        (firstTurnTiming setup turns deps) (normalizeDisclosureProfile setup.program original))
       horizon).map (fun execution =>
-        (serviceSourceReadout setup mode duration leaks
-          ((serviceApplication setup mode duration leaks).finished execution)).map
+        (serviceSourceReadout setup deps duration leaks
+          ((serviceApplication setup deps duration leaks).finished execution)).map
           (fun final => read (final.state, final.defaults))) =
       (setup.run original).map (fun final => some (read (final.state, final.defaults))) := by
   rw [sourceServiceClientPolicy_roundsFrom]
@@ -95,47 +95,53 @@ theorem sourceServiceClientPolicy_outcome_law_of_firstTurn
 
 variable [Finite Player]
   (setup : Setup (Player := Player) (L := L))
-  (timeouts : EventTimeouts (graph setup))
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+  (timeouts : EventTimeouts setup.informationGraph)
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
 
 /-- Local native completion laws give the full first-turn source configuration law. -/
 theorem firstTurnSourceLaw_of_completion_law
     {horizon : Nat} {scheduler : (application setup timeouts leaks).Scheduler}
-    {bound : (graph setup).EventId → Nat} (turns : Nat)
+    {bound : setup.informationGraph.EventId → Nat} (turns : Nat)
     (profile : BehavioralProfile setup.program)
     (completes : (CompletesPlay timeouts) leaks (initialLaw setup) horizon scheduler)
     (completionLaw :
-      let players := serviceTurnPolicy setup .sequential timeouts.duration leaks bound turns
+      let players := serviceTurnPolicy setup setup.informationDependencies timeouts.duration leaks
+        bound turns
         (firstTurnTiming setup turns) profile
-      let plan := (graph setup).policyPlan (compileEventProfile setup.program profile)
-        (graph setup).canonicalScheduler
-      let read := fun config : (graph setup).Config => decodeConfig? setup.program setup.program
+      let plan := setup.informationGraph.policyPlan (compileEventProfile setup.program profile)
+        setup.informationGraph.canonicalScheduler
+      let read := fun config : setup.informationGraph.Config => decodeConfig? setup.program
+        setup.program
         (ContextRefs.initial setup.context (outputLayout setup.program))
         (Revelations.initial setup.context) [] (outputEmbedding setup.program) config.store
         config.history
-      ∀ (event : (graph setup).EventId)
+      ∀ (event : setup.informationGraph.EventId)
         (execution : (application setup timeouts leaks).Execution),
         CompletionBoundary setup leaks scheduler players event.val execution →
         execution.environmentRecall.length ≤ horizon →
         ((application setup timeouts leaks).runUntilHorizon scheduler players
           (fun final => event ∈ final.application.config.cut.completed) horizon execution).bind
-            (fun final => ((graph setup).runPlan plan final.application.config.remaining
+            (fun final => (setup.informationGraph.runPlan plan final.application.config.remaining
               final.application.config).map read) =
-          ((graph setup).runPlan plan execution.application.config.remaining
+          (setup.informationGraph.runPlan plan execution.application.config.remaining
             execution.application.config).map read) :
-    FirstTurnSourceLaw setup .sequential timeouts.duration leaks horizon scheduler bound turns
+    FirstTurnSourceLaw setup setup.informationDependencies timeouts.duration leaks horizon
+      scheduler bound turns
       profile := by
   classical
   let app := application setup timeouts leaks
-  let players := serviceTurnPolicy setup .sequential timeouts.duration leaks bound turns
+  let players := serviceTurnPolicy setup setup.informationDependencies timeouts.duration leaks
+    bound turns
     (firstTurnTiming setup turns) profile
-  let read := fun config : (graph setup).Config => decodeConfig? setup.program setup.program
+  let read := fun config : setup.informationGraph.Config => decodeConfig? setup.program
+    setup.program
     (ContextRefs.initial setup.context (outputLayout setup.program))
     (Revelations.initial setup.context) [] (outputEmbedding setup.program) config.store
     config.history
   have readEq (final : app.Execution) :
       sourceReadout setup timeouts leaks (app.finished final) = read final.application.config := by
-    change serviceSourceReadout setup .sequential timeouts.duration leaks (some ⟨0, none,
+    change serviceSourceReadout setup setup.informationDependencies timeouts.duration leaks (some
+      ⟨0, none,
       final⟩) = _
     rw [serviceSourceReadout_eq_decode]
   change (app.roundsFrom (initialLaw setup) scheduler players horizon).map
@@ -146,12 +152,13 @@ theorem firstTurnSourceLaw_of_completion_law
   intro native supported
   have nativeMember : native ∈
       (setup.initialLaw.map fun initial =>
-        State.initial (graph := graph setup) (setup.eventInputs initial)).support := supported
+        State.initial (graph := setup.informationGraph) (setup.eventInputs initial)).support :=
+          supported
   rw [PMF.support_map] at nativeMember
   obtain ⟨initial, _, sameNative⟩ := nativeMember
   subst native
   let execution := ReactiveApplication.Execution.initial app
-    (State.initial (graph := graph setup) (setup.eventInputs initial))
+    (State.initial (graph := setup.informationGraph) (setup.eventInputs initial))
   have boundary : CompletionBoundary setup leaks scheduler players 0 execution := by
     refine ⟨?_, EventOrder.Cut.empty_isPrefix _, ?_⟩
     · change execution ∈ (app.roundsFrom (initialLaw setup) scheduler players 0).support
@@ -168,9 +175,9 @@ theorem firstTurnSourceLaw_of_completion_law
     _ = (app.runRounds scheduler players horizon execution).map
         (fun final => read final.application.config) :=
       map_congr_on_support _ (fun final _ => readEq final)
-    _ = ((graph setup).runPlan
-        ((graph setup).policyPlan (compileEventProfile setup.program profile)
-          (graph setup).canonicalScheduler)
+    _ = (setup.informationGraph.runPlan
+        (setup.informationGraph.policyPlan (compileEventProfile setup.program profile)
+          setup.informationGraph.canonicalScheduler)
         execution.application.config.remaining execution.application.config).map read := configLaw
     _ = sourceContinuation setup profile 0 execution.application.config :=
       (SourceResidual.initial setup profile initial).runPlan_readout_law

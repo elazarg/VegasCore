@@ -41,13 +41,13 @@ variable {Player : Type} [DecidableEq Player]
 source program and configuration whose compiled policy suffix starts at
 `rank`, whose typed cells and history agree with the configuration, and
 through which the whole-program prefix decoder factors. -/
-structure SourceResidual (rank : Nat) (config : (graph setup).Config) : Type where
+structure SourceResidual (rank : Nat) (config : setup.informationGraph.Config) : Type where
   Γ : SourceCtx Player L
   names : Finset VarId
   program : SourceProgram Player L Γ names
   residualProfile : BehavioralProfile program
   source : Config Player L Γ
-  refs : ContextRefs (graph setup).layout Γ
+  refs : ContextRefs setup.informationGraph.layout Γ
   embedding : OutputEmbedding (inputLayout setup.context) (outputLayout setup.program) program
   refsBefore : ContextRefsBefore refs embedding
   aligned : CompiledPolicySuffix setup.program profile program residualProfile refs
@@ -82,7 +82,7 @@ structure SourceResidual (rank : Nat) (config : (graph setup).Config) : Type whe
 variable {setup profile}
 
 /-- The residual decodes the configuration. -/
-theorem SourceResidual.decode {rank : Nat} {config : (graph setup).Config}
+theorem SourceResidual.decode {rank : Nat} {config : setup.informationGraph.Config}
     (residual : SourceResidual setup profile rank config) :
     sourceServicePrefix? setup rank config =
       some (residual.lift (ProtocolState.entry residual.program residual.source)) := by
@@ -97,7 +97,7 @@ variable (setup profile)
 /-- Every initial configuration has the whole program as its residual. -/
 def SourceResidual.initial (initial : State L setup.context) :
     SourceResidual setup profile 0
-      (EventGraphRuntime.State.initial (graph := graph setup)
+      (EventGraphRuntime.State.initial (graph := setup.informationGraph)
         (setup.eventInputs initial)).config where
   Γ := setup.context
   names := setup.obligations
@@ -125,16 +125,18 @@ variable {setup profile}
 
 /-- A native state carrying a given configuration, used to apply the checkpoint
 successor lemmas, which read only the configuration. -/
-def configState (config : (graph setup).Config) : EventGraphRuntime.State (graph setup) :=
-  { EventGraphRuntime.State.initial (graph := graph setup) config.inputs with config := config }
+def configState (config : setup.informationGraph.Config) :
+    EventGraphRuntime.State setup.informationGraph :=
+  { EventGraphRuntime.State.initial (graph := setup.informationGraph) config.inputs with
+    config := config }
 
 /-- A fixed native completion preserves its typed source residual and its
 exact source-step atom. The successor witness supplies the same decoder and
 policy transport as the reached residual, including failed disclosures. -/
-theorem SourceResidual.step_mass {rank : Nat} {before : (graph setup).Config}
+theorem SourceResidual.step_mass {rank : Nat} {before : setup.informationGraph.Config}
     (residual : SourceResidual setup profile rank before)
-    (event : (graph setup).EventId) (ready : before.cut.Ready event)
-    (action : (graph setup).Action event) (after : (graph setup).Config)
+    (event : setup.informationGraph.EventId) (ready : before.cut.Ready event)
+    (action : setup.informationGraph.Action event) (after : setup.informationGraph.Config)
     (member : after ∈ (before.step event ready action).support) :
     ∃ next : SourceResidual setup profile (rank + 1) after,
       next.lift (ProtocolState.entry next.program next.source) ∈
@@ -155,7 +157,7 @@ theorem SourceResidual.step_mass {rank : Nat} {before : (graph setup).Config}
     exact before.cut.mem_completed_iff_lt_of_ready ready
   have atEvent : event.val = rank := readyPrefix.unique checkpoint.ordered
   have counted := aligned.graphSuffix.countEq
-  change rank + eventCount program = (graph setup).order.eventCount at counted
+  change rank + eventCount program = setup.informationGraph.order.eventCount at counted
   cases program with
   | ret payoffs =>
       have := event.isLt
@@ -168,15 +170,15 @@ theorem SourceResidual.step_mass {rank : Nat} {before : (graph setup).Config}
         simpa only [index, Nat.add_zero] using aligned.graphSuffix.rankEq index
       have same : event = embedding.event index := Fin.ext (atEvent.trans atRank.symm)
       subst same
-      have outputEq : (graph setup).outputLayout (embedding.event index) =
+      have outputEq : setup.informationGraph.outputLayout (embedding.event index) =
           .publicData payload := by
         change outputLayout setup.program (embedding.event index) = _
         simpa [index, outputLayout, eventCount] using embedding.layout_eq index
-      have codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-          ((graph setup).nodes (embedding.event index)) =
+      have codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+          (setup.informationGraph.nodes (embedding.event index)) =
             .sample payload (compilePublicDist refs distribution) := by
         change cast (congrArg (EventGraph.EventCode (graphLayout setup.program)) outputEq)
-          ((toEventGraph setup.program).nodes (embedding.event index)) = _
+          ((toInformationGraph setup.program).nodes (embedding.event index)) = _
         simpa [index, compileRankedNodes] using aligned.graphSuffix.nodeEq index
       have decoded : decodeEventAction setup.program (embedding.event index)
           (cast (congrArg EventGraph.EventField.Action outputEq.symm) PUnit.unit) = none := by
@@ -250,7 +252,7 @@ theorem SourceResidual.step_mass {rank : Nat} {before : (graph setup).Config}
               (cast (congrArg EventGraph.EventField.Action outputEq.symm) PUnit.unit)
               (cast (congrArg EventGraph.EventField.Value outputEq.symm) drawn) := by
           intro first second equal
-          have outputs := congrArg (fun config : (graph setup).Config =>
+          have outputs := congrArg (fun config : setup.informationGraph.Config =>
             config.outputs (embedding.event index)) equal
           simp only [EventGraph.Config.complete, Function.update_self, Option.some.injEq] at outputs
           exact (cast_inj _).mp outputs
@@ -263,14 +265,14 @@ theorem SourceResidual.step_mass {rank : Nat} {before : (graph setup).Config}
         simpa only [index, Nat.add_zero] using aligned.graphSuffix.rankEq index
       have same : event = embedding.event index := Fin.ext (atEvent.trans atRank.symm)
       subst same
-      have outputEq : (graph setup).outputLayout (embedding.event index) =
+      have outputEq : setup.informationGraph.outputLayout (embedding.event index) =
           .binding owner payload := by
         change outputLayout setup.program (embedding.event index) = _
         simpa [index, outputLayout, eventCount] using embedding.layout_eq index
-      have codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-          ((graph setup).nodes (embedding.event index)) = .bind owner payload := by
+      have codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+          (setup.informationGraph.nodes (embedding.event index)) = .bind owner payload := by
         change cast (congrArg (EventGraph.EventCode (graphLayout setup.program)) outputEq)
-          ((toEventGraph setup.program).nodes (embedding.event index)) = _
+          ((toInformationGraph setup.program).nodes (embedding.event index)) = _
         simpa [index, compileRankedNodes] using aligned.graphSuffix.nodeEq index
       obtain ⟨choice, rfl⟩ : ∃ choice : Option (PublicationResult (L.Val payload)),
           action = cast (congrArg EventGraph.EventField.Action outputEq.symm) choice :=
@@ -349,17 +351,17 @@ theorem SourceResidual.step_mass {rank : Nat} {before : (graph setup).Config}
         simpa only [index, Nat.add_zero] using aligned.graphSuffix.rankEq index
       have same : event = embedding.event index := Fin.ext (atEvent.trans atRank.symm)
       subst same
-      have outputEq : (graph setup).outputLayout (embedding.event index) =
+      have outputEq : setup.informationGraph.outputLayout (embedding.event index) =
           .publication payload := by
         change outputLayout setup.program (embedding.event index) = _
         simpa [index, outputLayout, eventCount] using embedding.layout_eq index
       let checks := compileChecks (published := published) refs
         source.registry source.revelations selected
-      have codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-          ((graph setup).nodes (embedding.event index)) =
+      have codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+          (setup.informationGraph.nodes (embedding.event index)) =
             .resolve owner payload (refs.get selected) checks := by
         change cast (congrArg (EventGraph.EventCode (graphLayout setup.program)) outputEq)
-          ((toEventGraph setup.program).nodes (embedding.event index)) = _
+          ((toInformationGraph setup.program).nodes (embedding.event index)) = _
         simpa [index, compileRankedNodes, checks] using aligned.graphSuffix.nodeEq index
       obtain ⟨disclose, rfl⟩ : ∃ disclose : Bool,
           action = cast (congrArg EventGraph.EventField.Action outputEq.symm) disclose :=
@@ -430,10 +432,10 @@ theorem SourceResidual.step_mass {rank : Nat} {before : (graph setup).Config}
 /-- Completing the ready event with any action keeps a residual, one rank
 later, whose source point is reached from the previous one by the source step
 of the decoded action. -/
-theorem SourceResidual.step {rank : Nat} {before : (graph setup).Config}
+theorem SourceResidual.step {rank : Nat} {before : setup.informationGraph.Config}
     (residual : SourceResidual setup profile rank before)
-    (event : (graph setup).EventId) (ready : before.cut.Ready event)
-    (action : (graph setup).Action event) (after : (graph setup).Config)
+    (event : setup.informationGraph.EventId) (ready : before.cut.Ready event)
+    (action : setup.informationGraph.Action event) (after : setup.informationGraph.Config)
     (member : after ∈ (before.step event ready action).support) :
     ∃ next : SourceResidual setup profile (rank + 1) after,
       next.lift (ProtocolState.entry next.program next.source) ∈
@@ -445,7 +447,7 @@ theorem SourceResidual.step {rank : Nat} {before : (graph setup).Config}
 
 /-- A finite path of actual graph steps retains a source residual at its
 actual endpoint. Automatic completion may advance through several source ranks. -/
-theorem SourceResidual.path {rank : Nat} {before after : (graph setup).Config}
+theorem SourceResidual.path {rank : Nat} {before after : setup.informationGraph.Config}
     (residual : SourceResidual setup profile rank before)
     (path : Relation.ReflTransGen EventGraph.Config.Step before after) :
     ∃ next, Nonempty (SourceResidual setup profile next after) := by
@@ -457,7 +459,7 @@ theorem SourceResidual.path {rank : Nat} {before after : (graph setup).Config}
       exact ih next
 
 /-- A source suffix embedding sends terminal points to terminal whole-program points. -/
-theorem SourceResidual.lift_terminal {rank : Nat} {config : (graph setup).Config}
+theorem SourceResidual.lift_terminal {rank : Nat} {config : setup.informationGraph.Config}
     (residual : SourceResidual setup profile rank config) (state : ProtocolState residual.program)
     (stopped : ProtocolState.terminal residual.program state) :
     ProtocolState.terminal setup.program (residual.lift state) := by
@@ -475,9 +477,9 @@ theorem SourceResidual.lift_terminal {rank : Nat} {config : (graph setup).Config
 /-- An automatic native completion is one deterministic step of the original
 source behavioral kernel and retains every previously reached observation. -/
 theorem SourceResidual.completeAutomatic_sourceStep [Fintype Player] {rank : Nat}
-    {state : EventGraphRuntime.State (graph setup)}
+    {state : EventGraphRuntime.State setup.informationGraph}
     (residual : SourceResidual setup profile rank state.config)
-    (event : (graph setup).EventId) (eligible : state.AutomaticReady event) :
+    (event : setup.informationGraph.EventId) (eligible : state.AutomaticReady event) :
     ∃ next : SourceResidual setup profile (rank + 1)
         (state.completeAutomatic event eligible).config,
       ProtocolState.behavioralStateStep setup.program profile
@@ -500,7 +502,7 @@ theorem SourceResidual.completeAutomatic_sourceStep [Fintype Player] {rank : Nat
           (residual.lift (ProtocolState.entry residual.program residual.source))) = none := by
       have currentRank : state.config.cut.IsPrefix event.val :=
         ⟨event.isLt.le, fun query =>
-          setup.eventGraph.sequentialize_mem_completed_iff_lt_of_ready _ eligible.1⟩
+          setup.informationGraph.sequentialize_mem_completed_iff_lt_of_ready _ eligible.1⟩
       have rankEq : event.val = rank := currentRank.unique residual.checkpoint.ordered
       have inside : rank < eventCount setup.program := rankEq ▸ event.isLt
       have decoded := residual.decode
@@ -509,8 +511,9 @@ theorem SourceResidual.completeAutomatic_sourceStep [Fintype Player] {rank : Nat
       have actor := decodeSourcePrefix?_actor owner rank setup.program _ _ _ _ _ _ _ _
         decoded inside
       rw [actor, eventOwner?_eq_actor]
-      have eventEq : (⟨rank, inside⟩ : (graph setup).EventId) = event := Fin.ext rankEq.symm
-      change ((graph setup).actor? ⟨rank, inside⟩).filter
+      have eventEq : (⟨rank, inside⟩ : setup.informationGraph.EventId) = event :=
+        Fin.ext rankEq.symm
+      change (setup.informationGraph.actor? ⟨rank, inside⟩).filter
         (fun player => decide (player ∉ state.config.defaulted)) = none
       rw [eventEq, acting]
       simp [inactive]
@@ -531,7 +534,7 @@ theorem SourceResidual.completeAutomatic_sourceStep [Fintype Player] {rank : Nat
 /-- A finite native automatic path is an ordinary source prefix of the same
 length and retains all views at source ranks reached before that path. -/
 theorem SourceResidual.automatic_path_sourcePrefix [Fintype Player] {rank : Nat}
-    {before after : EventGraphRuntime.State (graph setup)}
+    {before after : EventGraphRuntime.State setup.informationGraph}
     (residual : SourceResidual setup profile rank before.config)
     (path : Relation.ReflTransGen EventGraphRuntime.State.AutomaticStep before after) :
     ∃ count nextRank, ∃ next : SourceResidual setup profile nextRank after.config,
@@ -582,7 +585,7 @@ theorem SourceResidual.automatic_path_sourcePrefix [Fintype Player] {rank : Nat}
 /-- Native draining advances to its actual source rank by deterministic source
 steps and preserves the source observation at every previously reached rank. -/
 theorem SourceResidual.drain_sourcePrefix [Fintype Player] {rank : Nat}
-    {state : EventGraphRuntime.State (graph setup)}
+    {state : EventGraphRuntime.State setup.informationGraph}
     (residual : SourceResidual setup profile rank state.config) :
     ∃ count nextRank, ∃ next : SourceResidual setup profile nextRank state.drain.config,
       nextRank = rank + count ∧

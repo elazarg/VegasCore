@@ -17,9 +17,9 @@ open Vegas Vegas.SourceProgram Interaction GameTheory GameTheory.Protocol EventG
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
     {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-    {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {timeouts : EventTimeouts setup.informationGraph}
+    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+    {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
     {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- The public compiled initial inputs determine the signal. -/
@@ -27,13 +27,14 @@ def SourceProgram.Setup.PublicInitialSignal {Public : Type*}
     (setup : Setup (Player := Player) (L := L))
     (signal : State L setup.context → Public) : Prop :=
   ∀ (first second : State L setup.context),
-    (∀ input, (graph setup).fieldPublic (.inl input) →
+    (∀ input, setup.informationGraph.fieldPublic (.inl input) →
       setup.eventInputs first input = setup.eventInputs second input) →
     signal first = signal second
 
 /-- Hidden-cell splicing leaves every public compiled initial input unchanged. -/
 theorem splice_public_initial_inputs (who : Player) (mine others : State L setup.context)
-    (input : (graph setup).InputId) (publicField : (graph setup).fieldPublic (.inl input)) :
+    (input : setup.informationGraph.InputId) (publicField : setup.informationGraph.fieldPublic
+      (.inl input)) :
     setup.eventInputs (splice who mine others) input = setup.eventInputs others input := by
   obtain ⟨name, kind, source, found⟩ :=
     (ContextRefs.initial_coversPrefix setup.program).1 input
@@ -70,11 +71,12 @@ theorem execution_public_initial_input
     (execution : (application setup timeouts leaks).Execution) (who : Player)
     {draw : State L setup.context}
     (inputsEq : execution.application.config.inputs = setup.eventInputs draw)
-    (input : (graph setup).InputId) (publicField : (graph setup).fieldPublic (.inl input)) :
+    (input : setup.informationGraph.InputId) (publicField : setup.informationGraph.fieldPublic
+      (.inl input)) :
     (execution.observe (application setup timeouts leaks)
       who).application.publicView.observation.store
       (.inl input) = some (setup.eventInputs draw input) := by
-  change (graph setup).publicStore execution.application.config.store (.inl input) = _
+  change setup.informationGraph.publicStore execution.application.config.store (.inl input) = _
   rw [EventGraph.publicStore_of_public _ _ _ publicField]
   change some (execution.application.config.inputs input) = _
   rw [inputsEq]
@@ -93,7 +95,8 @@ theorem site_public_initial_inputs {who : Player}
       who site.1) {control : (application setup timeouts leaks).Control}
     {draw : State L setup.context} (stateEq : history.1.state = some control)
     (inputsEq : control.execution.application.config.inputs = setup.eventInputs draw)
-    (input : (graph setup).InputId) (publicField : (graph setup).fieldPublic (.inl input)) :
+    (input : setup.informationGraph.InputId) (publicField : setup.informationGraph.fieldPublic
+      (.inl input)) :
     view.application.publicView.observation.store (.inl input) =
       some (setup.eventInputs draw input) := by
   obtain ⟨seen, seenEq, viewEq⟩ := state_of_decision (timeouts := timeouts) history decision
@@ -139,7 +142,8 @@ theorem same_key_public_initial_inputs {who : Player}
     (firstInputs : firstControl.execution.application.config.inputs = setup.eventInputs firstDraw)
     (secondInputs : secondControl.execution.application.config.inputs =
       setup.eventInputs secondDraw)
-    (input : (graph setup).InputId) (publicField : (graph setup).fieldPublic (.inl input)) :
+    (input : setup.informationGraph.InputId) (publicField : setup.informationGraph.fieldPublic
+      (.inl input)) :
     setup.eventInputs firstDraw input = setup.eventInputs secondDraw input := by
   have firstRead := site_public_initial_inputs (timeouts := timeouts) firstSite first firstState
     firstInputs input
@@ -148,7 +152,7 @@ theorem same_key_public_initial_inputs {who : Player}
     secondInputs input
     publicField
   have views := same_key_publicView (timeouts := timeouts) firstSite secondSite sameKey
-  have observed := congrArg (fun view : PublicView (graph setup) =>
+  have observed := congrArg (fun view : PublicView setup.informationGraph =>
     view.observation.store (.inl input)) views
   exact Option.some.inj (firstRead.symm.trans (observed.trans secondRead))
 

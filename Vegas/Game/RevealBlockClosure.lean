@@ -77,14 +77,14 @@ end Generic
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {mode : EventGraph.ExecutionMode}
+  {deps : setup.dataflowGraph.Dependencies}
 
 /-- Two ends of a block from starts with equal keys record and store alike
 every honest reveal pending at the start. -/
 theorem honest_end_congr_of_keys {who : Player} {start finish : Nat}
-    (concurrent : (serviceGraph setup mode).RevealsOnlyConcurrent)
-    (flat : BlockFlat (graph := serviceGraph setup mode) start finish)
-    {leftOrigin rightOrigin left right : (serviceGraph setup mode).Config}
+    (concurrent : (serviceGraph setup deps).RevealsOnlyConcurrent)
+    (flat : BlockFlat (graph := serviceGraph setup deps) start finish)
+    {leftOrigin rightOrigin left right : (serviceGraph setup deps).Config}
     (keys : runKey leftOrigin = runKey rightOrigin)
     (leftBegin : BlockStart start finish leftOrigin)
     (rightBegin : BlockStart start finish rightOrigin)
@@ -94,9 +94,9 @@ theorem honest_end_congr_of_keys {who : Player} {start finish : Nat}
     (rightSound : BlockRecordsSound who start finish rightOrigin right)
     (leftOwners : DefaultOwners left) (rightOwners : DefaultOwners right)
     (leftDone : BlockDone finish left) (rightDone : BlockDone finish right)
-    {event : (serviceGraph setup mode).EventId} (early : start ≤ event.val)
+    {event : (serviceGraph setup deps).EventId} (early : start ≤ event.val)
     (late : event.val < finish) (pending : event ∉ leftOrigin.cut.completed)
-    (honest : (serviceGraph setup mode).actor? event ≠ some who) :
+    (honest : (serviceGraph setup deps).actor? event ≠ some who) :
     completionOf left event = completionOf right event ∧
       left.outputs event = right.outputs event := by
   have cuts : leftOrigin.cut = rightOrigin.cut := congrArg Prod.fst keys
@@ -104,9 +104,9 @@ theorem honest_end_congr_of_keys {who : Player} {start finish : Nat}
   have rightPending : event ∉ rightOrigin.cut.completed := by rw [← cuts]; exact pending
   have leftReady := flat.ready_of_earlier leftBegin.earlier early late pending
   have rightReady := flat.ready_of_earlier rightBegin.earlier early late rightPending
-  have leftAvailable : ∀ field ∈ ((serviceGraph setup mode).nodes event).readFields,
+  have leftAvailable : ∀ field ∈ ((serviceGraph setup deps).nodes event).readFields,
       (leftOrigin.store field).isSome := fun field read => leftOrigin.read_available leftReady read
-  have rightAvailable : ∀ field ∈ ((serviceGraph setup mode).nodes event).readFields,
+  have rightAvailable : ∀ field ∈ ((serviceGraph setup deps).nodes event).readFields,
       (rightOrigin.store field).isSome :=
     fun field read => rightOrigin.read_available rightReady read
   refine ⟨?_, (acceptedOutput_eq_end concurrent flat leftBegin leftPath leftSound leftOwners
@@ -114,11 +114,11 @@ theorem honest_end_congr_of_keys {who : Player} {start finish : Nat}
       rw [stores]
       exact acceptedOutput_eq_end concurrent flat rightBegin rightPath rightSound rightOwners
         rightDone early late rightPending honest)⟩
-  have silentFalse {origin current : (serviceGraph setup mode).Config}
+  have silentFalse {origin current : (serviceGraph setup deps).Config}
       (begin : BlockStart start finish origin) (originPending : event ∉ origin.cut.completed)
       (path : Relation.ReflTransGen Config.Step origin current)
       (sound : BlockRecordsSound who start finish origin current) (owners : DefaultOwners current)
-      {owner : Player} (owned : (serviceGraph setup mode).actor? event = some owner)
+      {owner : Player} (owned : (serviceGraph setup deps).actor? event = some owner)
       (quiet : completionOf current event = some ⟨event, none, none⟩)
       (inactive : owner ∈ current.defaulted) : False :=
     honest_pending_not_silent concurrent flat begin path sound owners early late originPending
@@ -170,9 +170,9 @@ theorem honest_end_congr_of_keys {who : Player} {start finish : Nat}
 /-- Two ends of a block from one start record and store alike every honest
 reveal pending at the start. -/
 theorem honest_end_congr {who : Player} {start finish : Nat}
-    (concurrent : (serviceGraph setup mode).RevealsOnlyConcurrent)
-    (flat : BlockFlat (graph := serviceGraph setup mode) start finish)
-    {origin left right : (serviceGraph setup mode).Config}
+    (concurrent : (serviceGraph setup deps).RevealsOnlyConcurrent)
+    (flat : BlockFlat (graph := serviceGraph setup deps) start finish)
+    {origin left right : (serviceGraph setup deps).Config}
     (begin : BlockStart start finish origin)
     (leftPath : Relation.ReflTransGen Config.Step origin left)
     (rightPath : Relation.ReflTransGen Config.Step origin right)
@@ -180,9 +180,9 @@ theorem honest_end_congr {who : Player} {start finish : Nat}
     (rightSound : BlockRecordsSound who start finish origin right)
     (leftOwners : DefaultOwners left) (rightOwners : DefaultOwners right)
     (leftDone : BlockDone finish left) (rightDone : BlockDone finish right)
-    {event : (serviceGraph setup mode).EventId} (early : start ≤ event.val)
+    {event : (serviceGraph setup deps).EventId} (early : start ≤ event.val)
     (late : event.val < finish) (pending : event ∉ origin.cut.completed)
-    (honest : (serviceGraph setup mode).actor? event ≠ some who) :
+    (honest : (serviceGraph setup deps).actor? event ≠ some who) :
     completionOf left event = completionOf right event ∧
       left.outputs event = right.outputs event :=
   honest_end_congr_of_keys concurrent flat rfl begin begin leftPath rightPath leftSound
@@ -191,12 +191,12 @@ theorem honest_end_congr {who : Player} {start finish : Nat}
 /-- A default of one block end is a default of another that records the block
 alike, from starts with equal keys. -/
 private theorem defaulted_of_block_records {who : Player} {start finish : Nat}
-    {leftOrigin rightOrigin left right : (serviceGraph setup mode).Config}
+    {leftOrigin rightOrigin left right : (serviceGraph setup deps).Config}
     (keys : runKey leftOrigin = runKey rightOrigin)
     (leftPath : Relation.ReflTransGen Config.Step leftOrigin left)
     (rightPath : Relation.ReflTransGen Config.Step rightOrigin right)
     (leftSound : BlockRecordsSound who start finish leftOrigin left)
-    (block : ∀ event : (serviceGraph setup mode).EventId, start ≤ event.val →
+    (block : ∀ event : (serviceGraph setup deps).EventId, start ≤ event.val →
       event.val < finish → event ∉ leftOrigin.cut.completed →
         completionOf left event = completionOf right event)
     {player : Player} (defaulted : player ∈ left.defaulted) : player ∈ right.defaulted := by
@@ -230,9 +230,9 @@ block of concurrent reveals run by graph steps from starts with equal keys have
 the same order-free key when they agree on the records and outputs of the
 deviator's block reveals pending at the start. -/
 theorem blockEnd_runKey_eq_of_owned_of_keys {who : Player} {start finish : Nat}
-    (concurrent : (serviceGraph setup mode).RevealsOnlyConcurrent)
-    (flat : BlockFlat (graph := serviceGraph setup mode) start finish)
-    {leftOrigin rightOrigin left right : (serviceGraph setup mode).Config}
+    (concurrent : (serviceGraph setup deps).RevealsOnlyConcurrent)
+    (flat : BlockFlat (graph := serviceGraph setup deps) start finish)
+    {leftOrigin rightOrigin left right : (serviceGraph setup deps).Config}
     (keys : runKey leftOrigin = runKey rightOrigin)
     (leftBegin : BlockStart start finish leftOrigin)
     (rightBegin : BlockStart start finish rightOrigin)
@@ -243,9 +243,9 @@ theorem blockEnd_runKey_eq_of_owned_of_keys {who : Player} {start finish : Nat}
     (leftOwners : DefaultOwners left) (rightOwners : DefaultOwners right)
     (leftDone : BlockDone finish left) (rightDone : BlockDone finish right)
     (leftQuiet : left.Quiescent) (rightQuiet : right.Quiescent)
-    (owned : ∀ event : (serviceGraph setup mode).EventId, start ≤ event.val →
+    (owned : ∀ event : (serviceGraph setup deps).EventId, start ≤ event.val →
       event.val < finish → event ∉ leftOrigin.cut.completed →
-      (serviceGraph setup mode).actor? event = some who →
+      (serviceGraph setup deps).actor? event = some who →
         completionOf left event = completionOf right event ∧
           left.outputs event = right.outputs event) :
     runKey left = runKey right := by
@@ -253,11 +253,11 @@ theorem blockEnd_runKey_eq_of_owned_of_keys {who : Player} {start finish : Nat}
   have stores : leftOrigin.store = rightOrigin.store := congrArg (fun key => key.2.1) keys
   have records : completionOf leftOrigin = completionOf rightOrigin :=
     congrArg (fun key => key.2.2) keys
-  have block (event : (serviceGraph setup mode).EventId) (early : start ≤ event.val)
+  have block (event : (serviceGraph setup deps).EventId) (early : start ≤ event.val)
       (late : event.val < finish) (pending : event ∉ leftOrigin.cut.completed) :
       completionOf left event = completionOf right event ∧
         left.outputs event = right.outputs event := by
-    by_cases mine : (serviceGraph setup mode).actor? event = some who
+    by_cases mine : (serviceGraph setup deps).actor? event = some who
     · exact owned event early late pending mine
     · exact honest_end_congr_of_keys concurrent flat keys leftBegin rightBegin leftPath
         rightPath leftSound rightSound leftOwners rightOwners leftDone rightDone early late
@@ -269,16 +269,16 @@ theorem blockEnd_runKey_eq_of_owned_of_keys {who : Player} {start finish : Nat}
       defaulted_of_block_records keys.symm rightPath leftPath rightSound
         (fun event early late pending => (block event early late
           (by rw [cuts]; exact pending)).1.symm)⟩
-  let base := fun event : (serviceGraph setup mode).EventId =>
+  let base := fun event : (serviceGraph setup deps).EventId =>
     event ∈ leftOrigin.cut.completed ∨ (start ≤ event.val ∧ event.val < finish)
-  have automatic {origin current : (serviceGraph setup mode).Config}
+  have automatic {origin current : (serviceGraph setup deps).Config}
       (originCut : origin.cut = leftOrigin.cut)
       (sound : BlockRecordsSound who start finish origin current)
-      (event : (serviceGraph setup mode).EventId) (done : event ∈ current.cut.completed)
+      (event : (serviceGraph setup deps).EventId) (done : event ∈ current.cut.completed)
       (unbased : ¬ base event) :
       completionOf current event = some ⟨event, none, none⟩ ∧
         current.outputs event = failureOutput event ∧
-        ∃ owner, (serviceGraph setup mode).actor? event = some owner ∧
+        ∃ owner, (serviceGraph setup deps).actor? event = some owner ∧
           owner ∈ current.defaulted := by
     rcases sound event (fun old => unbased (Or.inl (originCut ▸ old))) done with silent |
       ⟨early, late, _⟩
@@ -294,7 +294,7 @@ theorem blockEnd_runKey_eq_of_owned_of_keys {who : Player} {start finish : Nat}
       (fun event done unbased => (automatic rfl leftSound event done unbased).2.2)
       (fun event done unbased => (automatic cuts.symm rightSound event done unbased).2.2)
       defaults leftQuiet rightQuiet
-  have each (event : (serviceGraph setup mode).EventId) :
+  have each (event : (serviceGraph setup deps).EventId) :
       completionOf left event = completionOf right event ∧
         left.outputs event = right.outputs event := by
     by_cases old : event ∈ leftOrigin.cut.completed
@@ -343,9 +343,9 @@ block of concurrent reveals run from one start by graph steps have the same
 order-free key when they agree on the records and outputs of the deviator's
 block reveals pending at the start. -/
 theorem blockEnd_runKey_eq_of_owned {who : Player} {start finish : Nat}
-    (concurrent : (serviceGraph setup mode).RevealsOnlyConcurrent)
-    (flat : BlockFlat (graph := serviceGraph setup mode) start finish)
-    {origin left right : (serviceGraph setup mode).Config}
+    (concurrent : (serviceGraph setup deps).RevealsOnlyConcurrent)
+    (flat : BlockFlat (graph := serviceGraph setup deps) start finish)
+    {origin left right : (serviceGraph setup deps).Config}
     (begin : BlockStart start finish origin)
     (leftPath : Relation.ReflTransGen Config.Step origin left)
     (rightPath : Relation.ReflTransGen Config.Step origin right)
@@ -354,9 +354,9 @@ theorem blockEnd_runKey_eq_of_owned {who : Player} {start finish : Nat}
     (leftOwners : DefaultOwners left) (rightOwners : DefaultOwners right)
     (leftDone : BlockDone finish left) (rightDone : BlockDone finish right)
     (leftQuiet : left.Quiescent) (rightQuiet : right.Quiescent)
-    (owned : ∀ event : (serviceGraph setup mode).EventId, start ≤ event.val →
+    (owned : ∀ event : (serviceGraph setup deps).EventId, start ≤ event.val →
       event.val < finish → event ∉ origin.cut.completed →
-      (serviceGraph setup mode).actor? event = some who →
+      (serviceGraph setup deps).actor? event = some who →
         completionOf left event = completionOf right event ∧
           left.outputs event = right.outputs event) :
     runKey left = runKey right :=

@@ -10,7 +10,7 @@ public import GameTheory.Core.MixtureSimulationComposition
 
 /-! # Strategic correctness of source-to-graph compilation
 
-Generated dependencies preserve source order under every public scheduler.
+The information graph preserves source order under every public scheduler.
 Compilation preserves complete public outcomes, and each graph deviation is
 represented by one source policy fixed before private setup is sampled.
 -/
@@ -26,7 +26,7 @@ variable {L : IExpr} [R : IExpr.ResultTypes L]
 
 /-- The public source result of a completed play. -/
 def eventPublicOutcome (setup : Setup (Player := Player) (L := L))
-    (outcome : setup.eventGraph.gameSignature.Outcome) : PublicOutcome setup.program :=
+    (outcome : setup.informationGraph.gameSignature.Outcome) : PublicOutcome setup.program :=
   publicOutcome setup.program (terminalConfig setup.program outcome)
 
 /-- The compiler as an edge to the canonical graph. Its deviation certificate is
@@ -53,7 +53,7 @@ def canonicalEventSimulation (setup : Setup (Player := Player) (L := L)) :
 /-- Every public scheduler has the same exact compiler edge. Its deviation
 certificate is a point mass, with no finite-alphabet or initial-law premise. -/
 def eventSimulation (setup : Setup (Player := Player) (L := L))
-    (scheduler : setup.eventGraph.PublicScheduler) :
+    (scheduler : setup.informationGraph.PublicScheduler) :
     GameForm.MixtureSimulationOn setup.gameForm (setup.eventGame scheduler) id
       setup.eventPublicOutcome (fun _ _ => True) :=
   setup.canonicalEventSimulation.trans
@@ -64,18 +64,19 @@ def eventSimulation (setup : Setup (Player := Player) (L := L))
 fresh-binding alphabets and a finitely supported initial law. -/
 theorem eventGame_play_support_finite (setup : Setup (Player := Player) (L := L))
     (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw]
-    (scheduler : setup.eventGraph.PublicScheduler) (profile : setup.eventGraph.BehavioralProfile) :
+    (scheduler : setup.informationGraph.PublicScheduler) (profile :
+      setup.informationGraph.BehavioralProfile) :
     ((setup.eventGame scheduler).play profile).support.Finite :=
-  setup.eventGraph.gameForm_play_support_finite _
+  setup.informationGraph.gameForm_play_support_finite _
     (by rw [PMF.support_map]; exact setup.initialLaw_support_finite.image _) scheduler _
-    ((toEventGraph_finiteActions setup.program finite).profileFiniteSupport _)
+    ((toInformationGraph_finiteActions setup.program finite).profileFiniteSupport _)
 
 /-- Same-error Nash preservation and reflection at compiled source profiles
 for every real-valued utility of the public source result. -/
 theorem eventGame_approximate_nash_iff
     (setup : Setup (Player := Player) (L := L))
     (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw]
-    (scheduler : setup.eventGraph.PublicScheduler)
+    (scheduler : setup.informationGraph.PublicScheduler)
     (utility : PublicOutcome setup.program → Player → ℝ)
     (ε : ℝ) (profile : BehavioralProfile setup.program) :
     IsεNash (setup.eventGame scheduler)

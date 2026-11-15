@@ -32,26 +32,26 @@ namespace Vegas
 section RecordedDecisions
 open SourceProgram EventGraphRuntime GameTheory.Math.Probability Interaction
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
-  (setup : Setup (Player := Player) (L := L)) (mode : EventGraph.ExecutionMode)
-  (duration : (serviceGraph setup mode).EventId → Nat)
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
+  (setup : Setup (Player := Player) (L := L)) (deps : setup.dataflowGraph.Dependencies)
+  (duration : (serviceGraph setup deps).EventId → Nat)
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup deps)))
 
 private theorem firstTurn_noRepeatedEvent
-    (bound : (serviceGraph setup mode).EventId → Nat) (turns : Nat)
-    (client : (serviceGraph setup mode).BehavioralProfile) (owner : Player)
-    (event : (serviceGraph setup mode).EventId)
-    (past : List (serviceApplication setup mode duration leaks).PlayerEntry)
-    (view : (serviceApplication setup mode duration leaks).PlayerView)
-    (response : (serviceApplication setup mode duration leaks).Action)
-    (member : response ∈ (serviceReferenceTurnPolicy setup mode duration leaks bound turns
-      (firstTurnTiming setup turns mode) client owner past view).support)
-    (recorded : (eventRecorded (serviceTimeouts setup mode duration)) leaks past event = true) :
-    (submittedEvent? (serviceTimeouts setup mode duration)) leaks response ≠ some event := by
+    (bound : (serviceGraph setup deps).EventId → Nat) (turns : Nat)
+    (client : (serviceGraph setup deps).BehavioralProfile) (owner : Player)
+    (event : (serviceGraph setup deps).EventId)
+    (past : List (serviceApplication setup deps duration leaks).PlayerEntry)
+    (view : (serviceApplication setup deps duration leaks).PlayerView)
+    (response : (serviceApplication setup deps duration leaks).Action)
+    (member : response ∈ (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+      (firstTurnTiming setup turns deps) client owner past view).support)
+    (recorded : (eventRecorded (serviceTimeouts setup deps duration)) leaks past event = true) :
+    (submittedEvent? (serviceTimeouts setup deps duration)) leaks response ≠ some event := by
   intro named
   have serving := sourceServiceTurnPolicy_submitsAtTurn_reference setup leaks bound turns
-    (firstTurnTiming setup turns mode) client owner past view response member event named
-  by_cases owned : (serviceGraph setup mode).actor? event = some owner
-  · by_cases first : serviceTurn setup mode duration leaks owner event past view = some 0
+    (firstTurnTiming setup turns deps) client owner past view response member event named
+  by_cases owned : (serviceGraph setup deps).actor? event = some owner
+  · by_cases first : serviceTurn setup deps duration leaks owner event past view = some 0
     · rw [sourceServiceTurnPolicy_firstTurn_reference owned first] at member
       simp only [serviceReferenceOpportunity, recorded, ↓reduceIte,
         ReactiveApplication.silentPolicy_apply] at member
@@ -67,19 +67,19 @@ private theorem firstTurn_noRepeatedEvent
 
 /-- The fixed-action member never resubmits an event already recorded in own recall. -/
 private theorem fixedAction_noRepeatedEvent
-    (bound : (serviceGraph setup mode).EventId → Nat) (turns : Nat)
-    (client : (serviceGraph setup mode).BehavioralProfile) (owner : Player)
-    (event : (serviceGraph setup mode).EventId) (action : (serviceGraph setup mode).Action event)
-    (past : List (serviceApplication setup mode duration leaks).PlayerEntry)
-    (view : (serviceApplication setup mode duration leaks).PlayerView)
-    (response : (serviceApplication setup mode duration leaks).Action)
-    (member : response ∈ (if serviceTurn setup mode duration leaks owner event past view = some 0
+    (bound : (serviceGraph setup deps).EventId → Nat) (turns : Nat)
+    (client : (serviceGraph setup deps).BehavioralProfile) (owner : Player)
+    (event : (serviceGraph setup deps).EventId) (action : (serviceGraph setup deps).Action event)
+    (past : List (serviceApplication setup deps duration leaks).PlayerEntry)
+    (view : (serviceApplication setup deps duration leaks).PlayerView)
+    (response : (serviceApplication setup deps duration leaks).Action)
+    (member : response ∈ (if serviceTurn setup deps duration leaks owner event past view = some 0
       then decidedOpportunity setup leaks bound owner event action past view
-      else serviceReferenceTurnPolicy setup mode duration leaks bound turns
-        (firstTurnTiming setup turns mode) client owner past view).support)
-    (recorded : (eventRecorded (serviceTimeouts setup mode duration)) leaks past event = true) :
-    (submittedEvent? (serviceTimeouts setup mode duration)) leaks response ≠ some event := by
-  by_cases first : serviceTurn setup mode duration leaks owner event past view = some 0
+      else serviceReferenceTurnPolicy setup deps duration leaks bound turns
+        (firstTurnTiming setup turns deps) client owner past view).support)
+    (recorded : (eventRecorded (serviceTimeouts setup deps duration)) leaks past event = true) :
+    (submittedEvent? (serviceTimeouts setup deps duration)) leaks response ≠ some event := by
+  by_cases first : serviceTurn setup deps duration leaks owner event past view = some 0
   · rw [ite_eq_left first] at member
     simp only [decidedOpportunity, recorded, ↓reduceIte,
       ReactiveApplication.silentPolicy_apply] at member
@@ -87,7 +87,7 @@ private theorem fixedAction_noRepeatedEvent
     intro impossible
     cases impossible
   · rw [ite_eq_right first] at member
-    exact firstTurn_noRepeatedEvent setup mode duration leaks bound turns client owner event
+    exact firstTurn_noRepeatedEvent setup deps duration leaks bound turns client owner event
       past view response member recorded
 
 end RecordedDecisions
@@ -95,17 +95,17 @@ end RecordedDecisions
 section Waiting
 open SourceProgram EventGraphRuntime EventGraph GameTheory.Math.Probability Interaction
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
-  {setup : Setup (Player := Player) (L := L)} {mode : EventGraph.ExecutionMode}
+  {setup : Setup (Player := Player) (L := L)} {deps : setup.dataflowGraph.Dependencies}
 
 private theorem first_of_never
-    (timeouts : EventTimeouts (serviceGraph setup mode))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
+    (timeouts : EventTimeouts (serviceGraph setup deps))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup deps)))
     (execution : ((reactiveApplication timeouts) leaks).Execution) (owner : Player)
-    (event : (serviceGraph setup mode).EventId)
+    (event : (serviceGraph setup deps).EventId)
     (turn : execution.application.publicView.ownTurn? owner = some event)
     (never : ∀ entry ∈ execution.logs owner,
       entry.beforeView.application.publicView.ownTurn? owner ≠ some event) :
-    serviceTurn setup mode timeouts.duration leaks owner event (execution.logs owner)
+    serviceTurn setup deps timeouts.duration leaks owner event (execution.logs owner)
       (execution.observe ((reactiveApplication timeouts) leaks) owner) = some 0 := by
   change (if execution.application.publicView.ownTurn? owner = some event then
     some ((execution.logs owner).countP fun entry =>
@@ -117,18 +117,18 @@ private theorem first_of_never
   simpa only [Bool.not_eq_true, decide_eq_false_iff_not] using never entry member
 
 private theorem waiting_no_pending
-    (timeouts : EventTimeouts (serviceGraph setup mode))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
+    (timeouts : EventTimeouts (serviceGraph setup deps))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup deps)))
     {horizon : Nat} {scheduler : ((reactiveApplication timeouts) leaks).Scheduler}
     (control : ((reactiveApplication timeouts) leaks).Control)
-    (trace : (((reactiveApplication timeouts) leaks).protocol (serviceInitialLaw setup mode)
+    (trace : (((reactiveApplication timeouts) leaks).protocol (serviceInitialLaw setup deps)
       horizon scheduler).Trace (some control))
-    (owner : Player) (event : (serviceGraph setup mode).EventId)
+    (owner : Player) (event : (serviceGraph setup deps).EventId)
     (truthful : OwnSubmissionsAtTurn setup leaks control.execution owner)
     (never : ∀ entry ∈ control.execution.logs owner,
       entry.beforeView.application.publicView.ownTurn? owner ≠ some event) :
     ∀ message ∈ control.execution.network.pending, message.sender = owner →
-      message.payload.call.event? (serviceGraph setup mode) ≠ some event := by
+      message.payload.call.event? (serviceGraph setup deps) ≠ some event := by
   have facts := legalFacts setup leaks horizon scheduler control trace
   intro message pending sender named
   obtain ⟨entry, entryPresent, material, transmitted, _emitted, state, known, packet⟩ :=
@@ -143,25 +143,25 @@ private theorem waiting_no_pending
   exact never entry old (truthful entry old event submitted)
 
 private theorem first_callback_runUntil
-    (timeouts : EventTimeouts (serviceGraph setup mode))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
+    (timeouts : EventTimeouts (serviceGraph setup deps))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup deps)))
     {horizon : Nat} (scheduler : ((reactiveApplication timeouts) leaks).Scheduler)
     (players : Player → ((reactiveApplication timeouts) leaks).Policy)
-    (delay bound : (serviceGraph setup mode).EventId → Nat)
-    {Result : Type*} (continuation : (serviceGraph setup mode).Config → PMF Result)
+    (delay bound : (serviceGraph setup deps).EventId → Nat)
+    {Result : Type*} (continuation : (serviceGraph setup deps).Config → PMF Result)
     (contract : AsyncContract timeouts leaks
-      (serviceInitialLaw setup mode) horizon scheduler delay bound)
+      (serviceInitialLaw setup deps) horizon scheduler delay bound)
     (timely : AsyncTimely timeouts delay bound)
-    (owner : Player) (event : (serviceGraph setup mode).EventId)
-    (owned : (serviceGraph setup mode).actor? event = some owner) (solitary :
-      (serviceGraph setup mode).Solitary event)
-    (action : (serviceGraph setup mode).Action event)
+    (owner : Player) (event : (serviceGraph setup deps).EventId)
+    (owned : (serviceGraph setup deps).actor? event = some owner) (solitary :
+      (serviceGraph setup deps).Solitary event)
+    (action : (serviceGraph setup deps).Action event)
     (atResponse : ∀ remaining (execution : ((reactiveApplication timeouts) leaks).Execution),
       (((reactiveApplication timeouts) leaks).protocol
-        (serviceInitialLaw setup mode) horizon scheduler).Trace
+        (serviceInitialLaw setup deps) horizon scheduler).Trace
         (some ⟨remaining, some owner, execution⟩) →
       ∀ ready : execution.application.config.cut.Ready event,
-      serviceTurn setup mode timeouts.duration leaks owner event (execution.logs owner)
+      serviceTurn setup deps timeouts.duration leaks owner event (execution.logs owner)
         (execution.observe ((reactiveApplication timeouts) leaks) owner) = some 0 →
       execution.application.publicView.InclusionFitsDeadline timeouts bound event →
       OwnSubmissionsAtTurn setup leaks execution owner →
@@ -179,7 +179,7 @@ private theorem first_callback_runUntil
           continuation after) :
     ∀ remaining (execution : ((reactiveApplication timeouts) leaks).Execution),
       (((reactiveApplication timeouts) leaks).protocol
-        (serviceInitialLaw setup mode) horizon scheduler).Trace
+        (serviceInitialLaw setup deps) horizon scheduler).Trace
         (some ⟨remaining, none, execution⟩) →
       ∀ ready : execution.application.config.cut.Ready event,
       OwnSubmissionsAtTurn setup leaks execution owner →
@@ -195,7 +195,7 @@ private theorem first_callback_runUntil
   classical
   let app := (reactiveApplication timeouts) leaks
   let stop := fun final : app.Execution => event ∈ final.application.config.cut.completed
-  have stepEq {before after : (serviceGraph setup mode).Config} (same : after = before)
+  have stepEq {before after : (serviceGraph setup deps).Config} (same : after = before)
       (readyBefore : before.cut.Ready event) (readyAfter : after.cut.Ready event) :
       (after.step event readyAfter action).bind continuation =
         (before.step event readyBefore action).bind continuation := by
@@ -209,9 +209,10 @@ private theorem first_callback_runUntil
       exact (ready.1 (by rw [terminal]; exact Finset.mem_univ _)).elim
   | succ remaining ih =>
       intro execution trace ready truthful never answered effective
-      have turn := serviceOwnTurn?_of_ready setup execution.application ready owned
+      have turn := execution.application.ownTurn?_of_ready solitary.ownerSolitary ready owned
       have first := first_of_never timeouts leaks execution owner event turn never
-      have fits := firstTurn_inclusionFits contract timely trace answered owned ready first
+      have fits := firstTurn_inclusionFits solitary.ownerSolitary contract timely trace answered
+        owned ready first
       have facts := legalFacts setup leaks horizon scheduler _ trace
       have safe := waiting_no_pending timeouts leaks _ trace owner event truthful never
       have pending : ¬ stop execution := ready.1
@@ -220,12 +221,12 @@ private theorem first_callback_runUntil
       rw [ReactiveApplication.runUntil, ite_eq_right pending, PMF.bind_bind]
       apply (bind_congr_on_support _ fun next reached => ?_).trans (PMF.bind_const _ _)
       obtain ⟨command, selected, middle, moved, cases⟩ := round_cases (setup := setup) leaks reached
-      have sameMiddle := environment_waiting_config_mode timeouts leaks execution middle command
-        event solitary owner ready owned fits.withinDeadline facts.quiescent safe moved
+      have sameMiddle := environment_waiting_config_of_solitary timeouts leaks execution middle
+        command event solitary owner ready owned fits.withinDeadline facts.quiescent safe moved
       have recallEq := app.environmentStep_recall execution middle command moved
       have readyMiddle : middle.application.config.cut.Ready event := sameMiddle.symm ▸ ready
       obtain ⟨nextTrace⟩ := app.raw_trace_round
-        (serviceInitialLaw setup mode) horizon scheduler players
+        (serviceInitialLaw setup deps) horizon scheduler players
         remaining execution next trace reached
       have truthfulMiddle : OwnSubmissionsAtTurn setup leaks middle owner := by
         intro entry present
@@ -245,12 +246,12 @@ private theorem first_callback_runUntil
           have appEq := activation_application (setup := setup) leaks execution middle owner
             (commandEq ▸ moved)
           have firstMiddle := first_of_never timeouts leaks middle owner event
-            (serviceOwnTurn?_of_ready setup middle.application readyMiddle owned)
+            (middle.application.ownTurn?_of_ready solitary.ownerSolitary readyMiddle owned)
             (by simpa only [recallEq] using never)
           have fitsMiddle : middle.application.publicView.InclusionFitsDeadline timeouts bound
               event := by rw [appEq]; exact fits
           obtain ⟨middleTrace⟩ := app.raw_trace_environment
-            (serviceInitialLaw setup mode) horizon scheduler
+            (serviceInitialLaw setup deps) horizon scheduler
             remaining execution middle command trace selected moved
           rw [active] at middleTrace
           exact (atResponse remaining middle middleTrace readyMiddle firstMiddle fitsMiddle
@@ -283,53 +284,53 @@ section ActionMixture
 open SourceProgram EventGraphRuntime Interaction GameTheory.Math.Probability
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
-  {setup : Setup (Player := Player) (L := L)} {mode : EventGraph.ExecutionMode}
-  (timeouts : EventTimeouts (serviceGraph setup mode))
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
+  {setup : Setup (Player := Player) (L := L)} {deps : setup.dataflowGraph.Dependencies}
+  (timeouts : EventTimeouts (serviceGraph setup deps))
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup deps)))
 
 /-- An honest owner's first callback draws its fixed source action before
 stopped native play, with arbitrary other player policies. -/
 theorem serviceReference_firstTurn_mixture
     {horizon turns : Nat} (scheduler : ((reactiveApplication timeouts) leaks).Scheduler)
-    (bound : (serviceGraph setup mode).EventId → Nat) (client :
-      (serviceGraph setup mode).BehavioralProfile)
-    (owner : Player) (event : (serviceGraph setup mode).EventId)
-    (owned : (serviceGraph setup mode).actor? event = some owner) (solitary :
-      (serviceGraph setup mode).Solitary event)
+    (bound : (serviceGraph setup deps).EventId → Nat) (client :
+      (serviceGraph setup deps).BehavioralProfile)
+    (owner : Player) (event : (serviceGraph setup deps).EventId)
+    (owned : (serviceGraph setup deps).actor? event = some owner) (solitary :
+      (serviceGraph setup deps).Solitary event)
     (background : Player → ((reactiveApplication timeouts) leaks).Policy)
-    (follows : background owner = serviceReferenceTurnPolicy setup mode timeouts.duration leaks
-      bound turns (firstTurnTiming setup turns mode) client owner)
+    (follows : background owner = serviceReferenceTurnPolicy setup deps timeouts.duration leaks
+      bound turns (firstTurnTiming setup turns deps) client owner)
     (execution : ((reactiveApplication timeouts) leaks).Execution)
     (ready : execution.application.config.cut.Ready event)
     (supported : execution ∈ (((reactiveApplication timeouts) leaks).roundsFrom
-      (serviceInitialLaw setup mode) scheduler background
+      (serviceInitialLaw setup deps) scheduler background
         execution.environmentRecall.length).support)
     (untouched : Untouched setup leaks event execution)
     (bounded : execution.environmentRecall.length ≤ horizon)
-    (law : PMF ((serviceGraph setup mode).Action event))
+    (law : PMF ((serviceGraph setup deps).Action event))
     (callback : ∀ current : ((reactiveApplication timeouts) leaks).Execution,
       current.application.config = execution.application.config →
-      serviceReferencePolicy setup mode timeouts.duration leaks client owner (current.logs owner)
+      serviceReferencePolicy setup deps timeouts.duration leaks client owner (current.logs owner)
           (current.observe ((reactiveApplication timeouts) leaks) owner) =
         law.map (fun action => (canonicalServiceDecision timeouts) leaks owner (current.logs owner)
           (current.observe ((reactiveApplication timeouts) leaks) owner) event action)) :
-    let players := serviceReferenceTurnPolicy setup mode timeouts.duration leaks bound turns
-      (firstTurnTiming setup turns mode) client
+    let players := serviceReferenceTurnPolicy setup deps timeouts.duration leaks bound turns
+      (firstTurnTiming setup turns deps) client
     (((reactiveApplication timeouts) leaks).runUntilHorizon scheduler background
       (fun final => event ∈ final.application.config.cut.completed) horizon execution) =
       law.bind (fun action => ((reactiveApplication timeouts) leaks).runUntilHorizon scheduler
         (Function.update background owner (fun past view =>
-          if serviceTurn setup mode timeouts.duration leaks owner event past view = some 0
+          if serviceTurn setup deps timeouts.duration leaks owner event past view = some 0
           then decidedOpportunity setup leaks bound owner event action past view
           else players owner past view))
         (fun final => event ∈ final.application.config.cut.completed) horizon execution) := by
   classical
   let app := (reactiveApplication timeouts) leaks
-  let players := serviceReferenceTurnPolicy setup mode timeouts.duration leaks bound turns
-    (firstTurnTiming setup turns mode) client
+  let players := serviceReferenceTurnPolicy setup deps timeouts.duration leaks bound turns
+    (firstTurnTiming setup turns deps) client
   let first := fun past view =>
-    serviceTurn setup mode timeouts.duration leaks owner event past view = some 0
-  let member := fun (action : (serviceGraph setup mode).Action event) past view =>
+    serviceTurn setup deps timeouts.duration leaks owner event past view = some 0
+  let member := fun (action : (serviceGraph setup deps).Action event) past view =>
     if first past view then decidedOpportunity setup leaks bound owner event action past view
       else players owner past view
   let stop := fun final : app.Execution => event ∈ final.application.config.cut.completed
@@ -343,7 +344,7 @@ theorem serviceReference_firstTurn_mixture
     exact (sourceServiceTurn_first selected).2 entry memberEntry
       (sourceServiceTurn_first earlier).1
   have atFirst : ∀ remaining current,
-      (app.protocol (serviceInitialLaw setup mode) horizon scheduler).Trace
+      (app.protocol (serviceInitialLaw setup deps) horizon scheduler).Trace
         (some ⟨remaining + 1, none, current⟩) →
       invariant current → ¬ stop current →
       ∀ command ∈ (scheduler current.environmentRecall (current.observeEnvironment app)).support,
@@ -359,8 +360,8 @@ theorem serviceReference_firstTurn_mixture
     have sameApplication := activation_application (setup := setup) leaks current middle owner moved
     have sameConfig : middle.application.config = execution.application.config :=
       (congrArg EventGraphRuntime.State.config sameApplication).trans (valid unfinished)
-    change serviceReferenceTurnPolicy setup mode timeouts.duration leaks bound turns
-        (firstTurnTiming setup turns mode) client owner (middle.logs owner)
+    change serviceReferenceTurnPolicy setup deps timeouts.duration leaks bound turns
+        (firstTurnTiming setup turns deps) client owner (middle.logs owner)
           (middle.observe app owner) = _
     rw [sourceServiceTurnPolicy_firstTurn_reference owned firstNow]
     simp only [member, first, firstNow, ↓reduceIte]
@@ -379,7 +380,7 @@ theorem serviceReference_firstTurn_mixture
         exact compiled.trans (by rw [PMF.bind_map]; rfl)
       · simp only [fits, ↓reduceIte, PMF.bind_const]
   have preserved : ∀ remaining current,
-      (app.protocol (serviceInitialLaw setup mode) horizon scheduler).Trace
+      (app.protocol (serviceInitialLaw setup deps) horizon scheduler).Trace
         (some ⟨remaining + 1, none, current⟩) →
       invariant current → ¬ stop current →
       ∀ next ∈ (app.round scheduler (Function.update background owner (players owner))
@@ -400,7 +401,7 @@ theorem serviceReference_firstTurn_mixture
       (fun _ otherReady => solitary _ otherReady readyCurrent)
       pending nextPath
     exact same.trans (valid unfinished)
-  obtain ⟨trace⟩ := app.raw_trace_roundsFrom (serviceInitialLaw setup mode) horizon scheduler
+  obtain ⟨trace⟩ := app.raw_trace_roundsFrom (serviceInitialLaw setup deps) horizon scheduler
     background
     execution.environmentRecall.length bounded execution supported
   have clean : ∀ before entry, before ++ [entry] <+: execution.logs owner →
@@ -410,7 +411,7 @@ theorem serviceReference_firstTurn_mixture
     exact untouched owner entry memberEntry
       (PublicView.ownTurn?_spec _ owner event (sourceServiceTurn_first earlier).1).1
   have mixed := app.runUntil_mixture_at_first
-    (serviceInitialLaw setup mode) horizon scheduler background owner
+    (serviceInitialLaw setup deps) horizon scheduler background owner
     (players owner) law member first once (by intro action past view away; simp [member, away])
     stop invariant atFirst preserved (horizon - execution.environmentRecall.length) 0 execution
     (by simpa only [Nat.zero_add] using trace) (fun _ => rfl) clean
@@ -427,29 +428,29 @@ end ActionMixture
 section Silence
 open SourceProgram EventGraphRuntime GameTheory.Math.Probability Interaction
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
-  {setup : Setup (Player := Player) (L := L)} {mode : EventGraph.ExecutionMode}
+  {setup : Setup (Player := Player) (L := L)} {deps : setup.dataflowGraph.Dependencies}
 
 private theorem fixed_silent_client_quiet
-    (timeouts : EventTimeouts (serviceGraph setup mode))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
-    (bound : (serviceGraph setup mode).EventId → Nat) (turns : Nat)
-    (client : (serviceGraph setup mode).BehavioralProfile) (owner : Player)
-    (event : (serviceGraph setup mode).EventId) (action : (serviceGraph setup mode).Action event)
+    (timeouts : EventTimeouts (serviceGraph setup deps))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup deps)))
+    (bound : (serviceGraph setup deps).EventId → Nat) (turns : Nat)
+    (client : (serviceGraph setup deps).BehavioralProfile) (owner : Player)
+    (event : (serviceGraph setup deps).EventId) (action : (serviceGraph setup deps).Action event)
     (silent : SilentAction event action)
     (past : List ((reactiveApplication timeouts) leaks).PlayerEntry)
     (view : ((reactiveApplication timeouts) leaks).PlayerView)
     (serving : view.application.publicView.ownTurn? owner = some event) :
-    (if serviceTurn setup mode timeouts.duration leaks owner event past view = some 0 then
+    (if serviceTurn setup deps timeouts.duration leaks owner event past view = some 0 then
       decidedOpportunity setup leaks bound owner event action past view
-    else serviceReferenceTurnPolicy setup mode timeouts.duration leaks bound turns
-      (firstTurnTiming setup turns mode) client owner past view) = PMF.pure ⟨none⟩ := by
+    else serviceReferenceTurnPolicy setup deps timeouts.duration leaks bound turns
+      (firstTurnTiming setup turns deps) client owner past view) = PMF.pure ⟨none⟩ := by
   by_cases first :
-      serviceTurn setup mode timeouts.duration leaks owner event past view = some 0
+      serviceTurn setup deps timeouts.duration leaks owner event past view = some 0
   · rw [ite_eq_left first]
     exact decidedOpportunity_silent action past view
       (canonicalServiceDecision_silent owner past view event action silent)
   · rw [ite_eq_right first]
-    by_cases owned : (serviceGraph setup mode).actor? event = some owner
+    by_cases owned : (serviceGraph setup deps).actor? event = some owner
     · exact sourceServiceTurnPolicy_laterTurn_reference owned serving first
     · simp only [serviceReferenceTurnPolicy, serving, owned, ↓reduceDIte,
         ReactiveApplication.silentPolicy_apply]
@@ -457,34 +458,34 @@ private theorem fixed_silent_client_quiet
 /-- Fixing a silent first-turn action has that action's full graph continuation
 from the original source client's completion boundary. -/
 private theorem firstTurn_fixed_silent_runUntil_bind_runPlan
-    (timeouts : EventTimeouts (serviceGraph setup mode))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
+    (timeouts : EventTimeouts (serviceGraph setup deps))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup deps)))
     {horizon turns : Nat} (scheduler : ((reactiveApplication timeouts) leaks).Scheduler)
-    (delay bound : (serviceGraph setup mode).EventId → Nat)
-    (client : (serviceGraph setup mode).BehavioralProfile) {Result : Type*} (continuation :
-      (serviceGraph setup mode).Config → PMF Result)
-    (drained : ∀ state : EventGraphRuntime.State (serviceGraph setup mode),
+    (delay bound : (serviceGraph setup deps).EventId → Nat)
+    (client : (serviceGraph setup deps).BehavioralProfile) {Result : Type*} (continuation :
+      (serviceGraph setup deps).Config → PMF Result)
+    (drained : ∀ state : EventGraphRuntime.State (serviceGraph setup deps),
       continuation state.drain.config = continuation state.config)
     (contract : AsyncContract timeouts leaks
-      (serviceInitialLaw setup mode) horizon scheduler delay bound)
-    (owner : Player) (event : (serviceGraph setup mode).EventId)
-    (owned : (serviceGraph setup mode).actor? event = some owner) (solitary :
-      (serviceGraph setup mode).Solitary event)
+      (serviceInitialLaw setup deps) horizon scheduler delay bound)
+    (owner : Player) (event : (serviceGraph setup deps).EventId)
+    (owned : (serviceGraph setup deps).actor? event = some owner) (solitary :
+      (serviceGraph setup deps).Solitary event)
     (background : Player → ((reactiveApplication timeouts) leaks).Policy)
-    (follows : background owner = serviceReferenceTurnPolicy setup mode timeouts.duration leaks
-      bound turns (firstTurnTiming setup turns mode) client owner)
-    (action : (serviceGraph setup mode).Action event) (silent : SilentAction event action)
+    (follows : background owner = serviceReferenceTurnPolicy setup deps timeouts.duration leaks
+      bound turns (firstTurnTiming setup turns deps) client owner)
+    (action : (serviceGraph setup deps).Action event) (silent : SilentAction event action)
     (execution : ((reactiveApplication timeouts) leaks).Execution)
     (ready : execution.application.config.cut.Ready event)
     (supported : execution ∈ (((reactiveApplication timeouts) leaks).roundsFrom
-      (serviceInitialLaw setup mode) scheduler background
+      (serviceInitialLaw setup deps) scheduler background
         execution.environmentRecall.length).support)
     (untouched : Untouched setup leaks event execution)
     (bounded : execution.environmentRecall.length ≤ horizon) :
-    let players := serviceReferenceTurnPolicy setup mode timeouts.duration leaks bound turns
-      (firstTurnTiming setup turns mode) client
+    let players := serviceReferenceTurnPolicy setup deps timeouts.duration leaks bound turns
+      (firstTurnTiming setup turns deps) client
     let member := fun past view =>
-      if serviceTurn setup mode timeouts.duration leaks owner event past view = some 0 then
+      if serviceTurn setup deps timeouts.duration leaks owner event past view = some 0 then
         decidedOpportunity setup leaks bound owner event action past view
       else players owner past view
     ((((reactiveApplication timeouts) leaks).runUntilHorizon scheduler
@@ -496,24 +497,24 @@ private theorem firstTurn_fixed_silent_runUntil_bind_runPlan
         fun after => continuation after := by
   classical
   let app := (reactiveApplication timeouts) leaks
-  let players := serviceReferenceTurnPolicy setup mode timeouts.duration leaks bound turns
-    (firstTurnTiming setup turns mode) client
+  let players := serviceReferenceTurnPolicy setup deps timeouts.duration leaks bound turns
+    (firstTurnTiming setup turns deps) client
   let member := fun past view =>
-    if serviceTurn setup mode timeouts.duration leaks owner event past view = some 0 then
+    if serviceTurn setup deps timeouts.duration leaks owner event past view = some 0 then
       decidedOpportunity setup leaks bound owner event action past view
     else players owner past view
   have atTurn : SubmitsAtTurn setup leaks (background owner) owner := by
     rw [follows]
     exact sourceServiceTurnPolicy_submitsAtTurn_reference setup leaks bound turns
-      (firstTurnTiming setup turns mode)
+      (firstTurnTiming setup turns deps)
       client owner
   have truthful : OwnSubmissionsAtTurn setup leaks execution owner :=
-    atTurn.roundsFrom setup leaks (serviceInitialLaw setup mode)
+    atTurn.roundsFrom setup leaks (serviceInitialLaw setup deps)
       execution.environmentRecall.length execution
       supported
   have safe := Untouched.no_pending_of_ownSubmissions timeouts leaks scheduler background event
     execution supported untouched owner truthful
-  obtain ⟨trace⟩ := app.raw_trace_roundsFrom (serviceInitialLaw setup mode) horizon scheduler
+  obtain ⟨trace⟩ := app.raw_trace_roundsFrom (serviceInitialLaw setup deps) horizon scheduler
     background
     execution.environmentRecall.length bounded execution supported
   apply silent_runUntil_bind_continuation timeouts leaks continuation drained scheduler
@@ -530,32 +531,32 @@ end Silence
 section Acceptance
 open SourceProgram EventGraphRuntime EventGraph GameTheory.Math.Probability Interaction
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
-  {setup : Setup (Player := Player) (L := L)} {mode : EventGraph.ExecutionMode}
+  {setup : Setup (Player := Player) (L := L)} {deps : setup.dataflowGraph.Dependencies}
 
 /-- A supported transmitting fixed first callback has its chosen full continuation. -/
 private theorem firstTurn_fixed_accepted_runUntil_bind_runPlan
-    (timeouts : EventTimeouts (serviceGraph setup mode))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
+    (timeouts : EventTimeouts (serviceGraph setup deps))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup deps)))
     {horizon remaining turns : Nat} (scheduler : ((reactiveApplication timeouts) leaks).Scheduler)
-    (delay bound : (serviceGraph setup mode).EventId → Nat)
-    (client : (serviceGraph setup mode).BehavioralProfile) {Result : Type*} (continuation :
-      (serviceGraph setup mode).Config → PMF Result)
-    (drained : ∀ state : EventGraphRuntime.State (serviceGraph setup mode),
+    (delay bound : (serviceGraph setup deps).EventId → Nat)
+    (client : (serviceGraph setup deps).BehavioralProfile) {Result : Type*} (continuation :
+      (serviceGraph setup deps).Config → PMF Result)
+    (drained : ∀ state : EventGraphRuntime.State (serviceGraph setup deps),
       continuation state.drain.config = continuation state.config)
     (contract : AsyncContract timeouts leaks
-      (serviceInitialLaw setup mode) horizon scheduler delay bound)
-    (owner : Player) (event : (serviceGraph setup mode).EventId)
-    (owned : (serviceGraph setup mode).actor? event = some owner) (solitary :
-      (serviceGraph setup mode).Solitary event)
+      (serviceInitialLaw setup deps) horizon scheduler delay bound)
+    (owner : Player) (event : (serviceGraph setup deps).EventId)
+    (owned : (serviceGraph setup deps).actor? event = some owner) (solitary :
+      (serviceGraph setup deps).Solitary event)
     (background : Player → ((reactiveApplication timeouts) leaks).Policy)
-    (action : (serviceGraph setup mode).Action event)
+    (action : (serviceGraph setup deps).Action event)
     (execution : ((reactiveApplication timeouts) leaks).Execution)
     (trace : (((reactiveApplication timeouts) leaks).protocol
-      (serviceInitialLaw setup mode) horizon scheduler).Trace
+      (serviceInitialLaw setup deps) horizon scheduler).Trace
       (some ⟨remaining, some owner, execution⟩))
     (ready : execution.application.config.cut.Ready event)
     (turn : execution.application.publicView.ownTurn? owner = some event)
-    (first : serviceTurn setup mode timeouts.duration leaks owner event
+    (first : serviceTurn setup deps timeouts.duration leaks owner event
       (execution.logs owner) (execution.observe ((reactiveApplication timeouts) leaks) owner) =
         some 0)
     (fits : execution.application.publicView.InclusionFitsDeadline timeouts bound event)
@@ -567,18 +568,18 @@ private theorem firstTurn_fixed_accepted_runUntil_bind_runPlan
       (execution.observe ((reactiveApplication timeouts) leaks) owner) event action).transmission =
         some material)
     (response : ((reactiveApplication timeouts) leaks).Action)
-    (selected : response ∈ (if serviceTurn setup mode timeouts.duration leaks owner event
+    (selected : response ∈ (if serviceTurn setup deps timeouts.duration leaks owner event
         (execution.logs owner)
           (execution.observe ((reactiveApplication timeouts) leaks) owner) = some 0
       then decidedOpportunity setup leaks bound owner event action (execution.logs owner)
         (execution.observe ((reactiveApplication timeouts) leaks) owner)
-      else serviceReferenceTurnPolicy setup mode timeouts.duration leaks bound turns
-        (firstTurnTiming setup turns mode) client owner (execution.logs owner)
+      else serviceReferenceTurnPolicy setup deps timeouts.duration leaks bound turns
+        (firstTurnTiming setup turns deps) client owner (execution.logs owner)
           (execution.observe ((reactiveApplication timeouts) leaks) owner)).support) :
-    let players := serviceReferenceTurnPolicy setup mode timeouts.duration leaks bound turns
-      (firstTurnTiming setup turns mode) client
+    let players := serviceReferenceTurnPolicy setup deps timeouts.duration leaks bound turns
+      (firstTurnTiming setup turns deps) client
     let member := fun past view =>
-      if serviceTurn setup mode timeouts.duration leaks owner event past view = some 0 then
+      if serviceTurn setup deps timeouts.duration leaks owner event past view = some 0 then
         decidedOpportunity setup leaks bound owner event action past view
       else players owner past view
     ((((reactiveApplication timeouts) leaks).runUntil scheduler
@@ -591,10 +592,10 @@ private theorem firstTurn_fixed_accepted_runUntil_bind_runPlan
         continuation after := by
   classical
   let app := (reactiveApplication timeouts) leaks
-  let players := serviceReferenceTurnPolicy setup mode timeouts.duration leaks bound turns
-    (firstTurnTiming setup turns mode) client
+  let players := serviceReferenceTurnPolicy setup deps timeouts.duration leaks bound turns
+    (firstTurnTiming setup turns deps) client
   let member := fun past view =>
-    if serviceTurn setup mode timeouts.duration leaks owner event past view = some 0 then
+    if serviceTurn setup deps timeouts.duration leaks owner event past view = some 0 then
       decidedOpportunity setup leaks bound owner event action past view
     else players owner past view
   let canonical := (canonicalServiceDecision timeouts) leaks owner (execution.logs owner)
@@ -638,7 +639,7 @@ private theorem firstTurn_fixed_accepted_runUntil_bind_runPlan
     dsimp only [entry, message]
     rw [respondEntry_of_transmission execution owner canonical material sends]
     exact canonical_freshCall trace bound owner event turn fits action material sends
-  have signed := signedCommitments_history timeouts leaks (serviceInitialLaw setup mode)
+  have signed := signedCommitments_history timeouts leaks (serviceInitialLaw setup deps)
     (fun state supported => by
       obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ supported
       exact ⟨_, rfl⟩) horizon scheduler trace
@@ -671,7 +672,7 @@ private theorem firstTurn_fixed_accepted_runUntil_bind_runPlan
     rw [stateEq]
     exact witness
   obtain ⟨afterTrace⟩ := app.raw_trace_respond
-    (serviceInitialLaw setup mode) horizon scheduler remaining
+    (serviceInitialLaw setup deps) horizon scheduler remaining
     execution owner canonical trace
   have noRepeat : ∀ past view response,
       response ∈ ((Function.update background owner member) owner past view).support →
@@ -679,7 +680,7 @@ private theorem firstTurn_fixed_accepted_runUntil_bind_runPlan
       (submittedEvent? timeouts) leaks response ≠ some event := by
     intro past view response supported recorded
     rw [Function.update_self] at supported
-    exact fixedAction_noRepeatedEvent setup mode timeouts.duration leaks bound turns client
+    exact fixedAction_noRepeatedEvent setup deps timeouts.duration leaks bound turns client
       owner event action past view response supported recorded
   have accepted := FreshCall.accepted_continuation timeouts leaks continuation drained scheduler
     (Function.update background owner member) bound contract.inclusion contract.completes
@@ -687,7 +688,7 @@ private theorem firstTurn_fixed_accepted_runUntil_bind_runPlan
       owned after afterTrace (configEq.symm ▸ ready) action output entry message recorded call sole
         witnessAfter noRepeat
   have accounted : execution.environmentRecall.length + remaining = horizon :=
-    app.raw_trace_horizon (serviceInitialLaw setup mode) horizon scheduler trace
+    app.raw_trace_horizon (serviceInitialLaw setup deps) horizon scheduler trace
   have countEq : horizon - after.environmentRecall.length = remaining := by
     rw [ReactiveApplication.respond_environmentRecall]
     omega
@@ -702,40 +703,40 @@ end Acceptance
 section Compilation
 open SourceProgram EventGraphRuntime GameTheory.Math.Probability Interaction
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
-  {setup : Setup (Player := Player) (L := L)} {mode : EventGraph.ExecutionMode}
+  {setup : Setup (Player := Player) (L := L)} {deps : setup.dataflowGraph.Dependencies}
 
 private theorem firstTurn_fixed_transmitting_runUntil_bind_runPlan
-    (timeouts : EventTimeouts (serviceGraph setup mode))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
+    (timeouts : EventTimeouts (serviceGraph setup deps))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup deps)))
     {horizon turns : Nat} (scheduler : ((reactiveApplication timeouts) leaks).Scheduler)
-    (delay bound : (serviceGraph setup mode).EventId → Nat)
-    (client : (serviceGraph setup mode).BehavioralProfile) {Result : Type*} (continuation :
-      (serviceGraph setup mode).Config → PMF Result)
-    (drained : ∀ state : EventGraphRuntime.State (serviceGraph setup mode),
+    (delay bound : (serviceGraph setup deps).EventId → Nat)
+    (client : (serviceGraph setup deps).BehavioralProfile) {Result : Type*} (continuation :
+      (serviceGraph setup deps).Config → PMF Result)
+    (drained : ∀ state : EventGraphRuntime.State (serviceGraph setup deps),
       continuation state.drain.config = continuation state.config)
     (contract : AsyncContract timeouts leaks
-      (serviceInitialLaw setup mode) horizon scheduler delay bound)
+      (serviceInitialLaw setup deps) horizon scheduler delay bound)
     (timely : AsyncTimely timeouts delay bound)
-    (owner : Player) (event : (serviceGraph setup mode).EventId)
-    (owned : (serviceGraph setup mode).actor? event = some owner) (solitary :
-      (serviceGraph setup mode).Solitary event)
+    (owner : Player) (event : (serviceGraph setup deps).EventId)
+    (owned : (serviceGraph setup deps).actor? event = some owner) (solitary :
+      (serviceGraph setup deps).Solitary event)
     (background : Player → ((reactiveApplication timeouts) leaks).Policy)
-    (follows : background owner = serviceReferenceTurnPolicy setup mode timeouts.duration leaks
-      bound turns (firstTurnTiming setup turns mode) client owner)
-    (action : (serviceGraph setup mode).Action event)
+    (follows : background owner = serviceReferenceTurnPolicy setup deps timeouts.duration leaks
+      bound turns (firstTurnTiming setup turns deps) client owner)
+    (action : (serviceGraph setup deps).Action event)
     (execution : ((reactiveApplication timeouts) leaks).Execution)
     (ready : execution.application.config.cut.Ready event)
     (supported : execution ∈ (((reactiveApplication timeouts) leaks).roundsFrom
-      (serviceInitialLaw setup mode) scheduler background
+      (serviceInitialLaw setup deps) scheduler background
         execution.environmentRecall.length).support)
     (untouched : Untouched setup leaks event execution)
     (bounded : execution.environmentRecall.length ≤ horizon)
     (effective : EffectiveAction execution.application.config event action)
     (loud : ¬ SilentAction event action) :
-    let players := serviceReferenceTurnPolicy setup mode timeouts.duration leaks bound turns
-      (firstTurnTiming setup turns mode) client
+    let players := serviceReferenceTurnPolicy setup deps timeouts.duration leaks bound turns
+      (firstTurnTiming setup turns deps) client
     let member := fun past view =>
-      if serviceTurn setup mode timeouts.duration leaks owner event past view = some 0 then
+      if serviceTurn setup deps timeouts.duration leaks owner event past view = some 0 then
         decidedOpportunity setup leaks bound owner event action past view
       else players owner past view
     ((((reactiveApplication timeouts) leaks).runUntilHorizon scheduler
@@ -747,19 +748,19 @@ private theorem firstTurn_fixed_transmitting_runUntil_bind_runPlan
         fun after => continuation after := by
   classical
   let app := (reactiveApplication timeouts) leaks
-  let players := serviceReferenceTurnPolicy setup mode timeouts.duration leaks bound turns
-    (firstTurnTiming setup turns mode) client
+  let players := serviceReferenceTurnPolicy setup deps timeouts.duration leaks bound turns
+    (firstTurnTiming setup turns deps) client
   let member := fun past view =>
-    if serviceTurn setup mode timeouts.duration leaks owner event past view = some 0 then
+    if serviceTurn setup deps timeouts.duration leaks owner event past view = some 0 then
       decidedOpportunity setup leaks bound owner event action past view
     else players owner past view
   have atTurn : SubmitsAtTurn setup leaks (background owner) owner := by
     rw [follows]
     exact sourceServiceTurnPolicy_submitsAtTurn_reference setup leaks bound turns
-      (firstTurnTiming setup turns mode)
+      (firstTurnTiming setup turns deps)
       client owner
   have truthful : OwnSubmissionsAtTurn setup leaks execution owner :=
-    atTurn.roundsFrom setup leaks (serviceInitialLaw setup mode)
+    atTurn.roundsFrom setup leaks (serviceInitialLaw setup deps)
       execution.environmentRecall.length execution
       supported
   have never : ∀ entry ∈ execution.logs owner,
@@ -767,7 +768,7 @@ private theorem firstTurn_fixed_transmitting_runUntil_bind_runPlan
     intro entry remembered turn
     exact untouched owner entry remembered
       (entry.beforeView.application.publicView.ownTurn?_spec owner event turn).1
-  obtain ⟨trace⟩ := app.raw_trace_roundsFrom (serviceInitialLaw setup mode) horizon scheduler
+  obtain ⟨trace⟩ := app.raw_trace_roundsFrom (serviceInitialLaw setup deps) horizon scheduler
     background
     execution.environmentRecall.length bounded execution supported
   apply first_callback_runUntil timeouts leaks scheduler (Function.update background owner member)
@@ -777,7 +778,7 @@ private theorem firstTurn_fixed_transmitting_runUntil_bind_runPlan
       (roundsFrom_activationsAnswered _ execution supported) effective
   intro remaining current currentTrace ready first fits truthful never effective response selected
   rw [Function.update_self] at selected
-  have turn := serviceOwnTurn?_of_ready setup current.application ready owned
+  have turn := current.application.ownTurn?_of_ready solitary.ownerSolitary ready owned
   obtain ⟨material, sends⟩ := canonicalServiceDecision_transmits_of_effective timeouts _
     currentTrace
     owner event turn action effective loud
@@ -790,36 +791,36 @@ private theorem firstTurn_fixed_transmitting_runUntil_bind_runPlan
 /-- Fixing one owner's first source choice preserves its full canonical
 continuation against arbitrary other players, including automatic completion. -/
 theorem serviceReference_fixedAction_continuation
-    (timeouts : EventTimeouts (serviceGraph setup mode))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
+    (timeouts : EventTimeouts (serviceGraph setup deps))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup deps)))
     {horizon turns : Nat} (scheduler : ((reactiveApplication timeouts) leaks).Scheduler)
-    (delay bound : (serviceGraph setup mode).EventId → Nat)
-    (client : (serviceGraph setup mode).BehavioralProfile) {Result : Type*} (continuation :
-      (serviceGraph setup mode).Config → PMF Result)
-    (drained : ∀ state : EventGraphRuntime.State (serviceGraph setup mode),
+    (delay bound : (serviceGraph setup deps).EventId → Nat)
+    (client : (serviceGraph setup deps).BehavioralProfile) {Result : Type*} (continuation :
+      (serviceGraph setup deps).Config → PMF Result)
+    (drained : ∀ state : EventGraphRuntime.State (serviceGraph setup deps),
       continuation state.drain.config = continuation state.config)
     (contract : AsyncContract timeouts leaks
-      (serviceInitialLaw setup mode) horizon scheduler delay bound)
+      (serviceInitialLaw setup deps) horizon scheduler delay bound)
     (timely : AsyncTimely timeouts delay bound)
-    (owner : Player) (event : (serviceGraph setup mode).EventId)
-    (owned : (serviceGraph setup mode).actor? event = some owner) (solitary :
-      (serviceGraph setup mode).Solitary event)
+    (owner : Player) (event : (serviceGraph setup deps).EventId)
+    (owned : (serviceGraph setup deps).actor? event = some owner) (solitary :
+      (serviceGraph setup deps).Solitary event)
     (background : Player → ((reactiveApplication timeouts) leaks).Policy)
-    (follows : background owner = serviceReferenceTurnPolicy setup mode timeouts.duration leaks
-      bound turns (firstTurnTiming setup turns mode) client owner)
-    (action : (serviceGraph setup mode).Action event)
+    (follows : background owner = serviceReferenceTurnPolicy setup deps timeouts.duration leaks
+      bound turns (firstTurnTiming setup turns deps) client owner)
+    (action : (serviceGraph setup deps).Action event)
     (execution : ((reactiveApplication timeouts) leaks).Execution)
     (ready : execution.application.config.cut.Ready event)
     (supported : execution ∈ (((reactiveApplication timeouts) leaks).roundsFrom
-      (serviceInitialLaw setup mode) scheduler background
+      (serviceInitialLaw setup deps) scheduler background
         execution.environmentRecall.length).support)
     (untouched : Untouched setup leaks event execution)
     (bounded : execution.environmentRecall.length ≤ horizon)
     (effective : EffectiveAction execution.application.config event action) :
-    let players := serviceReferenceTurnPolicy setup mode timeouts.duration leaks bound turns
-      (firstTurnTiming setup turns mode) client
+    let players := serviceReferenceTurnPolicy setup deps timeouts.duration leaks bound turns
+      (firstTurnTiming setup turns deps) client
     let member := fun past view =>
-      if serviceTurn setup mode timeouts.duration leaks owner event past view = some 0 then
+      if serviceTurn setup deps timeouts.duration leaks owner event past view = some 0 then
         decidedOpportunity setup leaks bound owner event action past view
       else players owner past view
     ((((reactiveApplication timeouts) leaks).runUntilHorizon scheduler
@@ -841,133 +842,148 @@ theorem serviceReference_fixedAction_continuation
 
 /-- An honest owner's first callback draws its fixed source action before
 stopped native play, with arbitrary other player policies. -/
-theorem sourceService_firstTurn_mixture (timeouts : EventTimeouts (graph setup))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+theorem sourceService_firstTurn_mixture (timeouts : EventTimeouts setup.informationGraph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
     {horizon turns : Nat} (scheduler : (application setup timeouts leaks).Scheduler)
-    (bound : (graph setup).EventId → Nat) (profile : BehavioralProfile setup.program)
-    (owner : Player) (event : (graph setup).EventId)
-    (owned : (graph setup).actor? event = some owner)
+    (bound : setup.informationGraph.EventId → Nat) (profile : BehavioralProfile setup.program)
+    (owner : Player) (event : setup.informationGraph.EventId)
+    (owned : setup.informationGraph.actor? event = some owner)
     (background : Player → (application setup timeouts leaks).Policy)
-    (follows : background owner = serviceTurnPolicy setup .sequential timeouts.duration leaks
+    (follows : background owner = serviceTurnPolicy setup setup.informationDependencies
+      timeouts.duration leaks
       bound turns (firstTurnTiming setup turns) profile owner)
     (execution : (application setup timeouts leaks).Execution)
     (boundary : CompletionBoundary setup leaks scheduler
       background event.val execution)
     (bounded : execution.environmentRecall.length ≤ horizon)
-    (law : PMF ((graph setup).Action event))
+    (law : PMF (setup.informationGraph.Action event))
     (callback : ∀ current : (application setup timeouts leaks).Execution,
       current.application.config = execution.application.config →
       sourceServiceCanonicalPolicy setup timeouts leaks profile owner (current.logs owner)
           (current.observe (application setup timeouts leaks) owner) =
         law.map (fun action => (canonicalServiceDecision timeouts) leaks owner (current.logs owner)
           (current.observe (application setup timeouts leaks) owner) event action)) :
-    let players := serviceTurnPolicy setup .sequential timeouts.duration leaks bound turns
+    let players := serviceTurnPolicy setup setup.informationDependencies timeouts.duration leaks
+      bound turns
       (firstTurnTiming setup turns) profile
     ((application setup timeouts leaks).runUntilHorizon scheduler background
       (fun final => event ∈ final.application.config.cut.completed) horizon execution) =
       law.bind (fun action => (application setup timeouts leaks).runUntilHorizon scheduler
         (Function.update background owner (fun past view =>
-          if serviceTurn setup .sequential timeouts.duration leaks owner event past view = some 0
+          if serviceTurn setup setup.informationDependencies timeouts.duration leaks owner event
+            past view = some 0
           then decidedOpportunity setup leaks bound owner event action past view
           else players owner past view))
         (fun final => event ∈ final.application.config.cut.completed) horizon execution) :=
   serviceReference_firstTurn_mixture timeouts leaks scheduler bound
     (compileEventProfile setup.program profile) owner event owned
-    (setup.eventGraph.sequentialize_solitary event) background follows execution
+    (setup.informationGraph.sequentialize_solitary event) background follows execution
     (boundary.ordered.ready event.isLt) boundary.supported (boundary.untouched event le_rfl) bounded
     law callback
 
 /-- Fixing one owner's first source choice preserves its full canonical
 continuation against arbitrary other players, including automatic completion. -/
 theorem sourceService_fixedAction_continuation
-    (timeouts : EventTimeouts (graph setup))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (timeouts : EventTimeouts setup.informationGraph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
     {horizon turns : Nat} (scheduler : (application setup timeouts leaks).Scheduler)
-    (delay bound : (graph setup).EventId → Nat)
-    (source : BehavioralProfile setup.program) (reference : (graph setup).BehavioralProfile)
+    (delay bound : setup.informationGraph.EventId → Nat)
+    (source : BehavioralProfile setup.program) (reference :
+      setup.informationGraph.BehavioralProfile)
     (contract : AsyncContract timeouts leaks (initialLaw setup) horizon scheduler delay bound)
     (timely : AsyncTimely timeouts delay bound)
-    (owner : Player) (event : (graph setup).EventId)
-    (owned : (graph setup).actor? event = some owner)
+    (owner : Player) (event : setup.informationGraph.EventId)
+    (owned : setup.informationGraph.actor? event = some owner)
     (background : Player → (application setup timeouts leaks).Policy)
-    (follows : background owner = serviceTurnPolicy setup .sequential timeouts.duration leaks
+    (follows : background owner = serviceTurnPolicy setup setup.informationDependencies
+      timeouts.duration leaks
       bound turns (firstTurnTiming setup turns) source owner)
-    (action : (graph setup).Action event)
+    (action : setup.informationGraph.Action event)
     (execution : (application setup timeouts leaks).Execution)
     (boundary : CompletionBoundary setup leaks scheduler
       background event.val execution)
     (bounded : execution.environmentRecall.length ≤ horizon)
     (effective : EffectiveAction execution.application.config event action) :
-    let players := serviceTurnPolicy setup .sequential timeouts.duration leaks bound turns
+    let players := serviceTurnPolicy setup setup.informationDependencies timeouts.duration leaks
+      bound turns
       (firstTurnTiming setup turns) source
     let member := fun past view =>
-      if serviceTurn setup .sequential timeouts.duration leaks owner event past view = some 0 then
+      if serviceTurn setup setup.informationDependencies timeouts.duration leaks owner event past
+        view = some 0 then
         decidedOpportunity setup leaks bound owner event action past view
       else players owner past view
     (((application setup timeouts leaks).runUntilHorizon scheduler
         (Function.update background owner member)
         (fun final => event ∈ final.application.config.cut.completed) horizon execution).bind
       fun stopped =>
-        (graph setup).runPlan ((graph setup).policyPlan reference (graph setup).canonicalScheduler)
+        setup.informationGraph.runPlan (setup.informationGraph.policyPlan reference
+          setup.informationGraph.canonicalScheduler)
           stopped.application.config.remaining stopped.application.config) =
       (execution.application.config.step event (boundary.ordered.ready event.isLt) action).bind
-        fun after => (graph setup).runPlan
-          ((graph setup).policyPlan reference (graph setup).canonicalScheduler) after.remaining
+        fun after => setup.informationGraph.runPlan
+          (setup.informationGraph.policyPlan reference setup.informationGraph.canonicalScheduler)
+            after.remaining
             after :=
   serviceReference_fixedAction_continuation timeouts leaks scheduler delay bound
     (compileEventProfile setup.program source)
-    (fun config => (graph setup).runPlan
-      ((graph setup).policyPlan reference (graph setup).canonicalScheduler) config.remaining config)
-    (fun state => (EventGraphRuntime.State.drain_runPlan_canonical setup.eventGraph reference
-      state).symm) contract timely owner event owned (setup.eventGraph.sequentialize_solitary event)
+    (fun config => setup.informationGraph.runPlan
+      (setup.informationGraph.policyPlan reference setup.informationGraph.canonicalScheduler)
+        config.remaining config)
+    (fun state => (EventGraphRuntime.State.drain_runPlan_canonical setup.informationGraph reference
+      state).symm) contract timely owner event owned (setup.informationGraph.sequentialize_solitary
+        event)
     background follows action execution (boundary.ordered.ready event.isLt) boundary.supported
     (boundary.untouched event le_rfl) bounded effective
 
 variable [Finite Player]
 
 private theorem firstTurn_completion_law
-    (timeouts : EventTimeouts (graph setup))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (timeouts : EventTimeouts setup.informationGraph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
     {horizon turns : Nat} (scheduler : (application setup timeouts leaks).Scheduler)
-    (delay bound : (graph setup).EventId → Nat)
+    (delay bound : setup.informationGraph.EventId → Nat)
     (source : BehavioralProfile setup.program)
     (contract : AsyncContract timeouts leaks (initialLaw setup) horizon scheduler delay bound)
     (timely : AsyncTimely timeouts delay bound)
     (authentic : ∀ who, (source who).AuthenticDisclosures setup.program)
-    (event : (graph setup).EventId)
+    (event : setup.informationGraph.EventId)
     (execution : (application setup timeouts leaks).Execution)
     (boundary : CompletionBoundary setup leaks scheduler
-      (serviceTurnPolicy setup .sequential timeouts.duration leaks bound turns
+      (serviceTurnPolicy setup setup.informationDependencies timeouts.duration leaks bound turns
         (firstTurnTiming setup turns) source) event.val execution)
     (bounded : execution.environmentRecall.length ≤ horizon) :
-    let players := serviceTurnPolicy setup .sequential timeouts.duration leaks bound turns
+    let players := serviceTurnPolicy setup setup.informationDependencies timeouts.duration leaks
+      bound turns
       (firstTurnTiming setup turns) source
-    let plan := (graph setup).policyPlan (compileEventProfile setup.program source)
-      (graph setup).canonicalScheduler
-    let read := fun config : (graph setup).Config => decodeConfig? setup.program setup.program
+    let plan := setup.informationGraph.policyPlan (compileEventProfile setup.program source)
+      setup.informationGraph.canonicalScheduler
+    let read := fun config : setup.informationGraph.Config => decodeConfig? setup.program
+      setup.program
       (ContextRefs.initial setup.context (outputLayout setup.program))
       (Revelations.initial setup.context) [] (outputEmbedding setup.program) config.store
       config.history
     ((application setup timeouts leaks).runUntilHorizon scheduler players
       (fun final => event ∈ final.application.config.cut.completed) horizon execution).bind
-        (fun final => ((graph setup).runPlan plan final.application.config.remaining
+        (fun final => (setup.informationGraph.runPlan plan final.application.config.remaining
           final.application.config).map read) =
-      ((graph setup).runPlan plan execution.application.config.remaining
+      (setup.informationGraph.runPlan plan execution.application.config.remaining
         execution.application.config).map read := by
   classical
   let app := application setup timeouts leaks
-  let players := serviceTurnPolicy setup .sequential timeouts.duration leaks bound turns
+  let players := serviceTurnPolicy setup setup.informationDependencies timeouts.duration leaks
+    bound turns
     (firstTurnTiming setup turns) source
   let reference := compileEventProfile setup.program source
-  let plan := (graph setup).policyPlan reference (graph setup).canonicalScheduler
-  let read := fun config : (graph setup).Config => decodeConfig? setup.program setup.program
+  let plan := setup.informationGraph.policyPlan reference setup.informationGraph.canonicalScheduler
+  let read := fun config : setup.informationGraph.Config => decodeConfig? setup.program
+    setup.program
     (ContextRefs.initial setup.context (outputLayout setup.program))
     (Revelations.initial setup.context) [] (outputEmbedding setup.program) config.store
       config.history
-  let continuation := fun config : (graph setup).Config =>
-    (graph setup).runPlan plan config.remaining config
+  let continuation := fun config : setup.informationGraph.Config =>
+    setup.informationGraph.runPlan plan config.remaining config
   have ready := boundary.ordered.ready event.isLt
-  cases owned : (graph setup).actor? event with
+  cases owned : setup.informationGraph.actor? event with
   | none =>
       have chance := chance_runUntil_bind_runPlan timeouts leaks reference scheduler players event
         owned (horizon - execution.environmentRecall.length) execution ready
@@ -1002,7 +1018,8 @@ private theorem firstTurn_completion_law
       apply (bind_congr_on_support _ fun action member => ?_).trans headContinuation.symm
       have fixed :
           let member := fun past view =>
-            if serviceTurn setup .sequential timeouts.duration leaks owner event past view = some 0
+            if serviceTurn setup setup.informationDependencies timeouts.duration leaks owner event
+              past view = some 0
             then decidedOpportunity setup leaks bound owner event action past view
             else players owner past view
           (app.runUntilHorizon scheduler (Function.update players owner member)
@@ -1018,15 +1035,16 @@ private theorem firstTurn_completion_law
 /-- First-turn source clients preserve the full source configuration under the
 asynchronous service contract and its reaction/inclusion timing budget. -/
 theorem firstTurnSourceLaw_of_async
-    (timeouts : EventTimeouts (graph setup))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (timeouts : EventTimeouts setup.informationGraph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
     {horizon turns : Nat} (scheduler : (application setup timeouts leaks).Scheduler)
-    (delay bound : (graph setup).EventId → Nat)
+    (delay bound : setup.informationGraph.EventId → Nat)
     (source : BehavioralProfile setup.program)
     (contract : AsyncContract timeouts leaks (initialLaw setup) horizon scheduler delay bound)
     (timely : AsyncTimely timeouts delay bound)
     (authentic : ∀ who, (source who).AuthenticDisclosures setup.program) :
-    FirstTurnSourceLaw setup .sequential timeouts.duration leaks horizon scheduler bound turns
+    FirstTurnSourceLaw setup setup.informationDependencies timeouts.duration leaks horizon
+      scheduler bound turns
       source := by
   apply firstTurnSourceLaw_of_completion_law setup timeouts leaks turns source contract.completes
   dsimp only
@@ -1038,17 +1056,17 @@ theorem firstTurnSourceLaw_of_async
 /-- Actual first-turn clients preserve every observation of the original source's
 full typed state and public default history. -/
 theorem sourceServiceClientPolicy_outcome_law
-    (timeouts : EventTimeouts (graph setup))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (timeouts : EventTimeouts setup.informationGraph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
     {horizon turns : Nat} (scheduler : (application setup timeouts leaks).Scheduler)
-    (delay bound : (graph setup).EventId → Nat)
+    (delay bound : setup.informationGraph.EventId → Nat)
     (original : BehavioralProfile setup.program)
     (contract : AsyncContract timeouts leaks (initialLaw setup) horizon scheduler delay bound)
     (timely : AsyncTimely timeouts delay bound)
     {Outcome : Type*}
     (read : State L setup.program.terminalCtx × DefaultHistory Player → Outcome) :
     ((application setup timeouts leaks).roundsFrom (initialLaw setup) scheduler
-      (serviceClientPolicy setup .sequential timeouts.duration leaks bound turns
+      (serviceClientPolicy setup setup.informationDependencies timeouts.duration leaks bound turns
         (firstTurnTiming setup turns) (normalizeDisclosureProfile setup.program original))
       horizon).map (fun execution =>
         (sourceReadout setup timeouts leaks
@@ -1063,23 +1081,23 @@ theorem sourceServiceClientPolicy_outcome_law
 /-- Actual clients and canonical compiled graph execution preserve the same
 typed-state and public-default observations for every source profile. -/
 theorem sourceServiceClientPolicy_graph_law
-    (timeouts : EventTimeouts (graph setup))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (timeouts : EventTimeouts setup.informationGraph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
     {horizon turns : Nat} (scheduler : (application setup timeouts leaks).Scheduler)
-    (delay bound : (graph setup).EventId → Nat)
+    (delay bound : setup.informationGraph.EventId → Nat)
     (original : BehavioralProfile setup.program)
     (contract : AsyncContract timeouts leaks (initialLaw setup) horizon scheduler delay bound)
     (timely : AsyncTimely timeouts delay bound)
     {Outcome : Type*}
     (read : State L setup.program.terminalCtx × DefaultHistory Player → Outcome) :
     ((application setup timeouts leaks).roundsFrom (initialLaw setup) scheduler
-      (serviceClientPolicy setup .sequential timeouts.duration leaks bound turns
+      (serviceClientPolicy setup setup.informationDependencies timeouts.duration leaks bound turns
         (firstTurnTiming setup turns) (normalizeDisclosureProfile setup.program original))
       horizon).map (fun execution =>
         (sourceReadout setup timeouts leaks
           ((application setup timeouts leaks).finished execution)).map
           (fun final => read (final.state, final.defaults))) =
-      ((setup.eventGraph.canonicalGame
+      ((setup.informationGraph.canonicalGame
           (setup.initialLaw.map setup.eventInputs)).play
         (compileEventProfile setup.program original)).map (fun terminal =>
           let final := terminalConfig setup.program terminal

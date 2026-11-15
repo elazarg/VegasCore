@@ -26,12 +26,12 @@ open SourceProgram EventGraphRuntime GameTheory.Math.Probability
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
 variable [Fintype Player]
-  {timeouts : EventTimeouts (graph setup)}
+  {timeouts : EventTimeouts setup.informationGraph}
   {leaks : Interaction.MessageNetwork.ObservationRule Player
-    (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)} {horizon : Nat}
+    (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
-  {bound : (graph setup).EventId → Nat}
+  {bound : setup.informationGraph.EventId → Nat}
 
 local notation "menu" => bounds.onePacketMenu timeouts leaks
 local notation "protocol" => Interaction.ReactiveApplication.ResponseMenu.protocol menu
@@ -40,7 +40,7 @@ local notation "model" => Interaction.ReactiveApplication.ResponseMenu.informati
   (initialLaw setup) horizon scheduler
 local notation "Clear" => Interaction.ReactiveApplication.stateInvariant
   (app := application setup timeouts leaks)
-    (fun state : EventGraphRuntime.State (graph setup) =>
+    (fun state : EventGraphRuntime.State setup.informationGraph =>
       EventGraph.Config.defaulted (EventGraphRuntime.State.config state) = ∅)
 
 /-- Completing the ordinary graph from a supported counted acceptance stop and
@@ -58,9 +58,10 @@ theorem counted_accepted_stop_runFrom
     (certificate : (protocol).WellFoundedHistories)
     (players : ∀ player, (model).BehavioralPolicy player)
     {who : Player} {entry : (application setup timeouts leaks).PlayerEntry}
-    {message : Interaction.Message Player (WitnessedPacket (graph setup))}
-    {event : (graph setup).EventId} {sent : (graph setup).Config}
-    {action : (graph setup).Action event} {output : ((graph setup).outputLayout event).Value}
+    {message : Interaction.Message Player (WitnessedPacket setup.informationGraph)}
+    {event : setup.informationGraph.EventId} {sent : setup.informationGraph.Config}
+    {action : setup.informationGraph.Action event} {output : (setup.informationGraph.outputLayout
+      event).Value}
     (ready : sent.cut.Ready event)
     (start : (protocol).History) {control : (application setup timeouts leaks).Control}
     (current : start.state = some control)
@@ -68,20 +69,20 @@ theorem counted_accepted_stop_runFrom
     (invariant : AcceptanceInvariant setup timeouts leaks bounds horizon scheduler who entry
       message event sent action output (some control))
     (atSent : control.execution.application.config = sent)
-    (owned : (graph setup).actor? event = some who)
+    (owned : setup.informationGraph.actor? event = some who)
     (fresh : FreshCall setup leaks who event bound entry message)
     {Γ : SourceCtx Player L} {names : Finset VarId}
     (program : SourceProgram Player L Γ names) (profile : BehavioralProfile program)
-    (refs : ContextRefs (graph setup).layout Γ) (source : SourceProgram.Config Player L Γ)
+    (refs : ContextRefs setup.informationGraph.layout Γ) (source : SourceProgram.Config Player L Γ)
     (embedding : OutputEmbedding (inputLayout setup.context) (outputLayout setup.program) program)
     (refsBefore : ContextRefsBefore refs embedding) (offset : Nat)
     (aligned : CompiledPolicySuffix setup.program wholeProfile program profile refs
       source.revelations source.registry embedding refsBefore offset)
     (checkpoint : SourceCheckpoint setup source refs offset
       (sent.complete event ready action output)) :
-    let plan := (graph setup).policyPlan (compileEventProfile setup.program wholeProfile)
-      (graph setup).canonicalScheduler
-    let read := fun final : (graph setup).Config =>
+    let plan := setup.informationGraph.policyPlan (compileEventProfile setup.program wholeProfile)
+      setup.informationGraph.canonicalScheduler
+    let read := fun final : setup.informationGraph.Config =>
       decodeConfig? setup.program program refs source.revelations source.registry embedding
         final.store final.history
     (((model).runBehavioralUntil certificate players
@@ -90,7 +91,8 @@ theorem counted_accepted_stop_runFrom
       start).bind fun history =>
         match history.state with
         | none => PMF.pure none
-        | some final => ((graph setup).runPlan plan final.execution.application.config.remaining
+        | some final => (setup.informationGraph.runPlan plan
+          final.execution.application.config.remaining
             final.execution.application.config).map read) =
       (SourceProgram.runFrom program profile source).map some := by
   dsimp only

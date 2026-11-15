@@ -27,9 +27,9 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 namespace DirectedBindingFrame
@@ -42,7 +42,7 @@ private theorem opening_countPermits
     (frame : DirectedBindingFrame (timeouts := timeouts) memory owner original repaired)
     (originalCount : (CountRecall timeouts) leaks original)
     (repairedCount : (CountRecall timeouts) leaks repaired)
-    (material : WitnessedSubmission (graph setup))
+    (material : WitnessedSubmission setup.informationGraph)
     (after : BindingMemory.Frame timeouts leaks nextMemory owner
       (original.respond (application setup timeouts leaks) owner ⟨some material⟩)
       (repaired.respond (application setup timeouts leaks) owner ⟨some material⟩))
@@ -79,7 +79,8 @@ theorem normalized_opening_trace
       (some ⟨remaining, some owner, repaired⟩))
     (records : operationalRecord setup timeouts leaks bounds horizon scheduler prior =
       operationalRecord setup timeouts leaks bounds horizon scheduler imagePrior)
-    (event : (graph setup).EventId) (candidate : Handle (graph setup)) (raw : Raw L)
+    (event : setup.informationGraph.EventId) (candidate : Handle setup.informationGraph) (raw : Raw
+      L)
     (owned : candidate.1 = owner)
     (leftFixed : original.application.candidates.lookup candidate = .openable raw)
     (rightFixed : repaired.application.candidates.lookup candidate = .openable raw)

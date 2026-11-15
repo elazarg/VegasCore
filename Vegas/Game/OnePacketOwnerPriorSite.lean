@@ -29,7 +29,7 @@ open GameTheory GameTheory.Protocol Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
+  {timeouts : EventTimeouts setup.informationGraph}
 
 /-- **Private initial inputs are not failures** in a well-formed setup: a
 private input never fails, and an initial commitment holds a success. -/
@@ -37,9 +37,9 @@ theorem eventInputs_not_failure (wellFormed : setup.WellFormed) {who : Player}
     {draw : State L setup.context} (member : draw ∈ setup.initialLaw.support)
     {name : VarId} {kind : CellTy Player L} (source : HasVar setup.context name kind)
     (hidden : kind.hiddenOwner? = some who) :
-    ¬ ((graph setup).layout (.inl (inputId source))).IsFailure
+    ¬ (setup.informationGraph.layout (.inl (inputId source))).IsFailure
       (setup.eventInputs draw (inputId source)) := by
-  have layoutEq : (graph setup).layout (.inl (inputId source)) = cellField kind :=
+  have layoutEq : setup.informationGraph.layout (.inl (inputId source)) = cellField kind :=
     inputLayout_inputId source
   have value := encodeInputs_get draw source
   change cast _ (setup.eventInputs draw (inputId source)) = _ at value
@@ -61,12 +61,13 @@ theorem eventInputs_not_failure (wellFormed : setup.WellFormed) {who : Player}
   exact general _ layoutEq _ value
 
 variable [Fintype Player] {leaks : MessageNetwork.ObservationRule Player
-    (WitnessedPacket (graph setup))} {bounds : MessageBounds (graph setup)} {horizon : Nat}
+    (WitnessedPacket setup.informationGraph)} {bounds : MessageBounds setup.informationGraph}
+      {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 omit [Fintype Player] in
 /-- A private input of `who` is the input of a cell `who` hides. -/
-private theorem hidden_of_privateTo {who : Player} {input : (graph setup).InputId}
+private theorem hidden_of_privateTo {who : Player} {input : setup.informationGraph.InputId}
     (privateTo : PrivateTo who (setup := setup) (.inl input)) :
     ∃ (name : VarId) (kind : CellTy Player L) (source : HasVar setup.context name kind),
       inputId source = input ∧ kind.hiddenOwner? = some who := by
@@ -107,7 +108,8 @@ theorem siteDraw {who : Player}
     initialSlots_of_trace (timeouts := timeouts) history.1.trace control stateEq
   refine ⟨control, draw, stateEq, member, inputsEq, fun input privateTo => ?_⟩
   rw [← viewEq]
-  change (graph setup).playerStore who control.execution.application.config.store (.inl input) =
+  change setup.informationGraph.playerStore who control.execution.application.config.store (.inl
+    input) =
     _
   rw [EventGraph.playerStore_of_visible _ who _ _ privateTo.1]
   change some (control.execution.application.config.inputs input) = _
@@ -146,7 +148,8 @@ theorem ownerSwap_priorClosed (wellFormed : setup.WellFormed)
     rw [firstStore input privateTo, ← inputsEq₁, inputsEq]
   have ok : ∀ draw ∈ setup.initialLaw.support, ∀ input,
       PrivateTo who (setup := setup) (.inl input) →
-        ¬ ((graph setup).layout (.inl input)).IsFailure (setup.eventInputs draw input) := by
+        ¬ (setup.informationGraph.layout (.inl input)).IsFailure (setup.eventInputs draw input) :=
+          by
     intro draw drawMember input privateTo
     obtain ⟨name, kind, source, rfl, hidden⟩ := hidden_of_privateTo privateTo
     exact eventInputs_not_failure wellFormed drawMember source hidden

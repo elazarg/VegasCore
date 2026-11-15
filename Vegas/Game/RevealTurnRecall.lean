@@ -22,28 +22,28 @@ namespace Vegas
 open SourceProgram GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
-  (setup : Setup (Player := Player) (L := L)) {mode : EventGraph.ExecutionMode}
-  {duration : (serviceGraph setup mode).EventId → Nat}
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
+  (setup : Setup (Player := Player) (L := L)) {deps : setup.dataflowGraph.Dependencies}
+  {duration : (serviceGraph setup deps).EventId → Nat}
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup deps)))
 
 /-- Every recorded response answers a recorded activation of its player at the
 environment's public view. -/
-def ResponsesActivated (execution : (serviceApplication setup mode duration leaks).Execution) :
+def ResponsesActivated (execution : (serviceApplication setup deps duration leaks).Execution) :
     Prop := ∀ who, ∀ answer ∈ execution.logs who, ∃ entry ∈ execution.environmentRecall,
     entry.command = .activate who ∧
       answer.beforeView.application.publicView = entry.beforeView.application
 
 /-- Every round keeps recorded responses answering recorded activations. -/
 theorem round_responsesActivated
-    {scheduler : (serviceApplication setup mode duration leaks).Scheduler}
-    {players : Player → (serviceApplication setup mode duration leaks).Policy}
-    {execution next : (serviceApplication setup mode duration leaks).Execution}
+    {scheduler : (serviceApplication setup deps duration leaks).Scheduler}
+    {players : Player → (serviceApplication setup deps duration leaks).Policy}
+    {execution next : (serviceApplication setup deps duration leaks).Execution}
     (valid : ResponsesActivated setup leaks execution)
     (reached : next ∈
-        ((serviceApplication setup mode duration leaks).round scheduler players
+        ((serviceApplication setup deps duration leaks).round scheduler players
         execution).support) :
     ResponsesActivated setup leaks next := by
-  let app := serviceApplication setup mode duration leaks
+  let app := serviceApplication setup deps duration leaks
   obtain ⟨command, selected, dispatched⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
   have recorded := app.dispatch_environmentRecall players command execution next dispatched
   obtain ⟨middle', moved', resumed⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ dispatched)
@@ -93,14 +93,14 @@ theorem round_responsesActivated
 variable {setup leaks} in
 /-- In completed rounds every recorded response answers a recorded activation. -/
 theorem roundsFrom_responsesActivated
-    {scheduler : (serviceApplication setup mode duration leaks).Scheduler}
-    {players : Player → (serviceApplication setup mode duration leaks).Policy} (count : Nat)
-    (execution : (serviceApplication setup mode duration leaks).Execution)
+    {scheduler : (serviceApplication setup deps duration leaks).Scheduler}
+    {players : Player → (serviceApplication setup deps duration leaks).Policy} (count : Nat)
+    (execution : (serviceApplication setup deps duration leaks).Execution)
     (supported : execution ∈
-        ((serviceApplication setup mode duration leaks).roundsFrom (serviceInitialLaw setup mode)
+        ((serviceApplication setup deps duration leaks).roundsFrom (serviceInitialLaw setup deps)
         scheduler players count).support) :
     ResponsesActivated setup leaks execution := by
-  let app := serviceApplication setup mode duration leaks
+  let app := serviceApplication setup deps duration leaks
   induction count generalizing execution with
   | zero =>
       obtain ⟨state, _, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
@@ -108,7 +108,7 @@ theorem roundsFrom_responsesActivated
       intro who answer member
       cases member
   | succ count ih =>
-      rw [app.roundsFrom_succ (serviceInitialLaw setup mode) scheduler players count] at supported
+      rw [app.roundsFrom_succ (serviceInitialLaw setup deps) scheduler players count] at supported
       obtain ⟨prior, priorMem, moved⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
       exact round_responsesActivated setup leaks (ih prior priorMem) moved
 
@@ -118,10 +118,10 @@ variable {setup leaks}
 at an event exactly when no recorded activation of it saw that event as its
 turn. -/
 theorem ownerTurns_eq_zero_iff
-    {execution : (serviceApplication setup mode duration leaks).Execution}
+    {execution : (serviceApplication setup deps duration leaks).Execution}
     (answered : ActivationsAnswered setup leaks execution)
     (activated : ResponsesActivated setup leaks execution) (owner : Player)
-    (event : (serviceGraph setup mode).EventId) :
+    (event : (serviceGraph setup deps).EventId) :
     ownerTurns owner event execution = 0 ↔
       ∀ entry ∈ execution.environmentRecall, entry.command = .activate owner →
         entry.beforeView.application.ownTurn? owner ≠ some event := by
@@ -140,13 +140,13 @@ theorem ownerTurns_eq_zero_iff
 /-- Two executions with one environment recall agree on which owners have had
 a turn at which events. -/
 theorem ownerTurns_eq_zero_congr
-    {left right : (serviceApplication setup mode duration leaks).Execution}
+    {left right : (serviceApplication setup deps duration leaks).Execution}
     (leftAnswered : ActivationsAnswered setup leaks left)
     (leftActivated : ResponsesActivated setup leaks left)
     (rightAnswered : ActivationsAnswered setup leaks right)
     (rightActivated : ResponsesActivated setup leaks right)
     (recalls : left.environmentRecall = right.environmentRecall) (owner : Player)
-    (event : (serviceGraph setup mode).EventId) :
+    (event : (serviceGraph setup deps).EventId) :
     ownerTurns owner event left = 0 ↔ ownerTurns owner event right = 0 := by
   rw [ownerTurns_eq_zero_iff leftAnswered leftActivated,
     ownerTurns_eq_zero_iff rightAnswered rightActivated, recalls]

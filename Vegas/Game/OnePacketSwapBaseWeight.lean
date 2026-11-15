@@ -49,20 +49,21 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {allowed : Set (graph setup).Inputs}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {allowed : Set setup.informationGraph.Inputs}
 
 /-- A swap fixing the value at a handle keeps the binding result there. -/
-private theorem bindingResult_swap_of_raw (swap : HiddenSwap (graph setup))
-    (state : EventGraphRuntime.State (graph setup)) (handle : Handle (graph setup))
+private theorem bindingResult_swap_of_raw (swap : HiddenSwap setup.informationGraph)
+    (state : EventGraphRuntime.State setup.informationGraph) (handle : Handle
+      setup.informationGraph)
     (fixed : swap.raw handle = id) (payload : L.Ty) :
     (state.swap swap).bindingResult handle payload = state.bindingResult handle payload := by
   rw [State.swap_bindingResult, fixed, swapCandidate_id, id_eq, State.bindingResult_eq]
 
 /-- **The decoded source action ignores the swap** when the swap fixes the
 value at every handle the transmission commits. -/
-theorem sentSourceAction_swap (swap : HiddenSwap (graph setup))
+theorem sentSourceAction_swap (swap : HiddenSwap setup.informationGraph)
     (after : (application setup timeouts leaks).Execution) (action : (application setup timeouts
       leaks).Action)
     (fixed : ∀ material event handle, action.transmission = some material →
@@ -82,7 +83,7 @@ theorem sentSourceAction_swap (swap : HiddenSwap (graph setup))
         · rfl
     | opening | malformed => rfl
 
-variable [Fintype Player] {bounds : MessageBounds (graph setup)} {horizon : Nat}
+variable [Fintype Player] {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- A one-packet commitment names a handle of its sender. -/
@@ -91,8 +92,9 @@ theorem commitment_owner_of_onePacket {who : Player}
     {observed : (application setup timeouts leaks).PlayerView}
     {response : (application setup timeouts leaks).Action}
     (member : response ∈ bounds.onePacketActions timeouts leaks who past observed)
-    {material : WitnessedSubmission (graph setup)} (sent : response.transmission = some material)
-    {event : (graph setup).EventId} {handle : Handle (graph setup)}
+    {material : WitnessedSubmission setup.informationGraph} (sent : response.transmission = some
+      material)
+    {event : setup.informationGraph.EventId} {handle : Handle setup.informationGraph}
     (packet : material.call.packet = .commitment event handle) :
     handle.1 = who := by
   obtain ⟨_, onePacket⟩ := (bounds.mem_onePacketActions _ _ _ _ _ _).mp member
@@ -110,7 +112,7 @@ theorem commitment_owner_of_onePacket {who : Player}
 
 /-- **The swap keeps the content factor** of a one-packet response of a player
 it fixes. -/
-theorem contentFactor_swap (swap : HiddenSwap (graph setup))
+theorem contentFactor_swap (swap : HiddenSwap setup.informationGraph)
     (assessment : setup.intendedModel.BehavioralAssessment) {actor : Player}
     (fixes : swap.Fixes actor) (before after : (application setup timeouts leaks).Execution)
     {response : (application setup timeouts leaks).Action}
@@ -153,7 +155,7 @@ private theorem response_of_legal {control : (application setup timeouts leaks).
 
 /-- The content factor of a legal joint action at a protocol state, at a player
 the swap fixes, is unchanged by the swap. -/
-private theorem contentFactor_joint_swap (swap : HiddenSwap (graph setup))
+private theorem contentFactor_joint_swap (swap : HiddenSwap setup.informationGraph)
     (assessment : setup.intendedModel.BehavioralAssessment)
     {control : (application setup timeouts leaks).Control} (after : (application setup timeouts
       leaks).Execution)
@@ -185,7 +187,7 @@ private theorem target_some_of_realized {control : (application setup timeouts l
 
 /-- **The swap keeps the source factor** of a transition between protocol states
 when it fixes every player other than the observer. -/
-theorem transitionSourceFactor_swap (swap : HiddenSwap (graph setup))
+theorem transitionSourceFactor_swap (swap : HiddenSwap setup.informationGraph)
     (assessment : setup.intendedModel.BehavioralAssessment) (who : Player)
     (fixesOthers : ∀ other, other ≠ who → swap.Fixes other)
     {control next : (application setup timeouts leaks).Control}
@@ -212,7 +214,7 @@ theorem transitionSourceFactor_swap (swap : HiddenSwap (graph setup))
 
 /-- The source weight of the image of a history: the initial draw scales by the
 ratio `c`, and every later source factor is unchanged. -/
-private theorem othersSourceWeight_mapTrace_aux (swap : HiddenSwap (graph setup))
+private theorem othersSourceWeight_mapTrace_aux (swap : HiddenSwap setup.informationGraph)
     (initialClosed : ∀ state ∈ (initialLaw setup).support, state.config.inputs ∈ allowed →
       state.swap swap ∈ (initialLaw setup).support)
     (bounded : ∀ handle raw, raw ∈ bounds.values → swap.raw handle raw ∈ bounds.values)
@@ -263,7 +265,7 @@ private theorem othersSourceWeight_mapTrace_aux (swap : HiddenSwap (graph setup)
 other than the observer and scales the initial mass of every allowed draw by
 `c`, the image of every history ending at a protocol state has `c` times its
 source weight. -/
-theorem othersSourceWeight_mapTrace_scaled (swap : HiddenSwap (graph setup))
+theorem othersSourceWeight_mapTrace_scaled (swap : HiddenSwap setup.informationGraph)
     (initialClosed : ∀ state ∈ (initialLaw setup).support, state.config.inputs ∈ allowed →
       state.swap swap ∈ (initialLaw setup).support)
     (bounded : ∀ handle raw, raw ∈ bounds.values → swap.raw handle raw ∈ bounds.values)
@@ -287,7 +289,7 @@ theorem othersSourceWeight_mapTrace_scaled (swap : HiddenSwap (graph setup))
 
 /-- A player the swap fixes has the same information at the swapped state of a
 history. -/
-theorem observe_swap_of_fixes (swap : HiddenSwap (graph setup))
+theorem observe_swap_of_fixes (swap : HiddenSwap setup.informationGraph)
     (initialClosed : ∀ state ∈ (initialLaw setup).support, state.config.inputs ∈ allowed →
       state.swap swap ∈ (initialLaw setup).support)
     (bounded : ∀ handle raw, raw ∈ bounds.values → swap.raw handle raw ∈ bounds.values)
@@ -326,7 +328,7 @@ theorem observe_swap_of_fixes (swap : HiddenSwap (graph setup))
 
 /-- **The swap keeps regular steps** into guarded states, when forcedness for the
 observer is invariant under the swap at guarded states. -/
-theorem regularStep_swap_iff (swap : HiddenSwap (graph setup))
+theorem regularStep_swap_iff (swap : HiddenSwap setup.informationGraph)
     (initialClosed : ∀ state ∈ (initialLaw setup).support, state.config.inputs ∈ allowed →
       state.swap swap ∈ (initialLaw setup).support)
     (bounded : ∀ handle raw, raw ∈ bounds.values → swap.raw handle raw ∈ bounds.values)
@@ -381,7 +383,7 @@ theorem regularStep_swap_iff (swap : HiddenSwap (graph setup))
 /-- **The image of a history is regular exactly when the history is**, when the
 swap fixes every player other than the observer and forcedness for the observer
 is invariant under the swap at guarded states. -/
-theorem regularTrace_mapTrace_iff (swap : HiddenSwap (graph setup))
+theorem regularTrace_mapTrace_iff (swap : HiddenSwap setup.informationGraph)
     (initialClosed : ∀ state ∈ (initialLaw setup).support, state.config.inputs ∈ allowed →
       state.swap swap ∈ (initialLaw setup).support)
     (bounded : ∀ handle raw, raw ∈ bounds.values → swap.raw handle raw ∈ bounds.values)
@@ -420,7 +422,8 @@ theorem regularTrace_mapTrace_iff (swap : HiddenSwap (graph setup))
 omit [Fintype Player] in
 /-- A player the swap fixes sees the decoded points of a configuration and of
 its swap alike. -/
-theorem observe_decodedPoint_swap_of_fixes (swap : HiddenSwap (graph setup)) {player : Player}
+theorem observe_decodedPoint_swap_of_fixes (swap : HiddenSwap setup.informationGraph) {player :
+  Player}
     (fixes : swap.Fixes player) (execution : (application setup timeouts leaks).Execution)
     {point swapped : ProtocolState setup.program}
     (decoded : decodedPoint setup execution.application.config = some point)
@@ -441,7 +444,7 @@ theorem observe_decodedPoint_swap_of_fixes (swap : HiddenSwap (graph setup)) {pl
 /-- **The swap keeps forcedness for the observer** at every state of a history
 ending at a guarded state, when it fixes every other player and some other
 player exists to witness the observer's public reveals. -/
-theorem forcedState_swap_iff (swap : HiddenSwap (graph setup))
+theorem forcedState_swap_iff (swap : HiddenSwap setup.informationGraph)
     (initialClosed : ∀ state ∈ (initialLaw setup).support, state.config.inputs ∈ allowed →
       state.swap swap ∈ (initialLaw setup).support)
     (bounded : ∀ handle raw, raw ∈ bounds.values → swap.raw handle raw ∈ bounds.values)
@@ -499,7 +502,7 @@ theorem forcedState_swap_iff (swap : HiddenSwap (graph setup))
 
 /-- **The image of a history is regular exactly when the history is**, when the
 swap fixes every player other than the observer and some other player exists. -/
-theorem regularTrace_mapTrace_iff_of_fixes (swap : HiddenSwap (graph setup))
+theorem regularTrace_mapTrace_iff_of_fixes (swap : HiddenSwap setup.informationGraph)
     (initialClosed : ∀ state ∈ (initialLaw setup).support, state.config.inputs ∈ allowed →
       state.swap swap ∈ (initialLaw setup).support)
     (bounded : ∀ handle raw, raw ∈ bounds.values → swap.raw handle raw ∈ bounds.values)

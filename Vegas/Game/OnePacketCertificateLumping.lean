@@ -21,9 +21,9 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
-  (timeouts : EventTimeouts (graph setup))
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-  (bounds : MessageBounds (graph setup)) (horizon : Nat)
+  (timeouts : EventTimeouts setup.informationGraph)
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
+  (bounds : MessageBounds setup.informationGraph) (horizon : Nat)
   (scheduler : (application setup timeouts leaks).Scheduler)
   [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
   [Finite setup.intendedProtocol.History]
@@ -62,7 +62,7 @@ theorem certificate_strategyShape (sequence : ℕ → setup.intendedModel.Behavi
       scale_le_one weights targetSequence) (n : ℕ) (who : Player)
     (history : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).History)
     (remaining : Nat) (execution : (application setup timeouts leaks).Execution)
-    (event : (graph setup).EventId)
+    (event : setup.informationGraph.EventId)
     (current : history.state = some ⟨remaining, some who, execution⟩)
     (forcedState : ForcedState setup timeouts leaks who history.state)
     (ready : execution.application.config.cut.Ready event)
@@ -134,7 +134,7 @@ theorem certificate_strategyShape (sequence : ℕ → setup.intendedModel.Behavi
     observed ▸ forcedAgent_of_history (timeouts := timeouts) history forcedState
   let agent : (onePacketN).InformationAgent (onePacketN).playedInformation :=
     ⟨who, ⟨_, played⟩⟩
-  have readyOwned : (graph setup).actor? event = some who := by
+  have readyOwned : setup.informationGraph.actor? event = some who := by
     obtain ⟨entry, _member, recalled⟩ := activated
     exact (PublicView.ownTurn?_spec _ who event recalled).2
   have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon
@@ -160,7 +160,7 @@ theorem certificate_strategyShape (sequence : ℕ → setup.intendedModel.Behavi
         (onePacketLate setup timeouts leaks bounds horizon scheduler sequence scale scale_pos
           scale_le_one (slots := slots) n) agent)) agent
   obtain ⟨entry, member, activatedAt⟩ := activated
-  have owned : (graph setup).actor? event = some who :=
+  have owned : setup.informationGraph.actor? event = some who :=
     (PublicView.ownTurn?_spec _ who event activatedAt).2
   have turn : execution.application.publicView.ownTurn? who = some event :=
     ownTurn?_of_ready setup execution.application ready owned
@@ -236,7 +236,7 @@ theorem certificate_strategyShape (sequence : ℕ → setup.intendedModel.Behavi
 
 /-- **The owner's debt is clear at an event.** The event has completed, or it is
 ready and the owner owes no failure at the decoded point. -/
-def DebtClear (who : Player) (event : (graph setup).EventId) :
+def DebtClear (who : Player) (event : setup.informationGraph.EventId) :
     (application setup timeouts leaks).ProtocolState → Prop
   | none => True
   | some control => event ∈ control.execution.application.config.cut.completed ∨
@@ -245,8 +245,8 @@ def DebtClear (who : Player) (event : (graph setup).EventId) :
           ¬ ProtocolState.OwesFailure who setup.program point)
 
 /-- The event of the owner's turn at an information state, if any. -/
-def siteTurnEvent (who : Player) : (application setup timeouts leaks).Info → Option (graph
-  setup).EventId
+def siteTurnEvent (who : Player) : (application setup timeouts leaks).Info → Option
+  setup.informationGraph.EventId
   | none => none
   | some (_, view) => view.application.publicView.ownTurn? who
 
@@ -413,7 +413,7 @@ omit [Fintype Player] [(application setup timeouts leaks).FiniteNature (initialL
 keeps the owner's debt clear at an event: its native graph path either completes
 the ready event or retains the configuration and its decoded point. -/
 theorem debtClear_step (players : Player → (application setup timeouts leaks).Policy)
-    (who : Player) (event : (graph setup).EventId) {control : (application setup timeouts
+    (who : Player) (event : setup.informationGraph.EventId) {control : (application setup timeouts
       leaks).Control}
     (clear : DebtClear setup timeouts leaks who event (some control))
     {next : (application setup timeouts leaks).ProtocolState}
@@ -429,7 +429,7 @@ theorem debtClear_step (players : Player → (application setup timeouts leaks).
   · have ready := (clear.resolve_left fun done =>
       completed (EventGraph.Config.Step.path_completed_mono path done)).1
     have same := EventGraph.Config.Step.path_eq_of_ready_of_not_completed event
-      (fun other otherReady => setup.eventGraph.sequentialize_ready_unique _ otherReady ready)
+      (fun other otherReady => setup.informationGraph.sequentialize_ready_unique _ otherReady ready)
       completed path
     rw [same]
     exact clear
@@ -481,7 +481,7 @@ theorem siteComponentShape_of_installed_within
     (strategyShape : ∀ (history : (onePacketProtocol setup timeouts leaks bounds horizon
         scheduler).History) (remaining : Nat) (execution : (application setup timeouts
           leaks).Execution)
-        (event : (graph setup).EventId),
+        (event : setup.informationGraph.EventId),
       (PublicationTurn (timeouts := timeouts) key event ∨ ∃ payload, BindingTurn (timeouts :=
         timeouts) key event payload) →
       history.state = some ⟨remaining, some who, execution⟩ →

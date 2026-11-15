@@ -134,8 +134,8 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
 
 /-- Being intended for a player or owing a failed reveal is closed under every
 source step. -/
@@ -166,7 +166,7 @@ theorem decodedState_intendedFor_or_owes (wellFormed : setup.WellFormed) (who : 
   exact Or.inl (ProtocolState.intendedFor_entry setup.program _
     ((setup.initialConfig_intended wellFormed member).intendedFor who))
 
-variable [Fintype Player] {bounds : MessageBounds (graph setup)} {horizon : Nat}
+variable [Fintype Player] {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- **Disclosures resolve at states forced for the observer.** For a
@@ -201,7 +201,8 @@ theorem disclosureResolves_of_forced (wellFormed : setup.WellFormed)
     apply EventGraph.EventCode.resolveOutput?_isSome
     intro field member
     apply control.execution.application.config.read_available ready
-    rw [← EventGraph.EventCode.readFields_cast outputEq ((graph setup).nodes event), codeEq]
+    rw [← EventGraph.EventCode.readFields_cast outputEq (setup.informationGraph.nodes event),
+      codeEq]
     exact member
   have active := control.execution.application.active_of_ready_owned facts.quiescent ready owned
   obtain ⟨result, resolved⟩ := Option.isSome_iff_exists.mp available
@@ -220,7 +221,7 @@ theorem disclosureResolves_of_forced (wellFormed : setup.WellFormed)
         (control.execution.logs owner)
         (control.execution.observe (application setup timeouts leaks) owner) event owner payload
           binding checks outputEq codeEq node active value _ candidate accepted candidateOwner
-      change binding.get? ((graph setup).playerStore owner
+      change binding.get? (setup.informationGraph.playerStore owner
         control.execution.application.config.store) = _
       rw [EventGraph.FieldRef.get?_playerStore binding owner _ rfl, stored]
   | failure =>
@@ -267,7 +268,7 @@ theorem disclosureResolves_of_forced (wellFormed : setup.WellFormed)
       rw [pointEq] at reached
       have atEvent : control.execution.application.config.cut.IsPrefix event.val :=
         ⟨event.isLt.le, fun query =>
-          setup.eventGraph.sequentialize_mem_completed_iff_lt_of_ready _ ready⟩
+          setup.informationGraph.sequentialize_mem_completed_iff_lt_of_ready _ ready⟩
       have atRank := atEvent.unique ordered
       subst atRank
       have nextDecoded := next.decode

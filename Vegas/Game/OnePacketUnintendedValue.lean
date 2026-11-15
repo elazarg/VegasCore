@@ -23,9 +23,9 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L] (setup : Setup (Player := Player) (L := L))
-  (timeouts : EventTimeouts (graph setup))
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-  (bounds : MessageBounds (graph setup)) (horizon : Nat)
+  (timeouts : EventTimeouts setup.informationGraph)
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
+  (bounds : MessageBounds setup.informationGraph) (horizon : Nat)
   (scheduler : (application setup timeouts leaks).Scheduler)
 
 local notation "N" => onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
@@ -35,7 +35,7 @@ local notation "NP" => ReactiveApplication.ResponseMenu.protocol
 local notation "Menu" => bounds.onePacketMenu timeouts leaks
 local notation "Clear" => ReactiveApplication.stateInvariant
   (app := application setup timeouts leaks)
-    (fun native : EventGraphRuntime.State (graph setup) =>
+    (fun native : EventGraphRuntime.State setup.informationGraph =>
       EventGraph.Config.defaulted (EventGraphRuntime.State.config native) = ∅)
 
 /-- At its first completion stop, a fixed unintended binding leaves its owner
@@ -48,18 +48,18 @@ theorem unintendedCommitment_phase_owes
       control.execution.application.config.cut.Terminal)
     (profile : BehavioralProfile setup.program)
     {remaining : Nat} {who : Player} {execution : (application setup timeouts leaks).Execution}
-    {event : (graph setup).EventId}
+    {event : setup.informationGraph.EventId}
     (turn : execution.application.publicView.ownTurn? who = some event) {payload : L.Ty}
-    (outputEq : (graph setup).outputLayout event = .binding who payload)
-    (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .bind who payload)
+    (outputEq : setup.informationGraph.outputLayout event = .binding who payload)
+    (codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .bind who payload)
     {point : ProtocolState setup.program}
     (decoded : decodedPoint setup execution.application.config = some point)
     (pointIntended : ProtocolState.Intended setup.program point)
     {rank : Nat} (ordered : execution.application.config.cut.IsPrefix rank)
     (response : (application setup timeouts leaks).Action) (material : (application setup timeouts
       leaks).Submission)
-    (submits : response.transmission = some material) {candidate : Handle (graph setup)}
+    (submits : response.transmission = some material) {candidate : Handle setup.informationGraph}
     (call : (sentEnvelope setup timeouts leaks execution who material).payload.call =
       .commitment event candidate)
     (fixed : (execution.respond (application setup timeouts leaks) who
@@ -159,7 +159,7 @@ theorem unintendedCommitment_stopped_value
     (response : (application setup timeouts leaks).Action) (selected : choice.1 = some response)
     (material : (application setup timeouts leaks).Submission)
     (sends : response.transmission = some material)
-    (event : (graph setup).EventId) (candidate : Handle (graph setup))
+    (event : setup.informationGraph.EventId) (candidate : Handle setup.informationGraph)
     (packet : material.call.packet = .commitment event candidate)
     {Parameter : Type} (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
@@ -422,7 +422,7 @@ theorem unintendedCommitment_value_sub_le
     (response : (application setup timeouts leaks).Action) (selected : choice.1 = some response)
     (material : (application setup timeouts leaks).Submission)
     (sends : response.transmission = some material)
-    (event : (graph setup).EventId) (candidate : Handle (graph setup))
+    (event : setup.informationGraph.EventId) (candidate : Handle setup.informationGraph)
     (packet : material.call.packet = .commitment event candidate)
     {Parameter : Type} (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)

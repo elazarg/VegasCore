@@ -33,24 +33,25 @@ open GameTheory GameTheory.Protocol Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
+  {timeouts : EventTimeouts setup.informationGraph}
 
 /-- Every non-failing newly recorded owned decision has an accepted packet
 with matching source content and candidate ownership, even when its physical
 command also performs further automatic completions. -/
 theorem completion_content
-    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
     (execution next : (application setup timeouts leaks).Execution)
     (command : (application setup timeouts leaks).Command)
     (reached : next ∈ (execution.environmentStep (application setup timeouts leaks)
       command).support)
-    (record : (graph setup).Completion) (fresh : record ∉ execution.application.config.history)
+    (record : setup.informationGraph.Completion) (fresh : record ∉
+      execution.application.config.history)
     (present : record ∈ next.application.config.history)
-    {actor : Player} (acts : (graph setup).actor? record.event = some actor)
+    {actor : Player} (acts : setup.informationGraph.actor? record.event = some actor)
     (notFailing : ¬ Failing
       (record.decision.bind (decodeEventAction setup.program record.event))) :
     ∃ message ∈ next.network.ledger, message.sender = actor ∧
-      message.payload.call.event? (graph setup) = some record.event ∧
+      message.payload.call.event? setup.informationGraph = some record.event ∧
       record.decision.bind (decodeEventAction setup.program record.event) =
         callContent setup execution.application message.payload.call ∧
       ∀ named candidate, message.payload.call = .commitment named candidate →

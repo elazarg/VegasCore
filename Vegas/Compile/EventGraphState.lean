@@ -87,11 +87,11 @@ theorem OutputEmbedding.ref_get?_complete
     {Γ : SourceCtx Player L} {openNames : Finset VarId}
     {program : SourceProgram Player L Γ openNames}
     (embedding : OutputEmbedding (inputLayout Γ0) (outputLayout whole) program)
-    (config : (toEventGraph whole).Config)
+    (config : (toInformationGraph whole).Config)
     (index : Fin (eventCount program))
     (ready : config.cut.Ready (embedding.event index))
-    (action : (toEventGraph whole).Action (embedding.event index))
-    (outputEq : (toEventGraph whole).outputLayout (embedding.event index) =
+    (action : (toInformationGraph whole).Action (embedding.event index))
+    (outputEq : (toInformationGraph whole).outputLayout (embedding.event index) =
       outputLayout program index)
     (value : (outputLayout program index).Value) :
     (embedding.ref index).get?

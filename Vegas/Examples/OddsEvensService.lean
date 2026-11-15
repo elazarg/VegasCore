@@ -28,7 +28,8 @@ abbrev compiled := OddsEvens.compiled
 def leaks : MessageNetwork.ObservationRule OddsEvens.Player (WitnessedPacket compiled) :=
   fun _ _ => PMF.pure ∅
 
-def timeouts : EventTimeouts compiled := serviceTimeouts fixture .sequential (fun _ => 6)
+def timeouts : EventTimeouts compiled := serviceTimeouts fixture fixture.informationDependencies
+  (fun _ => 6)
 
 abbrev app := (reactiveApplication timeouts) leaks
 
@@ -107,7 +108,7 @@ instance : app.FiniteNature initial scheduler where
   toFiniteEnvironment := inferInstance
   initial_finite := by
     change (Vegas.initialLaw fixture).support.Finite
-    exact serviceInitialLaw_support_finite fixture .sequential
+    exact serviceInitialLaw_support_finite fixture fixture.informationDependencies
   scheduler_finite _ _ := by
     rw [scheduler, PMF.support_pure]
     exact Set.finite_singleton _

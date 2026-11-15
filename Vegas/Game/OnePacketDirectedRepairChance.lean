@@ -22,8 +22,8 @@ open GameTheory GameTheory.Math.Probability
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
 
 namespace DirectedBindingFrame
 
@@ -37,12 +37,12 @@ theorem sample_step (frame : DirectedBindingFrame (timeouts := timeouts) memory 
   repaired)
     (clear : original.application.config.defaulted = ∅)
     (onlyBindings : memory.shadow.OwnBindings owner)
-    (event : (graph setup).EventId) (ready : original.application.config.cut.Ready event)
-    (payload : L.Ty) (law : EventGraph.PublicDist (graph setup).layout payload)
-    (outputEq : (graph setup).outputLayout event = .publicData payload)
-    (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .sample payload law)
-    (node : nodeView (graph setup) event = .sample payload law outputEq codeEq)
+    (event : setup.informationGraph.EventId) (ready : original.application.config.cut.Ready event)
+    (payload : L.Ty) (law : EventGraph.PublicDist setup.informationGraph.layout payload)
+    (outputEq : setup.informationGraph.outputLayout event = .publicData payload)
+    (codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .sample payload law)
+    (node : nodeView setup.informationGraph event = .sample payload law outputEq codeEq)
     (nextOriginal : (application setup timeouts leaks).Execution)
     (left : nextOriginal ∈ (original.environmentStep (application setup timeouts leaks)
       (.application (.executeSample event))).support) :

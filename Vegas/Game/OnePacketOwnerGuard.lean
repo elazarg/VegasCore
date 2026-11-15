@@ -47,7 +47,7 @@ open GameTheory GameTheory.Protocol Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
+  {timeouts : EventTimeouts setup.informationGraph}
 
 section Pairs
 
@@ -97,9 +97,11 @@ binding field of `who` and hold, at a slot, the candidate of that value, the
 owner pairs carry either no pair at the field and the handle, or the two typed
 successes and their raw values. -/
 theorem ownerPairs_of_candidateOfValue {who : Player}
-    {first second : PlayerView (graph setup)} {field : (graph setup).Field} {payload : L.Ty}
-    (layoutEq : (graph setup).layout field = .binding who payload)
-    {slot : CandidateSlot (graph setup)} {left right : ((graph setup).layout field).Value}
+    {first second : PlayerView setup.informationGraph} {field : setup.informationGraph.Field}
+      {payload : L.Ty}
+    (layoutEq : setup.informationGraph.layout field = .binding who payload)
+    {slot : CandidateSlot setup.informationGraph} {left right : (setup.informationGraph.layout
+      field).Value}
     (firstStore : first.observation.store field = some left)
     (secondStore : second.observation.store field = some right)
     (firstCandidate : first.candidates slot = State.candidateOfValue who _ left)
@@ -133,9 +135,9 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol Intera
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 section Initial
@@ -156,9 +158,9 @@ theorem initialSlots_of_trace {state}
     ∀ control : (application setup timeouts leaks).Control, state = some control →
       ∃ initial ∈ setup.initialLaw.support,
         control.execution.application.config.inputs = setup.eventInputs initial ∧
-        ∀ input owner payload, (graph setup).inputLayout input = .binding owner payload →
+        ∀ input owner payload, setup.informationGraph.inputLayout input = .binding owner payload →
           control.execution.application.candidates.lookup (owner, .initial input) =
-            State.candidateOfValue owner ((graph setup).inputLayout input)
+            State.candidateOfValue owner (setup.informationGraph.inputLayout input)
               (control.execution.application.config.inputs input) := by
   induction trace with
   | start => intro _ initialized; cases initialized
@@ -198,8 +200,9 @@ section Clean
 
 omit [Fintype Player] in
 theorem get?_of_store {kind : EventGraph.EventField Player L}
-    (ref : EventGraph.FieldRef (graph setup).layout kind)
-    {store : EventGraph.Store (graph setup).layout} {value : ((graph setup).layout ref.field).Value}
+    (ref : EventGraph.FieldRef setup.informationGraph.layout kind)
+    {store : EventGraph.Store setup.informationGraph.layout} {value :
+      (setup.informationGraph.layout ref.field).Value}
     (stored : store ref.field = some value) :
     ref.get? store = some (cast (congrArg EventGraph.EventField.Value ref.layout_eq) value) := by
   rcases ref with ⟨field, layoutEq⟩
@@ -228,18 +231,18 @@ theorem ownBinding_candidate {who : Player} {control : (application setup timeou
     (trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some control))
     (debtFree : ∀ point, nativeDecodedState setup timeouts leaks (some control) = some point →
       ¬ ProtocolState.OwesFailure who setup.program point)
-    {field : (graph setup).Field} {handle : Handle (graph setup)}
+    {field : setup.informationGraph.Field} {handle : Handle setup.informationGraph}
     (accepted : control.execution.application.accepted field = some handle)
     (owned : handle.1 = who) :
     ∃ value, control.execution.application.config.store field = some value ∧
       control.execution.application.candidates.lookup handle =
-        State.candidateOfValue who ((graph setup).layout field) value := by
+        State.candidateOfValue who (setup.informationGraph.layout field) value := by
   have valid := bindingInvariant_of_trace (timeouts := timeouts) trace
   obtain ⟨payload, layoutEq⟩ := valid.accepted_typed field handle accepted
   rw [owned] at layoutEq
   cases field with
   | inl input =>
-      have inputEq : (graph setup).inputLayout input = .binding who payload := layoutEq
+      have inputEq : setup.informationGraph.inputLayout input = .binding who payload := layoutEq
       have initialAccepted := accepted_initial_of_trace (timeouts := timeouts) trace inputEq
       rw [accepted] at initialAccepted
       cases Option.some.inj initialAccepted
@@ -249,7 +252,7 @@ theorem ownBinding_candidate {who : Player} {control : (application setup timeou
       obtain ⟨value, stored⟩ := Option.isSome_iff_exists.mp
         (valid.accepted_present _ handle accepted)
       refine ⟨value, stored, ?_⟩
-      let ref : EventGraph.FieldRef (graph setup).layout (.binding who payload) :=
+      let ref : EventGraph.FieldRef setup.informationGraph.layout (.binding who payload) :=
         ⟨.inr event, layoutEq⟩
       have read := get?_of_store ref stored
       cases result : cast (congrArg EventGraph.EventField.Value layoutEq) value with
@@ -286,8 +289,9 @@ def RevealRecord (profile : BehavioralProfile setup.program)
   ∃ rank, Nonempty (SourceResidual setup profile rank execution.application.config) ∧
     ∀ event ∈ execution.application.config.cut.completed, ∀ owner payload binding checks
       outputEq codeEq,
-      nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq →
-      ∀ result, (⟨.inr event, outputEq⟩ : EventGraph.FieldRef (graph setup).layout
+      nodeView setup.informationGraph event = .resolve owner payload binding checks outputEq codeEq
+        →
+      ∀ result, (⟨.inr event, outputEq⟩ : EventGraph.FieldRef setup.informationGraph.layout
           (.publication payload)).get? execution.application.config.store = some result →
         (∃ value, result = .success value ∧
           binding.get? execution.application.config.store = some (.success value)) ∨
@@ -305,9 +309,10 @@ theorem revealRecord_history (profile : BehavioralProfile setup.program)
     RevealRecord setup timeouts leaks profile control.execution := by
   obtain ⟨rank, ⟨residual⟩, _record⟩ := SourceFailureRecord.history profile horizon scheduler trace
   have native := trace
-  change (((reactiveApplication timeouts) leaks).protocol (serviceInitialLaw setup .sequential)
+  change (((reactiveApplication timeouts) leaks).protocol (initialLaw setup)
     horizon scheduler).Trace (some control) at native
-  rw [serviceInitialLaw_eq_inputs setup] at native
+  rw [initialLaw, serviceInitialLaw_eq_inputs (deps := setup.informationDependencies) setup]
+    at native
   obtain ⟨inputs, _supported, invariant⟩ := (reactive_history_invariant timeouts) leaks
     (setup.initialLaw.map setup.eventInputs) horizon scheduler native
   refine ⟨rank, ⟨residual⟩, ?_⟩
@@ -355,9 +360,9 @@ def OwnedRequestsOwn (execution : (application setup timeouts leaks).Execution) 
 
 omit [Fintype Player] in
 private theorem handle_owner_of_normalize {who : Player}
-    {candidates : CandidateSlot (graph setup) → CommitmentCandidate (Raw L)}
-    {known : List (Message Player (WitnessedPacket (graph setup)))}
-    {fact : OpeningFact (graph setup)}
+    {candidates : CandidateSlot setup.informationGraph → CommitmentCandidate (Raw L)}
+    {known : List (Message Player (WitnessedPacket setup.informationGraph))}
+    {fact : OpeningFact setup.informationGraph}
     (normal : (EvidenceRequest.owned fact).normalize who candidates known = .owned fact) :
     fact.handle.1 = who := by
   cases resolved : (EvidenceRequest.owned fact).resolve who candidates known with
@@ -434,8 +439,9 @@ theorem ownerPairs_of_accepted {who : Player} {first second : (application setup
     (secondDebtFree : ∀ point, nativeDecodedState setup timeouts leaks (some second) = some point →
       ¬ ProtocolState.OwesFailure who setup.program point)
     (acceptedEq : first.execution.application.accepted = second.execution.application.accepted)
-    {field : (graph setup).Field} {slot : CandidateSlot (graph setup)} {payload : L.Ty}
-    (layoutEq : (graph setup).layout field = .binding who payload)
+    {field : setup.informationGraph.Field} {slot : CandidateSlot setup.informationGraph} {payload :
+      L.Ty}
+    (layoutEq : setup.informationGraph.layout field = .binding who payload)
     (accepted : first.execution.application.accepted field = some (who, slot)) :
     let firstView := first.execution.application.playerView who
     let secondView := second.execution.application.playerView who
@@ -462,8 +468,9 @@ theorem ownerPairs_of_accepted {who : Player} {first second : (application setup
 
 omit [Fintype Player] in
 /-- A field that is not visible to `who` carries no owner pair. -/
-theorem ownerPairs_of_not_visible {who : Player} {first second : PlayerView (graph setup)}
-    {field : (graph setup).Field} (hidden : ¬ (graph setup).fieldVisibleTo who field) :
+theorem ownerPairs_of_not_visible {who : Player} {first second : PlayerView setup.informationGraph}
+    {field : setup.informationGraph.Field} (hidden : ¬ setup.informationGraph.fieldVisibleTo who
+      field) :
     (ownerPairs who first second).pair field = none := by
   change ownerValuePair who first second field = none
   have notPrivate : ¬ PrivateTo who field := fun privateTo => hidden privateTo.1
@@ -472,25 +479,25 @@ theorem ownerPairs_of_not_visible {who : Player} {first second : PlayerView (gra
 
 omit [Fintype Player] in
 /-- A handle of another player carries no owner pair. -/
-theorem ownerHandlePairs_of_ne {who : Player} {first second : PlayerView (graph setup)}
-    {handle : Handle (graph setup)} (different : handle.1 ≠ who) :
+theorem ownerHandlePairs_of_ne {who : Player} {first second : PlayerView setup.informationGraph}
+    {handle : Handle setup.informationGraph} (different : handle.1 ≠ who) :
     ownerHandlePairs who first second handle = none := by
   unfold ownerHandlePairs
   simp [different]
 
 omit [Fintype Player] in
 /-- A binding field of another player is not visible to `who`. -/
-theorem not_visible_of_binding {who owner : Player} {field : (graph setup).Field}
-    {payload : L.Ty} (layoutEq : (graph setup).layout field = .binding owner payload)
-    (different : owner ≠ who) : ¬ (graph setup).fieldVisibleTo who field := by
+theorem not_visible_of_binding {who owner : Player} {field : setup.informationGraph.Field}
+    {payload : L.Ty} (layoutEq : setup.informationGraph.layout field = .binding owner payload)
+    (different : owner ≠ who) : ¬ setup.informationGraph.fieldVisibleTo who field := by
   unfold EventGraph.fieldVisibleTo
   rw [layoutEq]
   exact different
 
 omit [Fintype Player] in
 /-- A field both views store alike carries no owner pair. -/
-theorem ownerPairs_of_store_eq {who : Player} {first second : PlayerView (graph setup)}
-    {field : (graph setup).Field}
+theorem ownerPairs_of_store_eq {who : Player} {first second : PlayerView setup.informationGraph}
+    {field : setup.informationGraph.Field}
     (same : first.observation.store field = second.observation.store field) :
     (ownerPairs who first second).pair field = none := by
   change ownerValuePair who first second field = none
@@ -504,8 +511,10 @@ theorem ownerPairs_of_store_eq {who : Player} {first second : PlayerView (graph 
 
 omit [Fintype Player] in
 /-- A slot both views hold alike carries no owner pair. -/
-theorem ownerHandlePairs_of_candidates_eq {who : Player} {first second : PlayerView (graph setup)}
-    {slot : CandidateSlot (graph setup)} (same : first.candidates slot = second.candidates slot) :
+theorem ownerHandlePairs_of_candidates_eq {who : Player} {first second : PlayerView
+  setup.informationGraph}
+    {slot : CandidateSlot setup.informationGraph} (same : first.candidates slot = second.candidates
+      slot) :
     ownerHandlePairs who first second (who, slot) = none := by
   unfold ownerHandlePairs
   simp only [↓reduceIte]
@@ -518,14 +527,15 @@ omit [Fintype Player] in
 /-- At a reveal that is the owner's turn, the delivered value is the owner's
 stored binding. -/
 theorem deliveredValue_of_turn {who : Player} {view : (application setup timeouts leaks).PlayerView}
-    {event : (graph setup).EventId} (turn : view.application.publicView.ownTurn? who = some event)
+    {event : setup.informationGraph.EventId} (turn : view.application.publicView.ownTurn? who =
+      some event)
     {owner : Player} {payload : L.Ty}
-    {binding : EventGraph.FieldRef (graph setup).layout (.binding owner payload)}
-    {checks : List (EventGraph.GuardCheck (graph setup).layout payload)}
-    {outputEq : (graph setup).outputLayout event = .publication payload}
-    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .resolve owner payload binding checks}
-    (resolveView : nodeView (graph setup) event =
+    {binding : EventGraph.FieldRef setup.informationGraph.layout (.binding owner payload)}
+    {checks : List (EventGraph.GuardCheck setup.informationGraph.layout payload)}
+    {outputEq : setup.informationGraph.outputLayout event = .publication payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .resolve owner payload binding checks}
+    (resolveView : nodeView setup.informationGraph event =
       .resolve owner payload binding checks outputEq codeEq) :
     deliveredValue setup timeouts leaks who view =
       some ⟨.binding owner payload, binding.get? view.application.observation.store⟩ := by
@@ -623,7 +633,8 @@ theorem ownerSwap_guard {who : Player}
         obtain ⟨initial, initialMember, inputsEq, -⟩ := initialSlots_of_trace (timeouts := timeouts)
           trace₁ control₁ rfl
         have drawnMember : ∀ draw ∈ setup.initialLaw.support,
-            EventGraphRuntime.State.initial (graph := graph setup) (setup.eventInputs draw) ∈
+            EventGraphRuntime.State.initial (graph := setup.informationGraph) (setup.eventInputs
+              draw) ∈
               (initialLaw setup).support := fun draw drawMember => by
           rw [initialLaw, serviceInitialLaw, PMF.support_map]
           exact ⟨draw, drawMember, rfl⟩
@@ -665,23 +676,25 @@ theorem ownerSwap_guard {who : Player}
       · -- Ready and completed reveals read bindings both views store alike.
         intro event active
         unfold RevealFixed
-        cases resolveView : nodeView (graph setup) event with
+        cases resolveView : nodeView setup.informationGraph event with
         | bind | sample => trivial
         | resolve owner payload binding checks outputEq codeEq =>
-            have bindingLayout : (graph setup).layout binding.field = .binding owner payload :=
+            have bindingLayout : setup.informationGraph.layout binding.field = .binding owner
+              payload :=
               binding.layout_eq
             by_cases owned : owner = who
             · subst owned
               have getEq : binding.get? control₁.execution.application.config.store =
                   binding.get? control₂.execution.application.config.store := by
                 have visible := (privateTo_of_binding bindingLayout).1
-                have masked : ∀ store : EventGraph.Store (graph setup).layout,
-                    binding.get? ((graph setup).playerStore owner store) = binding.get? store :=
+                have masked : ∀ store : EventGraph.Store setup.informationGraph.layout,
+                    binding.get? (setup.informationGraph.playerStore owner store) = binding.get?
+                      store :=
                   fun store => EventGraph.FieldRef.get?_congr binding _ _
                     (EventGraph.playerStore_of_visible _ owner store _ visible)
                 rcases active with ready | completed
                 · -- A ready reveal of the owner is its turn: both keys deliver its binding.
-                  have actor : (graph setup).actor? event = some owner :=
+                  have actor : setup.informationGraph.actor? event = some owner :=
                     nodeView_resolve_actor outputEq codeEq
                   have firstTurn := ownTurn?_of_ready setup control₁.execution.application ready
                     actor
@@ -697,16 +710,16 @@ theorem ownerSwap_guard {who : Player}
                   have viewGet := eq_of_heq (Sigma.mk.inj (Option.some.inj deliveredEq)).2
                   exact (masked _).symm.trans (viewGet.trans (masked _))
                 · -- A completed reveal published its binding: the publication is public.
-                  have publicField : (graph setup).fieldPublic (.inr event) := by
+                  have publicField : setup.informationGraph.fieldPublic (.inr event) := by
                     unfold EventGraph.fieldPublic
-                    change ((graph setup).outputLayout event).IsPublic
+                    change (setup.informationGraph.outputLayout event).IsPublic
                     rw [outputEq]
                     trivial
-                  have publicStore := congrArg (fun view : PublicView (graph setup) =>
+                  have publicStore := congrArg (fun view : PublicView setup.informationGraph =>
                     view.observation.store (.inr event)) publicEq
-                  change (if (graph setup).fieldPublic (.inr event) then
+                  change (if setup.informationGraph.fieldPublic (.inr event) then
                       control₁.execution.application.config.store (.inr event) else none) =
-                    (if (graph setup).fieldPublic (.inr event) then
+                    (if setup.informationGraph.fieldPublic (.inr event) then
                       control₂.execution.application.config.store (.inr event) else none)
                     at publicStore
                   simp only [publicField, ↓reduceIte] at publicStore
@@ -721,7 +734,7 @@ theorem ownerSwap_guard {who : Player}
                     change (control₂.execution.application.config.store (.inr event)).isSome
                     rw [secondStored]
                     rfl
-                  let publication : EventGraph.FieldRef (graph setup).layout
+                  let publication : EventGraph.FieldRef setup.informationGraph.layout
                       (.publication payload) := ⟨.inr event, outputEq⟩
                   have firstRead := get?_of_store publication stored
                   have secondRead := get?_of_store publication secondStored

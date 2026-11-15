@@ -25,13 +25,13 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph}
 
 local notation "Clear" => ReactiveApplication.stateInvariant
   (app := application setup timeouts leaks)
-    (fun native : EventGraphRuntime.State (graph setup) =>
+    (fun native : EventGraphRuntime.State setup.informationGraph =>
       EventGraph.Config.defaulted (EventGraphRuntime.State.config native) = ∅)
 
 /-- At a clear regular prefix before focal debt, previous source-main foreign
@@ -39,11 +39,11 @@ first callbacks prevent the current foreign callback from being a late delivery.
 The comparison begins at an actual focal source turn. -/
 theorem nonlate_of_mainActivationTraceAfter
     (wellFormed : setup.WellFormed) (covers : bounds.CoversOutputValues)
-    (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
+    (capacity : ∀ who, bindingEventCount setup.informationGraph who < bounds.candidateCount)
     (source : setup.intendedModel.BehavioralAssessment) (focal owner : Player)
     (different : owner ≠ focal)
     {horizon : Nat} {scheduler : (application setup timeouts leaks).Scheduler}
-    {delay bound : (graph setup).EventId → Nat}
+    {delay bound : setup.informationGraph.EventId → Nat}
     (opportunity : ∀ control : (application setup timeouts leaks).Control,
       (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some control) →
       control.execution.application.config.defaulted = ∅ →
@@ -55,7 +55,7 @@ theorem nonlate_of_mainActivationTraceAfter
     (trace : (onePacketProtocol setup timeouts leaks bounds horizon
       scheduler).Trace (some control))
     (startPrefix : TracePrefix startTrace trace)
-    (current : (graph setup).EventId)
+    (current : setup.informationGraph.EventId)
     (turn : start.execution.application.publicView.ownTurn? focal = some current)
     (clear : control.execution.application.config.defaulted = ∅)
     (regular : RegularTrace setup timeouts leaks bounds horizon
@@ -263,11 +263,11 @@ private theorem main_of_no_pending
 condition, while every other callback has the main silent response. -/
 theorem response_main_of_mainActivationTraceAfter
     (wellFormed : setup.WellFormed) (covers : bounds.CoversOutputValues)
-    (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
+    (capacity : ∀ who, bindingEventCount setup.informationGraph who < bounds.candidateCount)
     (source : setup.intendedModel.BehavioralAssessment) (focal owner : Player)
     (different : owner ≠ focal)
     {horizon : Nat} {scheduler : (application setup timeouts leaks).Scheduler}
-    {delay bound : (graph setup).EventId → Nat}
+    {delay bound : setup.informationGraph.EventId → Nat}
     (opportunity : ∀ control : (application setup timeouts leaks).Control,
       (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some control) →
       control.execution.application.config.defaulted = ∅ →
@@ -279,7 +279,7 @@ theorem response_main_of_mainActivationTraceAfter
     (trace : (onePacketProtocol setup timeouts leaks bounds horizon
       scheduler).Trace (some control))
     (startPrefix : TracePrefix startTrace trace)
-    (current : (graph setup).EventId)
+    (current : setup.informationGraph.EventId)
     (turn : start.execution.application.publicView.ownTurn? focal = some current)
     (clear : control.execution.application.config.defaulted = ∅)
     (regular : RegularTrace setup timeouts leaks bounds horizon
@@ -342,11 +342,11 @@ theorem response_main_of_mainActivationTraceAfter
 the full source-factor regularity predicate. -/
 theorem regularStep_of_native_mainActivationTraceAfter
     (wellFormed : setup.WellFormed) (covers : bounds.CoversOutputValues)
-    (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
+    (capacity : ∀ who, bindingEventCount setup.informationGraph who < bounds.candidateCount)
     (source : setup.intendedModel.BehavioralAssessment) (focal owner : Player)
     (different : owner ≠ focal)
     {horizon : Nat} {scheduler : (application setup timeouts leaks).Scheduler}
-    {delay bound : (graph setup).EventId → Nat}
+    {delay bound : setup.informationGraph.EventId → Nat}
     (opportunity : ∀ control : (application setup timeouts leaks).Control,
       (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some control) →
       control.execution.application.config.defaulted = ∅ →
@@ -358,7 +358,7 @@ theorem regularStep_of_native_mainActivationTraceAfter
     (trace : (onePacketProtocol setup timeouts leaks bounds horizon
       scheduler).Trace (some control))
     (startPrefix : TracePrefix startTrace trace)
-    (current : (graph setup).EventId)
+    (current : setup.informationGraph.EventId)
     (turn : start.execution.application.publicView.ownTurn? focal = some current)
     (clear : control.execution.application.config.defaulted = ∅)
     (regular : RegularTrace setup timeouts leaks bounds horizon
@@ -399,10 +399,10 @@ has left source-main support. Focal actions and the remaining behavioral laws
 are arbitrary. Only public-clear prefixes before focal debt use service. -/
 theorem stopped_regular_of_mainActivationTraceAfter
     (wellFormed : setup.WellFormed) (covers : bounds.CoversOutputValues)
-    (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
+    (capacity : ∀ who, bindingEventCount setup.informationGraph who < bounds.candidateCount)
     (source : setup.intendedModel.BehavioralAssessment) (focal : Player)
     {horizon : Nat} {scheduler : (application setup timeouts leaks).Scheduler}
-    {delay bound : (graph setup).EventId → Nat}
+    {delay bound : setup.informationGraph.EventId → Nat}
     (opportunity : ∀ control : (application setup timeouts leaks).Control,
       (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some control) →
       control.execution.application.config.defaulted = ∅ →
@@ -417,7 +417,7 @@ theorem stopped_regular_of_mainActivationTraceAfter
     (start : (onePacketProtocol setup timeouts leaks bounds horizon
       scheduler).History)
     (control : (application setup timeouts leaks).Control) (state : start.state = some control)
-    (current : (graph setup).EventId)
+    (current : setup.informationGraph.EventId)
     (turn : control.execution.application.publicView.ownTurn? focal = some current)
     (regular : RegularTrace setup timeouts leaks bounds horizon
       scheduler source focal

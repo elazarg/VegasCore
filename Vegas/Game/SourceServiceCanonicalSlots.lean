@@ -23,6 +23,8 @@ unused and therefore fresh (`Vegas.canonicalSlot_fresh_of_used`).
 The invariant is carried by the slots `who` has actually used: a prepared
 slot that `who` never named is fresh on every legal history
 (`Vegas.EventGraphRuntime.CandidateRecall`).
+Actor serialization keeps unfinished bindings of one owner from overlapping
+its next selected turn.
 -/
 
 noncomputable section
@@ -35,9 +37,9 @@ open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
-  (setup : Setup (Player := Player) (L := L)) {mode : EventGraph.ExecutionMode}
-  {duration : (serviceGraph setup mode).EventId → Nat}
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
+  (setup : Setup (Player := Player) (L := L)) {deps : setup.dataflowGraph.Dependencies}
+  {duration : (serviceGraph setup deps).EventId → Nat}
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup deps)))
 
 section Submissions
 
@@ -45,30 +47,30 @@ variable {setup leaks}
 
 /-- Silence never makes a fresh submission. -/
 theorem silentPolicy_not_submit
-    {past : List (serviceApplication setup mode duration leaks).PlayerEntry}
-    {view : (serviceApplication setup mode duration leaks).PlayerView}
-    {response : (serviceApplication setup mode duration leaks).Action}
+    {past : List (serviceApplication setup deps duration leaks).PlayerEntry}
+    {view : (serviceApplication setup deps duration leaks).PlayerView}
+    {response : (serviceApplication setup deps duration leaks).Action}
     (chosen : response ∈
-        ((serviceApplication setup mode duration leaks).silentPolicy past view).support)
-    (material : (serviceApplication setup mode duration leaks).Submission) :
+        ((serviceApplication setup deps duration leaks).silentPolicy past view).support)
+    (material : (serviceApplication setup deps duration leaks).Submission) :
     response.transmission ≠ some material := by
-  obtain rfl := (serviceApplication setup mode duration leaks).silentPolicy_cases past view
+  obtain rfl := (serviceApplication setup deps duration leaks).silentPolicy_cases past view
       response chosen
   simp
 
 /-- A fresh submission of the canonical source policy is the canonical decision
 at the player's own turn. -/
 theorem sourceServiceCanonicalPolicy_submission_reference {reference :
-    (serviceGraph setup mode).BehavioralProfile}
-    {who : Player} {past : List (serviceApplication setup mode duration leaks).PlayerEntry}
-    {view : (serviceApplication setup mode duration leaks).PlayerView}
-    {response : (serviceApplication setup mode duration leaks).Action}
+    (serviceGraph setup deps).BehavioralProfile}
+    {who : Player} {past : List (serviceApplication setup deps duration leaks).PlayerEntry}
+    {view : (serviceApplication setup deps duration leaks).PlayerView}
+    {response : (serviceApplication setup deps duration leaks).Action}
     (chosen : response ∈
-        (serviceReferencePolicy setup mode duration leaks reference who past view).support)
-    {material : (serviceApplication setup mode duration leaks).Submission}
+        (serviceReferencePolicy setup deps duration leaks reference who past view).support)
+    {material : (serviceApplication setup deps duration leaks).Submission}
     (submits : response.transmission = some material) :
     ∃ event action, view.application.publicView.ownTurn? who = some event ∧
-      response = (canonicalServiceDecision (serviceTimeouts setup mode duration)) leaks who past
+      response = (canonicalServiceDecision (serviceTimeouts setup deps duration)) leaks who past
         view
           event action := by
   unfold serviceReferencePolicy at chosen
@@ -97,37 +99,37 @@ theorem sourceServiceCanonicalPolicy_submission_reference {reference :
 /-- A fresh submission of the canonical source policy is the canonical decision
 at the player's own turn. -/
 theorem sourceServiceCanonicalPolicy_submission {profile : BehavioralProfile setup.program}
-    {who : Player} {past : List (serviceApplication setup mode duration leaks).PlayerEntry}
-    {view : (serviceApplication setup mode duration leaks).PlayerView}
-    {response : (serviceApplication setup mode duration leaks).Action}
+    {who : Player} {past : List (serviceApplication setup deps duration leaks).PlayerEntry}
+    {view : (serviceApplication setup deps duration leaks).PlayerView}
+    {response : (serviceApplication setup deps duration leaks).Action}
     (chosen : response ∈
-        (serviceCanonicalPolicy setup mode duration leaks profile who past view).support)
-    {material : (serviceApplication setup mode duration leaks).Submission}
+        (serviceCanonicalPolicy setup deps duration leaks profile who past view).support)
+    {material : (serviceApplication setup deps duration leaks).Submission}
     (submits : response.transmission = some material) :
     ∃ event action, view.application.publicView.ownTurn? who = some event ∧
-      response = (canonicalServiceDecision (serviceTimeouts setup mode duration)) leaks who past
+      response = (canonicalServiceDecision (serviceTimeouts setup deps duration)) leaks who past
         view
           event action := by
-  apply sourceServiceCanonicalPolicy_submission_reference
+  apply sourceServiceCanonicalPolicy_submission_reference (deps := deps) (duration := duration)
     (reference := compileEventProfile setup.program profile) <;> assumption
 
 /-- A fresh submission of a canonical opportunity is made before the event is
 recorded and while a fresh call fits the deadline. -/
 theorem sourceServiceCanonicalOpportunity_submission_reference
-    {bound : (serviceGraph setup mode).EventId → Nat} {reference :
-      (serviceGraph setup mode).BehavioralProfile}
-    {who : Player} {event : (serviceGraph setup mode).EventId}
-    {past : List (serviceApplication setup mode duration leaks).PlayerEntry}
-    {view : (serviceApplication setup mode duration leaks).PlayerView}
-    {response : (serviceApplication setup mode duration leaks).Action}
+    {bound : (serviceGraph setup deps).EventId → Nat} {reference :
+      (serviceGraph setup deps).BehavioralProfile}
+    {who : Player} {event : (serviceGraph setup deps).EventId}
+    {past : List (serviceApplication setup deps duration leaks).PlayerEntry}
+    {view : (serviceApplication setup deps duration leaks).PlayerView}
+    {response : (serviceApplication setup deps duration leaks).Action}
     (chosen : response ∈
-        (serviceReferenceOpportunity setup mode duration leaks bound reference who event past
-        view).support) {material : (serviceApplication setup mode duration leaks).Submission}
+        (serviceReferenceOpportunity setup deps duration leaks bound reference who event past
+        view).support) {material : (serviceApplication setup deps duration leaks).Submission}
     (submits : response.transmission = some material) :
-    (eventRecorded (serviceTimeouts setup mode duration)) leaks past event = false ∧
-    view.application.publicView.InclusionFitsDeadline (serviceTimeouts setup mode duration) bound
+    (eventRecorded (serviceTimeouts setup deps duration)) leaks past event = false ∧
+    view.application.publicView.InclusionFitsDeadline (serviceTimeouts setup deps duration) bound
     event ∧ ∃ turnEvent action, view.application.publicView.ownTurn? who = some turnEvent ∧
-    response = (canonicalServiceDecision (serviceTimeouts setup mode duration)) leaks who past view
+    response = (canonicalServiceDecision (serviceTimeouts setup deps duration)) leaks who past view
     turnEvent
           action := by
   unfold serviceReferenceOpportunity at chosen
@@ -149,22 +151,22 @@ theorem sourceServiceCanonicalOpportunity_submission_reference
 /-- A fresh submission of a canonical opportunity is made before the event is
 recorded and while a fresh call fits the deadline. -/
 theorem sourceServiceCanonicalOpportunity_submission
-    {bound : (serviceGraph setup mode).EventId → Nat} {profile : BehavioralProfile setup.program}
-    {who : Player} {event : (serviceGraph setup mode).EventId}
-    {past : List (serviceApplication setup mode duration leaks).PlayerEntry}
-    {view : (serviceApplication setup mode duration leaks).PlayerView}
-    {response : (serviceApplication setup mode duration leaks).Action}
+    {bound : (serviceGraph setup deps).EventId → Nat} {profile : BehavioralProfile setup.program}
+    {who : Player} {event : (serviceGraph setup deps).EventId}
+    {past : List (serviceApplication setup deps duration leaks).PlayerEntry}
+    {view : (serviceApplication setup deps duration leaks).PlayerView}
+    {response : (serviceApplication setup deps duration leaks).Action}
     (chosen : response ∈
-        (serviceCanonicalOpportunity setup mode duration leaks bound profile who event past
-        view).support) {material : (serviceApplication setup mode duration leaks).Submission}
+        (serviceCanonicalOpportunity setup deps duration leaks bound profile who event past
+        view).support) {material : (serviceApplication setup deps duration leaks).Submission}
     (submits : response.transmission = some material) :
-    (eventRecorded (serviceTimeouts setup mode duration)) leaks past event = false ∧
-    view.application.publicView.InclusionFitsDeadline (serviceTimeouts setup mode duration) bound
+    (eventRecorded (serviceTimeouts setup deps duration)) leaks past event = false ∧
+    view.application.publicView.InclusionFitsDeadline (serviceTimeouts setup deps duration) bound
     event ∧ ∃ turnEvent action, view.application.publicView.ownTurn? who = some turnEvent ∧
-    response = (canonicalServiceDecision (serviceTimeouts setup mode duration)) leaks who past view
+    response = (canonicalServiceDecision (serviceTimeouts setup deps duration)) leaks who past view
     turnEvent
           action := by
-  apply sourceServiceCanonicalOpportunity_submission_reference
+  apply sourceServiceCanonicalOpportunity_submission_reference (deps := deps) (duration := duration)
     (reference := compileEventProfile setup.program profile) <;> assumption
 
 /-- **Fresh submissions of the turn-counted policy.** Every fresh submission on
@@ -172,21 +174,21 @@ its support, at any turn index, is the canonical decision at the player's own
 turn, at an event not yet recorded in its recall, while a fresh call fits the
 deadline within the inclusion bound. -/
 theorem sourceServiceTurnPolicy_submission_reference {bound :
-    (serviceGraph setup mode).EventId → Nat}
-    {turns : Nat} {timing : TurnTiming setup turns mode} {reference :
-      (serviceGraph setup mode).BehavioralProfile}
-    {who : Player} {past : List (serviceApplication setup mode duration leaks).PlayerEntry}
-    {view : (serviceApplication setup mode duration leaks).PlayerView}
-    {response : (serviceApplication setup mode duration leaks).Action}
+    (serviceGraph setup deps).EventId → Nat}
+    {turns : Nat} {timing : TurnTiming setup turns deps} {reference :
+      (serviceGraph setup deps).BehavioralProfile}
+    {who : Player} {past : List (serviceApplication setup deps duration leaks).PlayerEntry}
+    {view : (serviceApplication setup deps duration leaks).PlayerView}
+    {response : (serviceApplication setup deps duration leaks).Action}
     (chosen : response ∈
-        (serviceReferenceTurnPolicy setup mode duration leaks bound turns timing reference who past
-        view).support) {material : (serviceApplication setup mode duration leaks).Submission}
+        (serviceReferenceTurnPolicy setup deps duration leaks bound turns timing reference who past
+        view).support) {material : (serviceApplication setup deps duration leaks).Submission}
     (submits : response.transmission = some material) : ∃ event action,
     view.application.publicView.ownTurn? who = some event ∧
-    (eventRecorded (serviceTimeouts setup mode duration)) leaks past event = false ∧
-    view.application.publicView.InclusionFitsDeadline (serviceTimeouts setup mode duration)
+    (eventRecorded (serviceTimeouts setup deps duration)) leaks past event = false ∧
+    view.application.publicView.InclusionFitsDeadline (serviceTimeouts setup deps duration)
     bound event ∧
-      response = (canonicalServiceDecision (serviceTimeouts setup mode duration)) leaks who past
+      response = (canonicalServiceDecision (serviceTimeouts setup deps duration)) leaks who past
         view
           event action := by
   unfold serviceReferenceTurnPolicy at chosen
@@ -211,45 +213,45 @@ theorem sourceServiceTurnPolicy_submission_reference {bound :
 its support, at any turn index, is the canonical decision at the player's own
 turn, at an event not yet recorded in its recall, while a fresh call fits the
 deadline within the inclusion bound. -/
-theorem sourceServiceTurnPolicy_submission {bound : (serviceGraph setup mode).EventId → Nat}
-    {turns : Nat} {timing : TurnTiming setup turns mode} {profile : BehavioralProfile setup.program}
-    {who : Player} {past : List (serviceApplication setup mode duration leaks).PlayerEntry}
-    {view : (serviceApplication setup mode duration leaks).PlayerView}
-    {response : (serviceApplication setup mode duration leaks).Action}
+theorem sourceServiceTurnPolicy_submission {bound : (serviceGraph setup deps).EventId → Nat}
+    {turns : Nat} {timing : TurnTiming setup turns deps} {profile : BehavioralProfile setup.program}
+    {who : Player} {past : List (serviceApplication setup deps duration leaks).PlayerEntry}
+    {view : (serviceApplication setup deps duration leaks).PlayerView}
+    {response : (serviceApplication setup deps duration leaks).Action}
     (chosen : response ∈
-        (serviceTurnPolicy setup mode duration leaks bound turns timing profile who past
-        view).support) {material : (serviceApplication setup mode duration leaks).Submission}
+        (serviceTurnPolicy setup deps duration leaks bound turns timing profile who past
+        view).support) {material : (serviceApplication setup deps duration leaks).Submission}
     (submits : response.transmission = some material) : ∃ event action,
     view.application.publicView.ownTurn? who = some event ∧
-    (eventRecorded (serviceTimeouts setup mode duration)) leaks past event = false ∧
-    view.application.publicView.InclusionFitsDeadline (serviceTimeouts setup mode duration)
+    (eventRecorded (serviceTimeouts setup deps duration)) leaks past event = false ∧
+    view.application.publicView.InclusionFitsDeadline (serviceTimeouts setup deps duration)
     bound event ∧
-      response = (canonicalServiceDecision (serviceTimeouts setup mode duration)) leaks who past
+      response = (canonicalServiceDecision (serviceTimeouts setup deps duration)) leaks who past
         view
           event action := by
-  apply sourceServiceTurnPolicy_submission_reference
+  apply sourceServiceTurnPolicy_submission_reference (deps := deps) (duration := duration)
     (reference := compileEventProfile setup.program profile) <;> assumption
 
 /-- Every packet the policy sends is the canonical decision at the player's
 own turn, at an event not yet recorded in its recall. -/
-def SubmitsCanonically (policy : (serviceApplication setup mode duration leaks).Policy)
+def SubmitsCanonically (policy : (serviceApplication setup deps duration leaks).Policy)
     (who : Player) : Prop :=
   ∀ past view response, response ∈ (policy past view).support →
-    ∀ material : (serviceApplication setup mode duration leaks).Submission,
+    ∀ material : (serviceApplication setup deps duration leaks).Submission,
       response.transmission = some material → ∃ event action,
         view.application.publicView.ownTurn? who = some event ∧
-        (eventRecorded (serviceTimeouts setup mode duration)) leaks past event = false ∧
-        response = (canonicalServiceDecision (serviceTimeouts setup mode duration)) leaks who past
+        (eventRecorded (serviceTimeouts setup deps duration)) leaks past event = false ∧
+        response = (canonicalServiceDecision (serviceTimeouts setup deps duration)) leaks who past
           view
           event action
 
 /-- The turn-counted policy submits canonically. -/
 theorem serviceTurnPolicy_submitsCanonically_reference (bound :
-    (serviceGraph setup mode).EventId → Nat)
-    (turns : Nat) (timing : TurnTiming setup turns mode) (reference :
-      (serviceGraph setup mode).BehavioralProfile)
+    (serviceGraph setup deps).EventId → Nat)
+    (turns : Nat) (timing : TurnTiming setup turns deps) (reference :
+      (serviceGraph setup deps).BehavioralProfile)
     (who : Player) :
-    SubmitsCanonically (serviceReferenceTurnPolicy setup mode duration leaks bound turns timing
+    SubmitsCanonically (serviceReferenceTurnPolicy setup deps duration leaks bound turns timing
       reference who)
       who := by
   intro past view response chosen material submits
@@ -258,10 +260,10 @@ theorem serviceTurnPolicy_submitsCanonically_reference (bound :
   exact ⟨event, action, turn, unrecorded, rfl⟩
 
 /-- The turn-counted policy submits canonically. -/
-theorem serviceTurnPolicy_submitsCanonically (bound : (serviceGraph setup mode).EventId → Nat)
-    (turns : Nat) (timing : TurnTiming setup turns mode) (profile : BehavioralProfile setup.program)
+theorem serviceTurnPolicy_submitsCanonically (bound : (serviceGraph setup deps).EventId → Nat)
+    (turns : Nat) (timing : TurnTiming setup turns deps) (profile : BehavioralProfile setup.program)
     (who : Player) :
-    SubmitsCanonically (serviceTurnPolicy setup mode duration leaks bound turns timing profile who)
+    SubmitsCanonically (serviceTurnPolicy setup deps duration leaks bound turns timing profile who)
       who :=
   serviceTurnPolicy_submitsCanonically_reference bound turns timing
     (compileEventProfile setup.program profile) who
@@ -277,26 +279,26 @@ owner of `event` uses a prepared slot, that slot is the one
 `canonicalFreshSlot` selects, the event is a binding of the owner, and the
 submission names the event. -/
 theorem canonicalServiceDecision_candidateSlot (who : Player)
-    (past : List (serviceApplication setup mode duration leaks).PlayerEntry)
-    (view : (serviceApplication setup mode duration leaks).PlayerView)
-    (event : (serviceGraph setup mode).EventId)
-    (owned : (serviceGraph setup mode).actor? event = some who)
-    (action : (serviceGraph setup mode).Action event)
+    (past : List (serviceApplication setup deps duration leaks).PlayerEntry)
+    (view : (serviceApplication setup deps duration leaks).PlayerView)
+    (event : (serviceGraph setup deps).EventId)
+    (owned : (serviceGraph setup deps).actor? event = some who)
+    (action : (serviceGraph setup deps).Action event)
     (serial : Nat)
-    (slot : (responseCandidateSlot (serviceTimeouts setup mode duration)) leaks
-      ((canonicalServiceDecision (serviceTimeouts setup mode duration)) leaks who past view event
+    (slot : (responseCandidateSlot (serviceTimeouts setup deps duration)) leaks
+      ((canonicalServiceDecision (serviceTimeouts setup deps duration)) leaks who past view event
           action) = some serial) :
     canonicalFreshSlot who view.application = some serial ∧
-      (∃ payload, (serviceGraph setup mode).outputLayout event = .binding who payload) ∧
-      (submittedEvent? (serviceTimeouts setup mode duration)) leaks
-        ((canonicalServiceDecision (serviceTimeouts setup mode duration)) leaks who past view event
+      (∃ payload, (serviceGraph setup deps).outputLayout event = .binding who payload) ∧
+      (submittedEvent? (serviceTimeouts setup deps duration)) leaks
+        ((canonicalServiceDecision (serviceTimeouts setup deps duration)) leaks who past view event
             action) =
           some event := by
   by_cases inactive : who ∈ view.application.publicView.observation.defaulted
-  · rw [(canonicalServiceDecision_defaulted (serviceTimeouts setup mode duration)) leaks who past
+  · rw [(canonicalServiceDecision_defaulted (serviceTimeouts setup deps duration)) leaks who past
       view event action inactive] at slot
     cases slot
-  cases node : nodeView (serviceGraph setup mode) event with
+  cases node : nodeView (serviceGraph setup deps) event with
   | sample payload law outputEq codeEq =>
       have none := nodeView_sample_actor outputEq codeEq
       rw [owned] at none
@@ -310,7 +312,7 @@ theorem canonicalServiceDecision_candidateSlot (who : Player)
         ⟨cast (congrArg EventGraph.EventField.Action outputEq) action, by simp⟩
       cases choice with
       | none =>
-          rw [(canonicalServiceDecision_binding_none (serviceTimeouts setup mode duration)) leaks
+          rw [(canonicalServiceDecision_binding_none (serviceTimeouts setup deps duration)) leaks
             actor past view event actor payload outputEq codeEq node] at slot
           cases slot
       | some result =>
@@ -321,7 +323,7 @@ theorem canonicalServiceDecision_candidateSlot (who : Player)
                 cast_cast, cast_eq, Option.bind_some, selected, Option.map_none] at slot
               cases slot
           | some chosen =>
-              rw [(canonicalServiceDecision_binding (serviceTimeouts setup mode duration)) leaks
+              rw [(canonicalServiceDecision_binding (serviceTimeouts setup deps duration)) leaks
                 actor
                 past view event payload outputEq codeEq node inactive chosen selected result]
                   at slot ⊢
@@ -329,7 +331,7 @@ theorem canonicalServiceDecision_candidateSlot (who : Player)
               exact ⟨rfl, ⟨payload, outputEq⟩, rfl⟩
   | resolve actor payload binding checks outputEq codeEq =>
       exfalso
-      rw [(canonicalServiceDecision_eq_of_not_bind (serviceTimeouts setup mode duration)) leaks who
+      rw [(canonicalServiceDecision_eq_of_not_bind (serviceTimeouts setup deps duration)) leaks who
         past view event action (fun _ _ _ _ bind => by rw [node] at bind; cases bind)] at slot
       unfold EventGraphRuntime.serviceDecision EventGraphRuntime.reactiveDecision at slot
       simp only [ite_eq_right inactive, node] at slot
@@ -346,15 +348,15 @@ section Invariant
 
 /-- `who` has an unfinished binding of its own for which it has already
 submitted. -/
-def PendingBinding (execution : (serviceApplication setup mode duration leaks).Execution)
-    (who : Player) : Prop := ∃ event payload, (serviceGraph setup mode).outputLayout event =
+def PendingBinding (execution : (serviceApplication setup deps duration leaks).Execution)
+    (who : Player) : Prop := ∃ event payload, (serviceGraph setup deps).outputLayout event =
     .binding who payload ∧ event ∉ execution.application.config.cut.completed ∧
-    (eventRecorded (serviceTimeouts setup mode duration)) leaks (execution.logs who) event = true
+    (eventRecorded (serviceTimeouts setup deps duration)) leaks (execution.logs who) event = true
 
 /-- Every prepared slot `who` has used lies below its public binding count, or
 at it while a binding of `who` it has submitted for is unfinished. -/
-def CanonicalSlotsUsed (execution : (serviceApplication setup mode duration leaks).Execution)
-    (who : Player) : Prop := ∀ serial ∈ (submittedCandidateSlots (serviceTimeouts setup mode
+def CanonicalSlotsUsed (execution : (serviceApplication setup deps duration leaks).Execution)
+    (who : Player) : Prop := ∀ serial ∈ (submittedCandidateSlots (serviceTimeouts setup deps
       duration))
     leaks (execution.logs who), serial < execution.application.publicView.bindingCount who ∨
     (serial = execution.application.publicView.bindingCount who ∧ PendingBinding setup leaks
@@ -362,19 +364,20 @@ def CanonicalSlotsUsed (execution : (serviceApplication setup mode duration leak
 
 variable {setup leaks}
 
-/-- At `who`'s turn at an event it has not submitted for, no binding of `who`
-it has submitted for is unfinished: such a binding would be ready too, and a
-player acts at most at one ready event (in every dependency mode). -/
-theorem not_pendingBinding_at_turn {horizon : Nat}
-    {scheduler : (serviceApplication setup mode duration leaks).Scheduler}
-    {control : (serviceApplication setup mode duration leaks).Control}
+/-- At an owner-solitary turn at an event it has not submitted for, no binding
+of `who` it has submitted for is unfinished: that binding would be ready too. -/
+theorem not_pendingBinding_at_turn
+    {horizon : Nat}
+    {scheduler : (serviceApplication setup deps duration leaks).Scheduler}
+    {control : (serviceApplication setup deps duration leaks).Control}
     (trace :
-        ((serviceApplication setup mode duration leaks).protocol (serviceInitialLaw setup mode)
+        ((serviceApplication setup deps duration leaks).protocol (serviceInitialLaw setup deps)
         horizon scheduler).Trace (some control))
     (who : Player) (atTurn : OwnSubmissionsAtTurn setup leaks control.execution who)
-    (event : (serviceGraph setup mode).EventId)
+    (event : (serviceGraph setup deps).EventId)
+    (ownerSolitary : (serviceGraph setup deps).OwnerSolitary event)
     (turn : control.execution.application.publicView.ownTurn? who = some event)
-    (unrecorded : (eventRecorded (serviceTimeouts setup mode duration)) leaks
+    (unrecorded : (eventRecorded (serviceTimeouts setup deps duration)) leaks
         (control.execution.logs who) event = false) :
     ¬ PendingBinding setup leaks control.execution who := by
   rintro ⟨other, payload, _, unfinished, recorded⟩
@@ -390,7 +393,7 @@ theorem not_pendingBinding_at_turn {horizon : Nat}
     exact ready_of_eventReady_extends order entryReady unfinished
   have readyEvent := (PublicView.ownTurn?_spec _ who event turn).1
   have same : other = event :=
-    (serviceGraph_revealRelaxedOrdered setup mode).ready_actor_unique
+    ownerSolitary.ready_actor_unique
       control.execution.application.config.cut
       ((control.execution.application.publicView_eventReady event).mp readyEvent) readyOther
       (PublicView.ownTurn?_spec _ who event turn).2
@@ -401,23 +404,25 @@ theorem not_pendingBinding_at_turn {horizon : Nat}
 
 /-- At `who`'s turn at an event it has not submitted for, the counted slot is
 unused and therefore fresh. -/
-theorem canonicalSlot_fresh_of_used {horizon : Nat}
-    {scheduler : (serviceApplication setup mode duration leaks).Scheduler}
-    {control : (serviceApplication setup mode duration leaks).Control}
+theorem canonicalSlot_fresh_of_used
+    {horizon : Nat}
+    {scheduler : (serviceApplication setup deps duration leaks).Scheduler}
+    {control : (serviceApplication setup deps duration leaks).Control}
     (trace :
-        ((serviceApplication setup mode duration leaks).protocol (serviceInitialLaw setup mode)
+        ((serviceApplication setup deps duration leaks).protocol (serviceInitialLaw setup deps)
         horizon scheduler).Trace (some control))
     (who : Player) (atTurn : OwnSubmissionsAtTurn setup leaks control.execution who)
     (valid : CanonicalSlotsUsed setup leaks control.execution who)
-    (event : (serviceGraph setup mode).EventId)
+    (event : (serviceGraph setup deps).EventId)
+    (ownerSolitary : (serviceGraph setup deps).OwnerSolitary event)
     (turn : control.execution.application.publicView.ownTurn? who = some event)
-    (unrecorded : (eventRecorded (serviceTimeouts setup mode duration)) leaks
+    (unrecorded : (eventRecorded (serviceTimeouts setup deps duration)) leaks
         (control.execution.logs who) event = false) :
     control.execution.application.candidates.lookup
       (who, .prepared (control.execution.application.publicView.bindingCount who)) = .fresh := by
-  have noPending := not_pendingBinding_at_turn trace who atTurn event turn unrecorded
+  have noPending := not_pendingBinding_at_turn trace who atTurn event ownerSolitary turn unrecorded
   have unused : control.execution.application.publicView.bindingCount who ∉
-      (submittedCandidateSlots (serviceTimeouts setup mode duration)) leaks
+      (submittedCandidateSlots (serviceTimeouts setup deps duration)) leaks
       (control.execution.logs who) := by
     intro member
     rcases valid _ member with lower | ⟨_, pending⟩
@@ -425,23 +430,23 @@ theorem canonicalSlot_fresh_of_used {horizon : Nat}
     · exact noPending pending
   have rawTrace := trace
   rw [serviceInitialLaw_eq_inputs] at rawTrace
-  have candidates : (CandidateRecall (serviceTimeouts setup mode duration)) leaks
+  have candidates : (CandidateRecall (serviceTimeouts setup deps duration)) leaks
     control.execution :=
-    (candidateRecall_history (serviceTimeouts setup mode duration)) leaks _ horizon scheduler
+    (candidateRecall_history (serviceTimeouts setup deps duration)) leaks _ horizon scheduler
       rawTrace
   exact candidates who _ unused
 
 /-- A scheduler command keeps the used slots below the count. -/
 theorem canonicalSlotsUsed_environment
-    {execution next : (serviceApplication setup mode duration leaks).Execution}
-    {command : (serviceApplication setup mode duration leaks).Command}
+    {execution next : (serviceApplication setup deps duration leaks).Execution}
+    {command : (serviceApplication setup deps duration leaks).Command}
     (reached : next ∈
-        (execution.environmentStep (serviceApplication setup mode duration leaks) command).support)
+        (execution.environmentStep (serviceApplication setup deps duration leaks) command).support)
     (who : Player) (valid : CanonicalSlotsUsed setup leaks execution who) :
     CanonicalSlotsUsed setup leaks next who := by
-  let app := serviceApplication setup mode duration leaks
+  let app := serviceApplication setup deps duration leaks
   have recallEq := app.environmentStep_recall execution next command reached
-  have path := ((reactiveApplication_graphSteps (serviceTimeouts setup mode duration))
+  have path := ((reactiveApplication_graphSteps (serviceTimeouts setup deps duration))
     leaks).environmentStep execution next command reached
   obtain ⟨extra, appended⟩ := EventGraph.Config.Step.path_history_prefix path
   have historyEq : next.application.config.history = execution.application.config.history ++
@@ -449,7 +454,7 @@ theorem canonicalSlotsUsed_environment
   have countEq : next.application.publicView.bindingCount who =
       execution.application.publicView.bindingCount who +
         ((extra.map EventCompletion.event).countP fun event =>
-          match (serviceGraph setup mode).outputLayout event with
+          match (serviceGraph setup deps).outputLayout event with
           | .binding owner _ => decide (owner = who)
           | .publicData _ | .privateInput _ _ | .publication _ => false) := by
     unfold PublicView.bindingCount
@@ -471,7 +476,7 @@ theorem canonicalSlotsUsed_environment
         rcases listed with old | fresh
         · exact unfinished ((execution.application.config.history_exact other).mp old)
         · have zero : ((extra.map EventCompletion.event).countP fun event =>
-              match (serviceGraph setup mode).outputLayout event with
+              match (serviceGraph setup deps).outputLayout event with
               | .binding owner _ => decide (owner = who)
               | .publicData _ | .privateInput _ _ | .publication _ => false) = 0 := by omega
           have absent := List.countP_eq_zero.mp zero other fresh
@@ -485,14 +490,15 @@ theorem canonicalSlotsUsed_environment
 
 /-- Another player's response leaves `who`'s used slots and their count. -/
 theorem canonicalSlotsUsed_respond_other
-    (execution : (serviceApplication setup mode duration leaks).Execution) {who responder : Player}
-    (different : who ≠ responder) (response : (serviceApplication setup mode duration leaks).Action)
+    (execution : (serviceApplication setup deps duration leaks).Execution) {who responder : Player}
+    (different : who ≠ responder)
+    (response : (serviceApplication setup deps duration leaks).Action)
     (valid : CanonicalSlotsUsed setup leaks execution who) : CanonicalSlotsUsed setup leaks
-      (execution.respond (serviceApplication setup mode duration leaks) responder response)
+      (execution.respond (serviceApplication setup deps duration leaks) responder response)
       who := by
-  have recallEq := (serviceApplication setup mode duration leaks).respond_recall_other execution
+  have recallEq := (serviceApplication setup deps duration leaks).respond_recall_other execution
       responder who different response
-  have appEq := (reactive_respond_application (serviceTimeouts setup mode duration)) leaks execution
+  have appEq := (reactive_respond_application (serviceTimeouts setup deps duration)) leaks execution
       responder response
   unfold CanonicalSlotsUsed PendingBinding at valid ⊢
   rw [recallEq, appEq.1, appEq.2]
@@ -501,47 +507,48 @@ theorem canonicalSlotsUsed_respond_other
 /-- **One response of the turn-counted policy.** A fresh commitment of `who`
 on the policy's support uses exactly the counted slot, and its binding stays
 pending until it completes. -/
-theorem canonicalSlotsUsed_respond {horizon remaining : Nat}
-    {scheduler : (serviceApplication setup mode duration leaks).Scheduler}
-    {middle : (serviceApplication setup mode duration leaks).Execution} {who : Player}
+theorem canonicalSlotsUsed_respond
+    (serial : (serviceGraph setup deps).ActorSerial) {horizon remaining : Nat}
+    {scheduler : (serviceApplication setup deps duration leaks).Scheduler}
+    {middle : (serviceApplication setup deps duration leaks).Execution} {who : Player}
     (trace :
-        ((serviceApplication setup mode duration leaks).protocol (serviceInitialLaw setup mode)
+        ((serviceApplication setup deps duration leaks).protocol (serviceInitialLaw setup deps)
         horizon scheduler).Trace (some ⟨remaining, some who, middle⟩))
-    {policy : (serviceApplication setup mode duration leaks).Policy}
+    {policy : (serviceApplication setup deps duration leaks).Policy}
     (canonical : SubmitsCanonically policy who)
-    {response : (serviceApplication setup mode duration leaks).Action}
+    {response : (serviceApplication setup deps duration leaks).Action}
     (chosen : response ∈ (policy (middle.logs who)
-      (middle.observe (serviceApplication setup mode duration leaks) who)).support)
+      (middle.observe (serviceApplication setup deps duration leaks) who)).support)
     (atTurn : OwnSubmissionsAtTurn setup leaks middle who)
     (valid : CanonicalSlotsUsed setup leaks middle who) :
     CanonicalSlotsUsed setup leaks
-        (middle.respond (serviceApplication setup mode duration leaks) who response)
+        (middle.respond (serviceApplication setup deps duration leaks) who response)
       who := by
-  let app := serviceApplication setup mode duration leaks
-  have appEq := (reactive_respond_application (serviceTimeouts setup mode duration)) leaks middle
+  let app := serviceApplication setup deps duration leaks
+  have appEq := (reactive_respond_application (serviceTimeouts setup deps duration)) leaks middle
       who response
   obtain ⟨emitted, recalled, _⟩ := respond_recall_self setup leaks middle who response
   have recordedMono : ∀ event,
-      (eventRecorded (serviceTimeouts setup mode duration)) leaks (middle.logs who) event = true →
-        (eventRecorded (serviceTimeouts setup mode duration)) leaks
+      (eventRecorded (serviceTimeouts setup deps duration)) leaks (middle.logs who) event = true →
+        (eventRecorded (serviceTimeouts setup deps duration)) leaks
         ((middle.respond app who response).logs who)
           event = true := by
     intro event recorded
     rw [recalled]
     unfold EventGraphRuntime.eventRecorded at recorded ⊢
     rw [List.any_append, recorded, Bool.true_or]
-  intro serial used
-  rw [(submittedCandidateSlots_respond (serviceTimeouts setup mode duration)) leaks middle who
+  intro slotIndex used
+  rw [(submittedCandidateSlots_respond (serviceTimeouts setup deps duration)) leaks middle who
           response] at used
   rw [appEq.2]
   rcases List.mem_append.mp used with old | new
-  · rcases valid serial old with lower | ⟨equal, other, payload, layout, unfinished, recorded⟩
+  · rcases valid slotIndex old with lower | ⟨equal, other, payload, layout, unfinished, recorded⟩
     · exact Or.inl lower
     · refine Or.inr ⟨equal, other, payload, layout, ?_, recordedMono other recorded⟩
       rw [appEq.1]
       exact unfinished
-  · have slot : (responseCandidateSlot (serviceTimeouts setup mode duration)) leaks response = some
-        serial := Option.mem_toList.mp new
+  · have slot : (responseCandidateSlot (serviceTimeouts setup deps duration)) leaks response = some
+        slotIndex := Option.mem_toList.mp new
     obtain ⟨material, submits⟩ : ∃ material, response.transmission = some material := by
       unfold EventGraphRuntime.responseCandidateSlot at slot
       split at slot
@@ -550,10 +557,12 @@ theorem canonicalSlotsUsed_respond {horizon remaining : Nat}
     obtain ⟨event, action, turn, unrecorded, rfl⟩ :=
       canonical _ _ response chosen material submits
     have owned := (PublicView.ownTurn?_spec _ who event turn).2
-    have fresh := canonicalSlot_fresh_of_used trace who atTurn valid event turn unrecorded
+    have fresh := canonicalSlot_fresh_of_used trace who atTurn valid event (serial event) turn
+      unrecorded
     have canonical := canonicalFreshSlot_canonical who (middle.observe app who).application fresh
-    obtain ⟨selected, ⟨payload, layout⟩, named⟩ := canonicalServiceDecision_candidateSlot who
-      (middle.logs who) (middle.observe app who) event owned action serial slot
+    obtain ⟨selected, ⟨payload, layout⟩, named⟩ :=
+      canonicalServiceDecision_candidateSlot who (middle.logs who) (middle.observe app who) event
+        owned action slotIndex slot
     rw [canonical] at selected
     cases Option.some.inj selected
     have ready := (middle.application.publicView_eventReady event).mp
@@ -570,22 +579,23 @@ theorem canonicalSlotsUsed_respond {horizon remaining : Nat}
 
 /-- One round keeps `who`'s submissions at its turns and its used slots below
 the count, when `who` submits canonically and only at its turns. -/
-theorem canonicalSlots_round {horizon remaining : Nat}
-    {scheduler : (serviceApplication setup mode duration leaks).Scheduler}
-    {players : Player → (serviceApplication setup mode duration leaks).Policy} {who : Player}
+theorem canonicalSlots_round
+    (serial : (serviceGraph setup deps).ActorSerial) {horizon remaining : Nat}
+    {scheduler : (serviceApplication setup deps duration leaks).Scheduler}
+    {players : Player → (serviceApplication setup deps duration leaks).Policy} {who : Player}
     (canonical : SubmitsCanonically (players who) who)
     (submitsAtTurn : SubmitsAtTurn setup leaks (players who) who)
-    {execution next : (serviceApplication setup mode duration leaks).Execution}
+    {execution next : (serviceApplication setup deps duration leaks).Execution}
     (trace :
-        ((serviceApplication setup mode duration leaks).protocol (serviceInitialLaw setup mode)
+        ((serviceApplication setup deps duration leaks).protocol (serviceInitialLaw setup deps)
         horizon scheduler).Trace (some ⟨remaining + 1, none, execution⟩))
     (atTurn : OwnSubmissionsAtTurn setup leaks execution who)
     (valid : CanonicalSlotsUsed setup leaks execution who)
     (reached : next ∈
-        ((serviceApplication setup mode duration leaks).round scheduler players
+        ((serviceApplication setup deps duration leaks).round scheduler players
         execution).support) :
     OwnSubmissionsAtTurn setup leaks next who ∧ CanonicalSlotsUsed setup leaks next who := by
-  let app := serviceApplication setup mode duration leaks
+  let app := serviceApplication setup deps duration leaks
   obtain ⟨command, selected, middle, moved, cases⟩ := round_cases setup leaks reached
   have recallEq := app.environmentStep_recall execution middle command moved
   have atMiddle : OwnSubmissionsAtTurn setup leaks middle who := by
@@ -595,12 +605,13 @@ theorem canonicalSlots_round {horizon remaining : Nat}
   have validMiddle := canonicalSlotsUsed_environment moved who valid
   rcases cases with ⟨_, rfl⟩ | ⟨responder, active, response, chosen, rfl⟩
   · exact ⟨atMiddle, validMiddle⟩
-  · obtain ⟨middleTrace⟩ := app.raw_trace_environment (serviceInitialLaw setup mode) horizon
+  · obtain ⟨middleTrace⟩ := app.raw_trace_environment (serviceInitialLaw setup deps) horizon
         scheduler remaining execution middle command trace selected moved
     rw [active] at middleTrace
     by_cases same : responder = who
     · subst responder
-      refine ⟨?_, canonicalSlotsUsed_respond middleTrace canonical chosen atMiddle validMiddle⟩
+      refine ⟨?_, canonicalSlotsUsed_respond serial middleTrace canonical chosen atMiddle
+        validMiddle⟩
       obtain ⟨emitted, recalled, _⟩ := respond_recall_self setup leaks middle who response
       intro entry member event submitted
       rw [recalled] at member
@@ -618,18 +629,19 @@ theorem canonicalSlots_round {horizon remaining : Nat}
 /-- On the support of rounds in which `who` follows the turn-counted policy,
 `who`'s submissions are at its turns and its used slots lie below the count. -/
 theorem canonicalSlots_roundsFrom_reference
-    (scheduler : (serviceApplication setup mode duration leaks).Scheduler)
-    (players : Player → (serviceApplication setup mode duration leaks).Policy) (who : Player)
-    {bound : (serviceGraph setup mode).EventId → Nat} {turns : Nat}
-    (timing : TurnTiming setup turns mode) (reference : (serviceGraph setup mode).BehavioralProfile)
-    (follows : players who = serviceReferenceTurnPolicy setup mode duration leaks bound turns
+    (serial : (serviceGraph setup deps).ActorSerial)
+    (scheduler : (serviceApplication setup deps duration leaks).Scheduler)
+    (players : Player → (serviceApplication setup deps duration leaks).Policy) (who : Player)
+    {bound : (serviceGraph setup deps).EventId → Nat} {turns : Nat}
+    (timing : TurnTiming setup turns deps) (reference : (serviceGraph setup deps).BehavioralProfile)
+    (follows : players who = serviceReferenceTurnPolicy setup deps duration leaks bound turns
       timing reference
-        who) (count : Nat) (execution : (serviceApplication setup mode duration leaks).Execution)
+        who) (count : Nat) (execution : (serviceApplication setup deps duration leaks).Execution)
     (reached : execution ∈
-        ((serviceApplication setup mode duration leaks).roundsFrom (serviceInitialLaw setup mode)
+        ((serviceApplication setup deps duration leaks).roundsFrom (serviceInitialLaw setup deps)
         scheduler players count).support) : OwnSubmissionsAtTurn setup leaks execution who ∧
       CanonicalSlotsUsed setup leaks execution who := by
-  let app := serviceApplication setup mode duration leaks
+  let app := serviceApplication setup deps duration leaks
   induction count generalizing execution with
   | zero =>
       obtain ⟨state, _, supported⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
@@ -641,11 +653,12 @@ theorem canonicalSlots_roundsFrom_reference
       rw [app.roundsFrom_succ] at reached
       obtain ⟨prior, priorMem, moved⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       obtain ⟨atTurn, valid⟩ := ih prior priorMem
-      obtain ⟨trace⟩ := app.raw_trace_roundsFrom (serviceInitialLaw setup mode) (count + 1)
+      obtain ⟨trace⟩ := app.raw_trace_roundsFrom (serviceInitialLaw setup deps) (count + 1)
           scheduler players count (Nat.le_succ count) prior priorMem
       rw [show count + 1 - count = 0 + 1 by omega] at trace
-      exact canonicalSlots_round
-        (follows ▸ serviceTurnPolicy_submitsCanonically_reference bound turns timing reference who)
+      exact canonicalSlots_round serial
+        (follows ▸ serviceTurnPolicy_submitsCanonically_reference bound turns timing reference
+          who)
         (follows ▸ sourceServiceTurnPolicy_submitsAtTurn_reference setup leaks bound turns timing
           reference
           who) trace atTurn valid moved
@@ -653,45 +666,48 @@ theorem canonicalSlots_roundsFrom_reference
 /-- On the support of rounds in which `who` follows the turn-counted policy,
 `who`'s submissions are at its turns and its used slots lie below the count. -/
 theorem canonicalSlots_roundsFrom
-    (scheduler : (serviceApplication setup mode duration leaks).Scheduler)
-    (players : Player → (serviceApplication setup mode duration leaks).Policy) (who : Player)
-    {bound : (serviceGraph setup mode).EventId → Nat} {turns : Nat}
-    (timing : TurnTiming setup turns mode) (profile : BehavioralProfile setup.program)
-    (follows : players who = serviceTurnPolicy setup mode duration leaks bound turns timing profile
-        who) (count : Nat) (execution : (serviceApplication setup mode duration leaks).Execution)
+    (serial : (serviceGraph setup deps).ActorSerial)
+    (scheduler : (serviceApplication setup deps duration leaks).Scheduler)
+    (players : Player → (serviceApplication setup deps duration leaks).Policy) (who : Player)
+    {bound : (serviceGraph setup deps).EventId → Nat} {turns : Nat}
+    (timing : TurnTiming setup turns deps) (profile : BehavioralProfile setup.program)
+    (follows : players who = serviceTurnPolicy setup deps duration leaks bound turns timing profile
+        who) (count : Nat) (execution : (serviceApplication setup deps duration leaks).Execution)
     (reached : execution ∈
-        ((serviceApplication setup mode duration leaks).roundsFrom (serviceInitialLaw setup mode)
+        ((serviceApplication setup deps duration leaks).roundsFrom (serviceInitialLaw setup deps)
         scheduler players count).support) : OwnSubmissionsAtTurn setup leaks execution who ∧
       CanonicalSlotsUsed setup leaks execution who := by
-  apply canonicalSlots_roundsFrom_reference
-    (reference := compileEventProfile setup.program profile) <;> assumption
+  exact canonicalSlots_roundsFrom_reference serial scheduler players who timing
+    (compileEventProfile setup.program profile) follows count execution reached
 
 /-- **The counted slot supplies an unrecorded own decision.** On every legal
 history where the owner's submissions were made at its own turns and its used
 prepared slots stay canonical, the counted slot at an unrecorded own turn is
 fresh, below the candidate count, and selected by the canonical decision. -/
 theorem canonicalSlot_resources_of_used
-    (bounds : MessageBounds (serviceGraph setup mode)) {horizon : Nat}
-    {scheduler : (serviceApplication setup mode duration leaks).Scheduler}
-    (capacity : (serviceGraph setup mode).order.eventCount ≤ bounds.candidateCount)
-    {control : (serviceApplication setup mode duration leaks).Control}
+    (bounds : MessageBounds (serviceGraph setup deps)) {horizon : Nat}
+    {scheduler : (serviceApplication setup deps duration leaks).Scheduler}
+    (capacity : (serviceGraph setup deps).order.eventCount ≤ bounds.candidateCount)
+    {control : (serviceApplication setup deps duration leaks).Control}
     (trace :
-        ((serviceApplication setup mode duration leaks).protocol (serviceInitialLaw setup mode)
+        ((serviceApplication setup deps duration leaks).protocol (serviceInitialLaw setup deps)
         horizon scheduler).Trace (some control))
     (who : Player) (atTurn : OwnSubmissionsAtTurn setup leaks control.execution who)
     (valid : CanonicalSlotsUsed setup leaks control.execution who)
-    (event : (serviceGraph setup mode).EventId)
+    (event : (serviceGraph setup deps).EventId)
+    (ownerSolitary : (serviceGraph setup deps).OwnerSolitary event)
     (turn : control.execution.application.publicView.ownTurn? who = some event)
-    (unrecorded : (eventRecorded (serviceTimeouts setup mode duration)) leaks
+    (unrecorded : (eventRecorded (serviceTimeouts setup deps duration)) leaks
         (control.execution.logs who) event = false) :
     control.execution.application.publicView.bindingCount who < bounds.candidateCount ∧
       control.execution.application.candidates.lookup
         (who, .prepared (control.execution.application.publicView.bindingCount who)) = .fresh ∧
       canonicalFreshSlot who
-        (control.execution.observe (serviceApplication setup mode duration leaks) who).application =
+        (control.execution.observe (serviceApplication setup deps duration leaks) who).application =
           some (control.execution.application.publicView.bindingCount who) := by
   classical
-  have fresh := canonicalSlot_fresh_of_used trace who atTurn valid event turn unrecorded
+  have fresh := canonicalSlot_fresh_of_used trace who atTurn valid event ownerSolitary turn
+    unrecorded
   refine ⟨?_, fresh, canonicalFreshSlot_canonical who _ fresh⟩
   let history := control.execution.application.config.history.map EventCompletion.event
   have ready := (control.execution.application.publicView_eventReady event).mp
@@ -711,22 +727,23 @@ end Invariant
 /-- Every fresh call of `who` emitted its own packet addressed to the event it
 submitted for, early enough to be included before the deadline within
 `bound`. -/
-def OwnFreshCalls (bound : (serviceGraph setup mode).EventId → Nat)
-    (execution : (serviceApplication setup mode duration leaks).Execution) (who : Player) : Prop :=
+def OwnFreshCalls (bound : (serviceGraph setup deps).EventId → Nat)
+    (execution : (serviceApplication setup deps duration leaks).Execution) (who : Player) : Prop :=
   ∀ entry ∈ execution.logs who, ∀ material,
     entry.action.transmission = some material →
     ∃ event message, entry.emitted = some message ∧ message.sender = who ∧
-      message.payload.call.event? (serviceGraph setup mode) = some event ∧
-      (submittedEvent? (serviceTimeouts setup mode duration)) leaks entry.action = some event ∧
+      message.payload.call.event? (serviceGraph setup deps) = some event ∧
+      (submittedEvent? (serviceTimeouts setup deps duration)) leaks entry.action = some event ∧
       entry.beforeView.application.publicView.InclusionFitsDeadline
-          (serviceTimeouts setup mode duration) bound event
+          (serviceTimeouts setup deps duration) bound event
 
 /-- Two fresh calls of `who` for one event emitted the same identifier. -/
-def OneCallPerEvent (execution : (serviceApplication setup mode duration leaks).Execution)
-    (who : Player) : Prop := ∀ first ∈ execution.logs who, ∀ second ∈ execution.logs who, ∀
-    event (firstMessage secondMessage : Message Player (WitnessedPacket (serviceGraph setup mode))),
-    (submittedEvent? (serviceTimeouts setup mode duration)) leaks first.action = some event →
-    (submittedEvent? (serviceTimeouts setup mode duration)) leaks second.action = some event →
+def OneCallPerEvent (execution : (serviceApplication setup deps duration leaks).Execution)
+    (who : Player) : Prop := ∀ first ∈ execution.logs who, ∀ second ∈ execution.logs who,
+    ∀ event
+      (firstMessage secondMessage : Message Player (WitnessedPacket (serviceGraph setup deps))),
+    (submittedEvent? (serviceTimeouts setup deps duration)) leaks first.action = some event →
+    (submittedEvent? (serviceTimeouts setup deps duration)) leaks second.action = some event →
     first.emitted = some firstMessage → second.emitted = some secondMessage → firstMessage.id =
     secondMessage.id
 
@@ -735,20 +752,20 @@ variable {setup leaks}
 
 /-- A completed round preserves the owner's timely once-per-event calls. -/
 private theorem freshCalls_round
-    {scheduler : (serviceApplication setup mode duration leaks).Scheduler}
-    {players : Player → (serviceApplication setup mode duration leaks).Policy} {who : Player}
-    {bound : (serviceGraph setup mode).EventId → Nat} {turns : Nat}
-    (timing : TurnTiming setup turns mode) (reference : (serviceGraph setup mode).BehavioralProfile)
-    (follows : players who = serviceReferenceTurnPolicy setup mode duration leaks bound turns timing
+    {scheduler : (serviceApplication setup deps duration leaks).Scheduler}
+    {players : Player → (serviceApplication setup deps duration leaks).Policy} {who : Player}
+    {bound : (serviceGraph setup deps).EventId → Nat} {turns : Nat}
+    (timing : TurnTiming setup turns deps) (reference : (serviceGraph setup deps).BehavioralProfile)
+    (follows : players who = serviceReferenceTurnPolicy setup deps duration leaks bound turns timing
       reference who)
-    {execution next : (serviceApplication setup mode duration leaks).Execution}
+    {execution next : (serviceApplication setup deps duration leaks).Execution}
     (calls : OwnFreshCalls setup leaks bound execution who)
     (once : OneCallPerEvent setup leaks execution who)
-    (reached : next ∈ ((serviceApplication setup mode duration leaks).round scheduler players
+    (reached : next ∈ ((serviceApplication setup deps duration leaks).round scheduler players
       execution).support) :
     OwnFreshCalls setup leaks bound next who ∧ OneCallPerEvent setup leaks next who := by
-  let app := serviceApplication setup mode duration leaks
-  let timeouts := serviceTimeouts setup mode duration
+  let app := serviceApplication setup deps duration leaks
+  let timeouts := serviceTimeouts setup deps duration
   obtain ⟨command, _, middle, moved, cases⟩ := round_cases setup leaks reached
   have recallEq := app.environmentStep_recall execution middle command moved
   have callsMiddle : OwnFreshCalls setup leaks bound middle who := by
@@ -799,9 +816,10 @@ private theorem freshCalls_round
                 (fun response : app.Action => response.transmission) silent
               cases impossible
             · exact named
-          let message : Message Player (WitnessedPacket (serviceGraph setup mode)) :=
+          let message : Message Player (WitnessedPacket (serviceGraph setup deps)) :=
             ⟨(who, middle.network.nextSerial who), app.packet
-              (app.submit middle.application who material) who (middle.network.known who) material⟩
+              (app.submit middle.application who material) who (middle.network.known who)
+              material⟩
           let entry : app.PlayerEntry :=
             ⟨middle.observe app who, ⟨some material⟩, some message⟩
           have recalled : (middle.respond app who ⟨some material⟩).logs who =
@@ -853,17 +871,18 @@ private theorem freshCalls_round
 /-- Every prescribed player's transmitted calls are timely and use one identifier
 per event, under arbitrary other policies and scheduler, for every turn timing. -/
 theorem sourceServiceTurnPolicy_freshCalls_reference
-    (scheduler : (serviceApplication setup mode duration leaks).Scheduler)
-    (players : Player → (serviceApplication setup mode duration leaks).Policy) (who : Player)
-    {bound : (serviceGraph setup mode).EventId → Nat} {turns : Nat}
-    (timing : TurnTiming setup turns mode) (reference : (serviceGraph setup mode).BehavioralProfile)
-    (follows : players who = serviceReferenceTurnPolicy setup mode duration leaks bound turns timing
+    (scheduler : (serviceApplication setup deps duration leaks).Scheduler)
+    (players : Player → (serviceApplication setup deps duration leaks).Policy) (who : Player)
+    {bound : (serviceGraph setup deps).EventId → Nat} {turns : Nat}
+    (timing : TurnTiming setup turns deps) (reference : (serviceGraph setup deps).BehavioralProfile)
+    (follows : players who = serviceReferenceTurnPolicy setup deps duration leaks bound turns timing
       reference who) (count : Nat)
-    (execution : (serviceApplication setup mode duration leaks).Execution)
-    (reached : execution ∈ ((serviceApplication setup mode duration leaks).roundsFrom
-      (serviceInitialLaw setup mode) scheduler players count).support) :
-    OwnFreshCalls setup leaks bound execution who ∧ OneCallPerEvent setup leaks execution who := by
-  let app := serviceApplication setup mode duration leaks
+    (execution : (serviceApplication setup deps duration leaks).Execution)
+    (reached : execution ∈ ((serviceApplication setup deps duration leaks).roundsFrom
+      (serviceInitialLaw setup deps) scheduler players count).support) :
+    OwnFreshCalls setup leaks bound execution who ∧
+      OneCallPerEvent setup leaks execution who := by
+  let app := serviceApplication setup deps duration leaks
   induction count generalizing execution with
   | zero =>
       obtain ⟨state, _, supported⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
@@ -882,17 +901,18 @@ theorem sourceServiceTurnPolicy_freshCalls_reference
 /-- Every prescribed player's transmitted calls are timely and use one identifier
 per event, under arbitrary other policies and scheduler, for every turn timing. -/
 theorem sourceServiceTurnPolicy_freshCalls
-    (scheduler : (serviceApplication setup mode duration leaks).Scheduler)
-    (players : Player → (serviceApplication setup mode duration leaks).Policy) (who : Player)
-    {bound : (serviceGraph setup mode).EventId → Nat} {turns : Nat}
-    (timing : TurnTiming setup turns mode) (profile : BehavioralProfile setup.program)
-    (follows : players who = serviceTurnPolicy setup mode duration leaks bound turns timing
+    (scheduler : (serviceApplication setup deps duration leaks).Scheduler)
+    (players : Player → (serviceApplication setup deps duration leaks).Policy) (who : Player)
+    {bound : (serviceGraph setup deps).EventId → Nat} {turns : Nat}
+    (timing : TurnTiming setup turns deps) (profile : BehavioralProfile setup.program)
+    (follows : players who = serviceTurnPolicy setup deps duration leaks bound turns timing
       profile who) (count : Nat)
-    (execution : (serviceApplication setup mode duration leaks).Execution)
-    (reached : execution ∈ ((serviceApplication setup mode duration leaks).roundsFrom
-      (serviceInitialLaw setup mode) scheduler players count).support) :
-    OwnFreshCalls setup leaks bound execution who ∧ OneCallPerEvent setup leaks execution who := by
-  apply sourceServiceTurnPolicy_freshCalls_reference
+    (execution : (serviceApplication setup deps duration leaks).Execution)
+    (reached : execution ∈ ((serviceApplication setup deps duration leaks).roundsFrom
+      (serviceInitialLaw setup deps) scheduler players count).support) :
+    OwnFreshCalls setup leaks bound execution who ∧
+      OneCallPerEvent setup leaks execution who := by
+  apply sourceServiceTurnPolicy_freshCalls_reference (deps := deps) (duration := duration)
     (reference := compileEventProfile setup.program profile) <;> assumption
 
 end Vegas

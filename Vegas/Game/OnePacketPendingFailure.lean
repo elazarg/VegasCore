@@ -21,9 +21,9 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 local notation "menu" => bounds.onePacketMenu timeouts leaks
@@ -41,7 +41,8 @@ theorem completed_decisionFailure_terminal_expect
     (players : ∀ player, (N).BehavioralPolicy player)
     (start : (E).History) {control : (application setup timeouts leaks).Control}
     (current : start.state = some control) (key : LateKey setup timeouts leaks)
-    (event : (graph setup).EventId) (decided : decidedEvent (timeouts := timeouts) key = some event)
+    (event : setup.informationGraph.EventId) (decided : decidedEvent (timeouts := timeouts) key =
+      some event)
     (completed : event ∈ control.execution.application.config.cut.completed) :
     expect ((N).runBehavioralTerminalFrom certificate players start)
       (fun final => if DecisionFailed (timeouts := timeouts) key final.state then (1 : ℝ) else 0) =
@@ -91,7 +92,7 @@ theorem completed_decisionFailure_terminal_expect
 
 local notation "ClearState" => ReactiveApplication.stateInvariant
   (app := application setup timeouts leaks)
-    (fun native : EventGraphRuntime.State (graph setup) =>
+    (fun native : EventGraphRuntime.State setup.informationGraph =>
       EventGraph.Config.defaulted (EventGraphRuntime.State.config native) = ∅)
 
 open Classical in
@@ -109,7 +110,7 @@ theorem pending_failure_terminal_eq_stopped [Finite (E).History]
     (current : start.state = some control) {rank : Nat}
     (ordered : control.execution.application.config.cut.IsPrefix rank)
     (clear : control.execution.application.config.defaulted = ∅)
-    (key : LateKey setup timeouts leaks) (event : (graph setup).EventId)
+    (key : LateKey setup timeouts leaks) (event : setup.informationGraph.EventId)
     (ready : control.execution.application.config.cut.Ready event)
     (decided : decidedEvent (timeouts := timeouts) key = some event) :
     expect ((N).runBehavioralTerminalFrom certificate players start)
@@ -163,7 +164,7 @@ theorem pending_failure_run_eq_phase [Finite (E).History]
     (current : start.state = some control) {rank : Nat}
     (ordered : control.execution.application.config.cut.IsPrefix rank)
     (clear : control.execution.application.config.defaulted = ∅)
-    (key : LateKey setup timeouts leaks) (event : (graph setup).EventId)
+    (key : LateKey setup timeouts leaks) (event : setup.informationGraph.EventId)
     (ready : control.execution.application.config.cut.Ready event)
     (decided : decidedEvent (timeouts := timeouts) key = some event) :
     expect ((N).runBehavioralFrom players (2 * horizon + 1) start)

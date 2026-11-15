@@ -25,19 +25,19 @@ open SourceProgram
 open Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
-  (setup : Setup (Player := Player) (L := L)) {mode : EventGraph.ExecutionMode}
+  (setup : Setup (Player := Player) (L := L)) {deps : setup.dataflowGraph.Dependencies}
 
 /-- Reference coverage is unaffected by replacing the dependency order with
 the sequential order used by the service. -/
 theorem checkpoint_visible_coverage {Γ : SourceCtx Player L}
     (refs : ContextRefs (graphLayout setup.program) Γ) (offset : Nat)
     (covered : refs.CoversPrefix setup.program offset)
-    (config : (serviceGraph setup mode).Config) (ordered : config.cut.IsPrefix offset)
-    (who : Player) (field : (serviceGraph setup mode).Field)
+    (config : (serviceGraph setup deps).Config) (ordered : config.cut.IsPrefix offset)
+    (who : Player) (field : (serviceGraph setup deps).Field)
     (absent : ¬ refs.CoversVisible who field) :
-    (serviceGraph setup mode).playerStore who config.store field = none := by
-  by_cases visible : (serviceGraph setup mode).fieldVisibleTo who field
-  · rw [(serviceGraph setup mode).playerStore_of_visible who config.store field visible]
+    (serviceGraph setup deps).playerStore who config.store field = none := by
+  by_cases visible : (serviceGraph setup deps).fieldVisibleTo who field
+  · rw [(serviceGraph setup deps).playerStore_of_visible who config.store field visible]
     cases field with
     | inl input =>
         obtain ⟨name, cell, source, found⟩ := covered.1 input
@@ -66,47 +66,47 @@ theorem checkpoint_visible_coverage {Γ : SourceCtx Player L}
           cases output : config.outputs event with
           | none => rfl
           | some value => simp [output] at unavailable
-  · exact (serviceGraph setup mode).playerStore_of_hidden who config.store field visible
+  · exact (serviceGraph setup deps).playerStore_of_hidden who config.store field visible
 
 theorem checkpoint_playerStore {Γ : SourceCtx Player L}
     (refs : ContextRefs (graphLayout setup.program) Γ) (offset : Nat)
     (covered : refs.CoversPrefix setup.program offset)
-    (config : (serviceGraph setup mode).Config) (ordered : config.cut.IsPrefix offset)
+    (config : (serviceGraph setup deps).Config) (ordered : config.cut.IsPrefix offset)
     (source : State L Γ) (agree : refs.Agrees source config.store) (who : Player) :
-    (serviceGraph setup mode).playerStore who config.store =
+    (serviceGraph setup deps).playerStore who config.store =
       encodeObservationStore who refs (sourceObserve who source) := by
   symm
-  exact encodeObservationStore_eq_playerStore (graph := serviceGraph setup mode) who refs source
+  exact encodeObservationStore_eq_playerStore (graph := serviceGraph setup deps) who refs source
     config.store agree (checkpoint_visible_coverage setup refs offset covered config ordered who)
 
 /-- Filtering chronological identities selects one owner's actual decisions
 when all of its completed events contain decisions. -/
 theorem ownCompletions_eventIds (who : Player)
-    (history : List (serviceGraph setup mode).Completion)
+    (history : List (serviceGraph setup deps).Completion)
     (decisions : ∀ completion ∈ history,
-      (serviceGraph setup mode).actor? completion.event = some who →
+      (serviceGraph setup deps).actor? completion.event = some who →
         completion.decision.isSome) :
-    ((serviceGraph setup mode).ownCompletions who history).map EventCompletion.event =
+    ((serviceGraph setup deps).ownCompletions who history).map EventCompletion.event =
       (history.map EventCompletion.event).filter
-        (fun event => (serviceGraph setup mode).actor? event = some who) := by
+        (fun event => (serviceGraph setup deps).actor? event = some who) := by
   have filters : history.filter (fun completion =>
-        (serviceGraph setup mode).actor? completion.event = some who ∧
+        (serviceGraph setup deps).actor? completion.event = some who ∧
           completion.decision.isSome) =
       history.filter (fun completion =>
-        (serviceGraph setup mode).actor? completion.event = some who) := by
+        (serviceGraph setup deps).actor? completion.event = some who) := by
     apply List.filter_congr
     intro completion member
-    by_cases owned : (serviceGraph setup mode).actor? completion.event = some who
+    by_cases owned : (serviceGraph setup deps).actor? completion.event = some who
     · simp [owned, decisions completion member owned]
     · simp [owned]
   simp only [EventGraph.ownCompletions, filters, List.filter_map]
   rfl
 
 /-- An active player's strategic actions are recoverable from source own-action
-history and public event identities; execution-mode conversion loses none. -/
+history and public event identities; changing execution dependencies loses none. -/
 theorem ownCompletions_eq_of_decoded_eq (who : Player)
-    (left right : (serviceGraph setup mode).Config)
-    {leftInputs rightInputs : (serviceGraph setup mode).Inputs}
+    (left right : (serviceGraph setup deps).Config)
+    {leftInputs rightInputs : (serviceGraph setup deps).Inputs}
     (leftReachable : left.Reachable leftInputs) (rightReachable : right.Reachable rightInputs)
     (leftActive : who ∉ left.defaulted) (rightActive : who ∉ right.defaulted)
     (order : left.history.map EventCompletion.event =
@@ -115,17 +115,17 @@ theorem ownCompletions_eq_of_decoded_eq (who : Player)
         (left.history) who =
       decodeHistory setup.program
         (right.history) who) :
-    (serviceGraph setup mode).ownCompletions who left.history =
-      (serviceGraph setup mode).ownCompletions who right.history := by
-  have encoding (config : (serviceGraph setup mode).Config)
-      {inputs : (serviceGraph setup mode).Inputs} (reachable : config.Reachable inputs)
+    (serviceGraph setup deps).ownCompletions who left.history =
+      (serviceGraph setup deps).ownCompletions who right.history := by
+  have encoding (config : (serviceGraph setup deps).Config)
+      {inputs : (serviceGraph setup deps).Inputs} (reachable : config.Reachable inputs)
       (active : who ∉ config.defaulted) :
       encodeCompletions? setup.program
-          (((serviceGraph setup mode).ownCompletions who config.history).map
+          (((serviceGraph setup deps).ownCompletions who config.history).map
             EventCompletion.event)
           (decodeHistory setup.program (config.history) who) =
-        some (((serviceGraph setup mode).ownCompletions who config.history)) := by
-    let own := setup.eventGraph.ownCompletions who (config.history)
+        some (((serviceGraph setup deps).ownCompletions who config.history)) := by
+    let own := setup.informationGraph.ownCompletions who (config.history)
     have strategic : ∀ completion ∈ own, ∃ action sourceAction,
         completion.decision = some action ∧
           decodeEventAction setup.program completion.event action = some sourceAction := by
@@ -134,16 +134,16 @@ theorem ownCompletions_eq_of_decoded_eq (who : Player)
       have selected := of_decide_eq_true filtered.2
       obtain ⟨action, chosen⟩ := Option.isSome_iff_exists.mp selected.2
       have ownerLaw := decodeEventAction_owner setup.program completion.event action
-      have actorLaw : setup.eventGraph.actor? completion.event = some who :=
+      have actorLaw : setup.informationGraph.actor? completion.event = some who :=
         selected.1
-      change (toEventGraph setup.program).actor? completion.event = some who at actorLaw
+      change (toInformationGraph setup.program).actor? completion.event = some who at actorLaw
       rw [eventOwner?_eq_actor setup.program completion.event, actorLaw] at ownerLaw
       cases decoded : decodeEventAction setup.program completion.event action with
       | none => simp [decoded] at ownerLaw
       | some sourceAction => exact ⟨action, sourceAction, chosen, decoded⟩
     have noDefault : ∀ completion ∈ own, completion.defaultEvent = none := by
       intro completion member
-      change completion ∈ setup.eventGraph.ownCompletions who (config.history)
+      change completion ∈ setup.informationGraph.ownCompletions who (config.history)
         at member
       have filtered := List.mem_filter.mp member
       exact reachable.owned_defaultEvent_eq_none_of_active who active completion filtered.1
@@ -153,9 +153,9 @@ theorem ownCompletions_eq_of_decoded_eq (who : Player)
     change encodeCompletions? setup.program (own.map EventCompletion.event)
       (decodeCompletions setup.program own) = some own at restored
     exact restored
-  have ids : ((serviceGraph setup mode).ownCompletions who left.history).map
+  have ids : ((serviceGraph setup deps).ownCompletions who left.history).map
         EventCompletion.event =
-      ((serviceGraph setup mode).ownCompletions who right.history).map
+      ((serviceGraph setup deps).ownCompletions who right.history).map
         EventCompletion.event := by
     rw [ownCompletions_eventIds setup who left.history
       (leftReachable.owned_decision_isSome_of_active who leftActive),
@@ -174,8 +174,8 @@ theorem checkpoint_playerObservation_eq_of_order {Γ : SourceCtx Player L}
     (refs : ContextRefs (graphLayout setup.program) Γ) (offset : Nat)
     (covered : refs.CoversPrefix setup.program offset) (who : Player)
     (left right : Config Player L Γ)
-    (nativeLeft nativeRight : (serviceGraph setup mode).Config)
-    {leftInputs rightInputs : (serviceGraph setup mode).Inputs}
+    (nativeLeft nativeRight : (serviceGraph setup deps).Config)
+    {leftInputs rightInputs : (serviceGraph setup deps).Inputs}
     (leftReachable : nativeLeft.Reachable leftInputs)
     (rightReachable : nativeRight.Reachable rightInputs)
     (leftActive : who ∉ nativeLeft.defaulted) (rightActive : who ∉ nativeRight.defaulted)
@@ -192,12 +192,12 @@ theorem checkpoint_playerObservation_eq_of_order {Γ : SourceCtx Player L}
     (leftDefaults : nativeLeft.defaults = left.defaults)
     (rightDefaults : nativeRight.defaults = right.defaults)
     (same : left.view who = right.view who) :
-    (serviceGraph setup mode).playerObserve who nativeLeft =
-      (serviceGraph setup mode).playerObserve who nativeRight := by
+    (serviceGraph setup deps).playerObserve who nativeLeft =
+      (serviceGraph setup deps).playerObserve who nativeRight := by
   apply EventPlayerObservation.ext
   · exact order
-  · change (serviceGraph setup mode).playerStore who nativeLeft.store =
-      (serviceGraph setup mode).playerStore who nativeRight.store
+  · change (serviceGraph setup deps).playerStore who nativeLeft.store =
+      (serviceGraph setup deps).playerStore who nativeRight.store
     rw [checkpoint_playerStore setup refs offset covered nativeLeft leftPrefix left.state
       leftStore who, checkpoint_playerStore setup refs offset covered nativeRight rightPrefix
       right.state rightStore who]

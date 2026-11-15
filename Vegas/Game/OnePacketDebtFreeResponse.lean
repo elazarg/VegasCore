@@ -19,9 +19,9 @@ open SourceProgram GameTheory.Protocol Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- Actual own debt-freeness rules out the guard obstruction to canonical
@@ -33,13 +33,13 @@ theorem canonicalTransmitsAt_of_debtFree (wellFormed : setup.WellFormed)
     (who : Player) (forced : ForcedState setup timeouts leaks who (some control))
     (notOwed : ∀ point, decodedPoint setup control.execution.application.config = some point →
       ¬ ProtocolState.OwesFailure who setup.program point)
-    (event : (graph setup).EventId)
+    (event : setup.informationGraph.EventId)
     (pending : pendingEvent setup timeouts leaks who (some (control.execution.logs who,
       control.execution.observe (application setup timeouts leaks) who)) = some event) :
     CanonicalTransmitsAt setup timeouts leaks who (control.execution.logs who)
       (control.execution.observe (application setup timeouts leaks) who) event := by
   have owned := (pendingEvent_spec (timeouts := timeouts) pending).2.2.1
-  cases node : nodeView (graph setup) event with
+  cases node : nodeView setup.informationGraph event with
   | sample payload law outputEq codeEq =>
       have noActor := nodeView_sample_actor outputEq codeEq
       rw [owned] at noActor
@@ -83,20 +83,20 @@ theorem honestResponse_canonical_of_debtFree (wellFormed : setup.WellFormed)
     (who : Player) (forced : ForcedState setup timeouts leaks who (some control))
     (notOwed : ∀ point, decodedPoint setup control.execution.application.config = some point →
       ¬ ProtocolState.OwesFailure who setup.program point)
-    (event : (graph setup).EventId)
+    (event : setup.informationGraph.EventId)
     (pending : pendingEvent setup timeouts leaks who (some (control.execution.logs who,
       control.execution.observe (application setup timeouts leaks) who)) = some event)
     (response : (application setup timeouts leaks).Action)
     (supported : response ∈ (honestResponse setup timeouts leaks source who
       (control.execution.logs who)
       (control.execution.observe (application setup timeouts leaks) who)).support) :
-    ∃ (action : (graph setup).Action event) (material : (application setup timeouts
+    ∃ (action : setup.informationGraph.Action event) (material : (application setup timeouts
       leaks).Submission),
       response = (canonicalServiceDecision timeouts) leaks who (control.execution.logs who)
         (control.execution.observe (application setup timeouts leaks) who) event action ∧
       response.transmission = some material ∧
       ∀ owner payload outputEq codeEq,
-        nodeView (graph setup) event = .bind owner payload outputEq codeEq →
+        nodeView setup.informationGraph event = .bind owner payload outputEq codeEq →
           ∃ value, (cast (congrArg EventGraph.EventField.Action outputEq) action :
             Option (PublicationResult (L.Val payload))) = some (.success value) := by
   have transmits := canonicalTransmitsAt_of_debtFree (timeouts := timeouts) wellFormed trace who
@@ -140,7 +140,7 @@ theorem honestResponse_canonical_of_debtFree (wellFormed : setup.WellFormed)
 Consequently choice normalization cannot turn that main response into silence. -/
 theorem honestChoice_canonical_of_debtFree (wellFormed : setup.WellFormed)
     (covers : bounds.CoversOutputValues)
-    (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
+    (capacity : ∀ who, bindingEventCount setup.informationGraph who < bounds.candidateCount)
     (source : setup.intendedModel.BehavioralAssessment)
     {control : (application setup timeouts leaks).Control}
     (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
@@ -148,10 +148,10 @@ theorem honestChoice_canonical_of_debtFree (wellFormed : setup.WellFormed)
     (who : Player) (forced : ForcedState setup timeouts leaks who (some control))
     (notOwed : ∀ point, decodedPoint setup control.execution.application.config = some point →
       ¬ ProtocolState.OwesFailure who setup.program point)
-    (event : (graph setup).EventId)
+    (event : setup.informationGraph.EventId)
     (pending : pendingEvent setup timeouts leaks who (some (control.execution.logs who,
       control.execution.observe (application setup timeouts leaks) who)) = some event)
-    (bound : (graph setup).EventId → Nat)
+    (bound : setup.informationGraph.EventId → Nat)
     (fits : control.execution.application.publicView.InclusionFitsDeadline timeouts bound
       event)
     (choice : (onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
@@ -162,7 +162,7 @@ theorem honestChoice_canonical_of_debtFree (wellFormed : setup.WellFormed)
       scheduler
       source who (some (control.execution.logs who,
         control.execution.observe (application setup timeouts leaks) who))).support) :
-    ∃ (action : (graph setup).Action event) (material : (application setup timeouts
+    ∃ (action : setup.informationGraph.Action event) (material : (application setup timeouts
       leaks).Submission),
       choice.1 = some ((canonicalServiceDecision timeouts) leaks who
         (control.execution.logs who) (control.execution.observe (application setup timeouts
@@ -173,7 +173,7 @@ theorem honestChoice_canonical_of_debtFree (wellFormed : setup.WellFormed)
           action).transmission =
           some material ∧
       ∀ owner payload outputEq codeEq,
-        nodeView (graph setup) event = .bind owner payload outputEq codeEq →
+        nodeView setup.informationGraph event = .bind owner payload outputEq codeEq →
           ∃ value, (cast (congrArg EventGraph.EventField.Action outputEq) action :
             Option (PublicationResult (L.Val payload))) = some (.success value) := by
   classical
@@ -185,7 +185,7 @@ theorem honestChoice_canonical_of_debtFree (wellFormed : setup.WellFormed)
   subst responseEq
   have effective : EffectiveDecision event action := by
     unfold EffectiveDecision
-    cases node : nodeView (graph setup) event with
+    cases node : nodeView setup.informationGraph event with
     | bind owner payload outputEq codeEq =>
         obtain ⟨value, successful⟩ := bindSuccess owner payload outputEq codeEq node
         refine ⟨value, ?_⟩

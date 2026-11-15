@@ -19,9 +19,9 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L] (setup : Setup (Player := Player) (L := L))
-  (timeouts : EventTimeouts (graph setup))
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-  (bounds : MessageBounds (graph setup)) (horizon : Nat)
+  (timeouts : EventTimeouts setup.informationGraph)
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
+  (bounds : MessageBounds setup.informationGraph) (horizon : Nat)
   (scheduler : (application setup timeouts leaks).Scheduler)
 
 local notation "N" => onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
@@ -30,7 +30,7 @@ local notation "NP" => ReactiveApplication.ResponseMenu.protocol
   (bounds.onePacketMenu timeouts leaks) (initialLaw setup) horizon scheduler
 local notation "Clear" => ReactiveApplication.stateInvariant
   (app := application setup timeouts leaks)
-    (fun native : EventGraphRuntime.State (graph setup) =>
+    (fun native : EventGraphRuntime.State setup.informationGraph =>
       EventGraph.Config.defaulted (EventGraphRuntime.State.config native) = ∅)
 
 omit [Fintype Player] in
@@ -39,7 +39,7 @@ private theorem sourceContinuation_value_of_prefix
     {Parameter : Type} (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
     (excludedPayoff : Player → ℝ) (who : Player)
-    {rank : Nat} {config : (graph setup).Config} {point : ProtocolState setup.program}
+    {rank : Nat} {config : setup.informationGraph.Config} {point : ProtocolState setup.program}
     (decoded : sourceServicePrefix? setup rank config = some point) :
     expect (sourceContinuation setup profile rank config)
       (fun readout => exclusionReadoutUtility setup parameter utility excludedPayoff readout who) =
@@ -58,7 +58,7 @@ theorem assembled_stopped_boundary_value_sub_le
     [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
     [∀ who, DecidableEq ((N).InfoState who)]
     (wellFormed : setup.WellFormed) (covers : bounds.CoversOutputValues)
-    (capacity : ∀ player, bindingEventCount (graph setup) player < bounds.candidateCount)
+    (capacity : ∀ player, bindingEventCount setup.informationGraph player < bounds.candidateCount)
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (scale : ℕ → ℝ) (positive : ∀ n, 0 < scale n) (le_one : ∀ n, scale n ≤ 1)
     {slots : Nat}
@@ -68,7 +68,7 @@ theorem assembled_stopped_boundary_value_sub_le
     (assembled : OnePacketAssembled setup timeouts leaks bounds horizon scheduler sequence scale
       positive
       le_one weights targetSequence) (n : ℕ)
-    {delay bound : (graph setup).EventId → Nat}
+    {delay bound : setup.informationGraph.EventId → Nat}
     (opportunity : ∀ control : (application setup timeouts leaks).Control,
       ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
         scheduler).Trace (some control) →
@@ -197,8 +197,10 @@ theorem debtStopped_eq_bind_eventPhase
       · exact Or.inr ⟨after, afterState, same.trans configEq⟩
       · have lower : rank ≤ event.val := Nat.le_of_not_gt fun earlier =>
           ready.1 ((beforeOrdered.2 event).mpr earlier)
-        have bound : rank < (graph setup).order.eventCount := lt_of_le_of_lt lower event.isLt
-        have same := setup.eventGraph.sequentialize_ready_unique _ ready (beforeOrdered.ready bound)
+        have bound : rank < setup.informationGraph.order.eventCount := lt_of_le_of_lt lower
+          event.isLt
+        have same := setup.informationGraph.sequentialize_ready_unique _ ready (beforeOrdered.ready
+          bound)
         have rankEq : event.val = rank := congrArg Fin.val same
         refine Or.inl (Or.inl ⟨after, afterState, event, ?_, rankEq⟩)
         rw [EventGraph.Config.step, PMF.support_map] at supported

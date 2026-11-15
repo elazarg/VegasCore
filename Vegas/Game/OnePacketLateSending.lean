@@ -31,9 +31,10 @@ open GameTheory GameTheory.Protocol GameTheory.Math.Probability Interaction Even
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)} {initial : PMF (application setup timeouts leaks).State}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph} {initial : PMF (application setup timeouts
+    leaks).State}
   {horizon : Nat} {scheduler : (application setup timeouts leaks).Scheduler}
 
 omit [DecidableEq Player] [Fintype Player] [IExpr.ResultTypes L] in
@@ -110,7 +111,7 @@ theorem abs_expect_slotTrembled_lateChoice_le
     (assessment : setup.intendedModel.BehavioralAssessment) {scale : ℝ} (nonnegative : 0 ≤ scale)
     (le_one : scale ≤ 1) {slots : Nat} (options : PMF (LateOption slots)) (who : Player)
     (past : List (application setup timeouts leaks).PlayerEntry)
-    (view : (application setup timeouts leaks).PlayerView) (event : (graph setup).EventId)
+    (view : (application setup timeouts leaks).PlayerView) (event : setup.informationGraph.EventId)
     (turn : view.application.publicView.ownTurn? who = some event)
     (value : (application setup timeouts leaks).Action → ℝ) (centered : Option (OwnAction Player L)
       → ℝ)

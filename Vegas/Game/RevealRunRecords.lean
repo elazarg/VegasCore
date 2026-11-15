@@ -23,28 +23,28 @@ open SourceProgram GameTheory.Math.Probability Interaction EventGraphRuntime Eve
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {mode : EventGraph.ExecutionMode} {duration : (serviceGraph setup mode).EventId → Nat}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode))}
+  {deps : setup.dataflowGraph.Dependencies} {duration : (serviceGraph setup deps).EventId → Nat}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup deps))}
 
 /-- **A round's new records.** Every record a round adds, from an execution
 whose ready events are reveals, records no decision, or completes an event that
 was ready when the round began. -/
 theorem round_new_record_ready
-    {scheduler : (serviceApplication setup mode duration leaks).Scheduler}
-    {players : Player → (serviceApplication setup mode duration leaks).Policy}
-    (current next : (serviceApplication setup mode duration leaks).Execution)
+    {scheduler : (serviceApplication setup deps duration leaks).Scheduler}
+    {players : Player → (serviceApplication setup deps duration leaks).Policy}
+    (current next : (serviceApplication setup deps duration leaks).Execution)
     (publications : ∀ event, current.application.config.cut.Ready event →
-      ((serviceGraph setup mode).outputLayout event).IsPublication)
-    (reached : next ∈ ((serviceApplication setup mode duration leaks).round scheduler players
+      ((serviceGraph setup deps).outputLayout event).IsPublication)
+    (reached : next ∈ ((serviceApplication setup deps duration leaks).round scheduler players
       current).support)
-    (event : (serviceGraph setup mode).EventId)
+    (event : (serviceGraph setup deps).EventId)
     (fresh : event ∉ current.application.config.cut.completed)
     (done : event ∈ next.application.config.cut.completed) :
     (∀ record, completionOf next.application.config event = some record →
       record.decision = none) ∨ current.application.config.cut.Ready event := by
   classical
-  let app := serviceApplication setup mode duration leaks
-  let timeouts := serviceTimeouts setup mode duration
+  let app := serviceApplication setup deps duration leaks
+  let timeouts := serviceTimeouts setup deps duration
   obtain ⟨command, selected, middle, moved, cases⟩ := round_cases setup leaks reached
   have nextConfig : next.application.config = middle.application.config := by
     rcases cases with ⟨_, rfl⟩ | ⟨actor, _, response, _, rfl⟩

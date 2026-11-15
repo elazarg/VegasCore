@@ -86,63 +86,64 @@ end Owners
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {mode : EventGraph.ExecutionMode} {duration : (serviceGraph setup mode).EventId → Nat}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode))}
+  {deps : setup.dataflowGraph.Dependencies} {duration : (serviceGraph setup deps).EventId → Nat}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup deps))}
 
 /-- **A block run.** Every execution a supported block run reaches until the
 block is done was reached from the start by graph steps and has its new
 records classified, when honest clients open a reveal exactly when its opening
 is accepted. -/
-theorem blockRun_facts {horizon : Nat}
-    {scheduler : (serviceApplication setup mode duration leaks).Scheduler}
-    {delay : (serviceGraph setup mode).EventId → Nat}
-    (bound : (serviceGraph setup mode).EventId → Nat) (turns : Nat)
-    (contract : AsyncContract (serviceTimeouts setup mode duration) leaks
-        (serviceInitialLaw setup mode) horizon scheduler delay bound)
-    (timely : AsyncTimely (serviceTimeouts setup mode duration) delay bound)
-    (reference : (serviceGraph setup mode).BehavioralProfile)
-    (decides : ∀ (config : (serviceGraph setup mode).Config)
-      (event : (serviceGraph setup mode).EventId) (owner : Player) (payload : L.Ty)
-      (binding : FieldRef (serviceGraph setup mode).layout (.binding owner payload))
-      (checks : List (GuardCheck (serviceGraph setup mode).layout payload))
-      (outputEq : (serviceGraph setup mode).outputLayout event = .publication payload)
-      (codeEq : cast (congrArg (EventCode (serviceGraph setup mode).layout) outputEq)
-        ((serviceGraph setup mode).nodes event) = .resolve owner payload binding checks),
-      nodeView (serviceGraph setup mode) event =
+theorem blockRun_facts
+    (serial : (serviceGraph setup deps).ActorSerial) {horizon : Nat}
+    {scheduler : (serviceApplication setup deps duration leaks).Scheduler}
+    {delay : (serviceGraph setup deps).EventId → Nat}
+    (bound : (serviceGraph setup deps).EventId → Nat) (turns : Nat)
+    (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
+        (serviceInitialLaw setup deps) horizon scheduler delay bound)
+    (timely : AsyncTimely (serviceTimeouts setup deps duration) delay bound)
+    (reference : (serviceGraph setup deps).BehavioralProfile)
+    (decides : ∀ (config : (serviceGraph setup deps).Config)
+      (event : (serviceGraph setup deps).EventId) (owner : Player) (payload : L.Ty)
+      (binding : FieldRef (serviceGraph setup deps).layout (.binding owner payload))
+      (checks : List (GuardCheck (serviceGraph setup deps).layout payload))
+      (outputEq : (serviceGraph setup deps).outputLayout event = .publication payload)
+      (codeEq : cast (congrArg (EventCode (serviceGraph setup deps).layout) outputEq)
+        ((serviceGraph setup deps).nodes event) = .resolve owner payload binding checks),
+      nodeView (serviceGraph setup deps) event =
         .resolve owner payload binding checks outputEq codeEq →
-      ∀ (actor : (serviceGraph setup mode).actor? event = some owner)
-        (active : owner ∉ ((serviceGraph setup mode).playerObserve owner config).defaulted),
-        reference owner event actor ((serviceGraph setup mode).playerObserve owner config)
+      ∀ (actor : (serviceGraph setup deps).actor? event = some owner)
+        (active : owner ∉ ((serviceGraph setup deps).playerObserve owner config).defaulted),
+        reference owner event actor ((serviceGraph setup deps).playerObserve owner config)
           active = PMF.pure (cast (congrArg EventField.Action outputEq.symm)
             (openingAccepted event config.store)))
-    (who : Player) (deviation : (serviceApplication setup mode duration leaks).Policy)
-    (start finish : Nat) (shaped : BlockShaped (graph := serviceGraph setup mode) start finish)
-    (publications : ∀ event : (serviceGraph setup mode).EventId, start ≤ event.val →
-      event.val < finish → ((serviceGraph setup mode).outputLayout event).IsPublication)
-    (execution : (serviceApplication setup mode duration leaks).Execution)
-    (supported : execution ∈ ((serviceApplication setup mode duration leaks).roundsFrom
-      (serviceInitialLaw setup mode) scheduler
-      (Function.update (serviceReferenceTurnPolicy setup mode duration leaks bound turns
-        (firstTurnTiming setup turns mode) reference) who deviation)
+    (who : Player) (deviation : (serviceApplication setup deps duration leaks).Policy)
+    (start finish : Nat) (shaped : BlockShaped (graph := serviceGraph setup deps) start finish)
+    (publications : ∀ event : (serviceGraph setup deps).EventId, start ≤ event.val →
+      event.val < finish → ((serviceGraph setup deps).outputLayout event).IsPublication)
+    (execution : (serviceApplication setup deps duration leaks).Execution)
+    (supported : execution ∈ ((serviceApplication setup deps duration leaks).roundsFrom
+      (serviceInitialLaw setup deps) scheduler
+      (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+        (firstTurnTiming setup turns deps) reference) who deviation)
       execution.environmentRecall.length).support)
     (bounded : execution.environmentRecall.length ≤ horizon)
     (inside : ¬ BlockDone finish execution.application.config →
       InBlock start finish execution.application.config)
-    (untouched : ∀ event : (serviceGraph setup mode).EventId, start ≤ event.val →
+    (untouched : ∀ event : (serviceGraph setup deps).EventId, start ≤ event.val →
       event.val < finish → Untouched setup leaks event execution)
-    (final : (serviceApplication setup mode duration leaks).Execution)
-    (reached : final ∈ ((serviceApplication setup mode duration leaks).runUntilHorizon scheduler
-      (Function.update (serviceReferenceTurnPolicy setup mode duration leaks bound turns
-        (firstTurnTiming setup turns mode) reference) who deviation)
+    (final : (serviceApplication setup deps duration leaks).Execution)
+    (reached : final ∈ ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
+      (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+        (firstTurnTiming setup turns deps) reference) who deviation)
       (fun current => BlockDone finish current.application.config) horizon execution).support) :
     Relation.ReflTransGen Config.Step execution.application.config final.application.config ∧
       BlockRecordsSound who start finish execution.application.config
         final.application.config := by
-  let app := serviceApplication setup mode duration leaks
-  let players := Function.update (serviceReferenceTurnPolicy setup mode duration leaks bound
-    turns (firstTurnTiming setup turns mode) reference) who deviation
+  let app := serviceApplication setup deps duration leaks
+  let players := Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound
+    turns (firstTurnTiming setup turns deps) reference) who deviation
   let holds := fun (n : Nat) (current : app.Execution) =>
-    current ∈ (app.roundsFrom (serviceInitialLaw setup mode) scheduler players
+    current ∈ (app.roundsFrom (serviceInitialLaw setup deps) scheduler players
       current.environmentRecall.length).support ∧
     current.environmentRecall.length + n ≤ horizon ∧
     (¬ BlockDone finish current.application.config →
@@ -156,9 +157,9 @@ theorem blockRun_facts {horizon : Nat}
     intro n current valid running next moved
     obtain ⟨currentSupported, currentBounded, currentInside, submissions, walked, sound⟩ := valid
     have lengths := app.round_environmentRecall_length scheduler players current next moved
-    have path := reactive_round_graph_steps (serviceTimeouts setup mode duration) leaks scheduler
+    have path := reactive_round_graph_steps (serviceTimeouts setup deps duration) leaks scheduler
       players current next moved
-    obtain ⟨trace⟩ := app.raw_trace_roundsFrom (serviceInitialLaw setup mode) horizon scheduler
+    obtain ⟨trace⟩ := app.raw_trace_roundsFrom (serviceInitialLaw setup deps) horizon scheduler
       players current.environmentRecall.length (by omega) current currentSupported
     have remaining : horizon - current.environmentRecall.length =
         (horizon - current.environmentRecall.length - 1) + 1 := by omega
@@ -167,10 +168,11 @@ theorem blockRun_facts {horizon : Nat}
       honestBlockSubmissions_round scheduler bound turns reference decides who deviation start
         finish shaped publications current next trace (currentInside running) running
         submissions moved, walked.trans path,
-      blockRecordsSound_round bound turns contract timely reference decides who deviation start
+      blockRecordsSound_round serial bound turns contract timely reference decides who deviation
+          start
         finish shaped publications execution.application.config current next currentSupported
         (by omega) (currentInside running) running submissions sound moved⟩
-    apply app.roundsFrom_runUntil scheduler players (serviceInitialLaw setup mode)
+    apply app.roundsFrom_runUntil scheduler players (serviceInitialLaw setup deps)
       (fun current => BlockDone finish current.application.config) 1 current next
       currentSupported
     change next ∈ (if BlockDone finish current.application.config then PMF.pure current
@@ -179,8 +181,8 @@ theorem blockRun_facts {horizon : Nat}
     rw [ite_eq_right running, PMF.support_bind]
     exact Set.mem_iUnion₂.mpr ⟨next, moved, by simp [ReactiveApplication.runUntil]⟩
   have atTurn : ∀ owner, owner ≠ who → OwnSubmissionsAtTurn setup leaks execution owner :=
-    fun owner different => (canonicalSlots_roundsFrom_reference scheduler players owner
-      (firstTurnTiming setup turns mode) reference (Function.update_of_ne different _ _)
+    fun owner different => (canonicalSlots_roundsFrom_reference serial scheduler players owner
+      (firstTurnTiming setup turns deps) reference (Function.update_of_ne different _ _)
       execution.environmentRecall.length execution supported).1
   obtain ⟨n, _, _, _, _, walked, sound⟩ := app.runUntil_support_holds scheduler players
     (fun current => BlockDone finish current.application.config) holds preserved

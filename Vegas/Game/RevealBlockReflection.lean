@@ -89,40 +89,40 @@ end Generic
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {mode : EventGraph.ExecutionMode}
+  {deps : setup.dataflowGraph.Dependencies}
 
 /-- The start of a block: every earlier event has completed, a later event only
 once the block is done, and every block or later event completed so far was
 completed silently, a block event exactly when its owner is defaulted. -/
-structure BlockStart (start finish : Nat) (config : (serviceGraph setup mode).Config) :
+structure BlockStart (start finish : Nat) (config : (serviceGraph setup deps).Config) :
     Prop where
-  earlier : ∀ event : (serviceGraph setup mode).EventId, event.val < start →
+  earlier : ∀ event : (serviceGraph setup deps).EventId, event.val < start →
     event ∈ config.cut.completed
-  later : ∀ event : (serviceGraph setup mode).EventId, finish ≤ event.val →
+  later : ∀ event : (serviceGraph setup deps).EventId, finish ≤ event.val →
     event ∈ config.cut.completed → BlockDone finish config
-  beyond : ∀ event : (serviceGraph setup mode).EventId, finish ≤ event.val →
+  beyond : ∀ event : (serviceGraph setup deps).EventId, finish ≤ event.val →
     event ∈ config.cut.completed → completionOf config event = some ⟨event, none, none⟩
-  failed : ∀ event : (serviceGraph setup mode).EventId, start ≤ event.val →
+  failed : ∀ event : (serviceGraph setup deps).EventId, start ≤ event.val →
     event.val < finish → event ∈ config.cut.completed →
       config.outputs event = failureOutput event
-  drained : ∀ event : (serviceGraph setup mode).EventId, start ≤ event.val →
+  drained : ∀ event : (serviceGraph setup deps).EventId, start ≤ event.val →
     event.val < finish → (event ∈ config.cut.completed ↔
-      ∃ owner, (serviceGraph setup mode).actor? event = some owner ∧ owner ∈ config.defaulted)
-  silent : ∀ event : (serviceGraph setup mode).EventId, start ≤ event.val →
+      ∃ owner, (serviceGraph setup deps).actor? event = some owner ∧ owner ∈ config.defaulted)
+  silent : ∀ event : (serviceGraph setup deps).EventId, start ≤ event.val →
     event.val < finish → event ∈ config.cut.completed →
       completionOf config event = some ⟨event, none, none⟩
 
 /-- A block start whose block is unfinished lies inside the block. -/
-theorem BlockStart.inside {start finish : Nat} {config : (serviceGraph setup mode).Config}
+theorem BlockStart.inside {start finish : Nat} {config : (serviceGraph setup deps).Config}
     (begin : BlockStart start finish config) (running : ¬ BlockDone finish config) :
     InBlock start finish config :=
   ⟨begin.earlier, fun event late done => running (begin.later event late done)⟩
 
 /-- The output a reveal would publish if opened now. -/
-def acceptedOutput (event : (serviceGraph setup mode).EventId)
-    (store : EventGraph.Store (serviceGraph setup mode).layout) :
-    Option ((serviceGraph setup mode).outputLayout event).Value :=
-  match nodeView (serviceGraph setup mode) event with
+def acceptedOutput (event : (serviceGraph setup deps).EventId)
+    (store : EventGraph.Store (serviceGraph setup deps).layout) :
+    Option ((serviceGraph setup deps).outputLayout event).Value :=
+  match nodeView (serviceGraph setup deps) event with
   | .resolve _ _ binding checks outputEq _ =>
       (EventCode.resolveOutput? binding checks true store).map
         (cast (congrArg EventField.Value outputEq.symm))
@@ -130,28 +130,28 @@ def acceptedOutput (event : (serviceGraph setup mode).EventId)
 
 /-- The hidden data of a block read from a run key: the output each honest
 block reveal pending at the start would publish if opened. -/
-def blockHidden (who : Player) (start finish : Nat) (key : RunKey (serviceGraph setup mode)) :
-    (event : (serviceGraph setup mode).EventId) →
-      Option ((serviceGraph setup mode).outputLayout event).Value :=
+def blockHidden (who : Player) (start finish : Nat) (key : RunKey (serviceGraph setup deps)) :
+    (event : (serviceGraph setup deps).EventId) →
+      Option ((serviceGraph setup deps).outputLayout event).Value :=
   fun event => if start ≤ event.val ∧ event.val < finish ∧ event ∉ key.1.completed ∧
-      (serviceGraph setup mode).actor? event ≠ some who then acceptedOutput event key.2.1
+      (serviceGraph setup deps).actor? event ≠ some who then acceptedOutput event key.2.1
     else none
 
 /-- A rejected opening with a stored footprint publishes a failure. -/
-theorem resolveOutput_of_rejected {event : (serviceGraph setup mode).EventId} {owner : Player}
-    {payload : L.Ty} {binding : FieldRef (serviceGraph setup mode).layout (.binding owner payload)}
-    {checks : List (GuardCheck (serviceGraph setup mode).layout payload)}
-    {outputEq : (serviceGraph setup mode).outputLayout event = .publication payload}
-    {codeEq : cast (congrArg (EventCode (serviceGraph setup mode).layout) outputEq)
-      ((serviceGraph setup mode).nodes event) = .resolve owner payload binding checks}
-    (node : nodeView (serviceGraph setup mode) event =
+theorem resolveOutput_of_rejected {event : (serviceGraph setup deps).EventId} {owner : Player}
+    {payload : L.Ty} {binding : FieldRef (serviceGraph setup deps).layout (.binding owner payload)}
+    {checks : List (GuardCheck (serviceGraph setup deps).layout payload)}
+    {outputEq : (serviceGraph setup deps).outputLayout event = .publication payload}
+    {codeEq : cast (congrArg (EventCode (serviceGraph setup deps).layout) outputEq)
+      ((serviceGraph setup deps).nodes event) = .resolve owner payload binding checks}
+    (node : nodeView (serviceGraph setup deps) event =
       .resolve owner payload binding checks outputEq codeEq)
-    {store : EventGraph.Store (serviceGraph setup mode).layout}
-    (available : ∀ field ∈ ((serviceGraph setup mode).nodes event).readFields,
+    {store : EventGraph.Store (serviceGraph setup deps).layout}
+    (available : ∀ field ∈ ((serviceGraph setup deps).nodes event).readFields,
       (store field).isSome)
     (rejected : openingAccepted event store = false) :
     EventCode.resolveOutput? binding checks true store = some .failure := by
-  have footprint := EventCode.readFields_cast outputEq ((serviceGraph setup mode).nodes event)
+  have footprint := EventCode.readFields_cast outputEq ((serviceGraph setup deps).nodes event)
   rw [codeEq] at footprint
   have defined := EventCode.resolveOutput?_isSome binding checks true store (fun field member =>
     available field (by rw [← footprint]; exact member))
@@ -169,18 +169,18 @@ theorem resolveOutput_of_rejected {event : (serviceGraph setup mode).EventId} {o
 owner is active at the start and owns no other block event, and only block
 events record new defaults. -/
 theorem honest_pending_not_silent {who : Player} {start finish : Nat}
-    (concurrent : (serviceGraph setup mode).RevealsOnlyConcurrent)
-    (flat : BlockFlat (graph := serviceGraph setup mode) start finish)
-    {origin current : (serviceGraph setup mode).Config}
+    (concurrent : (serviceGraph setup deps).RevealsOnlyConcurrent)
+    (flat : BlockFlat (graph := serviceGraph setup deps) start finish)
+    {origin current : (serviceGraph setup deps).Config}
     (begin : BlockStart start finish origin)
     (path : Relation.ReflTransGen Config.Step origin current)
     (sound : BlockRecordsSound who start finish origin current)
     (owners : ∀ completion ∈ current.history, ∀ player,
       completion.defaultEvent = some player →
-        (serviceGraph setup mode).actor? completion.event = some player)
-    {event : (serviceGraph setup mode).EventId} (early : start ≤ event.val)
+        (serviceGraph setup deps).actor? completion.event = some player)
+    {event : (serviceGraph setup deps).EventId} (early : start ≤ event.val)
     (late : event.val < finish) (pending : event ∉ origin.cut.completed) {owner : Player}
-    (owned : (serviceGraph setup mode).actor? event = some owner) (honest : owner ≠ who)
+    (owned : (serviceGraph setup deps).actor? event = some owner) (honest : owner ≠ who)
     (silent : completionOf current event = some ⟨event, none, none⟩)
     (inactive : owner ∈ current.defaulted) : False := by
   have active : owner ∉ origin.defaulted := fun defaulted =>
@@ -189,7 +189,7 @@ theorem honest_pending_not_silent {who : Player} {start finish : Nat}
   obtain ⟨record, found, defaulted⟩ := Option.bind_eq_some_iff.mp recorded
   have recordEvent := completionOf_tagged current other record found
   have member := ((completionOf_eq_some_iff current other record).mp found).1
-  have otherOwned : (serviceGraph setup mode).actor? other = some owner := by
+  have otherOwned : (serviceGraph setup deps).actor? other = some owner := by
     rw [← recordEvent]
     exact owners record member owner defaulted
   have otherDone : other ∈ current.cut.completed :=
@@ -229,24 +229,24 @@ theorem honest_pending_not_silent {who : Player} {start finish : Nat}
 /-- Once every honest block reveal pending at the start has completed, each
 stores the output it would have published if opened at the start. -/
 theorem acceptedOutput_eq_of_honestDone {who : Player} {start finish : Nat}
-    (concurrent : (serviceGraph setup mode).RevealsOnlyConcurrent)
-    (flat : BlockFlat (graph := serviceGraph setup mode) start finish)
-    {origin current : (serviceGraph setup mode).Config}
+    (concurrent : (serviceGraph setup deps).RevealsOnlyConcurrent)
+    (flat : BlockFlat (graph := serviceGraph setup deps) start finish)
+    {origin current : (serviceGraph setup deps).Config}
     (begin : BlockStart start finish origin)
     (path : Relation.ReflTransGen Config.Step origin current)
     (sound : BlockRecordsSound who start finish origin current)
     (owners : ∀ completion ∈ current.history, ∀ player,
       completion.defaultEvent = some player →
-        (serviceGraph setup mode).actor? completion.event = some player)
-    (honestDone : ∀ event : (serviceGraph setup mode).EventId, start ≤ event.val →
+        (serviceGraph setup deps).actor? completion.event = some player)
+    (honestDone : ∀ event : (serviceGraph setup deps).EventId, start ≤ event.val →
       event.val < finish → event ∉ origin.cut.completed →
-        (serviceGraph setup mode).actor? event ≠ some who → event ∈ current.cut.completed)
-    {event : (serviceGraph setup mode).EventId} (early : start ≤ event.val)
+        (serviceGraph setup deps).actor? event ≠ some who → event ∈ current.cut.completed)
+    {event : (serviceGraph setup deps).EventId} (early : start ≤ event.val)
     (late : event.val < finish) (pending : event ∉ origin.cut.completed)
-    (honest : (serviceGraph setup mode).actor? event ≠ some who) :
+    (honest : (serviceGraph setup deps).actor? event ≠ some who) :
     acceptedOutput event origin.store = current.outputs event := by
   have ready := flat.ready_of_earlier begin.earlier early late pending
-  have available : ∀ field ∈ ((serviceGraph setup mode).nodes event).readFields,
+  have available : ∀ field ∈ ((serviceGraph setup deps).nodes event).readFields,
       (origin.store field).isSome := fun field read => origin.read_available ready read
   have kept : ∀ field value, origin.store field = some value → current.store field = some value :=
     fun field value stored => Config.Step.path_store_of_some path field value stored
@@ -269,34 +269,34 @@ theorem acceptedOutput_eq_of_honestDone {who : Player} {start finish : Nat}
 /-- At the end of a block, an honest block reveal pending at the start stores
 the output it would have published if opened at the start. -/
 theorem acceptedOutput_eq_end {who : Player} {start finish : Nat}
-    (concurrent : (serviceGraph setup mode).RevealsOnlyConcurrent)
-    (flat : BlockFlat (graph := serviceGraph setup mode) start finish)
-    {origin current : (serviceGraph setup mode).Config}
+    (concurrent : (serviceGraph setup deps).RevealsOnlyConcurrent)
+    (flat : BlockFlat (graph := serviceGraph setup deps) start finish)
+    {origin current : (serviceGraph setup deps).Config}
     (begin : BlockStart start finish origin)
     (path : Relation.ReflTransGen Config.Step origin current)
     (sound : BlockRecordsSound who start finish origin current)
     (owners : ∀ completion ∈ current.history, ∀ player,
       completion.defaultEvent = some player →
-        (serviceGraph setup mode).actor? completion.event = some player)
+        (serviceGraph setup deps).actor? completion.event = some player)
     (finished : BlockDone finish current)
-    {event : (serviceGraph setup mode).EventId} (early : start ≤ event.val)
+    {event : (serviceGraph setup deps).EventId} (early : start ≤ event.val)
     (late : event.val < finish) (pending : event ∉ origin.cut.completed)
-    (honest : (serviceGraph setup mode).actor? event ≠ some who) :
+    (honest : (serviceGraph setup deps).actor? event ≠ some who) :
     acceptedOutput event origin.store = current.outputs event :=
   acceptedOutput_eq_of_honestDone concurrent flat begin path sound owners
     (fun event _ late _ _ => finished event late) early late pending honest
 
 /-- A default recorded before a block is read from the end of the block. -/
 private theorem defaulted_of_end {who : Player} {start finish : Nat}
-    {startLeft startRight endLeft endRight : (serviceGraph setup mode).Config}
+    {startLeft startRight endLeft endRight : (serviceGraph setup deps).Config}
     (beginLeft : BlockStart start finish startLeft)
     (beginRight : BlockStart start finish startRight)
     (pathLeft : Relation.ReflTransGen Config.Step startLeft endLeft)
     (pathRight : Relation.ReflTransGen Config.Step startRight endRight)
-    (views : (serviceGraph setup mode).normalizeObservation who
-        ((serviceGraph setup mode).playerObserve who endLeft) =
-      (serviceGraph setup mode).normalizeObservation who
-        ((serviceGraph setup mode).playerObserve who endRight))
+    (views : (serviceGraph setup deps).normalizeObservation who
+        ((serviceGraph setup deps).playerObserve who endLeft) =
+      (serviceGraph setup deps).normalizeObservation who
+        ((serviceGraph setup deps).playerObserve who endRight))
     {player : Player} (defaulted : player ∈ startLeft.defaulted) :
     player ∈ startRight.defaulted := by
   obtain ⟨event, recorded⟩ := (mem_defaulted_iff_completionOf startLeft player).mp defaulted
@@ -329,11 +329,11 @@ block whose honest reveals pending at the start have completed and whose
 configurations give the deviator equal normalized views started from equal
 views of the deviator and equal hidden outputs of the honest reveals. -/
 theorem blockStart_reflect_of_honestDone {who : Player} {start finish : Nat}
-    (concurrent : (serviceGraph setup mode).RevealsOnlyConcurrent)
-    (flat : BlockFlat (graph := serviceGraph setup mode) start finish)
-    (publications : ∀ event : (serviceGraph setup mode).EventId, start ≤ event.val →
-      event.val < finish → ((serviceGraph setup mode).outputLayout event).IsPublication)
-    {startLeft startRight endLeft endRight : (serviceGraph setup mode).Config}
+    (concurrent : (serviceGraph setup deps).RevealsOnlyConcurrent)
+    (flat : BlockFlat (graph := serviceGraph setup deps) start finish)
+    (publications : ∀ event : (serviceGraph setup deps).EventId, start ≤ event.val →
+      event.val < finish → ((serviceGraph setup deps).outputLayout event).IsPublication)
+    {startLeft startRight endLeft endRight : (serviceGraph setup deps).Config}
     (beginLeft : BlockStart start finish startLeft)
     (beginRight : BlockStart start finish startRight)
     (runningLeft : ¬ BlockDone finish startLeft) (runningRight : ¬ BlockDone finish startRight)
@@ -343,31 +343,31 @@ theorem blockStart_reflect_of_honestDone {who : Player} {start finish : Nat}
     (soundRight : BlockRecordsSound who start finish startRight endRight)
     (ownersLeft : ∀ completion ∈ endLeft.history, ∀ player,
       completion.defaultEvent = some player →
-        (serviceGraph setup mode).actor? completion.event = some player)
+        (serviceGraph setup deps).actor? completion.event = some player)
     (ownersRight : ∀ completion ∈ endRight.history, ∀ player,
       completion.defaultEvent = some player →
-        (serviceGraph setup mode).actor? completion.event = some player)
-    (honestLeft : ∀ event : (serviceGraph setup mode).EventId, start ≤ event.val →
+        (serviceGraph setup deps).actor? completion.event = some player)
+    (honestLeft : ∀ event : (serviceGraph setup deps).EventId, start ≤ event.val →
       event.val < finish → event ∉ startLeft.cut.completed →
-        (serviceGraph setup mode).actor? event ≠ some who → event ∈ endLeft.cut.completed)
-    (honestRight : ∀ event : (serviceGraph setup mode).EventId, start ≤ event.val →
+        (serviceGraph setup deps).actor? event ≠ some who → event ∈ endLeft.cut.completed)
+    (honestRight : ∀ event : (serviceGraph setup deps).EventId, start ≤ event.val →
       event.val < finish → event ∉ startRight.cut.completed →
-        (serviceGraph setup mode).actor? event ≠ some who → event ∈ endRight.cut.completed)
-    (views : (serviceGraph setup mode).normalizeObservation who
-        ((serviceGraph setup mode).playerObserve who endLeft) =
-      (serviceGraph setup mode).normalizeObservation who
-        ((serviceGraph setup mode).playerObserve who endRight)) :
-    (serviceGraph setup mode).normalizeObservation who
-        ((serviceGraph setup mode).playerObserve who startLeft) =
-      (serviceGraph setup mode).normalizeObservation who
-        ((serviceGraph setup mode).playerObserve who startRight) ∧
+        (serviceGraph setup deps).actor? event ≠ some who → event ∈ endRight.cut.completed)
+    (views : (serviceGraph setup deps).normalizeObservation who
+        ((serviceGraph setup deps).playerObserve who endLeft) =
+      (serviceGraph setup deps).normalizeObservation who
+        ((serviceGraph setup deps).playerObserve who endRight)) :
+    (serviceGraph setup deps).normalizeObservation who
+        ((serviceGraph setup deps).playerObserve who startLeft) =
+      (serviceGraph setup deps).normalizeObservation who
+        ((serviceGraph setup deps).playerObserve who startRight) ∧
     blockHidden who start finish (runKey startLeft) =
       blockHidden who start finish (runKey startRight) := by
   have defaultedEq : startLeft.defaulted = startRight.defaulted := by
     ext player
     exact ⟨defaulted_of_end beginLeft beginRight pathLeft pathRight views,
       defaulted_of_end beginRight beginLeft pathRight pathLeft views.symm⟩
-  have completedIff (event : (serviceGraph setup mode).EventId) :
+  have completedIff (event : (serviceGraph setup deps).EventId) :
       event ∈ startLeft.cut.completed ↔ event ∈ startRight.cut.completed := by
     by_cases early : event.val < start
     · exact ⟨fun _ => beginRight.earlier event early, fun _ => beginLeft.earlier event early⟩
@@ -392,39 +392,39 @@ theorem blockStart_reflect_of_honestDone {who : Player} {start finish : Nat}
         rw [rightOwn.store field]
         cases field with
         | inl input =>
-            rw [ite_eq_left (show FieldWithin (fun event : (serviceGraph setup mode).EventId =>
+            rw [ite_eq_left (show FieldWithin (fun event : (serviceGraph setup deps).EventId =>
                 event ∈ startLeft.cut.completed) (.inl input) from trivial),
-              ite_eq_left (show FieldWithin (fun event : (serviceGraph setup mode).EventId =>
+              ite_eq_left (show FieldWithin (fun event : (serviceGraph setup deps).EventId =>
                 event ∈ startRight.cut.completed) (.inl input) from trivial)]
         | inr event =>
             by_cases done : event ∈ startLeft.cut.completed
-            · rw [ite_eq_left (show FieldWithin (fun event : (serviceGraph setup mode).EventId =>
+            · rw [ite_eq_left (show FieldWithin (fun event : (serviceGraph setup deps).EventId =>
                   event ∈ startLeft.cut.completed) (.inr event) from done),
-                ite_eq_left (show FieldWithin (fun event : (serviceGraph setup mode).EventId =>
+                ite_eq_left (show FieldWithin (fun event : (serviceGraph setup deps).EventId =>
                   event ∈ startRight.cut.completed) (.inr event) from
                   (completedIff event).mp done)]
             · rw [ite_eq_right (show ¬ FieldWithin
-                  (fun event : (serviceGraph setup mode).EventId =>
+                  (fun event : (serviceGraph setup deps).EventId =>
                     event ∈ startLeft.cut.completed) (.inr event) from done),
                 ite_eq_right (show ¬ FieldWithin
-                  (fun event : (serviceGraph setup mode).EventId =>
+                  (fun event : (serviceGraph setup deps).EventId =>
                     event ∈ startRight.cut.completed) (.inr event) from
                   fun other => done ((completedIff event).mpr other))] }
   refine ⟨normalizeObservation_playerObserve_restrict who _ leftRestricted rightRestricted views,
     ?_⟩
-  have stores := congrArg (fun observation : (serviceGraph setup mode).PlayerObservation who =>
+  have stores := congrArg (fun observation : (serviceGraph setup deps).PlayerObservation who =>
     observation.store) views
   rw [normalizeObservation_playerObserve, normalizeObservation_playerObserve] at stores
   simp only at stores
   funext event
   unfold blockHidden
   change (if start ≤ event.val ∧ event.val < finish ∧ event ∉ startLeft.cut.completed ∧
-      (serviceGraph setup mode).actor? event ≠ some who then acceptedOutput event startLeft.store
+      (serviceGraph setup deps).actor? event ≠ some who then acceptedOutput event startLeft.store
       else none) = (if start ≤ event.val ∧ event.val < finish ∧
-      event ∉ startRight.cut.completed ∧ (serviceGraph setup mode).actor? event ≠ some who then
+      event ∉ startRight.cut.completed ∧ (serviceGraph setup deps).actor? event ≠ some who then
       acceptedOutput event startRight.store else none)
   by_cases hidden : start ≤ event.val ∧ event.val < finish ∧ event ∉ startLeft.cut.completed ∧
-      (serviceGraph setup mode).actor? event ≠ some who
+      (serviceGraph setup deps).actor? event ≠ some who
   · obtain ⟨early, late, pending, honest⟩ := hidden
     have pendingRight : event ∉ startRight.cut.completed :=
       fun done => pending ((completedIff event).mpr done)
@@ -440,7 +440,7 @@ theorem blockStart_reflect_of_honestDone {who : Player} {start finish : Nat}
       playerStore_of_visible (visible := fieldVisibleTo_of_publication who
         (publications event early late))] at visible
   · have hiddenRight : ¬ (start ≤ event.val ∧ event.val < finish ∧
-        event ∉ startRight.cut.completed ∧ (serviceGraph setup mode).actor? event ≠ some who) :=
+        event ∉ startRight.cut.completed ∧ (serviceGraph setup deps).actor? event ≠ some who) :=
       fun ⟨early, late, pending, honest⟩ =>
         hidden ⟨early, late, fun done => pending ((completedIff event).mp done), honest⟩
     rw [ite_eq_right hidden, ite_eq_right hiddenRight]
@@ -449,11 +449,11 @@ theorem blockStart_reflect_of_honestDone {who : Player} {start finish : Nat}
 give the deviator equal normalized views started from equal views of the
 deviator and equal hidden outputs of the honest reveals. -/
 theorem blockStart_reflect {who : Player} {start finish : Nat}
-    (concurrent : (serviceGraph setup mode).RevealsOnlyConcurrent)
-    (flat : BlockFlat (graph := serviceGraph setup mode) start finish)
-    (publications : ∀ event : (serviceGraph setup mode).EventId, start ≤ event.val →
-      event.val < finish → ((serviceGraph setup mode).outputLayout event).IsPublication)
-    {startLeft startRight endLeft endRight : (serviceGraph setup mode).Config}
+    (concurrent : (serviceGraph setup deps).RevealsOnlyConcurrent)
+    (flat : BlockFlat (graph := serviceGraph setup deps) start finish)
+    (publications : ∀ event : (serviceGraph setup deps).EventId, start ≤ event.val →
+      event.val < finish → ((serviceGraph setup deps).outputLayout event).IsPublication)
+    {startLeft startRight endLeft endRight : (serviceGraph setup deps).Config}
     (beginLeft : BlockStart start finish startLeft)
     (beginRight : BlockStart start finish startRight)
     (runningLeft : ¬ BlockDone finish startLeft) (runningRight : ¬ BlockDone finish startRight)
@@ -463,19 +463,19 @@ theorem blockStart_reflect {who : Player} {start finish : Nat}
     (soundRight : BlockRecordsSound who start finish startRight endRight)
     (ownersLeft : ∀ completion ∈ endLeft.history, ∀ player,
       completion.defaultEvent = some player →
-        (serviceGraph setup mode).actor? completion.event = some player)
+        (serviceGraph setup deps).actor? completion.event = some player)
     (ownersRight : ∀ completion ∈ endRight.history, ∀ player,
       completion.defaultEvent = some player →
-        (serviceGraph setup mode).actor? completion.event = some player)
+        (serviceGraph setup deps).actor? completion.event = some player)
     (finishedLeft : BlockDone finish endLeft) (finishedRight : BlockDone finish endRight)
-    (views : (serviceGraph setup mode).normalizeObservation who
-        ((serviceGraph setup mode).playerObserve who endLeft) =
-      (serviceGraph setup mode).normalizeObservation who
-        ((serviceGraph setup mode).playerObserve who endRight)) :
-    (serviceGraph setup mode).normalizeObservation who
-        ((serviceGraph setup mode).playerObserve who startLeft) =
-      (serviceGraph setup mode).normalizeObservation who
-        ((serviceGraph setup mode).playerObserve who startRight) ∧
+    (views : (serviceGraph setup deps).normalizeObservation who
+        ((serviceGraph setup deps).playerObserve who endLeft) =
+      (serviceGraph setup deps).normalizeObservation who
+        ((serviceGraph setup deps).playerObserve who endRight)) :
+    (serviceGraph setup deps).normalizeObservation who
+        ((serviceGraph setup deps).playerObserve who startLeft) =
+      (serviceGraph setup deps).normalizeObservation who
+        ((serviceGraph setup deps).playerObserve who startRight) ∧
     blockHidden who start finish (runKey startLeft) =
       blockHidden who start finish (runKey startRight) :=
   blockStart_reflect_of_honestDone concurrent flat publications beginLeft beginRight runningLeft

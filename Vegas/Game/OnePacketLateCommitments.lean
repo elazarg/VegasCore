@@ -34,9 +34,9 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
-  (timeouts : EventTimeouts (graph setup))
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-  (bounds : MessageBounds (graph setup)) (horizon : Nat)
+  (timeouts : EventTimeouts setup.informationGraph)
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
+  (bounds : MessageBounds setup.informationGraph) (horizon : Nat)
   (scheduler : (application setup timeouts leaks).Scheduler)
   [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
   {Parameter : Type} (parameter : State L setup.context → Parameter)
@@ -62,7 +62,8 @@ theorem decodedCommitValue_sub_eq_historyGain (wellFormed : setup.WellFormed)
     (site : (onePacketN).InformationSite who) {past : List (application setup timeouts
       leaks).PlayerEntry}
     {view : (application setup timeouts leaks).PlayerView} (atSite : site.1 = some (past, view))
-    {event : (graph setup).EventId} (turn : view.application.publicView.ownTurn? who = some event)
+    {event : setup.informationGraph.EventId} (turn : view.application.publicView.ownTurn? who =
+      some event)
     (decision : setup.intendedModel.IsDecisionInfo who (projectView setup timeouts leaks who
       site.1))
     (choice : setup.intendedModel.Choice who (projectView setup timeouts leaks who site.1))
@@ -231,7 +232,8 @@ theorem abs_siteCommitValue_sub_le [Finite setup.intendedProtocol.History]
     (site : (onePacketN).InformationSite who) {past : List (application setup timeouts
       leaks).PlayerEntry}
     {view : (application setup timeouts leaks).PlayerView} (atSite : site.1 = some (past, view))
-    {event : (graph setup).EventId} (turn : view.application.publicView.ownTurn? who = some event)
+    {event : setup.informationGraph.EventId} (turn : view.application.publicView.ownTurn? who =
+      some event)
     (decision : setup.intendedModel.IsDecisionInfo who (projectView setup timeouts leaks who
       site.1))
     (choice : setup.intendedModel.Choice who (projectView setup timeouts leaks who site.1))
@@ -364,7 +366,7 @@ theorem onePacket_commitment_serial_lt {who : Player}
       leaks).Action}
     (member : response ∈ bounds.onePacketActions timeouts leaks who past view)
     {material : (application setup timeouts leaks).Submission}
-    (sends : response.transmission = some material) {event : (graph setup).EventId}
+    (sends : response.transmission = some material) {event : setup.informationGraph.EventId}
     {owner : Player} {serial : Nat}
     (packet : material.call.packet = .commitment event (owner, .prepared serial)) :
     serial < bounds.candidateCount := by

@@ -7,7 +7,7 @@ public import Vegas.Compile.EventGraphLaw
 
 @[expose] public section
 
-/-! # Whole-program canonical event-graph law
+/-! # Whole-program canonical source information graph law
 
 The suffix correspondence specializes to initial configurations and the total
 terminal decoder. Typed-state and expression-payout laws are projections of
@@ -31,8 +31,8 @@ theorem canonical_terminalConfig_law
     (program : SourceProgram Player L Γ openNames)
     (profile : BehavioralProfile program)
     (state : State L Γ) :
-    ((toEventGraph program).terminalOutcomes
-        (toEventGraph program).canonicalScheduler
+    ((toInformationGraph program).terminalOutcomes
+        (toInformationGraph program).canonicalScheduler
         (compileEventProfile program profile) (encodeInputs state)).map
       (terminalConfig program) =
     SourceProgram.run program profile state := by
@@ -42,8 +42,8 @@ theorem canonical_terminalConfig_law
     (ContextRefs.initial Γ (outputLayout program)) (SourceProgram.Config.initial state)
     (outputEmbedding program) (initialRefsBefore program) 0
     (CompiledPolicySuffix.whole program profile)
-    (EventGraph.Config.initial (graph := toEventGraph program) (encodeInputs state))
-    (EventOrder.Cut.empty_isPrefix (toEventGraph program).order)
+    (EventGraph.Config.initial (graph := toInformationGraph program) (encodeInputs state))
+    (EventOrder.Cut.empty_isPrefix (toInformationGraph program).order)
     (initialConfig_agrees program state) rfl rfl
   exact law
 
@@ -54,8 +54,8 @@ theorem canonical_terminalState_law
     (program : SourceProgram Player L Γ openNames)
     (profile : BehavioralProfile program)
     (state : State L Γ) :
-    ((toEventGraph program).terminalOutcomes
-        (toEventGraph program).canonicalScheduler
+    ((toInformationGraph program).terminalOutcomes
+        (toInformationGraph program).canonicalScheduler
         (compileEventProfile program profile) (encodeInputs state)).map
       (terminalState program) =
     (SourceProgram.run program profile state).map SourceProgram.Config.state := by
@@ -71,20 +71,20 @@ theorem canonical_payout_law
     (program : SourceProgram Player L Γ openNames)
     (profile : BehavioralProfile program)
     (state : State L Γ) :
-    ((toEventGraph program).terminalOutcomes
-        (toEventGraph program).canonicalScheduler
+    ((toInformationGraph program).terminalOutcomes
+        (toInformationGraph program).canonicalScheduler
         (compileEventProfile program profile) (encodeInputs state)).map
       (terminalPayouts program) =
     (SourceProgram.run program profile state).map
       (fun config => program.evaluatePayoffs config.state) := by
   calc
-    _ = ((toEventGraph program).terminalOutcomes
-          (toEventGraph program).canonicalScheduler
+    _ = ((toInformationGraph program).terminalOutcomes
+          (toInformationGraph program).canonicalScheduler
           (compileEventProfile program profile) (encodeInputs state)).map
         ((fun config => program.evaluatePayoffs config.state) ∘ terminalConfig program) := by
       apply congrArg (fun readout =>
-        ((toEventGraph program).terminalOutcomes
-          (toEventGraph program).canonicalScheduler
+        ((toInformationGraph program).terminalOutcomes
+          (toInformationGraph program).canonicalScheduler
           (compileEventProfile program profile) (encodeInputs state)).map readout)
       funext result
       exact terminalPayouts_eq_source program result
@@ -96,7 +96,7 @@ across an arbitrary distribution of private and public initial states. -/
 theorem canonical_setup_law
     (setup : Setup (Player := Player) (L := L))
     (profile : BehavioralProfile setup.program) :
-    ((setup.eventGraph.canonicalGame
+    ((setup.informationGraph.canonicalGame
         (setup.initialLaw.map fun initial => setup.eventInputs initial)).play
       (compileEventProfile setup.program profile)).map
         (terminalConfig setup.program) =
@@ -112,19 +112,19 @@ across a distributed private and public initial-state law. -/
 theorem canonical_setup_payout_law
     (setup : Setup (Player := Player) (L := L))
     (profile : BehavioralProfile setup.program) :
-    ((setup.eventGraph.canonicalGame
+    ((setup.informationGraph.canonicalGame
         (setup.initialLaw.map fun initial => setup.eventInputs initial)).play
       (compileEventProfile setup.program profile)).map
         (terminalPayouts setup.program) =
       (setup.run profile).map (fun config => setup.program.evaluatePayoffs config.state) := by
   calc
-    _ = ((setup.eventGraph.canonicalGame
+    _ = ((setup.informationGraph.canonicalGame
           (setup.initialLaw.map fun initial => setup.eventInputs initial)).play
         (compileEventProfile setup.program profile)).map
           ((fun config => setup.program.evaluatePayoffs config.state) ∘
             terminalConfig setup.program) := by
       apply congrArg (fun readout =>
-        ((setup.eventGraph.canonicalGame
+        ((setup.informationGraph.canonicalGame
           (setup.initialLaw.map fun initial => setup.eventInputs initial)).play
           (compileEventProfile setup.program profile)).map readout)
       funext result

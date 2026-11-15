@@ -49,7 +49,7 @@ variable {Player : Type} [DecidableEq Player]
 section Payoff
 
 variable (setup : Setup (Player := Player) (L := L))
-  (timeouts : EventTimeouts (graph setup)) {Parameter : Type}
+  (timeouts : EventTimeouts setup.informationGraph) {Parameter : Type}
   (parameter : State L setup.context → Parameter)
   (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
   (excludedPayoff : Player → ℝ)
@@ -148,7 +148,7 @@ theorem exclusionReadoutUtility_mem_Icc (lower upper : Player → ℝ)
       · exact ⟨(min_le_right _ _).trans ((min_le_right _ _).trans (lower_le _ rfl who)),
           (le_upper _ rfl who).trans ((le_max_right _ _).trans (le_max_right _ _))⟩
 
-variable (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+variable (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
 
 /-- Public default fixes the native exit payoff immediately. Active players
 receive their terminal readout utility, or zero while no readout is available. -/
@@ -193,7 +193,8 @@ theorem exclusionBase_eq_readout_of_readout
         symm
         apply exclusionTerminalUtility_of_defaulted
         change who ∈ terminal.defaults.defaulted
-        rw [serviceSourceReadout_defaults setup .sequential timeouts.duration leaks control
+        rw [serviceSourceReadout_defaults setup setup.informationDependencies timeouts.duration
+          leaks control
           terminal read]
         exact defaulted
       · exact exclusionBase_of_not_defaulted setup timeouts parameter utility excludedPayoff
@@ -297,7 +298,7 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
-  (timeouts : EventTimeouts (graph setup))
+  (timeouts : EventTimeouts setup.informationGraph)
 
 /-- On every intended history the exit utility agrees with the ordinary payoff,
 because no player publicly defaults. -/

@@ -39,9 +39,9 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- **Actor completions match along forced histories.** Along every native
@@ -97,7 +97,7 @@ theorem actorCompletionsMatch_of_forced (assessment : setup.intendedModel.Behavi
         split_ifs with same
         · symm
           refine invariant.quiet fun other otherReady sender otherActs => ?_
-          have sameEvent := setup.eventGraph.sequentialize_ready_unique _ otherReady ready
+          have sameEvent := setup.informationGraph.sequentialize_ready_unique _ otherReady ready
           subst sameEvent
           rw [acts] at otherActs
           cases otherActs

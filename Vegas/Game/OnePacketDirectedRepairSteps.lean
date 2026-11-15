@@ -25,8 +25,8 @@ open SourceProgram Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
 
 /-- A private binding-repair frame that also preserves the complete operational
 part of its owner's actual recall. -/
@@ -54,11 +54,11 @@ or inclusion. The resulting frame retains the operational recall jointly with
 all foreign inputs, scheduler information, and the pending network. -/
 theorem binding_submission (frame : DirectedBindingFrame (timeouts := timeouts) memory owner
   original repaired)
-    (event : (graph setup).EventId) (payload : L.Ty)
-    (outputEq : (graph setup).outputLayout event = .binding owner payload)
-    (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .bind owner payload)
-    (node : nodeView (graph setup) event = .bind owner payload outputEq codeEq)
+    (event : setup.informationGraph.EventId) (payload : L.Ty)
+    (outputEq : setup.informationGraph.outputLayout event = .binding owner payload)
+    (codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .bind owner payload)
+    (node : nodeView setup.informationGraph event = .bind owner payload outputEq codeEq)
     (serial : Nat) (opening : Option (Raw L))
     (fresh : original.application.candidates.lookup (owner, .prepared serial) = .fresh)
     (ready : original.application.config.cut.Ready event) :

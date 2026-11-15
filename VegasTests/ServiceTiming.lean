@@ -15,11 +15,11 @@ namespace VegasTests.ServiceTiming
 open Vegas SourceProgram
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
-  {setup : Setup (Player := Player) (L := L)} {mode : EventGraph.ExecutionMode}
+  {setup : Setup (Player := Player) (L := L)} {deps : setup.dataflowGraph.Dependencies}
 
 /-- Two event deferrals of one fifth cost nine twenty-fifths instead of two fifths. -/
-example {turns : Nat} (timing : TurnTiming setup turns mode)
-    (events : (serviceGraph setup mode).EventId ≃ Fin 2)
+example {turns : Nat} (timing : TurnTiming setup turns deps)
+    (events : (serviceGraph setup deps).EventId ≃ Fin 2)
     (deferred : ∀ event, timing.deferral event = (1 : ℝ) / 5) :
     timing.deferralError = (9 : ℝ) / 25 ∧
       timing.deferralError < ∑ event, timing.deferral event := by

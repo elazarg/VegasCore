@@ -31,7 +31,7 @@ namespace EventGraphRuntime
 namespace State
 
 /-- The runtime facts shared by message inclusion, chance execution, and
-deadline expiry.  `inputs` fixes the separately supplied graph setup. -/
+deadline expiry.  `inputs` fixes the separately supplied setup.informationGraph. -/
 structure Invariant (inputs : graph.Inputs) (state : State graph) : Prop where
   reachable : state.config.Reachable inputs
   activated_iff : ∀ event,

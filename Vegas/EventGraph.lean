@@ -3,15 +3,22 @@ module
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 public import Vegas.EventGraph.BarrierBlocks
+public import Vegas.EventGraph.ActorTurns
 public import Vegas.EventGraph.BarrierInformation
 public import Vegas.EventGraph.Barriers
 public import Vegas.EventGraph.Basic
 public import Vegas.EventGraph.BindingRefinement
+public import Vegas.EventGraph.DependencyRelaxation
+public import Vegas.EventGraph.BindingSubmission
 public import Vegas.EventGraph.CanonicalStep
 public import Vegas.EventGraph.Code
 public import Vegas.EventGraph.Commutation
 public import Vegas.EventGraph.CommutationRecall
 public import Vegas.EventGraph.NormalizedPolicy
+public import Vegas.EventGraph.PrefixPolicy
+public import Vegas.EventGraph.PrefixReplay
+public import Vegas.EventGraph.PrefixDeviation
+public import Vegas.EventGraph.RankedConfig
 public import Vegas.EventGraph.SchedulerErasure
 public import Vegas.EventGraph.RevealRelaxedScheduling
 public import Vegas.EventGraph.SolitaryEvent
@@ -34,6 +41,7 @@ public import Vegas.EventGraph.SequentialNormalization
 public import Vegas.EventGraph.PublicationDecision
 public import Vegas.EventGraph.DecisionTwin
 public import Vegas.EventGraph.DefaultFailure
+public import Vegas.EventGraph.Dependencies
 public import Vegas.EventGraph.Execution
 public import Vegas.EventGraph.Information
 public import Vegas.EventGraph.ObservationStep

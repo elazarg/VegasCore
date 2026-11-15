@@ -19,9 +19,9 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- A recorded submission for a still-ready foreign event identifies an actual
@@ -36,13 +36,13 @@ theorem foreign_firstActivation_prefix_of_recorded
       start))
     (trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some control))
     (startPrefix : TracePrefix startTrace trace)
-    (current event : (graph setup).EventId)
+    (current event : setup.informationGraph.EventId)
     (turn : start.execution.application.publicView.ownTurn? focal = some current)
     (clear : control.execution.application.config.defaulted = ∅)
     (regular : RegularTrace setup timeouts leaks bounds horizon scheduler source focal trace)
     (notOwed : ∀ point, decodedPoint setup control.execution.application.config = some point →
       ¬ ProtocolState.OwesFailure focal setup.program point)
-    (owned : (graph setup).actor? event = some owner)
+    (owned : setup.informationGraph.actor? event = some owner)
     (ready : control.execution.application.config.cut.Ready event)
     (recorded : (eventRecorded timeouts) leaks (control.execution.logs owner) event = true) :
     ∃ (before : (application setup timeouts leaks).Control)

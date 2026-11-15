@@ -25,9 +25,9 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol Intera
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
   [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
   [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
@@ -42,7 +42,7 @@ variable (wellFormed : setup.WellFormed)
   (small : ∀ n, scale n ≤ 1 / 4) (floor : ℕ → ℝ) (floor_pos : ∀ n, 0 < floor n)
   (floored : ∀ n, floor n ≤ contentFloor setup timeouts leaks bounds horizon scheduler (sequence n))
   (covers : bounds.CoversOutputValues)
-  (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
+  (capacity : ∀ who, bindingEventCount setup.informationGraph who < bounds.candidateCount)
   {slots : Nat}
   (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup) horizon
     scheduler slots p))

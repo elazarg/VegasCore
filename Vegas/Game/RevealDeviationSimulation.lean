@@ -25,9 +25,9 @@ namespace Vegas
 open SourceProgram GameTheory.Math.Probability Interaction EventGraphRuntime EventGraph
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
-  {setup : Setup (Player := Player) (L := L)} {mode : EventGraph.ExecutionMode}
-  {duration : (serviceGraph setup mode).EventId → Nat}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode))}
+  {setup : Setup (Player := Player) (L := L)} {deps : setup.dataflowGraph.Dependencies}
+  {duration : (serviceGraph setup deps).EventId → Nat}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup deps))}
 
 section Read
 
@@ -50,12 +50,12 @@ end Read
 
 /-- A round from a terminal configuration keeps it. -/
 theorem round_config_eq_of_terminal
-    {scheduler : (serviceApplication setup mode duration leaks).Scheduler}
-    {players : Player → (serviceApplication setup mode duration leaks).Policy}
-    {execution next : (serviceApplication setup mode duration leaks).Execution}
+    {scheduler : (serviceApplication setup deps duration leaks).Scheduler}
+    {players : Player → (serviceApplication setup deps duration leaks).Policy}
+    {execution next : (serviceApplication setup deps duration leaks).Execution}
     (terminal : execution.application.config.cut.Terminal)
     (reached : next ∈
-      ((serviceApplication setup mode duration leaks).round scheduler players execution).support) :
+      ((serviceApplication setup deps duration leaks).round scheduler players execution).support) :
     next.application.config = execution.application.config := by
   rcases Relation.ReflTransGen.cases_head (round_config_path reached) with same | ⟨_, moved, _⟩
   · exact same.symm
@@ -64,11 +64,11 @@ theorem round_config_eq_of_terminal
 
 /-- Rounds from a terminal configuration keep it. -/
 theorem runRounds_config_eq_of_terminal
-    (scheduler : (serviceApplication setup mode duration leaks).Scheduler)
-    (players : Player → (serviceApplication setup mode duration leaks).Policy) :
-    ∀ (count : Nat) (execution final : (serviceApplication setup mode duration leaks).Execution),
+    (scheduler : (serviceApplication setup deps duration leaks).Scheduler)
+    (players : Player → (serviceApplication setup deps duration leaks).Policy) :
+    ∀ (count : Nat) (execution final : (serviceApplication setup deps duration leaks).Execution),
       execution.application.config.cut.Terminal →
-      final ∈ ((serviceApplication setup mode duration leaks).runRounds scheduler players count
+      final ∈ ((serviceApplication setup deps duration leaks).runRounds scheduler players count
         execution).support →
       final.application.config = execution.application.config := by
   intro count
@@ -89,56 +89,56 @@ boundary of a ledger run in which honest clients open a reveal exactly when its
 opening is accepted, the deviation of one player is simulated by the
 last-served erased-key laws of normalized graph deviations of the base. -/
 theorem concurrentDeviationSimulation {horizon : Nat}
-    {scheduler : (serviceApplication setup mode duration leaks).Scheduler}
-    {delay : (serviceGraph setup mode).EventId → Nat}
-    (bound : (serviceGraph setup mode).EventId → Nat) (turns : Nat)
-    (contract : AsyncContract (serviceTimeouts setup mode duration) leaks
-        (serviceInitialLaw setup mode) horizon scheduler delay bound)
-    (timely : AsyncTimely (serviceTimeouts setup mode duration) delay bound)
-    (base : (serviceGraph setup mode).BehavioralProfile)
-    (decides : ∀ (config : (serviceGraph setup mode).Config)
-      (event : (serviceGraph setup mode).EventId) (owner : Player) (payload : L.Ty)
-      (binding : FieldRef (serviceGraph setup mode).layout (.binding owner payload))
-      (checks : List (GuardCheck (serviceGraph setup mode).layout payload))
-      (outputEq : (serviceGraph setup mode).outputLayout event = .publication payload)
-      (codeEq : cast (congrArg (EventCode (serviceGraph setup mode).layout) outputEq)
-        ((serviceGraph setup mode).nodes event) = .resolve owner payload binding checks),
-      nodeView (serviceGraph setup mode) event =
+    {scheduler : (serviceApplication setup deps duration leaks).Scheduler}
+    {delay : (serviceGraph setup deps).EventId → Nat}
+    (bound : (serviceGraph setup deps).EventId → Nat) (turns : Nat)
+    (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
+        (serviceInitialLaw setup deps) horizon scheduler delay bound)
+    (timely : AsyncTimely (serviceTimeouts setup deps duration) delay bound)
+    (base : (serviceGraph setup deps).BehavioralProfile)
+    (decides : ∀ (config : (serviceGraph setup deps).Config)
+      (event : (serviceGraph setup deps).EventId) (owner : Player) (payload : L.Ty)
+      (binding : FieldRef (serviceGraph setup deps).layout (.binding owner payload))
+      (checks : List (GuardCheck (serviceGraph setup deps).layout payload))
+      (outputEq : (serviceGraph setup deps).outputLayout event = .publication payload)
+      (codeEq : cast (congrArg (EventCode (serviceGraph setup deps).layout) outputEq)
+        ((serviceGraph setup deps).nodes event) = .resolve owner payload binding checks),
+      nodeView (serviceGraph setup deps) event =
         .resolve owner payload binding checks outputEq codeEq →
-      ∀ (actor : (serviceGraph setup mode).actor? event = some owner)
-        (active : owner ∉ ((serviceGraph setup mode).playerObserve owner config).defaulted),
-        (serviceGraph setup mode).normalizeProfile base owner event actor
-          ((serviceGraph setup mode).playerObserve owner config) active =
+      ∀ (actor : (serviceGraph setup deps).actor? event = some owner)
+        (active : owner ∉ ((serviceGraph setup deps).playerObserve owner config).defaulted),
+        (serviceGraph setup deps).normalizeProfile base owner event actor
+          ((serviceGraph setup deps).playerObserve owner config) active =
           PMF.pure (cast (congrArg EventField.Action outputEq.symm)
             (openingAccepted event config.store)))
-    (referenceIndependent : ReadyIndependent ((serviceGraph setup mode).normalizeProfile base))
-    (who : Player) (deviation : (serviceApplication setup mode duration leaks).Policy)
+    (referenceIndependent : ReadyIndependent ((serviceGraph setup deps).normalizeProfile base))
+    (who : Player) (deviation : (serviceApplication setup deps duration leaks).Policy)
     (independent : ∀ policy, LastIndependent
-      ((serviceGraph setup mode).lastDeviationProfile base who policy) who)
-    (relaxed : RelaxedOrder (serviceGraph setup mode))
-    (runs : FlatRevealRuns (serviceGraph setup mode))
-    (concurrent : (serviceGraph setup mode).RevealsOnlyConcurrent) :
-    ∀ rank, rank ≤ (serviceGraph setup mode).order.eventCount →
+      ((serviceGraph setup deps).lastDeviationProfile base who policy) who)
+    (relaxed : RelaxedOrder (serviceGraph setup deps))
+    (runs : FlatRevealRuns (serviceGraph setup deps))
+    (concurrent : (serviceGraph setup deps).RevealsOnlyConcurrent) :
+    ∀ rank, rank ≤ (serviceGraph setup deps).order.eventCount →
       DeviationSimulation scheduler
-        (Function.update (serviceReferenceTurnPolicy setup mode duration leaks bound turns
-          (firstTurnTiming setup turns mode) ((serviceGraph setup mode).normalizeProfile base))
+        (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+          (firstTurnTiming setup turns deps) ((serviceGraph setup deps).normalizeProfile base))
           who deviation) horizon readErased
         (fun execution => runKey execution.application.config)
-        ((bindingTraffic (serviceTimeouts setup mode duration)) leaks who) (keyView who)
-        (fun policy => keyTarget ((serviceGraph setup mode).lastDeviationProfile base who policy)
+        ((bindingTraffic (serviceTimeouts setup deps duration)) leaks who) (keyView who)
+        (fun policy => keyTarget ((serviceGraph setup deps).lastDeviationProfile base who policy)
           who)
-        (PhaseBoundary scheduler (Function.update (serviceReferenceTurnPolicy setup mode duration
-          leaks bound turns (firstTurnTiming setup turns mode)
-          ((serviceGraph setup mode).normalizeProfile base)) who deviation) horizon rank) := by
+        (PhaseBoundary scheduler (Function.update (serviceReferenceTurnPolicy setup deps duration
+          leaks bound turns (firstTurnTiming setup turns deps)
+          ((serviceGraph setup deps).normalizeProfile base)) who deviation) horizon rank) := by
   classical
-  let G := serviceGraph setup mode
-  let app := serviceApplication setup mode duration leaks
-  let players := Function.update (serviceReferenceTurnPolicy setup mode duration leaks bound
-    turns (firstTurnTiming setup turns mode) (G.normalizeProfile base)) who deviation
+  let G := serviceGraph setup deps
+  let app := serviceApplication setup deps duration leaks
+  let players := Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound
+    turns (firstTurnTiming setup turns deps) (G.normalizeProfile base)) who deviation
   suffices step : ∀ gap rank, G.order.eventCount - rank = gap → rank ≤ G.order.eventCount →
       DeviationSimulation scheduler players horizon readErased
         (fun execution => runKey execution.application.config)
-        ((bindingTraffic (serviceTimeouts setup mode duration)) leaks who) (keyView who)
+        ((bindingTraffic (serviceTimeouts setup deps duration)) leaks who) (keyView who)
         (fun policy => keyTarget (G.lastDeviationProfile base who policy) who)
         (PhaseBoundary scheduler players horizon rank) from
     fun rank within => step _ rank rfl within
@@ -187,7 +187,7 @@ theorem concurrentDeviationSimulation {horizon : Nat}
   have tailOf : ∀ next, next ≤ G.order.eventCount → rank < next →
       DeviationSimulation scheduler players horizon readErased
         (fun execution => runKey execution.application.config)
-        ((bindingTraffic (serviceTimeouts setup mode duration)) leaks who) (keyView who)
+        ((bindingTraffic (serviceTimeouts setup deps duration)) leaks who) (keyView who)
         (fun policy => keyTarget (G.lastDeviationProfile base who policy) who)
         (PhaseBoundary scheduler players horizon next) :=
     fun next bounded later => ih (G.order.eventCount - next) (by omega) next rfl bounded
@@ -255,7 +255,7 @@ theorem concurrentDeviationSimulation {horizon : Nat}
       by_cases isWho : owner = who
       · subst isWho
         obtain ⟨build, nextNoise, joint, averaged⟩ := lastOwned_phase scheduler horizon bound
-          turns (firstTurnTiming setup turns mode) (G.normalizeProfile base) base owner deviation
+          turns (firstTurnTiming setup turns deps) (G.normalizeProfile base) base owner deviation
           independent event owned alone prior execution
           (fun seed member => (goods seed member).quiescent) pendingPrefix
           (fun seed member done => observedAction_of_silent owner
@@ -292,7 +292,7 @@ theorem concurrentDeviationSimulation {horizon : Nat}
         rw [ownerless] at owned
         cases owned
       obtain ⟨nextNoise, joint, averaged⟩ := lastChance_phase scheduler horizon bound turns
-        (firstTurnTiming setup turns mode) (G.normalizeProfile base) base who deviation
+        (firstTurnTiming setup turns deps) (G.normalizeProfile base) base who deviation
         independent event ownerless visible alone prior execution
         (fun seed member => (goods seed member).quiescent) ordered
         (completes prior execution goods) noise factor

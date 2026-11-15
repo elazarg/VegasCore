@@ -27,8 +27,8 @@ open GameTheory GameTheory.Protocol GameTheory.Math.Probability Interaction Even
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
 
 /-- The recall of an information state; empty at a non-decision input. -/
 def infoRecall : (application setup timeouts leaks).Info → List (application setup timeouts
@@ -125,7 +125,7 @@ theorem siteConsistent_step {horizon : Nat} {scheduler : (application setup time
           exact ⟨entry, rest ++ [added], by rw [appended, longer]; simp⟩
         · exact ⟨entry, rest, by rw [idle acting, longer]⟩
 
-variable [Fintype Player] {bounds : MessageBounds (graph setup)} {horizon : Nat}
+variable [Fintype Player] {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- A history of a site is consistent with it. -/

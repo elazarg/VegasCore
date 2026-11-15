@@ -30,21 +30,21 @@ open GameTheory GameTheory.Protocol GameTheory.Math.Probability Interaction Even
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
 
 /-- Whether a candidate binds a successful value at a binding of a payload
 type. -/
-def candidateSucceeds (state : EventGraphRuntime.State (graph setup))
-    (candidate : Handle (graph setup)) (payload : L.Ty) : Bool :=
+def candidateSucceeds (state : EventGraphRuntime.State setup.informationGraph)
+    (candidate : Handle setup.informationGraph) (payload : L.Ty) : Bool :=
   match state.bindingResult candidate payload with
   | .success _ => true
   | .failure => false
 
 /-- The status of a packet: for a commitment of the owner to the event, its
 identifier and whether its candidate succeeds; nothing otherwise. -/
-def commitStatus (event : (graph setup).EventId) (owner : Player) (payload : L.Ty)
-    (state : EventGraphRuntime.State (graph setup))
+def commitStatus (event : setup.informationGraph.EventId) (owner : Player) (payload : L.Ty)
+    (state : EventGraphRuntime.State setup.informationGraph)
     (message : Message Player (application setup timeouts leaks).Payload) :
     Option (MessageId Player × Bool) :=
   match message.payload.call with
@@ -55,15 +55,15 @@ def commitStatus (event : (graph setup).EventId) (owner : Player) (payload : L.T
   | _ => none
 
 /-- The statuses of the owner's commitments to the event in a list of packets. -/
-def commitStatuses (event : (graph setup).EventId) (owner : Player) (payload : L.Ty)
-    (state : EventGraphRuntime.State (graph setup))
+def commitStatuses (event : setup.informationGraph.EventId) (owner : Player) (payload : L.Ty)
+    (state : EventGraphRuntime.State setup.informationGraph)
     (packets : List (Message Player (application setup timeouts leaks).Payload)) :
     List (MessageId Player × Bool) :=
   packets.filterMap (commitStatus (timeouts := timeouts) event owner payload state)
 
 /-- Whether a packet has a status does not depend on the contract state. -/
-theorem commitStatus_isSome_congr (event : (graph setup).EventId) (owner : Player)
-    (payload : L.Ty) (first second : EventGraphRuntime.State (graph setup))
+theorem commitStatus_isSome_congr (event : setup.informationGraph.EventId) (owner : Player)
+    (payload : L.Ty) (first second : EventGraphRuntime.State setup.informationGraph)
     (message : Message Player (application setup timeouts leaks).Payload) :
     (commitStatus (timeouts := timeouts) event owner payload first message).isSome =
       (commitStatus (timeouts := timeouts) event owner payload second message).isSome := by
@@ -73,8 +73,8 @@ theorem commitStatus_isSome_congr (event : (graph setup).EventId) (owner : Playe
   · rfl
 
 /-- Equal statuses of a list are equal packet by packet. -/
-theorem commitStatus_eq_of_mem {event : (graph setup).EventId} {owner : Player}
-    {payload : L.Ty} {first second : EventGraphRuntime.State (graph setup)} :
+theorem commitStatus_eq_of_mem {event : setup.informationGraph.EventId} {owner : Player}
+    {payload : L.Ty} {first second : EventGraphRuntime.State setup.informationGraph} :
     ∀ {packets : List (Message Player (application setup timeouts leaks).Payload)},
     commitStatuses (timeouts := timeouts) event owner payload first packets =
       commitStatuses (timeouts := timeouts) event owner payload second packets →
@@ -108,8 +108,8 @@ theorem commitStatus_eq_of_mem {event : (graph setup).EventId} {owner : Player}
               · exact commitStatus_eq_of_mem restEq message inside
 
 /-- Removing a packet keeps equal statuses equal. -/
-theorem commitStatuses_removeFirst_congr {event : (graph setup).EventId} {owner : Player}
-    {payload : L.Ty} {first second : EventGraphRuntime.State (graph setup)}
+theorem commitStatuses_removeFirst_congr {event : setup.informationGraph.EventId} {owner : Player}
+    {payload : L.Ty} {first second : EventGraphRuntime.State setup.informationGraph}
     (id : MessageId Player) :
     ∀ {packets : List (Message Player (application setup timeouts leaks).Payload)},
     commitStatuses (timeouts := timeouts) event owner payload first packets =
@@ -142,8 +142,8 @@ theorem commitStatuses_removeFirst_congr {event : (graph setup).EventId} {owner 
         rw [tail]
 
 /-- Statuses read candidates only through their lookups. -/
-theorem commitStatuses_congr_candidates {event : (graph setup).EventId} {owner : Player}
-    {payload : L.Ty} {first second : EventGraphRuntime.State (graph setup)}
+theorem commitStatuses_congr_candidates {event : setup.informationGraph.EventId} {owner : Player}
+    {payload : L.Ty} {first second : EventGraphRuntime.State setup.informationGraph}
     (candidates : first.candidates = second.candidates)
     (packets : List (Message Player (application setup timeouts leaks).Payload)) :
     commitStatuses (timeouts := timeouts) event owner payload first packets =
@@ -160,7 +160,7 @@ theorem commitStatuses_congr_candidates {event : (graph setup).EventId} {owner :
   · rfl
 
 /-- The statuses of a protocol state. -/
-def stateStatuses (event : (graph setup).EventId) (owner : Player) (payload : L.Ty) :
+def stateStatuses (event : setup.informationGraph.EventId) (owner : Player) (payload : L.Ty) :
     (application setup timeouts leaks).ProtocolState → List (MessageId Player × Bool)
   | none => []
   | some control => commitStatuses (timeouts := timeouts) event owner payload
@@ -181,7 +181,7 @@ def attachStatuses (statuses : List (MessageId Player × Bool)) :
 
 /-- **The image at a pending binding.** The pending image, with the statuses
 of the owner's pending commitments to the event while it is pending. -/
-def bindingImage (event : (graph setup).EventId) (owner : Player) (payload : L.Ty)
+def bindingImage (event : setup.informationGraph.EventId) (owner : Player) (payload : L.Ty)
     (state : (application setup timeouts leaks).ProtocolState) :
     BindingImage (timeouts := timeouts) (setup := setup) (leaks := leaks) :=
   attachStatuses (timeouts := timeouts) (stateStatuses (timeouts := timeouts) event owner payload
@@ -189,7 +189,8 @@ def bindingImage (event : (graph setup).EventId) (owner : Player) (payload : L.T
 
 /-- A step keeping the statuses is read through the pending image. -/
 theorem map_bindingImage_of_statuses {X : Type} (law : PMF X)
-    (state : X → (application setup timeouts leaks).ProtocolState) {event : (graph setup).EventId}
+    (state : X → (application setup timeouts leaks).ProtocolState) {event :
+      setup.informationGraph.EventId}
     {owner : Player} {payload : L.Ty} (statuses : List (MessageId Player × Bool))
     (kept : ∀ next ∈ law.support, stateStatuses (timeouts := timeouts) event owner payload (state
       next) = statuses) :
@@ -220,8 +221,8 @@ theorem isFailure_cast_binding_iff {kind : EventGraph.EventField Player L} {owne
   subst kindEq
   rfl
 
-private theorem failed_drain (state : EventGraphRuntime.State (graph setup))
-    {event : (graph setup).EventId} (completed : event ∈ state.config.cut.completed) :
+private theorem failed_drain (state : EventGraphRuntime.State setup.informationGraph)
+    {event : setup.informationGraph.EventId} (completed : event ∈ state.config.cut.completed) :
     StoreEventFailed state.drain.config.store event ↔
       StoreEventFailed state.config.store event := by
   have present : (state.config.store (.inr event)).isSome := by
@@ -233,15 +234,16 @@ private theorem failed_drain (state : EventGraphRuntime.State (graph setup))
 open Classical in
 /-- Expiring a due binding fails it, read through the pending image. -/
 theorem environmentStep_expire_due_bind_image (remaining : Nat)
-    (execution : (application setup timeouts leaks).Execution) {event : (graph setup).EventId}
+    (execution : (application setup timeouts leaks).Execution) {event :
+      setup.informationGraph.EventId}
     (ready : execution.application.config.cut.Ready event) (entered : Nat)
     (activated : execution.application.activatedAt event = some entered)
     (due : timeouts.duration event ≤ execution.application.clock - entered)
     {owner : Player} {payload : L.Ty}
-    {outputEq : (graph setup).outputLayout event = .binding owner payload}
-    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .bind owner payload}
-    (view : nodeView (graph setup) event = .bind owner payload outputEq codeEq) :
+    {outputEq : setup.informationGraph.outputLayout event = .binding owner payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .bind owner payload}
+    (view : nodeView setup.informationGraph event = .bind owner payload outputEq codeEq) :
     (execution.environmentStep (application setup timeouts leaks) (.application (.expire
       event))).map
         (fun next => pendingImage (timeouts := timeouts) event (some ⟨remaining, none, next⟩)) =
@@ -274,15 +276,15 @@ theorem application_image_congr_bind (remaining : Nat)
     (first second : (application setup timeouts leaks).Execution)
     (same : operationalState setup timeouts leaks (some ⟨remaining + 1, none, first⟩) =
       operationalState setup timeouts leaks (some ⟨remaining + 1, none, second⟩))
-    {event : (graph setup).EventId}
+    {event : setup.informationGraph.EventId}
     (ready : first.application.config.cut.Ready event)
     (quiescent : ∀ query, ¬ first.application.AutomaticReady query)
     {owner : Player} {payload : L.Ty}
-    {outputEq : (graph setup).outputLayout event = .binding owner payload}
-    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .bind owner payload}
-    (view : nodeView (graph setup) event = .bind owner payload outputEq codeEq)
-    (command : EnvironmentCommand (graph setup)) :
+    {outputEq : setup.informationGraph.outputLayout event = .binding owner payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .bind owner payload}
+    (view : nodeView setup.informationGraph event = .bind owner payload outputEq codeEq)
+    (command : EnvironmentCommand setup.informationGraph) :
     (first.environmentStep (application setup timeouts leaks) (.application command)).map
         (fun next => pendingImage (timeouts := timeouts) event (some ⟨remaining, none, next⟩)) =
       (second.environmentStep (application setup timeouts leaks) (.application command)).map
@@ -300,7 +302,7 @@ theorem application_image_congr_bind (remaining : Nat)
     have defaults := congrArg (fun view => view.observation.defaults.defaulted) views
     change first.application.config.defaulted = second.application.config.defaulted at defaults
     refine ⟨(SameOperational.ready (timeouts := timeouts) same query).mpr eligible.1, ?_⟩
-    change (match (graph setup).actor? query with
+    change (match setup.informationGraph.actor? query with
       | none => False
       | some owner => owner ∈ first.application.config.defaulted)
     rw [defaults]
@@ -337,18 +339,18 @@ theorem application_image_congr_bind (remaining : Nat)
       simp only [EventGraphRuntime.environmentStep, PMF.pure_map]
       rw [same]
       have ticked : ({ first.application with clock := first.application.clock + 1 } :
-          EventGraphRuntime.State (graph setup)).publicView =
+          EventGraphRuntime.State setup.informationGraph).publicView =
           ({ second.application with clock := second.application.clock + 1 } :
-            EventGraphRuntime.State (graph setup)).publicView := by
+            EventGraphRuntime.State setup.informationGraph).publicView := by
         change ({ first.application.publicView with
-            clock := first.application.publicView.clock + 1 } : PublicView (graph setup)) =
+            clock := first.application.publicView.clock + 1 } : PublicView setup.informationGraph) =
           { second.application.publicView with clock := second.application.publicView.clock + 1 }
         rw [views]
       rw [ticked]
   | executeSample sampled =>
       by_cases sampledReady : first.application.config.cut.Ready sampled
       · have sameEvent : sampled = event :=
-          setup.eventGraph.sequentialize_ready_unique _ sampledReady ready
+          setup.informationGraph.sequentialize_ready_unique _ sampledReady ready
         subst sameEvent
         exact stutterBoth _
           (environmentStep_executeSample_of_nonsample timeouts _ sampled ready
@@ -362,7 +364,7 @@ theorem application_image_congr_bind (remaining : Nat)
   | expire expired =>
       by_cases expiredReady : first.application.config.cut.Ready expired
       · have sameEvent : expired = event :=
-          setup.eventGraph.sequentialize_ready_unique _ expiredReady ready
+          setup.informationGraph.sequentialize_ready_unique _ expiredReady ready
         subst sameEvent
         have activations : first.application.activatedAt = second.application.activatedAt :=
           congrArg PublicView.activatedAt views
@@ -393,22 +395,23 @@ theorem application_image_congr_bind (remaining : Nat)
             (fun other => expiredReady ((readyIff expired).mpr other)))
 
 /-- **Only the owner's commitment is accepted while a binding is ready.** -/
-theorem handle_of_binding_ready (state : EventGraphRuntime.State (graph setup))
-    {event : (graph setup).EventId} (ready : state.config.cut.Ready event)
+theorem handle_of_binding_ready (state : EventGraphRuntime.State setup.informationGraph)
+    {event : setup.informationGraph.EventId} (ready : state.config.cut.Ready event)
     {owner : Player} {payload : L.Ty}
-    {outputEq : (graph setup).outputLayout event = .binding owner payload}
-    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .bind owner payload}
-    (view : nodeView (graph setup) event = .bind owner payload outputEq codeEq)
-    (id : MessageId Player) (call : Payload (graph setup))
-    {next : EventGraphRuntime.State (graph setup)}
+    {outputEq : setup.informationGraph.outputLayout event = .binding owner payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .bind owner payload}
+    (view : nodeView setup.informationGraph event = .bind owner payload outputEq codeEq)
+    (id : MessageId Player) (call : Payload setup.informationGraph)
+    {next : EventGraphRuntime.State setup.informationGraph}
     (accepted : EventGraphRuntime.handle timeouts state ⟨id, call⟩ = some next) :
     ∃ candidate, call = .commitment event candidate ∧ id.1 = owner := by
   cases call with
   | malformed raw => simp [EventGraphRuntime.handle] at accepted
   | commitment named candidate =>
       by_cases namedReady : state.config.cut.Ready named
-      · have same : named = event := setup.eventGraph.sequentialize_ready_unique _ namedReady ready
+      · have same : named = event :=
+          setup.informationGraph.sequentialize_ready_unique _ namedReady ready
         subst same
         refine ⟨candidate, rfl, ?_⟩
         by_contra foreign
@@ -419,7 +422,8 @@ theorem handle_of_binding_ready (state : EventGraphRuntime.State (graph setup))
       · simp [EventGraphRuntime.handle, namedReady] at accepted
   | opening named candidate raw =>
       by_cases namedReady : state.config.cut.Ready named
-      · have same : named = event := setup.eventGraph.sequentialize_ready_unique _ namedReady ready
+      · have same : named = event :=
+          setup.informationGraph.sequentialize_ready_unique _ namedReady ready
         subst same
         by_cases timely : state.WithinDeadline timeouts named
         · simp [EventGraphRuntime.handle, namedReady, timely, view] at accepted
@@ -429,15 +433,15 @@ theorem handle_of_binding_ready (state : EventGraphRuntime.State (graph setup))
 /-- An accepted commitment to a ready binding was timely, sent by its owner for
 an unused own handle while the binding was vacant, and completes the binding
 with the handle's typed meaning. -/
-theorem handle_commitment_accepted_facts (state : EventGraphRuntime.State (graph setup))
-    {event : (graph setup).EventId} (ready : state.config.cut.Ready event)
+theorem handle_commitment_accepted_facts (state : EventGraphRuntime.State setup.informationGraph)
+    {event : setup.informationGraph.EventId} (ready : state.config.cut.Ready event)
     {owner : Player} {payload : L.Ty}
-    {outputEq : (graph setup).outputLayout event = .binding owner payload}
-    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .bind owner payload}
-    (view : nodeView (graph setup) event = .bind owner payload outputEq codeEq)
-    (id : MessageId Player) (candidate : Handle (graph setup))
-    {next : EventGraphRuntime.State (graph setup)}
+    {outputEq : setup.informationGraph.outputLayout event = .binding owner payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .bind owner payload}
+    (view : nodeView setup.informationGraph event = .bind owner payload outputEq codeEq)
+    (id : MessageId Player) (candidate : Handle setup.informationGraph)
+    {next : EventGraphRuntime.State setup.informationGraph}
     (accepted : EventGraphRuntime.handle timeouts state
       ⟨id, .commitment event candidate⟩ = some next) :
     state.WithinDeadline timeouts event ∧ id.1 = owner ∧ candidate.1 = owner ∧
@@ -463,18 +467,18 @@ success, accept the same commitment to a ready binding together; both
 acceptances complete the binding, failed in one exactly when failed in the
 other. -/
 theorem handle_commitment_accepted_transfer
-    (first second : EventGraphRuntime.State (graph setup))
+    (first second : EventGraphRuntime.State setup.informationGraph)
     (publics : first.publicView = second.publicView)
-    {event : (graph setup).EventId} (ready : first.config.cut.Ready event)
+    {event : setup.informationGraph.EventId} (ready : first.config.cut.Ready event)
     {owner : Player} {payload : L.Ty}
-    {outputEq : (graph setup).outputLayout event = .binding owner payload}
-    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .bind owner payload}
-    (view : nodeView (graph setup) event = .bind owner payload outputEq codeEq)
-    (id : MessageId Player) (candidate : Handle (graph setup))
+    {outputEq : setup.informationGraph.outputLayout event = .binding owner payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .bind owner payload}
+    (view : nodeView setup.informationGraph event = .bind owner payload outputEq codeEq)
+    (id : MessageId Player) (candidate : Handle setup.informationGraph)
     (succeeds : candidateSucceeds first candidate payload =
       candidateSucceeds second candidate payload)
-    {next : EventGraphRuntime.State (graph setup)}
+    {next : EventGraphRuntime.State setup.informationGraph}
     (accepted : EventGraphRuntime.handle timeouts first
       ⟨id, .commitment event candidate⟩ = some next) :
     ∃ next', EventGraphRuntime.handle timeouts second
@@ -524,10 +528,10 @@ theorem handle_commitment_accepted_transfer
     (cast (congrArg EventGraph.EventField.Value outputEq.symm)
       (second.bindingResult candidate payload))
   have failedIff : ∀ result : PublicationResult (L.Val payload),
-      ((graph setup).layout (.inr event)).IsFailure
+      (setup.informationGraph.layout (.inr event)).IsFailure
         (cast (congrArg EventGraph.EventField.Value outputEq.symm) result) ↔
         result = .failure := isFailure_cast_binding_iff outputEq
-  have successIff : ∀ state : EventGraphRuntime.State (graph setup),
+  have successIff : ∀ state : EventGraphRuntime.State setup.informationGraph,
       state.bindingResult candidate payload = .failure ↔
         candidateSucceeds state candidate payload = false := by
     intro state
@@ -546,16 +550,16 @@ theorem include_bindingImage_congr (remaining : Nat)
     (first second : (application setup timeouts leaks).Execution)
     (same : operationalState setup timeouts leaks (some ⟨remaining + 1, none, first⟩) =
       operationalState setup timeouts leaks (some ⟨remaining + 1, none, second⟩))
-    {event : (graph setup).EventId} {owner : Player} {payload : L.Ty}
+    {event : setup.informationGraph.EventId} {owner : Player} {payload : L.Ty}
     (statuses : commitStatuses (timeouts := timeouts) event owner payload first.application
       first.network.pending =
       commitStatuses (timeouts := timeouts) event owner payload second.application
         second.network.pending)
     (ready : first.application.config.cut.Ready event)
-    {outputEq : (graph setup).outputLayout event = .binding owner payload}
-    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .bind owner payload}
-    (view : nodeView (graph setup) event = .bind owner payload outputEq codeEq)
+    {outputEq : setup.informationGraph.outputLayout event = .binding owner payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .bind owner payload}
+    (view : nodeView setup.informationGraph event = .bind owner payload outputEq codeEq)
     (id : MessageId Player) :
     (first.environmentStep (application setup timeouts leaks) (.include id)).map
         (fun next => bindingImage (timeouts := timeouts) event owner payload (some ⟨remaining, none,
@@ -634,13 +638,13 @@ theorem include_bindingImage_congr (remaining : Nat)
           cases member), ← networks, statuses']
   | some message =>
       have member : message ∈ first.network.pending := List.mem_of_find?_eq_some found
-      have transfer (one other : EventGraphRuntime.State (graph setup))
+      have transfer (one other : EventGraphRuntime.State setup.informationGraph)
           (publicsEq : one.publicView = other.publicView)
           (oneReady : one.config.cut.Ready event)
           (succeeds : ∀ candidate, message.payload.call = .commitment event candidate →
             message.sender = owner →
             candidateSucceeds one candidate payload = candidateSucceeds other candidate payload)
-          {next : EventGraphRuntime.State (graph setup)}
+          {next : EventGraphRuntime.State setup.informationGraph}
           (accepted : (application setup timeouts leaks).handle one message = some next) :
           ∃ next', (application setup timeouts leaks).handle other message = some next' ∧
             event ∈ next.config.cut.completed ∧ event ∈ next'.config.cut.completed ∧
@@ -707,17 +711,17 @@ theorem binding_round_image_congr (remaining : Nat)
     (first second : (application setup timeouts leaks).Execution)
     (same : operationalState setup timeouts leaks (some ⟨remaining + 1, none, first⟩) =
       operationalState setup timeouts leaks (some ⟨remaining + 1, none, second⟩))
-    {event : (graph setup).EventId} {owner : Player} {payload : L.Ty}
+    {event : setup.informationGraph.EventId} {owner : Player} {payload : L.Ty}
     (statuses : commitStatuses (timeouts := timeouts) event owner payload first.application
       first.network.pending =
       commitStatuses (timeouts := timeouts) event owner payload second.application
         second.network.pending)
     (ready : first.application.config.cut.Ready event)
     (quiescent : ∀ query, ¬ first.application.AutomaticReady query)
-    {outputEq : (graph setup).outputLayout event = .binding owner payload}
-    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .bind owner payload}
-    (view : nodeView (graph setup) event = .bind owner payload outputEq codeEq) :
+    {outputEq : setup.informationGraph.outputLayout event = .binding owner payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .bind owner payload}
+    (view : nodeView setup.informationGraph event = .bind owner payload outputEq codeEq) :
     ((application setup timeouts leaks).transition initial horizon scheduler
         (some ⟨remaining + 1, none, first⟩) (fun _ => none)).map
         (bindingImage (timeouts := timeouts) event owner payload) =

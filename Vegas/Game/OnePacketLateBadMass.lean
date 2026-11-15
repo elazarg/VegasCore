@@ -28,9 +28,9 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 variable (setup timeouts leaks bounds horizon scheduler) in
@@ -38,7 +38,7 @@ open Classical in
 /-- **A bad stop.** The event has completed without failing, and the stop has no
 completion point. -/
 def lateBadStop (rank : Nat) (fresh : (application setup timeouts leaks).Control → Prop)
-    (event : (graph setup).EventId)
+    (event : setup.informationGraph.EventId)
     (stop : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).History) : ℝ :=
   if (∃ control, stop.state = some control ∧
@@ -63,11 +63,11 @@ theorem lateBinding_badMass
       scheduler).History)
     {remaining : Nat} {who : Player} {execution : (application setup timeouts leaks).Execution}
     (current : start.state = some ⟨remaining, some who, execution⟩)
-    {event : (graph setup).EventId} {payload : L.Ty}
-    {outputEq : (graph setup).outputLayout event = .binding who payload}
-    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .bind who payload}
-    (node : nodeView (graph setup) event = .bind who payload outputEq codeEq)
+    {event : setup.informationGraph.EventId} {payload : L.Ty}
+    {outputEq : setup.informationGraph.outputLayout event = .binding who payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .bind who payload}
+    (node : nodeView setup.informationGraph event = .bind who payload outputEq codeEq)
     (turn : execution.application.publicView.ownTurn? who = some event)
     (unrecorded : (eventRecorded timeouts) leaks (execution.logs who) event = false)
     {rank : Nat} (ordered : execution.application.config.cut.IsPrefix rank)
@@ -155,7 +155,8 @@ theorem lateBinding_badMass
     have encodedSource : encodeEventAction? setup.program event source = some action := encoded
     have decodeEq := decodeEventAction_encodeEventAction?_eq_some setup.program event source
       action encodedSource
-    have owned : (graph setup).actor? event = some who := nodeView_bind_actor outputEq codeEq
+    have owned : setup.informationGraph.actor? event = some who := nodeView_bind_actor outputEq
+      codeEq
     have pointDecoded : decodedPoint setup reached.application.config = some point :=
       (decodedPoint_eq_of_isPrefix orderedHere).trans decodedHere
     have acts : ∀ player, ProtocolView.actor player setup.program

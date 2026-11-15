@@ -48,9 +48,9 @@ theorem bind_mix_right {α β : Type} (weights : PMF α) (t : ℝ) (h0 : 0 ≤ t
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
-  (timeouts : EventTimeouts (graph setup))
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-  [Fintype Player] (bounds : MessageBounds (graph setup))
+  (timeouts : EventTimeouts setup.informationGraph)
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
+  [Fintype Player] (bounds : MessageBounds setup.informationGraph)
   (initial : PMF (application setup timeouts leaks).State) (horizon : Nat)
   (scheduler : (application setup timeouts leaks).Scheduler)
 
@@ -100,10 +100,10 @@ supported source choice its as-if-honest mass at that slot, and nothing at
 another slot. -/
 theorem map_slotChoiceOf_apply {assessment : setup.intendedModel.BehavioralAssessment}
     {who : Player} {past : List (application setup timeouts leaks).PlayerEntry}
-    {view : (application setup timeouts leaks).PlayerView} {event : (graph setup).EventId}
-    {payload : L.Ty} {outputEq : (graph setup).outputLayout event = .binding who payload}
-    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .bind who payload}
+    {view : (application setup timeouts leaks).PlayerView} {event : setup.informationGraph.EventId}
+    {payload : L.Ty} {outputEq : setup.informationGraph.outputLayout event = .binding who payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .bind who payload}
     (site : CoveredPendingBinding setup timeouts leaks bounds assessment who past view event payload
       outputEq codeEq) (serial : Nat) {slot : Nat}
     {choice : Option (OwnAction Player L)}
@@ -165,7 +165,7 @@ theorem map_slotChoiceOf_apply {assessment : setup.intendedModel.BehavioralAsses
         have effective := ((bounds.mem_onePacketActions timeouts leaks who past view
           _).mp otherOffered).1
         have packetEq : otherMaterial.call.packet = .commitment event (who, .prepared serial) :=
-          congrArg (fun message : Message Player (WitnessedPacket (graph setup)) =>
+          congrArg (fun message : Message Player (WitnessedPacket setup.informationGraph) =>
             message.payload.call) otherEnvelope
         exact serialCapacity (offered_commitment_capacity (timeouts := timeouts) who past view _
           effective
@@ -183,7 +183,7 @@ theorem map_slotChoiceOf_apply {assessment : setup.intendedModel.BehavioralAsses
 as-if-honest law sent at that slot. -/
 theorem lateChoice_some_eq_map (assessment : setup.intendedModel.BehavioralAssessment)
     {slots : Nat} (who : Player) (past : List (application setup timeouts leaks).PlayerEntry)
-    (view : (application setup timeouts leaks).PlayerView) (event : (graph setup).EventId)
+    (view : (application setup timeouts leaks).PlayerView) (event : setup.informationGraph.EventId)
     (turn : view.application.publicView.ownTurn? who = some event) (slot : Fin slots) :
     lateChoice setup timeouts leaks bounds initial horizon scheduler assessment who (some (past,
       view))

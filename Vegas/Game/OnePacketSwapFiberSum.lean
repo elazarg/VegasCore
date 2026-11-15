@@ -35,22 +35,23 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol Intera
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)} [Fintype Player]
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {timeouts : EventTimeouts setup.informationGraph} [Fintype Player]
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
   [DecidableEq (CellTy Player L)]
 
 /-- Every value of the payload type of every binding field is within the message
 bounds. -/
-def BindingFieldsCovered (bounds : MessageBounds (graph setup)) : Prop :=
-  ∀ field owner payload, (graph setup).layout field = .binding owner payload →
+def BindingFieldsCovered (bounds : MessageBounds setup.informationGraph) : Prop :=
+  ∀ field owner payload, setup.informationGraph.layout field = .binding owner payload →
     ∀ value : L.Val payload, (⟨payload, value⟩ : Raw L) ∈ bounds.values
 
 /-- The message bounds cover every value of every initial binding input. -/
-def EventGraphRuntime.MessageBounds.CoversInputValues (bounds : MessageBounds (graph setup)) :
+def EventGraphRuntime.MessageBounds.CoversInputValues (bounds : MessageBounds
+  setup.informationGraph) :
     Prop :=
-  ∀ input owner payload, (graph setup).inputLayout input = .binding owner payload →
+  ∀ input owner payload, setup.informationGraph.inputLayout input = .binding owner payload →
     ∀ value : L.Val payload, (⟨payload, value⟩ : Raw L) ∈ bounds.values
 
 omit [Fintype Player] [DecidableEq (CellTy Player L)] in
@@ -63,7 +64,7 @@ theorem bindingFieldsCovered_of_covers (covers : bounds.CoversOutputValues)
   | inl input => exact inputs input owner payload layoutEq
   | inr event =>
       have covered := covers event
-      change (graph setup).outputLayout event = .binding owner payload at layoutEq
+      change setup.informationGraph.outputLayout event = .binding owner payload at layoutEq
       rw [layoutEq] at covered
       exact covered
 
@@ -71,7 +72,7 @@ omit [Fintype Player] in
 /-- **The swap between two points keeps the message bounds** when the bounds
 cover every binding field. -/
 theorem bounded_betweenHandlePairs {p q : ProtocolState setup.program}
-    (pairs : (graph setup).SwapPairs) (table : AcceptedHandles (graph setup))
+    (pairs : setup.informationGraph.SwapPairs) (table : AcceptedHandles setup.informationGraph)
     (covered : BindingFieldsCovered bounds) :
     ∀ handle raw, raw ∈ bounds.values →
       (HiddenSwap.ofPairs pairs (betweenHandlePairs setup p q table)).raw handle raw ∈
@@ -126,7 +127,7 @@ theorem bounded_betweenHandlePairs {p q : ProtocolState setup.program}
 omit [DecidableEq (CellTy Player L)] in
 /-- **Swapping back undoes a swap**: the images of a history under two equal
 swaps, one after the other, give back the history. -/
-theorem mapHistory_mapHistory_of_swap_eq {first second : HiddenSwap (graph setup)}
+theorem mapHistory_mapHistory_of_swap_eq {first second : HiddenSwap setup.informationGraph}
     (same : second = first)
     (firstClosed : ∀ state ∈ (initialLaw setup).support,
       state.config.inputs ∈ swapAllowed first → state.swap first ∈ (initialLaw setup).support)
@@ -263,7 +264,7 @@ variable {x y : setup.intendedModel.InformationHistory who sourceSite.1}
 variable (view) in
 /-- **The swap between the end points of two intended histories of a site**, at
 the table of handles accepted at the native site. -/
-def siteSwap : HiddenSwap (graph setup) :=
+def siteSwap : HiddenSwap setup.informationGraph :=
   HiddenSwap.ofPairs (betweenPairs (publicCellsAgree_of_observe (sameView_of_site xState yState))
       (commitmentCellsSucceed_of_intended wellFormed xState yState))
     (betweenHandlePairs setup p q view.application.publicView.accepted)
@@ -279,7 +280,7 @@ abbrev siteSymmetry :=
     (bounded_betweenHandlePairs _ _ covered)
     (EventGraph.ValueSwap.ofPairs_expiryFixed _)
 
-variable {event : (graph setup).EventId}
+variable {event : setup.informationGraph.EventId}
   (turn : view.application.publicView.ownTurn? who = some event)
 
 include forced ownIntended turn in
@@ -325,7 +326,7 @@ theorem siteImage_info
   change state = some control at stateEq
   subst stateEq
   have owned : ∀ field handle, view.application.publicView.accepted field = some handle →
-      ∃ payload, (graph setup).layout field = .binding handle.1 payload := by
+      ∃ payload, setup.informationGraph.layout field = .binding handle.1 payload := by
     intro field handle accepted
     rw [← viewEq] at accepted
     exact accepted_owner_of_trace (timeouts := timeouts) trace accepted
@@ -478,7 +479,7 @@ theorem pointed_of_class {x : setup.intendedModel.InformationHistory who sourceS
       cases seen
   | some found => exact ⟨found, rfl⟩
 
-variable {event : (graph setup).EventId}
+variable {event : setup.informationGraph.EventId}
   (turn : view.application.publicView.ownTurn? who = some event)
 
 open Classical in

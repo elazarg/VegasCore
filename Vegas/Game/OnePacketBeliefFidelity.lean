@@ -57,9 +57,9 @@ private theorem support_of_bad_expect_zero {α : Type} [Finite α] (law : PMF α
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L] (setup : Setup (Player := Player) (L := L))
-  (timeouts : EventTimeouts (graph setup))
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-  (bounds : MessageBounds (graph setup)) (horizon : Nat)
+  (timeouts : EventTimeouts setup.informationGraph)
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
+  (bounds : MessageBounds setup.informationGraph) (horizon : Nat)
   (scheduler : (application setup timeouts leaks).Scheduler)
   [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
   [Finite setup.intendedProtocol.History]
@@ -91,7 +91,7 @@ theorem assembled_limit_belief_eq
       (combinedFloor setup timeouts leaks bounds horizon scheduler (sequence n))
       (2 * horizon + 2) n)
     (covers : bounds.CoversOutputValues) (coversInputs : bounds.CoversInputValues)
-    (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
+    (capacity : ∀ who, bindingEventCount setup.informationGraph who < bounds.candidateCount)
     (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
       horizon scheduler bounds.candidateCount p))
     (target : ℕ → (N).BehavioralAssessment)
@@ -114,7 +114,8 @@ theorem assembled_limit_belief_eq
     {past : List (application setup timeouts leaks).PlayerEntry}
     {view : (application setup timeouts leaks).PlayerView}
     (atSite : site.1 = some (past, view))
-    {event : (graph setup).EventId} (turn : view.application.publicView.ownTurn? who = some event)
+    {event : setup.informationGraph.EventId} (turn : view.application.publicView.ownTurn? who =
+      some event)
     (decision : setup.intendedModel.IsDecisionInfo who (projectView setup timeouts leaks who
       site.1)) :
     ((native.belief who site).map (replayProjection setup timeouts leaks bounds horizon scheduler
@@ -147,7 +148,7 @@ theorem assembled_limit_belief_replay_exists
       (combinedFloor setup timeouts leaks bounds horizon scheduler (sequence n))
       (2 * horizon + 2) n)
     (covers : bounds.CoversOutputValues) (coversInputs : bounds.CoversInputValues)
-    (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
+    (capacity : ∀ who, bindingEventCount setup.informationGraph who < bounds.candidateCount)
     (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
       horizon scheduler bounds.candidateCount p))
     (target : ℕ → (N).BehavioralAssessment)
@@ -168,7 +169,8 @@ theorem assembled_limit_belief_replay_exists
     {past : List (application setup timeouts leaks).PlayerEntry}
     {view : (application setup timeouts leaks).PlayerView}
     (atSite : site.1 = some (past, view))
-    {event : (graph setup).EventId} (turn : view.application.publicView.ownTurn? who = some event) :
+    {event : setup.informationGraph.EventId} (turn : view.application.publicView.ownTurn? who =
+      some event) :
     ∀ (history : (N).InformationHistory who site.1), history ∈ (native.belief who site).support →
       ∃ replay, intendedHistory? setup timeouts leaks bounds horizon scheduler history.1.trace =
         some replay := by
@@ -228,7 +230,7 @@ theorem assembled_limit_belief_replay_law
       (combinedFloor setup timeouts leaks bounds horizon scheduler (sequence n))
       (2 * horizon + 2) n)
     (covers : bounds.CoversOutputValues) (coversInputs : bounds.CoversInputValues)
-    (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
+    (capacity : ∀ who, bindingEventCount setup.informationGraph who < bounds.candidateCount)
     (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
       horizon scheduler bounds.candidateCount p))
     (target : ℕ → (N).BehavioralAssessment)
@@ -251,7 +253,8 @@ theorem assembled_limit_belief_replay_law
     {past : List (application setup timeouts leaks).PlayerEntry}
     {view : (application setup timeouts leaks).PlayerView}
     (atSite : site.1 = some (past, view))
-    {event : (graph setup).EventId} (turn : view.application.publicView.ownTurn? who = some event)
+    {event : setup.informationGraph.EventId} (turn : view.application.publicView.ownTurn? who =
+      some event)
     (decision : setup.intendedModel.IsDecisionInfo who (projectView setup timeouts leaks who
       site.1)) :
     (native.belief who site).map (fun history =>

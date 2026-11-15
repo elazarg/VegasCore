@@ -137,8 +137,8 @@ theorem revealFailed_stepClosed {setup : Setup (Player := Player) (L := L)} (who
     ProtocolState.revealFailed_step who setup.program state joint target failed reached
 
 variable (setup : Setup (Player := Player) (L := L))
-  (timeouts : EventTimeouts (graph setup))
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+  (timeouts : EventTimeouts setup.informationGraph)
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
 
 section AsIfHonest
 
@@ -183,8 +183,8 @@ section Classification
 
 /-- The pending event of a decision input: the owner's turn event, provided its
 recall has not submitted for it. -/
-def pendingEvent (who : Player) : (application setup timeouts leaks).Info → Option (graph
-  setup).EventId
+def pendingEvent (who : Player) : (application setup timeouts leaks).Info → Option
+  setup.informationGraph.EventId
   | none => none
   | some (past, view) => (view.application.publicView.ownTurn? who).filter fun event =>
       !(eventRecorded timeouts leaks past event)
@@ -209,10 +209,11 @@ variable {setup timeouts leaks}
 submitted for it. -/
 theorem pendingEvent_spec {who : Player} {past : List (application setup timeouts
   leaks).PlayerEntry}
-    {view : (application setup timeouts leaks).PlayerView} {event : (graph setup).EventId}
+    {view : (application setup timeouts leaks).PlayerView} {event : setup.informationGraph.EventId}
     (pending : pendingEvent setup timeouts leaks who (some (past, view)) = some event) :
     view.application.publicView.ownTurn? who = some event ∧
-      view.application.publicView.EventReady event ∧ (graph setup).actor? event = some who ∧
+      view.application.publicView.EventReady event ∧ setup.informationGraph.actor? event = some who
+        ∧
       (eventRecorded timeouts) leaks past event = false := by
   simp only [pendingEvent, Option.filter_eq_some_iff, Bool.not_eq_eq_eq_not, Bool.not_true]
     at pending
@@ -221,7 +222,7 @@ theorem pendingEvent_spec {who : Player} {past : List (application setup timeout
 
 theorem pendingEvent_of_spec {who : Player} {past : List (application setup timeouts
   leaks).PlayerEntry}
-    {view : (application setup timeouts leaks).PlayerView} {event : (graph setup).EventId}
+    {view : (application setup timeouts leaks).PlayerView} {event : setup.informationGraph.EventId}
     (turn : view.application.publicView.ownTurn? who = some event)
     (unsent : (eventRecorded timeouts) leaks past event = false) :
     pendingEvent setup timeouts leaks who (some (past, view)) = some event := by
@@ -244,7 +245,7 @@ theorem not_lateDelivery_of_firstActivation {who : Player}
 delivery. -/
 theorem firstActivation_or_lateDelivery {who : Player}
     {past : List (application setup timeouts leaks).PlayerEntry}
-    {view : (application setup timeouts leaks).PlayerView} {event : (graph setup).EventId}
+    {view : (application setup timeouts leaks).PlayerView} {event : setup.informationGraph.EventId}
     (pending : pendingEvent setup timeouts leaks who (some (past, view)) = some event) :
     FirstActivation setup timeouts leaks who (some (past, view)) ∨
       LateDelivery setup timeouts leaks who (some (past, view)) := by
@@ -259,7 +260,8 @@ theorem FirstActivation.pending {who : Player} {info : (application setup timeou
     (first : FirstActivation setup timeouts leaks who info) :
     ∃ past view event, info = some (past, view) ∧
       view.application.publicView.ownTurn? who = some event ∧
-      view.application.publicView.EventReady event ∧ (graph setup).actor? event = some who ∧
+      view.application.publicView.EventReady event ∧ setup.informationGraph.actor? event = some who
+        ∧
       (eventRecorded timeouts) leaks past event = false := by
   obtain ⟨past, view, event, rfl, pending, _⟩ := first
   exact ⟨past, view, event, rfl, pendingEvent_spec (timeouts := timeouts) pending⟩
@@ -268,7 +270,8 @@ theorem LateDelivery.pending {who : Player} {info : (application setup timeouts 
     (late : LateDelivery setup timeouts leaks who info) :
     ∃ past view event, info = some (past, view) ∧
       view.application.publicView.ownTurn? who = some event ∧
-      view.application.publicView.EventReady event ∧ (graph setup).actor? event = some who ∧
+      view.application.publicView.EventReady event ∧ setup.informationGraph.actor? event = some who
+        ∧
       (eventRecorded timeouts) leaks past event = false := by
   obtain ⟨past, view, event, rfl, pending, _⟩ := late
   exact ⟨past, view, event, rfl, pendingEvent_spec (timeouts := timeouts) pending⟩
@@ -281,9 +284,11 @@ disclosure transmits. -/
 def DisclosureResolves (who : Player) (past : List (application setup timeouts leaks).PlayerEntry)
     (view : (application setup timeouts leaks).PlayerView) : Prop :=
   ∀ event, pendingEvent setup timeouts leaks who (some (past, view)) = some event →
-    ∀ owner payload (binding : EventGraph.FieldRef (graph setup).layout (.binding owner payload))
+    ∀ owner payload (binding : EventGraph.FieldRef setup.informationGraph.layout (.binding owner
+      payload))
       checks outputEq codeEq,
-      nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq →
+      nodeView setup.informationGraph event = .resolve owner payload binding checks outputEq codeEq
+        →
       ((canonicalServiceDecision timeouts) leaks who past view event
           (cast (congrArg EventGraph.EventField.Action outputEq.symm) true)).transmission ≠
         none

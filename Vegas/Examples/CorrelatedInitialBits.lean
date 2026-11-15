@@ -166,8 +166,8 @@ theorem not_independent : ¬ setup.PrivateInputsIndependentGiven (fun _ => ()) :
   have impossible := left.symm.trans (forbidden.trans right)
   norm_num at impossible
 
-private theorem no_public_initial_input (input : (graph setup).InputId) :
-    ¬ (graph setup).fieldPublic (.inl input) := by
+private theorem no_public_initial_input (input : setup.informationGraph.InputId) :
+    ¬ setup.informationGraph.fieldPublic (.inl input) := by
   intro visible
   fin_cases input <;> change False at visible <;> exact visible
 

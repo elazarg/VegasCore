@@ -74,15 +74,15 @@ theorem decodeSourcePrefix?_commitment_not_failure (who : Player)
             _ _ _ _ history defaults rest read name owner payload value found foreign
 
 variable {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
+  {timeouts : EventTimeouts setup.informationGraph}
 
 /-- Successful foreign binding reads in a native configuration give successful
 foreign commitment cells at its decoded source point. -/
 theorem decodedPoint_commitment_not_failure (who : Player)
-    {config : (graph setup).Config} {point : ProtocolState setup.program}
+    {config : setup.informationGraph.Config} {point : ProtocolState setup.program}
     (decoded : decodedPoint setup config = some point)
     (successful : ∀ owner payload
-      (ref : EventGraph.FieldRef (graph setup).layout (.binding owner payload)) value,
+      (ref : EventGraph.FieldRef setup.informationGraph.layout (.binding owner payload)) value,
       owner ≠ who → ref.get? config.store = some value → value ≠ .failure)
     {name owner payload value}
     (found : ProtocolState.cell? setup.program point name (.commitment owner payload) =
@@ -97,13 +97,13 @@ theorem decodedPoint_commitment_not_failure (who : Player)
 /-- Equal focal views and successful foreign binding fields make the differing
 commitment cells compatible with an intended witness. -/
 theorem commitmentCellsSucceed_of_foreign_bindings {who : Player}
-    {config : (graph setup).Config} {point witness : ProtocolState setup.program}
+    {config : setup.informationGraph.Config} {point witness : ProtocolState setup.program}
     (decoded : decodedPoint setup config = some point)
     (sameView : ProtocolState.observe who setup.program point =
       ProtocolState.observe who setup.program witness)
     (intended : ProtocolState.Intended setup.program witness)
     (successful : ∀ owner payload
-      (ref : EventGraph.FieldRef (graph setup).layout (.binding owner payload)) value,
+      (ref : EventGraph.FieldRef setup.informationGraph.layout (.binding owner payload)) value,
       owner ≠ who → ref.get? config.store = some value → value ≠ .failure) :
     CommitmentCellsSucceed setup point witness := by
   intro name owner payload left right first second different
@@ -122,11 +122,11 @@ theorem commitmentCellsSucceed_of_foreign_bindings {who : Player}
 /-- Successful foreign binding fields suffice for the value swap toward a
 splice retaining the responder's own cells, even when those own cells fail. -/
 theorem commitmentCellsSucceed_splicePoint_of_foreign_bindings {responder : Player}
-    {config : (graph setup).Config} {point witness : ProtocolState setup.program}
+    {config : setup.informationGraph.Config} {point witness : ProtocolState setup.program}
     (decoded : decodedPoint setup config = some point)
     (intended : ProtocolState.Intended setup.program witness)
     (successful : ∀ owner payload
-      (ref : EventGraph.FieldRef (graph setup).layout (.binding owner payload)) value,
+      (ref : EventGraph.FieldRef setup.informationGraph.layout (.binding owner payload)) value,
       owner ≠ responder → ref.get? config.store = some value → value ≠ .failure) :
     CommitmentCellsSucceed setup point
       (ProtocolState.splicePoint setup.program responder point witness) := by
@@ -152,8 +152,8 @@ theorem commitmentCellsSucceed_splicePoint_of_foreign_bindings {responder : Play
         simp
 
 variable [Fintype Player]
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 omit [DecidableEq (CellTy Player L)] in
@@ -163,10 +163,11 @@ theorem foreignBinding_reads_not_failure (wellFormed : setup.WellFormed)
     {who : Player} {control : (application setup timeouts leaks).Control}
     (trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some control))
     (successful : ∀ event owner payload,
-      (graph setup).outputLayout event = .binding owner payload → owner ≠ who →
+      setup.informationGraph.outputLayout event = .binding owner payload → owner ≠ who →
       event ∈ control.execution.application.config.cut.completed →
       ¬ StoreEventFailed control.execution.application.config.store event) :
-    ∀ owner payload (ref : EventGraph.FieldRef (graph setup).layout (.binding owner payload))
+    ∀ owner payload (ref : EventGraph.FieldRef setup.informationGraph.layout (.binding owner
+      payload))
       value, owner ≠ who →
       ref.get? control.execution.application.config.store = some value → value ≠ .failure := by
   intro owner payload ref value foreign stored failed
@@ -196,7 +197,7 @@ theorem foreignBinding_reads_not_failure (wellFormed : setup.WellFormed)
         cases kind <;> cases kindEq
         rfl
       have notFailed := eventInputs_not_failure wellFormed member source hidden
-      have failedField : ((graph setup).layout (.inl (inputId source))).IsFailure
+      have failedField : (setup.informationGraph.layout (.inl (inputId source))).IsFailure
           (setup.eventInputs initial (inputId source)) := by
         have transport : ∀ (kind : EventGraph.EventField Player L)
             (same : kind = .binding owner payload) (entry : kind.Value),
@@ -229,7 +230,8 @@ theorem counterpart_of_successful_foreign_bindings (wellFormed : setup.WellForme
     {assessment : setup.intendedModel.BehavioralAssessment} (mixed : assessment.IsFullyMixed)
     {who : Player} {past : List (application setup timeouts leaks).PlayerEntry}
     {view : (application setup timeouts leaks).PlayerView}
-    {event : (graph setup).EventId} (turn : view.application.publicView.ownTurn? who = some event)
+    {event : setup.informationGraph.EventId} (turn : view.application.publicView.ownTurn? who =
+      some event)
     (history witness : (onePacketInformation setup timeouts leaks bounds horizon
       scheduler).InformationHistory who (some (past, view)))
     {current witnessControl : (application setup timeouts leaks).Control}
@@ -240,7 +242,7 @@ theorem counterpart_of_successful_foreign_bindings (wellFormed : setup.WellForme
     (witnessDecoded : decodedPoint setup witnessControl.execution.application.config = some target)
     (free : ∀ player, ¬ ProtocolState.OwesFailure player setup.program target)
     (successful : ∀ event owner payload,
-      (graph setup).outputLayout event = .binding owner payload → owner ≠ who →
+      setup.informationGraph.outputLayout event = .binding owner payload → owner ≠ who →
       event ∈ current.execution.application.config.cut.completed →
       ¬ StoreEventFailed current.execution.application.config.store event)
     (covered : BindingFieldsCovered bounds) :

@@ -51,9 +51,9 @@ theorem beliefDecorrelated_two {H R T : Type*} (law : PMF H) (record : H → R)
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)} [Fintype Player]
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {timeouts : EventTimeouts setup.informationGraph} [Fintype Player]
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
   {who : Player}
   {site : (onePacketInformation setup timeouts leaks bounds horizon scheduler).InformationSite who}
@@ -92,7 +92,7 @@ theorem tendsto_beliefDecorrelated
       OwnCompletionsIntended (timeouts := timeouts) (bounds := bounds) (horizon := horizon)
         (scheduler := scheduler)
         who history.1.trace)
-    (mixed : ∀ n, (sequence n).IsFullyMixed) {event : (graph setup).EventId}
+    (mixed : ∀ n, (sequence n).IsFullyMixed) {event : setup.informationGraph.EventId}
     (turn : view.application.publicView.ownTurn? who = some event)
     (covered : BindingFieldsCovered bounds)
     {targetSequence : ℕ →

@@ -30,13 +30,13 @@ variable {Player : Type} [DecidableEq Player]
 
 section Configured
 
-variable (setup : Setup (Player := Player) (L := L)) (mode : EventGraph.ExecutionMode)
-  (duration : (serviceGraph setup mode).EventId → Nat)
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
+variable (setup : Setup (Player := Player) (L := L)) (deps : setup.dataflowGraph.Dependencies)
+  (duration : (serviceGraph setup deps).EventId → Nat)
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup deps)))
 
 /-- Read the complete source configuration from the native terminal store, with
 completions listed in instruction order. -/
-def serviceRankedReadout (state : (serviceApplication setup mode duration leaks).ProtocolState) :
+def serviceRankedReadout (state : (serviceApplication setup deps duration leaks).ProtocolState) :
     Option (Config Player L setup.program.terminalCtx) :=
   state.bind fun control =>
     let config := control.execution.application.config
@@ -44,7 +44,7 @@ def serviceRankedReadout (state : (serviceApplication setup mode duration leaks)
       Vegas.decodeConfig? setup.program setup.program
         (ContextRefs.initial setup.context (outputLayout setup.program))
         (Revelations.initial setup.context) [] (outputEmbedding setup.program) config.store
-        (Setup.rankedHistory (graph := serviceGraph setup mode) config)
+        (EventGraph.rankedHistory (graph := serviceGraph setup deps) config)
     else none
 
 omit [DecidableEq Player] in
@@ -53,7 +53,7 @@ theorem rankedHistory_eq_of_rankSort {graph : Vegas.EventGraph Player L}
     (config : graph.Config)
     (ordered : graph.rankSort (config.history.map EventCompletion.event) =
       config.history.map EventCompletion.event) :
-    Setup.rankedHistory config = config.history := by
+    EventGraph.rankedHistory config = config.history := by
   have records : ∀ completion ∈ config.history,
       completionOf config completion.event = some completion := fun completion member =>
     (completionOf_eq_some_iff config completion.event completion).mpr ⟨member, rfl⟩
@@ -70,7 +70,7 @@ theorem rankedHistory_eq_of_rankSort {graph : Vegas.EventGraph Player L}
           ← config.history_exact]
         exact member
       simp [member, absent]
-  unfold Setup.rankedHistory
+  unfold EventGraph.rankedHistory
   rw [restricted]
   change (graph.rankSort (config.history.map EventCompletion.event)).filterMap _ = _
   rw [ordered, List.filterMap_map]
@@ -80,12 +80,12 @@ theorem rankedHistory_eq_of_rankSort {graph : Vegas.EventGraph Player L}
 
 /-- On a history in instruction order, the ranked and the service readers agree. -/
 theorem serviceRankedReadout_eq_of_rankSort
-    (control : (serviceApplication setup mode duration leaks).Control)
-    (ordered : (serviceGraph setup mode).rankSort
+    (control : (serviceApplication setup deps duration leaks).Control)
+    (ordered : (serviceGraph setup deps).rankSort
         (control.execution.application.config.history.map EventCompletion.event) =
       control.execution.application.config.history.map EventCompletion.event) :
-    serviceRankedReadout setup mode duration leaks (some control) =
-      serviceSourceReadout setup mode duration leaks (some control) := by
+    serviceRankedReadout setup deps duration leaks (some control) =
+      serviceSourceReadout setup deps duration leaks (some control) := by
   unfold serviceRankedReadout serviceSourceReadout
   simp only [Option.bind_some]
   rw [rankedHistory_eq_of_rankSort _ ordered]

@@ -19,9 +19,9 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L] (setup : Setup (Player := Player) (L := L))
-  (timeouts : EventTimeouts (graph setup))
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-  (bounds : MessageBounds (graph setup)) (horizon : Nat)
+  (timeouts : EventTimeouts setup.informationGraph)
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
+  (bounds : MessageBounds setup.informationGraph) (horizon : Nat)
   (scheduler : (application setup timeouts leaks).Scheduler)
 
 local notation "N" => onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
@@ -30,7 +30,7 @@ local notation "NP" => ReactiveApplication.ResponseMenu.protocol
   (bounds.onePacketMenu timeouts leaks) (initialLaw setup) horizon scheduler
 local notation "Clear" => ReactiveApplication.stateInvariant
   (app := application setup timeouts leaks)
-    (fun native : EventGraphRuntime.State (graph setup) =>
+    (fun native : EventGraphRuntime.State setup.informationGraph =>
       EventGraph.Config.defaulted (EventGraphRuntime.State.config native) = ∅)
 
 open Classical in
@@ -51,8 +51,8 @@ theorem local_completion_value_sub_le_of_boundary_values
     {remaining : Nat} {execution : (application setup timeouts leaks).Execution}
     (current : history.state = some ⟨remaining, some who, execution⟩)
     (observed : (N).infoOf who history.trace = info)
-    (event : (graph setup).EventId) (ready : execution.application.config.cut.Ready event)
-    (owned : (graph setup).actor? event = some who) (key : LateKey setup timeouts leaks)
+    (event : setup.informationGraph.EventId) (ready : execution.application.config.cut.Ready event)
+    (owned : setup.informationGraph.actor? event = some who) (key : LateKey setup timeouts leaks)
     (decided : decidedEvent (timeouts := timeouts) key = some event)
     {rank : Nat} (ordered : execution.application.config.cut.IsPrefix rank)
     (point : ProtocolState setup.program)
@@ -149,7 +149,7 @@ theorem assembled_local_completion_value_sub_le
     [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
     [∀ who, DecidableEq ((N).InfoState who)]
     (wellFormed : setup.WellFormed) (covers : bounds.CoversOutputValues)
-    (capacity : ∀ player, bindingEventCount (graph setup) player < bounds.candidateCount)
+    (capacity : ∀ player, bindingEventCount setup.informationGraph player < bounds.candidateCount)
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (scale : ℕ → ℝ) (positive : ∀ n, 0 < scale n) (le_one : ∀ n, scale n ≤ 1)
     {slots : Nat}
@@ -158,7 +158,7 @@ theorem assembled_local_completion_value_sub_le
     (targetSequence : ℕ → (N).BehavioralAssessment)
     (assembled : OnePacketAssembled setup timeouts leaks bounds horizon scheduler sequence scale
       positive le_one weights targetSequence) (n : ℕ)
-    {delay bound : (graph setup).EventId → Nat}
+    {delay bound : setup.informationGraph.EventId → Nat}
     (opportunity : ∀ control : (application setup timeouts leaks).Control,
       (NP).Trace (some control) → control.execution.application.config.defaulted = ∅ →
         OpportunityAt timeouts leaks control.execution delay)
@@ -175,8 +175,8 @@ theorem assembled_local_completion_value_sub_le
     {remaining : Nat} {execution : (application setup timeouts leaks).Execution}
     (current : history.state = some ⟨remaining, some who, execution⟩)
     (observed : (N).infoOf who history.trace = info)
-    (event : (graph setup).EventId) (ready : execution.application.config.cut.Ready event)
-    (owned : (graph setup).actor? event = some who) (key : LateKey setup timeouts leaks)
+    (event : setup.informationGraph.EventId) (ready : execution.application.config.cut.Ready event)
+    (owned : setup.informationGraph.actor? event = some who) (key : LateKey setup timeouts leaks)
     (decided : decidedEvent (timeouts := timeouts) key = some event)
     {rank : Nat} (ordered : execution.application.config.cut.IsPrefix rank)
     (point : ProtocolState setup.program)

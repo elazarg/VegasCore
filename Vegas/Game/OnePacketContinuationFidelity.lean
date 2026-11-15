@@ -23,9 +23,9 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 local notation "N" => onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
@@ -100,7 +100,7 @@ theorem assembled_boundary_readout_law_of_converges
     [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
     [∀ who, DecidableEq ((N).InfoState who)]
     (wellFormed : setup.WellFormed) (covers : bounds.CoversOutputValues)
-    (capacity : ∀ player, bindingEventCount (graph setup) player < bounds.candidateCount)
+    (capacity : ∀ player, bindingEventCount setup.informationGraph player < bounds.candidateCount)
     (sourceSequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (source : setup.intendedModel.BehavioralAssessment)
     (sourceConverges : BehavioralAssessmentConvergesPointwise sourceSequence source)
@@ -116,7 +116,7 @@ theorem assembled_boundary_readout_law_of_converges
     (increasing : StrictMono index)
     (targetConverges : BehavioralAssessmentConvergesPointwise
       (fun n => targetSequence (index n)) target)
-    {delay bound : (graph setup).EventId → Nat}
+    {delay bound : setup.informationGraph.EventId → Nat}
     (opportunity : ∀ control : (application setup timeouts leaks).Control,
       ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
         scheduler).Trace (some control) →

@@ -22,9 +22,9 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 namespace DirectedBindingFrame
@@ -148,7 +148,7 @@ theorem response_trace
               .none⟩⟩ afterTrace isPrefix event rfl
           have ready := (original.application.publicView_eventReady event).mp
             (original.application.publicView.ownTurn?_spec owner event turn).1
-          cases output : (graph setup).outputLayout event with
+          cases output : setup.informationGraph.outputLayout event with
           | publicData payload =>
               have impossible : false = true := by
                 simpa only [bindingOwnedBy, output] using correct.1
@@ -165,10 +165,12 @@ theorem response_trace
               have ownerEq : actor = owner := of_decide_eq_true (by
                 simpa only [bindingOwnedBy, output, Message.sender] using correct.1)
               subst actor
-              have codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) output)
-                  ((graph setup).nodes event) = .bind owner payload := by
-                generalize cast (congrArg (EventGraph.EventCode (graph setup).layout) output)
-                  ((graph setup).nodes event) = code
+              have codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout)
+                output)
+                  (setup.informationGraph.nodes event) = .bind owner payload := by
+                generalize cast (congrArg (EventGraph.EventCode setup.informationGraph.layout)
+                  output)
+                  (setup.informationGraph.nodes event) = code
                 cases code
                 rfl
               have node := nodeView_eq_bind output codeEq
@@ -182,8 +184,10 @@ theorem response_trace
                     rawResponse)]⟩
               have initializedPrior := prior
               change ((bounds.onePacketMenu timeouts leaks).protocol
-                (serviceInitialLaw setup .sequential) horizon scheduler).Trace _ at initializedPrior
-              rw [serviceInitialLaw_eq_inputs] at initializedPrior
+                (initialLaw setup) horizon scheduler).Trace _
+                  at initializedPrior
+              rw [initialLaw, serviceInitialLaw_eq_inputs (deps := setup.informationDependencies)
+                setup] at initializedPrior
               have fresh := bounds.onePacket_binding_fresh timeouts leaks
                 (setup.initialLaw.map setup.eventInputs) horizon scheduler initializedPrior owner
                 event serial opening available
@@ -209,7 +213,7 @@ theorem response_trace
           have leftFixed := onePacket_opening_candidate (timeouts := timeouts) prior owner material
             event candidate raw
             packet certified
-          cases node : nodeView (graph setup) event with
+          cases node : nodeView setup.informationGraph event with
           | bind | sample => simp only [node, and_false] at correct
           | resolve actor payload binding checks outputEq codeEq =>
               have details : owner = actor ∧ raw.ty = payload ∧

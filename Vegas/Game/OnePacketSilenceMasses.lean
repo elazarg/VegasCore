@@ -27,9 +27,9 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  [Fintype Player] {bounds : MessageBounds (graph setup)}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  [Fintype Player] {bounds : MessageBounds setup.informationGraph}
   {initial : PMF (application setup timeouts leaks).State} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
@@ -96,7 +96,7 @@ offers no packet naming an event the player's recall has submitted for. -/
 theorem onePacket_recorded_not_offered {control : (application setup timeouts leaks).Control}
     (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control))
-    (who : Player) (event : (graph setup).EventId)
+    (who : Player) (event : setup.informationGraph.EventId)
     (recorded : (eventRecorded timeouts) leaks (control.execution.logs who) event = true)
     (response : (application setup timeouts leaks).Action)
     (named : (submittedEvent? timeouts) leaks response = some event) :
@@ -165,7 +165,7 @@ sent as silence. -/
 theorem onePacket_responseChoice_of_recorded {control : (application setup timeouts leaks).Control}
     (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control))
-    (who : Player) (event : (graph setup).EventId)
+    (who : Player) (event : setup.informationGraph.EventId)
     (recorded : (eventRecorded timeouts) leaks (control.execution.logs who) event = true)
     (response : (application setup timeouts leaks).Action)
     (names : response = ⟨none⟩ ∨ (submittedEvent? timeouts) leaks response = some event) :
@@ -186,7 +186,8 @@ omit [Fintype Player] in
 /-- The slot tier's response at an event is silent or names the event. -/
 theorem slotResponse_names (who : Player) (past : List (application setup timeouts
   leaks).PlayerEntry)
-    (view : (application setup timeouts leaks).PlayerView) (event : (graph setup).EventId) (slot :
+    (view : (application setup timeouts leaks).PlayerView) (event : setup.informationGraph.EventId)
+      (slot :
       Nat)
     (choice : Option (OwnAction Player L)) :
     slotResponse setup timeouts leaks who past view event slot choice = ⟨none⟩ ∨
@@ -198,7 +199,7 @@ theorem slotResponse_names (who : Player) (past : List (application setup timeou
       unfold slotResponse
       rw [encoded]
   | some action =>
-      cases node : nodeView (graph setup) event with
+      cases node : nodeView setup.informationGraph event with
       | bind owner payload outputEq codeEq =>
           by_cases omitted : cast (congrArg EventGraph.EventField.Action outputEq) action = none
           · left
@@ -212,8 +213,9 @@ theorem slotResponse_names (who : Player) (past : List (application setup timeou
             view event node slot choice action encoded present
           unfold EventGraphRuntime.submittedEvent?
           rw [transmits]
-          change material.call.packet.event? (graph setup) = some event
-          have call := congrArg (fun message : Message Player (WitnessedPacket (graph setup)) =>
+          change material.call.packet.event? setup.informationGraph = some event
+          have call := congrArg (fun message : Message Player (WitnessedPacket
+            setup.informationGraph) =>
             message.payload.call) envelope
           change material.call.packet = .commitment event (who, .prepared slot) at call
           rw [call]
@@ -239,7 +241,7 @@ omit [Fintype Player] in
 /-- The as-if-honest response at a turn is silent or names the turn's event. -/
 theorem honestResponse_names (assessment : setup.intendedModel.BehavioralAssessment)
     (who : Player) (past : List (application setup timeouts leaks).PlayerEntry)
-    (view : (application setup timeouts leaks).PlayerView) (event : (graph setup).EventId)
+    (view : (application setup timeouts leaks).PlayerView) (event : setup.informationGraph.EventId)
     (turn : view.application.publicView.ownTurn? who = some event)
     (response : (application setup timeouts leaks).Action)
     (supported : response ∈ (honestResponse setup timeouts leaks assessment who past
@@ -260,7 +262,7 @@ theorem honestChoice_silence_of_recorded (assessment : setup.intendedModel.Behav
     {control : (application setup timeouts leaks).Control}
     (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control))
-    (who : Player) (event : (graph setup).EventId)
+    (who : Player) (event : setup.informationGraph.EventId)
     (turn : control.execution.application.publicView.ownTurn? who = some event)
     (recorded : (eventRecorded timeouts) leaks (control.execution.logs who) event = true) :
     honestChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler assessment who
@@ -293,7 +295,7 @@ theorem slotChoice_silence_of_recorded (assessment : setup.intendedModel.Behavio
     {control : (application setup timeouts leaks).Control}
     (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control))
-    (who : Player) (event : (graph setup).EventId)
+    (who : Player) (event : setup.informationGraph.EventId)
     (turn : control.execution.application.publicView.ownTurn? who = some event)
     (recorded : (eventRecorded timeouts) leaks (control.execution.logs who) event = true) :
     slotChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler assessment who

@@ -20,9 +20,9 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 local notation "N" => onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
@@ -33,7 +33,7 @@ local notation "E" => ReactiveApplication.ResponseMenu.protocol
 /-- A reached source boundary at an intended decision admits a genuine first
 native activation at that same source point, with no fallback replay premise. -/
 theorem exists_sourceDecisionRealization_of_boundary
-    {delay bound : (graph setup).EventId → Nat}
+    {delay bound : setup.informationGraph.EventId → Nat}
     (opportunity : ∀ control : (application setup timeouts leaks).Control,
       (E).Trace (some control) → control.execution.application.config.defaulted = ∅ →
       OpportunityAt timeouts leaks control.execution delay)
@@ -70,22 +70,23 @@ theorem exists_sourceDecisionRealization_of_boundary
   change ProtocolView.actor who setup.program (ProtocolState.observe who setup.program point) =
     some who at sourceActive
   have notTerminal := ProtocolState.not_terminal_of_actor who who setup.program point sourceActive
-  have inside : rank < (graph setup).order.eventCount := by
+  have inside : rank < setup.informationGraph.order.eventCount := by
     by_contra outside
-    have atEnd : rank = (graph setup).order.eventCount :=
+    have atEnd : rank = setup.informationGraph.order.eventCount :=
       Nat.le_antisymm boundary.ordered.1 (Nat.le_of_not_gt outside)
     subst rank
-    obtain ⟨found, read, terminal⟩ := serviceSourcePrefix?_terminal setup .sequential
+    obtain ⟨found, read, terminal⟩ := serviceSourcePrefix?_terminal setup
+      setup.informationDependencies
       anchor.application.config boundary.ordered.terminal
     have samePoint : found = point := Option.some.inj (read.symm.trans decoded)
     exact notTerminal (samePoint ▸ terminal)
-  let event : (graph setup).EventId := ⟨rank, inside⟩
+  let event : setup.informationGraph.EventId := ⟨rank, inside⟩
   have ready := (ready_iff_rank setup _ rank boundary.ordered event).mpr rfl
   have actual : decodedPoint setup anchor.application.config = some point :=
     (decodedPoint_eq_of_isPrefix boundary.ordered).trans decoded
   have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon
     scheduler (state ▸ start.trace)
-  have owned : (graph setup).actor? event = some who :=
+  have owned : setup.informationGraph.actor? event = some who :=
     (decodedPoint_actor_of_history who rawTrace ready actual).symm.trans sourceActive
   have clear := defaulted_eq_empty_of_decodedIntended actual intended
   let waiting := (N).runBehavioralUntil certificate players

@@ -62,32 +62,32 @@ private theorem commit_head_policy_eq
     (refsBefore : ContextRefsBefore refs embedding) (offset : Nat)
     (aligned : CompiledPolicySuffix whole wholeProfile (.commit name owner fresh guard next)
       profile refs revelations registry embedding refsBefore offset)
-    (config : (toEventGraph whole).Config)
+    (config : (toInformationGraph whole).Config)
     (state : State L Γ) (refsAgree : refs.Agrees state config.store)
     (history : History Player L) (historyAgree : decodeHistory whole config.history = history)
     (defaults : DefaultHistory Player) (defaultsAgree : config.defaults = defaults)
     (active : owner ∉ defaults.defaulted)
-    (actor : (toEventGraph whole).actor?
+    (actor : (toInformationGraph whole).actor?
       (embedding.event ⟨0, Nat.zero_lt_succ (eventCount next)⟩) = some owner) :
     cast (congrArg PMF (congrArg Vegas.EventGraph.EventField.Action
       (embedding.layout_eq ⟨0, Nat.zero_lt_succ (eventCount next)⟩)))
       ((compileEventProfile whole wholeProfile) owner
         (embedding.event ⟨0, Nat.zero_lt_succ (eventCount next)⟩) actor
-        ((toEventGraph whole).playerObserve owner config)
+        ((toInformationGraph whole).playerObserve owner config)
         (by simpa only [EventGraph.playerObserve_defaulted, EventGraph.Config.defaulted,
           defaultsAgree] using active)) =
       commitKernel profile ⟨sourceObserve owner state, defaults, history owner⟩ active := by
-  have graphActive : owner ∉ ((toEventGraph whole).playerObserve owner config).defaulted := by
+  have graphActive : owner ∉ ((toInformationGraph whole).playerObserve owner config).defaulted := by
     simpa only [EventGraph.playerObserve_defaulted, EventGraph.Config.defaulted,
       defaultsAgree] using active
   have decodedObservation := decodeObservation?_playerStore_eq_some
-    (graph := toEventGraph whole) refs owner state config.store refsAgree
+    (graph := toInformationGraph whole) refs owner state config.store refsAgree
   have policyLaw := aligned.policyEq owner ⟨0, Nat.zero_lt_succ (eventCount next)⟩ actor
-    ((toEventGraph whole).playerObserve owner config) graphActive
+    ((toInformationGraph whole).playerObserve owner config) graphActive
   rw [decodeCompletions_playerObserve whole config owner, historyAgree] at policyLaw
   change _ = compilePolicyTable (.commit name owner fresh guard next) refs embedding.ref
     owner (profile owner) ⟨0, Nat.zero_lt_succ (eventCount next)⟩
-    ((toEventGraph whole).playerStore owner config.store) config.defaults (history owner)
+    ((toInformationGraph whole).playerStore owner config.store) config.defaults (history owner)
       at policyLaw
   rw [defaultsAgree, compilePolicyTable_commit_of_decode refs embedding.ref
     (profile owner) rfl _ defaults active (history owner) (sourceObserve owner state)
@@ -113,33 +113,33 @@ private theorem reveal_head_policy_eq
     (aligned : CompiledPolicySuffix whole wholeProfile
       (.reveal published owner name fresh selected unresolved next)
       profile refs revelations registry embedding refsBefore offset)
-    (config : (toEventGraph whole).Config)
+    (config : (toInformationGraph whole).Config)
     (state : State L Γ) (refsAgree : refs.Agrees state config.store)
     (history : History Player L) (historyAgree : decodeHistory whole config.history = history)
     (defaults : DefaultHistory Player) (defaultsAgree : config.defaults = defaults)
     (active : owner ∉ defaults.defaulted)
-    (actor : (toEventGraph whole).actor?
+    (actor : (toInformationGraph whole).actor?
       (embedding.event ⟨0, Nat.zero_lt_succ (eventCount next)⟩) = some owner) :
     cast (congrArg PMF (congrArg Vegas.EventGraph.EventField.Action
       (embedding.layout_eq ⟨0, Nat.zero_lt_succ (eventCount next)⟩)))
       ((compileEventProfile whole wholeProfile) owner
         (embedding.event ⟨0, Nat.zero_lt_succ (eventCount next)⟩) actor
-        ((toEventGraph whole).playerObserve owner config)
+        ((toInformationGraph whole).playerObserve owner config)
         (by simpa only [EventGraph.playerObserve_defaulted, EventGraph.Config.defaulted,
           defaultsAgree] using active)) =
       revealKernel profile ⟨sourceObserve owner state, defaults, history owner⟩ active := by
-  have graphActive : owner ∉ ((toEventGraph whole).playerObserve owner config).defaulted := by
+  have graphActive : owner ∉ ((toInformationGraph whole).playerObserve owner config).defaulted := by
     simpa only [EventGraph.playerObserve_defaulted, EventGraph.Config.defaulted,
       defaultsAgree] using active
   have decodedObservation := decodeObservation?_playerStore_eq_some
-    (graph := toEventGraph whole) refs owner state config.store refsAgree
+    (graph := toInformationGraph whole) refs owner state config.store refsAgree
   have policyLaw := aligned.policyEq owner ⟨0, Nat.zero_lt_succ (eventCount next)⟩ actor
-    ((toEventGraph whole).playerObserve owner config) graphActive
+    ((toInformationGraph whole).playerObserve owner config) graphActive
   rw [decodeCompletions_playerObserve whole config owner, historyAgree] at policyLaw
   change _ = compilePolicyTable
     (.reveal published owner name fresh selected unresolved next) refs embedding.ref
     owner (profile owner) ⟨0, Nat.zero_lt_succ (eventCount next)⟩
-    ((toEventGraph whole).playerStore owner config.store) config.defaults (history owner)
+    ((toInformationGraph whole).playerStore owner config.store) config.defaults (history owner)
       at policyLaw
   rw [defaultsAgree, compilePolicyTable_reveal_of_decode refs embedding.ref
     (profile owner) rfl _ defaults active (history owner) (sourceObserve owner state)
@@ -164,9 +164,9 @@ private theorem commit_head_agreement
     (refsBefore : ContextRefsBefore refs embedding) (offset : Nat)
     (aligned : CompiledPolicySuffix whole wholeProfile (.commit name owner fresh guard next)
       profile refs source.revelations source.registry embedding refsBefore offset)
-    (config : (toEventGraph whole).Config)
+    (config : (toInformationGraph whole).Config)
     (ready : config.cut.Ready (embedding.event ⟨0, by simp [eventCount]⟩))
-    (outputEq : (toEventGraph whole).outputLayout
+    (outputEq : (toInformationGraph whole).outputLayout
       (embedding.event ⟨0, by simp [eventCount]⟩) = .binding owner payload)
     (refsAgree : refs.Agrees source.state config.store)
     (historyAgree : decodeHistory whole config.history = source.history)
@@ -195,11 +195,12 @@ private theorem commit_head_agreement
   have status : config.defaulted = source.defaulted :=
     congrArg DefaultHistory.defaulted defaultsAgree
   have codeEq : cast (congrArg (EventGraph.EventCode (graphLayout whole)) outputEq)
-      ((toEventGraph whole).nodes event) = .bind owner payload := by
+      ((toInformationGraph whole).nodes event) = .bind owner payload := by
     simpa [event, headIndex, compileRankedNodes] using aligned.graphSuffix.nodeEq headIndex
-  have actor : (toEventGraph whole).actor? event = some owner := by
+  have actor : (toInformationGraph whole).actor? event = some owner := by
     simpa [event, headIndex, eventOwner?] using aligned.actorEq headIndex
-  have nodeActor : ((toEventGraph whole).nodes event).actor = some owner := actor
+  have nodeActor : ((toInformationGraph whole).nodes event).actor = some owner := actor
+  change ((toEventGraph whole).nodes event).actor = some owner at nodeActor
   have oldRefs : refs.Agrees source.state after.store := by
     apply ContextRefs.Agrees.complete ready action stored refs source.state refsAgree
     exact fun cell => refsBefore cell headIndex
@@ -265,7 +266,7 @@ private theorem reveal_head_agreement
     (aligned : CompiledPolicySuffix whole wholeProfile
       (.reveal published owner name fresh selected unresolved next)
       profile refs source.revelations source.registry embedding refsBefore offset)
-    (config : (toEventGraph whole).Config)
+    (config : (toInformationGraph whole).Config)
     (refsAgree : refs.Agrees source.state config.store)
     (historyAgree : decodeHistory whole config.history = source.history)
     (defaultsAgree : config.defaults = source.defaults)
@@ -290,7 +291,7 @@ private theorem reveal_head_agreement
     ⟨0, Nat.zero_lt_succ (eventCount next)⟩
   let event := embedding.event headIndex
   let sourceAfter := revealSuccessor published selected source disclose
-  let outputEq : (toEventGraph whole).outputLayout event = .publication payload :=
+  let outputEq : (toInformationGraph whole).outputLayout event = .publication payload :=
     embedding.layout_eq headIndex
   let action := cast (congrArg EventGraph.EventField.Action outputEq.symm) disclose
   let accepted := sourceAfter.state.get .here
@@ -301,12 +302,12 @@ private theorem reveal_head_agreement
     decodeHistory whole graphAfter.history = sourceAfter.history ∧
     graphAfter.defaults = sourceAfter.defaults
   have codeEq : cast (congrArg (EventGraph.EventCode (graphLayout whole)) outputEq)
-      ((toEventGraph whole).nodes event) =
+      ((toInformationGraph whole).nodes event) =
       .resolve owner payload (refs.get selected)
         (compileChecks (published := published) refs source.registry source.revelations
           selected) := by
     simpa [event, headIndex, compileRankedNodes] using aligned.graphSuffix.nodeEq headIndex
-  have actor : (toEventGraph whole).actor? event = some owner := by
+  have actor : (toInformationGraph whole).actor? event = some owner := by
     simpa [event, headIndex, eventOwner?] using aligned.actorEq headIndex
   have defaultedAgree : config.defaulted = source.defaulted := by
     exact congrArg DefaultHistory.defaulted defaultsAgree
@@ -334,7 +335,7 @@ private theorem reveal_head_agreement
     simpa [event, headIndex, action, outputEq, decodeEventAction] using embedded
   have actualDecision : config.actualDecision event action =
       if owner ∈ source.defaulted then none else some action := by
-    have owned : ((toEventGraph whole).nodes event).actor = some owner := actor
+    have owned : ((toInformationGraph whole).nodes event).actor = some owner := actor
     simp only [EventGraph.Config.actualDecision, EventGraph.EventCode.actualDecision,
       owned, defaultedAgree]
   have historyAfter : decodeHistory whole graphAfter.history = sourceAfter.history := by
@@ -372,13 +373,13 @@ theorem runFrom_option_law
       (refsBefore : ContextRefsBefore refs embedding) (offset : Nat),
       CompiledPolicySuffix whole wholeProfile program profile refs
         source.revelations source.registry embedding refsBefore offset →
-      ∀ (config : (toEventGraph whole).Config),
+      ∀ (config : (toInformationGraph whole).Config),
       config.cut.IsPrefix offset → refs.Agrees source.state config.store →
       decodeHistory whole config.history = source.history →
       config.defaults = source.defaults →
-      ((toEventGraph whole).runPlan
-        ((toEventGraph whole).policyPlan (compileEventProfile whole wholeProfile)
-          (toEventGraph whole).canonicalScheduler) (eventCount program) config).map
+      ((toInformationGraph whole).runPlan
+        ((toInformationGraph whole).policyPlan (compileEventProfile whole wholeProfile)
+          (toInformationGraph whole).canonicalScheduler) (eventCount program) config).map
           (fun final => decodeConfig? whole program refs source.revelations source.registry
             embedding final.store final.history) =
         (runFrom program profile source).map some := by
@@ -400,19 +401,19 @@ theorem runFrom_option_law
       have rank : event.val = offset := by
         simpa [event, headIndex] using aligned.graphSuffix.rankEq headIndex
       obtain ⟨ready, least⟩ := canonical_ready_least ordered event rank
-      have outputEq : (toEventGraph whole).outputLayout event =
+      have outputEq : (toInformationGraph whole).outputLayout event =
           outputLayout (.sample name fresh law next) headIndex := embedding.layout_eq headIndex
       have codeEq : cast (congrArg (EventGraph.EventCode (graphLayout whole)) outputEq)
-          ((toEventGraph whole).nodes event) =
+          ((toInformationGraph whole).nodes event) =
           .sample _ (compilePublicDist refs law) := by
         simpa [event, headIndex, compileRankedNodes] using aligned.graphSuffix.nodeEq headIndex
-      have ownerless : (toEventGraph whole).actor? event = none := by
+      have ownerless : (toInformationGraph whole).actor? event = none := by
         simpa [event, headIndex, eventOwner?] using aligned.actorEq headIndex
       have suppliedAction : EventGraph.EventCode.actionOfActorNone
-          ((toEventGraph whole).nodes event) ownerless =
+          ((toInformationGraph whole).nodes event) ownerless =
           cast (congrArg EventGraph.EventField.Action outputEq.symm) PUnit.unit :=
         EventGraph.EventCode.action_eq_of_actor_none
-          ((toEventGraph whole).nodes event) ownerless _ _
+          ((toInformationGraph whole).nodes event) ownerless _ _
       rw [show eventCount (.sample name fresh law next) = eventCount next + 1 by rfl,
         EventGraph.runPlan_canonical_ownerless (compileEventProfile whole wholeProfile)
           (eventCount next) config event ready least ownerless, suppliedAction,
@@ -436,7 +437,7 @@ theorem runFrom_option_law
       have nextPrefix : nextConfig.cut.IsPrefix (offset + 1) :=
         ordered.complete_at event ready rank
       have noDecision : config.actualDecision event action = none := by
-        have owned : ((toEventGraph whole).nodes event).actor = none := ownerless
+        have owned : ((toInformationGraph whole).nodes event).actor = none := ownerless
         simp only [EventGraph.Config.actualDecision, EventGraph.EventCode.actualDecision, owned]
       have supported : nextConfig ∈ (config.step event ready action).support := by
         rw [sample_step config event ready outputEq refs law codeEq source.state refsAgree,
@@ -468,13 +469,13 @@ theorem runFrom_option_law
       have rank : event.val = offset := by
         simpa [event, headIndex] using aligned.graphSuffix.rankEq headIndex
       obtain ⟨ready, least⟩ := canonical_ready_least ordered event rank
-      have outputEq : (toEventGraph whole).outputLayout event =
+      have outputEq : (toInformationGraph whole).outputLayout event =
           outputLayout (.commit name owner fresh guard next) headIndex :=
         embedding.layout_eq headIndex
       have codeEq : cast (congrArg (EventGraph.EventCode (graphLayout whole)) outputEq)
-          ((toEventGraph whole).nodes event) = .bind owner _ := by
+          ((toInformationGraph whole).nodes event) = .bind owner _ := by
         simpa [event, headIndex, compileRankedNodes] using aligned.graphSuffix.nodeEq headIndex
-      have actor : (toEventGraph whole).actor? event = some owner := by
+      have actor : (toInformationGraph whole).actor? event = some owner := by
         simpa [event, headIndex, eventOwner?] using aligned.actorEq headIndex
       have status : config.defaulted = source.defaulted :=
         congrArg DefaultHistory.defaulted defaultsAgree
@@ -482,16 +483,16 @@ theorem runFrom_option_law
         else commitKernel profile (source.view owner) inactive
       have policyLaw :
           (if inactive : owner ∈ config.defaulted then
-            PMF.pure (((toEventGraph whole).nodes event).failureAction owner actor)
+            PMF.pure (((toInformationGraph whole).nodes event).failureAction owner actor)
           else (compileEventProfile whole wholeProfile) owner event actor
-            ((toEventGraph whole).playerObserve owner config) inactive) =
+            ((toInformationGraph whole).playerObserve owner config) inactive) =
           kernel.map (fun choice => cast
             (congrArg EventGraph.EventField.Action outputEq.symm) choice) := by
         by_cases inactive : owner ∈ source.defaulted
         · have stopped : owner ∈ config.defaulted := status.symm ▸ inactive
           simp only [kernel, dite_eq_left inactive, dite_eq_left stopped, PMF.pure_map]
           exact congrArg PMF.pure (EventGraph.EventCode.failureAction_eq_cast outputEq
-            ((toEventGraph whole).nodes event) (.bind owner _) codeEq owner actor rfl)
+            ((toInformationGraph whole).nodes event) (.bind owner _) codeEq owner actor rfl)
         · have active : owner ∉ config.defaulted := status.symm ▸ inactive
           simp only [kernel, dite_eq_right inactive, dite_eq_right active]
           exact eq_map_cast_of_cast_eq (congrArg EventGraph.EventField.Action outputEq) _ _
@@ -534,16 +535,16 @@ theorem runFrom_option_law
       have rank : event.val = offset := by
         simpa [event, headIndex] using aligned.graphSuffix.rankEq headIndex
       obtain ⟨ready, least⟩ := canonical_ready_least ordered event rank
-      have outputEq : (toEventGraph whole).outputLayout event =
+      have outputEq : (toInformationGraph whole).outputLayout event =
           outputLayout (.reveal published owner name fresh selected unresolved next) headIndex :=
         embedding.layout_eq headIndex
       have codeEq : cast (congrArg (EventGraph.EventCode (graphLayout whole)) outputEq)
-          ((toEventGraph whole).nodes event) =
+          ((toInformationGraph whole).nodes event) =
           .resolve owner _ (refs.get selected)
             (compileChecks (published := published) refs source.registry source.revelations
               selected) := by
         simpa [event, headIndex, compileRankedNodes] using aligned.graphSuffix.nodeEq headIndex
-      have actor : (toEventGraph whole).actor? event = some owner := by
+      have actor : (toInformationGraph whole).actor? event = some owner := by
         simpa [event, headIndex, eventOwner?] using aligned.actorEq headIndex
       have status : config.defaulted = source.defaulted :=
         congrArg DefaultHistory.defaulted defaultsAgree
@@ -551,16 +552,16 @@ theorem runFrom_option_law
         else revealKernel profile (source.view owner) inactive
       have policyLaw :
           (if inactive : owner ∈ config.defaulted then
-            PMF.pure (((toEventGraph whole).nodes event).failureAction owner actor)
+            PMF.pure (((toInformationGraph whole).nodes event).failureAction owner actor)
           else (compileEventProfile whole wholeProfile) owner event actor
-            ((toEventGraph whole).playerObserve owner config) inactive) =
+            ((toInformationGraph whole).playerObserve owner config) inactive) =
           kernel.map (fun disclose => cast
             (congrArg EventGraph.EventField.Action outputEq.symm) disclose) := by
         by_cases inactive : owner ∈ source.defaulted
         · have stopped : owner ∈ config.defaulted := status.symm ▸ inactive
           simp only [kernel, dite_eq_left inactive, dite_eq_left stopped, PMF.pure_map]
           exact congrArg PMF.pure (EventGraph.EventCode.failureAction_eq_cast outputEq
-            ((toEventGraph whole).nodes event)
+            ((toInformationGraph whole).nodes event)
             (.resolve owner _ (refs.get selected)
               (compileChecks (published := published) refs source.registry source.revelations
                 selected)) codeEq owner actor rfl)
@@ -615,13 +616,13 @@ theorem CompiledPolicySuffix.runFrom_remaining_law
     (refsBefore : ContextRefsBefore refs embedding) (offset : Nat)
     (aligned : CompiledPolicySuffix whole wholeProfile program profile refs
       source.revelations source.registry embedding refsBefore offset)
-    (config : (toEventGraph whole).Config) (ordered : config.cut.IsPrefix offset)
+    (config : (toInformationGraph whole).Config) (ordered : config.cut.IsPrefix offset)
     (agrees : refs.Agrees source.state config.store)
     (history : decodeHistory whole config.history = source.history)
     (defaults : config.defaults = source.defaults) :
-    ((toEventGraph whole).runPlan
-      ((toEventGraph whole).policyPlan (compileEventProfile whole wholeProfile)
-        (toEventGraph whole).canonicalScheduler) config.remaining config).map
+    ((toInformationGraph whole).runPlan
+      ((toInformationGraph whole).policyPlan (compileEventProfile whole wholeProfile)
+        (toInformationGraph whole).canonicalScheduler) config.remaining config).map
           (fun final => decodeConfig? whole program refs source.revelations source.registry
             embedding final.store final.history) =
       (SourceProgram.runFrom program profile source).map some := by

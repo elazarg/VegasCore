@@ -43,7 +43,7 @@ def chanceSource : SourceProgram Bool simpleExpr [] ∅ :=
   .sample (payload := .bool) 0 (by decide) (.weighted fairBool) <|
   .sample (payload := .bool) 1 (by decide) (.weighted fairBool) <| .ret []
 
-abbrev chanceGraph := toEventGraph chanceSource
+abbrev chanceGraph := toInformationGraph chanceSource
 def chanceProfile : SourceProgram.BehavioralProfile chanceSource := fun _ => PUnit.unit
 
 /-- Adaptive public scheduling preserves the complete chance configuration law. -/

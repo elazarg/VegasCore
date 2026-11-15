@@ -22,13 +22,13 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
 
 /-- An honest source continuation law rules out latent debt at every reached
 native history, without a global native completion assumption. -/
 theorem honest_reached_intended_of_readout_law
-    (bounds : MessageBounds (graph setup)) (wellFormed : setup.WellFormed)
+    (bounds : MessageBounds setup.informationGraph) (wellFormed : setup.WellFormed)
     {horizon : Nat} {scheduler : (application setup timeouts leaks).Scheduler}
     (assessment : setup.intendedModel.BehavioralAssessment)
     (certificate : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup)

@@ -31,9 +31,9 @@ open GameTheory GameTheory.Protocol Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  (bounds : MessageBounds (graph setup))
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  (bounds : MessageBounds setup.informationGraph)
 
 /-- **Silence of other players.** At a history of the one-packet game in a
 forced state of `who`, while an event is ready, every one-packet response of a
@@ -44,11 +44,12 @@ theorem onePacket_silent_of_forcedObserver (horizon : Nat)
     {control : (application setup timeouts leaks).Control}
     (trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some control))
     (forced : ForcedState setup timeouts leaks who (some control))
-    {event : (graph setup).EventId} (ready : control.execution.application.config.cut.Ready event)
+    {event : setup.informationGraph.EventId} (ready :
+      control.execution.application.config.cut.Ready event)
     (other : Player) (notWho : other ≠ who)
-    (emitted : (graph setup).actor? event = some other →
+    (emitted : setup.informationGraph.actor? event = some other →
       ∃ message ∈ (application setup timeouts leaks).outputs (control.execution.logs other),
-        message.payload.call.event? (graph setup) = some event)
+        message.payload.call.event? setup.informationGraph = some event)
     (response : (application setup timeouts leaks).Action)
     (member : response ∈ bounds.onePacketActions timeouts leaks other
       (control.execution.logs other)
@@ -87,7 +88,7 @@ theorem onePacket_silent_of_forcedObserver (horizon : Nat)
   have actor := correct.actor namedEvent
   rw [sender] at actor
   have earlierFirst : ∀ message ∈ control.execution.network.inputs, message.sender = other →
-      message.payload.call.event? (graph setup) = some named → False := by
+      message.payload.call.event? setup.informationGraph = some named → False := by
     intro message present messageSender messageNamed
     have recalled : message ∈ app.outputs (control.execution.logs other) := by
       rw [← inputRecall other]
@@ -99,7 +100,7 @@ theorem onePacket_silent_of_forcedObserver (horizon : Nat)
       exact bound
     exact first message ⟨recalled, messageSender.trans sender.symm, lower⟩
       (messageNamed.trans namedEvent.symm)
-  have issued : ∀ predecessor ∈ (graph setup).order.predecessors named,
+  have issued : ∀ predecessor ∈ setup.informationGraph.order.predecessors named,
       predecessor ∈ control.execution.application.config.cut.completed := by
     have token : control.execution.application.publicView.tokenFor envelope.payload.call =
         some ⟨named⟩ := tokenEq
@@ -115,8 +116,8 @@ theorem onePacket_silent_of_forcedObserver (horizon : Nat)
     · exact earlierFirst message (ledgerInputs message onLedger) messageSender
         messageNamed
     · exact ((forcedPoint.2 other notWho).2) (owed point decoded)
-  · have same := setup.eventGraph.sequentialize_ready_unique _ ⟨completed, fun predecessor member =>
-      issued predecessor member⟩ ready
+  · have same := setup.informationGraph.sequentialize_ready_unique _
+      ⟨completed, fun predecessor member => issued predecessor member⟩ ready
     subst same
     obtain ⟨message, recalled, messageNamed⟩ := emitted actor
     rw [← inputRecall other] at recalled
@@ -138,8 +139,8 @@ theorem onePacket_named_of_forcedObserver (horizon : Nat)
       bounds.onePacketActions timeouts leaks other (control.execution.logs other)
         (control.execution.observe (application setup timeouts leaks) other)) :
     ∃ event, control.execution.application.config.cut.Ready event ∧
-      material.call.packet.event? (graph setup) = some event ∧
-      (graph setup).actor? event = some other := by
+      material.call.packet.event? setup.informationGraph = some event ∧
+      setup.informationGraph.actor? event = some other := by
   let app := application setup timeouts leaks
   rcases ((bounds.mem_onePacketActions timeouts leaks other _ _ _).mp member).2 with
     silent | ⟨material', transmitted, permitted⟩
@@ -172,7 +173,7 @@ theorem onePacket_named_of_forcedObserver (horizon : Nat)
   have sender : envelope.sender = other := rfl
   have actor := correct.actor namedEvent
   rw [sender] at actor
-  have issued : ∀ predecessor ∈ (graph setup).order.predecessors named,
+  have issued : ∀ predecessor ∈ setup.informationGraph.order.predecessors named,
       predecessor ∈ control.execution.application.config.cut.completed := by
     have token : control.execution.application.publicView.tokenFor envelope.payload.call =
         some ⟨named⟩ := tokenEq

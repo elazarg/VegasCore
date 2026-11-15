@@ -2,9 +2,13 @@ module
 
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-public import Vegas.Game.SourceServiceCanonicalConformance
+public import Vegas.Game.RevealService
+public import Vegas.Pending.ReactiveEventStability
+public import Vegas.Pending.ReactiveGraphSteps
+public import Vegas.Pending.ReactiveServiceConformance
 public import Vegas.Pending.ReactiveServiceAudit
 public import Vegas.Pending.ReactiveSettledStability
+public import Vegas.Pending.ReactiveSubmissionRecall
 public import GameTheory.Analysis.Protocol.CounterfactualDecomposition
 public import Interaction.ReactiveReceipts
 
@@ -31,14 +35,14 @@ variable {Player : Type} [DecidableEq Player]
 
 section Content
 
-variable (setup : Setup (Player := Player) (L := L)) {mode : EventGraph.ExecutionMode}
-  {duration : (serviceGraph setup mode).EventId → Nat}
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
+variable (setup : Setup (Player := Player) (L := L)) {deps : setup.dataflowGraph.Dependencies}
+  {duration : (serviceGraph setup deps).EventId → Nat}
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup deps)))
 
 /-- The content a packet will settle with if accepted at this state is what the
 record accepts. -/
-def PendingContent (state : EventGraphRuntime.State (serviceGraph setup mode))
-    (message : Message Player (WitnessedPacket (serviceGraph setup mode))) : Prop :=
+def PendingContent (state : EventGraphRuntime.State (serviceGraph setup deps))
+    (message : Message Player (WitnessedPacket (serviceGraph setup deps))) : Prop :=
   match message.payload.call with
   | .commitment _ candidate =>
       message.payload.evidence = none ∧
@@ -48,29 +52,29 @@ def PendingContent (state : EventGraphRuntime.State (serviceGraph setup mode))
 
 /-- A retained packet is on track, or accepted with the content the record
 accepts. -/
-def SettledGood (execution : (serviceApplication setup mode duration leaks).Execution)
-    (message : Message Player (WitnessedPacket (serviceGraph setup mode))) : Prop :=
-  ∃ event, message.payload.call.event? (serviceGraph setup mode) = some event ∧
+def SettledGood (execution : (serviceApplication setup deps duration leaks).Execution)
+    (message : Message Player (WitnessedPacket (serviceGraph setup deps))) : Prop :=
+  ∃ event, message.payload.call.event? (serviceGraph setup deps) = some event ∧
     ((execution.application.config.cut.Ready event ∧ (message.id, true) ∉ execution.receipts ∧
         PendingContent setup execution.application message) ∨
       ((message.id, true) ∈ execution.receipts ∧
         event ∈ execution.application.config.cut.completed ∧
-        ((settledRecord (serviceTimeouts setup mode duration)) leaks execution).SettledContent
+        ((settledRecord (serviceTimeouts setup deps duration)) leaks execution).SettledContent
         message))
 
 variable {setup leaks}
 
 /-- A conforming packet's content is what the record accepts. -/
-theorem pendingContent_of_fresh (state : EventGraphRuntime.State (serviceGraph setup mode))
-    (message : Message Player (WitnessedPacket (serviceGraph setup mode)))
-    (fresh : (freshServiceEnvelope (serviceTimeouts setup mode duration)) state.publicView
+theorem pendingContent_of_fresh (state : EventGraphRuntime.State (serviceGraph setup deps))
+    (message : Message Player (WitnessedPacket (serviceGraph setup deps)))
+    (fresh : (freshServiceEnvelope (serviceTimeouts setup deps duration)) state.publicView
       message) :
     PendingContent setup state message := by
   rcases message with ⟨id, ⟨call, evidence, token⟩⟩
   cases call with
   | commitment event candidate =>
       obtain ⟨_, canonical, empty, _⟩ :=
-          ((freshServiceEnvelope_binding_iff (serviceTimeouts setup mode duration))
+          ((freshServiceEnvelope_binding_iff (serviceTimeouts setup deps duration))
             state.publicView id
               event candidate evidence token).mp fresh
       exact ⟨empty, canonical⟩
@@ -81,15 +85,15 @@ theorem pendingContent_of_fresh (state : EventGraphRuntime.State (serviceGraph s
 
 /-- Accepting a packet whose pending content the record accepts settles that
 content. -/
-theorem settledContent_of_pending (before after : EventGraphRuntime.State (serviceGraph setup mode))
+theorem settledContent_of_pending (before after : EventGraphRuntime.State (serviceGraph setup deps))
     (receipts : List (MessageId Player × Bool))
-    (message : Message Player (WitnessedPacket (serviceGraph setup mode)))
-    (event : (serviceGraph setup mode).EventId)
-    (named : message.payload.call.event? (serviceGraph setup mode) = some event)
-    (ready : before.config.cut.Ready event) (action : (serviceGraph setup mode).Action event)
+    (message : Message Player (WitnessedPacket (serviceGraph setup deps)))
+    (event : (serviceGraph setup deps).EventId)
+    (named : message.payload.call.event? (serviceGraph setup deps) = some event)
+    (ready : before.config.cut.Ready event) (action : (serviceGraph setup deps).Action event)
     (member : after.config ∈ (before.config.step event ready action).support)
     (pending : PendingContent setup before message) :
-    (⟨after.publicView, receipts⟩ : SettledRecord (serviceGraph setup mode)).SettledContent
+    (⟨after.publicView, receipts⟩ : SettledRecord (serviceGraph setup deps)).SettledContent
     message := by
   obtain ⟨value, _chosen, history⟩ := before.config.step_completion event ready action
     after.config member
@@ -115,10 +119,10 @@ theorem settledContent_of_pending (before after : EventGraphRuntime.State (servi
   | opening actual candidate raw => exact pending
 
 /-- A good packet is permitted by the settled record. -/
-theorem SettledGood.permits {execution : (serviceApplication setup mode duration leaks).Execution}
-    {message : Message Player (WitnessedPacket (serviceGraph setup mode))}
+theorem SettledGood.permits {execution : (serviceApplication setup deps duration leaks).Execution}
+    {message : Message Player (WitnessedPacket (serviceGraph setup deps))}
     (good : SettledGood setup leaks execution message) :
-    ((settledRecord (serviceTimeouts setup mode duration)) leaks execution).permits message =
+    ((settledRecord (serviceTimeouts setup deps duration)) leaks execution).permits message =
     true := by
   obtain ⟨event, named, ⟨ready, _, _⟩ | ⟨accepted, _, content⟩⟩ := good
   · exact SettledRecord.permits_of_unsettled _ message event named fun inside =>
@@ -126,9 +130,9 @@ theorem SettledGood.permits {execution : (serviceApplication setup mode duration
   · exact SettledRecord.permits_of_accepted _ message event named accepted content
 
 /-- Pending content reads only the public observation. -/
-theorem pendingContent_congr {first second : EventGraphRuntime.State (serviceGraph setup mode)}
+theorem pendingContent_congr {first second : EventGraphRuntime.State (serviceGraph setup deps)}
     (same : second.publicView.observation = first.publicView.observation)
-    {message : Message Player (WitnessedPacket (serviceGraph setup mode))}
+    {message : Message Player (WitnessedPacket (serviceGraph setup deps))}
     (pending : PendingContent setup first message) : PendingContent setup second message := by
   unfold PendingContent at pending ⊢
   cases call : message.payload.call with
@@ -143,12 +147,13 @@ theorem pendingContent_congr {first second : EventGraphRuntime.State (serviceGra
 packet's event of the packet's author, completes: the author's binding count is
 unchanged and authentic opening certificates are immutable. -/
 theorem pendingContent_of_other_step
-    {before after : EventGraphRuntime.State (serviceGraph setup mode)}
-    {message : Message Player (WitnessedPacket (serviceGraph setup mode))}
-    {event other : (serviceGraph setup mode).EventId}
-    (owned : (serviceGraph setup mode).actor? event = some message.sender)
+    {before after : EventGraphRuntime.State (serviceGraph setup deps)}
+    {message : Message Player (WitnessedPacket (serviceGraph setup deps))}
+    {event other : (serviceGraph setup deps).EventId}
+    (ownerSolitary : (serviceGraph setup deps).OwnerSolitary event)
+    (owned : (serviceGraph setup deps).actor? event = some message.sender)
     (ready : before.config.cut.Ready event) (otherReady : before.config.cut.Ready other)
-    (different : other ≠ event) {action : (serviceGraph setup mode).Action other}
+    (different : other ≠ event) {action : (serviceGraph setup deps).Action other}
     (member : after.config ∈ (before.config.step other otherReady action).support)
     (pending : PendingContent setup before message) : PendingContent setup after message := by
   obtain ⟨value, _chosen, historyEq⟩ := before.config.step_completion other otherReady action
@@ -163,20 +168,16 @@ theorem pendingContent_of_other_step
   | commitment actual candidate =>
       simp only [call] at pending ⊢
       refine ⟨pending.1, pending.2.trans ?_⟩
-      have foreign : bindingOwnedBy (serviceGraph setup mode) message.sender other = false := by
-        obtain ⟨otherOwner, eventOwner, otherActor, eventActor, owners⟩ :=
-          (serviceGraph_revealRelaxedOrdered setup mode).ready_pair_actors otherReady ready
-            different
-        rw [owned] at eventActor
+      have foreign : bindingOwnedBy (serviceGraph setup deps) message.sender other = false := by
         unfold bindingOwnedBy
-        cases kind : (serviceGraph setup mode).outputLayout other with
+        cases kind : (serviceGraph setup deps).outputLayout other with
         | binding owner payload =>
-            have actorIs := (serviceGraph setup mode).actor?_of_outputLayout_binding kind
-            rw [otherActor] at actorIs
+            have actorIs := (serviceGraph setup deps).actor?_of_outputLayout_binding kind
             simp only [decide_eq_false_iff_not]
             intro same
-            exact owners ((Option.some.inj actorIs).trans
-              (same.trans (Option.some.inj eventActor)))
+            rw [same] at actorIs
+            exact different
+              (ownerSolitary.ready_actor_unique before.config.cut ready otherReady owned actorIs)
         | publicData _ => rfl
         | privateInput _ _ => rfl
         | publication _ => rfl
@@ -189,15 +190,16 @@ theorem pendingContent_of_other_step
 /-- Pending content persists along any graph path that leaves its owner's
 ready event unfinished. -/
 theorem pendingContent_of_path
-    {before after : EventGraphRuntime.State (serviceGraph setup mode)}
-    {message : Message Player (WitnessedPacket (serviceGraph setup mode))}
-    {event : (serviceGraph setup mode).EventId}
-    (owned : (serviceGraph setup mode).actor? event = some message.sender)
+    {before after : EventGraphRuntime.State (serviceGraph setup deps)}
+    {message : Message Player (WitnessedPacket (serviceGraph setup deps))}
+    {event : (serviceGraph setup deps).EventId}
+    (ownerSolitary : (serviceGraph setup deps).OwnerSolitary event)
+    (owned : (serviceGraph setup deps).actor? event = some message.sender)
     (ready : before.config.cut.Ready event)
     (path : Relation.ReflTransGen EventGraph.Config.Step before.config after.config)
     (unfinished : event ∉ after.config.cut.completed)
     (pending : PendingContent setup before message) : PendingContent setup after message := by
-  have keep : ∀ {start finish : (serviceGraph setup mode).Config},
+  have keep : ∀ {start finish : (serviceGraph setup deps).Config},
       Relation.ReflTransGen EventGraph.Config.Step start finish →
       start.cut.Ready event → event ∉ finish.cut.completed →
       PendingContent setup { before with config := start } message →
@@ -221,7 +223,7 @@ theorem pendingContent_of_path
             EventGraph.Config.Step.completed_mono ⟨other, otherReady, action, supported⟩
               (currentReady.2 member)⟩
         exact ih middleReady notDone
-          (pendingContent_of_other_step
+          (pendingContent_of_other_step ownerSolitary
             (before := { before with config := start })
             (after := { before with config := middle })
             owned currentReady otherReady different supported content)
@@ -229,16 +231,16 @@ theorem pendingContent_of_path
 
 /-- A submission names the event its emitted packet addresses. -/
 theorem submittedEvent_of_issued
-    {entry : (serviceApplication setup mode duration leaks).PlayerEntry}
-    {material : (serviceApplication setup mode duration leaks).Submission}
+    {entry : (serviceApplication setup deps duration leaks).PlayerEntry}
+    {material : (serviceApplication setup deps duration leaks).Submission}
     (transmission : entry.action.transmission = some material)
-    {state : EventGraphRuntime.State (serviceGraph setup mode)} {who : Player}
-    {known : List (Message Player (WitnessedPacket (serviceGraph setup mode)))}
-    {message : Message Player (WitnessedPacket (serviceGraph setup mode))}
-    (packet : (serviceApplication setup mode duration leaks).packet state who known material =
-        message.payload) : (submittedEvent? (serviceTimeouts setup mode duration)) leaks
+    {state : EventGraphRuntime.State (serviceGraph setup deps)} {who : Player}
+    {known : List (Message Player (WitnessedPacket (serviceGraph setup deps)))}
+    {message : Message Player (WitnessedPacket (serviceGraph setup deps))}
+    (packet : (serviceApplication setup deps duration leaks).packet state who known material =
+        message.payload) : (submittedEvent? (serviceTimeouts setup deps duration)) leaks
           entry.action =
-      message.payload.call.event? (serviceGraph setup mode) := by
+      message.payload.call.event? (serviceGraph setup deps) := by
   unfold EventGraphRuntime.submittedEvent?
   rw [transmission, ← packet]
   rfl
@@ -247,23 +249,23 @@ end Content
 
 section Retained
 
-variable (setup : Setup (Player := Player) (L := L)) {mode : EventGraph.ExecutionMode}
-  {duration : (serviceGraph setup mode).EventId → Nat}
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
+variable (setup : Setup (Player := Player) (L := L)) {deps : setup.dataflowGraph.Dependencies}
+  {duration : (serviceGraph setup deps).EventId → Nat}
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup deps)))
 
 variable {setup leaks}
 
 /-- A response keeps a packet good: it changes no contract state or receipt. -/
-theorem SettledGood.respond {execution : (serviceApplication setup mode duration leaks).Execution}
-    {message : Message Player (WitnessedPacket (serviceGraph setup mode))}
+theorem SettledGood.respond {execution : (serviceApplication setup deps duration leaks).Execution}
+    {message : Message Player (WitnessedPacket (serviceGraph setup deps))}
     (good : SettledGood setup leaks execution message) (who : Player)
-    (action : (serviceApplication setup mode duration leaks).Action) :
+    (action : (serviceApplication setup deps duration leaks).Action) :
     SettledGood setup leaks
-        (execution.respond (serviceApplication setup mode duration leaks) who action) message := by
-  obtain ⟨configEq, publicEq⟩ := (reactive_respond_application (serviceTimeouts setup mode
+        (execution.respond (serviceApplication setup deps duration leaks) who action) message := by
+  obtain ⟨configEq, publicEq⟩ := (reactive_respond_application (serviceTimeouts setup deps
     duration))
       leaks execution who action
-  have receiptsEq := (serviceApplication setup mode duration leaks).respond_receipts execution
+  have receiptsEq := (serviceApplication setup deps duration leaks).respond_receipts execution
       who action
   obtain ⟨event, named, ⟨ready, unaccepted, pending⟩ | ⟨accepted, completed, content⟩⟩ := good
   · refine ⟨event, named, Or.inl ⟨configEq ▸ ready, receiptsEq ▸ unaccepted, ?_⟩⟩

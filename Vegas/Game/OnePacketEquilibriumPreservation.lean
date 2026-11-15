@@ -33,9 +33,9 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
   [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
   [Finite setup.intendedProtocol.History]
@@ -60,7 +60,7 @@ private theorem intended_onePacket_sequentialEquilibrium_preserved_of_bounded_ut
     (wellFormed : setup.WellFormed)
     (independent : setup.PrivateInputsIndependentGiven signal)
     (observable : setup.PublicInitialSignal signal)
-    {delay bound : (graph setup).EventId → Nat}
+    {delay bound : setup.informationGraph.EventId → Nat}
     (opportunity : Opportunity timeouts leaks Initial horizon scheduler delay)
     (inclusion : ProtectedInclusion timeouts leaks Initial horizon scheduler bound)
     (completes : CompletesPlay timeouts leaks Initial horizon scheduler)
@@ -74,7 +74,7 @@ private theorem intended_onePacket_sequentialEquilibrium_preserved_of_bounded_ut
     (intended : setup.intendedModel.BehavioralAssessment)
     (equilibrium : setup.IntendedSequentialEquilibrium parameter utility intended)
     (covers : bounds.CoversOutputValues) (coversInputs : bounds.CoversInputValues)
-    (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount) :
+    (capacity : ∀ who, bindingEventCount setup.informationGraph who < bounds.candidateCount) :
     ∃ native : (N).BehavioralAssessment,
       OnePacketAssessmentFidelity setup timeouts leaks bounds horizon scheduler intended native ∧
       native.IsSequentialEquilibriumFor
@@ -278,7 +278,7 @@ theorem intended_onePacket_sequentialEquilibrium_preserved
     (wellFormed : setup.WellFormed)
     (independent : setup.PrivateInputsIndependentGiven signal)
     (observable : setup.PublicInitialSignal signal)
-    {delay bound : (graph setup).EventId → Nat}
+    {delay bound : setup.informationGraph.EventId → Nat}
     (opportunity : Opportunity timeouts leaks Initial horizon scheduler delay)
     (inclusion : ProtectedInclusion timeouts leaks Initial horizon scheduler bound)
     (completes : CompletesPlay timeouts leaks Initial horizon scheduler)
@@ -289,7 +289,7 @@ theorem intended_onePacket_sequentialEquilibrium_preserved
     (intended : setup.intendedModel.BehavioralAssessment)
     (equilibrium : setup.IntendedSequentialEquilibrium parameter utility intended)
     (covers : bounds.CoversOutputValues) (coversInputs : bounds.CoversInputValues)
-    (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount) :
+    (capacity : ∀ who, bindingEventCount setup.informationGraph who < bounds.candidateCount) :
     ∃ native : (N).BehavioralAssessment,
       OnePacketAssessmentFidelity setup timeouts leaks bounds horizon scheduler intended native ∧
       native.IsSequentialEquilibriumFor

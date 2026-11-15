@@ -49,7 +49,8 @@ response menu under the forfeit pass, and their joint law of typed outcome and
 realized settlement is within `δ` in total variation of the intended joint law
 of terminal store and payoff. The supplied reader replaces the service readout. -/
 theorem intended_clientProfile_isεNash_of_firstTurn_bounds_readout {Parameter : Type}
-    (reader : (serviceApplication service.setup service.mode service.duration
+    (reader : (serviceApplication service.setup service.setup.informationDependencies
+      service.duration
       service.leaks).ProtocolState → Option (Config Player L service.setup.program.terminalCtx))
     (wellFormed : service.setup.WellFormed)
     (parameter : State L service.setup.context → Parameter)
@@ -57,17 +58,20 @@ theorem intended_clientProfile_isεNash_of_firstTurn_bounds_readout {Parameter :
     (forfeit : ℝ)
     (range : service.setup.TerminalPayoffSpread (CommitmentInterface.values
       service.setup.program) parameter utility forfeit)
-    (sample : List (SettledEvidence service.setup service.mode) →
-      PMF (List (SettledEvidence service.setup service.mode)))
+    (sample : List (SettledEvidence service.setup service.setup.informationDependencies) →
+      PMF (List (SettledEvidence service.setup service.setup.informationDependencies)))
     (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
-    (deposit : Player → ℝ) (menu : (serviceApplication service.setup service.mode service.duration
+    (deposit : Player → ℝ) (menu : (serviceApplication service.setup
+      service.setup.informationDependencies service.duration
       service.leaks).ResponseMenu)
-    {turns : Nat} (timing : TurnTiming service.setup turns service.mode)
+    {turns : Nat} (timing : TurnTiming service.setup turns service.setup.informationDependencies)
     (covered : ∀ (source : Profile (service.sourceModel (CommitmentInterface.values
       service.setup.program)).behavioralSignature) who,
-      menu.Admissible (serviceInitialLaw service.setup service.mode) service.horizon
+      menu.Admissible (serviceInitialLaw service.setup service.setup.informationDependencies)
+        service.horizon
         service.scheduler who
-        (serviceClientPolicy service.setup service.mode service.duration service.leaks
+        (serviceClientPolicy service.setup service.setup.informationDependencies service.duration
+          service.leaks
           service.bound turns timing
           (normalizeDisclosureProfile service.setup.program (service.setup.decodeBehavioralProfile
             (CommitmentInterface.values service.setup.program) source)) who))
@@ -79,7 +83,8 @@ theorem intended_clientProfile_isεNash_of_firstTurn_bounds_readout {Parameter :
       service.setup.program)).behavioralSignature)
     (agrees : (service.setup.intendedRestriction (CommitmentInterface.values
       service.setup.program)).ExtendsProfile intended source)
-    (terminal : FirstTurnReadoutLaw service.setup service.mode service.duration service.leaks reader
+    (terminal : FirstTurnReadoutLaw service.setup service.setup.informationDependencies
+      service.duration service.leaks reader
       service.horizon service.scheduler service.bound turns
       (normalizeDisclosureProfile service.setup.program (service.setup.decodeBehavioralProfile
         (CommitmentInterface.values service.setup.program) source))) (ε : ℝ)
@@ -92,25 +97,34 @@ theorem intended_clientProfile_isεNash_of_firstTurn_bounds_readout {Parameter :
     let base := readoutBaseUtility reader
       (fun state => forfeited (service.setup.parameterOutcome parameter state))
     let payoff := TerminalAudit.utility base
-      ((serviceAuditObservation (serviceTimeouts service.setup service.mode service.duration))
+      ((serviceAuditObservation (serviceTimeouts service.setup
+        service.setup.informationDependencies service.duration))
         service.leaks)
-      (serviceSourceAudit service.setup service.mode service.duration service.leaks sample) deposit
+      (serviceSourceAudit service.setup service.setup.informationDependencies service.duration
+        service.leaks sample) deposit
     let settle := TerminalAudit.settlement base
-      ((serviceAuditObservation (serviceTimeouts service.setup service.mode service.duration))
+      ((serviceAuditObservation (serviceTimeouts service.setup
+        service.setup.informationDependencies service.duration))
         service.leaks)
-      (serviceSourceAudit service.setup service.mode service.duration service.leaks sample) deposit
+      (serviceSourceAudit service.setup service.setup.informationDependencies service.duration
+        service.leaks sample) deposit
     let clients := normalizeDisclosureProfile service.setup.program
       (service.setup.decodeBehavioralProfile (CommitmentInterface.values service.setup.program)
         source)
-    (∀ who (alternative : (serviceApplication service.setup service.mode service.duration
+    (∀ who (alternative : (serviceApplication service.setup service.setup.informationDependencies
+      service.duration
       service.leaks).Policy),
       ∃ deviation : (service.sourceModel (CommitmentInterface.values
         service.setup.program)).BehavioralPolicy who,
-        expect (((serviceApplication service.setup service.mode service.duration
-          service.leaks).roundsFrom (serviceInitialLaw service.setup service.mode)
+        expect (((serviceApplication service.setup service.setup.informationDependencies
+          service.duration
+          service.leaks).roundsFrom (serviceInitialLaw service.setup
+            service.setup.informationDependencies)
             service.scheduler (deviatedTurnProfile service.bound turns
-              (firstTurnTiming service.setup turns service.mode) clients who alternative)
-            service.horizon).map (serviceApplication service.setup service.mode service.duration
+              (firstTurnTiming service.setup turns service.setup.informationDependencies) clients
+                who alternative)
+            service.horizon).map (serviceApplication service.setup
+              service.setup.informationDependencies service.duration
               service.leaks).finished)
           (fun final => payoff final who) ≤
         expect ((service.sourceModel (CommitmentInterface.values
@@ -153,7 +167,8 @@ theorem intended_clientProfile_isεNash_of_firstTurn_bounds_readout {Parameter :
       DefaultHistory Player =>
     forfeited (parameter (initialState service.setup.program result.1),
       ⟨sourcePublicEnv result.1, result.2⟩)
-  have close := sourceServiceClients_clientPolicy_settlement_lawError_readout reader
+  have close := sourceServiceClients_clientPolicy_settlement_lawError_readout
+    (fun event => (service.setup.dataflowGraph.sequentialize_solitary event).ownerSolitary) reader
     service.contract
     timing decoded terminal menu (covered source) sample authentic pairUtility
     deposit
@@ -195,17 +210,20 @@ theorem intended_clientProfile_isεNash_of_firstTurn_bounds {Parameter : Type}
     (forfeit : ℝ)
     (range : service.setup.TerminalPayoffSpread (CommitmentInterface.values
       service.setup.program) parameter utility forfeit)
-    (sample : List (SettledEvidence service.setup service.mode) →
-      PMF (List (SettledEvidence service.setup service.mode)))
+    (sample : List (SettledEvidence service.setup service.setup.informationDependencies) →
+      PMF (List (SettledEvidence service.setup service.setup.informationDependencies)))
     (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
-    (deposit : Player → ℝ) (menu : (serviceApplication service.setup service.mode service.duration
+    (deposit : Player → ℝ) (menu : (serviceApplication service.setup
+      service.setup.informationDependencies service.duration
       service.leaks).ResponseMenu)
-    {turns : Nat} (timing : TurnTiming service.setup turns service.mode)
+    {turns : Nat} (timing : TurnTiming service.setup turns service.setup.informationDependencies)
     (covered : ∀ (source : Profile (service.sourceModel (CommitmentInterface.values
       service.setup.program)).behavioralSignature) who,
-      menu.Admissible (serviceInitialLaw service.setup service.mode) service.horizon
+      menu.Admissible (serviceInitialLaw service.setup service.setup.informationDependencies)
+        service.horizon
         service.scheduler who
-        (serviceClientPolicy service.setup service.mode service.duration service.leaks
+        (serviceClientPolicy service.setup service.setup.informationDependencies service.duration
+          service.leaks
           service.bound turns timing
           (normalizeDisclosureProfile service.setup.program (service.setup.decodeBehavioralProfile
             (CommitmentInterface.values service.setup.program) source)) who))
@@ -217,7 +235,8 @@ theorem intended_clientProfile_isεNash_of_firstTurn_bounds {Parameter : Type}
       service.setup.program)).behavioralSignature)
     (agrees : (service.setup.intendedRestriction (CommitmentInterface.values
       service.setup.program)).ExtendsProfile intended source)
-    (terminal : FirstTurnSourceLaw service.setup service.mode service.duration service.leaks
+    (terminal : FirstTurnSourceLaw service.setup service.setup.informationDependencies
+      service.duration service.leaks
       service.horizon service.scheduler service.bound turns
       (normalizeDisclosureProfile service.setup.program (service.setup.decodeBehavioralProfile
         (CommitmentInterface.values service.setup.program) source))) (ε : ℝ)
@@ -227,28 +246,38 @@ theorem intended_clientProfile_isεNash_of_firstTurn_bounds {Parameter : Type}
         (fun state => utility (service.setup.parameterOutcome parameter state) who)) ε
       intended) :
     let forfeited := forfeitUtility service.setup.program forfeit utility
-    let base := serviceBaseUtility service.setup service.mode service.duration service.leaks
+    let base := serviceBaseUtility service.setup service.setup.informationDependencies
+      service.duration service.leaks
       (fun state => forfeited (service.setup.parameterOutcome parameter state))
     let payoff := TerminalAudit.utility base
-      ((serviceAuditObservation (serviceTimeouts service.setup service.mode service.duration))
+      ((serviceAuditObservation (serviceTimeouts service.setup
+        service.setup.informationDependencies service.duration))
         service.leaks)
-      (serviceSourceAudit service.setup service.mode service.duration service.leaks sample) deposit
+      (serviceSourceAudit service.setup service.setup.informationDependencies service.duration
+        service.leaks sample) deposit
     let settle := TerminalAudit.settlement base
-      ((serviceAuditObservation (serviceTimeouts service.setup service.mode service.duration))
+      ((serviceAuditObservation (serviceTimeouts service.setup
+        service.setup.informationDependencies service.duration))
         service.leaks)
-      (serviceSourceAudit service.setup service.mode service.duration service.leaks sample) deposit
+      (serviceSourceAudit service.setup service.setup.informationDependencies service.duration
+        service.leaks sample) deposit
     let clients := normalizeDisclosureProfile service.setup.program
       (service.setup.decodeBehavioralProfile (CommitmentInterface.values service.setup.program)
         source)
-    (∀ who (alternative : (serviceApplication service.setup service.mode service.duration
+    (∀ who (alternative : (serviceApplication service.setup service.setup.informationDependencies
+      service.duration
       service.leaks).Policy),
       ∃ deviation : (service.sourceModel (CommitmentInterface.values
         service.setup.program)).BehavioralPolicy who,
-        expect (((serviceApplication service.setup service.mode service.duration
-          service.leaks).roundsFrom (serviceInitialLaw service.setup service.mode)
+        expect (((serviceApplication service.setup service.setup.informationDependencies
+          service.duration
+          service.leaks).roundsFrom (serviceInitialLaw service.setup
+            service.setup.informationDependencies)
             service.scheduler (deviatedTurnProfile service.bound turns
-              (firstTurnTiming service.setup turns service.mode) clients who alternative)
-            service.horizon).map (serviceApplication service.setup service.mode service.duration
+              (firstTurnTiming service.setup turns service.setup.informationDependencies) clients
+                who alternative)
+            service.horizon).map (serviceApplication service.setup
+              service.setup.informationDependencies service.duration
               service.leaks).finished)
           (fun final => payoff final who) ≤
         expect ((service.sourceModel (CommitmentInterface.values
@@ -266,7 +295,8 @@ theorem intended_clientProfile_isεNash_of_firstTurn_bounds {Parameter : Type}
             service.setup.program) menu timing source)).bind (fun final =>
               (settle final.state).map fun payoffs =>
                 (
-                  (serviceSourceReadout service.setup service.mode service.duration service.leaks
+                  (serviceSourceReadout service.setup service.setup.informationDependencies
+                    service.duration service.leaks
                     final.state).map (fun config => (config.state, config.defaults)), payoffs)))
         ((service.setup.intendedModel.runBehavioral intended
             (instructionCount service.setup.program + 1)).map
@@ -275,7 +305,8 @@ theorem intended_clientProfile_isεNash_of_firstTurn_bounds {Parameter : Type}
             fun who => (service.setup.protocolReadout final.state).elim 0
               (fun state => utility (service.setup.parameterOutcome parameter state) who)))) :=
   service.intended_clientProfile_isεNash_of_firstTurn_bounds_readout
-    (serviceSourceReadout service.setup service.mode service.duration service.leaks)
+    (serviceSourceReadout service.setup service.setup.informationDependencies service.duration
+      service.leaks)
     wellFormed parameter utility forfeit range sample authentic deposit menu timing covered low
     spread within intended source agrees terminal ε equilibrium
 

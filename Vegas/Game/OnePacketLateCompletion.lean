@@ -26,9 +26,9 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- **One target.** Under a scheduler completing play, from a history at which
@@ -44,13 +44,14 @@ theorem completionPoint_of_openableCommitment
     (players : ∀ player, ((bounds.onePacketMenu timeouts leaks).information
       (initialLaw setup) horizon scheduler).BehavioralPolicy player)
     {who : Player} {entry : (application setup timeouts leaks).PlayerEntry}
-    {message : Message Player (WitnessedPacket (graph setup))} {event : (graph setup).EventId}
-    {candidate : Handle (graph setup)} {payload : L.Ty}
-    {outputEq : (graph setup).outputLayout event = .binding who payload}
-    (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .bind who payload)
-    {value : L.Val payload} {sent : (graph setup).Config} {ready : sent.cut.Ready event}
-    {action : (graph setup).Action event}
+    {message : Message Player (WitnessedPacket setup.informationGraph)} {event :
+      setup.informationGraph.EventId}
+    {candidate : Handle setup.informationGraph} {payload : L.Ty}
+    {outputEq : setup.informationGraph.outputLayout event = .binding who payload}
+    (codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .bind who payload)
+    {value : L.Val payload} {sent : setup.informationGraph.Config} {ready : sent.cut.Ready event}
+    {action : setup.informationGraph.Action event}
     (successful : (cast (congrArg EventGraph.EventField.Action outputEq) action :
       Option (PublicationResult (L.Val payload))) = some (.success value))
     {rank : Nat} {profile : BehavioralProfile setup.program}
@@ -143,8 +144,8 @@ theorem storeEventFailed_of_unrecorded {control : (application setup timeouts le
     (trace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace
       (some control))
-    {who : Player} {event : (graph setup).EventId} {payload : L.Ty}
-    (outputEq : (graph setup).outputLayout event = .binding who payload)
+    {who : Player} {event : setup.informationGraph.EventId} {payload : L.Ty}
+    (outputEq : setup.informationGraph.outputLayout event = .binding who payload)
     (done : event ∈ control.execution.application.config.cut.completed)
     (unrecorded : (eventRecorded timeouts) leaks (control.execution.logs who) event =
       false) :
@@ -164,7 +165,7 @@ theorem storeEventFailed_of_unrecorded {control : (application setup timeouts le
       rw [storedEq, cast_option_some (congrArg EventGraph.EventField.Value outputEq), resultEq]
   | success read =>
       exfalso
-      have reads : (⟨.inr event, outputEq⟩ : EventGraph.FieldRef (graph setup).layout
+      have reads : (⟨.inr event, outputEq⟩ : EventGraph.FieldRef setup.informationGraph.layout
           (.binding who payload)).get? control.execution.application.config.store =
           some (.success read) := by
         simp only [EventGraph.FieldRef.get?]
@@ -180,7 +181,7 @@ theorem storeEventFailed_of_unrecorded {control : (application setup timeouts le
         cases recorded
       · unfold EventGraphRuntime.submittedEvent?
         rw [sent]
-        change material.call.packet.event? (graph setup) = some event
+        change material.call.packet.event? setup.informationGraph = some event
         rw [← packet, call]
         rfl
 
@@ -217,7 +218,7 @@ theorem completionPoint_congr_state {rank : Nat} {fresh : (application setup tim
 
 omit [Fintype Player] in
 /-- Public views with the same ready events give every player the same turn. -/
-theorem ownTurn?_eq_of_eventReady_iff {first second : PublicView (graph setup)}
+theorem ownTurn?_eq_of_eventReady_iff {first second : PublicView setup.informationGraph}
     (same : ∀ event, first.EventReady event ↔ second.EventReady event) (who : Player) :
     first.ownTurn? who = second.ownTurn? who := by
   classical
@@ -236,13 +237,14 @@ theorem expect_centeredCompletion_of_openableCommitment
     (players : ∀ player, ((bounds.onePacketMenu timeouts leaks).information
       (initialLaw setup) horizon scheduler).BehavioralPolicy player)
     {who : Player} {entry : (application setup timeouts leaks).PlayerEntry}
-    {message : Message Player (WitnessedPacket (graph setup))} {event : (graph setup).EventId}
-    {candidate : Handle (graph setup)} {payload : L.Ty}
-    {outputEq : (graph setup).outputLayout event = .binding who payload}
-    (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .bind who payload)
-    {value : L.Val payload} {sent : (graph setup).Config} {ready : sent.cut.Ready event}
-    {action : (graph setup).Action event}
+    {message : Message Player (WitnessedPacket setup.informationGraph)} {event :
+      setup.informationGraph.EventId}
+    {candidate : Handle setup.informationGraph} {payload : L.Ty}
+    {outputEq : setup.informationGraph.outputLayout event = .binding who payload}
+    (codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .bind who payload)
+    {value : L.Val payload} {sent : setup.informationGraph.Config} {ready : sent.cut.Ready event}
+    {action : setup.informationGraph.Action event}
     (successful : (cast (congrArg EventGraph.EventField.Action outputEq) action :
       Option (PublicationResult (L.Val payload))) = some (.success value))
     {rank : Nat} {profile : BehavioralProfile setup.program}
@@ -289,7 +291,8 @@ theorem expect_centeredCompletion_of_openableCommitment
 variable (setup timeouts leaks) in
 /-- **The owner has not sent.** The configuration is `sent`, the recall of
 `who` extends `past`, and it records no submission for `event`. -/
-def LateUnsent (who : Player) (event : (graph setup).EventId) (sent : (graph setup).Config)
+def LateUnsent (who : Player) (event : setup.informationGraph.EventId) (sent :
+  setup.informationGraph.Config)
     (past : List (application setup timeouts leaks).PlayerEntry) :
     (application setup timeouts leaks).ProtocolState → Prop
   | none => False
@@ -332,10 +335,11 @@ omit [Fintype Player] in
 which `who` has not sent for its binding `event`, the ready event
 at `sent`, a transition at which `who` does not respond keeps `who` unsent, or
 completes the event with a failure. -/
-theorem lateUnsent_transition_other {who : Player} {event : (graph setup).EventId}
-    {sent : (graph setup).Config} {past : List (application setup timeouts leaks).PlayerEntry}
+theorem lateUnsent_transition_other {who : Player} {event : setup.informationGraph.EventId}
+    {sent : setup.informationGraph.Config} {past : List (application setup timeouts
+      leaks).PlayerEntry}
     (ready : sent.cut.Ready event)
-    {payload : L.Ty} (outputEq : (graph setup).outputLayout event = .binding who payload)
+    {payload : L.Ty} (outputEq : setup.informationGraph.outputLayout event = .binding who payload)
     (before : (application setup timeouts leaks).Control)
     (holds : LateUnsent setup timeouts leaks who event sent past (some before))
     (actorNe : before.actor ≠ some who)
@@ -368,7 +372,7 @@ theorem lateUnsent_transition_other {who : Player} {event : (graph setup).EventI
   · left
     have same := EventGraph.Config.Step.path_eq_of_ready_of_not_completed event
       (fun other otherReady =>
-        setup.eventGraph.sequentialize_ready_unique _ otherReady ready) completed path
+        setup.informationGraph.sequentialize_ready_unique _ otherReady ready) completed path
     exact ⟨same, recallEq ▸ extends_, by rw [recallEq]; exact unrecorded⟩
 
 end Vegas

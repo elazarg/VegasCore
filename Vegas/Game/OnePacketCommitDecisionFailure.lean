@@ -28,9 +28,9 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 private theorem abs_expect_sub_le_of_forall {α : Type*} (law : PMF α) (value : α → ℝ)
@@ -74,7 +74,7 @@ theorem lateCommit_failure_next
       who)
     (isRelevant : relevant site) {key : LateKey setup timeouts leaks}
     (siteKey : lateKey setup timeouts leaks who site.1 = some key) (option : LateOption')
-    {event : (graph setup).EventId} {payload : L.Ty}
+    {event : setup.informationGraph.EventId} {payload : L.Ty}
     (imageOfBinding : BindingImage (timeouts := timeouts) (setup := setup) (leaks := leaks) → Y)
     (imageBinding : ∀ state, lumping.image key state =
       imageOfBinding (bindingImage (timeouts := timeouts) event who payload state))
@@ -166,7 +166,7 @@ theorem lateCommit_historyFailure
       who)
     (isRelevant : relevant site) {key : LateKey setup timeouts leaks}
     (siteKey : lateKey setup timeouts leaks who site.1 = some key) (option : LateOption')
-    {event : (graph setup).EventId} {payload : L.Ty}
+    {event : setup.informationGraph.EventId} {payload : L.Ty}
     (imageOfBinding : BindingImage (timeouts := timeouts) (setup := setup) (leaks := leaks) → Y)
     (imageBinding : ∀ state, lumping.image key state =
       imageOfBinding (bindingImage (timeouts := timeouts) event who payload state))
@@ -296,7 +296,7 @@ def certificateCommitFailure (sequence : ℕ → setup.intendedModel.BehavioralA
       scale_pos
       scale_le_one weights targetSequence) (n : ℕ) (who : Player) (key : LateKey setup timeouts
         leaks)
-    (event : (graph setup).EventId) (serial : Nat)
+    (event : setup.informationGraph.EventId) (serial : Nat)
     (state : (application setup timeouts leaks).ProtocolState) : ℝ :=
   expect ((fun law => law.bind ((certificateLumping setup timeouts leaks bounds horizon scheduler
       sequence scale scale_pos scale_le_one covers capacity slotsLe weights targetSequence
@@ -325,12 +325,13 @@ theorem certificate_commit_decisionFailure
     (debtFree : SiteDebtFree setup timeouts leaks bounds horizon scheduler site)
     {key : LateKey setup timeouts leaks} (siteKey : lateKey setup timeouts leaks who site.1 = some
       key)
-    {event : (graph setup).EventId} (pending : pendingEvent setup timeouts leaks who site.1 = some
+    {event : setup.informationGraph.EventId} (pending : pendingEvent setup timeouts leaks who
+      site.1 = some
       event)
-    {payload : L.Ty} {outputEq : (graph setup).outputLayout event = .binding who payload}
-    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .bind who payload}
-    (node : nodeView (graph setup) event = .bind who payload outputEq codeEq)
+    {payload : L.Ty} {outputEq : setup.informationGraph.outputLayout event = .binding who payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .bind who payload}
+    (node : nodeView setup.informationGraph event = .bind who payload outputEq codeEq)
     (history : (onePacketN).InformationHistory who site.1)
     {remaining : Nat} {execution : (application setup timeouts leaks).Execution}
     (current : history.1.state = some ⟨remaining, some who, execution⟩)
@@ -477,12 +478,13 @@ theorem certificate_lateCommit_historyDecisionFailure
     (debtFree : SiteDebtFree setup timeouts leaks bounds horizon scheduler site)
     {key : LateKey setup timeouts leaks} (siteKey : lateKey setup timeouts leaks who site.1 = some
       key)
-    {event : (graph setup).EventId} (pending : pendingEvent setup timeouts leaks who site.1 = some
+    {event : setup.informationGraph.EventId} (pending : pendingEvent setup timeouts leaks who
+      site.1 = some
       event)
-    {payload : L.Ty} {outputEq : (graph setup).outputLayout event = .binding who payload}
-    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .bind who payload}
-    (node : nodeView (graph setup) event = .bind who payload outputEq codeEq)
+    {payload : L.Ty} {outputEq : setup.informationGraph.outputLayout event = .binding who payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .bind who payload}
+    (node : nodeView setup.informationGraph event = .bind who payload outputEq codeEq)
     {past : List (application setup timeouts leaks).PlayerEntry}
     {view : (application setup timeouts leaks).PlayerView} (atSite : site.1 = some (past, view))
     (choice : (onePacketN).Choice who site.1) (response : (application setup timeouts leaks).Action)

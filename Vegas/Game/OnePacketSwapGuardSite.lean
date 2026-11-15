@@ -37,9 +37,9 @@ open GameTheory GameTheory.Protocol Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 variable [DecidableEq (CellTy Player L)] {p q : ProtocolState setup.program}
@@ -48,10 +48,10 @@ variable [DecidableEq (CellTy Player L)] {p q : ProtocolState setup.program}
 omit [Fintype Player] in
 /-- **Initial handles are compatible with the swap** at an injective table
 accepting every initial binding input's handle. -/
-theorem initialHandlesCompatible_betweenHandlePairs {table : AcceptedHandles (graph setup)}
+theorem initialHandlesCompatible_betweenHandlePairs {table : AcceptedHandles setup.informationGraph}
     (injective : AcceptedInjective table)
     (initialAccepted : ∀ input owner payload,
-      (graph setup).inputLayout input = .binding owner payload →
+      setup.informationGraph.inputLayout input = .binding owner payload →
         table (.inl input) = some (owner, .initial input)) :
     (HiddenSwap.ofPairs (betweenPairs publicAgree succeed)
       (betweenHandlePairs setup p q table)).InitialHandlesCompatible := by
@@ -59,7 +59,7 @@ theorem initialHandlesCompatible_betweenHandlePairs {table : AcceptedHandles (gr
   intro input owner payload layoutEq
   have handleEq := betweenHandlePairs_of_accepted (first := p) (second := q) injective
     (initialAccepted input owner payload layoutEq)
-  have fieldEq : (graph setup).layout (.inl input) = .binding owner payload := layoutEq
+  have fieldEq : setup.informationGraph.layout (.inl input) = .binding owner payload := layoutEq
   have kind := cellField_eq_binding ((layout_fieldCell setup (.inl input)).symm.trans fieldEq)
   have cell : fieldCell setup (.inl input) =
       ((fieldCell setup (.inl input)).1, .commitment owner payload) := Prod.ext rfl kind
@@ -116,18 +116,20 @@ theorem bindingCellsAgree_of_replay (wellFormed : setup.WellFormed)
     (replayed : intendedHistory? setup timeouts leaks bounds horizon scheduler trace = some first)
     (readyOwn : ∀ event, control.execution.application.config.cut.Ready event →
       ∀ owner payload binding checks outputEq codeEq,
-        nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq →
+        nodeView setup.informationGraph event = .resolve owner payload binding checks outputEq
+          codeEq →
           owner = who)
-    {event : (graph setup).EventId}
+    {event : setup.informationGraph.EventId}
     (active : control.execution.application.config.cut.Ready event ∨
       event ∈ control.execution.application.config.cut.completed)
     {owner : Player} {payload : L.Ty}
-    {binding : EventGraph.FieldRef (graph setup).layout (.binding owner payload)}
-    {checks : List (EventGraph.GuardCheck (graph setup).layout payload)}
-    {outputEq : (graph setup).outputLayout event = .publication payload}
-    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .resolve owner payload binding checks}
-    (view : nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq) :
+    {binding : EventGraph.FieldRef setup.informationGraph.layout (.binding owner payload)}
+    {checks : List (EventGraph.GuardCheck setup.informationGraph.layout payload)}
+    {outputEq : setup.informationGraph.outputLayout event = .publication payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .resolve owner payload binding checks}
+    (view : nodeView setup.informationGraph event = .resolve owner payload binding checks outputEq
+      codeEq) :
     ProtocolState.cell? setup.program p (fieldCell setup binding.field).1
         (.commitment owner payload) =
       ProtocolState.cell? setup.program q (fieldCell setup binding.field).1
@@ -158,9 +160,10 @@ theorem swapGuardState_of_replay (wellFormed : setup.WellFormed)
     (replayed : intendedHistory? setup timeouts leaks bounds horizon scheduler trace = some first)
     (readyOwn : ∀ event, control.execution.application.config.cut.Ready event →
       ∀ owner payload binding checks outputEq codeEq,
-        nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq →
+        nodeView setup.informationGraph event = .resolve owner payload binding checks outputEq
+          codeEq →
           owner = who)
-    {table : AcceptedHandles (graph setup)}
+    {table : AcceptedHandles setup.informationGraph}
     (tableEq : control.execution.application.accepted = table) :
     SwapGuardState setup timeouts (HiddenSwap.ofPairs (betweenPairs publicAgree succeed)
         (betweenHandlePairs setup p q table))

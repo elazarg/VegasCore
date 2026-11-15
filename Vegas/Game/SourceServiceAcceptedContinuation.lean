@@ -17,63 +17,23 @@ namespace Vegas
 open SourceProgram EventGraphRuntime EventGraph GameTheory.Protocol
   GameTheory.Math.Probability Interaction
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
-  {setup : Setup (Player := Player) (L := L)} {mode : EventGraph.ExecutionMode}
-
-private theorem settlesFreshCalls_raw
-    (timeouts : EventTimeouts (serviceGraph setup mode))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
-    {horizon : Nat} {scheduler : ((reactiveApplication timeouts) leaks).Scheduler}
-    {bound : (serviceGraph setup mode).EventId → Nat}
-    (inclusion : ProtectedInclusion timeouts leaks
-      (serviceInitialLaw setup mode) horizon scheduler bound)
-    (owner : Player) (event : (serviceGraph setup mode).EventId)
-    (owned : (serviceGraph setup mode).actor? event = some owner) :
-    ∀ {state} (_trace : (((reactiveApplication timeouts) leaks).protocol (serviceInitialLaw setup
-      mode)
-      horizon scheduler).Trace state),
-      ReactiveApplication.serviceInvariant
-        (SettlesFreshCalls setup leaks owner event bound) state
-  | _, .start => trivial
-  | _, .extend (source := before) prior joint _ reached => by
-      have valid := settlesFreshCalls_raw timeouts leaks inclusion owner event owned prior
-      cases before with
-      | none =>
-          obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ reached
-          intro earlier entry later message split
-          simp [ReactiveApplication.Execution.initial] at split
-      | some control =>
-          rcases control with ⟨remaining, actor, execution⟩
-          cases actor with
-          | some who =>
-              cases (PMF.mem_support_pure_iff _ _).mp reached
-              exact settlesFreshCalls_respond setup leaks owner event bound execution
-                (legalFacts setup leaks horizon scheduler _ prior) who _ valid
-          | none =>
-              cases remaining with
-              | zero => cases (PMF.mem_support_pure_iff _ _).mp reached; exact valid
-              | succ remaining =>
-                  obtain ⟨command, _, moved⟩ :=
-                    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
-                  obtain ⟨next, supported, rfl⟩ := PMF.support_map .. ▸ moved
-                  exact SettlesFreshCalls.environment setup leaks owner event owned remaining
-                    execution (ProtectedInclusion.at timeouts leaks inclusion _ prior) prior valid
-                    command next supported
+  {setup : Setup (Player := Player) (L := L)} {deps : setup.dataflowGraph.Dependencies}
 
 private theorem recorded_fresh_call
-    (timeouts : EventTimeouts (serviceGraph setup mode))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
+    (timeouts : EventTimeouts (serviceGraph setup deps))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup deps)))
     {horizon : Nat} {scheduler : ((reactiveApplication timeouts) leaks).Scheduler}
     {control : ((reactiveApplication timeouts) leaks).Control}
-    (trace : (((reactiveApplication timeouts) leaks).protocol (serviceInitialLaw setup mode)
+    (trace : (((reactiveApplication timeouts) leaks).protocol (serviceInitialLaw setup deps)
       horizon scheduler).Trace (some control))
-    (owner : Player) (event : (serviceGraph setup mode).EventId) (bound :
-      (serviceGraph setup mode).EventId → Nat)
+    (owner : Player) (event : (serviceGraph setup deps).EventId) (bound :
+      (serviceGraph setup deps).EventId → Nat)
     (entry : ((reactiveApplication timeouts) leaks).PlayerEntry)
-    (message : Message Player (WitnessedPacket (serviceGraph setup mode)))
+    (message : Message Player (WitnessedPacket (serviceGraph setup deps)))
     (recorded : entry ∈ control.execution.logs owner)
     (call : FreshCall setup leaks owner event bound entry message) :
     (submittedEvent? timeouts) leaks entry.action = some event := by
-  have signed := signedCommitments_history timeouts leaks (serviceInitialLaw setup mode)
+  have signed := signedCommitments_history timeouts leaks (serviceInitialLaw setup deps)
     (fun state supported => by
       obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ supported
       exact ⟨_, rfl⟩) horizon scheduler trace
@@ -84,10 +44,10 @@ private theorem recorded_fresh_call
   exact call.addressed
 
 private theorem respond_sole_call
-    (timeouts : EventTimeouts (serviceGraph setup mode))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
+    (timeouts : EventTimeouts (serviceGraph setup deps))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup deps)))
     (players : Player → ((reactiveApplication timeouts) leaks).Policy)
-    (owner : Player) (event : (serviceGraph setup mode).EventId)
+    (owner : Player) (event : (serviceGraph setup deps).EventId)
     (entry : ((reactiveApplication timeouts) leaks).PlayerEntry) (id : MessageId Player)
     (submitted : (submittedEvent? timeouts) leaks entry.action = some event)
     (noRepeat : ∀ past view response,
@@ -100,7 +60,8 @@ private theorem respond_sole_call
       (execution.observe ((reactiveApplication timeouts) leaks) actor)).support)
     (recorded : entry ∈ execution.logs owner)
     (sole : ∀ other ∈ execution.logs owner, ¬ EmitsOtherFor timeouts leaks other event id) :
-    ∀ other ∈ (execution.respond ((reactiveApplication timeouts) leaks) actor response).logs owner,
+    ∀ other ∈
+      (execution.respond ((reactiveApplication timeouts) leaks) actor response).logs owner,
       ¬ EmitsOtherFor timeouts leaks other event id := by
   let app := (reactiveApplication timeouts) leaks
   by_cases same : actor = owner
@@ -124,14 +85,14 @@ private theorem respond_sole_call
     exact sole
 
 private theorem settled_of_recorded
-    (timeouts : EventTimeouts (serviceGraph setup mode))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
-    (owner : Player) (event : (serviceGraph setup mode).EventId) (bound :
-      (serviceGraph setup mode).EventId → Nat)
+    (timeouts : EventTimeouts (serviceGraph setup deps))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup deps)))
+    (owner : Player) (event : (serviceGraph setup deps).EventId) (bound :
+      (serviceGraph setup deps).EventId → Nat)
     (execution : ((reactiveApplication timeouts) leaks).Execution)
     (valid : SettlesFreshCalls setup leaks owner event bound execution)
     (entry : ((reactiveApplication timeouts) leaks).PlayerEntry)
-    (message : Message Player (WitnessedPacket (serviceGraph setup mode)))
+    (message : Message Player (WitnessedPacket (serviceGraph setup deps)))
     (recorded : entry ∈ execution.logs owner)
     (call : FreshCall setup leaks owner event bound entry message)
     (sole : ∀ other ∈ execution.logs owner,
@@ -147,24 +108,24 @@ private theorem settled_of_recorded
   · exact List.mem_append_right _ (List.mem_cons_of_mem _ after)
 
 private theorem round_accepted_result
-    (timeouts : EventTimeouts (serviceGraph setup mode))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
-    {Result : Type*} (continuation : (serviceGraph setup mode).Config → PMF Result)
-    (drained : ∀ state : EventGraphRuntime.State (serviceGraph setup mode),
+    (timeouts : EventTimeouts (serviceGraph setup deps))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup deps)))
+    {Result : Type*} (continuation : (serviceGraph setup deps).Config → PMF Result)
+    (drained : ∀ state : EventGraphRuntime.State (serviceGraph setup deps),
       continuation state.drain.config = continuation state.config)
     {horizon remaining : Nat} (scheduler : ((reactiveApplication timeouts) leaks).Scheduler)
     (players : Player → ((reactiveApplication timeouts) leaks).Policy)
-    (bound : (serviceGraph setup mode).EventId → Nat)
+    (bound : (serviceGraph setup deps).EventId → Nat)
     (inclusion : ProtectedInclusion timeouts leaks
-      (serviceInitialLaw setup mode) horizon scheduler bound)
-    (event : (serviceGraph setup mode).EventId) (solitary :
-      (serviceGraph setup mode).Solitary event) (owner : Player)
-    (owned : (serviceGraph setup mode).actor? event = some owner)
-    (sent : (serviceGraph setup mode).Config) (ready : sent.cut.Ready event)
-    (action : (serviceGraph setup mode).Action event)
-    (output : ((serviceGraph setup mode).outputLayout event).Value)
+      (serviceInitialLaw setup deps) horizon scheduler bound)
+    (event : (serviceGraph setup deps).EventId) (solitary :
+      (serviceGraph setup deps).Solitary event) (owner : Player)
+    (owned : (serviceGraph setup deps).actor? event = some owner)
+    (sent : (serviceGraph setup deps).Config) (ready : sent.cut.Ready event)
+    (action : (serviceGraph setup deps).Action event)
+    (output : ((serviceGraph setup deps).outputLayout event).Value)
     (entry : ((reactiveApplication timeouts) leaks).PlayerEntry)
-    (message : Message Player (WitnessedPacket (serviceGraph setup mode)))
+    (message : Message Player (WitnessedPacket (serviceGraph setup deps)))
     (call : FreshCall setup leaks owner event bound entry message)
     (submitted : (submittedEvent? timeouts) leaks entry.action = some event)
     (noRepeat : ∀ past view response,
@@ -172,7 +133,7 @@ private theorem round_accepted_result
       (eventRecorded timeouts) leaks past event = true →
       (submittedEvent? timeouts) leaks response ≠ some event)
     (execution next : ((reactiveApplication timeouts) leaks).Execution)
-    (trace : (((reactiveApplication timeouts) leaks).protocol (serviceInitialLaw setup mode) horizon
+    (trace : (((reactiveApplication timeouts) leaks).protocol (serviceInitialLaw setup deps) horizon
       scheduler).Trace (some ⟨remaining + 1, none, execution⟩))
     (sameConfig : execution.application.config = sent)
     (recorded : entry ∈ execution.logs owner)
@@ -192,7 +153,8 @@ private theorem round_accepted_result
   have facts := legalFacts setup leaks horizon scheduler _ trace
   have readyBefore : execution.application.config.cut.Ready event := sameConfig ▸ ready
   have settledBefore := settled_of_recorded timeouts leaks owner event bound execution
-    (settlesFreshCalls_raw timeouts leaks inclusion owner event owned trace) entry message
+    (settlesFreshCalls_history setup leaks (duration := timeouts.duration)
+      inclusion owner event solitary.ownerSolitary owned trace) entry message
     recorded call sole
   have fresh : (message.id, true) ∉ execution.receipts := fun receipt =>
     readyBefore.1 (settledBefore.2.2 receipt)
@@ -205,8 +167,8 @@ private theorem round_accepted_result
     Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
   obtain ⟨middle, moved, resumed⟩ :=
     Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ dispatched)
-  obtain ⟨middleTrace⟩ := app.raw_trace_environment (serviceInitialLaw setup mode) horizon scheduler
-    remaining execution middle command trace selected moved
+  obtain ⟨middleTrace⟩ := app.raw_trace_environment (serviceInitialLaw setup deps) horizon
+    scheduler remaining execution middle command trace selected moved
   have recallEq := app.environmentStep_recall execution middle command moved
   have recordedMiddle : entry ∈ middle.logs owner := by rw [recallEq]; exact recorded
   have soleMiddle : ∀ other ∈ middle.logs owner,
@@ -215,10 +177,11 @@ private theorem round_accepted_result
     ((keepsFixedCandidates_step timeouts leaks).environmentStep execution middle command moved)
   by_cases completed : event ∈ middle.application.config.cut.completed
   · have receipt := (settled_of_recorded timeouts leaks owner event bound middle
-      (settlesFreshCalls_raw timeouts leaks inclusion owner event owned middleTrace) entry message
+      (settlesFreshCalls_history setup leaks (duration := timeouts.duration)
+        inclusion owner event solitary.ownerSolitary owned middleTrace) entry message
       recordedMiddle call soleMiddle).1 completed
-    obtain ⟨state, handled, stateEq⟩ := app.environmentStep_newly_accepted execution middle command
-      facts.unique moved input fresh receipt
+    obtain ⟨state, handled, stateEq⟩ := app.environmentStep_newly_accepted execution middle
+      command facts.unique moved input fresh receipt
     rw [← stateEq] at handled
     have noActor : command.actor? app = none := by
       cases command with
@@ -255,32 +218,33 @@ private theorem round_accepted_result
     | some who =>
         rw [actor] at resumed
         obtain ⟨response, member, rfl⟩ := PMF.support_map .. ▸ resumed
-        refine Or.inl ⟨(((reactive_respond_application timeouts) leaks middle who response).1).trans
-          sameMiddle, app.respond_recall_mono middle who owner response recordedMiddle, ?_, ?_⟩
+        refine Or.inl
+          ⟨(((reactive_respond_application timeouts) leaks middle who response).1).trans
+            sameMiddle, app.respond_recall_mono middle who owner response recordedMiddle, ?_, ?_⟩
         · exact respond_sole_call timeouts leaks players owner event entry message.id submitted
             noRepeat middle who response member recordedMiddle soleMiddle
         · exact witnessMiddle.keep
             ((keepsFixedCandidates_step timeouts leaks).respond middle who response)
 
 private theorem runUntil_accepted_result
-    (timeouts : EventTimeouts (serviceGraph setup mode))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
-    {Result : Type*} (continuation : (serviceGraph setup mode).Config → PMF Result)
-    (drained : ∀ state : EventGraphRuntime.State (serviceGraph setup mode),
+    (timeouts : EventTimeouts (serviceGraph setup deps))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup deps)))
+    {Result : Type*} (continuation : (serviceGraph setup deps).Config → PMF Result)
+    (drained : ∀ state : EventGraphRuntime.State (serviceGraph setup deps),
       continuation state.drain.config = continuation state.config)
     {horizon : Nat} (scheduler : ((reactiveApplication timeouts) leaks).Scheduler)
     (players : Player → ((reactiveApplication timeouts) leaks).Policy)
-    (bound : (serviceGraph setup mode).EventId → Nat)
+    (bound : (serviceGraph setup deps).EventId → Nat)
     (inclusion : ProtectedInclusion timeouts leaks
-      (serviceInitialLaw setup mode) horizon scheduler bound)
-    (event : (serviceGraph setup mode).EventId) (solitary :
-      (serviceGraph setup mode).Solitary event) (owner : Player)
-    (owned : (serviceGraph setup mode).actor? event = some owner)
-    (sent : (serviceGraph setup mode).Config) (ready : sent.cut.Ready event)
-    (action : (serviceGraph setup mode).Action event)
-    (output : ((serviceGraph setup mode).outputLayout event).Value)
+      (serviceInitialLaw setup deps) horizon scheduler bound)
+    (event : (serviceGraph setup deps).EventId) (solitary :
+      (serviceGraph setup deps).Solitary event) (owner : Player)
+    (owned : (serviceGraph setup deps).actor? event = some owner)
+    (sent : (serviceGraph setup deps).Config) (ready : sent.cut.Ready event)
+    (action : (serviceGraph setup deps).Action event)
+    (output : ((serviceGraph setup deps).outputLayout event).Value)
     (entry : ((reactiveApplication timeouts) leaks).PlayerEntry)
-    (message : Message Player (WitnessedPacket (serviceGraph setup mode)))
+    (message : Message Player (WitnessedPacket (serviceGraph setup deps)))
     (call : FreshCall setup leaks owner event bound entry message)
     (submitted : (submittedEvent? timeouts) leaks entry.action = some event)
     (noRepeat : ∀ past view response,
@@ -291,11 +255,12 @@ private theorem runUntil_accepted_result
       leaks).Execution),
       count ≤ remaining →
       (((reactiveApplication timeouts) leaks).protocol
-        (serviceInitialLaw setup mode) horizon scheduler).Trace
+        (serviceInitialLaw setup deps) horizon scheduler).Trace
         (some ⟨remaining, none, execution⟩) →
       execution.application.config = sent →
       entry ∈ execution.logs owner →
-      (∀ other ∈ execution.logs owner, ¬ EmitsOtherFor timeouts leaks other event message.id) →
+      (∀ other ∈ execution.logs owner,
+        ¬ EmitsOtherFor timeouts leaks other event message.id) →
       AcceptanceWitness event message sent action output execution.application →
       stopped ∈ (((reactiveApplication timeouts) leaks).runUntil scheduler players
         (fun final => event ∈ final.application.config.cut.completed) count execution).support →
@@ -321,12 +286,14 @@ private theorem runUntil_accepted_result
           simp only [ReactiveApplication.runUntil, pending, ↓reduceIte] at reached
           obtain ⟨middle, moved, rest⟩ :=
             Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
-          rcases round_accepted_result timeouts leaks continuation drained scheduler players bound
+          rcases round_accepted_result timeouts leaks continuation drained scheduler
+              players bound
               inclusion event solitary owner owned sent ready action output entry message call
                 submitted noRepeat
               execution middle trace sameConfig recorded sole witness moved with
-            ⟨sameMiddle, recordedMiddle, soleMiddle, witnessMiddle⟩ | ⟨completed, continuation⟩
-          · obtain ⟨middleTrace⟩ := app.raw_trace_round (serviceInitialLaw setup mode) horizon
+            ⟨sameMiddle, recordedMiddle, soleMiddle, witnessMiddle⟩ |
+              ⟨completed, continuation⟩
+          · obtain ⟨middleTrace⟩ := app.raw_trace_round (serviceInitialLaw setup deps) horizon
               scheduler players remaining execution middle trace moved
             exact ih remaining middle stopped (by omega) middleTrace sameMiddle recordedMiddle
               soleMiddle witnessMiddle rest done
@@ -339,28 +306,28 @@ private theorem runUntil_accepted_result
 including a failed result and subsequent automatic completions, for every
 continuation that automatic completion leaves unchanged. -/
 theorem FreshCall.accepted_continuation
-    (timeouts : EventTimeouts (serviceGraph setup mode))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
-    {Result : Type*} (continuation : (serviceGraph setup mode).Config → PMF Result)
-    (drained : ∀ state : EventGraphRuntime.State (serviceGraph setup mode),
+    (timeouts : EventTimeouts (serviceGraph setup deps))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup deps)))
+    {Result : Type*} (continuation : (serviceGraph setup deps).Config → PMF Result)
+    (drained : ∀ state : EventGraphRuntime.State (serviceGraph setup deps),
       continuation state.drain.config = continuation state.config)
     {horizon remaining : Nat} (scheduler : ((reactiveApplication timeouts) leaks).Scheduler)
     (players : Player → ((reactiveApplication timeouts) leaks).Policy)
-    (bound : (serviceGraph setup mode).EventId → Nat)
+    (bound : (serviceGraph setup deps).EventId → Nat)
     (inclusion : ProtectedInclusion timeouts leaks
-      (serviceInitialLaw setup mode) horizon scheduler bound)
-    (complete : CompletesPlay timeouts leaks (serviceInitialLaw setup mode) horizon scheduler)
-    (event : (serviceGraph setup mode).EventId) (solitary :
-      (serviceGraph setup mode).Solitary event) (owner : Player)
-    (owned : (serviceGraph setup mode).actor? event = some owner)
+      (serviceInitialLaw setup deps) horizon scheduler bound)
+    (complete : CompletesPlay timeouts leaks (serviceInitialLaw setup deps) horizon scheduler)
+    (event : (serviceGraph setup deps).EventId) (solitary :
+      (serviceGraph setup deps).Solitary event) (owner : Player)
+    (owned : (serviceGraph setup deps).actor? event = some owner)
     (execution : ((reactiveApplication timeouts) leaks).Execution)
-    (trace : (((reactiveApplication timeouts) leaks).protocol (serviceInitialLaw setup mode) horizon
+    (trace : (((reactiveApplication timeouts) leaks).protocol (serviceInitialLaw setup deps) horizon
       scheduler).Trace (some ⟨remaining, none, execution⟩))
     (ready : execution.application.config.cut.Ready event)
-    (action : (serviceGraph setup mode).Action event)
-    (output : ((serviceGraph setup mode).outputLayout event).Value)
+    (action : (serviceGraph setup deps).Action event)
+    (output : ((serviceGraph setup deps).outputLayout event).Value)
     (entry : ((reactiveApplication timeouts) leaks).PlayerEntry)
-    (message : Message Player (WitnessedPacket (serviceGraph setup mode)))
+    (message : Message Player (WitnessedPacket (serviceGraph setup deps)))
     (recorded : entry ∈ execution.logs owner)
     (call : FreshCall setup leaks owner event bound entry message)
     (sole : ∀ other ∈ execution.logs owner,
@@ -379,7 +346,7 @@ theorem FreshCall.accepted_continuation
         continuation after := by
   let app := (reactiveApplication timeouts) leaks
   have accounted : execution.environmentRecall.length + remaining = horizon :=
-    app.raw_trace_horizon (serviceInitialLaw setup mode) horizon scheduler trace
+    app.raw_trace_horizon (serviceInitialLaw setup deps) horizon scheduler trace
   have countEq : horizon - execution.environmentRecall.length = remaining := by omega
   have submitted := recorded_fresh_call timeouts leaks trace owner event bound entry message
     recorded call
@@ -398,7 +365,7 @@ theorem FreshCall.accepted_continuation
   · obtain ⟨used, enough, rounds, lengthEq⟩ := app.runUntil_runRounds scheduler players _
       remaining execution stopped reached
     obtain ⟨stoppedTrace⟩ := app.raw_trace_runRounds
-      (serviceInitialLaw setup mode) horizon scheduler players
+      (serviceInitialLaw setup deps) horizon scheduler players
       (remaining - used) used execution stopped (by
         simpa only [Nat.sub_add_cancel enough] using trace) rounds
     have terminal := complete _ stoppedTrace (by
@@ -411,24 +378,24 @@ theorem FreshCall.accepted_continuation
 /-- A protected recorded call has the full graph continuation of its fixed
 graph action, including a failed result and subsequent automatic completions. -/
 theorem FreshCall.accepted_runPlan
-    (timeouts : EventTimeouts (graph setup))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-    (profile : (graph setup).BehavioralProfile)
+    (timeouts : EventTimeouts setup.informationGraph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
+    (profile : setup.informationGraph.BehavioralProfile)
     {horizon remaining : Nat} (scheduler : (application setup timeouts leaks).Scheduler)
     (players : Player → (application setup timeouts leaks).Policy)
-    (bound : (graph setup).EventId → Nat)
+    (bound : setup.informationGraph.EventId → Nat)
     (inclusion : ProtectedInclusion timeouts leaks (initialLaw setup) horizon scheduler bound)
     (complete : CompletesPlay timeouts leaks (initialLaw setup) horizon scheduler)
-    (event : (graph setup).EventId) (owner : Player)
-    (owned : (graph setup).actor? event = some owner)
+    (event : setup.informationGraph.EventId) (owner : Player)
+    (owned : setup.informationGraph.actor? event = some owner)
     (execution : (application setup timeouts leaks).Execution)
     (trace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some ⟨remaining, none, execution⟩))
     (ready : execution.application.config.cut.Ready event)
-    (action : (graph setup).Action event)
-    (output : ((graph setup).outputLayout event).Value)
+    (action : setup.informationGraph.Action event)
+    (output : (setup.informationGraph.outputLayout event).Value)
     (entry : (application setup timeouts leaks).PlayerEntry)
-    (message : Message Player (WitnessedPacket (graph setup)))
+    (message : Message Player (WitnessedPacket setup.informationGraph))
     (recorded : entry ∈ execution.logs owner)
     (call : FreshCall setup leaks owner event bound entry message)
     (sole : ∀ other ∈ execution.logs owner,
@@ -442,17 +409,20 @@ theorem FreshCall.accepted_runPlan
     (((application setup timeouts leaks).runUntilHorizon scheduler players
         (fun final => event ∈ final.application.config.cut.completed) horizon execution).bind
       fun stopped =>
-        (graph setup).runPlan ((graph setup).policyPlan profile (graph setup).canonicalScheduler)
+        setup.informationGraph.runPlan
+          (setup.informationGraph.policyPlan profile setup.informationGraph.canonicalScheduler)
           stopped.application.config.remaining stopped.application.config) =
       (execution.application.config.step event ready action).bind fun after =>
-        (graph setup).runPlan ((graph setup).policyPlan profile (graph setup).canonicalScheduler)
+        setup.informationGraph.runPlan
+          (setup.informationGraph.policyPlan profile setup.informationGraph.canonicalScheduler)
           after.remaining after :=
   FreshCall.accepted_continuation timeouts leaks
-    (fun config => (graph setup).runPlan
-      ((graph setup).policyPlan profile (graph setup).canonicalScheduler) config.remaining config)
-    (fun state => (EventGraphRuntime.State.drain_runPlan_canonical setup.eventGraph profile
+    (fun config => setup.informationGraph.runPlan
+      (setup.informationGraph.policyPlan profile setup.informationGraph.canonicalScheduler)
+        config.remaining config)
+    (fun state => (EventGraphRuntime.State.drain_runPlan_canonical setup.informationGraph profile
       state).symm) scheduler players bound inclusion complete event
-    (setup.eventGraph.sequentialize_solitary event) owner owned execution trace ready action output
-    entry message recorded call sole witness noRepeat
+    (setup.informationGraph.sequentialize_solitary event) owner owned execution trace ready
+    action output entry message recorded call sole witness noRepeat
 
 end Vegas

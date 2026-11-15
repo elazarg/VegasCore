@@ -355,7 +355,7 @@ private theorem survivorDrain (e : Bool) : (survivorOpened e).drain = survivorFi
   have eligible : ∃ named, (survivorOpened e).AutomaticReady named := ⟨event 3, automaticReady e⟩
   have unique (witness : ∃ named, (survivorOpened e).AutomaticReady named) :
       Classical.choose witness = event 3 :=
-    setup.eventGraph.sequentialize_ready_unique _ (Classical.choose_spec witness).1
+    setup.informationGraph.sequentialize_ready_unique _ (Classical.choose_spec witness).1
       (automaticReady e).1
   change State.drainFuel 1 (survivorOpened e) = _
   simp only [State.drainFuel, eligible, ↓reduceDIte, unique]

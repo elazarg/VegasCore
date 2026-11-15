@@ -29,21 +29,21 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 omit [Fintype Player] in
 private theorem withheld_primary_drain_failed
-    {sent : (graph setup).Config} {event : (graph setup).EventId}
+    {sent : setup.informationGraph.Config} {event : setup.informationGraph.EventId}
     (ready : sent.cut.Ready event) {owner : Player} {payload : L.Ty}
-    {binding : EventGraph.FieldRef (graph setup).layout (.binding owner payload)}
-    {checks : List (EventGraph.GuardCheck (graph setup).layout payload)}
-    {outputEq : (graph setup).outputLayout event = .publication payload}
-    (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .resolve owner payload binding checks)
-    (primary : EventGraphRuntime.State (graph setup))
+    {binding : EventGraph.FieldRef setup.informationGraph.layout (.binding owner payload)}
+    {checks : List (EventGraph.GuardCheck setup.informationGraph.layout payload)}
+    {outputEq : setup.informationGraph.outputLayout event = .publication payload}
+    (codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .resolve owner payload binding checks)
+    (primary : EventGraphRuntime.State setup.informationGraph)
     (member : primary.config ∈ (sent.step event ready
       (cast (congrArg EventGraph.EventField.Action outputEq.symm) false)).support) :
     StoreEventFailed primary.drain.config.store event := by
@@ -54,7 +54,8 @@ private theorem withheld_primary_drain_failed
       (sent.store field).isSome = true := by
     intro field present
     apply sent.read_available ready
-    rw [← EventGraph.EventCode.readFields_cast outputEq ((graph setup).nodes event), codeEq]
+    rw [← EventGraph.EventCode.readFields_cast outputEq (setup.informationGraph.nodes event),
+      codeEq]
     exact present
   rw [EventGraph.EventCode.resolveOutput?_false_eq_failure binding checks sent.store available]
     at resolved
@@ -82,7 +83,7 @@ theorem disclosure_sourceKernel
       scheduler).BehavioralAssessment) {who : Player}
     (site : (onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
       scheduler).InformationSite who)
-    {event : (graph setup).EventId}
+    {event : setup.informationGraph.EventId}
     (pending : pendingEvent setup timeouts leaks who site.1 = some event)
     (law : PMF ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
       scheduler).Choice who site.1))
@@ -93,11 +94,11 @@ theorem disclosure_sourceKernel
     (turn : execution.application.publicView.ownTurn? who = some event)
     (ordered : execution.application.config.cut.IsPrefix (siteRank (timeouts := timeouts) site.1))
     {payload : L.Ty}
-    {binding : EventGraph.FieldRef (graph setup).layout (.binding who payload)}
-    {checks : List (EventGraph.GuardCheck (graph setup).layout payload)}
-    (outputEq : (graph setup).outputLayout event = .publication payload)
-    (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .resolve who payload binding checks)
+    {binding : EventGraph.FieldRef setup.informationGraph.layout (.binding who payload)}
+    {checks : List (EventGraph.GuardCheck setup.informationGraph.layout payload)}
+    (outputEq : setup.informationGraph.outputLayout event = .publication payload)
+    (codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .resolve who payload binding checks)
     {point : ProtocolState setup.program}
     (decoded : sourceServicePrefix? setup (siteRank (timeouts := timeouts) site.1)
       execution.application.config =
@@ -149,9 +150,10 @@ theorem disclosure_sourceKernel
   have traceHere : (menu.protocol (initialLaw setup) horizon scheduler).Trace
       (some ⟨remaining, some who, execution⟩) := current ▸ history.1.trace
   -- The disclosing action and the point it reaches.
-  let disclose : (graph setup).Action event :=
+  let disclose : setup.informationGraph.Action event :=
     cast (congrArg EventGraph.EventField.Action outputEq.symm) true
-  have owned : (graph setup).actor? event = some who := nodeView_resolve_actor outputEq codeEq
+  have owned : setup.informationGraph.actor? event = some who := nodeView_resolve_actor outputEq
+    codeEq
   have pointDecoded : decodedPoint setup execution.application.config = some point :=
     (decodedPoint_eq_of_isPrefix ordered).trans decoded
   have clear := defaulted_eq_empty_of_decodedIntended pointDecoded intendedPoint

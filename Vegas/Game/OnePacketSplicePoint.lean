@@ -321,8 +321,8 @@ theorem initial_public_cells_eq {mine others : State L setup.context}
 /-- Agreeing public source cells identify every public compiled initial input. -/
 theorem initial_public_inputs_eq {mine others : State L setup.context}
     (mineCells : InitialCellsAt mine p) (otherCells : InitialCellsAt others w)
-    (agree : PublicCellsAgree setup p w) (input : (graph setup).InputId)
-    (publicField : (graph setup).fieldPublic (.inl input)) :
+    (agree : PublicCellsAgree setup p w) (input : setup.informationGraph.InputId)
+    (publicField : setup.informationGraph.fieldPublic (.inl input)) :
     setup.eventInputs mine input = setup.eventInputs others input := by
   obtain ⟨name, kind, source, found⟩ :=
     (ContextRefs.initial_coversPrefix setup.program).1 input
@@ -366,7 +366,8 @@ the player sees. -/
 theorem betweenPairs_of_visible {who : Player}
     (visibleAgree : ∀ name {kind : CellTy Player L}, (cellField kind).VisibleTo who →
       ProtocolState.cell? setup.program p name kind = ProtocolState.cell? setup.program q name kind)
-    {field : (graph setup).Field} (visible : (graph setup).fieldVisibleTo who field) :
+    {field : setup.informationGraph.Field} (visible : setup.informationGraph.fieldVisibleTo who
+      field) :
     (betweenPairs publicAgree succeed).pair field = none := by
   have seen : (cellField (fieldCell setup field).2).VisibleTo who :=
     (layout_fieldCell setup field) ▸ visible
@@ -377,9 +378,9 @@ player** when every accepted handle belongs to the owner of its field. -/
 theorem fixes_between_of_visible {who : Player}
     (visibleAgree : ∀ name {kind : CellTy Player L}, (cellField kind).VisibleTo who →
       ProtocolState.cell? setup.program p name kind = ProtocolState.cell? setup.program q name kind)
-    {table : AcceptedHandles (graph setup)}
+    {table : AcceptedHandles setup.informationGraph}
     (owned : ∀ field handle, table field = some handle →
-      ∃ payload, (graph setup).layout field = .binding handle.1 payload) :
+      ∃ payload, setup.informationGraph.layout field = .binding handle.1 payload) :
     (HiddenSwap.ofPairs (betweenPairs publicAgree succeed)
       (betweenHandlePairs setup p q table)).Fixes who := by
   refine ⟨fun field visible => ?_, fun event acting => ?_, fun slot => ?_⟩
@@ -388,13 +389,13 @@ theorem fixes_between_of_visible {who : Player}
     rfl
   · change (betweenPairs publicAgree succeed).action event = id
     unfold EventGraph.SwapPairs.action
-    cases nodeView (graph setup) event with
+    cases nodeView setup.informationGraph event with
     | resolve | sample => rfl
     | bind owner payload outputEq codeEq =>
         rw [nodeView_bind_actor outputEq codeEq] at acting
         cases Option.some.inj acting
-        have visible : (graph setup).fieldVisibleTo who (.inr event) := by
-          change ((graph setup).outputLayout event).VisibleTo who
+        have visible : setup.informationGraph.fieldVisibleTo who (.inr event) := by
+          change (setup.informationGraph.outputLayout event).VisibleTo who
           rw [outputEq]
           rfl
         rw [betweenPairs_of_visible visibleAgree visible]

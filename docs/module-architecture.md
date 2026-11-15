@@ -26,8 +26,11 @@ it does not reproduce their state updates in another interpreter.
 
 The [absorbing-default semantics](source-absorbing-failure.md) checks that this source
 executor and the graph executor preserve full configurations under compilation.
-The compiler generates sequential dependencies to retain public default timing;
-its scheduling proof uses the unique ready event. The sole ledger application
+The compiler first constructs declared dataflow dependencies, then adds the
+source information order to retain public completion and default timing. The
+full-source scheduling proof uses the information graph's unique ready event.
+The [dependency design](event-graph-dependencies.md) separates these choices
+from edge relaxation and actor service. The sole ledger application
 derives default control from the graph configuration and performs bounded
 automatic completion. Its raw transitions refine finite supported graph paths;
 initialized histories retain reachability, cells, deadlines and quiescence.
@@ -41,11 +44,11 @@ The direct sequential physical-client laws compose the source continuation
 with silent expiry, typed acceptance and chance sampling in
 [SourceServiceFirstTurnCompletion](../Vegas/Game/SourceServiceFirstTurnCompletion.lean).
 They preserve the joint typed-state/public-default law of every source profile.
-The mode-parametric interfaces in
-[ServiceHonestLaw](../Vegas/Game/ServiceHonestLaw.lean) require public-barrier
-ordering. For compiled service graphs, that premise identifies the graph with
-the same sequential graph (`serviceGraph_eq_sequential`); it adds no concurrent
-compiler mode. [CompilerCorrectness](../Vegas/Game/CompilerCorrectness.lean)
+The full-source interfaces in
+[ServiceHonestLaw](../Vegas/Game/ServiceHonestLaw.lean) use the source information
+graph directly. Asynchronous service retains arbitrary public scheduling and
+per-event deadlines under its service contract.
+[CompilerCorrectness](../Vegas/Game/CompilerCorrectness.lean)
 realizes the law with bounded-menu clients under the supplied value-coverage
 and capacity interfaces. The lower graph APIs retain genuinely nonordered
 results, including the different raw reveal-order laws in

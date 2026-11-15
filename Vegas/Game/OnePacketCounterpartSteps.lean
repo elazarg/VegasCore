@@ -23,8 +23,8 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
 
 /-- **A hidden swap fixes chance masses.** -/
-theorem completionMass_swap (swap : HiddenSwap (graph setup))
-    (before after : EventGraphRuntime.State (graph setup)) :
+theorem completionMass_swap (swap : HiddenSwap setup.informationGraph)
+    (before after : EventGraphRuntime.State setup.informationGraph) :
     completionMass setup (before.swap swap) (after.swap swap) =
       completionMass setup before after := by
   apply completionMass_eq_of_public

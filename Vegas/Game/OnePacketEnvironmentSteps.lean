@@ -38,8 +38,8 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
-  (timeouts : EventTimeouts (graph setup))
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+  (timeouts : EventTimeouts setup.informationGraph)
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
 
 /-- The network an operational state records. -/
 def OperationalState.network (state : OperationalState setup timeouts leaks) :
@@ -76,28 +76,28 @@ def environmentMass :
 variable {setup timeouts leaks scheduler}
 
 /-- No new graph record contributes no chance mass. -/
-theorem completionMass_of_config_eq {before after : EventGraphRuntime.State (graph setup)}
+theorem completionMass_of_config_eq {before after : EventGraphRuntime.State setup.informationGraph}
     (same : after.config = before.config) : completionMass setup before after = 1 := by
   unfold completionMass
   rw [same, List.drop_length]
 
 /-- The completion mass of a completion with the given event and action is the
 graph step's mass for a chance event. -/
-theorem completionMass_of_chance (before after : EventGraphRuntime.State (graph setup))
-    {event : (graph setup).EventId} (ready : before.config.cut.Ready event)
-    {action : (graph setup).Action event}
+theorem completionMass_of_chance (before after : EventGraphRuntime.State setup.informationGraph)
+    {event : setup.informationGraph.EventId} (ready : before.config.cut.Ready event)
+    {action : setup.informationGraph.Action event}
     (member : after.config ∈ (before.config.step event ready action).support)
-    (chance : (graph setup).actor? event = none) :
+    (chance : setup.informationGraph.actor? event = none) :
     completionMass setup before after =
       ((before.config.step event ready action) after.config).toReal := by
-  let available := EventGraph.EventCode.eval?_isSome_of_reads ((graph setup).nodes event)
+  let available := EventGraph.EventCode.eval?_isSome_of_reads (setup.informationGraph.nodes event)
     (before.config.effectiveAction event action) before.config.store
     (fun _ read => before.config.read_available ready read)
-  let law := (((graph setup).nodes event).eval?
+  let law := ((setup.informationGraph.nodes event).eval?
     (before.config.effectiveAction event action) before.config.store).get available
-  have evaluate : ((graph setup).nodes event).eval?
+  have evaluate : (setup.informationGraph.nodes event).eval?
       (EventGraph.EventCode.actionOfActorNone _ chance) before.config.store = some law := by
-    rw [← EventGraph.EventCode.action_eq_of_actor_none ((graph setup).nodes event) chance
+    rw [← EventGraph.EventCode.action_eq_of_actor_none (setup.informationGraph.nodes event) chance
       (before.config.effectiveAction event action)
       (EventGraph.EventCode.actionOfActorNone _ chance)]
     exact (Option.some_get available).symm
@@ -105,7 +105,8 @@ theorem completionMass_of_chance (before after : EventGraphRuntime.State (graph 
   obtain ⟨value, _supported, reached⟩ := PMF.support_map .. ▸ member
   have injective : Function.Injective (before.config.complete event ready action) := by
     intro first second equal
-    have outputs := congrArg (fun config : (graph setup).Config => config.outputs event) equal
+    have outputs := congrArg (fun config : setup.informationGraph.Config => config.outputs event)
+      equal
     simp only [EventGraph.Config.complete_output_same] at outputs
     exact Option.some.inj outputs
   unfold completionMass
@@ -119,15 +120,15 @@ theorem completionMass_of_chance (before after : EventGraphRuntime.State (graph 
   rw [pmf_map_apply_of_injective _ injective]
 
 /-- A primary graph step contributes its chance atom mass, or one for an owned event. -/
-theorem completionMass_of_step {before after : EventGraphRuntime.State (graph setup)}
-    {event : (graph setup).EventId} {ready : before.config.cut.Ready event}
-    {action : (graph setup).Action event}
+theorem completionMass_of_step {before after : EventGraphRuntime.State setup.informationGraph}
+    {event : setup.informationGraph.EventId} {ready : before.config.cut.Ready event}
+    {action : setup.informationGraph.Action event}
     (member : after.config ∈ (before.config.step event ready action).support) :
     completionMass setup before after =
-      match (graph setup).actor? event with
+      match setup.informationGraph.actor? event with
       | none => (before.config.step event ready action after.config).toReal
       | some _ => 1 := by
-  cases acting : (graph setup).actor? event with
+  cases acting : setup.informationGraph.actor? event with
   | none => exact completionMass_of_chance before after ready member acting
   | some owner =>
       obtain ⟨value, _output, history⟩ := before.config.step_completion event ready action
@@ -137,9 +138,9 @@ theorem completionMass_of_step {before after : EventGraphRuntime.State (graph se
       simp only [EventGraph.completion, acting, reduceCtorEq, ↓reduceDIte]
 
 private theorem completionMass_of_step_path
-    {before middle after : EventGraphRuntime.State (graph setup)}
-    {event : (graph setup).EventId} {ready : before.config.cut.Ready event}
-    {action : (graph setup).Action event}
+    {before middle after : EventGraphRuntime.State setup.informationGraph}
+    {event : setup.informationGraph.EventId} {ready : before.config.cut.Ready event}
+    {action : setup.informationGraph.Action event}
     (member : middle.config ∈ (before.config.step event ready action).support)
     (path : Relation.ReflTransGen EventGraph.Config.Step middle.config after.config) :
     completionMass setup before after = completionMass setup before middle := by
@@ -147,7 +148,7 @@ private theorem completionMass_of_step_path
     middle.config member
   have retained : after.config.outputs event = some value := by
     change after.config.store (.inr event) = some value
-    have retain {first last : (graph setup).Config}
+    have retain {first last : setup.informationGraph.Config}
         (steps : Relation.ReflTransGen EventGraph.Config.Step first last)
         (present : first.store (.inr event) = some value) :
         last.store (.inr event) = some value := by
@@ -165,7 +166,7 @@ private theorem completionMass_of_step_path
   rw [retained, stored]
 
 private theorem completionMass_of_automatic_path
-    {before after : EventGraphRuntime.State (graph setup)}
+    {before after : EventGraphRuntime.State setup.informationGraph}
     (path : Relation.ReflTransGen EventGraphRuntime.State.AutomaticStep before after) :
     completionMass setup before after = 1 := by
   rcases path.cases_head with same | ⟨middle, moved, tail⟩
@@ -183,21 +184,21 @@ private theorem pure_apply_of_mem {α : Type*} {point reached : α}
   rw [(PMF.mem_support_pure_iff _ _).mp member, PMF.pure_apply_self, ENNReal.toReal_one]
 
 /-- An expiry that completes an event completes one with an actor. -/
-theorem expire_completion_actor (state next : EventGraphRuntime.State (graph setup))
-    (expired : (graph setup).EventId)
+theorem expire_completion_actor (state next : EventGraphRuntime.State setup.informationGraph)
+    (expired : setup.informationGraph.EventId)
     (changed : next ∈ (EventGraphRuntime.environmentStep timeouts state
       (.expire expired)).support)
-    {event : (graph setup).EventId} {ready : state.config.cut.Ready event}
-    {action : (graph setup).Action event}
+    {event : setup.informationGraph.EventId} {ready : state.config.cut.Ready event}
+    {action : setup.informationGraph.Action event}
     (member : next.config ∈ (state.config.step event ready action).support) :
-    ∃ actor, (graph setup).actor? event = some actor := by
+    ∃ actor, setup.informationGraph.actor? event = some actor := by
   have stutter : next = state → False := fun same => config_ne_of_step member (by rw [same])
   obtain ⟨_, effect⟩ := environmentStep_expire_config_activated timeouts state next
     expired changed
   rcases effect with ⟨configEq, _⟩ | ⟨expiredReady, expiredAction, expiredMember, _⟩
   · exact (config_ne_of_step member configEq).elim
   · cases step_event_unique expiredMember member
-    cases view : nodeView (graph setup) expired with
+    cases view : nodeView setup.informationGraph expired with
     | bind owner _ outputEq codeEq => exact ⟨owner, nodeView_bind_actor outputEq codeEq⟩
     | resolve owner _ _ _ outputEq codeEq => exact ⟨owner, nodeView_resolve_actor outputEq codeEq⟩
     | sample payload law outputEq codeEq =>
@@ -219,13 +220,13 @@ theorem expire_completion_actor (state next : EventGraphRuntime.State (graph set
 
 
 /-- The native operation includes its deterministic automatic tail. -/
-theorem applicationStep_mass (state next : EventGraphRuntime.State (graph setup))
-    (command : EnvironmentCommand (graph setup))
+theorem applicationStep_mass (state next : EventGraphRuntime.State setup.informationGraph)
+    (command : EnvironmentCommand setup.informationGraph)
     (changed : next ∈ ((application setup timeouts leaks).environment state command).support) :
     ((application setup timeouts leaks).environment state command next).toReal =
       completionMass setup state next := by
   let app := application setup timeouts leaks
-  have pureCase (native : EventGraphRuntime.State (graph setup))
+  have pureCase (native : EventGraphRuntime.State setup.informationGraph)
       (law : EventGraphRuntime.environmentStep timeouts state command = PMF.pure native)
       (mass : completionMass setup state native.drain = 1) :
       (app.environment state command next).toReal = completionMass setup state next := by
@@ -262,15 +263,16 @@ theorem applicationStep_mass (state next : EventGraphRuntime.State (graph setup)
         simp only [acting]
   | executeSample event =>
       by_cases ready : state.config.cut.Ready event
-      · cases view : nodeView (graph setup) event with
+      · cases view : nodeView setup.informationGraph event with
         | sample payload distribution outputEq codeEq =>
             let action := cast (congrArg EventGraph.EventField.Action outputEq.symm) PUnit.unit
-            let available := EventGraph.EventCode.eval?_isSome_of_reads ((graph setup).nodes event)
+            let available := EventGraph.EventCode.eval?_isSome_of_reads
+              (setup.informationGraph.nodes event)
               (state.config.effectiveAction event action) state.config.store
               (fun _ read => state.config.read_available ready read)
-            let draw := (((graph setup).nodes event).eval?
+            let draw := ((setup.informationGraph.nodes event).eval?
               (state.config.effectiveAction event action) state.config.store).get available
-            have evaluates : ((graph setup).nodes event).eval?
+            have evaluates : (setup.informationGraph.nodes event).eval?
                 (state.config.effectiveAction event action) state.config.store = some draw :=
               (Option.some_get available).symm
             have graphLaw := state.config.step_eq_map_of_eval event ready action draw evaluates
@@ -282,13 +284,14 @@ theorem applicationStep_mass (state next : EventGraphRuntime.State (graph setup)
               rw [environmentStep_executeSample_eq timeouts state event ready payload distribution
                 outputEq codeEq view, graphLaw, PMF.map_comp, PMF.map_comp]
               rfl
-            have retained (value : ((graph setup).outputLayout event).Value) :
+            have retained (value : (setup.informationGraph.outputLayout event).Value) :
                 (native value).drain.config.outputs event = some value :=
               (native value).drain_store_of_some (.inr event) value
                 (state.config.complete_output_same event ready action value)
             have injective : Function.Injective (fun value => (native value).drain) := by
               intro first second same
-              have values := congrArg (fun result : EventGraphRuntime.State (graph setup) =>
+              have values := congrArg (fun result : EventGraphRuntime.State setup.informationGraph
+                =>
                 result.config.outputs event) same
               rw [retained first, retained second] at values
               exact Option.some.inj values
@@ -301,7 +304,7 @@ theorem applicationStep_mass (state next : EventGraphRuntime.State (graph setup)
             have graphInjective : Function.Injective
                 (state.config.complete event ready action) := by
               intro first second same
-              have outputs := congrArg (fun config : (graph setup).Config =>
+              have outputs := congrArg (fun config : setup.informationGraph.Config =>
                 config.outputs event) same
               simp only [EventGraph.Config.complete_output_same] at outputs
               exact Option.some.inj outputs
@@ -329,11 +332,13 @@ private theorem include_primary
     (execution : (application setup timeouts leaks).Execution) (id : MessageId Player) :
     (execution.includePending (application setup timeouts leaks) id).application.config =
         execution.application.config ∨
-      ∃ (event : (graph setup).EventId) (ready : execution.application.config.cut.Ready event)
-        (action : (graph setup).Action event) (native : EventGraphRuntime.State (graph setup))
+      ∃ (event : setup.informationGraph.EventId) (ready : execution.application.config.cut.Ready
+        event)
+        (action : setup.informationGraph.Action event) (native : EventGraphRuntime.State
+          setup.informationGraph)
         (owner : Player),
         native.config ∈ (execution.application.config.step event ready action).support ∧
-        (graph setup).actor? event = some owner ∧
+        setup.informationGraph.actor? event = some owner ∧
         (execution.includePending (application setup timeouts leaks) id).application.config =
           native.drain.config := by
   cases found : execution.network.lookup id with
@@ -359,11 +364,12 @@ private theorem include_primary
 
 /-- An included packet whose complete endpoint is one graph step has an owned primary event. -/
 theorem include_completion_actor (execution : (application setup timeouts leaks).Execution)
-    (id : MessageId Player) {event : (graph setup).EventId}
-    {ready : execution.application.config.cut.Ready event} {action : (graph setup).Action event}
+    (id : MessageId Player) {event : setup.informationGraph.EventId}
+    {ready : execution.application.config.cut.Ready event} {action : setup.informationGraph.Action
+      event}
     (member : (execution.includePending (application setup timeouts leaks) id).application.config ∈
       (execution.application.config.step event ready action).support) :
-    ∃ actor, (graph setup).actor? event = some actor := by
+    ∃ actor, setup.informationGraph.actor? event = some actor := by
   rcases include_primary execution id with same | ⟨primary, primaryReady, chosen, native, owner,
       moved, acting, drained⟩
   · exact (config_ne_of_step member same).elim
@@ -460,7 +466,7 @@ theorem environmentStep_mass (execution reached : (application setup timeouts le
       rw [mass]
       simp only [commandMass, mul_one]
   | application command =>
-      let place : EventGraphRuntime.State (graph setup) → app.Execution := fun state =>
+      let place : EventGraphRuntime.State setup.informationGraph → app.Execution := fun state =>
         { execution with application := state, environmentRecall := record }
       have lawEq : execution.environmentStep app (.application command) =
           (app.environment execution.application command).map place := by
@@ -476,7 +482,7 @@ theorem environmentStep_mass (execution reached : (application setup timeouts le
       exact (applicationStep_mass (timeouts := timeouts) (leaks := leaks)
         execution.application state command changed).trans (mul_one _).symm
 
-variable [Fintype Player] {bounds : MessageBounds (graph setup)} {horizon : Nat}
+variable [Fintype Player] {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
 
 /-- **Scheduler rounds factor through the operational record.** The mass of a
 scheduler round of the one-packet game, under any profile, is the chance mass

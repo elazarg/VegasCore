@@ -20,9 +20,9 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- The certificate emitted by an actual opening names its true current
@@ -30,8 +30,9 @@ candidate value, including certificates obtained by forwarding. -/
 theorem onePacket_opening_candidate
     {control : (application setup timeouts leaks).Control}
     (prior : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some control))
-    (who : Player) (material : WitnessedSubmission (graph setup))
-    (event : (graph setup).EventId) (candidate : Handle (graph setup)) (raw : Raw L)
+    (who : Player) (material : WitnessedSubmission setup.informationGraph)
+    (event : setup.informationGraph.EventId) (candidate : Handle setup.informationGraph) (raw : Raw
+      L)
     (packet : material.call.packet = .opening event candidate raw)
     (certified : ((localEnvelope timeouts) leaks who (control.execution.logs who)
       (control.execution.observe (application setup timeouts leaks) who)
@@ -53,7 +54,8 @@ theorem onePacket_opening_candidate
     cases opening <;> rfl
   have envelope := (localEnvelope_eq_of_recall timeouts) leaks control.execution count.1
     count.2.1 who material
-  have emitted := (congrArg (fun message : Message Player (WitnessedPacket (graph setup)) =>
+  have emitted := (congrArg (fun message : Message Player (WitnessedPacket setup.informationGraph)
+    =>
     message.payload.evidence) envelope).symm.trans certified
   rw [unchanged] at emitted
   exact material.emit_sound control.execution.application who (control.execution.network.known who)
@@ -77,10 +79,10 @@ theorem opening_candidate_of_signed
       original))
     (imagePrior : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some
       repaired))
-    (material : WitnessedSubmission (graph setup))
+    (material : WitnessedSubmission setup.informationGraph)
     {payload : L.Ty}
-    (binding : EventGraph.FieldRef (graph setup).layout (.binding owner payload))
-    (candidate : Handle (graph setup)) (value : L.Val payload)
+    (binding : EventGraph.FieldRef setup.informationGraph.layout (.binding owner payload))
+    (candidate : Handle setup.informationGraph) (value : L.Val payload)
     (leftFixed : original.execution.application.candidates.lookup candidate =
       .openable ⟨payload, value⟩)
     (signed : SignedBinding
@@ -100,7 +102,7 @@ theorem opening_candidate_of_signed
   | inl input =>
       simp only [SignedBinding, field] at signed
       subst candidate
-      have layoutEq : (graph setup).inputLayout input = .binding owner payload := by
+      have layoutEq : setup.informationGraph.inputLayout input = .binding owner payload := by
         simpa only [field, EventGraph.layout, EventGraph.fieldLayout, Sum.elim_inl,
           Sum.elim_inr] using binding.layout_eq
       have accepted := accepted_initial_of_trace (timeouts := timeouts) prior layoutEq
@@ -128,13 +130,13 @@ theorem opening_candidate_of_signed
       unfold CountCallCorrect at correct
       rw [call] at correct
       have owned := correct.2.2.1.trans sender
-      have outputEq : (graph setup).outputLayout event = .binding owner payload := by
+      have outputEq : setup.informationGraph.outputLayout event = .binding owner payload := by
         simpa only [field, EventGraph.layout, EventGraph.fieldLayout, Sum.elim_inl,
           Sum.elim_inr] using binding.layout_eq
-      have codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-          ((graph setup).nodes event) = .bind owner payload := by
-        generalize cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-          ((graph setup).nodes event) = code
+      have codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+          (setup.informationGraph.nodes event) = .bind owner payload := by
+        generalize cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+          (setup.informationGraph.nodes event) = code
         cases code
         rfl
       have node := nodeView_eq_bind outputEq codeEq

@@ -26,9 +26,9 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 private theorem exists_response_trace_with_record
@@ -84,11 +84,11 @@ theorem binding_trace (frame : DirectedBindingFrame (timeouts := timeouts) memor
       (some ⟨remaining, some owner, repaired⟩))
     (records : operationalRecord setup timeouts leaks bounds horizon scheduler prior =
       operationalRecord setup timeouts leaks bounds horizon scheduler imagePrior)
-    (event : (graph setup).EventId) (payload : L.Ty)
-    (outputEq : (graph setup).outputLayout event = .binding owner payload)
-    (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .bind owner payload)
-    (node : nodeView (graph setup) event = .bind owner payload outputEq codeEq)
+    (event : setup.informationGraph.EventId) (payload : L.Ty)
+    (outputEq : setup.informationGraph.outputLayout event = .binding owner payload)
+    (codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .bind owner payload)
+    (node : nodeView setup.informationGraph event = .bind owner payload outputEq codeEq)
     (serial : Nat) (opening : Option (Raw L))
     (ready : original.application.config.cut.Ready event)
     (turn : original.application.publicView.ownTurn? owner = some event)
@@ -116,8 +116,9 @@ theorem binding_trace (frame : DirectedBindingFrame (timeouts := timeouts) memor
   intro app view response change remembered
   have initializedPrior := prior
   change ((bounds.onePacketMenu timeouts leaks).protocol
-    (serviceInitialLaw setup .sequential) horizon scheduler).Trace _ at initializedPrior
-  rw [serviceInitialLaw_eq_inputs] at initializedPrior
+    (initialLaw setup) horizon scheduler).Trace _ at initializedPrior
+  rw [initialLaw, serviceInitialLaw_eq_inputs (deps := setup.informationDependencies) setup]
+    at initializedPrior
   have fresh := bounds.onePacket_binding_fresh timeouts leaks
     (setup.initialLaw.map setup.eventInputs) horizon scheduler initializedPrior owner event serial
     opening member

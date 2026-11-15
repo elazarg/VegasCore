@@ -120,7 +120,7 @@ theorem wellFormed : setup.WellFormed where
 theorem finiteBindingTypes : program.FiniteBindingTypes :=
   ⟨inferInstance, inferInstance, trivial⟩
 
-abbrev graph := serviceGraph setup .concurrentReveals
+abbrev graph := serviceGraph setup setup.revealDependencies
 
 def bindingEvent (owner : Player) : graph.EventId :=
   ⟨owner.val, by have bound := owner.isLt; change owner.val < 4; omega⟩

@@ -41,9 +41,9 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
-  (timeouts : EventTimeouts (graph setup))
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-  (bounds : MessageBounds (graph setup))
+  (timeouts : EventTimeouts setup.informationGraph)
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
+  (bounds : MessageBounds setup.informationGraph)
   (initial : PMF (application setup timeouts leaks).State) (horizon : Nat)
   (scheduler : (application setup timeouts leaks).Scheduler)
 
@@ -159,7 +159,8 @@ theorem onePacket_defaulted_eq_empty_of_readout_law
   have nativeRead : sourceReadout setup timeouts leaks (some control) = some source := by
     rw [← state]
     exact same.symm.trans read
-  have defaults := serviceSourceReadout_defaults setup .sequential timeouts.duration leaks
+  have defaults := serviceSourceReadout_defaults setup setup.informationDependencies
+    timeouts.duration leaks
     control source nativeRead
   exact (congrArg DefaultHistory.defaulted defaults).symm.trans clear
 

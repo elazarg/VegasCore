@@ -30,9 +30,9 @@ open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  [Fintype Player] {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  [Fintype Player] {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 open Classical in
@@ -108,7 +108,7 @@ theorem baseLawAgrees_of_swap_scaled {who : Player}
     (regular : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).History → Prop)
     (first second : (onePacketInformation setup timeouts leaks bounds horizon
       scheduler).InformationSite who)
-    (swap : HiddenSwap (graph setup)) (allowed : Set (graph setup).Inputs)
+    (swap : HiddenSwap setup.informationGraph) (allowed : Set setup.informationGraph.Inputs)
     (initialClosed : ∀ state ∈ (initialLaw setup).support, state.config.inputs ∈ allowed →
       state.swap swap ∈ (initialLaw setup).support)
     (bounded : ∀ handle raw, raw ∈ bounds.values → swap.raw handle raw ∈ bounds.values)

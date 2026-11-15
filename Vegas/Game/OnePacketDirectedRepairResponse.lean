@@ -22,8 +22,8 @@ open SourceProgram Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
 
 namespace DirectedBindingFrame
 
@@ -104,8 +104,9 @@ the operational frame. Candidate provenance and certificate equality are the
 existing native opening facts. -/
 theorem opening_submission (frame : DirectedBindingFrame (timeouts := timeouts) memory owner
   original repaired)
-    (event : (graph setup).EventId) (candidate : Handle (graph setup)) (raw : Raw L)
-    (evidence : EvidenceRequest (graph setup))
+    (event : setup.informationGraph.EventId) (candidate : Handle setup.informationGraph) (raw : Raw
+      L)
+    (evidence : EvidenceRequest setup.informationGraph)
     (rightFixed : repaired.application.candidates.lookup candidate = .openable raw)
     (certified : (WitnessedSubmission.mk ⟨.opening event candidate raw, none⟩ evidence |>.emit
       original.application owner (original.network.known owner)).evidence =

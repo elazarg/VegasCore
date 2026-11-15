@@ -24,8 +24,8 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 namespace RosterCalendarInvariant
 
 variable (setup : Setup (Player := Player) (L := L))
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-  (rosters : (graph setup).EventId → List Player)
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
+  (rosters : setup.informationGraph.EventId → List Player)
   (network : (NetworkPolicy (timeouts setup)) leaks)
   (calendar : ∀ (control : (application setup (Vegas.timeouts setup) leaks).Control),
     ((application setup (Vegas.timeouts setup) leaks).protocol (initialLaw setup)

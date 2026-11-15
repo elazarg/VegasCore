@@ -77,7 +77,7 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
-  (timeouts : EventTimeouts (graph setup))
+  (timeouts : EventTimeouts setup.informationGraph)
 
 /-- A source point at which some history of the intended game ends. -/
 def IntendedReached (point : ProtocolState setup.program) : Prop :=
@@ -88,7 +88,7 @@ section Decoding
 open Classical in
 /-- Read the current source point at the configuration's completed prefix.
 The total reader returns none when the cut or typed cells do not decode. -/
-def decodedPoint (config : (graph setup).Config) : setup.ProtocolState :=
+def decodedPoint (config : setup.informationGraph.Config) : setup.ProtocolState :=
   if ordered : ∃ rank, config.cut.IsPrefix rank then
     sourceServicePrefix? setup ordered.choose config
   else none
@@ -96,7 +96,7 @@ def decodedPoint (config : (graph setup).Config) : setup.ProtocolState :=
 variable {setup timeouts}
 
 /-- At a completed prefix, the decoded point is the readout at that prefix. -/
-theorem decodedPoint_eq_of_isPrefix {config : (graph setup).Config} {rank : Nat}
+theorem decodedPoint_eq_of_isPrefix {config : setup.informationGraph.Config} {rank : Nat}
     (ordered : config.cut.IsPrefix rank) :
     decodedPoint setup config = sourceServicePrefix? setup rank config := by
   have exists_ordered : ∃ rank, config.cut.IsPrefix rank := ⟨rank, ordered⟩
@@ -106,7 +106,7 @@ theorem decodedPoint_eq_of_isPrefix {config : (graph setup).Config} {rank : Nat}
 
 /-- A native endpoint's decoded source point has exactly its public defaults. -/
 theorem decodedPoint_defaults {setup : Setup (Player := Player) (L := L)}
-    {config : (graph setup).Config} {point : ProtocolState setup.program}
+    {config : setup.informationGraph.Config} {point : ProtocolState setup.program}
     (decoded : decodedPoint setup config = some point) :
     ProtocolState.defaults setup.program point = config.defaults := by
   unfold decodedPoint at decoded
@@ -116,7 +116,7 @@ theorem decodedPoint_defaults {setup : Setup (Player := Player) (L := L)}
 
 /-- An intended source decoding certifies that the native default set is empty. -/
 theorem defaulted_eq_empty_of_decodedIntended {setup : Setup (Player := Player) (L := L)}
-    {config : (graph setup).Config} {point : ProtocolState setup.program}
+    {config : setup.informationGraph.Config} {point : ProtocolState setup.program}
     (decoded : decodedPoint setup config = some point)
     (intended : ProtocolState.Intended setup.program point) : config.defaulted = ∅ := by
   apply Finset.eq_empty_iff_forall_notMem.mpr
@@ -130,7 +130,7 @@ theorem defaulted_eq_empty_of_decodedIntended {setup : Setup (Player := Player) 
 /-- At a decoded forced point, activity of the focal player makes every
 player active: the forced point excludes defaults of all other players. -/
 theorem defaulted_eq_empty_of_decodedForced {setup : Setup (Player := Player) (L := L)}
-    {config : (graph setup).Config} {point : ProtocolState setup.program} {who : Player}
+    {config : setup.informationGraph.Config} {point : ProtocolState setup.program} {who : Player}
     (decoded : decodedPoint setup config = some point)
     (forced : ForcedPoint setup who point) (active : who ∉ config.defaulted) :
     config.defaulted = ∅ := by
@@ -146,7 +146,7 @@ theorem defaulted_eq_empty_of_decodedForced {setup : Setup (Player := Player) (L
 /-- At a configuration with a source residual, the decoded point is the
 residual's point. -/
 theorem decodedPoint_eq {profile : BehavioralProfile setup.program} {rank : Nat}
-    {config : (graph setup).Config} (residual : SourceResidual setup profile rank config) :
+    {config : setup.informationGraph.Config} (residual : SourceResidual setup profile rank config) :
     decodedPoint setup config =
       some (residual.lift (ProtocolState.entry residual.program residual.source)) := by
   have ordered : ∃ rank, config.cut.IsPrefix rank := ⟨rank, residual.checkpoint.ordered⟩
@@ -160,9 +160,9 @@ At a configuration with a source residual, completing the ready event with an
 action reaches a configuration whose decoded point is in the support of the
 source step of the decoded action from the previous decoded point. -/
 theorem decodedPoint_step {profile : BehavioralProfile setup.program} {rank : Nat}
-    {before : (graph setup).Config} (residual : SourceResidual setup profile rank before)
-    (event : (graph setup).EventId) (ready : before.cut.Ready event)
-    (action : (graph setup).Action event) (after : (graph setup).Config)
+    {before : setup.informationGraph.Config} (residual : SourceResidual setup profile rank before)
+    (event : setup.informationGraph.EventId) (ready : before.cut.Ready event)
+    (action : setup.informationGraph.Action event) (after : setup.informationGraph.Config)
     (member : after ∈ (before.step event ready action).support) :
     ∃ point next, decodedPoint setup before = some point ∧
       decodedPoint setup after = some next ∧
@@ -199,7 +199,8 @@ end Joint
 section Replay
 
 variable [Fintype Player] (leaks : MessageNetwork.ObservationRule Player
-    (WitnessedPacket (graph setup))) (bounds : MessageBounds (graph setup)) (horizon : Nat)
+    (WitnessedPacket setup.informationGraph)) (bounds : MessageBounds setup.informationGraph)
+      (horizon : Nat)
   (scheduler : (application setup timeouts leaks).Scheduler)
 
 open Classical in

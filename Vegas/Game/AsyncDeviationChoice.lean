@@ -32,20 +32,21 @@ def sampledValue {compiled : Vegas.EventGraph Player L}
     (L.someValue payload)
 
 private theorem chance_completed_value_law
-    {setup : Setup (Player := Player) (L := L)} (timeouts : EventTimeouts (graph setup))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-    (profile : (graph setup).BehavioralProfile)
+    {setup : Setup (Player := Player) (L := L)} (timeouts : EventTimeouts setup.informationGraph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
+    (profile : setup.informationGraph.BehavioralProfile)
     (scheduler : (application setup timeouts leaks).Scheduler)
     (players : Player → (application setup timeouts leaks).Policy)
-    (event : (graph setup).EventId) (ownerless : (graph setup).actor? event = none)
+    (event : setup.informationGraph.EventId) (ownerless : setup.informationGraph.actor? event =
+      none)
     (count : Nat) (execution : (application setup timeouts leaks).Execution)
     (ready : execution.application.config.cut.Ready event)
     {Γ : SourceCtx Player L} {payload : L.Ty}
-    (outputEq : (graph setup).outputLayout event = .publicData payload)
-    (refs : ContextRefs (graph setup).layout Γ)
+    (outputEq : setup.informationGraph.outputLayout event = .publicData payload)
+    (refs : ContextRefs setup.informationGraph.layout Γ)
     (distribution : L.DistExpr (SourcePublicCtx L Γ) payload)
-    (codeEq : cast (congrArg (EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .sample payload (compilePublicDist refs distribution))
+    (codeEq : cast (congrArg (EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .sample payload (compilePublicDist refs distribution))
     (source : State L Γ) (agrees : refs.Agrees source execution.application.config.store)
     (completed : ∀ final ∈ ((application setup timeouts leaks).runUntil scheduler players
       (fun final => event ∈ final.application.config.cut.completed) count execution).support,
@@ -56,13 +57,13 @@ private theorem chance_completed_value_law
       L.evalDist distribution (sourcePublicEnv source) := by
   have raw := chance_completed_output_law timeouts leaks profile scheduler players event ownerless
     count execution ready completed
-  rw [((graph setup).nodes event).action_eq_of_actor_none ownerless
-    (EventCode.actionOfActorNone ((graph setup).nodes event) ownerless)
+  rw [(setup.informationGraph.nodes event).action_eq_of_actor_none ownerless
+    (EventCode.actionOfActorNone (setup.informationGraph.nodes event) ownerless)
     (cast (congrArg EventField.Action outputEq.symm) PUnit.unit),
     sample_step execution.application.config event ready outputEq refs distribution codeEq
       source agrees, PMF.map_comp] at raw
   have projected := congrArg (PMF.map
-    (fun value : Option ((graph setup).outputLayout event).Value =>
+    (fun value : Option (setup.informationGraph.outputLayout event).Value =>
     (value.map (cast (congrArg EventField.Value outputEq))).getD (L.someValue payload))) raw
   simp only [PMF.map_comp, Function.comp_def] at projected
   change
@@ -84,32 +85,32 @@ private theorem chance_completed_value_law
   exact projected.trans (PMF.map_id _)
 
 def sampledTrafficValue
-    (setup : Setup (Player := Player) (L := L)) {mode : EventGraph.ExecutionMode}
-    {duration : (serviceGraph setup mode).EventId → Nat}
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
-    (event : (serviceGraph setup mode).EventId) {payload : L.Ty}
-    (outputEq : (serviceGraph setup mode).outputLayout event = .publicData payload)
-    (traffic : MessageNetwork Player (serviceApplication setup mode duration leaks).Payload ×
+    (setup : Setup (Player := Player) (L := L)) {deps : setup.dataflowGraph.Dependencies}
+    {duration : (serviceGraph setup deps).EventId → Nat}
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup deps)))
+    (event : (serviceGraph setup deps).EventId) {payload : L.Ty}
+    (outputEq : (serviceGraph setup deps).outputLayout event = .publicData payload)
+    (traffic : MessageNetwork Player (serviceApplication setup deps duration leaks).Payload ×
       List (MessageId Player × Bool) ×
-      List (serviceApplication setup mode duration leaks).EnvironmentEntry ×
-      List (serviceApplication setup mode duration leaks).PlayerEntry ×
-      PlayerView (serviceGraph setup mode) × PublicView (serviceGraph setup mode)) :
+      List (serviceApplication setup deps duration leaks).EnvironmentEntry ×
+      List (serviceApplication setup deps duration leaks).PlayerEntry ×
+      PlayerView (serviceGraph setup deps) × PublicView (serviceGraph setup deps)) :
     L.Val payload :=
   ((traffic.2.2.2.2.2.observation.store (.inr event)).map
     (cast (congrArg EventField.Value outputEq))).getD (L.someValue payload)
 
 private theorem sampledTrafficValue_eq
-    (setup : Setup (Player := Player) (L := L)) {mode : EventGraph.ExecutionMode}
-    {duration : (serviceGraph setup mode).EventId → Nat}
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
-    (focal : Player) (event : (serviceGraph setup mode).EventId) {payload : L.Ty}
-    (outputEq : (serviceGraph setup mode).outputLayout event = .publicData payload)
-    (execution : (serviceApplication setup mode duration leaks).Execution) :
+    (setup : Setup (Player := Player) (L := L)) {deps : setup.dataflowGraph.Dependencies}
+    {duration : (serviceGraph setup deps).EventId → Nat}
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup deps)))
+    (focal : Player) (event : (serviceGraph setup deps).EventId) {payload : L.Ty}
+    (outputEq : (serviceGraph setup deps).outputLayout event = .publicData payload)
+    (execution : (serviceApplication setup deps duration leaks).Execution) :
     sampledTrafficValue setup leaks event outputEq
-      ((bindingTraffic (serviceTimeouts setup mode duration)) leaks focal execution) =
+      ((bindingTraffic (serviceTimeouts setup deps duration)) leaks focal execution) =
       sampledValue event outputEq execution.application.config := by
-  have publicField : (serviceGraph setup mode).fieldPublic (.inr event) := by
-    change ((serviceGraph setup mode).outputLayout event).IsPublic
+  have publicField : (serviceGraph setup deps).fieldPublic (.inr event) := by
+    change ((serviceGraph setup deps).outputLayout event).IsPublic
     rw [outputEq]
     trivial
   dsimp only [sampledTrafficValue, bindingTraffic, State.publicView, EventGraph.publicObserve]
@@ -119,55 +120,55 @@ private theorem sampledTrafficValue_eq
 private theorem primary_sample_joint_of_marginal
     {Seed : Type} {Γ : SourceCtx Player L} {payload : L.Ty}
     (name : VarId) (distribution : L.DistExpr (SourcePublicCtx L Γ) payload)
-    (setup : Setup (Player := Player) (L := L)) {mode : EventGraph.ExecutionMode}
-    {duration : (serviceGraph setup mode).EventId → Nat}
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
-    (scheduler : (serviceApplication setup mode duration leaks).Scheduler)
-    (focal : Player) (deviation : (serviceApplication setup mode duration leaks).Policy)
-    (event : (serviceGraph setup mode).EventId)
-    (ownerless : (serviceGraph setup mode).actor? event = none)
-    (alone : ∀ (cut : (serviceGraph setup mode).order.Cut) other, cut.Ready event →
+    (setup : Setup (Player := Player) (L := L)) {deps : setup.dataflowGraph.Dependencies}
+    {duration : (serviceGraph setup deps).EventId → Nat}
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup deps)))
+    (scheduler : (serviceApplication setup deps duration leaks).Scheduler)
+    (focal : Player) (deviation : (serviceApplication setup deps duration leaks).Policy)
+    (event : (serviceGraph setup deps).EventId)
+    (ownerless : (serviceGraph setup deps).actor? event = none)
+    (alone : ∀ (cut : (serviceGraph setup deps).order.Cut) other, cut.Ready event →
       cut.Ready other → other = event)
     (horizon : Nat) (prior : PMF Seed) (source : Seed → Config Player L Γ)
-    (execution : Seed → (serviceApplication setup mode duration leaks).Execution)
-    (pick : MessageNetwork Player (serviceApplication setup mode duration leaks).Payload ×
+    (execution : Seed → (serviceApplication setup deps duration leaks).Execution)
+    (pick : MessageNetwork Player (serviceApplication setup deps duration leaks).Payload ×
       List (MessageId Player × Bool) ×
-      List (serviceApplication setup mode duration leaks).EnvironmentEntry ×
-      List (serviceApplication setup mode duration leaks).PlayerEntry ×
-      PlayerView (serviceGraph setup mode) × PublicView (serviceGraph setup mode) → L.Val payload)
+      List (serviceApplication setup deps duration leaks).EnvironmentEntry ×
+      List (serviceApplication setup deps duration leaks).PlayerEntry ×
+      PlayerView (serviceGraph setup deps) × PublicView (serviceGraph setup deps) → L.Val payload)
     (noise : DecisionView focal Γ → PMF _)
     (factor : prior.map (fun seed => (source seed,
-      (bindingTraffic (serviceTimeouts setup mode duration)) leaks focal (execution seed))) =
+      (bindingTraffic (serviceTimeouts setup deps duration)) leaks focal (execution seed))) =
       (prior.map source).bind fun config =>
         (noise (config.view focal)).map fun traffic => (config, traffic))
     (ready : ∀ seed ∈ prior.support, event ∉ (execution seed).application.config.cut.completed →
       (execution seed).application.config.cut.Ready event)
     (sampled : ∀ seed ∈ prior.support,
-      (((serviceApplication setup mode duration leaks).runUntilHorizon scheduler
+      (((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
         (focalPlayers setup leaks focal deviation)
         (fun final => event ∈ final.application.config.cut.completed) horizon
         (execution seed)).map fun final =>
-          pick ((bindingTraffic (serviceTimeouts setup mode duration)) leaks focal final)) =
+          pick ((bindingTraffic (serviceTimeouts setup deps duration)) leaks focal final)) =
       L.evalDist distribution (sourcePublicEnv (source seed).state)) :
     ∃ nextNoise : DecisionView focal ((name, .publicData payload) :: Γ) → PMF _,
       (prior.bind fun seed =>
-        ((serviceApplication setup mode duration leaks).runUntilHorizon scheduler
+        ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
           (focalPlayers setup leaks focal deviation)
           (fun final => event ∈ final.application.config.cut.completed) horizon
           (execution seed)).map fun final =>
             (sampleSuccessor name (source seed)
-              (pick ((bindingTraffic (serviceTimeouts setup mode duration)) leaks focal final)),
-              (bindingTraffic (serviceTimeouts setup mode duration)) leaks focal final)) =
+              (pick ((bindingTraffic (serviceTimeouts setup deps duration)) leaks focal final)),
+              (bindingTraffic (serviceTimeouts setup deps duration)) leaks focal final)) =
       ((prior.map source).bind fun config =>
         (L.evalDist distribution (sourcePublicEnv config.state)).map
           (sampleSuccessor name config)).bind fun config =>
           (nextNoise (config.view focal)).map fun traffic => (config, traffic) := by
-  let app := serviceApplication setup mode duration leaks
-  let read := fun seed => (bindingTraffic (serviceTimeouts setup mode duration)) leaks focal
+  let app := serviceApplication setup deps duration leaks
+  let read := fun seed => (bindingTraffic (serviceTimeouts setup deps duration)) leaks focal
     (execution seed)
   let phase := fun seed => (app.runUntilHorizon scheduler (focalPlayers setup leaks focal deviation)
     (fun final => event ∈ final.application.config.cut.completed) horizon (execution seed)).map
-      ((bindingTraffic (serviceTimeouts setup mode duration)) leaks focal)
+      ((bindingTraffic (serviceTimeouts setup deps duration)) leaks focal)
   obtain ⟨channel, channelLaw⟩ := exists_updated_observation_kernel_of_readout prior source read
     (fun config => config.view focal) noise factor
     (fun _ => PMF.pure ()) (fun config _ => config) (fun config => config.view focal)
@@ -244,11 +245,11 @@ private theorem path_store_value {compiled : Vegas.EventGraph Player L}
 traffic. Each stopped endpoint is a typed primary checkpoint followed by drain. -/
 theorem sourceService_chance_law
     {setup : Setup (Player := Player) (L := L)}
-    (timeouts : EventTimeouts (graph setup))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (timeouts : EventTimeouts setup.informationGraph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
     {horizon : Nat} {scheduler : (application setup timeouts leaks).Scheduler}
     (complete : CompletesPlay timeouts leaks (initialLaw setup) horizon scheduler)
-    (bound : (graph setup).EventId → Nat) (turns : Nat)
+    (bound : setup.informationGraph.EventId → Nat) (turns : Nat)
     (wholeProfile : BehavioralProfile setup.program)
     (focal : Player) (deviation : (application setup timeouts leaks).Policy)
     {Seed : Type} {Γ : SourceCtx Player L} {openNames : Finset VarId}
@@ -269,7 +270,8 @@ theorem sourceService_chance_law
     (checkpoint : ∀ seed, SourceCheckpoint setup (source seed) refs rank
       (execution seed).application.config)
     (boundary : ∀ seed ∈ prior.support, CompletionBoundary setup leaks scheduler
-      (Function.update (serviceTurnPolicy setup .sequential timeouts.duration leaks bound turns
+      (Function.update (serviceTurnPolicy setup setup.informationDependencies timeouts.duration
+        leaks bound turns
         (firstTurnTiming setup turns) wholeProfile) focal deviation) rank (execution seed))
     (bounded : ∀ seed ∈ prior.support, (execution seed).environmentRecall.length ≤ horizon)
     (noise : DecisionView focal Γ → PMF _)
@@ -278,15 +280,15 @@ theorem sourceService_chance_law
         (noise (config.view focal)).map fun traffic => (config, traffic)) :
     let index : Fin (eventCount (.sample name fresh distribution next)) :=
       ⟨0, by simp [eventCount]⟩
-    let event : (graph setup).EventId := embedding.event index
-    let outputEq : (graph setup).outputLayout event = .publicData payload :=
+    let event : setup.informationGraph.EventId := embedding.event index
+    let outputEq : setup.informationGraph.outputLayout event = .publicData payload :=
       by
         change outputLayout setup.program (embedding.event index) = _
         simpa [index, outputLayout, eventCount] using embedding.layout_eq index
     let sampleRef : FieldRef (graphLayout setup.program) (.publicData payload) :=
       ⟨.inr event, outputEq⟩
     let players := Function.update
-      (serviceTurnPolicy setup .sequential timeouts.duration leaks bound turns
+      (serviceTurnPolicy setup setup.informationDependencies timeouts.duration leaks bound turns
         (firstTurnTiming setup turns) wholeProfile) focal deviation
     let readChoice := fun final : (application setup timeouts leaks).Execution =>
       ((final.application.config.outputs event).map
@@ -306,7 +308,7 @@ theorem sourceService_chance_law
           ((application setup timeouts leaks).runUntilHorizon scheduler players
             (fun current => event ∈ current.application.config.cut.completed) horizon
             (execution seed)).support,
-        ∃ (value : L.Val payload) (native : EventGraphRuntime.State (graph setup)),
+        ∃ (value : L.Val payload) (native : EventGraphRuntime.State setup.informationGraph),
           SourceCheckpoint setup (sampleSuccessor name (source seed) value)
             (refs.cons (name := name) sampleRef) (rank + 1) native.config ∧
           final.application.config = native.drain.config ∧ readChoice final = value := by
@@ -315,15 +317,16 @@ theorem sourceService_chance_law
   have eventRank : event.val = rank := by
     simpa only [event, index, Fin.val_zero, Nat.add_zero] using
       (aligned prior.support_nonempty.choose).graphSuffix.rankEq index
-  have ownerless : (graph setup).actor? event = none := by
-    change (toEventGraph setup.program).actor? event = none
+  have ownerless : setup.informationGraph.actor? event = none := by
+    change (toInformationGraph setup.program).actor? event = none
     simpa [event, index, eventOwner?, eventCount] using
       (aligned prior.support_nonempty.choose).actorEq index
   have codeEq (seed : Seed) :
-      cast (congrArg (EventCode (graph setup).layout) outputEq) ((graph setup).nodes event) =
+      cast (congrArg (EventCode setup.informationGraph.layout) outputEq)
+        (setup.informationGraph.nodes event) =
         .sample payload (compilePublicDist refs distribution) := by
     change cast (congrArg (EventCode (graphLayout setup.program)) outputEq)
-      ((toEventGraph setup.program).nodes event) = _
+      ((toInformationGraph setup.program).nodes event) = _
     simpa [event, index, compileRankedNodes] using (aligned seed).graphSuffix.nodeEq index
   have decodedAction : decodeEventAction setup.program event
       (cast (congrArg EventField.Action outputEq.symm) PUnit.unit) = none := by
@@ -335,10 +338,10 @@ theorem sourceService_chance_law
     have ordered := (boundary seed supported).ordered
     rw [← eventRank] at ordered
     exact ordered.ready event.isLt
-  have alone : ∀ (cut : (graph setup).order.Cut) other,
+  have alone : ∀ (cut : setup.informationGraph.order.Cut) other,
       cut.Ready event → cut.Ready other → other = event := by
     intro cut other ready otherReady
-    exact setup.eventGraph.sequentialize_ready_unique cut otherReady ready
+    exact setup.informationGraph.sequentialize_ready_unique cut otherReady ready
   have phaseEq (seed : Seed) (supported : seed ∈ prior.support) :
       app.runUntilHorizon scheduler players
         (fun final => event ∈ final.application.config.cut.completed) horizon (execution seed) =
@@ -382,7 +385,8 @@ theorem sourceService_chance_law
         sampledTrafficValue setup leaks event outputEq ((bindingTraffic timeouts) leaks focal
           final) =
           sampledValue event outputEq final.application.config :=
-      sampledTrafficValue_eq setup (mode := .sequential) (duration := timeouts.duration)
+      sampledTrafficValue_eq setup (deps := setup.informationDependencies) (duration :=
+        timeouts.duration)
         leaks focal event outputEq final
     simp_rw [pointwise]
     exact chance_completed_value_law timeouts leaks (compileEventProfile setup.program wholeProfile)
@@ -418,7 +422,7 @@ theorem sourceService_chance_law
       (fun query queryReady => alone _ query ready queryReady) quiescent reached
       (completed seed supported final reached)
     have actionEq : action = cast (congrArg EventField.Action outputEq.symm) PUnit.unit :=
-      ((graph setup).nodes event).action_eq_of_actor_none ownerless action _
+      (setup.informationGraph.nodes event).action_eq_of_actor_none ownerless action _
     rw [actionEq, sample_step (execution seed).application.config event ready outputEq refs
       distribution (codeEq seed) (source seed).state (checkpoint seed).agrees,
       PMF.support_map] at primary
@@ -429,8 +433,9 @@ theorem sourceService_chance_law
       ((execution seed).application.config.complete event ready _ _) at nextCheckpoint
     have checked : SourceCheckpoint setup (sampleSuccessor name (source seed) value)
         (refs.cons (name := name) sampleRef) (rank + 1) native.config :=
-      Eq.mp (congrArg (fun config : (graph setup).Config =>
-        SourceCheckpoint (mode := .sequential) setup (sampleSuccessor name (source seed) value)
+      Eq.mp (congrArg (fun config : setup.informationGraph.Config =>
+        SourceCheckpoint (deps := setup.informationDependencies) setup (sampleSuccessor name
+          (source seed) value)
           (refs.cons (name := name) sampleRef) (rank + 1) config) configEq) nextCheckpoint
     refine ⟨value, native, checked, drained, ?_⟩
     have stored : native.config.store (.inr event) =
@@ -484,8 +489,8 @@ private theorem effective_supported_result
 
 
 private theorem foreign_binding_callback
-    (timeouts : EventTimeouts (graph setup))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (timeouts : EventTimeouts setup.informationGraph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
     {Γ : SourceCtx Player L} {openNames : Finset VarId}
     {name : VarId} {owner : Player} {payload : L.Ty}
     (fresh : name ∉ Γ.map Prod.fst) (guard : SourceGuard L Γ owner name payload)
@@ -506,8 +511,8 @@ private theorem foreign_binding_callback
     :
     let index : Fin (eventCount (.commit name owner fresh guard next)) :=
       ⟨0, by simp [eventCount]⟩
-    let event : (graph setup).EventId := embedding.event index
-    let outputEq : (graph setup).outputLayout event = .binding owner payload := by
+    let event : setup.informationGraph.EventId := embedding.event index
+    let outputEq : setup.informationGraph.outputLayout event = .binding owner payload := by
       change outputLayout setup.program (embedding.event index) = _
       simpa [index, outputLayout, eventCount] using embedding.layout_eq index
     ∀ current : (application setup timeouts leaks).Execution,
@@ -526,15 +531,19 @@ private theorem foreign_binding_callback
     have ordered := checkpoint.ordered
     rw [← eventRank] at ordered
     exact ordered.ready event.isLt
+  have actor : setup.informationGraph.actor? event = some owner := by
+    change (toInformationGraph setup.program).actor? (embedding.event index) = some owner
+    simpa [index, eventOwner?, eventCount] using aligned.actorEq index
+  have turn := ownTurn?_of_ready setup current.application ready actor
   have law := sourceServiceCanonicalPolicy_commit setup leaks fresh guard next wholeProfile
     profile refs source embedding refsBefore rank aligned current
     (by rw [same]; exact checkpoint.agrees) (by rw [same]; exact checkpoint.history)
-    (by rw [same]; exact checkpoint.defaults) ready
+    (by rw [same]; exact checkpoint.defaults) turn
   simpa only [active, dite_false] using law
 
 private theorem foreign_binding_fixed_endpoint
-    (timeouts : EventTimeouts (graph setup))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (timeouts : EventTimeouts setup.informationGraph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
     {Γ : SourceCtx Player L} {openNames : Finset VarId}
     {name : VarId} {owner : Player} {payload : L.Ty}
     (fresh : name ∉ Γ.map Prod.fst) (guard : SourceGuard L Γ owner name payload)
@@ -553,20 +562,21 @@ private theorem foreign_binding_fixed_endpoint
     (checkpoint : SourceCheckpoint setup source refs rank execution.application.config)
     (active : owner ∉ source.defaulted)
     {horizon : Nat} (scheduler : (application setup timeouts leaks).Scheduler)
-    (delay bound : (graph setup).EventId → Nat) (turns : Nat)
+    (delay bound : setup.informationGraph.EventId → Nat) (turns : Nat)
     (contract : AsyncContract timeouts leaks (initialLaw setup) horizon scheduler delay bound)
     (timely : AsyncTimely timeouts delay bound)
     (focal : Player) (deviation : (application setup timeouts leaks).Policy)
     (foreign : owner ≠ focal)
     (boundary : CompletionBoundary setup leaks scheduler
-      (Function.update (serviceTurnPolicy setup .sequential timeouts.duration leaks bound turns
+      (Function.update (serviceTurnPolicy setup setup.informationDependencies timeouts.duration
+        leaks bound turns
         (firstTurnTiming setup turns) wholeProfile) focal deviation) rank execution)
     (bounded : execution.environmentRecall.length ≤ horizon)
     (choice : Option (PublicationResult (L.Val payload))) :
     let index : Fin (eventCount (.commit name owner fresh guard next)) :=
       ⟨0, by simp [eventCount]⟩
-    let event : (graph setup).EventId := embedding.event index
-    let outputEq : (graph setup).outputLayout event = .binding owner payload := by
+    let event : setup.informationGraph.EventId := embedding.event index
+    let outputEq : setup.informationGraph.outputLayout event = .binding owner payload := by
       change outputLayout setup.program (embedding.event index) = _
       simpa [index, outputLayout, eventCount] using embedding.layout_eq index
     let action := cast (congrArg EventField.Action outputEq.symm) choice
@@ -580,31 +590,34 @@ private theorem foreign_binding_fixed_endpoint
     ∀ final ∈ ((application setup timeouts leaks).runUntilHorizon scheduler fixed
         (fun current => event ∈ current.application.config.cut.completed) horizon
         execution).support,
-      ∃ native : EventGraphRuntime.State (graph setup),
+      ∃ native : EventGraphRuntime.State setup.informationGraph,
         SourceCheckpoint setup (commitSuccessor name guard source choice)
           (refs.cons (name := name) ⟨.inr event, outputEq⟩) (rank + 1) native.config ∧
         final.application.config = native.drain.config ∧ readChoice final = choice := by
   intro index event outputEq action fixed readChoice
   let app := application setup timeouts leaks
-  let baseline := serviceTurnPolicy setup .sequential timeouts.duration leaks bound turns
+  let baseline := serviceTurnPolicy setup setup.informationDependencies timeouts.duration leaks
+    bound turns
     (firstTurnTiming setup turns) wholeProfile
   let background := Function.update baseline focal deviation
   let member := fun past view =>
-    if serviceTurn setup .sequential timeouts.duration leaks owner event past view = some 0 then
+    if serviceTurn setup setup.informationDependencies timeouts.duration leaks owner event past
+      view = some 0 then
       decidedOpportunity setup leaks bound owner event action past view
     else baseline owner past view
   let patched := Function.update background owner member
-  let reference : (graph setup).BehavioralProfile := compileEventProfile setup.program wholeProfile
-  let plan := (graph setup).policyPlan reference (graph setup).canonicalScheduler
+  let reference : setup.informationGraph.BehavioralProfile := compileEventProfile setup.program
+    wholeProfile
+  let plan := setup.informationGraph.policyPlan reference setup.informationGraph.canonicalScheduler
   have eventRank : event.val = rank := by
     simpa only [event, index, Fin.val_zero, Nat.add_zero] using aligned.graphSuffix.rankEq index
-  have owned : (graph setup).actor? event = some owner := by
-    change (toEventGraph setup.program).actor? event = some owner
+  have owned : setup.informationGraph.actor? event = some owner := by
+    change (toInformationGraph setup.program).actor? event = some owner
     simpa [event, index, eventOwner?, eventCount] using aligned.actorEq index
-  have codeEq : cast (congrArg (EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .bind owner payload := by
+  have codeEq : cast (congrArg (EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .bind owner payload := by
     change cast (congrArg (EventCode (graphLayout setup.program)) outputEq)
-      ((toEventGraph setup.program).nodes event) = _
+      ((toInformationGraph setup.program).nodes event) = _
     simpa [event, index, compileRankedNodes] using aligned.graphSuffix.nodeEq index
   have decodedAction : decodeEventAction setup.program event action =
       some (.commit owner name payload choice) := by
@@ -635,10 +648,10 @@ private theorem foreign_binding_fixed_endpoint
     app.runUntilHorizon scheduler fixed _ horizon execution at runEq
   have law : (app.runUntilHorizon scheduler fixed
       (fun final => event ∈ final.application.config.cut.completed) horizon execution).bind
-        (fun final => (graph setup).runPlan plan final.application.config.remaining
+        (fun final => setup.informationGraph.runPlan plan final.application.config.remaining
           final.application.config) =
       (execution.application.config.step event ready action).bind
-        (fun config => (graph setup).runPlan plan config.remaining config) := by
+        (fun config => setup.informationGraph.runPlan plan config.remaining config) := by
     rw [← runEq]
     exact continuation
   obtain ⟨trace⟩ := app.raw_trace_roundsFrom (initialLaw setup) horizon scheduler background _
@@ -669,7 +682,7 @@ private theorem foreign_binding_fixed_endpoint
   intro final reached
   obtain ⟨native, primary, drained⟩ := runUntil_fixed_primary_drain timeouts leaks scheduler fixed
     event (horizon - execution.environmentRecall.length) execution ready
-    (fun other otherReady => setup.eventGraph.sequentialize_ready_unique _ otherReady ready)
+    (fun other otherReady => setup.informationGraph.sequentialize_ready_unique _ otherReady ready)
     owner owned nativeActive quiescent action plan law completeAfter final reached
   have status : execution.application.config.defaulted = source.defaulted :=
     congrArg DefaultHistory.defaulted checkpoint.defaults
@@ -705,13 +718,13 @@ private theorem foreign_binding_fixed_endpoint
         (List.mem_map.mpr ⟨record, present, eventEq⟩)
     exact ready.1 completed
   have nativeFind : native.config.history.find? (fun record => decide (record.event = event)) =
-      some (EventGraph.completion (graph setup) event (some action) value) := by
+      some (EventGraph.completion setup.informationGraph event (some action) value) := by
     rw [history, List.find?_append, absent]
     simp [EventGraph.completion]
   obtain ⟨extra, growth⟩ := EventGraph.Config.Step.path_history_prefix native.drain_graph_steps
   have finalFind : final.application.config.history.find?
       (fun record => decide (record.event = event)) =
-        some (EventGraph.completion (graph setup) event (some action) value) := by
+        some (EventGraph.completion setup.informationGraph event (some action) value) := by
     rw [drained, ← growth, List.find?_append, nativeFind]
     rfl
   simp only [readChoice, finalFind, Option.bind_some, EventGraph.completion, decodedAction,
@@ -719,23 +732,24 @@ private theorem foreign_binding_fixed_endpoint
 
 
 private theorem binding_joint_mixed
-    (timeouts : EventTimeouts (graph setup))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (timeouts : EventTimeouts setup.informationGraph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
     {Seed : Type} {horizon : Nat} (scheduler : (application setup timeouts leaks).Scheduler)
-    (bound : (graph setup).EventId → Nat) (turns : Nat)
+    (bound : setup.informationGraph.EventId → Nat) (turns : Nat)
     (wholeProfile : BehavioralProfile setup.program) (focal owner : Player)
     (deviation : (application setup timeouts leaks).Policy) (foreign : owner ≠ focal)
     {Γ : SourceCtx Player L} {name : VarId} {payload : L.Ty}
-    (guard : SourceGuard L Γ owner name payload) (event : (graph setup).EventId)
-    (outputEq : (graph setup).outputLayout event = .binding owner payload)
-    (codeEq : cast (congrArg (EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .bind owner payload)
-    (node : nodeView (graph setup) event = .bind owner payload outputEq codeEq)
+    (guard : SourceGuard L Γ owner name payload) (event : setup.informationGraph.EventId)
+    (outputEq : setup.informationGraph.outputLayout event = .binding owner payload)
+    (codeEq : cast (congrArg (EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .bind owner payload)
+    (node : nodeView setup.informationGraph event = .bind owner payload outputEq codeEq)
     (prior : PMF Seed) (source : Seed → Config Player L Γ)
     (execution : Seed → (application setup timeouts leaks).Execution)
     (boundary : ∀ seed ∈ prior.support, owner ∉ (source seed).defaulted →
       CompletionBoundary setup leaks scheduler
-        (Function.update (serviceTurnPolicy setup .sequential timeouts.duration leaks bound turns
+        (Function.update (serviceTurnPolicy setup setup.informationDependencies timeouts.duration
+          leaks bound turns
           (firstTurnTiming setup turns) wholeProfile) focal deviation) event.val (execution seed))
     (bounded : ∀ seed ∈ prior.support, (execution seed).environmentRecall.length ≤ horizon)
     (noise : DecisionView focal Γ → PMF _)
@@ -789,10 +803,10 @@ private theorem binding_joint_mixed
 /-- An honest foreign binding retains its prescribed source kernel jointly with
 actual focal traffic, including source heads already passed by automatic service. -/
 theorem sourceService_foreign_commit_law
-    (timeouts : EventTimeouts (graph setup))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (timeouts : EventTimeouts setup.informationGraph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
     {horizon : Nat} {scheduler : (application setup timeouts leaks).Scheduler}
-    (delay bound : (graph setup).EventId → Nat) (turns : Nat)
+    (delay bound : setup.informationGraph.EventId → Nat) (turns : Nat)
     (contract : AsyncContract timeouts leaks (initialLaw setup) horizon scheduler delay bound)
     (timely : AsyncTimely timeouts delay bound)
     (wholeProfile : BehavioralProfile setup.program) (focal owner : Player)
@@ -809,16 +823,17 @@ theorem sourceService_foreign_commit_law
     (refsBefore : ContextRefsBefore refs embedding) (rank : Nat)
     (prior : PMF Seed) (source : Seed → Config Player L Γ)
     (execution : Seed → (application setup timeouts leaks).Execution)
-    (ghost : Seed → EventGraphRuntime.State (graph setup))
+    (ghost : Seed → EventGraphRuntime.State setup.informationGraph)
     (aligned : ∀ seed, CompiledPolicySuffix setup.program wholeProfile
       (.commit name owner fresh guard next) profile refs (source seed).revelations
       (source seed).registry embedding refsBefore rank)
     (checkpoint : ∀ seed, SourceCheckpoint setup (source seed) refs rank (ghost seed).config)
-    (lag : ∀ seed ∈ prior.support, ∃ caught : EventGraphRuntime.State (graph setup),
+    (lag : ∀ seed ∈ prior.support, ∃ caught : EventGraphRuntime.State setup.informationGraph,
       Relation.ReflTransGen EventGraphRuntime.State.AutomaticStep (ghost seed) caught ∧
         caught.config = (execution seed).application.config)
     (boundary : ∀ seed ∈ prior.support, ∃ physicalRank, CompletionBoundary setup leaks scheduler
-      (Function.update (serviceTurnPolicy setup .sequential timeouts.duration leaks bound turns
+      (Function.update (serviceTurnPolicy setup setup.informationDependencies timeouts.duration
+        leaks bound turns
         (firstTurnTiming setup turns) wholeProfile) focal deviation) physicalRank (execution seed))
     (bounded : ∀ seed ∈ prior.support, (execution seed).environmentRecall.length ≤ horizon)
     (noise : DecisionView focal Γ → PMF _)
@@ -827,14 +842,14 @@ theorem sourceService_foreign_commit_law
         (noise (config.view focal)).map fun traffic => (config, traffic)) :
     let index : Fin (eventCount (.commit name owner fresh guard next)) :=
       ⟨0, by simp [eventCount]⟩
-    let event : (graph setup).EventId := embedding.event index
-    let outputEq : (graph setup).outputLayout event = .binding owner payload := by
+    let event : setup.informationGraph.EventId := embedding.event index
+    let outputEq : setup.informationGraph.outputLayout event = .binding owner payload := by
       change outputLayout setup.program (embedding.event index) = _
       simpa [index, outputLayout, eventCount] using embedding.layout_eq index
     let bindingRef : FieldRef (graphLayout setup.program) (.binding owner payload) :=
       ⟨.inr event, outputEq⟩
     let players := Function.update
-      (serviceTurnPolicy setup .sequential timeouts.duration leaks bound turns
+      (serviceTurnPolicy setup setup.informationDependencies timeouts.duration leaks bound turns
         (firstTurnTiming setup turns) wholeProfile) focal deviation
     let readChoice := fun final : (application setup timeouts leaks).Execution =>
       OwnAction.binding owner name payload
@@ -858,10 +873,10 @@ theorem sourceService_foreign_commit_law
             (fun current => event ∈ current.application.config.cut.completed) horizon
             (execution seed)).support,
         ∃ (choice : Option (PublicationResult (L.Val payload)))
-          (native : EventGraphRuntime.State (graph setup)),
+          (native : EventGraphRuntime.State setup.informationGraph),
           SourceCheckpoint setup (commitSuccessor name guard (source seed) choice)
             (refs.cons (name := name) bindingRef) (rank + 1) native.config ∧
-          (∃ caught : EventGraphRuntime.State (graph setup),
+          (∃ caught : EventGraphRuntime.State setup.informationGraph,
             Relation.ReflTransGen EventGraphRuntime.State.AutomaticStep native caught ∧
               caught.config = final.application.config) ∧
           (owner ∉ (source seed).defaulted → final.application.config = native.drain.config) ∧
@@ -874,14 +889,14 @@ theorem sourceService_foreign_commit_law
   have eventRank : event.val = rank := by
     simpa only [event, index, Fin.val_zero, Nat.add_zero] using
       (aligned prior.support_nonempty.choose).graphSuffix.rankEq index
-  have owned : (graph setup).actor? event = some owner := by
-    change (toEventGraph setup.program).actor? event = some owner
+  have owned : setup.informationGraph.actor? event = some owner := by
+    change (toInformationGraph setup.program).actor? event = some owner
     simpa [event, index, eventOwner?, eventCount] using
       (aligned prior.support_nonempty.choose).actorEq index
-  have codeEq : cast (congrArg (EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .bind owner payload := by
+  have codeEq : cast (congrArg (EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .bind owner payload := by
     change cast (congrArg (EventCode (graphLayout setup.program)) outputEq)
-      ((toEventGraph setup.program).nodes event) = _
+      ((toInformationGraph setup.program).nodes event) = _
     simpa [event, index, compileRankedNodes] using
       (aligned prior.support_nonempty.choose).graphSuffix.nodeEq index
   have decodedAction (choice : Option (PublicationResult (L.Val payload))) :
@@ -891,10 +906,10 @@ theorem sourceService_foreign_commit_law
     have lookup := (aligned prior.support_nonempty.choose).actionEq index
       (cast (congrArg EventField.Action outputEq.symm) choice)
     simpa [event, index, outputEq, decodeEventAction] using lookup
-  have alone : ∀ (cut : (graph setup).order.Cut) other,
+  have alone : ∀ (cut : setup.informationGraph.order.Cut) other,
       cut.Ready event → cut.Ready other → other = event := by
     intro cut other ready otherReady
-    exact setup.eventGraph.sequentialize_ready_unique cut otherReady ready
+    exact setup.informationGraph.sequentialize_ready_unique cut otherReady ready
   have ghostReady (seed : Seed) : (ghost seed).config.cut.Ready event := by
     have ordered := (checkpoint seed).ordered
     rw [← eventRank] at ordered
@@ -993,7 +1008,7 @@ theorem sourceService_foreign_commit_law
       (final : app.Execution) (reached : final ∈ (app.runUntilHorizon scheduler (fixed choice)
         (fun current => event ∈ current.application.config.cut.completed) horizon
         (execution seed)).support) :
-      ∃ native : EventGraphRuntime.State (graph setup),
+      ∃ native : EventGraphRuntime.State setup.informationGraph,
         SourceCheckpoint setup (commitSuccessor name guard (source seed) choice)
           (refs.cons (name := name) bindingRef) (rank + 1) native.config ∧
         final.application.config = native.drain.config ∧ readChoice final = choice :=
@@ -1107,8 +1122,8 @@ private theorem reveal_choice_reflects
         (output.symm.trans success)
 
 private theorem foreign_reveal_callback
-    (timeouts : EventTimeouts (graph setup))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (timeouts : EventTimeouts setup.informationGraph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
     {Γ : SourceCtx Player L} {openNames : Finset VarId}
     {published name : VarId} {owner : Player} {payload : L.Ty}
     (fresh : published ∉ Γ.map Prod.fst)
@@ -1131,8 +1146,8 @@ private theorem foreign_reveal_callback
     :
     let index : Fin (eventCount (.reveal published owner name fresh binding unresolved next)) :=
       ⟨0, by simp [eventCount]⟩
-    let event : (graph setup).EventId := embedding.event index
-    let outputEq : (graph setup).outputLayout event = .publication payload := by
+    let event : setup.informationGraph.EventId := embedding.event index
+    let outputEq : setup.informationGraph.outputLayout event = .publication payload := by
       change outputLayout setup.program (embedding.event index) = _
       simpa [index, outputLayout, eventCount] using embedding.layout_eq index
     ∀ current : (application setup timeouts leaks).Execution,
@@ -1151,16 +1166,20 @@ private theorem foreign_reveal_callback
     have ordered := checkpoint.ordered
     rw [← eventRank] at ordered
     exact ordered.ready event.isLt
+  have actor : setup.informationGraph.actor? event = some owner := by
+    change (toInformationGraph setup.program).actor? (embedding.event index) = some owner
+    simpa [index, eventOwner?, eventCount] using aligned.actorEq index
+  have turn := ownTurn?_of_ready setup current.application ready actor
   have law := sourceServiceCanonicalPolicy_reveal setup leaks fresh binding unresolved next
     wholeProfile
     profile refs source embedding refsBefore rank aligned current
     (by rw [same]; exact checkpoint.agrees) (by rw [same]; exact checkpoint.history)
-    (by rw [same]; exact checkpoint.defaults) ready
+    (by rw [same]; exact checkpoint.defaults) turn
   simpa only [active, dite_false] using law
 
 private theorem foreign_reveal_fixed_endpoint
-    (timeouts : EventTimeouts (graph setup))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (timeouts : EventTimeouts setup.informationGraph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
     {Γ : SourceCtx Player L} {openNames : Finset VarId}
     {published name : VarId} {owner : Player} {payload : L.Ty}
     (fresh : published ∉ Γ.map Prod.fst)
@@ -1184,20 +1203,21 @@ private theorem foreign_reveal_fixed_endpoint
       (.reveal published owner name fresh binding unresolved next) source.registry
       source.revelations)
     {horizon : Nat} (scheduler : (application setup timeouts leaks).Scheduler)
-    (delay bound : (graph setup).EventId → Nat) (turns : Nat)
+    (delay bound : setup.informationGraph.EventId → Nat) (turns : Nat)
     (contract : AsyncContract timeouts leaks (initialLaw setup) horizon scheduler delay bound)
     (timely : AsyncTimely timeouts delay bound)
     (focal : Player) (deviation : (application setup timeouts leaks).Policy)
     (foreign : owner ≠ focal)
     (boundary : CompletionBoundary setup leaks scheduler
-      (Function.update (serviceTurnPolicy setup .sequential timeouts.duration leaks bound turns
+      (Function.update (serviceTurnPolicy setup setup.informationDependencies timeouts.duration
+        leaks bound turns
         (firstTurnTiming setup turns) wholeProfile) focal deviation) rank execution)
     (bounded : execution.environmentRecall.length ≤ horizon)
     (choice : Bool) (chosen : choice ∈ (revealKernel profile (source.view owner) active).support) :
     let index : Fin (eventCount (.reveal published owner name fresh binding unresolved next)) :=
       ⟨0, by simp [eventCount]⟩
-    let event : (graph setup).EventId := embedding.event index
-    let outputEq : (graph setup).outputLayout event = .publication payload := by
+    let event : setup.informationGraph.EventId := embedding.event index
+    let outputEq : setup.informationGraph.outputLayout event = .publication payload := by
       change outputLayout setup.program (embedding.event index) = _
       simpa [index, outputLayout, eventCount] using embedding.layout_eq index
     let action := cast (congrArg EventField.Action outputEq.symm) choice
@@ -1214,33 +1234,36 @@ private theorem foreign_reveal_fixed_endpoint
     ∀ final ∈ ((application setup timeouts leaks).runUntilHorizon scheduler fixed
         (fun current => event ∈ current.application.config.cut.completed) horizon
         execution).support,
-      ∃ native : EventGraphRuntime.State (graph setup),
+      ∃ native : EventGraphRuntime.State setup.informationGraph,
         SourceCheckpoint setup (revealSuccessor published binding source choice)
           (refs.cons (name := published) ⟨.inr event, outputEq⟩) (rank + 1) native.config ∧
         final.application.config = native.drain.config ∧ readChoice final = choice := by
   intro index event outputEq action fixed readChoice
   let app := application setup timeouts leaks
-  let baseline := serviceTurnPolicy setup .sequential timeouts.duration leaks bound turns
+  let baseline := serviceTurnPolicy setup setup.informationDependencies timeouts.duration leaks
+    bound turns
     (firstTurnTiming setup turns) wholeProfile
   let background := Function.update baseline focal deviation
   let member := fun past view =>
-    if serviceTurn setup .sequential timeouts.duration leaks owner event past view = some 0 then
+    if serviceTurn setup setup.informationDependencies timeouts.duration leaks owner event past
+      view = some 0 then
       decidedOpportunity setup leaks bound owner event action past view
     else baseline owner past view
   let patched := Function.update background owner member
-  let reference : (graph setup).BehavioralProfile := compileEventProfile setup.program wholeProfile
-  let plan := (graph setup).policyPlan reference (graph setup).canonicalScheduler
+  let reference : setup.informationGraph.BehavioralProfile := compileEventProfile setup.program
+    wholeProfile
+  let plan := setup.informationGraph.policyPlan reference setup.informationGraph.canonicalScheduler
   have eventRank : event.val = rank := by
     simpa only [event, index, Fin.val_zero, Nat.add_zero] using aligned.graphSuffix.rankEq index
-  have owned : (graph setup).actor? event = some owner := by
-    change (toEventGraph setup.program).actor? event = some owner
+  have owned : setup.informationGraph.actor? event = some owner := by
+    change (toInformationGraph setup.program).actor? event = some owner
     simpa [event, index, eventOwner?, eventCount] using aligned.actorEq index
-  have codeEq : cast (congrArg (EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .resolve owner payload (refs.get binding)
+  have codeEq : cast (congrArg (EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .resolve owner payload (refs.get binding)
         (compileChecks (published := published) refs source.registry source.revelations binding) :=
       by
     change cast (congrArg (EventCode (graphLayout setup.program)) outputEq)
-      ((toEventGraph setup.program).nodes event) = _
+      ((toInformationGraph setup.program).nodes event) = _
     simpa [event, index, compileRankedNodes] using aligned.graphSuffix.nodeEq index
   have decodedAction : decodeEventAction setup.program event action =
       some (.reveal owner name choice) := by
@@ -1296,7 +1319,7 @@ private theorem foreign_reveal_fixed_endpoint
     have requestedTrue : choice = true := by
       simpa only [action, cast_cast, cast_eq] using requested
     obtain ⟨value, success⟩ := nativeSuccess requestedTrue
-    exact ⟨value, EventCode.binding_success_of_resolve_success (graph := graph setup)
+    exact ⟨value, EventCode.binding_success_of_resolve_success (graph := setup.informationGraph)
       (refs.get binding)
       (compileChecks (published := published) refs source.registry source.revelations binding)
       true execution.application.config.store value success⟩
@@ -1311,10 +1334,10 @@ private theorem foreign_reveal_fixed_endpoint
     app.runUntilHorizon scheduler fixed _ horizon execution at runEq
   have law : (app.runUntilHorizon scheduler fixed
       (fun final => event ∈ final.application.config.cut.completed) horizon execution).bind
-        (fun final => (graph setup).runPlan plan final.application.config.remaining
+        (fun final => setup.informationGraph.runPlan plan final.application.config.remaining
           final.application.config) =
       (execution.application.config.step event ready action).bind
-        (fun config => (graph setup).runPlan plan config.remaining config) := by
+        (fun config => setup.informationGraph.runPlan plan config.remaining config) := by
     rw [← runEq]
     exact continuation
   obtain ⟨trace⟩ := app.raw_trace_roundsFrom (initialLaw setup) horizon scheduler background _
@@ -1346,7 +1369,7 @@ private theorem foreign_reveal_fixed_endpoint
   intro final reached
   obtain ⟨native, primary, drained⟩ := runUntil_fixed_primary_drain timeouts leaks scheduler fixed
     event (horizon - execution.environmentRecall.length) execution ready
-    (fun other otherReady => setup.eventGraph.sequentialize_ready_unique _ otherReady ready)
+    (fun other otherReady => setup.informationGraph.sequentialize_ready_unique _ otherReady ready)
     owner owned nativeActive quiescent action plan law completeAfter final reached
   have status : execution.application.config.defaulted = source.defaulted :=
     congrArg DefaultHistory.defaulted checkpoint.defaults
@@ -1383,23 +1406,23 @@ private theorem foreign_reveal_fixed_endpoint
         (List.mem_map.mpr ⟨record, present, eventEq⟩)
     exact ready.1 completed
   have nativeFind : native.config.history.find? (fun record => decide (record.event = event)) =
-      some (EventGraph.completion (graph setup) event (some action) value) := by
+      some (EventGraph.completion setup.informationGraph event (some action) value) := by
     rw [history, List.find?_append, absent]
     simp [EventGraph.completion]
   obtain ⟨extra, growth⟩ := EventGraph.Config.Step.path_history_prefix native.drain_graph_steps
   have finalFind : final.application.config.history.find?
       (fun record => decide (record.event = event)) =
-        some (EventGraph.completion (graph setup) event (some action) value) := by
+        some (EventGraph.completion setup.informationGraph event (some action) value) := by
     rw [drained, ← growth, List.find?_append, nativeFind]
     rfl
   simp only [readChoice, finalFind, Option.bind_some, EventGraph.completion, decodedAction,
     OwnAction.disclosure]
 
 private theorem reveal_joint_mixed
-    (timeouts : EventTimeouts (graph setup))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (timeouts : EventTimeouts setup.informationGraph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
     {Seed : Type} {horizon : Nat} (scheduler : (application setup timeouts leaks).Scheduler)
-    (bound : (graph setup).EventId → Nat) (turns : Nat)
+    (bound : setup.informationGraph.EventId → Nat) (turns : Nat)
     (wholeProfile : BehavioralProfile setup.program) (focal owner : Player)
     (deviation : (application setup timeouts leaks).Policy) (foreign : owner ≠ focal)
     {Γ : SourceCtx Player L} {openNames : Finset VarId}
@@ -1410,18 +1433,19 @@ private theorem reveal_joint_mixed
       (openNames.erase name))
     (profile : BehavioralProfile (.reveal published owner name fresh binding unresolved next))
     (refs : ContextRefs (graphLayout setup.program) Γ)
-    (event : (graph setup).EventId)
-    (outputEq : (graph setup).outputLayout event = .publication payload)
-    (checks : List (GuardCheck (graph setup).layout payload))
-    (codeEq : cast (congrArg (EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .resolve owner payload (refs.get binding) checks)
-    (node : nodeView (graph setup) event =
+    (event : setup.informationGraph.EventId)
+    (outputEq : setup.informationGraph.outputLayout event = .publication payload)
+    (checks : List (GuardCheck setup.informationGraph.layout payload))
+    (codeEq : cast (congrArg (EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .resolve owner payload (refs.get binding) checks)
+    (node : nodeView setup.informationGraph event =
       .resolve owner payload (refs.get binding) checks outputEq codeEq)
     (prior : PMF Seed) (source : Seed → Config Player L Γ)
     (execution : Seed → (application setup timeouts leaks).Execution)
     (boundary : ∀ seed ∈ prior.support, owner ∉ (source seed).defaulted →
       CompletionBoundary setup leaks scheduler
-      (Function.update (serviceTurnPolicy setup .sequential timeouts.duration leaks bound turns
+      (Function.update (serviceTurnPolicy setup setup.informationDependencies timeouts.duration
+        leaks bound turns
         (firstTurnTiming setup turns) wholeProfile) focal deviation) event.val (execution seed))
     (agrees : ∀ seed ∈ prior.support, owner ∉ (source seed).defaulted →
       refs.Agrees (source seed).state (execution seed).application.config.store)
@@ -1512,10 +1536,10 @@ private theorem reveal_joint_mixed
 /-- An honest foreign disclosure retains its prescribed source kernel jointly with
 actual focal traffic, including source heads already passed by automatic service. -/
 theorem sourceService_foreign_reveal_law
-    (timeouts : EventTimeouts (graph setup))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (timeouts : EventTimeouts setup.informationGraph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
     {horizon : Nat} {scheduler : (application setup timeouts leaks).Scheduler}
-    (delay bound : (graph setup).EventId → Nat) (turns : Nat)
+    (delay bound : setup.informationGraph.EventId → Nat) (turns : Nat)
     (contract : AsyncContract timeouts leaks (initialLaw setup) horizon scheduler delay bound)
     (timely : AsyncTimely timeouts delay bound)
     (wholeProfile : BehavioralProfile setup.program) (focal owner : Player)
@@ -1533,16 +1557,17 @@ theorem sourceService_foreign_reveal_law
     (refsBefore : ContextRefsBefore refs embedding) (rank : Nat)
     (prior : PMF Seed) (source : Seed → Config Player L Γ)
     (execution : Seed → (application setup timeouts leaks).Execution)
-    (ghost : Seed → EventGraphRuntime.State (graph setup))
+    (ghost : Seed → EventGraphRuntime.State setup.informationGraph)
     (aligned : ∀ seed, CompiledPolicySuffix setup.program wholeProfile
       (.reveal published owner name fresh binding unresolved next) profile refs
       (source seed).revelations (source seed).registry embedding refsBefore rank)
     (checkpoint : ∀ seed, SourceCheckpoint setup (source seed) refs rank (ghost seed).config)
-    (lag : ∀ seed ∈ prior.support, ∃ caught : EventGraphRuntime.State (graph setup),
+    (lag : ∀ seed ∈ prior.support, ∃ caught : EventGraphRuntime.State setup.informationGraph,
       Relation.ReflTransGen EventGraphRuntime.State.AutomaticStep (ghost seed) caught ∧
         caught.config = (execution seed).application.config)
     (boundary : ∀ seed ∈ prior.support, ∃ physicalRank, CompletionBoundary setup leaks scheduler
-      (Function.update (serviceTurnPolicy setup .sequential timeouts.duration leaks bound turns
+      (Function.update (serviceTurnPolicy setup setup.informationDependencies timeouts.duration
+        leaks bound turns
         (firstTurnTiming setup turns) wholeProfile) focal deviation) physicalRank (execution seed))
     (bounded : ∀ seed ∈ prior.support, (execution seed).environmentRecall.length ≤ horizon)
     (effective : ∀ seed ∈ prior.support, (profile owner).EffectiveDisclosures
@@ -1554,14 +1579,14 @@ theorem sourceService_foreign_reveal_law
         (noise (config.view focal)).map fun traffic => (config, traffic)) :
     let index : Fin (eventCount (.reveal published owner name fresh binding unresolved next)) :=
       ⟨0, by simp [eventCount]⟩
-    let event : (graph setup).EventId := embedding.event index
-    let outputEq : (graph setup).outputLayout event = .publication payload := by
+    let event : setup.informationGraph.EventId := embedding.event index
+    let outputEq : setup.informationGraph.outputLayout event = .publication payload := by
       change outputLayout setup.program (embedding.event index) = _
       simpa [index, outputLayout, eventCount] using embedding.layout_eq index
     let publicationRef : FieldRef (graphLayout setup.program) (.publication payload) :=
       ⟨.inr event, outputEq⟩
     let players := Function.update
-      (serviceTurnPolicy setup .sequential timeouts.duration leaks bound turns
+      (serviceTurnPolicy setup setup.informationDependencies timeouts.duration leaks bound turns
         (firstTurnTiming setup turns) wholeProfile) focal deviation
     let readChoice := fun final : (application setup timeouts leaks).Execution =>
       OwnAction.disclosure
@@ -1585,10 +1610,10 @@ theorem sourceService_foreign_reveal_law
             (fun current => event ∈ current.application.config.cut.completed) horizon
             (execution seed)).support,
         ∃ (choice : Bool)
-          (native : EventGraphRuntime.State (graph setup)),
+          (native : EventGraphRuntime.State setup.informationGraph),
           SourceCheckpoint setup (revealSuccessor published binding (source seed) choice)
             (refs.cons (name := published) publicationRef) (rank + 1) native.config ∧
-          (∃ caught : EventGraphRuntime.State (graph setup),
+          (∃ caught : EventGraphRuntime.State setup.informationGraph,
             Relation.ReflTransGen EventGraphRuntime.State.AutomaticStep native caught ∧
               caught.config = final.application.config) ∧
           (owner ∉ (source seed).defaulted → final.application.config = native.drain.config) ∧
@@ -1601,16 +1626,16 @@ theorem sourceService_foreign_reveal_law
   have eventRank : event.val = rank := by
     simpa only [event, index, Fin.val_zero, Nat.add_zero] using
       (aligned prior.support_nonempty.choose).graphSuffix.rankEq index
-  have owned : (graph setup).actor? event = some owner := by
-    change (toEventGraph setup.program).actor? event = some owner
+  have owned : setup.informationGraph.actor? event = some owner := by
+    change (toInformationGraph setup.program).actor? event = some owner
     simpa [event, index, eventOwner?, eventCount] using
       (aligned prior.support_nonempty.choose).actorEq index
-  have codeEq (seed : Seed) : cast (congrArg (EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .resolve owner payload (refs.get binding)
+  have codeEq (seed : Seed) : cast (congrArg (EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .resolve owner payload (refs.get binding)
         (compileChecks (published := published) refs (source seed).registry
           (source seed).revelations binding) := by
     change cast (congrArg (EventCode (graphLayout setup.program)) outputEq)
-      ((toEventGraph setup.program).nodes event) = _
+      ((toInformationGraph setup.program).nodes event) = _
     simpa [event, index, compileRankedNodes] using (aligned seed).graphSuffix.nodeEq index
   have decodedAction (choice : Bool) :
       decodeEventAction setup.program event
@@ -1619,10 +1644,10 @@ theorem sourceService_foreign_reveal_law
     have lookup := (aligned prior.support_nonempty.choose).actionEq index
       (cast (congrArg EventField.Action outputEq.symm) choice)
     simpa [event, index, outputEq, decodeEventAction] using lookup
-  have alone : ∀ (cut : (graph setup).order.Cut) other,
+  have alone : ∀ (cut : setup.informationGraph.order.Cut) other,
       cut.Ready event → cut.Ready other → other = event := by
     intro cut other ready otherReady
-    exact setup.eventGraph.sequentialize_ready_unique cut otherReady ready
+    exact setup.informationGraph.sequentialize_ready_unique cut otherReady ready
   have ghostReady (seed : Seed) : (ghost seed).config.cut.Ready event := by
     have ordered := (checkpoint seed).ordered
     rw [← eventRank] at ordered
@@ -1722,7 +1747,7 @@ theorem sourceService_foreign_reveal_law
       (final : app.Execution) (reached : final ∈ (app.runUntilHorizon scheduler (fixed choice)
         (fun current => event ∈ current.application.config.cut.completed) horizon
         (execution seed)).support) :
-      ∃ native : EventGraphRuntime.State (graph setup),
+      ∃ native : EventGraphRuntime.State setup.informationGraph,
         SourceCheckpoint setup (revealSuccessor published binding (source seed) choice)
           (refs.cons (name := published) publicationRef) (rank + 1) native.config ∧
         final.application.config = native.drain.config ∧ readChoice final = choice :=

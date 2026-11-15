@@ -39,9 +39,9 @@ open GameTheory GameTheory.Protocol Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 section Transitions
@@ -93,8 +93,9 @@ theorem onePacket_commitment_handle {who : Player}
       leaks).Action}
     (member : response ∈ bounds.onePacketActions timeouts leaks who past view)
     {material : (application setup timeouts leaks).Submission}
-    (sends : response.transmission = some material) {event : (graph setup).EventId}
-    {handle : Handle (graph setup)} (packet : material.call.packet = .commitment event handle) :
+    (sends : response.transmission = some material) {event : setup.informationGraph.EventId}
+    {handle : Handle setup.informationGraph} (packet : material.call.packet = .commitment event
+      handle) :
     ∃ serial, handle = (who, .prepared serial) := by
   obtain ⟨_, permitted⟩ := (bounds.mem_onePacketActions timeouts leaks who _ _
     response).mp member
@@ -117,15 +118,16 @@ section Initial
 
 variable (setup timeouts) in
 /-- Every initial handle carries the meaning of its input. -/
-def InitialCandidates (state : EventGraphRuntime.State (graph setup)) : Prop :=
+def InitialCandidates (state : EventGraphRuntime.State setup.informationGraph) : Prop :=
   ∀ player input, state.candidates.lookup (player, .initial input) =
-    State.candidateOfValue player ((graph setup).inputLayout input) (state.config.inputs input)
+    State.candidateOfValue player (setup.informationGraph.inputLayout input) (state.config.inputs
+      input)
 
 omit [Fintype Player] in
 /-- Registering a submission keeps every initial handle. -/
-private theorem register_lookup_initial (submission : Submission (graph setup))
-    (state : EventGraphRuntime.State (graph setup)) (who player : Player)
-    (input : (graph setup).InputId) :
+private theorem register_lookup_initial (submission : Submission setup.informationGraph)
+    (state : EventGraphRuntime.State setup.informationGraph) (who player : Player)
+    (input : setup.informationGraph.InputId) :
     (submission.register state who).candidates.lookup (player, .initial input) =
       state.candidates.lookup (player, .initial input) := by
   rcases submission with ⟨packet, opening⟩
@@ -144,7 +146,7 @@ theorem respond_lookup_initial (execution : (application setup timeouts leaks).E
     (action : (application setup timeouts leaks).Action)
     (member : action ∈ bounds.onePacketActions timeouts leaks who (execution.logs who)
       (execution.observe (application setup timeouts leaks) who))
-    (player : Player) (input : (graph setup).InputId) :
+    (player : Player) (input : setup.informationGraph.InputId) :
     (execution.respond (application setup timeouts leaks) who action).application.candidates.lookup
         (player, .initial input) =
       execution.application.candidates.lookup (player, .initial input) := by
@@ -173,7 +175,7 @@ theorem environment_lookup_initial (execution next : (application setup timeouts
       command).support)
     (facts : SettledFacts setup leaks execution)
     (clean : (CountClean timeouts) leaks execution)
-    (player : Player) (input : (graph setup).InputId) :
+    (player : Player) (input : setup.informationGraph.InputId) :
     next.application.candidates.lookup (player, .initial input) =
       execution.application.candidates.lookup (player, .initial input) := by
   cases command with
@@ -284,7 +286,9 @@ theorem initialCandidates_of_trace {state}
               player input
           · exact environment_lookup_initial (timeouts := timeouts) current.execution _ command
               moved
-              (settledFacts_history (initialLaw setup) horizon scheduler rawTrace)
+              (settledFacts_history ((toInformationGraph_barrierOrdered
+                setup.program).revealRelaxedOrdered.actorSerial) (initialLaw setup) horizon
+                  scheduler rawTrace)
               ((bounds.onePacketMenu_countClean timeouts leaks scheduler).history
                 (initialLaw setup) horizon
                 (fun state _ => (countClean_initial timeouts) leaks state) prior)
@@ -294,8 +298,8 @@ theorem initialCandidates_of_trace {state}
 /-- Initial binding inputs retain their accepted initial handles along every history. -/
 theorem accepted_initial_of_trace {control : (application setup timeouts leaks).Control}
     (trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some control))
-    {input : (graph setup).InputId} {owner : Player} {payload : L.Ty}
-    (layoutEq : (graph setup).inputLayout input = .binding owner payload) :
+    {input : setup.informationGraph.InputId} {owner : Player} {payload : L.Ty}
+    (layoutEq : setup.informationGraph.inputLayout input = .binding owner payload) :
     control.execution.application.accepted (.inl input) = some (owner, .initial input) := by
   have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon
     scheduler trace
@@ -319,17 +323,17 @@ section Grows
 variable (setup timeouts) in
 /-- An application state grows into another: stored fields stay stored, fixed
 meanings stay, and the history only grows. -/
-def StateGrows (before after : EventGraphRuntime.State (graph setup)) : Prop :=
+def StateGrows (before after : EventGraphRuntime.State setup.informationGraph) : Prop :=
   KeepsStore before after ∧ KeepsFixedCandidates before after ∧
     before.config.history <+: after.config.history
 
 omit [Fintype Player] in
-theorem StateGrows.refl (state : EventGraphRuntime.State (graph setup)) :
+theorem StateGrows.refl (state : EventGraphRuntime.State setup.informationGraph) :
     StateGrows setup state state :=
   ⟨fun _ _ stored => stored, fun _ _ => rfl, List.prefix_refl _⟩
 
 omit [Fintype Player] in
-theorem StateGrows.trans {first second third : EventGraphRuntime.State (graph setup)}
+theorem StateGrows.trans {first second third : EventGraphRuntime.State setup.informationGraph}
     (left : StateGrows setup first second) (right : StateGrows setup second third) :
     StateGrows setup first third := by
   refine ⟨fun field value stored => right.1 field value (left.1 field value stored),
@@ -354,7 +358,7 @@ theorem stateGrows_transition {current next : (application setup timeouts leaks)
 
 omit [Fintype Player] in
 /-- A grown state is later than the state it grew from. -/
-theorem StateGrows.ownerEarlier {before after : EventGraphRuntime.State (graph setup)}
+theorem StateGrows.ownerEarlier {before after : EventGraphRuntime.State setup.informationGraph}
     (grows : StateGrows setup before after) (who : Player) {named : Nat → Prop}
     (fresh : ∀ serial, before.candidates.lookup (who, .prepared serial) = .fresh ↔ ¬ named serial)
     (initial : InitialCandidates setup before) : OwnerEarlier who named before after where
@@ -366,8 +370,9 @@ theorem StateGrows.ownerEarlier {before after : EventGraphRuntime.State (graph s
 
 omit [Fintype Player] in
 /-- A recorded response stays recorded as the state grows. -/
-theorem RecordedResponse.grow {who : Player} {before after : EventGraphRuntime.State (graph setup)}
-    {known : List (Message Player (WitnessedPacket (graph setup)))}
+theorem RecordedResponse.grow {who : Player} {before after : EventGraphRuntime.State
+  setup.informationGraph}
+    {known : List (Message Player (WitnessedPacket setup.informationGraph))}
     {entry : (application setup timeouts leaks).PlayerEntry}
     (recorded : RecordedResponse (timeouts := timeouts) who before known entry)
     (keeps : KeepsFixedCandidates before after) : RecordedResponse (timeouts := timeouts) who after
@@ -421,7 +426,7 @@ theorem onePacket_commitment_slotFresh {control : (application setup timeouts le
       (control.execution.logs who) (control.execution.observe (application setup timeouts leaks)
         who))
     (material : (application setup timeouts leaks).Submission)
-    (sends : response.transmission = some material) {event : (graph setup).EventId}
+    (sends : response.transmission = some material) {event : setup.informationGraph.EventId}
     {serial : Nat} (packet : material.call.packet = .commitment event (who, .prepared serial)) :
     control.execution.application.candidates.lookup (who, .prepared serial) = .fresh := by
   have rawTrace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
@@ -558,8 +563,8 @@ player's prepared handles were fresh exactly when unnamed by the packets of
 recorded at the current state. -/
 def RecalledAt (player : Player) (past : List (application setup timeouts leaks).PlayerEntry)
     (entry : (application setup timeouts leaks).PlayerEntry)
-    (current : EventGraphRuntime.State (graph setup)) : Prop :=
-  ∃ before : EventGraphRuntime.State (graph setup),
+    (current : EventGraphRuntime.State setup.informationGraph) : Prop :=
+  ∃ before : EventGraphRuntime.State setup.informationGraph,
     entry.beforeView.application = before.playerView player ∧
     StateGrows setup before current ∧
     (∀ serial, before.candidates.lookup (player, .prepared serial) = .fresh ↔
@@ -572,7 +577,7 @@ omit [Fintype Player] in
 theorem RecalledAt.grow {player : Player} {past : List (application setup timeouts
   leaks).PlayerEntry}
     {entry : (application setup timeouts leaks).PlayerEntry}
-    {current next : EventGraphRuntime.State (graph setup)}
+    {current next : EventGraphRuntime.State setup.informationGraph}
     (recalled : RecalledAt setup timeouts leaks player past entry current)
     (grows : StateGrows setup current next) : RecalledAt setup timeouts leaks player past entry
       next := by

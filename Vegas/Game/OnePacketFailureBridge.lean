@@ -29,8 +29,8 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
 
 
 section Record
@@ -43,8 +43,8 @@ failure at the decoded point. -/
 def FailedBindingRecord (execution : (application setup timeouts leaks).Execution) : Prop :=
   ∃ rank, Nonempty (SourceResidual setup profile rank execution.application.config) ∧
     ∀ event ∈ execution.application.config.cut.completed, ∀ owner payload
-      (outputEq : (graph setup).outputLayout event = .binding owner payload),
-      (⟨.inr event, outputEq⟩ : EventGraph.FieldRef (graph setup).layout
+      (outputEq : setup.informationGraph.outputLayout event = .binding owner payload),
+      (⟨.inr event, outputEq⟩ : EventGraph.FieldRef setup.informationGraph.layout
         (.binding owner payload)).get? execution.application.config.store = some .failure →
         DecodedHolds (ProtocolState.OwesFailure owner setup.program) rank
           execution.application.config
@@ -61,7 +61,8 @@ theorem failedBindingRecord_history (horizon : Nat)
   obtain ⟨rank, residual, record⟩ := SourceFailureRecord.history (timeouts := timeouts) profile
     horizon scheduler trace
   refine ⟨rank, residual, fun event completed owner payload outputEq failed => ?_⟩
-  exact record event completed owner ((graph setup).actor?_of_outputLayout_binding outputEq)
+  exact record event completed owner (setup.informationGraph.actor?_of_outputLayout_binding
+    outputEq)
     (storeEventFailed_of_ref _ event ⟨.inr event, outputEq⟩ rfl failed rfl)
 
 end Record

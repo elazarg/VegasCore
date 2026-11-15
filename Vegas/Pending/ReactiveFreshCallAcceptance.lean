@@ -203,9 +203,10 @@ events have different actors, a commitment includable on a recorded view of its
 ready event is accepted at a later state where the event is unfinished and
 within its deadline, when the events completed since were ready together with
 it and accepted handles changed only at their vacant output fields. -/
-theorem bindingIncludable_accepted_of_extends (relaxed : graph.RevealRelaxedOrdered)
+theorem bindingIncludable_accepted_of_extends
     (state : State graph) (view : PublicView graph) (id : MessageId Player)
-    (event : graph.EventId) (candidate : Handle graph)
+    (event : graph.EventId) (ownerSolitary : graph.OwnerSolitary event)
+    (candidate : Handle graph)
     (includable : view.BindingIncludable timeouts ⟨id, .commitment event candidate⟩)
     {extra : List graph.EventId}
     (order : state.publicView.observation.completionOrder =
@@ -252,12 +253,9 @@ theorem bindingIncludable_accepted_of_extends (relaxed : graph.RevealRelaxedOrde
           have different : other ≠ event := fun same =>
             unfinished (same ▸ completedExtra other inside)
           obtain ⟨cut, otherReady, eventReady⟩ := together other inside
-          obtain ⟨otherOwner, eventOwner, otherIs, eventIs, owners⟩ :=
-            relaxed.ready_pair_actors otherReady eventReady different
-          rw [otherActor] at otherIs
-          rw [eventActor] at eventIs
-          exact owners ((Option.some.inj otherIs).symm.trans
-            (handleOwner.trans (Option.some.inj eventIs)))
+          rw [handleOwner] at otherActor
+          exact different
+            (ownerSolitary.ready_actor_unique cut eventReady otherReady eventActor otherActor)
       have active : id.1 ∉ state.config.defaulted := by
         change id.1 = owner at sender
         intro inactive
@@ -271,11 +269,12 @@ theorem bindingIncludable_accepted_of_extends (relaxed : graph.RevealRelaxedOrde
 /-- An authentic fresh call is accepted while its event is unfinished and timely.
 Other completions must retain its receipt association, and automatic service
 must be quiescent. The guarded result may be either success or public failure. -/
-theorem freshServiceAcceptable_accepted_of_extends (relaxed : graph.RevealRelaxedOrdered)
+theorem freshServiceAcceptable_accepted_of_extends
     (state : State graph) (view : PublicView graph)
     (message : Message Player (WitnessedPacket graph))
     (conforming : (freshServiceAcceptable timeouts) view message)
-    (event : graph.EventId) (named : message.payload.call.event? graph = some event)
+    (event : graph.EventId) (ownerSolitary : graph.OwnerSolitary event)
+    (named : message.payload.call.event? graph = some event)
     {extra : List graph.EventId}
     (order : state.publicView.observation.completionOrder =
       view.observation.completionOrder ++ extra)
@@ -295,9 +294,9 @@ theorem freshServiceAcceptable_accepted_of_extends (relaxed : graph.RevealRelaxe
       change some actual = some event at named
       have actualEq : actual = event := Option.some.inj named
       subst actualEq
-      exact bindingIncludable_accepted_of_extends timeouts relaxed state view
-        id actual candidate conforming.1 order together acceptedChanged unfinished timely
-        quiescent invariant
+      exact bindingIncludable_accepted_of_extends timeouts state view
+        id actual ownerSolitary candidate conforming.1 order together acceptedChanged unfinished
+        timely quiescent invariant
   | opening actual candidate raw =>
       change some actual = some event at named
       have actualEq : actual = event := Option.some.inj named

@@ -26,9 +26,9 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
   [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
   [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
@@ -57,7 +57,7 @@ theorem exists_counterpart_certificate_of_repairs (wellFormed : setup.WellFormed
     (floored : ∀ n, floor n ≤ contentFloor setup timeouts leaks bounds horizon scheduler (sequence
       n))
     (covers : bounds.CoversOutputValues)
-    (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
+    (capacity : ∀ who, bindingEventCount setup.informationGraph who < bounds.candidateCount)
     {slots : Nat}
     (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
       horizon scheduler slots p))
@@ -72,7 +72,8 @@ theorem exists_counterpart_certificate_of_repairs (wellFormed : setup.WellFormed
       site))
     {past : List (application setup timeouts leaks).PlayerEntry}
     {view : (application setup timeouts leaks).PlayerView} (atSite : site.1 = some (past, view))
-    {event : (graph setup).EventId} (turn : view.application.publicView.ownTurn? who = some event)
+    {event : setup.informationGraph.EventId} (turn : view.application.publicView.ownTurn? who =
+      some event)
     (history : (onePacketN).InformationHistory who site.1) :
     ∃ counterpart : (onePacketN).InformationHistory who site.1,
       ¬ RegularTrace setup timeouts leaks bounds horizon scheduler (sequence n) who
@@ -131,7 +132,7 @@ def OnePacketCounterpartInputs.ofBindingRepairs (wellFormed : setup.WellFormed)
       (combinedFloor setup timeouts leaks bounds horizon scheduler (sequence n)) (2 * horizon +
         2) n)
     (covers : bounds.CoversOutputValues) (coversInputs : bounds.CoversInputValues)
-    (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
+    (capacity : ∀ who, bindingEventCount setup.informationGraph who < bounds.candidateCount)
     {slots : Nat}
     (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
       horizon scheduler slots p))
@@ -148,7 +149,8 @@ def OnePacketCounterpartInputs.ofBindingRepairs (wellFormed : setup.WellFormed)
       site))
     {past : List (application setup timeouts leaks).PlayerEntry}
     {view : (application setup timeouts leaks).PlayerView} (atSite : site.1 = some (past, view))
-    {event : (graph setup).EventId} (turn : view.application.publicView.ownTurn? who = some event) :
+    {event : setup.informationGraph.EventId} (turn : view.application.publicView.ownTurn? who =
+      some event) :
     OnePacketCounterpartInputs setup timeouts leaks bounds horizon scheduler sequence targetSequence
       site := by
   classical

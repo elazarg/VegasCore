@@ -40,8 +40,8 @@ open GameTheory GameTheory.Protocol Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
 
 variable (setup timeouts leaks) in
 /-- **Owned requests are emitted.** Every recalled transmission emitted an
@@ -54,13 +54,13 @@ def OwnedRequestsEmitted (execution : (application setup timeouts leaks).Executi
     ∃ message, recalled.emitted = some message ∧
       (∀ fact, submission.evidence = .owned fact → message.payload.evidence = some fact) ∧
       ∀ event, message.payload.token = some ⟨event⟩ →
-        (graph setup).order.predecessors event ⊆ execution.application.config.cut.completed
+        setup.informationGraph.order.predecessors event ⊆ execution.application.config.cut.completed
 
 /-- A normal owned request resolves to its fact. -/
 private theorem resolve_owned_of_normalize {who : Player}
-    {candidates : CandidateSlot (graph setup) → CommitmentCandidate (Raw L)}
-    {known : List (Message Player (WitnessedPacket (graph setup)))}
-    {fact : OpeningFact (graph setup)}
+    {candidates : CandidateSlot setup.informationGraph → CommitmentCandidate (Raw L)}
+    {known : List (Message Player (WitnessedPacket setup.informationGraph))}
+    {fact : OpeningFact setup.informationGraph}
     (normal : (EvidenceRequest.owned fact).normalize who candidates known = .owned fact) :
     (EvidenceRequest.owned fact).resolve who candidates known = some fact := by
   cases resolved : (EvidenceRequest.owned fact).resolve who candidates known with
@@ -75,10 +75,11 @@ private theorem resolve_owned_of_normalize {who : Player}
       · cases selected
 
 /-- An issued token names an event whose direct predecessors have completed. -/
-private theorem predecessors_completed_of_tokenFor (state : EventGraphRuntime.State (graph setup))
-    (packet : Payload (graph setup)) (event : (graph setup).EventId)
+private theorem predecessors_completed_of_tokenFor (state : EventGraphRuntime.State
+  setup.informationGraph)
+    (packet : Payload setup.informationGraph) (event : setup.informationGraph.EventId)
     (issued : state.publicView.tokenFor packet = some ⟨event⟩) :
-    (graph setup).order.predecessors event ⊆ state.config.cut.completed := by
+    setup.informationGraph.order.predecessors event ⊆ state.config.cut.completed := by
   unfold PublicView.tokenFor at issued
   obtain ⟨named, _, token⟩ := Option.bind_eq_some_iff.mp issued
   obtain ⟨same, complete⟩ := (state.publicView.readinessToken?_eq_some_iff named ⟨event⟩).mp token
@@ -108,7 +109,7 @@ theorem ownedRequestsEmitted_environment
     (historyPrefix.subset ((execution.application.config.history_exact predecessor).mpr
       (token event named completed)))
 
-variable [Fintype Player] (bounds : MessageBounds (graph setup))
+variable [Fintype Player] (bounds : MessageBounds setup.informationGraph)
 
 /-- Owned requests stay emitted along every one-packet response. -/
 theorem ownedRequestsEmitted_respond (execution : (application setup timeouts leaks).Execution)
@@ -188,7 +189,7 @@ theorem output_mem_inputs_of_trace {horizon : Nat}
     {control : (application setup timeouts leaks).Control}
     (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control))
-    (who : Player) (packet : Message Player (WitnessedPacket (graph setup)))
+    (who : Player) (packet : Message Player (WitnessedPacket setup.informationGraph))
     (output : packet ∈ (application setup timeouts leaks).outputs (control.execution.logs who)) :
     packet ∈ control.execution.network.inputs := by
   have clean := (bounds.onePacketMenu_countClean timeouts leaks scheduler).history
@@ -205,9 +206,9 @@ theorem commitment_facts_of_trace {horizon : Nat}
     {control : (application setup timeouts leaks).Control}
     (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control))
-    (packet : Message Player (WitnessedPacket (graph setup)))
-    (input : packet ∈ control.execution.network.inputs) (named : (graph setup).EventId)
-    (candidate : Handle (graph setup))
+    (packet : Message Player (WitnessedPacket setup.informationGraph))
+    (input : packet ∈ control.execution.network.inputs) (named : setup.informationGraph.EventId)
+    (candidate : Handle setup.informationGraph)
     (call : packet.payload.call = .commitment named candidate) :
     candidate.1 = packet.sender ∧ (∃ serial, candidate.2 = .prepared serial) ∧
       ∀ other, EarlierOwnPacket control.execution.network.inputs packet other →
@@ -227,11 +228,12 @@ theorem commitment_unique_of_trace {horizon : Nat}
     {control : (application setup timeouts leaks).Control}
     (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control))
-    (first : Message Player (WitnessedPacket (graph setup)))
+    (first : Message Player (WitnessedPacket setup.informationGraph))
     (firstInput : first ∈ control.execution.network.inputs)
-    (second : Message Player (WitnessedPacket (graph setup)))
+    (second : Message Player (WitnessedPacket setup.informationGraph))
     (secondInput : second ∈ control.execution.network.inputs)
-    (firstEvent secondEvent : (graph setup).EventId) (candidate : Handle (graph setup))
+    (firstEvent secondEvent : setup.informationGraph.EventId) (candidate : Handle
+      setup.informationGraph)
     (firstCall : first.payload.call = .commitment firstEvent candidate)
     (secondCall : second.payload.call = .commitment secondEvent candidate) :
     firstEvent = secondEvent := by
@@ -270,9 +272,10 @@ theorem certificate_field {horizon : Nat} {scheduler : (application setup timeou
     (member : recalled ∈ control.execution.logs sender)
     (submission : (application setup timeouts leaks).Submission)
     (sent : recalled.action.transmission = some submission)
-    (fact : OpeningFact (graph setup)) (owned : submission.evidence = .owned fact) :
+    (fact : OpeningFact setup.informationGraph) (owned : submission.evidence = .owned fact) :
     ∃ event owner payload binding checks outputEq codeEq,
-      nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq ∧
+      nodeView setup.informationGraph event = .resolve owner payload binding checks outputEq codeEq
+        ∧
       (control.execution.application.config.cut.Ready event ∨
         event ∈ control.execution.application.config.cut.completed) ∧
       ∀ field, control.execution.application.accepted field = some fact.handle →
@@ -318,7 +321,7 @@ theorem certificate_field {horizon : Nat} {scheduler : (application setup timeou
       have factEq : fact = ⟨candidate, raw⟩ := by
         simpa only [certifiedOpening, call, carried, decide_eq_true_eq] using certified
       subst factEq
-      cases view : nodeView (graph setup) event with
+      cases view : nodeView setup.informationGraph event with
       | bind | sample =>
           rw [view] at resolveFacts
           exact resolveFacts.elim

@@ -24,9 +24,9 @@ open GameTheory GameTheory.Protocol Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- Every completed binding has an accepted handle if foreign owners remain
@@ -37,13 +37,13 @@ theorem completedBinding_accepted_of_publicRecord
     (record : PublicRecord setup timeouts who control)
     (debtFree : ∀ point, nativeDecodedState setup timeouts leaks (some control) = some point →
       ¬ ProtocolState.OwesFailure who setup.program point)
-    (event : (graph setup).EventId) (owner : Player) (payload : L.Ty)
-    (layoutEq : (graph setup).outputLayout event = .binding owner payload)
+    (event : setup.informationGraph.EventId) (owner : Player) (payload : L.Ty)
+    (layoutEq : setup.informationGraph.outputLayout event = .binding owner payload)
     (completed : event ∈ control.execution.application.config.cut.completed) :
     control.execution.application.accepted (.inr event) ≠ none := by
   by_cases mine : owner = who
   · subst owner
-    let ref : EventGraph.FieldRef (graph setup).layout (.binding who payload) :=
+    let ref : EventGraph.FieldRef setup.informationGraph.layout (.binding who payload) :=
       ⟨.inr event, layoutEq⟩
     have present := (control.execution.application.config.output_available event).mpr completed
     obtain ⟨result, read⟩ := Option.isSome_iff_exists.mp

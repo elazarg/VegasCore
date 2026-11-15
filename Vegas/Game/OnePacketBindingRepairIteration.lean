@@ -27,9 +27,9 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol Intera
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 omit [DecidableEq Player] [Fintype Player] [IExpr.ResultTypes L] in
@@ -48,10 +48,10 @@ private theorem bindingRefines_trans {Field : Type}
 
 omit [Fintype Player] in
 private theorem outputSucceeded_of_bindingRefines
-    {first last : EventGraph.Store (graph setup).layout}
-    (preserved : first.BindingRefines last) (event : (graph setup).EventId)
+    {first last : EventGraph.Store setup.informationGraph.layout}
+    (preserved : first.BindingRefines last) (event : setup.informationGraph.EventId)
     {owner : Player} {payload : L.Ty}
-    (layoutEq : (graph setup).outputLayout event = .binding owner payload)
+    (layoutEq : setup.informationGraph.outputLayout event = .binding owner payload)
     (successful : OutputSucceeded first event) : OutputSucceeded last event := by
   obtain ⟨value, stored, notFailed⟩ := successful
   have transport : ∀ (kind : EventGraph.EventField Player L)
@@ -69,12 +69,12 @@ private theorem completed_iff_of_frame
     {memory : BindingMemory timeouts leaks} {owner : Player}
     {original repaired : (application setup timeouts leaks).Execution}
     (frame : BindingMemory.Frame timeouts leaks memory owner original repaired)
-    (event : (graph setup).EventId) :
+    (event : setup.informationGraph.EventId) :
     event ∈ original.application.config.cut.completed ↔
       event ∈ repaired.application.config.cut.completed := by
   have order : original.application.config.history.map EventCompletion.event =
       repaired.application.config.history.map EventCompletion.event :=
-    congrArg (fun view : PublicView (graph setup) => view.observation.completionOrder)
+    congrArg (fun view : PublicView setup.informationGraph => view.observation.completionOrder)
       frame.publicView
   constructor
   · intro completed
@@ -101,8 +101,8 @@ theorem directedRepair_completed_outputs_succeeded
     (recorded : memory.RecordsSubmittedBindings timeouts leaks owner
       original.execution repaired.execution)
     (record : PublicRecord setup timeouts focal original)
-    (event : (graph setup).EventId) (payload : L.Ty)
-    (layoutEq : (graph setup).outputLayout event = .binding owner payload)
+    (event : setup.informationGraph.EventId) (payload : L.Ty)
+    (layoutEq : setup.informationGraph.outputLayout event = .binding owner payload)
     (completed : event ∈ repaired.execution.application.config.cut.completed) :
     OutputSucceeded repaired.execution.application.config.store event := by
   have rawFirst := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup)
@@ -194,7 +194,7 @@ theorem exists_bindingRepairs_for_owners
         original.execution.application.config.store.BindingRefines
           repaired.execution.application.config.store ∧
         ∀ owner ∈ owners, ∀ event payload,
-          (graph setup).outputLayout event = .binding owner payload →
+          setup.informationGraph.outputLayout event = .binding owner payload →
           event ∈ repaired.execution.application.config.cut.completed →
           OutputSucceeded repaired.execution.application.config.store event := by
   classical

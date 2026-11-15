@@ -3,7 +3,7 @@ module
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 public import Vegas.Compile.EventGraphReadout
-public import Vegas.EventGraph.Sequential
+public import Vegas.EventGraph.Dependencies
 
 @[expose] public section
 
@@ -87,11 +87,12 @@ theorem terminalRefsWith_available_outputs {Field : Type} [DecidableEq Field]
       · exact terminalRefsWith_available_context next _ _ store decoded HasVar.here
       · exact ih _ _ decoded tail
 
-/-- This implication is independent of the graph dependency mode and the
+/-- This implication is independent of the graph dependency choice and the
 policy that produced the configuration. -/
 theorem terminal_decode_complete {Γ : SourceCtx Player L} {openNames : Finset VarId}
-    (program : SourceProgram Player L Γ openNames) (mode : EventGraph.ExecutionMode)
-    (config : ((toEventGraph program).withMode mode).Config)
+    (program : SourceProgram Player L Γ openNames)
+    (deps : (toEventGraph program).Dependencies)
+    (config : ((toEventGraph program).withDependencies deps).Config)
     (decoded : (decodeState? (terminalRefs program) config.store).isSome = true) :
     config.cut.Terminal := by
   apply Finset.eq_univ_of_forall

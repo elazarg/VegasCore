@@ -48,9 +48,9 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] (setup : Setup (Player := Player) (L := L))
-  (timeouts : EventTimeouts (graph setup))
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-  (bounds : MessageBounds (graph setup)) (horizon : Nat)
+  (timeouts : EventTimeouts setup.informationGraph)
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
+  (bounds : MessageBounds setup.informationGraph) (horizon : Nat)
   (scheduler : (application setup timeouts leaks).Scheduler)
 
 /-- The unsettled content after one native transition: a response of another
@@ -69,7 +69,7 @@ def unsettledStep (assessment : setup.intendedModel.BehavioralAssessment) (who :
       | none =>
           if (after.execution.application.config.history.drop
               before.execution.application.config.history.length).any
-                (fun completion => ((graph setup).actor? completion.event).isSome) then
+                (fun completion => (setup.informationGraph.actor? completion.event).isSome) then
             1 else pending
   | _, _, _ => pending
 
@@ -267,7 +267,7 @@ theorem replayStepMatches_completion (assessment : setup.intendedModel.Behaviora
     (who : Player) (history : setup.intendedProtocol.History) (pending : ℝ)
     (before after : (application setup timeouts leaks).Control) (idle : before.actor = none)
     (joint : Player → Option (application setup timeouts leaks).Action)
-    (completion : (graph setup).Completion)
+    (completion : setup.informationGraph.Completion)
     (dropped : after.execution.application.config.history.drop
       before.execution.application.config.history.length = [completion])
     (close : ∀ legal : setup.intendedProtocol.Legal history.state
@@ -275,7 +275,7 @@ theorem replayStepMatches_completion (assessment : setup.intendedModel.Behaviora
           (completion.decision.bind (decodeEventAction setup.program completion.event))),
       setup.intendedModel.counterfactualStepProb assessment.strategy who history.trace
           ⟨_, legal⟩ (decodedPoint setup after.execution.application.config) *
-        (if ((graph setup).actor? completion.event).isSome then 1 else pending) =
+        (if (setup.informationGraph.actor? completion.event).isSome then 1 else pending) =
       completionMass setup before.execution.application after.execution.application *
         pending) :
     ReplayStepMatches setup timeouts leaks assessment who history pending (some before) joint

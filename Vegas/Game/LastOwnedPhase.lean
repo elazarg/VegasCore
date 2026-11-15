@@ -31,35 +31,35 @@ namespace Vegas
 open SourceProgram EventGraph EventGraphRuntime Interaction GameTheory.Math.Probability
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
-  {setup : Setup (Player := Player) (L := L)} {mode : EventGraph.ExecutionMode}
-  {duration : (serviceGraph setup mode).EventId → Nat}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode))}
+  {setup : Setup (Player := Player) (L := L)} {deps : setup.dataflowGraph.Dependencies}
+  {duration : (serviceGraph setup deps).EventId → Nat}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup deps))}
 
 /-- Until the sole ready event of the deviator or of chance completes, the
 reference clients of the other players remain silent. -/
 theorem runUntil_reference_focal
-    (scheduler : (serviceApplication setup mode duration leaks).Scheduler)
-    (bound : (serviceGraph setup mode).EventId → Nat) (turns : Nat)
-    (timing : TurnTiming setup turns mode)
-    (reference : (serviceGraph setup mode).BehavioralProfile) (who : Player)
-    (deviation : (serviceApplication setup mode duration leaks).Policy)
-    (event : (serviceGraph setup mode).EventId)
-    (focal : (serviceGraph setup mode).actor? event = none ∨ (serviceGraph setup mode).actor?
+    (scheduler : (serviceApplication setup deps duration leaks).Scheduler)
+    (bound : (serviceGraph setup deps).EventId → Nat) (turns : Nat)
+    (timing : TurnTiming setup turns deps)
+    (reference : (serviceGraph setup deps).BehavioralProfile) (who : Player)
+    (deviation : (serviceApplication setup deps duration leaks).Policy)
+    (event : (serviceGraph setup deps).EventId)
+    (focal : (serviceGraph setup deps).actor? event = none ∨ (serviceGraph setup deps).actor?
         event = some who)
-    (alone : ∀ (cut : (serviceGraph setup mode).order.Cut) other, cut.Ready event → cut.Ready
+    (alone : ∀ (cut : (serviceGraph setup deps).order.Cut) other, cut.Ready event → cut.Ready
         other → other = event) (count : Nat)
-    (execution : (serviceApplication setup mode duration leaks).Execution)
+    (execution : (serviceApplication setup deps duration leaks).Execution)
     (holds : event ∉ execution.application.config.cut.completed →
       execution.application.config.cut.Ready event) :
-    (serviceApplication setup mode duration leaks).runUntil scheduler
+    (serviceApplication setup deps duration leaks).runUntil scheduler
     (Function.update
-      (serviceReferenceTurnPolicy setup mode duration leaks bound turns timing reference) who
+      (serviceReferenceTurnPolicy setup deps duration leaks bound turns timing reference) who
         deviation)
     (fun final => event ∈ final.application.config.cut.completed) count execution =
-    (serviceApplication setup mode duration leaks).runUntil scheduler
+    (serviceApplication setup deps duration leaks).runUntil scheduler
     (focalPlayers setup leaks who deviation)
         (fun final => event ∈ final.application.config.cut.completed) count execution := by
-  let app := serviceApplication setup mode duration leaks
+  let app := serviceApplication setup deps duration leaks
   apply app.runUntil_congr_of_agree scheduler _ _ _
     (fun current => event ∉ current.application.config.cut.completed →
       current.application.config.cut.Ready event)
@@ -295,19 +295,19 @@ and final traffic of the same factored form, and a graph policy built from the
 deviator's conditional choice there has, on average, the last-served
 erased-key law of its tail after the phase. -/
 theorem lastOwned_phase_patched
-    (scheduler : (serviceApplication setup mode duration leaks).Scheduler) (horizon : Nat)
-    (bound : (serviceGraph setup mode).EventId → Nat) (turns : Nat)
-    (timing : TurnTiming setup turns mode)
-    (reference base : (serviceGraph setup mode).BehavioralProfile) (who : Player)
-    (deviation : (serviceApplication setup mode duration leaks).Policy)
+    (scheduler : (serviceApplication setup deps duration leaks).Scheduler) (horizon : Nat)
+    (bound : (serviceGraph setup deps).EventId → Nat) (turns : Nat)
+    (timing : TurnTiming setup turns deps)
+    (reference base : (serviceGraph setup deps).BehavioralProfile) (who : Player)
+    (deviation : (serviceApplication setup deps duration leaks).Policy)
     (independent : ∀ policy, LastIndependent
-      ((serviceGraph setup mode).lastDeviationProfile base who policy) who)
-    (event : (serviceGraph setup mode).EventId)
-    (owned : (serviceGraph setup mode).actor? event = some who)
-    (alone : ∀ (cut : (serviceGraph setup mode).order.Cut) other, cut.Ready event →
+      ((serviceGraph setup deps).lastDeviationProfile base who policy) who)
+    (event : (serviceGraph setup deps).EventId)
+    (owned : (serviceGraph setup deps).actor? event = some who)
+    (alone : ∀ (cut : (serviceGraph setup deps).order.Cut) other, cut.Ready event →
       cut.Ready other → other = event)
     {Seed : Type} (prior : PMF Seed)
-    (execution : Seed → (serviceApplication setup mode duration leaks).Execution)
+    (execution : Seed → (serviceApplication setup deps duration leaks).Execution)
     (quiescent : ∀ seed ∈ prior.support, ∀ query,
       ¬ (execution seed).application.AutomaticReady query)
     (pendingPrefix : ∀ seed ∈ prior.support,
@@ -315,64 +315,64 @@ theorem lastOwned_phase_patched
         (execution seed).application.config.cut.IsPrefix event.val)
     (automaticPast : ∀ seed ∈ prior.support,
       event ∈ (execution seed).application.config.cut.completed →
-        observedAction event ((serviceGraph setup mode).normalizeObservation who
-          ((serviceGraph setup mode).playerObserve who
+        observedAction event ((serviceGraph setup deps).normalizeObservation who
+          ((serviceGraph setup deps).playerObserve who
             (execution seed).application.config)) = none)
     (completes : ∀ seed ∈ prior.support, ∀ final ∈
-      ((serviceApplication setup mode duration leaks).runUntilHorizon scheduler
+      ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
         (Function.update
-          (serviceReferenceTurnPolicy setup mode duration leaks bound turns timing reference) who
+          (serviceReferenceTurnPolicy setup deps duration leaks bound turns timing reference) who
           deviation)
         (fun current => event ∈ current.application.config.cut.completed) horizon
         (execution seed)).support,
       event ∈ final.application.config.cut.completed)
-    (noise : Option ((serviceGraph setup mode).PlayerObservation who) → PMF _)
+    (noise : Option ((serviceGraph setup deps).PlayerObservation who) → PMF _)
     (factor : prior.map (fun seed => (runKey (execution seed).application.config,
-        (bindingTraffic (serviceTimeouts setup mode duration)) leaks who (execution seed))) =
+        (bindingTraffic (serviceTimeouts setup deps duration)) leaks who (execution seed))) =
       (prior.map fun seed => runKey (execution seed).application.config).bind fun current =>
         (noise (keyView who current)).map fun extra => (current, extra)) :
-    ∃ (build : (serviceGraph setup mode).BehavioralPolicy who →
-        (serviceGraph setup mode).BehavioralPolicy who)
-      (nextNoise : Option ((serviceGraph setup mode).PlayerObservation who) → PMF _),
+    ∃ (build : (serviceGraph setup deps).BehavioralPolicy who →
+        (serviceGraph setup deps).BehavioralPolicy who)
+      (nextNoise : Option ((serviceGraph setup deps).PlayerObservation who) → PMF _),
       (prior.bind fun seed =>
-        ((serviceApplication setup mode duration leaks).runUntilHorizon scheduler
+        ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
           (Function.update
-            (serviceReferenceTurnPolicy setup mode duration leaks bound turns timing reference)
+            (serviceReferenceTurnPolicy setup deps duration leaks bound turns timing reference)
             who deviation)
           (fun current => event ∈ current.application.config.cut.completed) horizon
           (execution seed)).map fun final => (runKey final.application.config,
-            (bindingTraffic (serviceTimeouts setup mode duration)) leaks who final)) =
+            (bindingTraffic (serviceTimeouts setup deps duration)) leaks who final)) =
         (prior.bind fun seed =>
-          ((serviceApplication setup mode duration leaks).runUntilHorizon scheduler
+          ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
             (Function.update
-              (serviceReferenceTurnPolicy setup mode duration leaks bound turns timing reference)
+              (serviceReferenceTurnPolicy setup deps duration leaks bound turns timing reference)
               who deviation)
             (fun current => event ∈ current.application.config.cut.completed) horizon
             (execution seed)).map fun final => runKey final.application.config).bind
           (fun current => (nextNoise (keyView who current)).map fun extra => (current, extra)) ∧
       (∀ policy, (prior.bind fun seed =>
-        ((serviceApplication setup mode duration leaks).runUntilHorizon scheduler
+        ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
           (Function.update
-            (serviceReferenceTurnPolicy setup mode duration leaks bound turns timing reference)
+            (serviceReferenceTurnPolicy setup deps duration leaks bound turns timing reference)
             who deviation)
           (fun current => event ∈ current.application.config.cut.completed) horizon
           (execution seed)).bind fun final =>
-            keyTarget ((serviceGraph setup mode).lastDeviationProfile base who policy) who
+            keyTarget ((serviceGraph setup deps).lastDeviationProfile base who policy) who
               (runKey final.application.config)) =
         prior.bind fun seed =>
-          keyTarget ((serviceGraph setup mode).lastDeviationProfile base who (build policy)) who
+          keyTarget ((serviceGraph setup deps).lastDeviationProfile base who (build policy)) who
             (runKey (execution seed).application.config)) ∧
-      ∀ policy (config : (serviceGraph setup mode).Config) other, other ≠ event →
-        actionLaw ((serviceGraph setup mode).lastDeviationProfile base who (build policy)) config
+      ∀ policy (config : (serviceGraph setup deps).Config) other, other ≠ event →
+        actionLaw ((serviceGraph setup deps).lastDeviationProfile base who (build policy)) config
             other =
-          actionLaw ((serviceGraph setup mode).lastDeviationProfile base who policy) config
+          actionLaw ((serviceGraph setup deps).lastDeviationProfile base who policy) config
             other := by
   classical
-  let G := serviceGraph setup mode
-  let app := serviceApplication setup mode duration leaks
-  let timeouts := serviceTimeouts setup mode duration
+  let G := serviceGraph setup deps
+  let app := serviceApplication setup deps duration leaks
+  let timeouts := serviceTimeouts setup deps duration
   let players := Function.update
-    (serviceReferenceTurnPolicy setup mode duration leaks bound turns timing reference) who
+    (serviceReferenceTurnPolicy setup deps duration leaks bound turns timing reference) who
     deviation
   let phase := fun seed => app.runUntilHorizon scheduler players
     (fun current => event ∈ current.application.config.cut.completed) horizon (execution seed)
@@ -688,19 +688,19 @@ and final traffic of the same factored form, and a graph policy built from the
 deviator's conditional choice there has, on average, the last-served
 erased-key law of its tail after the phase. -/
 theorem lastOwned_phase
-    (scheduler : (serviceApplication setup mode duration leaks).Scheduler) (horizon : Nat)
-    (bound : (serviceGraph setup mode).EventId → Nat) (turns : Nat)
-    (timing : TurnTiming setup turns mode)
-    (reference base : (serviceGraph setup mode).BehavioralProfile) (who : Player)
-    (deviation : (serviceApplication setup mode duration leaks).Policy)
+    (scheduler : (serviceApplication setup deps duration leaks).Scheduler) (horizon : Nat)
+    (bound : (serviceGraph setup deps).EventId → Nat) (turns : Nat)
+    (timing : TurnTiming setup turns deps)
+    (reference base : (serviceGraph setup deps).BehavioralProfile) (who : Player)
+    (deviation : (serviceApplication setup deps duration leaks).Policy)
     (independent : ∀ policy, LastIndependent
-      ((serviceGraph setup mode).lastDeviationProfile base who policy) who)
-    (event : (serviceGraph setup mode).EventId)
-    (owned : (serviceGraph setup mode).actor? event = some who)
-    (alone : ∀ (cut : (serviceGraph setup mode).order.Cut) other, cut.Ready event →
+      ((serviceGraph setup deps).lastDeviationProfile base who policy) who)
+    (event : (serviceGraph setup deps).EventId)
+    (owned : (serviceGraph setup deps).actor? event = some who)
+    (alone : ∀ (cut : (serviceGraph setup deps).order.Cut) other, cut.Ready event →
       cut.Ready other → other = event)
     {Seed : Type} (prior : PMF Seed)
-    (execution : Seed → (serviceApplication setup mode duration leaks).Execution)
+    (execution : Seed → (serviceApplication setup deps duration leaks).Execution)
     (quiescent : ∀ seed ∈ prior.support, ∀ query,
       ¬ (execution seed).application.AutomaticReady query)
     (pendingPrefix : ∀ seed ∈ prior.support,
@@ -708,52 +708,52 @@ theorem lastOwned_phase
         (execution seed).application.config.cut.IsPrefix event.val)
     (automaticPast : ∀ seed ∈ prior.support,
       event ∈ (execution seed).application.config.cut.completed →
-        observedAction event ((serviceGraph setup mode).normalizeObservation who
-          ((serviceGraph setup mode).playerObserve who
+        observedAction event ((serviceGraph setup deps).normalizeObservation who
+          ((serviceGraph setup deps).playerObserve who
             (execution seed).application.config)) = none)
     (completes : ∀ seed ∈ prior.support, ∀ final ∈
-      ((serviceApplication setup mode duration leaks).runUntilHorizon scheduler
+      ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
         (Function.update
-          (serviceReferenceTurnPolicy setup mode duration leaks bound turns timing reference) who
+          (serviceReferenceTurnPolicy setup deps duration leaks bound turns timing reference) who
           deviation)
         (fun current => event ∈ current.application.config.cut.completed) horizon
         (execution seed)).support,
       event ∈ final.application.config.cut.completed)
-    (noise : Option ((serviceGraph setup mode).PlayerObservation who) → PMF _)
+    (noise : Option ((serviceGraph setup deps).PlayerObservation who) → PMF _)
     (factor : prior.map (fun seed => (runKey (execution seed).application.config,
-        (bindingTraffic (serviceTimeouts setup mode duration)) leaks who (execution seed))) =
+        (bindingTraffic (serviceTimeouts setup deps duration)) leaks who (execution seed))) =
       (prior.map fun seed => runKey (execution seed).application.config).bind fun current =>
         (noise (keyView who current)).map fun extra => (current, extra)) :
-    ∃ (build : (serviceGraph setup mode).BehavioralPolicy who →
-        (serviceGraph setup mode).BehavioralPolicy who)
-      (nextNoise : Option ((serviceGraph setup mode).PlayerObservation who) → PMF _),
+    ∃ (build : (serviceGraph setup deps).BehavioralPolicy who →
+        (serviceGraph setup deps).BehavioralPolicy who)
+      (nextNoise : Option ((serviceGraph setup deps).PlayerObservation who) → PMF _),
       (prior.bind fun seed =>
-        ((serviceApplication setup mode duration leaks).runUntilHorizon scheduler
+        ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
           (Function.update
-            (serviceReferenceTurnPolicy setup mode duration leaks bound turns timing reference)
+            (serviceReferenceTurnPolicy setup deps duration leaks bound turns timing reference)
             who deviation)
           (fun current => event ∈ current.application.config.cut.completed) horizon
           (execution seed)).map fun final => (runKey final.application.config,
-            (bindingTraffic (serviceTimeouts setup mode duration)) leaks who final)) =
+            (bindingTraffic (serviceTimeouts setup deps duration)) leaks who final)) =
         (prior.bind fun seed =>
-          ((serviceApplication setup mode duration leaks).runUntilHorizon scheduler
+          ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
             (Function.update
-              (serviceReferenceTurnPolicy setup mode duration leaks bound turns timing reference)
+              (serviceReferenceTurnPolicy setup deps duration leaks bound turns timing reference)
               who deviation)
             (fun current => event ∈ current.application.config.cut.completed) horizon
             (execution seed)).map fun final => runKey final.application.config).bind
           (fun current => (nextNoise (keyView who current)).map fun extra => (current, extra)) ∧
       ∀ policy, (prior.bind fun seed =>
-        ((serviceApplication setup mode duration leaks).runUntilHorizon scheduler
+        ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
           (Function.update
-            (serviceReferenceTurnPolicy setup mode duration leaks bound turns timing reference)
+            (serviceReferenceTurnPolicy setup deps duration leaks bound turns timing reference)
             who deviation)
           (fun current => event ∈ current.application.config.cut.completed) horizon
           (execution seed)).bind fun final =>
-            keyTarget ((serviceGraph setup mode).lastDeviationProfile base who policy) who
+            keyTarget ((serviceGraph setup deps).lastDeviationProfile base who policy) who
               (runKey final.application.config)) =
         prior.bind fun seed =>
-          keyTarget ((serviceGraph setup mode).lastDeviationProfile base who (build policy)) who
+          keyTarget ((serviceGraph setup deps).lastDeviationProfile base who (build policy)) who
             (runKey (execution seed).application.config) := by
   obtain ⟨build, nextNoise, joint, averaged, _⟩ := lastOwned_phase_patched scheduler horizon
     bound turns timing reference base who deviation independent event owned alone prior execution

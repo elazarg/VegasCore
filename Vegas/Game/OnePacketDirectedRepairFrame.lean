@@ -25,8 +25,8 @@ open SourceProgram Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
 
 /-- The part of own recall retained by every late-delivery key. Private source
 choices and candidate material are omitted, but actual envelopes are retained. -/
@@ -63,7 +63,7 @@ theorem operationalRecall_rawBinding
     (recalled : Vegas.operationalRecall (timeouts := timeouts) (setup := setup) (leaks := leaks)
         (original.logs owner) = Vegas.operationalRecall (timeouts := timeouts) (repaired.logs
           owner))
-    (event : (graph setup).EventId) (first second : Option (Raw L)) (serial : Nat) :
+    (event : setup.informationGraph.EventId) (first second : Option (Raw L)) (serial : Nat) :
     Vegas.operationalRecall (timeouts := timeouts)
         ((original.respond (application setup timeouts leaks) owner
           ⟨some ⟨⟨.commitment event (owner, .prepared serial), first⟩, .none⟩⟩).logs owner) =
@@ -88,7 +88,7 @@ theorem operationalRecall_rawBinding
     (original.network.known owner) ⟨.commitment event (owner, .prepared serial), first⟩).trans
       ((congrArg (fun pub => (⟨.commitment event (owner, .prepared serial), none,
         pub.tokenFor (.commitment event (owner, .prepared serial))⟩ :
-        WitnessedPacket (graph setup)))
+        WitnessedPacket setup.informationGraph))
           publicEq).trans
         (reactiveApplication_packet_none timeouts leaks repaired.application owner
           (repaired.network.known owner)

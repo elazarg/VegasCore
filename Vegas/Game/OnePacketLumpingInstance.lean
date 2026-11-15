@@ -34,31 +34,32 @@ open GameTheory GameTheory.Protocol GameTheory.Math.Probability Interaction Even
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
 
 /-- **A publication turn of a key.** It is the key owner's turn at the event in
 the key's public view, and the event resolves a binding of the owner. -/
-def PublicationTurn (key : LateKey setup timeouts leaks) (event : (graph setup).EventId) : Prop :=
+def PublicationTurn (key : LateKey setup timeouts leaks) (event : setup.informationGraph.EventId) :
+  Prop :=
   key.current.1.ownTurn? key.owner = some event ∧
-    ∃ (payload : L.Ty) (binding : EventGraph.FieldRef (graph setup).layout
+    ∃ (payload : L.Ty) (binding : EventGraph.FieldRef setup.informationGraph.layout
         (.binding key.owner payload))
-      (checks : List (EventGraph.GuardCheck (graph setup).layout payload))
-      (outputEq : (graph setup).outputLayout event = .publication payload)
-      (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-        ((graph setup).nodes event) = .resolve key.owner payload binding
+      (checks : List (EventGraph.GuardCheck setup.informationGraph.layout payload))
+      (outputEq : setup.informationGraph.outputLayout event = .publication payload)
+      (codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+        (setup.informationGraph.nodes event) = .resolve key.owner payload binding
           checks),
-      nodeView (graph setup) event = .resolve key.owner payload binding
+      nodeView setup.informationGraph event = .resolve key.owner payload binding
         checks outputEq codeEq
 
 open Classical in
 /-- The publication event a key decides, if any. -/
-def turnEvent (key : LateKey setup timeouts leaks) : Option (graph setup).EventId :=
+def turnEvent (key : LateKey setup timeouts leaks) : Option setup.informationGraph.EventId :=
   if turn : ∃ event, PublicationTurn (timeouts := timeouts) key event then some turn.choose else
     none
 
-theorem publicationTurn_of_turnEvent {key : LateKey setup timeouts leaks} {event : (graph
-  setup).EventId}
+theorem publicationTurn_of_turnEvent {key : LateKey setup timeouts leaks} {event :
+  setup.informationGraph.EventId}
     (found : turnEvent (timeouts := timeouts) key = some event) : PublicationTurn (timeouts :=
       timeouts) key event := by
   unfold turnEvent at found
@@ -97,14 +98,14 @@ def recordImage (key : LateKey setup timeouts leaks)
     | [] => .inl none
     | newest :: _ => .inl newest
 
-variable [Fintype Player] (bounds : MessageBounds (graph setup)) (horizon : Nat)
+variable [Fintype Player] (bounds : MessageBounds setup.informationGraph) (horizon : Nat)
   (scheduler : (application setup timeouts leaks).Scheduler)
 
 open Classical in
 /-- A scheduler round from an operational state, read through the image of a
 representative forced state with the event ready; the state itself when there
 is none. -/
-def roundKernel (event : (graph setup).EventId) (owner : Player) (remaining : Nat)
+def roundKernel (event : setup.informationGraph.EventId) (owner : Player) (remaining : Nat)
     (state : OperationalState setup timeouts leaks) : PMF (PendingImage (timeouts := timeouts)
       (setup
       := setup) (leaks := leaks)) :=
@@ -124,7 +125,7 @@ def roundKernel (event : (graph setup).EventId) (owner : Player) (remaining : Na
 /-- **The pending kernel.** Completed and uninitialized images stay put; the
 owner's step is ownerStep; another player's step is its silent response; a
 scheduler round is read off a representative. -/
-def pendingKernel (event : (graph setup).EventId) (owner : Player)
+def pendingKernel (event : setup.informationGraph.EventId) (owner : Player)
     (ownerStep : Option (OperationalState setup timeouts leaks) →
       PMF (PendingImage (timeouts := timeouts) (setup := setup) (leaks := leaks))) :
     PendingImage (timeouts := timeouts) (setup := setup) (leaks := leaks) →
@@ -214,7 +215,8 @@ theorem ready_of_publicationTurn {who : Player}
       site.1)
     {control : (application setup timeouts leaks).Control} (current : history.1.state = some
       control)
-    {event : (graph setup).EventId} (turn : PublicationTurn (timeouts := timeouts) key event) :
+    {event : setup.informationGraph.EventId} (turn : PublicationTurn (timeouts := timeouts) key
+      event) :
     control.execution.application.config.cut.Ready event := by
   obtain ⟨_, keyEq⟩ := lateKey_of_history (timeouts := timeouts) siteKey history current
   simp only [lateKey, Option.some.injEq] at keyEq

@@ -35,7 +35,7 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol Intera
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
+  {timeouts : EventTimeouts setup.informationGraph}
 
 /-- **Every state of an intended history is intended.** -/
 theorem intended_of_history (wellFormed : setup.WellFormed) :
@@ -57,9 +57,9 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol Intera
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)} [Fintype Player]
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {timeouts : EventTimeouts setup.informationGraph} [Fintype Player]
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
   [DecidableEq (CellTy Player L)]
 
@@ -70,8 +70,8 @@ variable (wellFormed : setup.WellFormed) {first second : setup.intendedProtocol.
   (secondState : second.state = some q)
   (sameLength : first.trace.length = second.trace.length)
   {publicAgree : PublicCellsAgree setup p q} {succeed : CommitmentCellsSucceed setup p q}
-  (handlePairs : Handle (graph setup) → Option (Raw L × Raw L))
-  {allowed : Set (graph setup).Inputs}
+  (handlePairs : Handle setup.informationGraph → Option (Raw L × Raw L))
+  {allowed : Set setup.informationGraph.Inputs}
   (initialClosed : ∀ state ∈ (initialLaw setup).support, state.config.inputs ∈ allowed →
     state.swap (HiddenSwap.ofPairs (betweenPairs publicAgree succeed) handlePairs) ∈
       (initialLaw setup).support)
@@ -231,7 +231,7 @@ theorem othersSourceWeight_mapTrace (assessment : setup.intendedModel.Behavioral
     (guarded : SwapGuardState setup timeouts (HiddenSwap.ofPairs (betweenPairs publicAgree succeed)
       handlePairs) allowed (some control))
     (replayed : intendedHistory? setup timeouts leaks bounds horizon scheduler trace = some first)
-    {event : (graph setup).EventId}
+    {event : setup.informationGraph.EventId}
     (turn : (control.execution.observe (application setup timeouts leaks)
       who).application.publicView.ownTurn? who = some event) :
     othersSourceWeight setup timeouts leaks bounds horizon scheduler assessment who
@@ -295,7 +295,7 @@ theorem regularTrace_mapTrace {assessment : setup.intendedModel.BehavioralAssess
     (guarded : SwapGuardState setup timeouts (HiddenSwap.ofPairs (betweenPairs publicAgree succeed)
       handlePairs) allowed (some control))
     (replayed : intendedHistory? setup timeouts leaks bounds horizon scheduler trace = some first)
-    {event : (graph setup).EventId}
+    {event : setup.informationGraph.EventId}
     (turn : (control.execution.observe (application setup timeouts leaks)
       who).application.publicView.ownTurn? who = some event) :
     RegularTrace setup timeouts leaks bounds horizon scheduler assessment who

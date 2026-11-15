@@ -36,9 +36,9 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)} [Fintype Player]
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {timeouts : EventTimeouts setup.informationGraph} [Fintype Player]
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 section Site
@@ -61,7 +61,7 @@ variable {who : Player}
     OwnCompletionsIntended (timeouts := timeouts) (bounds := bounds) (horizon := horizon) (scheduler
       := scheduler)
       who history.1.trace)
-  (mixed : (sequence n).IsFullyMixed) {event : (graph setup).EventId}
+  (mixed : (sequence n).IsFullyMixed) {event : setup.informationGraph.EventId}
   (turn : view.application.publicView.ownTurn? who = some event)
   (covered : BindingFieldsCovered bounds)
 
@@ -221,7 +221,7 @@ theorem ForcedBeliefInputs.sum_productWeight_mul
       OwnCompletionsIntended (timeouts := timeouts) (bounds := bounds) (horizon := horizon)
         (scheduler := scheduler)
         who history.1.trace)
-    (mixed : (sequence n).IsFullyMixed) {event : (graph setup).EventId}
+    (mixed : (sequence n).IsFullyMixed) {event : setup.informationGraph.EventId}
     (turn : view.application.publicView.ownTurn? who = some event)
     (covered : BindingFieldsCovered bounds)
     (first : List (Option (OperationalState setup timeouts leaks)) → ℝ)
@@ -321,7 +321,7 @@ theorem ForcedBeliefInputs.beliefDecorrelated
       OwnCompletionsIntended (timeouts := timeouts) (bounds := bounds) (horizon := horizon)
         (scheduler := scheduler)
         who history.1.trace)
-    (mixed : (sequence n).IsFullyMixed) {event : (graph setup).EventId}
+    (mixed : (sequence n).IsFullyMixed) {event : setup.informationGraph.EventId}
     (turn : view.application.publicView.ownTurn? who = some event)
     (covered : BindingFieldsCovered bounds)
     {target : (onePacketInformation setup timeouts leaks bounds horizon

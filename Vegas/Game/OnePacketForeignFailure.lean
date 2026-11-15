@@ -29,20 +29,20 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph}
 
 /-- A first foreign public failure before focal debt remembers an actual
 non-main foreign first response after the comparison's focal source turn.
 Both expiry and consumed opening traffic are attributed from actual execution. -/
 theorem foreign_nonmain_prefix_of_firstFailure
     (wellFormed : setup.WellFormed) (covers : bounds.CoversOutputValues)
-    (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
+    (capacity : ∀ who, bindingEventCount setup.informationGraph who < bounds.candidateCount)
     (source : setup.intendedModel.BehavioralAssessment) (focal owner : Player)
     (different : owner ≠ focal)
     {horizon : Nat} {scheduler : (application setup timeouts leaks).Scheduler}
-    {delay bound : (graph setup).EventId → Nat}
+    {delay bound : setup.informationGraph.EventId → Nat}
     (opportunity : ∀ control : (application setup timeouts leaks).Control,
       (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some control) →
       control.execution.application.config.defaulted = ∅ →
@@ -60,14 +60,14 @@ theorem foreign_nonmain_prefix_of_firstFailure
       scheduler).Trace
         (some ⟨remaining + 1, none, execution⟩))
     (startPrefix : TracePrefix startTrace trace)
-    (current failedEvent : (graph setup).EventId)
+    (current failedEvent : setup.informationGraph.EventId)
     (turn : start.execution.application.publicView.ownTurn? focal = some current)
     (clear : execution.application.config.defaulted = ∅)
     (regular : RegularTrace setup timeouts leaks bounds horizon
       scheduler source focal trace)
     (notOwed : ∀ point, decodedPoint setup execution.application.config = some point →
       ¬ ProtocolState.OwesFailure focal setup.program point)
-    (owned : (graph setup).actor? failedEvent = some owner)
+    (owned : setup.informationGraph.actor? failedEvent = some owner)
     (command : (application setup timeouts leaks).Command) (next : (application setup timeouts
       leaks).Execution)
     (reached : next ∈ (execution.environmentStep (application setup timeouts leaks)
@@ -76,7 +76,7 @@ theorem foreign_nonmain_prefix_of_firstFailure
       scheduler).Trace
         (some ⟨remaining, command.actor? (application setup timeouts leaks), next⟩))
     (tracePrefix : TracePrefix trace target) (failed : next.application.PublicFailure failedEvent) :
-    ∃ (event : (graph setup).EventId) (before : (application setup timeouts leaks).Control)
+    ∃ (event : setup.informationGraph.EventId) (before : (application setup timeouts leaks).Control)
       (prior : (onePacketProtocol setup timeouts leaks bounds horizon
         scheduler).Trace (some before))
       (response : (application setup timeouts leaks).Action)
@@ -108,8 +108,8 @@ theorem foreign_nonmain_prefix_of_firstFailure
   have rawTarget := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup)
     horizon scheduler target
   have initialEq : initialLaw setup = (setup.initialLaw.map setup.eventInputs).map
-      (EventGraphRuntime.State.initial (graph := graph setup)) :=
-    serviceInitialLaw_eq_inputs (mode := .sequential) setup
+      (EventGraphRuntime.State.initial (graph := setup.informationGraph)) :=
+    serviceInitialLaw_eq_inputs (deps := setup.informationDependencies) setup
   rw [initialEq] at rawPrior rawTarget
   have priorEvidence := ExclusionEvidence.history timeouts leaks
     (setup.initialLaw.map setup.eventInputs) horizon scheduler rawPrior
@@ -200,11 +200,11 @@ theorem foreign_nonmain_prefix_of_firstFailure
 /-- A first foreign failure violates the future first-activation main condition. -/
 theorem firstForeignFailure_not_mainActivationTraceAfter
     (wellFormed : setup.WellFormed) (covers : bounds.CoversOutputValues)
-    (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
+    (capacity : ∀ who, bindingEventCount setup.informationGraph who < bounds.candidateCount)
     (source : setup.intendedModel.BehavioralAssessment) (focal owner : Player)
     (different : owner ≠ focal)
     {horizon : Nat} {scheduler : (application setup timeouts leaks).Scheduler}
-    {delay bound : (graph setup).EventId → Nat}
+    {delay bound : setup.informationGraph.EventId → Nat}
     (opportunity : ∀ control : (application setup timeouts leaks).Control,
       (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some control) →
       control.execution.application.config.defaulted = ∅ →
@@ -222,14 +222,14 @@ theorem firstForeignFailure_not_mainActivationTraceAfter
       scheduler).Trace
         (some ⟨remaining + 1, none, execution⟩))
     (startPrefix : TracePrefix startTrace trace)
-    (current event : (graph setup).EventId)
+    (current event : setup.informationGraph.EventId)
     (turn : start.execution.application.publicView.ownTurn? focal = some current)
     (clear : execution.application.config.defaulted = ∅)
     (regular : RegularTrace setup timeouts leaks bounds horizon
       scheduler source focal trace)
     (notOwed : ∀ point, decodedPoint setup execution.application.config = some point →
       ¬ ProtocolState.OwesFailure focal setup.program point)
-    (owned : (graph setup).actor? event = some owner)
+    (owned : setup.informationGraph.actor? event = some owner)
     (command : (application setup timeouts leaks).Command) (next : (application setup timeouts
       leaks).Execution)
     (reached : next ∈ (execution.environmentStep (application setup timeouts leaks)

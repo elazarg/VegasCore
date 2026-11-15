@@ -114,8 +114,8 @@ example : (commitSuccessor 0 (openGuard 0)
 
 /-- Every public schedule of the compiled program suppresses the later opening
 after public withholding, with exactly the source's actual-choice history. -/
-example (scheduler : (toEventGraph twoOpenings).PublicScheduler) :
-    ((toEventGraph twoOpenings).terminalOutcomes scheduler
+example (scheduler : (toInformationGraph twoOpenings).PublicScheduler) :
+    ((toInformationGraph twoOpenings).terminalOutcomes scheduler
       (compileEventProfile twoOpenings withholdThenOpen) (encodeInputs initialBindings)).map
         (openingSummary ∘ terminalConfig twoOpenings) =
       PMF.pure (PublicationResult.failure, PublicationResult.failure, ({()} : Finset Unit),
@@ -127,8 +127,8 @@ example (scheduler : (toEventGraph twoOpenings).PublicScheduler) :
 
 /-- Binding omission is compiled to public default and later automatic failure,
 under every public scheduler. -/
-example (scheduler : (toEventGraph twoBindings).PublicScheduler) :
-    ((toEventGraph twoBindings).terminalOutcomes scheduler
+example (scheduler : (toInformationGraph twoBindings).PublicScheduler) :
+    ((toInformationGraph twoBindings).terminalOutcomes scheduler
       (compileEventProfile twoBindings omitThenBind)
       (encodeInputs (Env.empty (CellVal simpleExpr)))).map
         (bindingSummary ∘ terminalConfig twoBindings) =
@@ -142,8 +142,8 @@ example (scheduler : (toEventGraph twoBindings).PublicScheduler) :
 
 /-- An accepted unopenable binding remains active through the next compiled
 binding, and defaults only at its failed opening. -/
-example (scheduler : (toEventGraph twoBindings).PublicScheduler) :
-    ((toEventGraph twoBindings).terminalOutcomes scheduler
+example (scheduler : (toInformationGraph twoBindings).PublicScheduler) :
+    ((toInformationGraph twoBindings).terminalOutcomes scheduler
       (compileEventProfile twoBindings unusableThenBind)
       (encodeInputs (Env.empty (CellVal simpleExpr)))).map
         (bindingSummary ∘ terminalConfig twoBindings) =
@@ -262,10 +262,10 @@ private theorem source_bob_observes_omission :
   simp [PMF.pure_map, bobChosenBinding]
 
 /-- Even the greatest-enabled scheduler preserves Bob's reaction to a foreign
-binding omission, because compiled dependencies retain its public observation. -/
+binding omission, because information dependencies retain its public observation. -/
 example :
-    ((toEventGraph foreignOmission).terminalOutcomes
-        (toEventGraph foreignOmission).greatestScheduler
+    ((toInformationGraph foreignOmission).terminalOutcomes
+        (toInformationGraph foreignOmission).greatestScheduler
         (compileEventProfile foreignOmission respondToOmission)
         (encodeInputs (Env.empty (CellVal simpleExpr)))).map
       (bobChosenBinding ∘ terminalConfig foreignOmission) =

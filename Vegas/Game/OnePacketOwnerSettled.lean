@@ -42,9 +42,9 @@ open GameTheory GameTheory.Protocol Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 section Inputs
@@ -64,9 +64,9 @@ private theorem exists_inputId : ∀ (Γ : SourceCtx Player L) (input : Fin Γ.l
 
 variable (setup timeouts) in
 /-- A failed initial binding of `who` among some inputs. -/
-def InputFailed (who : Player) (inputs : (graph setup).Inputs) : Prop :=
-  ∃ (input : (graph setup).InputId) (payload : L.Ty)
-    (layoutEq : (graph setup).inputLayout input = .binding who payload),
+def InputFailed (who : Player) (inputs : setup.informationGraph.Inputs) : Prop :=
+  ∃ (input : setup.informationGraph.InputId) (payload : L.Ty)
+    (layoutEq : setup.informationGraph.inputLayout input = .binding who payload),
     cast (congrArg EventGraph.EventField.Value layoutEq) (inputs input) = .failure
 
 omit [Fintype Player] in
@@ -147,7 +147,8 @@ theorem inputFailureRecord_of_trace (who : Player)
       let residual := SourceResidual.initial setup (failureProfile setup.program) initial
       refine ⟨0, ⟨residual⟩, fun failed point decoded => ?_⟩
       have decodedEq : sourceServicePrefix? setup 0
-          (State.initial (graph := graph setup) (setup.eventInputs initial)).config = some point :=
+          (State.initial (graph := setup.informationGraph) (setup.eventInputs initial)).config =
+            some point :=
         decoded
       rw [residual.decode] at decodedEq
       cases Option.some.inj decodedEq
@@ -159,8 +160,9 @@ section Settled
 
 omit [Fintype Player] in
 private theorem get?_of_some {kind : EventGraph.EventField Player L}
-    (ref : EventGraph.FieldRef (graph setup).layout kind)
-    {store : EventGraph.Store (graph setup).layout} {value : ((graph setup).layout ref.field).Value}
+    (ref : EventGraph.FieldRef setup.informationGraph.layout kind)
+    {store : EventGraph.Store setup.informationGraph.layout} {value :
+      (setup.informationGraph.layout ref.field).Value}
     (stored : store ref.field = some value) :
     ref.get? store = some (cast (congrArg EventGraph.EventField.Value ref.layout_eq) value) := by
   rcases ref with ⟨field, layoutEq⟩
@@ -169,14 +171,14 @@ private theorem get?_of_some {kind : EventGraph.EventField Player L}
 
 omit [Fintype Player] in
 /-- A field private to `who` is a binding or a private input of `who`. -/
-private theorem privateTo_cases {who : Player} {field : (graph setup).Field}
+private theorem privateTo_cases {who : Player} {field : setup.informationGraph.Field}
     (privateTo : PrivateTo who field) :
-    (∃ payload, (graph setup).layout field = .binding who payload) ∨
-      ∃ payload, (graph setup).layout field = .privateInput who payload := by
+    (∃ payload, setup.informationGraph.layout field = .binding who payload) ∨
+      ∃ payload, setup.informationGraph.layout field = .privateInput who payload := by
   obtain ⟨visible, notPublic⟩ := privateTo
   unfold EventGraph.fieldVisibleTo at visible
   unfold EventGraph.fieldPublic at notPublic
-  generalize (graph setup).layout field = kind at visible notPublic ⊢
+  generalize setup.informationGraph.layout field = kind at visible notPublic ⊢
   cases kind with
   | publicData | publication => exact (notPublic trivial).elim
   | binding owner payload =>
@@ -194,9 +196,10 @@ private theorem reachable_of_trace
       (some control)) :
     ∃ inputs, control.execution.application.config.Reachable inputs := by
   have native := trace
-  change (((reactiveApplication timeouts) leaks).protocol (serviceInitialLaw setup .sequential)
+  change (((reactiveApplication timeouts) leaks).protocol (initialLaw setup)
     horizon scheduler).Trace (some control) at native
-  rw [serviceInitialLaw_eq_inputs setup] at native
+  rw [initialLaw, serviceInitialLaw_eq_inputs (deps := setup.informationDependencies) setup]
+    at native
   obtain ⟨inputs, _supported, valid⟩ := (reactive_history_invariant timeouts) leaks
     (setup.initialLaw.map setup.eventInputs) horizon scheduler native
   exact ⟨inputs, valid.reachable⟩
@@ -209,7 +212,7 @@ theorem noFailure_of_debtFree {control : (application setup timeouts leaks).Cont
       ¬ ProtocolState.OwesFailure who setup.program point) :
     ∀ field, PrivateTo who field → ∀ value,
       control.execution.application.config.store field = some value →
-        ¬ ((graph setup).layout field).IsFailure value := by
+        ¬ (setup.informationGraph.layout field).IsFailure value := by
   intro field privateTo value stored failed
   have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup)
     horizon scheduler trace
@@ -236,7 +239,7 @@ theorem noFailure_of_debtFree {control : (application setup timeouts leaks).Cont
           rfl
         have done := (control.execution.application.config.output_available event).mp present
         have read := get?_of_some (⟨.inr event, layoutEq⟩ : EventGraph.FieldRef
-          (graph setup).layout (.binding who payload)) stored
+          setup.informationGraph.layout (.binding who payload)) stored
         rw [castFailed] at read
         exact debtFree _ (decodedPoint_eq residual)
           (record event done who payload layoutEq read _ residual.decode)
@@ -254,8 +257,8 @@ theorem disclosed_of_debtFree {control : (application setup timeouts leaks).Cont
     (debtFree : ∀ point, nativeDecodedState setup timeouts leaks (some control) = some point →
       ¬ ProtocolState.OwesFailure who setup.program point) :
     ∀ completion ∈ control.execution.application.config.history,
-      (graph setup).actor? completion.event = some who → ∀ payload
-      (outputEq : (graph setup).outputLayout completion.event = .publication payload),
+      setup.informationGraph.actor? completion.event = some who → ∀ payload
+      (outputEq : setup.informationGraph.outputLayout completion.event = .publication payload),
         completion.decision.map (cast (congrArg EventGraph.EventField.Action outputEq)) =
           some true := by
   intro record member owned payload outputEq
@@ -266,7 +269,7 @@ theorem disclosed_of_debtFree {control : (application setup timeouts leaks).Cont
     (List.mem_map_of_mem (f := EventCompletion.event) member)
   obtain ⟨value, stored⟩ := Option.isSome_iff_exists.mp
     ((control.execution.application.config.output_available record.event).mpr completed)
-  let ref : EventGraph.FieldRef (graph setup).layout (.publication payload) :=
+  let ref : EventGraph.FieldRef setup.informationGraph.layout (.publication payload) :=
     ⟨.inr record.event, outputEq⟩
   have read := get?_of_some ref (store := control.execution.application.config.store) stored
   cases typed : cast (congrArg EventGraph.EventField.Value outputEq) value with
@@ -285,7 +288,7 @@ theorem disclosed_of_debtFree {control : (application setup timeouts leaks).Cont
         (recordFailure record.event completed who owned failed _ residual.decode)).elim
   | success published =>
       rw [typed] at read
-      cases node : nodeView (graph setup) record.event with
+      cases node : nodeView setup.informationGraph record.event with
       | sample sampled law sampleEq codeEq => cases sampleEq.symm.trans outputEq
       | bind owner bindingPayload bindingEq codeEq => cases bindingEq.symm.trans outputEq
       | resolve owner resolved binding checks publicationEq codeEq =>
@@ -298,13 +301,14 @@ theorem disclosed_of_debtFree {control : (application setup timeouts leaks).Cont
 name one event are the same packet. -/
 theorem ownOutput_eq_of_event {control : (application setup timeouts leaks).Control}
     (trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some control))
-    (who : Player) (event : (graph setup).EventId)
-    {first second : Message Player (WitnessedPacket (graph setup))}
+    (who : Player) (event : setup.informationGraph.EventId)
+    {first second : Message Player (WitnessedPacket setup.informationGraph)}
     (firstMember : first ∈ (application setup timeouts leaks).outputs (control.execution.logs who))
     (secondMember : second ∈ (application setup timeouts leaks).outputs (control.execution.logs
       who))
-    (firstNamed : first.payload.call.event? (graph setup) = some event)
-    (secondNamed : second.payload.call.event? (graph setup) = some event) : first = second := by
+    (firstNamed : first.payload.call.event? setup.informationGraph = some event)
+    (secondNamed : second.payload.call.event? setup.informationGraph = some event) : first = second
+      := by
   have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup)
     horizon scheduler trace
   have clean := (bounds.onePacketMenu_countClean timeouts leaks scheduler).history
@@ -348,7 +352,7 @@ theorem openable_of_pending {control : (application setup timeouts leaks).Contro
       ¬ ProtocolState.OwesFailure who setup.program point)
     (pending : ∃ event, control.execution.application.config.cut.Ready event ∧
       ∀ message ∈ (application setup timeouts leaks).outputs (control.execution.logs who),
-        message.payload.call.event? (graph setup) ≠ some event)
+        message.payload.call.event? setup.informationGraph ≠ some event)
     (serial : Nat)
     (named : NamedSlot who ((application setup timeouts leaks).outputs (control.execution.logs
       who))
@@ -415,7 +419,7 @@ theorem openable_of_pending {control : (application setup timeouts leaks).Contro
           have done : event ∈ control.execution.application.config.cut.completed := by
             by_contra notDone
             obtain ⟨pendingEvent, pendingReady, unsent⟩ := pending
-            have same := setup.eventGraph.sequentialize_ready_unique
+            have same := setup.informationGraph.sequentialize_ready_unique
               control.execution.application.config.cut ⟨notDone, predecessors⟩ pendingReady
             apply unsent message output
             rw [call, ← same]
@@ -427,10 +431,10 @@ theorem openable_of_pending {control : (application setup timeouts leaks).Contro
           have owned := correct.1
           rw [sender] at owned
           obtain ⟨payload, layoutEq⟩ : ∃ payload,
-              (graph setup).outputLayout event = .binding who payload := by
+              setup.informationGraph.outputLayout event = .binding who payload := by
             unfold bindingOwnedBy at owned
             revert owned
-            cases (graph setup).outputLayout event with
+            cases setup.informationGraph.outputLayout event with
             | binding owner payload =>
                 intro owned
                 exact ⟨payload, by rw [of_decide_eq_true owned]⟩
@@ -441,7 +445,7 @@ theorem openable_of_pending {control : (application setup timeouts leaks).Contro
           have notFailed := noFailure_of_debtFree (timeouts := timeouts) trace debtFree (.inr event)
             privateTo value
             stored
-          let ref : EventGraph.FieldRef (graph setup).layout (.binding who payload) :=
+          let ref : EventGraph.FieldRef setup.informationGraph.layout (.binding who payload) :=
             ⟨.inr event, layoutEq⟩
           have read := get?_of_some ref (store := control.execution.application.config.store)
             stored
@@ -486,7 +490,7 @@ theorem ownerSettled_of_trace {control : (application setup timeouts leaks).Cont
       ¬ ProtocolState.OwesFailure who setup.program point)
     (pending : ∃ event, control.execution.application.config.cut.Ready event ∧
       ∀ message ∈ (application setup timeouts leaks).outputs (control.execution.logs who),
-        message.payload.call.event? (graph setup) ≠ some event) :
+        message.payload.call.event? setup.informationGraph ≠ some event) :
     OwnerSettled who (NamedSlot who ((application setup timeouts leaks).outputs
       (control.execution.logs who))) control.execution.application where
   noFailure := noFailure_of_debtFree (timeouts := timeouts) trace debtFree

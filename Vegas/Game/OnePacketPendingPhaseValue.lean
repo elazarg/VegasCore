@@ -21,9 +21,9 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 local notation "onePacketN" => onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
@@ -65,7 +65,8 @@ theorem pending_phase_value_bounds
     (debtFree : SiteDebtFree setup timeouts leaks bounds horizon scheduler site)
     {key : LateKey setup timeouts leaks} (siteKey : lateKey setup timeouts leaks who site.1 = some
       key)
-    {event : (graph setup).EventId} (pending : pendingEvent setup timeouts leaks who site.1 = some
+    {event : setup.informationGraph.EventId} (pending : pendingEvent setup timeouts leaks who
+      site.1 = some
       event)
     {past : List (application setup timeouts leaks).PlayerEntry}
     {view : (application setup timeouts leaks).PlayerView} (atSite : site.1 = some (past, view))
@@ -148,7 +149,7 @@ theorem pending_phase_value_bounds
     dsimp only
     rw [ite_eq_left reachedPoint ..]
   rw [valueEq]
-  cases node : nodeView (graph setup) event with
+  cases node : nodeView setup.informationGraph event with
   | bind owner payload outputEq codeEq =>
       have ownerEq : owner = who :=
         Option.some.inj ((nodeView_bind_actor outputEq codeEq).symm.trans owned)

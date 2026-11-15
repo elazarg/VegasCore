@@ -20,11 +20,11 @@ open SourceProgram GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol Int
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  (bounds : MessageBounds (graph setup))
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  (bounds : MessageBounds setup.informationGraph)
   {horizon : Nat} {scheduler : (application setup timeouts leaks).Scheduler}
-  {bound : (graph setup).EventId → Nat}
+  {bound : setup.informationGraph.EventId → Nat}
   (inclusion : ∀ control : (application setup timeouts leaks).Control,
     ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon scheduler).Trace
       (some control) →
@@ -38,7 +38,7 @@ local notation "model" => ReactiveApplication.ResponseMenu.information menu (ini
   horizon scheduler
 local notation "Clear" => ReactiveApplication.stateInvariant
   (app := application setup timeouts leaks)
-    (fun state : EventGraphRuntime.State (graph setup) =>
+    (fun state : EventGraphRuntime.State setup.informationGraph =>
       EventGraph.Config.defaulted (EventGraphRuntime.State.config state) = ∅)
 
 include inclusion in
@@ -52,10 +52,10 @@ theorem counted_stopped_freshCall_receipt
     (start : (protocol).History) (current : (application setup timeouts leaks).Control)
     (state : start.state = some current)
     (clear : current.execution.application.config.defaulted = ∅)
-    (who : Player) (event : (graph setup).EventId)
-    (owned : (graph setup).actor? event = some who)
+    (who : Player) (event : setup.informationGraph.EventId)
+    (owned : setup.informationGraph.actor? event = some who)
     (entry : (application setup timeouts leaks).PlayerEntry)
-    (message : Message Player (WitnessedPacket (graph setup)))
+    (message : Message Player (WitnessedPacket setup.informationGraph))
     (call : FreshCall setup leaks who event bound entry message) :
     ∀ stopped ∈ ((model).runBehavioralUntil certificate profile
         (fun history => ¬ Clear history.state ∨ extraStop history) start).support,

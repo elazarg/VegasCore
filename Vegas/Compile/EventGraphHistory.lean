@@ -25,14 +25,15 @@ variable {L : IExpr} [R : IExpr.ResultTypes L]
 /-- Source own history retains precisely the player's actual choices. -/
 def decodeHistory {Γ : SourceCtx Player L} {openNames : Finset VarId}
     (program : SourceProgram Player L Γ openNames)
-    (history : List (toEventGraph program).Completion) : SourceProgram.History Player L :=
-  fun who => decodeCompletions program ((toEventGraph program).ownCompletions who history)
+    (history : List (toInformationGraph program).Completion) : SourceProgram.History Player L :=
+  fun who => decodeCompletions program ((toInformationGraph program).ownCompletions who history)
 
 /-- A completion contributes only its actual source decision to own history. -/
 theorem decodeHistory_append_completion {Γ : SourceCtx Player L} {openNames : Finset VarId}
     (program : SourceProgram Player L Γ openNames)
-    (history : List (toEventGraph program).Completion)
-    (event : Fin (eventCount program)) (decision : Option ((toEventGraph program).Action event))
+    (history : List (toInformationGraph program).Completion)
+    (event : Fin (eventCount program))
+    (decision : Option ((toInformationGraph program).Action event))
     (defaultEvent : Option Player) :
     decodeHistory program (history ++ [⟨event, decision, defaultEvent⟩]) =
       match decision.bind (decodeEventAction program event) with
@@ -49,13 +50,13 @@ theorem decodeHistory_append_completion {Γ : SourceCtx Player L} {openNames : F
       rw [eventOwner?_eq_actor program event] at ownerLaw
       cases decoded : decodeEventAction program event action with
       | none =>
-          have actorNone : (toEventGraph program).actor? event = none := by
+          have actorNone : (toInformationGraph program).actor? event = none := by
             simpa [decoded] using ownerLaw.symm
           funext who
           simp [decodeHistory, Vegas.EventGraph.ownCompletions, decodeCompletions,
             actorNone, decoded]
       | some sourceAction =>
-          have actorSome : (toEventGraph program).actor? event =
+          have actorSome : (toInformationGraph program).actor? event =
               some (sourceActionOwner sourceAction) := by
             simpa [decoded] using ownerLaw.symm
           funext who
@@ -63,7 +64,7 @@ theorem decodeHistory_append_completion {Γ : SourceCtx Player L} {openNames : F
           · subst who
             simp [decodeHistory, Vegas.EventGraph.ownCompletions, decodeCompletions,
               actorSome, decoded, Function.update]
-          · have notOwned : (toEventGraph program).actor? event ≠ some who := by
+          · have notOwned : (toInformationGraph program).actor? event ≠ some who := by
               rw [actorSome]
               simpa using same
             have whoNe : who ≠ sourceActionOwner sourceAction := Ne.symm same
@@ -74,9 +75,9 @@ theorem decodeHistory_append_completion {Γ : SourceCtx Player L} {openNames : F
 Automatic completions and chance steps leave every player's choices unchanged. -/
 theorem decodeHistory_step {Γ : SourceCtx Player L} {openNames : Finset VarId}
     (program : SourceProgram Player L Γ openNames)
-    (config next : (toEventGraph program).Config)
+    (config next : (toInformationGraph program).Config)
     (event : Fin (eventCount program)) (ready : config.cut.Ready event)
-    (action : (toEventGraph program).Action event)
+    (action : (toInformationGraph program).Action event)
     (supported : next ∈ (config.step event ready action).support) :
     decodeHistory program next.history =
       match (config.actualDecision event action).bind (decodeEventAction program event) with
@@ -89,15 +90,15 @@ theorem decodeHistory_step {Γ : SourceCtx Player L} {openNames : Finset VarId}
   rw [history]
   exact decodeHistory_append_completion program config.history event
     (config.actualDecision event action)
-    ((EventGraph.completion (toEventGraph program) event
+    ((EventGraph.completion (toInformationGraph program) event
       (config.actualDecision event action) value).defaultEvent)
 
 /-- A step without an actual source decision leaves decoded own history unchanged. -/
 theorem decodeHistory_step_of_none {Γ : SourceCtx Player L} {openNames : Finset VarId}
     (program : SourceProgram Player L Γ openNames)
-    (config next : (toEventGraph program).Config)
+    (config next : (toInformationGraph program).Config)
     (event : Fin (eventCount program)) (ready : config.cut.Ready event)
-    (action : (toEventGraph program).Action event)
+    (action : (toInformationGraph program).Action event)
     (silent : (config.actualDecision event action).bind (decodeEventAction program event) = none)
     (supported : next ∈ (config.step event ready action).support) :
     decodeHistory program next.history = decodeHistory program config.history := by
@@ -106,9 +107,9 @@ theorem decodeHistory_step_of_none {Γ : SourceCtx Player L} {openNames : Finset
 /-- A step with an actual decision records precisely its original source action. -/
 theorem decodeHistory_step_of_some {Γ : SourceCtx Player L} {openNames : Finset VarId}
     (program : SourceProgram Player L Γ openNames)
-    (config next : (toEventGraph program).Config)
+    (config next : (toInformationGraph program).Config)
     (event : Fin (eventCount program)) (ready : config.cut.Ready event)
-    (action : (toEventGraph program).Action event) (sourceAction : OwnAction Player L)
+    (action : (toInformationGraph program).Action event) (sourceAction : OwnAction Player L)
     (decoded : (config.actualDecision event action).bind (decodeEventAction program event) =
       some sourceAction)
     (supported : next ∈ (config.step event ready action).support) :

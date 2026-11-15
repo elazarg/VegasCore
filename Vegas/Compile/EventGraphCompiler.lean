@@ -9,8 +9,9 @@ public import Vegas.Compile.EventGraphLayout
 /-! # Full source-node lowering to dependency-driven event code
 
 The functions here lower every source constructor.  They are parameterized by
-typed references into one final graph layout; the graph assembly theorem then
-supplies source-ranked references and the barrier dependency proof.
+typed references into one final graph layout. Assembly supplies source-ranked
+references and declared-read dependencies; the source information graph adds
+the ordering needed to retain complete source observations.
 -/
 
 noncomputable section

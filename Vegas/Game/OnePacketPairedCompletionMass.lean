@@ -92,16 +92,16 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
+  {timeouts : EventTimeouts setup.informationGraph}
 
 /-- Public completion order, sampled outputs and sample distributions determine
 completion mass, without a reachability or one-step premise. -/
 theorem completionMass_eq_of_public
-    {before after imageBefore imageAfter : EventGraphRuntime.State (graph setup)}
-    (beforePublic : (graph setup).publicObserve before.config =
-      (graph setup).publicObserve imageBefore.config)
-    (afterPublic : (graph setup).publicObserve after.config =
-      (graph setup).publicObserve imageAfter.config) :
+    {before after imageBefore imageAfter : EventGraphRuntime.State setup.informationGraph}
+    (beforePublic : setup.informationGraph.publicObserve before.config =
+      setup.informationGraph.publicObserve imageBefore.config)
+    (afterPublic : setup.informationGraph.publicObserve after.config =
+      setup.informationGraph.publicObserve imageAfter.config) :
     completionMass setup before after = completionMass setup imageBefore imageAfter := by
   have beforeOrder := congrArg EventPublicObservation.completionOrder beforePublic
   have afterOrder := congrArg EventPublicObservation.completionOrder afterPublic
@@ -141,24 +141,24 @@ theorem completionMass_eq_of_public
           unfold completionMass
           rw [left, right]
           dsimp only
-          by_cases chance : (graph setup).actor? event = none
+          by_cases chance : setup.informationGraph.actor? event = none
           · simp only [chance, ↓reduceDIte]
-            have publicField : (graph setup).fieldPublic (.inr event) :=
+            have publicField : setup.informationGraph.fieldPublic (.inr event) :=
               EventGraph.EventCode.output_public_of_actor_none
-                ((graph setup).nodes event) chance
+                (setup.informationGraph.nodes event) chance
             have outputs := congrFun (congrArg EventPublicObservation.store afterPublic)
               (.inr event)
-            change (graph setup).publicStore after.config.store (.inr event) =
-              (graph setup).publicStore imageAfter.config.store (.inr event) at outputs
-            rw [(graph setup).publicStore_of_public _ _ publicField,
-              (graph setup).publicStore_of_public _ _ publicField] at outputs
+            change setup.informationGraph.publicStore after.config.store (.inr event) =
+              setup.informationGraph.publicStore imageAfter.config.store (.inr event) at outputs
+            rw [setup.informationGraph.publicStore_of_public _ _ publicField,
+              setup.informationGraph.publicStore_of_public _ _ publicField] at outputs
             change after.config.outputs event = imageAfter.config.outputs event
               at outputs
             have stores := congrArg EventPublicObservation.store beforePublic
-            change (graph setup).publicStore before.config.store =
-              (graph setup).publicStore imageBefore.config.store at stores
+            change setup.informationGraph.publicStore before.config.store =
+              setup.informationGraph.publicStore imageBefore.config.store at stores
             have evalPublic {output : EventGraph.EventField Player L}
-                (code : EventGraph.EventCode (graph setup).layout output)
+                (code : EventGraph.EventCode setup.informationGraph.layout output)
                 (nobody : code.actor = none) :
                 code.eval? (EventGraph.EventCode.actionOfActorNone code nobody)
                     before.config.store =
@@ -171,16 +171,16 @@ theorem completionMass_eq_of_public
                   change law.eval? before.config.store = law.eval? imageBefore.config.store
                   rw [← law.eval?_publicStore before.config.store, stores,
                     law.eval?_publicStore imageBefore.config.store]
-            rw [outputs, evalPublic ((graph setup).nodes event) chance]
+            rw [outputs, evalPublic (setup.informationGraph.nodes event) chance]
             cases imageAfter.config.outputs event with
             | none => rfl
             | some value =>
-                cases ((graph setup).nodes event).eval?
+                cases (setup.informationGraph.nodes event).eval?
                     (EventGraph.EventCode.actionOfActorNone _ chance) imageBefore.config.store <;>
                   rfl
           · simp only [chance, ↓reduceDIte]
 
-variable {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+variable {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
   {horizon : Nat} {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- Complete operational endpoint equality determines the completion factor of

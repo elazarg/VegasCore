@@ -29,7 +29,7 @@ open Vegas Vegas.EventGraphRuntime Interaction GameTheory.Math.Probability
 open Vegas.Examples.PrivateValueAuction
 open Vegas.Examples.CommitRevealAuction (Player)
 
-abbrev graph := Vegas.toEventGraph program
+abbrev graph := Vegas.toInformationGraph program
 abbrev firstEvent : graph.EventId := ⟨0, by decide⟩
 def timeouts : EventTimeouts graph := ⟨fun _ => 10⟩
 

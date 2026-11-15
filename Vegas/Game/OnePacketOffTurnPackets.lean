@@ -22,9 +22,9 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
   GameTheory.Math.Probability Interaction EventGraphRuntime EventGraph
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- A one-packet submission names the event at its sender's turn, or a completed
@@ -37,20 +37,20 @@ private theorem submission_atTurn_or_unsent {remaining : Nat} {who : Player}
     (action : (application setup timeouts leaks).Action)
     (member : action ∈ bounds.onePacketActions timeouts leaks who (execution.logs who)
       (execution.observe (application setup timeouts leaks) who))
-    (event : (graph setup).EventId)
+    (event : setup.informationGraph.EventId)
     (submitted : (submittedEvent? timeouts) leaks action = some event) :
     execution.application.publicView.ownTurn? who = some event ∨
       (event ∈ execution.application.config.cut.completed ∧
-        (graph setup).actor? event = some who ∧
+        setup.informationGraph.actor? event = some who ∧
         ∀ message ∈ execution.network.ledger, message.sender = who →
-          message.payload.call.event? (graph setup) ≠ some event) := by
+          message.payload.call.event? setup.informationGraph ≠ some event) := by
   let app := application setup timeouts leaks
   rcases ((bounds.mem_onePacketActions timeouts leaks who _ _ action).mp member).2 with
     silent | ⟨material, transmits, permitted⟩
   · unfold EventGraphRuntime.submittedEvent? at submitted
     rw [silent] at submitted
     cases submitted
-  have materialNamed : material.call.packet.event? (graph setup) = some event := by
+  have materialNamed : material.call.packet.event? setup.informationGraph = some event := by
     unfold EventGraphRuntime.submittedEvent? at submitted
     rw [transmits] at submitted
     exact submitted
@@ -68,7 +68,7 @@ private theorem submission_atTurn_or_unsent {remaining : Nat} {who : Player}
   have sender : envelope.sender = who := rfl
   have actor := correct.actor namedEvent
   rw [sender] at actor
-  have issued : ∀ predecessor ∈ (graph setup).order.predecessors named,
+  have issued : ∀ predecessor ∈ setup.informationGraph.order.predecessors named,
       predecessor ∈ execution.application.config.cut.completed := by
     have token : execution.application.publicView.tokenFor envelope.payload.call =
         some ⟨named⟩ := tokenEq
@@ -99,7 +99,7 @@ private theorem submission_atTurn_or_unsent {remaining : Nat} {who : Player}
     refine PublicView.ownTurn?_of_ownTurn _ who named
       ⟨(execution.application.publicView_eventReady named).mpr ready, actor,
         fun other otherReady _ => ?_⟩
-    exact setup.eventGraph.sequentialize_ready_unique _
+    exact setup.informationGraph.sequentialize_ready_unique _
       ((execution.application.publicView_eventReady other).mp otherReady) ready
 
 
@@ -259,7 +259,8 @@ theorem submittedAtTurn_of_forcedSite {who : Player}
       observed.application.publicView) sameView
   have sameDefaults : control.execution.application.config.defaulted =
       witnessControl.execution.application.config.defaulted :=
-    congrArg (fun publicView : PublicView (graph setup) => publicView.observation.defaulted)
+    congrArg (fun publicView : PublicView setup.informationGraph =>
+      publicView.observation.defaulted)
       samePublic
   intro entry entryMember event submitted
   rcases submissions_at_turn_or_defaulted trace control rfl player entry entryMember event

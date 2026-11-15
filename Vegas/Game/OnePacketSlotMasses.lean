@@ -50,11 +50,11 @@ theorem map_apply_eq_zero_of_forall_ne {α β : Type} (law : PMF α) (f : α →
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
-  (timeouts : EventTimeouts (graph setup))
+  (timeouts : EventTimeouts setup.informationGraph)
 
 /-- **Source choices are determined by their encoding at an event.** -/
-theorem encode_injective (event : (graph setup).EventId)
-    {first second : Option (OwnAction Player L)} {action : (graph setup).Action event}
+theorem encode_injective (event : setup.informationGraph.EventId)
+    {first second : Option (OwnAction Player L)} {action : setup.informationGraph.Action event}
     (firstEncoded : first.bind (encodeEventAction? setup.program event) = some action)
     (secondEncoded : second.bind (encodeEventAction? setup.program event) = some action) :
     first = second := by
@@ -71,22 +71,23 @@ theorem encode_injective (event : (graph setup).EventId)
           rw [firstDecoded] at secondDecoded
           exact congrArg some (Option.some.inj secondDecoded)
 
-variable (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+variable (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
 
 /-- The source choice a successful binding value decodes to at a binding
 event. -/
-def sourceOfValue (event : (graph setup).EventId) {owner : Player} {payload : L.Ty}
-    (outputEq : (graph setup).outputLayout event = .binding owner payload)
+def sourceOfValue (event : setup.informationGraph.EventId) {owner : Player} {payload : L.Ty}
+    (outputEq : setup.informationGraph.outputLayout event = .binding owner payload)
     (value : L.Val payload) : Option (OwnAction Player L) :=
   decodeEventAction setup.program event
     (cast (congrArg EventGraph.EventField.Action outputEq.symm)
       (some (PublicationResult.success value)))
 
 /-- The source choice decoded from a value encodes back to it. -/
-theorem sourceOfValue_encoded (event : (graph setup).EventId) {owner : Player} {payload : L.Ty}
-    (outputEq : (graph setup).outputLayout event = .binding owner payload)
-    (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .bind owner payload)
+theorem sourceOfValue_encoded (event : setup.informationGraph.EventId) {owner : Player} {payload :
+  L.Ty}
+    (outputEq : setup.informationGraph.outputLayout event = .binding owner payload)
+    (codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .bind owner payload)
     (value : L.Val payload) :
     (sourceOfValue setup event outputEq value).bind (encodeEventAction? setup.program event) =
       some (cast (congrArg EventGraph.EventField.Action outputEq.symm)
@@ -100,14 +101,14 @@ theorem sourceOfValue_encoded (event : (graph setup).EventId) {owner : Player} {
           (some (PublicationResult.success value)))
       unfold sourceOfValue at decoded
       rw [decoded, Option.map_none, eventOwner?_eq_actor] at ownerEq
-      have actorNone : (graph setup).actor? event = none := ownerEq.symm
+      have actorNone : setup.informationGraph.actor? event = none := ownerEq.symm
       rw [owned] at actorNone
       cases actorNone
   | some sourceAction =>
       exact encodeEventAction?_decodeEventAction_eq_some setup.program event _ sourceAction
         decoded
 
-variable [Fintype Player] (bounds : MessageBounds (graph setup))
+variable [Fintype Player] (bounds : MessageBounds setup.informationGraph)
 
 /-- **Offered commitments are slot-tier responses.** At a binding of the
 player's turn, a response of the one-packet menu committing at a fresh prepared
@@ -115,12 +116,12 @@ slot with an opening of the bound type is the slot tier's response, at that
 slot, to the source choice decoded from the opened value. -/
 theorem onePacket_commitment_eq_slotResponse (who : Player)
     (past : List (application setup timeouts leaks).PlayerEntry)
-    (view : (application setup timeouts leaks).PlayerView) (event : (graph setup).EventId)
+    (view : (application setup timeouts leaks).PlayerView) (event : setup.informationGraph.EventId)
     {owner : Player} {payload : L.Ty}
-    {outputEq : (graph setup).outputLayout event = .binding owner payload}
-    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .bind owner payload}
-    (node : nodeView (graph setup) event = .bind owner payload outputEq codeEq)
+    {outputEq : setup.informationGraph.outputLayout event = .binding owner payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .bind owner payload}
+    (node : nodeView setup.informationGraph event = .bind owner payload outputEq codeEq)
     (response : (application setup timeouts leaks).Action)
     (member : response ∈ bounds.onePacketActions timeouts leaks who past view)
     (material : (application setup timeouts leaks).Submission)

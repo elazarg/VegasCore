@@ -3,7 +3,7 @@ module
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 public import Vegas.Compile.EventGraphCompiler
-public import Vegas.EventGraph.BarrierInformation
+public import Vegas.EventGraph.DependencyRelaxation
 public import Vegas.Source.Setup
 
 @[expose] public section
@@ -12,8 +12,9 @@ public import Vegas.Source.Setup
 
 This module fixes the generic node lowerer to the combined initial/output
 layout of one whole source program and carries typed references to terminal
-payoff readout. Source-ranked dependencies preserve publicly visible default
-timing under every scheduler.
+payoff readout. The dataflow graph records exactly declared output reads. The
+source information graph additionally retains the complete source rank, which
+preserves publicly visible completion and default timing.
 -/
 
 noncomputable section
@@ -112,28 +113,53 @@ def payoffs {Γ : SourceCtx Player L} {openNames : Finset VarId}
   program.terminalPayoffs.map fun payoff =>
     (payoff.1, compilePublicExpr (terminalRefs program) payoff.2)
 
-/-- Compile the complete source language to a dependency-driven event graph.
-Every earlier instruction is a dependency because binding omission is public.
-Node code and causal-read certificates come from one ranked recursion. The graph itself
-can be evaluated; the execution laws defined on it use real-valued probability
-distributions and cannot. -/
+/-- Compile source code to its declared dataflow dependencies. Initial input
+reads need no predecessor; an output read depends directly on its producer.
+Node code and its causal-read certificates come from one ranked recursion. -/
 def toEventGraph {Γ : SourceCtx Player L} {openNames : Finset VarId}
-    (program : SourceProgram Player L Γ openNames)
-    : Vegas.EventGraph Player L where
+    (program : SourceProgram Player L Γ openNames) : Vegas.EventGraph Player L where
   inputCount := Γ.length
-  order := EventOrder.sequential (eventCount program)
+  order := {
+    eventCount := eventCount program
+    predecessors := fun event => Finset.univ.filter fun prior =>
+      Sum.inr prior ∈ (nodes program event).readFields
+    predecessor_lt := by
+      intro event prior member
+      have read := (Finset.mem_filter.mp member).2
+      exact (rankedNodes program event).reads_before (.inr prior) read }
   inputLayout := inputLayout Γ
   outputLayout := outputLayout program
   nodes := nodes program
   reads_available := by
     intro event field member
-    change field ∈ (rankedNodes program event).code.readFields at member
-    have before := (rankedNodes program event).reads_before field member
     cases field with
     | inl => trivial
-    | inr producer =>
-        exact (EventOrder.sequential.mem_predecessors producer event).mpr before
+    | inr producer => exact Finset.mem_filter.mpr ⟨Finset.mem_univ _, member⟩
   payoffs := payoffs program
+
+/-- A compiled dataflow predecessor is exactly a declared output read. -/
+@[simp] theorem toEventGraph_mem_predecessors {Γ : SourceCtx Player L}
+    {openNames : Finset VarId} (program : SourceProgram Player L Γ openNames)
+    (prior event : (toEventGraph program).EventId) :
+    prior ∈ (toEventGraph program).order.predecessors event ↔
+      Sum.inr prior ∈ (nodes program event).readFields := by
+  simp [toEventGraph]
+
+/-- The source information graph conservatively retains every earlier source
+instruction, including the public completion and default metadata. -/
+abbrev toInformationGraph {Γ : SourceCtx Player L} {openNames : Finset VarId}
+    (program : SourceProgram Player L Γ openNames) : Vegas.EventGraph Player L :=
+  (toEventGraph program).sequentialize
+
+/-- Every declared data dependency is retained by the source information order. -/
+theorem toEventGraph_predecessors_subset_information {Γ : SourceCtx Player L}
+    {openNames : Finset VarId} (program : SourceProgram Player L Γ openNames)
+    (event : (toEventGraph program).EventId) :
+    (toEventGraph program).order.predecessors event ⊆
+      (toInformationGraph program).order.predecessors event := by
+  intro prior member
+  exact (EventOrder.sequential.mem_predecessors prior event).mpr
+    ((toEventGraph program).order.predecessor_lt member)
 
 /-- Every compiled action is a binding choice, a disclosure, or trivial, so
 finite fresh-binding alphabets give finitely many actions at every event. -/
@@ -158,31 +184,55 @@ theorem outputLayout_action_finite : {Γ : SourceCtx Player L} → {openNames : 
         infer_instance
       · exact outputLayout_action_finite next finite later
 
-/-- The compiled graph contains the public-barrier dependency policy. -/
-theorem toEventGraph_barrierOrdered {Γ : SourceCtx Player L}
+/-- The source information graph contains the public-barrier dependency policy. -/
+theorem toInformationGraph_barrierOrdered {Γ : SourceCtx Player L}
     {openNames : Finset VarId} (program : SourceProgram Player L Γ openNames) :
-    (toEventGraph program).BarrierOrdered := by
-  intro event prior member
-  apply (EventOrder.sequential.mem_predecessors prior event).mpr
-  exact (Finset.mem_filter.mp member).2.1
+    (toInformationGraph program).BarrierOrdered :=
+  (toEventGraph program).sequentialize_barrierOrdered
 
-/-- Full source lowering immediately inherits the generic local information
-certificate for every ready strategic cut. -/
-theorem toEventGraph_informationDiscipline {Γ : SourceCtx Player L}
+/-- The source information order supplies the local strategic information certificate. -/
+theorem toInformationGraph_informationDiscipline {Γ : SourceCtx Player L}
     {openNames : Finset VarId} (program : SourceProgram Player L Γ openNames) :
-    (toEventGraph program).InformationDiscipline
-      (toEventGraph program).prefixSchema :=
-  (toEventGraph_barrierOrdered program).informationDiscipline
+    (toInformationGraph program).InformationDiscipline
+      (toInformationGraph program).prefixSchema :=
+  (toInformationGraph_barrierOrdered program).informationDiscipline
 
-/-- Entry point shared by every state in a distributed initial setup law. -/
-def _root_.Vegas.SourceProgram.Setup.eventGraph
+/-- The setup-wide graph of exactly declared data dependencies. -/
+abbrev _root_.Vegas.SourceProgram.Setup.dataflowGraph
     (source : Setup (Player := Player) (L := L)) : Vegas.EventGraph Player L :=
   toEventGraph source.program
 
-/-- Encode one setup state for the single setup-wide compiled graph. -/
+/-- The setup-wide graph retaining the source information order. -/
+abbrev _root_.Vegas.SourceProgram.Setup.informationGraph
+    (source : Setup (Player := Player) (L := L)) : Vegas.EventGraph Player L :=
+  toInformationGraph source.program
+
+/-- The dependency choice retaining the complete source information order. -/
+abbrev _root_.Vegas.SourceProgram.Setup.informationDependencies
+    (source : Setup (Player := Player) (L := L)) : source.dataflowGraph.Dependencies :=
+  source.dataflowGraph.sequentialDependencies
+
+/-- The source information dependencies with independent reveal edges removed. -/
+abbrev _root_.Vegas.SourceProgram.Setup.revealDependencies
+    (source : Setup (Player := Player) (L := L)) : source.dataflowGraph.Dependencies :=
+  source.dataflowGraph.revealDependencies source.informationDependencies
+
+/-- Encode one setup state in the shared static graph input layout. -/
 def _root_.Vegas.SourceProgram.Setup.eventInputs
     (source : Setup (Player := Player) (L := L))
-    (state : State L source.context) : source.eventGraph.Inputs :=
+    (state : State L source.context) : source.dataflowGraph.Inputs :=
   encodeInputs state
 
 end Vegas
+
+namespace Vegas.SourceProgram.Setup
+
+variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
+
+/-- The source information graph retains every earlier instruction as a dependency. -/
+theorem informationGraph_total (setup : Setup (Player := Player) (L := L))
+    (prior event : setup.informationGraph.EventId) (earlier : prior.val < event.val) :
+    prior ∈ setup.informationGraph.order.predecessors event :=
+  (EventOrder.sequential.mem_predecessors prior event).mpr earlier
+
+end Vegas.SourceProgram.Setup

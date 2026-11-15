@@ -137,48 +137,48 @@ end Selection
 runtime invariant, envelope provenance, input recall, retention of known
 envelopes, and receipts for published envelopes. -/
 theorem roster_trace_facts (setup : Setup (Player := Player) (L := L))
-    {mode : EventGraph.ExecutionMode}
-    {duration : (serviceGraph setup mode).EventId → Nat}
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
-    (horizon : Nat) (scheduler : (serviceApplication setup mode duration leaks).Scheduler)
-    {control : (serviceApplication setup mode duration leaks).Control}
+    {deps : setup.dataflowGraph.Dependencies}
+    {duration : (serviceGraph setup deps).EventId → Nat}
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup deps)))
+    (horizon : Nat) (scheduler : (serviceApplication setup deps duration leaks).Scheduler)
+    {control : (serviceApplication setup deps duration leaks).Control}
     (trace :
-        ((serviceApplication setup mode duration leaks).protocol (serviceInitialLaw setup mode)
+        ((serviceApplication setup deps duration leaks).protocol (serviceInitialLaw setup deps)
         horizon scheduler).Trace (some control)) :
     (∃ inputs, control.execution.application.Invariant inputs) ∧
-      control.execution.Provenance (serviceApplication setup mode duration leaks) ∧
-      control.execution.InputRecall (serviceApplication setup mode duration leaks) ∧
+      control.execution.Provenance (serviceApplication setup deps duration leaks) ∧
+      control.execution.InputRecall (serviceApplication setup deps duration leaks) ∧
       control.execution.network.PendingOrPublished ∧
-      control.execution.ReceiptsSound (serviceApplication setup mode duration leaks)
+      control.execution.ReceiptsSound (serviceApplication setup deps duration leaks)
           (fun _ => True) := by
   have nativeTrace :
-      ((serviceApplication setup mode duration leaks).protocol
+      ((serviceApplication setup deps duration leaks).protocol
         ((setup.initialLaw.map setup.eventInputs).map State.initial)
         horizon scheduler).Trace (some control) := by
     rw [PMF.map_comp]
     exact trace
-  have valid := (reactive_history_invariant (serviceTimeouts setup mode duration)) leaks
+  have valid := (reactive_history_invariant (serviceTimeouts setup deps duration)) leaks
     (setup.initialLaw.map setup.eventInputs) horizon scheduler nativeTrace
-  have receipts : (serviceApplication setup mode duration leaks).ServiceInvariant scheduler
-      (fun execution => execution.ReceiptsSound (serviceApplication setup mode duration leaks)
+  have receipts : (serviceApplication setup deps duration leaks).ServiceInvariant scheduler
+      (fun execution => execution.ReceiptsSound (serviceApplication setup deps duration leaks)
           (fun _ => True)) :=
     { respond := fun execution who action valid =>
-        (serviceApplication setup mode duration leaks).receiptsSound_respond _ execution who
+        (serviceApplication setup deps duration leaks).receiptsSound_respond _ execution who
         action valid
       environment := fun execution next command valid _ reached =>
-        (serviceApplication setup mode duration leaks).receiptsSound_environmentStep _ execution
+        (serviceApplication setup deps duration leaks).receiptsSound_environmentStep _ execution
         next command valid (fun _ _ _ => trivial) reached }
   refine ⟨?_, ?_, ?_, ?_, ?_⟩
   · obtain ⟨inputs, _supported, invariant⟩ := valid
     exact ⟨inputs, invariant⟩
-  · exact (serviceApplication setup mode duration leaks).history_provenance
-        (serviceInitialLaw setup mode) horizon scheduler trace
-  · exact (serviceApplication setup mode duration leaks).history_inputRecall
-        (serviceInitialLaw setup mode) horizon scheduler trace
-  · exact (serviceApplication setup mode duration leaks).pendingOrPublished_history scheduler
-        (serviceInitialLaw setup mode) horizon trace
-  · exact receipts.history (serviceInitialLaw setup mode) horizon
-      (fun state _ => (serviceApplication setup mode duration leaks).receiptsSound_initial _
+  · exact (serviceApplication setup deps duration leaks).history_provenance
+        (serviceInitialLaw setup deps) horizon scheduler trace
+  · exact (serviceApplication setup deps duration leaks).history_inputRecall
+        (serviceInitialLaw setup deps) horizon scheduler trace
+  · exact (serviceApplication setup deps duration leaks).pendingOrPublished_history scheduler
+        (serviceInitialLaw setup deps) horizon trace
+  · exact receipts.history (serviceInitialLaw setup deps) horizon
+      (fun state _ => (serviceApplication setup deps duration leaks).receiptsSound_initial _
           state) trace
 
 end Vegas

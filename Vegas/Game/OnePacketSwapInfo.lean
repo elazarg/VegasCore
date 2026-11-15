@@ -25,17 +25,17 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol Intera
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
 
 /-- **The swap of an information state**: the recall entry by entry, and the
 current view. -/
-def EventGraphRuntime.HiddenSwap.info (swap : HiddenSwap (graph setup)) :
+def EventGraphRuntime.HiddenSwap.info (swap : HiddenSwap setup.informationGraph) :
     (application setup timeouts leaks).Info → (application setup timeouts leaks).Info :=
   Option.map fun current => (current.1.map swap.entry, swap.view current.2)
 
 /-- Swapping an information state twice gives it back. -/
-theorem EventGraphRuntime.HiddenSwap.info_involutive (swap : HiddenSwap (graph setup)) :
+theorem EventGraphRuntime.HiddenSwap.info_involutive (swap : HiddenSwap setup.informationGraph) :
     Function.Involutive (swap.info (timeouts := timeouts) (leaks := leaks)) := by
   rintro (_ | ⟨past, observed⟩)
   · rfl
@@ -45,13 +45,14 @@ theorem EventGraphRuntime.HiddenSwap.info_involutive (swap : HiddenSwap (graph s
     conv_rhs => rw [← List.map_id past]
     exact List.map_congr_left fun entry _ => swap.entry_involutive entry
 
-variable [Fintype Player] {bounds : MessageBounds (graph setup)}
+variable [Fintype Player] {bounds : MessageBounds setup.informationGraph}
   {initial : PMF (application setup timeouts leaks).State} {horizon : Nat}
-  {scheduler : (application setup timeouts leaks).Scheduler} {allowed : Set (graph setup).Inputs}
+  {scheduler : (application setup timeouts leaks).Scheduler} {allowed : Set
+    setup.informationGraph.Inputs}
 
 /-- **The image of a history is in the swapped information state** of every
 player. -/
-theorem infoOf_mapTrace (swap : HiddenSwap (graph setup))
+theorem infoOf_mapTrace (swap : HiddenSwap setup.informationGraph)
     [InitialAcceptedCompleted (timeouts := timeouts) (leaks := leaks) initial]
     (initialClosed : ∀ state ∈ initial.support, state.config.inputs ∈ allowed →
       state.swap swap ∈ initial.support)

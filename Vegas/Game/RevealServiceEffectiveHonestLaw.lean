@@ -26,15 +26,15 @@ namespace Vegas
 open SourceProgram EventGraph EventGraphRuntime GameTheory.Math.Probability Interaction
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
-  {setup : Setup (Player := Player) (L := L)} {mode : EventGraph.ExecutionMode}
-  {duration : (serviceGraph setup mode).EventId → Nat}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode))}
+  {setup : Setup (Player := Player) (L := L)} {deps : setup.dataflowGraph.Dependencies}
+  {duration : (serviceGraph setup deps).EventId → Nat}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup deps))}
 
 section Induction
 
 variable {horizon turns : Nat} {scheduler :
-    (serviceApplication setup mode duration leaks).Scheduler}
-  {delay bound : (serviceGraph setup mode).EventId → Nat}
+    (serviceApplication setup deps duration leaks).Scheduler}
+  {delay bound : (serviceGraph setup deps).EventId → Nat}
 
 /-- **The honest outcome law from every boundary.** Under the asynchronous
 service contract, on a graph where only independent reveals are concurrent and
@@ -42,58 +42,58 @@ every other event leads, honest clients of an opening, ready-independent
 reference run, from every initialized execution whose responses saw only
 completed events or publications ready, to the reference's outcome law. -/
 theorem effective_runToHorizon_outcomeLaw
-    (contract : AsyncContract (serviceTimeouts setup mode duration) leaks
-      (serviceInitialLaw setup mode) horizon scheduler delay bound)
-    (timely : AsyncTimely (serviceTimeouts setup mode duration) delay bound)
-    (only : (serviceGraph setup mode).RevealsOnlyConcurrent)
-    (leading : ∀ event, ¬ ((serviceGraph setup mode).outputLayout event).IsPublication →
-      (serviceGraph setup mode).Leading event)
-    (effective : (serviceGraph setup mode).BehavioralProfile)
+    (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
+      (serviceInitialLaw setup deps) horizon scheduler delay bound)
+    (timely : AsyncTimely (serviceTimeouts setup deps duration) delay bound)
+    (only : (serviceGraph setup deps).RevealsOnlyConcurrent)
+    (leading : ∀ event, ¬ ((serviceGraph setup deps).outputLayout event).IsPublication →
+      (serviceGraph setup deps).Leading event)
+    (effective : (serviceGraph setup deps).BehavioralProfile)
     (effectiveIndependent : ReadyIndependent effective)
-    (decides : ∀ (config : (serviceGraph setup mode).Config)
-      (event : (serviceGraph setup mode).EventId) (owner : Player) (payload : L.Ty)
-      (binding : FieldRef (serviceGraph setup mode).layout (.binding owner payload))
-      (checks : List (GuardCheck (serviceGraph setup mode).layout payload))
-      (outputEq : (serviceGraph setup mode).outputLayout event = .publication payload)
-      (codeEq : cast (congrArg (EventCode (serviceGraph setup mode).layout) outputEq)
-        ((serviceGraph setup mode).nodes event) = .resolve owner payload binding checks),
-      nodeView (serviceGraph setup mode) event =
+    (decides : ∀ (config : (serviceGraph setup deps).Config)
+      (event : (serviceGraph setup deps).EventId) (owner : Player) (payload : L.Ty)
+      (binding : FieldRef (serviceGraph setup deps).layout (.binding owner payload))
+      (checks : List (GuardCheck (serviceGraph setup deps).layout payload))
+      (outputEq : (serviceGraph setup deps).outputLayout event = .publication payload)
+      (codeEq : cast (congrArg (EventCode (serviceGraph setup deps).layout) outputEq)
+        ((serviceGraph setup deps).nodes event) = .resolve owner payload binding checks),
+      nodeView (serviceGraph setup deps) event =
         .resolve owner payload binding checks outputEq codeEq →
-      ∀ (actor : (serviceGraph setup mode).actor? event = some owner)
-        (active : owner ∉ ((serviceGraph setup mode).playerObserve owner config).defaulted),
-        effective owner event actor ((serviceGraph setup mode).playerObserve owner config)
+      ∀ (actor : (serviceGraph setup deps).actor? event = some owner)
+        (active : owner ∉ ((serviceGraph setup deps).playerObserve owner config).defaulted),
+        effective owner event actor ((serviceGraph setup deps).playerObserve owner config)
           active = PMF.pure (cast (congrArg EventField.Action outputEq.symm)
             (openingAccepted event config.store)))
-    (reference : (serviceGraph setup mode).BehavioralProfile)
+    (reference : (serviceGraph setup deps).BehavioralProfile)
     (independent : ReadyIndependent reference) (opens : OpensPublications reference)
-    {Outcome : Type*} (read : (serviceGraph setup mode).Config → Outcome)
-    (keyed : ∀ left right : (serviceGraph setup mode).Config, runKey left = runKey right →
+    {Outcome : Type*} (read : (serviceGraph setup deps).Config → Outcome)
+    (keyed : ∀ left right : (serviceGraph setup deps).Config, runKey left = runKey right →
       read left = read right)
     (invariant : ∀ config, read config.erase = read config)
     (twins : ∀ config, outcomeLaw effective read config = outcomeLaw reference read config) :
-    let players := serviceReferenceTurnPolicy setup mode duration leaks bound turns
-      (firstTurnTiming setup turns mode) effective
-    ∀ execution : (serviceApplication setup mode duration leaks).Execution,
-      execution ∈ ((serviceApplication setup mode duration leaks).roundsFrom
-        (serviceInitialLaw setup mode) scheduler players
+    let players := serviceReferenceTurnPolicy setup deps duration leaks bound turns
+      (firstTurnTiming setup turns deps) effective
+    ∀ execution : (serviceApplication setup deps duration leaks).Execution,
+      execution ∈ ((serviceApplication setup deps duration leaks).roundsFrom
+        (serviceInitialLaw setup deps) scheduler players
           execution.environmentRecall.length).support →
       execution.environmentRecall.length ≤ horizon →
-      SeenWithin (fun event => ((serviceGraph setup mode).outputLayout event).IsPublication)
+      SeenWithin (fun event => ((serviceGraph setup deps).outputLayout event).IsPublication)
         execution →
-      ((serviceApplication setup mode duration leaks).runToHorizon scheduler players horizon
+      ((serviceApplication setup deps duration leaks).runToHorizon scheduler players horizon
           execution).map (fun final => read final.application.config) =
         outcomeLaw reference read execution.application.config := by
   classical
   intro players
-  let app := serviceApplication setup mode duration leaks
-  let publication := fun event : (serviceGraph setup mode).EventId =>
-    ((serviceGraph setup mode).outputLayout event).IsPublication
+  let app := serviceApplication setup deps duration leaks
+  let publication := fun event : (serviceGraph setup deps).EventId =>
+    ((serviceGraph setup deps).outputLayout event).IsPublication
   intro execution
   generalize leftEq : horizon - execution.environmentRecall.length = left
   induction left using Nat.strong_induction_on generalizing execution with
   | h left ih =>
   intro supported bounded seen
-  obtain ⟨trace⟩ := app.raw_trace_roundsFrom (serviceInitialLaw setup mode) horizon scheduler
+  obtain ⟨trace⟩ := app.raw_trace_roundsFrom (serviceInitialLaw setup deps) horizon scheduler
     players execution.environmentRecall.length bounded execution supported
   cases left with
   | zero =>
@@ -130,18 +130,19 @@ theorem effective_runToHorizon_outcomeLaw
             intro next reached
             have lengthNext := app.round_environmentRecall_length scheduler players execution
               next reached
-            have supportedNext : next ∈ (app.roundsFrom (serviceInitialLaw setup mode) scheduler
+            have supportedNext : next ∈ (app.roundsFrom (serviceInitialLaw setup deps) scheduler
                 players next.environmentRecall.length).support := by
               rw [lengthNext, app.roundsFrom_succ]
               exact (PMF.mem_support_bind_iff _ _ _).mpr ⟨execution, supported, reached⟩
             rw [ih left (by omega) next (by omega) supportedNext (by omega)
               (round_seenWithin seen allPublications reached)]
             exact reactive_round_outcomeLaw_of_accepted independent opens read keyed invariant
-              (serviceTimeouts setup mode duration) leaks scheduler players execution next
+              (serviceTimeouts setup deps duration) leaks scheduler players execution next
               allPublications (fun event owner ready owned _ accepted =>
                 effectivePublication_withinDeadline contract timely players owner effective
                   decides rfl execution.environmentRecall.length bounded execution supported event
-                  owned ready (allPublications event ready) accepted) reached
+                  (effectiveIndependent.actorSerial event) owned ready (allPublications event
+                      ready) accepted) reached
           _ = _ := PMF.bind_const _ _
       · push Not at allPublications
         obtain ⟨event, ready, notPublication⟩ := allPublications
@@ -156,13 +157,13 @@ theorem effective_runToHorizon_outcomeLaw
             obtain ⟨used, within, rounds, lengthEq⟩ := app.runUntil_runRounds scheduler players
               stop _ execution stopped reached
             have stoppedSupported := app.roundsFrom_runUntil scheduler players
-              (serviceInitialLaw setup mode) stop _ execution stopped supported reached
+              (serviceInitialLaw setup deps) stop _ execution stopped supported reached
             have stoppedBounded : stopped.environmentRecall.length ≤ horizon := by omega
             have finished : event ∈ stopped.application.config.cut.completed := by
               rcases app.runUntilHorizon_stopped scheduler players stop horizon (left + 1)
                   execution stopped (by omega) reached with done | spent
               · exact done
-              · obtain ⟨stoppedTrace⟩ := app.raw_trace_roundsFrom (serviceInitialLaw setup mode)
+              · obtain ⟨stoppedTrace⟩ := app.raw_trace_roundsFrom (serviceInitialLaw setup deps)
                   horizon scheduler players stopped.environmentRecall.length stoppedBounded
                   stopped stoppedSupported
                 rw [spent, Nat.sub_self] at stoppedTrace
@@ -191,7 +192,7 @@ theorem effective_runToHorizon_outcomeLaw
             exact ih (horizon - stopped.environmentRecall.length) (by omega) stopped rfl
               stoppedSupported stoppedBounded seenStopped
           _ = _ := by
-            have segment := soleSegment_outcomeLaw (serviceTimeouts setup mode duration) leaks
+            have segment := soleSegment_outcomeLaw (serviceTimeouts setup deps duration) leaks
               scheduler delay bound contract timely effective effectiveIndependent read keyed
               players event (fun _ _ => rfl) solitary (leading event notPublication)
               notPublication execution ready supported (seen.untouched ready.1 notPublication)
@@ -203,55 +204,55 @@ theorem effective_runToHorizon_outcomeLaw
 `honest_runToHorizon_outcomeLaw`, the outcome of the honest clients' run to the
 horizon has the reference's outcome law from the initial configurations. -/
 theorem effective_roundsFrom_outcomeLaw
-    (contract : AsyncContract (serviceTimeouts setup mode duration) leaks
-      (serviceInitialLaw setup mode) horizon scheduler delay bound)
-    (timely : AsyncTimely (serviceTimeouts setup mode duration) delay bound)
-    (only : (serviceGraph setup mode).RevealsOnlyConcurrent)
-    (leading : ∀ event, ¬ ((serviceGraph setup mode).outputLayout event).IsPublication →
-      (serviceGraph setup mode).Leading event)
-    (effective : (serviceGraph setup mode).BehavioralProfile)
+    (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
+      (serviceInitialLaw setup deps) horizon scheduler delay bound)
+    (timely : AsyncTimely (serviceTimeouts setup deps duration) delay bound)
+    (only : (serviceGraph setup deps).RevealsOnlyConcurrent)
+    (leading : ∀ event, ¬ ((serviceGraph setup deps).outputLayout event).IsPublication →
+      (serviceGraph setup deps).Leading event)
+    (effective : (serviceGraph setup deps).BehavioralProfile)
     (effectiveIndependent : ReadyIndependent effective)
-    (decides : ∀ (config : (serviceGraph setup mode).Config)
-      (event : (serviceGraph setup mode).EventId) (owner : Player) (payload : L.Ty)
-      (binding : FieldRef (serviceGraph setup mode).layout (.binding owner payload))
-      (checks : List (GuardCheck (serviceGraph setup mode).layout payload))
-      (outputEq : (serviceGraph setup mode).outputLayout event = .publication payload)
-      (codeEq : cast (congrArg (EventCode (serviceGraph setup mode).layout) outputEq)
-        ((serviceGraph setup mode).nodes event) = .resolve owner payload binding checks),
-      nodeView (serviceGraph setup mode) event =
+    (decides : ∀ (config : (serviceGraph setup deps).Config)
+      (event : (serviceGraph setup deps).EventId) (owner : Player) (payload : L.Ty)
+      (binding : FieldRef (serviceGraph setup deps).layout (.binding owner payload))
+      (checks : List (GuardCheck (serviceGraph setup deps).layout payload))
+      (outputEq : (serviceGraph setup deps).outputLayout event = .publication payload)
+      (codeEq : cast (congrArg (EventCode (serviceGraph setup deps).layout) outputEq)
+        ((serviceGraph setup deps).nodes event) = .resolve owner payload binding checks),
+      nodeView (serviceGraph setup deps) event =
         .resolve owner payload binding checks outputEq codeEq →
-      ∀ (actor : (serviceGraph setup mode).actor? event = some owner)
-        (active : owner ∉ ((serviceGraph setup mode).playerObserve owner config).defaulted),
-        effective owner event actor ((serviceGraph setup mode).playerObserve owner config)
+      ∀ (actor : (serviceGraph setup deps).actor? event = some owner)
+        (active : owner ∉ ((serviceGraph setup deps).playerObserve owner config).defaulted),
+        effective owner event actor ((serviceGraph setup deps).playerObserve owner config)
           active = PMF.pure (cast (congrArg EventField.Action outputEq.symm)
             (openingAccepted event config.store)))
-    (reference : (serviceGraph setup mode).BehavioralProfile)
+    (reference : (serviceGraph setup deps).BehavioralProfile)
     (independent : ReadyIndependent reference) (opens : OpensPublications reference)
-    {Outcome : Type*} (read : (serviceGraph setup mode).Config → Outcome)
-    (keyed : ∀ left right : (serviceGraph setup mode).Config, runKey left = runKey right →
+    {Outcome : Type*} (read : (serviceGraph setup deps).Config → Outcome)
+    (keyed : ∀ left right : (serviceGraph setup deps).Config, runKey left = runKey right →
       read left = read right)
     (invariant : ∀ config, read config.erase = read config)
     (twins : ∀ config, outcomeLaw effective read config = outcomeLaw reference read config) :
-    ((serviceApplication setup mode duration leaks).roundsFrom (serviceInitialLaw setup mode)
-        scheduler (serviceReferenceTurnPolicy setup mode duration leaks bound turns
-          (firstTurnTiming setup turns mode) effective) horizon).map
+    ((serviceApplication setup deps duration leaks).roundsFrom (serviceInitialLaw setup deps)
+        scheduler (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+          (firstTurnTiming setup turns deps) effective) horizon).map
         (fun final => read final.application.config) =
-      (serviceInitialLaw setup mode).bind
+      (serviceInitialLaw setup deps).bind
         (fun state => outcomeLaw reference read state.config) := by
-  let app := serviceApplication setup mode duration leaks
-  let players := serviceReferenceTurnPolicy setup mode duration leaks bound turns
-    (firstTurnTiming setup turns mode) effective
+  let app := serviceApplication setup deps duration leaks
+  let players := serviceReferenceTurnPolicy setup deps duration leaks bound turns
+    (firstTurnTiming setup turns deps) effective
   unfold ReactiveApplication.roundsFrom
   rw [PMF.map_bind]
   apply bind_congr_on_support _
   intro state member
   let execution := ReactiveApplication.Execution.initial app state
-  have supported : execution ∈ (app.roundsFrom (serviceInitialLaw setup mode) scheduler players
+  have supported : execution ∈ (app.roundsFrom (serviceInitialLaw setup deps) scheduler players
       execution.environmentRecall.length).support := by
-    change execution ∈ (app.roundsFrom (serviceInitialLaw setup mode) scheduler players 0).support
+    change execution ∈ (app.roundsFrom (serviceInitialLaw setup deps) scheduler players 0).support
     rw [ReactiveApplication.roundsFrom, PMF.support_bind]
     exact Set.mem_iUnion₂.mpr ⟨_, member, by simp [ReactiveApplication.runRounds, execution]⟩
-  have seen : SeenWithin (fun event => ((serviceGraph setup mode).outputLayout event).IsPublication)
+  have seen : SeenWithin (fun event => ((serviceGraph setup deps).outputLayout event).IsPublication)
       execution := by
     intro who entry present
     cases present

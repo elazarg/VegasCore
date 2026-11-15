@@ -37,9 +37,9 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol Intera
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {allowed : Set (graph setup).Inputs}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {allowed : Set setup.informationGraph.Inputs}
 
 omit [DecidableEq Player] [IExpr.ResultTypes L] in
 theorem swapCandidate_id : swapCandidate (id : Raw L → Raw L) = id := by
@@ -48,7 +48,7 @@ theorem swapCandidate_id : swapCandidate (id : Raw L → Raw L) = id := by
 
 namespace EventGraphRuntime.HiddenSwap
 
-variable (swap : HiddenSwap (graph setup))
+variable (swap : HiddenSwap setup.informationGraph)
 
 /-- The swap leaves a player's late-delivery key unchanged when every binding
 read at a reveal turn of that player is fixed. -/
@@ -70,7 +70,7 @@ theorem lateKey_swap (who : Player) (past : List (application setup timeouts lea
         have fixedHere := fixed event turn
         unfold EventGraph.ResolutionFixed at fixedHere
         simp only
-        cases view : nodeView (graph setup) event with
+        cases view : nodeView setup.informationGraph event with
         | bind | sample => rfl
         | resolve owner payload binding checks outputEq codeEq =>
             rw [view] at fixedHere
@@ -84,7 +84,7 @@ theorem lateKey_swap (who : Player) (past : List (application setup timeouts lea
 end EventGraphRuntime.HiddenSwap
 
 /-- **The swap keeps the operational state** of a guarded protocol state. -/
-theorem operationalState_swap (swap : HiddenSwap (graph setup))
+theorem operationalState_swap (swap : HiddenSwap setup.informationGraph)
     (state : (application setup timeouts leaks).ProtocolState)
     (guarded : SwapGuardState setup timeouts swap allowed state) :
     operationalState setup timeouts leaks (swap.protocolState state) =
@@ -107,18 +107,18 @@ theorem operationalState_swap (swap : HiddenSwap (graph setup))
       have reveal := guarded.reveals event (Or.inl ready)
       unfold RevealFixed at reveal
       unfold EventGraph.ResolutionFixed
-      cases view : nodeView (graph setup) event with
+      cases view : nodeView setup.informationGraph event with
       | bind | sample => trivial
       | resolve owner payload binding checks outputEq codeEq =>
           rw [view] at reveal
           exact reveal.1
 
-variable [Fintype Player] {bounds : MessageBounds (graph setup)}
+variable [Fintype Player] {bounds : MessageBounds setup.informationGraph}
   {initial : PMF (application setup timeouts leaks).State} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- **The image of a history has the same operational record.** -/
-theorem operationalRecord_mapTrace (swap : HiddenSwap (graph setup))
+theorem operationalRecord_mapTrace (swap : HiddenSwap setup.informationGraph)
     (initialClosed : ∀ state ∈ (initialLaw setup).support, state.config.inputs ∈ allowed →
       state.swap swap ∈ (initialLaw setup).support)
     (bounded : ∀ handle raw, raw ∈ bounds.values → swap.raw handle raw ∈ bounds.values)
@@ -142,7 +142,7 @@ theorem operationalRecord_mapTrace (swap : HiddenSwap (graph setup))
 
 namespace EventGraphRuntime.HiddenSwap
 
-variable (swap : HiddenSwap (graph setup))
+variable (swap : HiddenSwap setup.informationGraph)
 
 omit [Fintype Player] in
 /-- A swap fixing a player fixes that player's view. -/
@@ -165,7 +165,7 @@ theorem view_observe_of_fixes {who : Player} (fixes : swap.Fixes who)
 
 /-- **A swap fixing a player fixes its one-packet responses**: a permitted
 commitment names a handle of its sender. -/
-theorem action_eq_of_onePacket {bounds : MessageBounds (graph setup)} {who : Player}
+theorem action_eq_of_onePacket {bounds : MessageBounds setup.informationGraph} {who : Player}
     (fixes : swap.Fixes who) {past : List (application setup timeouts leaks).PlayerEntry}
     {observed : (application setup timeouts leaks).PlayerView}
     {response : (application setup timeouts leaks).Action}
@@ -199,7 +199,7 @@ end EventGraphRuntime.HiddenSwap
 
 /-- **A swap fixing the player fixes its recall** at each of its information
 states. -/
-theorem recall_swap_of_fixes (swap : HiddenSwap (graph setup)) {who : Player}
+theorem recall_swap_of_fixes (swap : HiddenSwap setup.informationGraph) {who : Player}
     (fixes : swap.Fixes who)
     (history : ((bounds.onePacketMenu timeouts leaks).protocol initial horizon
       scheduler).History)
@@ -244,7 +244,7 @@ theorem recall_swap_of_fixes (swap : HiddenSwap (graph setup)) {who : Player}
 
 /-- **The image of a history leaves a fixed player in the same information
 state** at each of its decisions. -/
-theorem infoOf_mapTrace_of_fixes (swap : HiddenSwap (graph setup))
+theorem infoOf_mapTrace_of_fixes (swap : HiddenSwap setup.informationGraph)
     (initialClosed : ∀ state ∈ initial.support, state.config.inputs ∈ allowed →
       state.swap swap ∈ initial.support)
     (bounded : ∀ handle raw, raw ∈ bounds.values → swap.raw handle raw ∈ bounds.values)

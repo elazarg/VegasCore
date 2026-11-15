@@ -29,12 +29,12 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
+  {timeouts : EventTimeouts setup.informationGraph}
 
 /-- The decoded point of the native initial state of a setup draw is the entry
 point of that draw. -/
 theorem decodedPoint_initial (initial : State L setup.context) :
-    decodedPoint setup (EventGraphRuntime.State.initial (graph := graph setup)
+    decodedPoint setup (EventGraphRuntime.State.initial (graph := setup.informationGraph)
       (setup.eventInputs initial)).config =
       some (ProtocolState.entry setup.program (Config.initial initial)) :=
   decodedPoint_eq (SourceResidual.initial setup (failureProfile setup.program) initial)
@@ -50,12 +50,13 @@ theorem entry_initialConfig_injective :
 /-- Distinct setup draws have distinct native initial states. -/
 theorem nativeInitial_injective :
     Function.Injective fun initial : State L setup.context =>
-      EventGraphRuntime.State.initial (graph := graph setup) (setup.eventInputs initial) := by
+      EventGraphRuntime.State.initial (graph := setup.informationGraph) (setup.eventInputs initial)
+        := by
   intro first second same
   apply entry_initialConfig_injective (setup := setup)
   change some _ = some _
   rw [← decodedPoint_initial, ← decodedPoint_initial]
-  exact congrArg (fun state : EventGraphRuntime.State (graph setup) =>
+  exact congrArg (fun state : EventGraphRuntime.State setup.informationGraph =>
     decodedPoint setup state.config) same
 
 /-- **The initial masses agree.** The intended initial step gives the decoded
@@ -63,22 +64,24 @@ initial point of a setup draw the mass the native initial law gives its native
 initial state. -/
 theorem initialMass_eq (initial : State L setup.context) :
     (setup.protocolStep none (fun _ => none)
-        (decodedPoint setup (EventGraphRuntime.State.initial (graph := graph setup)
+        (decodedPoint setup (EventGraphRuntime.State.initial (graph := setup.informationGraph)
           (setup.eventInputs initial)).config)).toReal =
-      (initialLaw setup (EventGraphRuntime.State.initial (graph := graph setup)
+      (initialLaw setup (EventGraphRuntime.State.initial (graph := setup.informationGraph)
         (setup.eventInputs initial))).toReal := by
   rw [decodedPoint_initial]
   change ((setup.initialLaw.map fun initial =>
       some (ProtocolState.entry setup.program (Config.initial initial)))
         (some (ProtocolState.entry setup.program (Config.initial initial)))).toReal =
-    ((setup.initialLaw.map fun initial => EventGraphRuntime.State.initial (graph := graph setup)
-      (setup.eventInputs initial)) (EventGraphRuntime.State.initial (graph := graph setup)
+    ((setup.initialLaw.map fun initial => EventGraphRuntime.State.initial (graph :=
+      setup.informationGraph)
+      (setup.eventInputs initial)) (EventGraphRuntime.State.initial (graph :=
+        setup.informationGraph)
         (setup.eventInputs initial))).toReal
   rw [pmf_map_apply_of_injective _ entry_initialConfig_injective,
     pmf_map_apply_of_injective _ nativeInitial_injective]
 
 variable [Fintype Player]
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
   {horizon : Nat} {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- **The initial draw matches** at every realized native initial

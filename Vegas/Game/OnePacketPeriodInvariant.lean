@@ -40,11 +40,12 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
 
 /-- Keeping fixed meanings is transitive. -/
-theorem keepsFixedCandidates_trans {first second third : EventGraphRuntime.State (graph setup)}
+theorem keepsFixedCandidates_trans {first second third : EventGraphRuntime.State
+  setup.informationGraph}
     (left : KeepsFixedCandidates first second) (right : KeepsFixedCandidates second third) :
     KeepsFixedCandidates first third := fun handle fixed => by
   rw [right handle (by rw [left handle fixed]; exact fixed), left handle fixed]
@@ -100,8 +101,8 @@ from which `control` keeps every fixed meaning, and at which a commitment
 handle of `sender` in the call is fixed. -/
 def SentContent (assessment : setup.intendedModel.BehavioralAssessment)
     (control : (application setup timeouts leaks).Control) (sender : Player)
-    (message : Message Player (WitnessedPacket (graph setup))) (unsettled : ℝ) : Prop :=
-  ∃ sent : EventGraphRuntime.State (graph setup),
+    (message : Message Player (WitnessedPacket setup.informationGraph)) (unsettled : ℝ) : Prop :=
+  ∃ sent : EventGraphRuntime.State setup.informationGraph,
     KeepsFixedCandidates sent control.execution.application ∧
     (∀ named handle, message.payload.call = .commitment named handle → handle.1 = sender →
       sent.candidates.lookup handle ≠ .fresh) ∧
@@ -116,23 +117,23 @@ structure PeriodInvariant (assessment : setup.intendedModel.BehavioralAssessment
     (who : Player) (control : (application setup timeouts leaks).Control) (unsettled : ℝ) : Prop
       where
   named : ∀ message ∈ control.execution.network.inputs, message.sender ≠ who →
-    ∀ event, message.payload.call.event? (graph setup) = some event →
+    ∀ event, message.payload.call.event? setup.informationGraph = some event →
       event ∈ control.execution.application.config.cut.completed ∨
         control.execution.application.config.cut.Ready event
   unique : ∀ first ∈ control.execution.network.inputs,
     ∀ second ∈ control.execution.network.inputs, first.sender ≠ who →
       first.sender = second.sender → ∀ event,
-      first.payload.call.event? (graph setup) = some event →
-      second.payload.call.event? (graph setup) = some event → first = second
+      first.payload.call.event? setup.informationGraph = some event →
+      second.payload.call.event? setup.informationGraph = some event → first = second
   settled : ∀ event, control.execution.application.config.cut.Ready event →
-    ∀ sender, (graph setup).actor? event = some sender → sender ≠ who →
+    ∀ sender, setup.informationGraph.actor? event = some sender → sender ≠ who →
       (unsettled = 1 ∧ ∀ message ∈ control.execution.network.inputs, message.sender = sender →
-        message.payload.call.event? (graph setup) ≠ some event) ∨
+        message.payload.call.event? setup.informationGraph ≠ some event) ∨
       ∃ message ∈ control.execution.network.inputs, message.sender = sender ∧
-        message.payload.call.event? (graph setup) = some event ∧
+        message.payload.call.event? setup.informationGraph = some event ∧
         SentContent setup timeouts assessment control sender message unsettled
   quiet : (∀ event, control.execution.application.config.cut.Ready event →
-    ∀ sender, (graph setup).actor? event = some sender → sender = who) → unsettled = 1
+    ∀ sender, setup.informationGraph.actor? event = some sender → sender = who) → unsettled = 1
 
 /-- The period invariant transfers to a state with the same inputs and
 configuration whose contract state keeps every fixed meaning. -/
@@ -201,7 +202,7 @@ theorem PeriodInvariant.emitOwn {assessment : setup.intendedModel.BehavioralAsse
       rw [config]
       exact ready)
 
-variable [Fintype Player] {bounds : MessageBounds (graph setup)} {horizon : Nat}
+variable [Fintype Player] {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- The source view of a player at an initialized state is its view of the
@@ -363,7 +364,7 @@ theorem periodInvariant (assessment : setup.intendedModel.BehavioralAssessment) 
                             (current.execution.network.known actor) material⟩ with envelopeEq
                       have envelopeCall : envelope.payload.call = material.call.packet := rfl
                       have envelopeSender : envelope.sender = actor := rfl
-                      have envelopeNamed : envelope.payload.call.event? (graph setup) =
+                      have envelopeNamed : envelope.payload.call.event? setup.informationGraph =
                           some event := by rw [envelopeCall]; exact named
                       have cases_ : ∀ message ∈ (current.execution.respond
                           (application setup timeouts leaks) actor ⟨some material⟩).network.inputs,
@@ -402,7 +403,8 @@ theorem periodInvariant (assessment : setup.intendedModel.BehavioralAssessment) 
                       · change (current.execution.respond (application setup timeouts leaks) actor
                           ⟨some material⟩).application.config.cut.Ready event' at ready'
                         rw [configEq] at ready'
-                        have sameEvent := setup.eventGraph.sequentialize_ready_unique _ ready' ready
+                        have sameEvent := setup.informationGraph.sequentialize_ready_unique _
+                          ready' ready
                         subst sameEvent
                         have sameSender : sender' = actor :=
                           Option.some.inj (acts'.symm.trans acts)
@@ -486,7 +488,7 @@ theorem periodInvariant (assessment : setup.intendedModel.BehavioralAssessment) 
                 obtain ⟨suffix, kept⟩ := EventGraph.Config.Step.path_history_prefix rest
                 have dropped : control.execution.application.config.history.drop
                     current.execution.application.config.history.length =
-                    EventGraph.completion (graph setup) event
+                    EventGraph.completion setup.informationGraph event
                       (current.execution.application.config.actualDecision event action) value ::
                         suffix := by
                   rw [← kept, historyEq, List.append_assoc, List.drop_left]
@@ -496,11 +498,11 @@ theorem periodInvariant (assessment : setup.intendedModel.BehavioralAssessment) 
                       prior)
                     (some current) joint (some control) = 1 := by
                   simp only [unsettledStep, acting, dropped, List.any_cons]
-                  cases owner : (graph setup).actor? event with
+                  cases owner : setup.informationGraph.actor? event with
                   | some sender => simp [EventGraph.completion, owner]
                   | none =>
                       have quiet := earlier.quiet fun other otherReady sender acts => by
-                        have sameEvent := setup.eventGraph.sequentialize_ready_unique _
+                        have sameEvent := setup.informationGraph.sequentialize_ready_unique _
                           otherReady ready
                         subst sameEvent
                         rw [owner] at acts
@@ -524,9 +526,10 @@ theorem periodInvariant (assessment : setup.intendedModel.BehavioralAssessment) 
                     EventOrder.Cut.mem_complete]
                   rcases status with done | otherReady
                   · exact Or.inr done
-                  · exact Or.inl (setup.eventGraph.sequentialize_ready_unique _ otherReady ready)
+                  · exact Or.inl (setup.informationGraph.sequentialize_ready_unique _ otherReady
+                    ready)
                 have allCompleted : ∀ message ∈ control.execution.network.inputs,
-                    message.sender ≠ who → ∀ x, message.payload.call.event? (graph setup) =
+                    message.sender ≠ who → ∀ x, message.payload.call.event? setup.informationGraph =
                       some x → x ∈ control.execution.application.config.cut.completed :=
                   fun message member other x named => completedNow x
                     (earlier.named message (inputsEq ▸ member) other x named)

@@ -46,7 +46,7 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol Intera
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)} [DecidableEq (CellTy Player L)]
+  {timeouts : EventTimeouts setup.informationGraph} [DecidableEq (CellTy Player L)]
 
 variable {Public : Type*} {signal : State L setup.context → Public}
 
@@ -145,8 +145,8 @@ end Points
 section Native
 
 variable [Fintype Player]
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 omit [DecidableEq (CellTy Player L)] in
@@ -173,8 +173,8 @@ omit [DecidableEq (CellTy Player L)] in
 /-- **Forced images reach back along a history.** If the image under a hidden
 swap of a history guarded at its end is forced for a player, so is the image of
 each of its initialized prefixes. -/
-theorem forcedState_image_of_tracePrefix (swap : HiddenSwap (graph setup))
-    {allowed : Set (graph setup).Inputs}
+theorem forcedState_image_of_tracePrefix (swap : HiddenSwap setup.informationGraph)
+    {allowed : Set setup.informationGraph.Inputs}
     (initialClosed : ∀ state ∈ (initialLaw setup).support, state.config.inputs ∈ allowed →
       state.swap swap ∈ (initialLaw setup).support)
     (bounded : ∀ handle raw, raw ∈ bounds.values → swap.raw handle raw ∈ bounds.values)
@@ -202,8 +202,8 @@ theorem forcedState_image_of_tracePrefix (swap : HiddenSwap (graph setup))
 
 omit [DecidableEq (CellTy Player L)] in
 /-- The swap guard reaches back along a history. -/
-theorem swapGuardState_of_tracePrefix (swap : HiddenSwap (graph setup))
-    {allowed : Set (graph setup).Inputs}
+theorem swapGuardState_of_tracePrefix (swap : HiddenSwap setup.informationGraph)
+    {allowed : Set setup.informationGraph.Inputs}
     (initialClosed : ∀ state ∈ (initialLaw setup).support, state.config.inputs ∈ allowed →
       state.swap swap ∈ (initialLaw setup).support)
     (bounded : ∀ handle raw, raw ∈ bounds.values → swap.raw handle raw ∈ bounds.values)
@@ -243,7 +243,8 @@ theorem forcedAgent_of_splice (wellFormed : setup.WellFormed)
     (staticW : ProtocolState.StaticAt setup.program [] (Revelations.initial setup.context) w)
     (readyOwn : ∀ event, current.execution.application.config.cut.Ready event →
       ∀ owner payload binding checks outputEq codeEq,
-        nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq →
+        nodeView setup.informationGraph event = .resolve owner payload binding checks outputEq
+          codeEq →
           owner = who)
     {r : Player}
     (succeed : CommitmentCellsSucceed setup p (ProtocolState.splicePoint setup.program r p w))

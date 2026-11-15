@@ -20,9 +20,9 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {initial : PMF ((reactiveApplication timeouts) leaks).State}
   {scheduler : ((reactiveApplication timeouts) leaks).Scheduler}
   [((reactiveApplication timeouts) leaks).FiniteNature initial scheduler]
@@ -55,7 +55,7 @@ theorem intended_raw_sequentialEquilibrium_of_onePacket {Parameter : Type}
       (setup.intendedModel.runBehavioral source.strategy
         (instructionCount setup.program + 1)).map
         (intendedReadoutExclusion setup parameter utility excludedPayoff))
-    (service : EvidenceReportService (CountEvidence (graph setup)))
+    (service : EvidenceReportService (CountEvidence setup.informationGraph))
     (observationRate deliveryRate : Player → ℝ)
     (delivery_nonnegative : ∀ who, 0 ≤ deliveryRate who)
     (coverage : CountEvidenceCoverage service observationRate deliveryRate)

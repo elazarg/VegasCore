@@ -22,9 +22,9 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
+  {timeouts : EventTimeouts setup.informationGraph}
   {profile : BehavioralProfile setup.program}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
 
 private theorem decoded_terminal_readout
     (control : (application setup timeouts leaks).Control)
@@ -116,7 +116,8 @@ theorem decoded_owesFailure_exclusionBase_of_readout {Parameter : Type}
       rw [current] at readout
       apply exclusionBase_of_defaulted
       change who ∈ control.execution.application.config.defaults.defaulted
-      rw [← serviceSourceReadout_defaults setup .sequential timeouts.duration leaks control
+      rw [← serviceSourceReadout_defaults setup setup.informationDependencies timeouts.duration
+        leaks control
         terminal readout]
       exact defaulted
 

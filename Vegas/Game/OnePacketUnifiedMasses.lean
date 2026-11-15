@@ -27,8 +27,8 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
 
 section Unfold
 
@@ -39,12 +39,13 @@ theorem honestFactor_of_settled (settled : before.pending = none) :
   unfold honestFactor
   rw [settled]
 
-theorem honestFactor_of_bind {event : (graph setup).EventId} (pending : before.pending = some event)
+theorem honestFactor_of_bind {event : setup.informationGraph.EventId} (pending : before.pending =
+  some event)
     {owner : Player} {payload : L.Ty}
-    {outputEq : (graph setup).outputLayout event = .binding owner payload}
-    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .bind owner payload}
-    (node : nodeView (graph setup) event = .bind owner payload outputEq codeEq) :
+    {outputEq : setup.informationGraph.outputLayout event = .binding owner payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .bind owner payload}
+    (node : nodeView setup.informationGraph event = .bind owner payload outputEq codeEq) :
     honestFactor (timeouts := timeouts) before after = pendingBindingHonestFactor (timeouts :=
       timeouts) before after := by
   unfold honestFactor
@@ -52,14 +53,15 @@ theorem honestFactor_of_bind {event : (graph setup).EventId} (pending : before.p
   dsimp only
   rw [node]
 
-theorem honestFactor_of_resolve {event : (graph setup).EventId}
+theorem honestFactor_of_resolve {event : setup.informationGraph.EventId}
     (pending : before.pending = some event) {owner : Player} {payload : L.Ty}
-    {binding : EventGraph.FieldRef (graph setup).layout (.binding owner payload)}
-    {checks : List (EventGraph.GuardCheck (graph setup).layout payload)}
-    {outputEq : (graph setup).outputLayout event = .publication payload}
-    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .resolve owner payload binding checks}
-    (node : nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq) :
+    {binding : EventGraph.FieldRef setup.informationGraph.layout (.binding owner payload)}
+    {checks : List (EventGraph.GuardCheck setup.informationGraph.layout payload)}
+    {outputEq : setup.informationGraph.outputLayout event = .publication payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .resolve owner payload binding checks}
+    (node : nodeView setup.informationGraph event = .resolve owner payload binding checks outputEq
+      codeEq) :
     honestFactor (timeouts := timeouts) before after = transmitFactor (timeouts := timeouts)
       after := by
   unfold honestFactor
@@ -67,19 +69,19 @@ theorem honestFactor_of_resolve {event : (graph setup).EventId}
   dsimp only
   rw [node]
 
-variable (bounds : MessageBounds (graph setup))
+variable (bounds : MessageBounds setup.informationGraph)
 
 theorem slotTierFactor_of_settled (settled : before.pending = none) :
     slotTierFactor (timeouts := timeouts) bounds before after = 1 := by
   unfold slotTierFactor
   rw [settled]
 
-theorem slotTierFactor_of_bind {event : (graph setup).EventId}
+theorem slotTierFactor_of_bind {event : setup.informationGraph.EventId}
     (pending : before.pending = some event) {owner : Player} {payload : L.Ty}
-    {outputEq : (graph setup).outputLayout event = .binding owner payload}
-    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .bind owner payload}
-    (node : nodeView (graph setup) event = .bind owner payload outputEq codeEq) :
+    {outputEq : setup.informationGraph.outputLayout event = .binding owner payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .bind owner payload}
+    (node : nodeView setup.informationGraph event = .bind owner payload outputEq codeEq) :
     slotTierFactor (timeouts := timeouts) bounds before after = pendingBindingSlotFactor
       (timeouts :=
       timeouts) bounds before after event := by
@@ -88,14 +90,15 @@ theorem slotTierFactor_of_bind {event : (graph setup).EventId}
   dsimp only
   rw [node]
 
-theorem slotTierFactor_of_resolve {event : (graph setup).EventId}
+theorem slotTierFactor_of_resolve {event : setup.informationGraph.EventId}
     (pending : before.pending = some event) {owner : Player} {payload : L.Ty}
-    {binding : EventGraph.FieldRef (graph setup).layout (.binding owner payload)}
-    {checks : List (EventGraph.GuardCheck (graph setup).layout payload)}
-    {outputEq : (graph setup).outputLayout event = .publication payload}
-    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .resolve owner payload binding checks}
-    (node : nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq) :
+    {binding : EventGraph.FieldRef setup.informationGraph.layout (.binding owner payload)}
+    {checks : List (EventGraph.GuardCheck setup.informationGraph.layout payload)}
+    {outputEq : setup.informationGraph.outputLayout event = .publication payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .resolve owner payload binding checks}
+    (node : nodeView setup.informationGraph event = .resolve owner payload binding checks outputEq
+      codeEq) :
     slotTierFactor (timeouts := timeouts) bounds before after = transmitFactor (timeouts :=
       timeouts)
       after := by
@@ -119,14 +122,15 @@ theorem lateOptionFactor_of_settled {slots : Nat} (settled : before.pending =
       unfold lateOptionFactor
       rw [settled]
 
-theorem lateOptionFactor_of_resolve {slots : Nat} {event : (graph setup).EventId}
+theorem lateOptionFactor_of_resolve {slots : Nat} {event : setup.informationGraph.EventId}
     (pending : before.pending = some event) {owner : Player} {payload : L.Ty}
-    {binding : EventGraph.FieldRef (graph setup).layout (.binding owner payload)}
-    {checks : List (EventGraph.GuardCheck (graph setup).layout payload)}
-    {outputEq : (graph setup).outputLayout event = .publication payload}
-    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .resolve owner payload binding checks}
-    (node : nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq)
+    {binding : EventGraph.FieldRef setup.informationGraph.layout (.binding owner payload)}
+    {checks : List (EventGraph.GuardCheck setup.informationGraph.layout payload)}
+    {outputEq : setup.informationGraph.outputLayout event = .publication payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .resolve owner payload binding checks}
+    (node : nodeView setup.informationGraph event = .resolve owner payload binding checks outputEq
+      codeEq)
     (slot : Fin slots) :
     lateOptionFactor (timeouts := timeouts) bounds before after (some slot) = transmitFactor
       (timeouts := timeouts) after := by
@@ -139,7 +143,7 @@ end Unfold
 
 section Masses
 
-variable [Fintype Player] {bounds : MessageBounds (graph setup)} {horizon : Nat}
+variable [Fintype Player] {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- **Masses of a response step.** Along every history of the one-packet game,
@@ -150,7 +154,7 @@ tier give a realized response with positive content its content factor times
 the factors read from the responder's keys before and after the response. -/
 theorem onePacket_step_masses (assessment : setup.intendedModel.BehavioralAssessment)
     (covers : bounds.CoversOutputValues)
-    (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
+    (capacity : ∀ who, bindingEventCount setup.informationGraph who < bounds.candidateCount)
     {control : (application setup timeouts leaks).Control}
     (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control))
@@ -266,7 +270,7 @@ theorem onePacket_step_masses (assessment : setup.intendedModel.BehavioralAssess
       rw [pending] at keyPending
       obtain ⟨turn, _, owned, unsent⟩ := pendingEvent_spec (timeouts := timeouts) (setup := setup)
         pending
-      cases node : nodeView (graph setup) event with
+      cases node : nodeView setup.informationGraph event with
       | sample payload law outputEq codeEq =>
           have none := nodeView_sample_actor outputEq codeEq
           rw [owned] at none

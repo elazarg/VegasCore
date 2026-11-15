@@ -21,8 +21,8 @@ open GameTheory GameTheory.Math.Probability
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
 
 namespace DirectedBindingFrame
 
@@ -32,7 +32,7 @@ variable {memory : BindingMemory timeouts leaks} {owner : Player}
 private theorem application_stutter (frame : DirectedBindingFrame (timeouts := timeouts) memory
   owner original repaired)
     (clear : original.application.config.defaulted = ∅)
-    (command : EnvironmentCommand (graph setup))
+    (command : EnvironmentCommand setup.informationGraph)
     (firstLaw : EventGraphRuntime.environmentStep timeouts original.application command =
       PMF.pure original.application)
     (secondLaw : EventGraphRuntime.environmentStep timeouts repaired.application command =
@@ -47,7 +47,8 @@ private theorem application_stutter (frame : DirectedBindingFrame (timeouts := t
   let app := application setup timeouts leaks
   have repairedClear : repaired.application.config.defaulted = ∅ := by
     have defaults := congrArg
-      (fun view : PublicView (graph setup) => view.observation.defaulted) frame.toFrame.publicView
+      (fun view : PublicView setup.informationGraph => view.observation.defaulted)
+        frame.toFrame.publicView
     exact defaults.symm.trans clear
   have firstActual : (application setup timeouts leaks).environment original.application command =
       PMF.pure original.application := by
@@ -73,9 +74,9 @@ private theorem application_stutter (frame : DirectedBindingFrame (timeouts := t
 private theorem sample_stutter (frame : DirectedBindingFrame (timeouts := timeouts) memory owner
   original repaired)
     (clear : original.application.config.defaulted = ∅)
-    (event : (graph setup).EventId) (ready : original.application.config.cut.Ready event)
+    (event : setup.informationGraph.EventId) (ready : original.application.config.cut.Ready event)
     (nonsample : ∀ payload law outputEq codeEq,
-      nodeView (graph setup) event ≠ .sample payload law outputEq codeEq)
+      nodeView setup.informationGraph event ≠ .sample payload law outputEq codeEq)
     (nextOriginal : (application setup timeouts leaks).Execution)
     (left : nextOriginal ∈ (original.environmentStep (application setup timeouts leaks)
       (.application (.executeSample event))).support) :
@@ -106,13 +107,14 @@ theorem environment_step (frame : DirectedBindingFrame (timeouts := timeouts) me
     (signed : (SignedCommitments timeouts) leaks original)
     (leftBinding : original.application.BindingInvariant)
     (rightBinding : repaired.application.BindingInvariant)
-    (successfulReady : ∀ (event : (graph setup).EventId) (actor : Player) (payload : L.Ty)
-      (binding : EventGraph.FieldRef (graph setup).layout (.binding actor payload))
-      (checks : List (EventGraph.GuardCheck (graph setup).layout payload))
-      (outputEq : (graph setup).outputLayout event = .publication payload)
-      (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-        ((graph setup).nodes event) = .resolve actor payload binding checks),
-      nodeView (graph setup) event = .resolve actor payload binding checks outputEq codeEq →
+    (successfulReady : ∀ (event : setup.informationGraph.EventId) (actor : Player) (payload : L.Ty)
+      (binding : EventGraph.FieldRef setup.informationGraph.layout (.binding actor payload))
+      (checks : List (EventGraph.GuardCheck setup.informationGraph.layout payload))
+      (outputEq : setup.informationGraph.outputLayout event = .publication payload)
+      (codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+        (setup.informationGraph.nodes event) = .resolve actor payload binding checks),
+      nodeView setup.informationGraph event = .resolve actor payload binding checks outputEq codeEq
+        →
       original.application.config.cut.Ready event →
       ∃ value, binding.get? original.application.config.store = some (.success value))
     (command : (application setup timeouts leaks).Command)
@@ -121,7 +123,7 @@ theorem environment_step (frame : DirectedBindingFrame (timeouts := timeouts) me
       command).support)
     (nextClear : nextOriginal.application.config.defaulted = ∅)
     (accepted : ∀ event actor payload,
-      (graph setup).outputLayout event = .binding actor payload →
+      setup.informationGraph.outputLayout event = .binding actor payload →
       event ∈ nextOriginal.application.config.cut.completed →
       nextOriginal.application.accepted (.inr event) ≠ none) :
     ∃ nextRepaired : (application setup timeouts leaks).Execution,
@@ -157,7 +159,7 @@ theorem environment_step (frame : DirectedBindingFrame (timeouts := timeouts) me
       | advanceClock => exact frame.advanceClock_step clear nextOriginal left
       | executeSample event =>
           by_cases ready : original.application.config.cut.Ready event
-          · cases node : nodeView (graph setup) event with
+          · cases node : nodeView setup.informationGraph event with
             | sample payload law outputEq codeEq =>
                 exact frame.sample_step clear onlyBindings event ready payload law
                   outputEq codeEq node
@@ -184,7 +186,7 @@ theorem environment_step (frame : DirectedBindingFrame (timeouts := timeouts) me
           refine ⟨nextRepaired, right, frame.environmentStep (.application
             (.expire event))
             _ _ left right ?_⟩
-          cases node : nodeView (graph setup) event with
+          cases node : nodeView setup.informationGraph event with
           | sample payload law outputEq codeEq =>
               exact frame.toFrame.expiry_public onlyBindings event (by
                 rw [outputEq]
