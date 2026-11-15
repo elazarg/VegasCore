@@ -255,7 +255,7 @@ theorem runtime_source_isNash_iff (bonus : Int) (choice : Bool) :
       IsNash (sourceGame bonus).form (euPreference (sourceGame bonus).utility)
         (sourceProfile bonus choice) := by
   have correspondence := (service bonus).payment_firstTurnClientProfile_isεNash_iff
-    (admission bonus) (setup bonus).eventGraph.sequentialize_barrierOrdered
+    (admission bonus)
     (parameter bonus) (runtimeValuation bonus) (auditSample bonus) (audit_authentic bonus)
     deposit (fun _ => by norm_num [deposit]) 1 (fun _ => -|(bonus : ℝ) - 1| - 1)
     (2 * |(bonus : ℝ) - 1| + 1) (realized_payoff_bounds bonus) 0 (sourceProfile bonus choice)
@@ -352,7 +352,7 @@ theorem settlement_law (bonus : Int) (choice : Bool) :
       PMF.pure (some ((final bonus choice).state, (final bonus choice).defaults),
         fun _ : Player => ((if choice then bonus else 0 : Int) : ℝ)) := by
   have law := (service bonus).payment_firstTurnClientProfile_settlement_law
-    (admission bonus) (setup bonus).eventGraph.sequentialize_barrierOrdered
+    (admission bonus)
     (auditSample bonus) (audit_authentic bonus) deposit 1 (sourceProfile bonus choice)
   change _ = ((setup bonus).run ((setup bonus).decodeBehavioralProfile (admission bonus)
     (sourceProfile bonus choice))).map (fun terminal =>

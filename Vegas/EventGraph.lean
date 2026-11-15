@@ -40,6 +40,7 @@ public import Vegas.EventGraph.SequentialNormalization
 public import Vegas.EventGraph.PublicationDecision
 public import Vegas.EventGraph.DecisionTwin
 public import Vegas.EventGraph.DefaultFailure
+public import Vegas.EventGraph.Dependencies
 public import Vegas.EventGraph.Execution
 public import Vegas.EventGraph.Information
 public import Vegas.EventGraph.ObservationStep

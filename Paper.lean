@@ -541,12 +541,12 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (admission : CommitmentInterface service.setup.program)
   {Parameter : Type} (parameter : State L service.setup.context → Parameter)
   (utility : Parameter × PublicOutcome service.setup.program → Player → ℝ)
-  (sample : List (SettledEvidence service.setup service.mode) →
-    PMF (List (SettledEvidence service.setup service.mode))) (deposit : Player → ℝ)
+  (sample : List (SettledEvidence service.setup .sequential) →
+    PMF (List (SettledEvidence service.setup .sequential))) (deposit : Player → ℝ)
 
 /-- The bounded raw ledger game, with every response admitted by the message bounds. -/
 abbrev Vegas.Paper.ledgerModel :=
-  service.rawMenu.information (serviceInitialLaw service.setup service.mode)
+  service.rawMenu.information (serviceInitialLaw service.setup .sequential)
       service.horizon service.scheduler
 
 open Vegas.Paper
@@ -571,20 +571,20 @@ def Vegas.Paper.intendedNash (ε : ℝ)
 /-- The actual evidence audit is applied to the terminal source utility. -/
 def Vegas.Paper.ledgerSettlement :=
   TerminalAudit.settlement
-      (serviceBaseUtility service.setup service.mode service.duration service.leaks
+      (serviceBaseUtility service.setup .sequential service.duration service.leaks
         (fun terminal => utility (service.setup.parameterOutcome parameter terminal)))
-      ((serviceAuditObservation (serviceTimeouts service.setup service.mode service.duration))
+      ((serviceAuditObservation (serviceTimeouts service.setup .sequential service.duration))
         service.leaks)
-      (serviceSourceAudit service.setup service.mode service.duration service.leaks sample) deposit
+      (serviceSourceAudit service.setup .sequential service.duration service.leaks sample) deposit
 
 /-- Audited utility on the native state, using the declared terminal payoff. -/
 def Vegas.Paper.ledgerUtility :=
   TerminalAudit.utility
-      (serviceBaseUtility service.setup service.mode service.duration service.leaks
+      (serviceBaseUtility service.setup .sequential service.duration service.leaks
         (fun terminal => utility (service.setup.parameterOutcome parameter terminal)))
-      ((serviceAuditObservation (serviceTimeouts service.setup service.mode service.duration))
+      ((serviceAuditObservation (serviceTimeouts service.setup .sequential service.duration))
         service.leaks)
-      (serviceSourceAudit service.setup service.mode service.duration service.leaks sample) deposit
+      (serviceSourceAudit service.setup .sequential service.duration service.leaks sample) deposit
 
 /-- Expected utility under the same audit and bounded raw ledger game. -/
 def Vegas.Paper.ledgerNash (ε : ℝ)
@@ -598,7 +598,7 @@ def Vegas.Paper.ledgerJointLaw
     (profile : Profile (ledgerModel service).behavioralSignature) :=
   (service.run service.rawMenu profile).bind fun final =>
       (ledgerSettlement service parameter utility sample deposit final.state).map fun payoffs =>
-        ((serviceSourceReadout service.setup service.mode service.duration service.leaks
+        ((serviceSourceReadout service.setup .sequential service.duration service.leaks
           final.state).map (fun terminal => (terminal.state, terminal.defaults)), payoffs)
 
 /-- The corresponding joint law of the intended game. -/
@@ -610,15 +610,14 @@ def Vegas.Paper.intendedJointLaw
             (fun terminal => (terminal.state, terminal.defaults)),
           readoutPayoff service.setup (sourcePayoff service.setup parameter utility) final.state)
 
-variable (ordered : (serviceGraph service.setup service.mode).BarrierOrdered)
-  (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
+variable (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
   (nonnegative : ∀ who, 0 ≤ deposit who)
 
-include ordered authentic nonnegative
+include authentic nonnegative
 
 /-- Deferral changes the Nash error by at most twice the law error times the payoff range. -/
 theorem Vegas.Paper.isεNash_rawClientProfile_approximate
-    {turns : Nat} (timing : TurnTiming service.setup turns service.mode)
+    {turns : Nat} (timing : TurnTiming service.setup turns .sequential)
     (low : Player → ℝ) (range : ℝ)
     (within : service.SettlementRange parameter utility sample deposit low (fun _ => range))
     (ε : ℝ) (source : Profile (service.sourceModel admission).behavioralSignature) :
@@ -629,7 +628,7 @@ theorem Vegas.Paper.isεNash_rawClientProfile_approximate
     (ledgerNash service parameter utility sample deposit ε clients →
       sourceNash service admission parameter utility
         (ε + 2 * timing.deferralError * range) source) := by
-  exact service.isεNash_rawClientProfile_approximate admission ordered parameter utility
+  exact service.isεNash_rawClientProfile_approximate admission parameter utility
     sample authentic deposit nonnegative timing low range within ε source
 
 /-- info: 'Vegas.Paper.isεNash_rawClientProfile_approximate' depends on axioms:
@@ -644,9 +643,9 @@ theorem Vegas.Paper.isεNash_firstTurnClientProfile_iff
     (ε : ℝ) (source : Profile (service.sourceModel admission).behavioralSignature) :
     ledgerNash service parameter utility sample deposit ε
       (service.clientProfile admission service.rawMenu
-        (firstTurnTiming service.setup turns service.mode) source) ↔
+        (firstTurnTiming service.setup turns .sequential) source) ↔
       sourceNash service admission parameter utility ε source := by
-  exact service.isεNash_firstTurnClientProfile_iff admission ordered parameter utility
+  exact service.isεNash_firstTurnClientProfile_iff admission parameter utility
     sample authentic deposit nonnegative turns low range within ε source
 
 /-- info: 'Vegas.Paper.isεNash_firstTurnClientProfile_iff' depends on axioms:
@@ -658,14 +657,14 @@ omit nonnegative
 
 /-- Every profile retains its joint terminal observation law within the deferral error. -/
 theorem Vegas.Paper.clientSettlementLaw_withinTV
-    {turns : Nat} (timing : TurnTiming service.setup turns service.mode)
+    {turns : Nat} (timing : TurnTiming service.setup turns .sequential)
     (source : Profile (service.sourceModel admission).behavioralSignature)
     (terminalUtility : State L service.setup.program.terminalCtx × DefaultHistory Player →
       Player → ℝ) :
     PMF.WithinTV timing.deferralError
       (service.clientSettlementLaw admission timing source sample terminalUtility deposit)
       (service.sourceSettlementLaw admission source terminalUtility) := by
-  exact service.clientSettlementLaw_withinTV admission ordered timing source sample authentic
+  exact service.clientSettlementLaw_withinTV admission timing source sample authentic
     terminalUtility deposit
 
 /-- info: 'Vegas.Paper.clientSettlementLaw_withinTV' depends on axioms:
@@ -678,14 +677,14 @@ theorem Vegas.Paper.payment_firstTurnClientProfile_settlement_law
     (turns : Nat) (source : Profile (service.sourceModel admission).behavioralSignature) :
     ((service.run service.rawMenu
       (service.clientProfile admission service.rawMenu
-        (firstTurnTiming service.setup turns service.mode) source)).bind fun final =>
+        (firstTurnTiming service.setup turns .sequential) source)).bind fun final =>
         (service.paymentSettlement sample deposit final.state).map fun receipts =>
-          ((serviceSourceReadout service.setup service.mode service.duration service.leaks
+          ((serviceSourceReadout service.setup .sequential service.duration service.leaks
             final.state).map (fun terminal => (terminal.state, terminal.defaults)), receipts)) =
       (service.setup.run (service.setup.decodeBehavioralProfile admission source)).map
         (fun terminal => (some (terminal.state, terminal.defaults),
           service.setup.transfers (service.setup.program.publicOutcome terminal))) := by
-  exact service.payment_firstTurnClientProfile_settlement_law admission ordered sample authentic
+  exact service.payment_firstTurnClientProfile_settlement_law admission sample authentic
     deposit turns source
 
 /-- info: 'Vegas.Paper.payment_firstTurnClientProfile_settlement_law' depends on axioms:
@@ -709,11 +708,11 @@ variable (wellFormed : service.setup.WellFormed) (forfeit : ℝ)
     (CommitmentInterface.values service.setup.program)).ExtendsProfile intended source)
   (ε : ℝ) (equilibrium : intendedNash service parameter utility ε intended)
 
-include ordered authentic nonnegative wellFormed range within agrees equilibrium
+include authentic nonnegative wellFormed range within agrees equilibrium
 
 /-- Intended Nash equilibria compile with explicit deferral error and joint-law error. -/
 theorem Vegas.Paper.intended_rawClientProfile_isεNash
-    {turns : Nat} (timing : TurnTiming service.setup turns service.mode) :
+    {turns : Nat} (timing : TurnTiming service.setup turns .sequential) :
     let clients := service.clientProfile (CommitmentInterface.values service.setup.program)
       service.rawMenu timing source
     let forfeited := forfeitUtility service.setup.program forfeit utility
@@ -722,7 +721,7 @@ theorem Vegas.Paper.intended_rawClientProfile_isεNash
       PMF.WithinTV timing.deferralError
         (ledgerJointLaw service parameter forfeited sample deposit clients)
         (intendedJointLaw service parameter utility intended) := by
-  exact service.intended_rawClientProfile_isεNash ordered wellFormed parameter utility forfeit
+  exact service.intended_rawClientProfile_isεNash wellFormed parameter utility forfeit
     range sample authentic deposit nonnegative timing low spread within intended source agrees
     ε equilibrium
 
@@ -734,12 +733,12 @@ theorem Vegas.Paper.intended_rawClientProfile_isεNash
 /-- First-opportunity clients retain the intended Nash error and exact joint payoff law. -/
 theorem Vegas.Paper.intended_firstTurnClientProfile_isεNash (turns : Nat) :
     let clients := service.clientProfile (CommitmentInterface.values service.setup.program)
-      service.rawMenu (firstTurnTiming service.setup turns service.mode) source
+      service.rawMenu (firstTurnTiming service.setup turns .sequential) source
     let forfeited := forfeitUtility service.setup.program forfeit utility
     ledgerNash service parameter forfeited sample deposit ε clients ∧
       ledgerJointLaw service parameter forfeited sample deposit clients =
         intendedJointLaw service parameter utility intended := by
-  exact service.intended_firstTurnClientProfile_isεNash ordered wellFormed parameter utility
+  exact service.intended_firstTurnClientProfile_isεNash wellFormed parameter utility
     forfeit range sample authentic deposit nonnegative turns low spread within intended source
     agrees ε equilibrium
 

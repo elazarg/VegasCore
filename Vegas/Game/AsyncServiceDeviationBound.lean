@@ -66,31 +66,30 @@ typed outcome law is that of a source deviation whose bindings may fail
 lower the payoff. Finite actual source support supplies integrability without a
 uniform utility bound. -/
 theorem firstTurn_deviation_bound {Parameter : Type}
-    (ordered : (serviceGraph service.setup service.mode).BarrierOrdered)
     (parameter : State L service.setup.context → Parameter)
     (utility : Parameter × PublicOutcome service.setup.program → Player → ℝ)
-    (sample : List (SettledEvidence service.setup service.mode) →
-      PMF (List (SettledEvidence service.setup service.mode)))
+    (sample : List (SettledEvidence service.setup .sequential) →
+      PMF (List (SettledEvidence service.setup .sequential)))
     (deposit : Player → ℝ) (nonnegative : ∀ who, 0 ≤ deposit who)
     {turns : Nat} (source : Profile (service.sourceModel admission).behavioralSignature)
     (who : Player)
-    (alternative : (serviceApplication service.setup service.mode service.duration
+    (alternative : (serviceApplication service.setup .sequential service.duration
       service.leaks).Policy) :
-    let base := serviceBaseUtility service.setup service.mode service.duration service.leaks
+    let base := serviceBaseUtility service.setup .sequential service.duration service.leaks
       (fun config => utility (service.setup.parameterOutcome parameter config))
     let payoff := TerminalAudit.utility base
-      ((serviceAuditObservation (serviceTimeouts service.setup service.mode service.duration))
+      ((serviceAuditObservation (serviceTimeouts service.setup .sequential service.duration))
         service.leaks)
-      (serviceSourceAudit service.setup service.mode service.duration service.leaks sample) deposit
+      (serviceSourceAudit service.setup .sequential service.duration service.leaks sample) deposit
     let clients := normalizeDisclosureProfile service.setup.program
       (service.setup.decodeBehavioralProfile admission source)
     ∃ deviation : (service.sourceModel admission).BehavioralPolicy who,
-      expect (((serviceApplication service.setup service.mode service.duration
-        service.leaks).roundsFrom (serviceInitialLaw service.setup service.mode)
-          service.scheduler (Function.update (serviceTurnPolicy service.setup service.mode
+      expect (((serviceApplication service.setup .sequential service.duration
+        service.leaks).roundsFrom (serviceInitialLaw service.setup .sequential)
+          service.scheduler (Function.update (serviceTurnPolicy service.setup .sequential
             service.duration service.leaks service.bound turns
-            (firstTurnTiming service.setup turns service.mode) clients) who alternative)
-          service.horizon).map (serviceApplication service.setup service.mode service.duration
+            (firstTurnTiming service.setup turns .sequential) clients) who alternative)
+          service.horizon).map (serviceApplication service.setup .sequential service.duration
             service.leaks).finished)
         (fun final => payoff final who) ≤
       expect ((service.sourceModel admission).runBehavioral (Profile.update source who deviation)
@@ -100,7 +99,7 @@ theorem firstTurn_deviation_bound {Parameter : Type}
   let : Fintype Player := Fintype.ofFinite Player
   intro base payoff clients
   classical
-  let app := serviceApplication service.setup service.mode service.duration service.leaks
+  let app := serviceApplication service.setup .sequential service.duration service.leaks
   let decoded := service.setup.decodeBehavioralProfile admission source
   let value := fun outcome : Option (Config Player L service.setup.program.terminalCtx) =>
     outcome.elim 0 (fun config => utility (service.setup.parameterOutcome parameter config) who)
@@ -109,13 +108,13 @@ theorem firstTurn_deviation_bound {Parameter : Type}
     utility (parameter (initialState service.setup.program result.1),
       ⟨sourcePublicEnv result.1, result.2⟩) who
   let readPair := fun final : app.ProtocolState =>
-    (serviceSourceReadout service.setup service.mode service.duration service.leaks final).map
+    (serviceSourceReadout service.setup .sequential service.duration service.leaks final).map
       (fun config => (config.state, config.defaults))
-  let native := ((app.roundsFrom (serviceInitialLaw service.setup service.mode) service.scheduler
-    (Function.update (serviceTurnPolicy service.setup service.mode service.duration service.leaks
-      service.bound turns (firstTurnTiming service.setup turns service.mode) clients) who
+  let native := ((app.roundsFrom (serviceInitialLaw service.setup .sequential) service.scheduler
+    (Function.update (serviceTurnPolicy service.setup .sequential service.duration service.leaks
+      service.bound turns (firstTurnTiming service.setup turns .sequential) clients) who
       alternative) service.horizon).map app.finished)
-  obtain ⟨policy, law⟩ := asyncDeviation_readout_law service.setup service.leaks ordered
+  obtain ⟨policy, law⟩ := asyncDeviation_readout_law service.setup service.leaks
     service.contract service.timely turns decoded who alternative
   let original := service.setup.run (Function.update decoded who policy)
   have nativeLaw : native.map readPair =
@@ -136,22 +135,22 @@ theorem firstTurn_deviation_bound {Parameter : Type}
   have baseValue : (fun final => base final who) = pairValue ∘ readPair := by
     funext final
     dsimp only [base, serviceBaseUtility, pairValue, readPair, Function.comp_def]
-    cases serviceSourceReadout service.setup service.mode service.duration service.leaks final <;>
+    cases serviceSourceReadout service.setup .sequential service.duration service.leaks final <;>
       rfl
   have baseIntegrable : PayoffIntegrable native (fun final => base final who) := by
     rw [baseValue]
     exact (payoffIntegrable_map_iff readPair native pairValue).1 mappedIntegrable
   have chargeIntegrable : PayoffIntegrable native (fun final =>
       TerminalAudit.charge
-        ((serviceAuditObservation (serviceTimeouts service.setup service.mode service.duration))
+        ((serviceAuditObservation (serviceTimeouts service.setup .sequential service.duration))
           service.leaks)
-        (serviceSourceAudit service.setup service.mode service.duration service.leaks sample)
+        (serviceSourceAudit service.setup .sequential service.duration service.leaks sample)
         final who * deposit who) := by
     simpa only [mul_comm] using payoffIntegrable_const_mul (c := deposit who)
       (TerminalAudit.payoffIntegrable_charge native
-        ((serviceAuditObservation (serviceTimeouts service.setup service.mode service.duration))
+        ((serviceAuditObservation (serviceTimeouts service.setup .sequential service.duration))
           service.leaks)
-        (serviceSourceAudit service.setup service.mode service.duration service.leaks sample) who)
+        (serviceSourceAudit service.setup .sequential service.duration service.leaks sample) who)
   have charged : expect native (fun final => payoff final who) ≤
       expect native (fun final => base final who) := by
     apply expect_mono _ (payoffIntegrable_sub baseIntegrable chargeIntegrable) baseIntegrable
@@ -203,32 +202,31 @@ response menu that admits every profile's clients, for the audited payoff. Here
 `δ` is the product deferral error of the turn timing and every realized payoff
 value, charged or not, lies in an interval of length `R`. -/
 theorem isεNash_clientProfile {Parameter : Type}
-    (ordered : (serviceGraph service.setup service.mode).BarrierOrdered)
     (parameter : State L service.setup.context → Parameter)
     (utility : Parameter × PublicOutcome service.setup.program → Player → ℝ)
-    (sample : List (SettledEvidence service.setup service.mode) →
-      PMF (List (SettledEvidence service.setup service.mode)))
+    (sample : List (SettledEvidence service.setup .sequential) →
+      PMF (List (SettledEvidence service.setup .sequential)))
     (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
     (deposit : Player → ℝ) (nonnegative : ∀ who, 0 ≤ deposit who)
-    (menu : (serviceApplication service.setup service.mode service.duration
+    (menu : (serviceApplication service.setup .sequential service.duration
       service.leaks).ResponseMenu)
-    {turns : Nat} (timing : TurnTiming service.setup turns service.mode)
+    {turns : Nat} (timing : TurnTiming service.setup turns .sequential)
     (covered : ∀ (source : Profile (service.sourceModel admission).behavioralSignature) who,
-      menu.Admissible (serviceInitialLaw service.setup service.mode) service.horizon
+      menu.Admissible (serviceInitialLaw service.setup .sequential) service.horizon
         service.scheduler who
-        (serviceClientPolicy service.setup service.mode service.duration service.leaks
+        (serviceClientPolicy service.setup .sequential service.duration service.leaks
           service.bound turns timing
           (normalizeDisclosureProfile service.setup.program (service.setup.decodeBehavioralProfile
             admission source)) who))
     (low : Player → ℝ) (range : ℝ)
     (within : service.SettlementRange parameter utility sample deposit low (fun _ => range))
     (ε : ℝ) (source : Profile (service.sourceModel admission).behavioralSignature) :
-    let base := serviceBaseUtility service.setup service.mode service.duration service.leaks
+    let base := serviceBaseUtility service.setup .sequential service.duration service.leaks
       (fun state => utility (service.setup.parameterOutcome parameter state))
     let payoff := TerminalAudit.utility base
-      ((serviceAuditObservation (serviceTimeouts service.setup service.mode service.duration))
+      ((serviceAuditObservation (serviceTimeouts service.setup .sequential service.duration))
         service.leaks)
-      (serviceSourceAudit service.setup service.mode service.duration service.leaks sample) deposit
+      (serviceSourceAudit service.setup .sequential service.duration service.leaks sample) deposit
     IsεNash ((service.sourceModel admission).toBehavioralGameForm
         (instructionCount service.setup.program + 1))
         (fun final who => (service.setup.protocolReadout final.state).elim 0
@@ -243,9 +241,9 @@ theorem isεNash_clientProfile {Parameter : Type}
   apply (isεNash_iff_εBestResponse _ _).mpr
   exact service.isεBestResponse_clientProfile_of_firstTurn_bounds admission parameter utility sample
     authentic deposit menu timing covered low (fun _ => range) within ε source
-    (firstTurn_readout_law service.setup service.leaks ordered service.contract service.timely
+    (firstTurn_readout_law service.setup service.leaks service.contract service.timely
       turns _ (fun _ => BehavioralPolicy.normalizeDisclosures_authentic _ _))
-    (fun who alternative => service.firstTurn_deviation_bound admission ordered
+    (fun who alternative => service.firstTurn_deviation_bound admission
       parameter utility sample deposit
       nonnegative source who alternative) equilibrium
 
@@ -256,32 +254,31 @@ that are an `(ε + 2 * δ * R)`-Nash equilibrium of every admitting response men
 for the audited payoff, and conversely a native `ε`-Nash equilibrium of the
 clients comes from a source `(ε + 2 * δ * R)`-Nash equilibrium. -/
 theorem isεNash_clientProfile_approximate {Parameter : Type}
-    (ordered : (serviceGraph service.setup service.mode).BarrierOrdered)
     (parameter : State L service.setup.context → Parameter)
     (utility : Parameter × PublicOutcome service.setup.program → Player → ℝ)
-    (sample : List (SettledEvidence service.setup service.mode) →
-      PMF (List (SettledEvidence service.setup service.mode)))
+    (sample : List (SettledEvidence service.setup .sequential) →
+      PMF (List (SettledEvidence service.setup .sequential)))
     (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
     (deposit : Player → ℝ) (nonnegative : ∀ who, 0 ≤ deposit who)
-    (menu : (serviceApplication service.setup service.mode service.duration
+    (menu : (serviceApplication service.setup .sequential service.duration
       service.leaks).ResponseMenu)
-    {turns : Nat} (timing : TurnTiming service.setup turns service.mode)
+    {turns : Nat} (timing : TurnTiming service.setup turns .sequential)
     (covered : ∀ (source : Profile (service.sourceModel admission).behavioralSignature) who,
-      menu.Admissible (serviceInitialLaw service.setup service.mode) service.horizon
+      menu.Admissible (serviceInitialLaw service.setup .sequential) service.horizon
         service.scheduler who
-        (serviceClientPolicy service.setup service.mode service.duration service.leaks
+        (serviceClientPolicy service.setup .sequential service.duration service.leaks
           service.bound turns timing
           (normalizeDisclosureProfile service.setup.program (service.setup.decodeBehavioralProfile
             admission source)) who))
     (low : Player → ℝ) (range : ℝ)
     (within : service.SettlementRange parameter utility sample deposit low (fun _ => range))
     (ε : ℝ) (source : Profile (service.sourceModel admission).behavioralSignature) :
-    let base := serviceBaseUtility service.setup service.mode service.duration service.leaks
+    let base := serviceBaseUtility service.setup .sequential service.duration service.leaks
       (fun state => utility (service.setup.parameterOutcome parameter state))
     let payoff := TerminalAudit.utility base
-      ((serviceAuditObservation (serviceTimeouts service.setup service.mode service.duration))
+      ((serviceAuditObservation (serviceTimeouts service.setup .sequential service.duration))
         service.leaks)
-      (serviceSourceAudit service.setup service.mode service.duration service.leaks sample) deposit
+      (serviceSourceAudit service.setup .sequential service.duration service.leaks sample) deposit
     (IsεNash ((service.sourceModel admission).toBehavioralGameForm
         (instructionCount service.setup.program + 1))
         (fun final who => (service.setup.protocolReadout final.state).elim 0
@@ -299,11 +296,11 @@ theorem isεNash_clientProfile_approximate {Parameter : Type}
         (fun final who => (service.setup.protocolReadout final.state).elim 0
           (fun state => utility (service.setup.parameterOutcome parameter state) who))
         (ε + 2 * timing.deferralError * range) source) :=
-  ⟨service.isεNash_clientProfile admission ordered parameter utility sample authentic deposit
+  ⟨service.isεNash_clientProfile admission parameter utility sample authentic deposit
     nonnegative menu
       timing covered low range within ε source,
     fun native => (isεNash_iff_εBestResponse _ _).mpr
-      (service.isεBestResponse_of_clientProfile admission ordered parameter utility sample authentic
+      (service.isεBestResponse_of_clientProfile admission parameter utility sample authentic
         deposit menu timing covered low (fun _ => range) within ε source native)⟩
 
 /-- **Intended approximate Nash equilibria under an arbitrary contract
@@ -315,25 +312,24 @@ forfeit pass, and their joint law of typed outcome and realized settlement is
 within `δ` in total variation of the intended joint law of terminal store and
 payoff. -/
 theorem intended_clientProfile_isεNash {Parameter : Type}
-    (ordered : (serviceGraph service.setup service.mode).BarrierOrdered)
     (wellFormed : service.setup.WellFormed)
     (parameter : State L service.setup.context → Parameter)
     (utility : Parameter × PublicOutcome service.setup.program → Player → ℝ)
     (forfeit : ℝ)
     (range : service.setup.TerminalPayoffSpread (CommitmentInterface.values
       service.setup.program) parameter utility forfeit)
-    (sample : List (SettledEvidence service.setup service.mode) →
-      PMF (List (SettledEvidence service.setup service.mode)))
+    (sample : List (SettledEvidence service.setup .sequential) →
+      PMF (List (SettledEvidence service.setup .sequential)))
     (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
     (deposit : Player → ℝ) (nonnegative : ∀ who, 0 ≤ deposit who)
-    (menu : (serviceApplication service.setup service.mode service.duration
+    (menu : (serviceApplication service.setup .sequential service.duration
       service.leaks).ResponseMenu)
-    {turns : Nat} (timing : TurnTiming service.setup turns service.mode)
+    {turns : Nat} (timing : TurnTiming service.setup turns .sequential)
     (covered : ∀ (source : Profile (service.sourceModel (CommitmentInterface.values
       service.setup.program)).behavioralSignature) who,
-      menu.Admissible (serviceInitialLaw service.setup service.mode) service.horizon
+      menu.Admissible (serviceInitialLaw service.setup .sequential) service.horizon
         service.scheduler who
-        (serviceClientPolicy service.setup service.mode service.duration service.leaks
+        (serviceClientPolicy service.setup .sequential service.duration service.leaks
           service.bound turns timing
           (normalizeDisclosureProfile service.setup.program (service.setup.decodeBehavioralProfile
             (CommitmentInterface.values service.setup.program) source)) who))
@@ -351,16 +347,16 @@ theorem intended_clientProfile_isεNash {Parameter : Type}
         (fun state => utility (service.setup.parameterOutcome parameter state) who)) ε
       intended) :
     let forfeited := forfeitUtility service.setup.program forfeit utility
-    let base := serviceBaseUtility service.setup service.mode service.duration service.leaks
+    let base := serviceBaseUtility service.setup .sequential service.duration service.leaks
       (fun state => forfeited (service.setup.parameterOutcome parameter state))
     let payoff := TerminalAudit.utility base
-      ((serviceAuditObservation (serviceTimeouts service.setup service.mode service.duration))
+      ((serviceAuditObservation (serviceTimeouts service.setup .sequential service.duration))
         service.leaks)
-      (serviceSourceAudit service.setup service.mode service.duration service.leaks sample) deposit
+      (serviceSourceAudit service.setup .sequential service.duration service.leaks sample) deposit
     let settle := TerminalAudit.settlement base
-      ((serviceAuditObservation (serviceTimeouts service.setup service.mode service.duration))
+      ((serviceAuditObservation (serviceTimeouts service.setup .sequential service.duration))
         service.leaks)
-      (serviceSourceAudit service.setup service.mode service.duration service.leaks sample) deposit
+      (serviceSourceAudit service.setup .sequential service.duration service.leaks sample) deposit
     IsεNash (service.gameForm menu)
         (fun history who => payoff history.state who)
         (ε + 2 * timing.deferralError * spread)
@@ -370,7 +366,7 @@ theorem intended_clientProfile_isεNash {Parameter : Type}
         ((service.run menu (service.clientProfile (CommitmentInterface.values
             service.setup.program) menu timing source)).bind (fun final =>
               (settle final.state).map fun payoffs =>
-                ((serviceSourceReadout service.setup service.mode service.duration service.leaks
+                ((serviceSourceReadout service.setup .sequential service.duration service.leaks
                   final.state).map (fun config => (config.state, config.defaults)), payoffs)))
         ((service.setup.intendedModel.runBehavioral intended
             (instructionCount service.setup.program + 1)).map
@@ -381,11 +377,11 @@ theorem intended_clientProfile_isεNash {Parameter : Type}
   service.intended_clientProfile_isεNash_of_firstTurn_bounds wellFormed parameter
     utility forfeit
     range sample authentic deposit menu timing covered low spread within intended source agrees
-    (firstTurn_readout_law service.setup service.leaks ordered service.contract service.timely
+    (firstTurn_readout_law service.setup service.leaks service.contract service.timely
       turns _ (fun _ => BehavioralPolicy.normalizeDisclosures_authentic _ _)) ε
     equilibrium (fun who alternative => service.firstTurn_deviation_bound
       (CommitmentInterface.values service.setup.program)
-      ordered parameter (forfeitUtility service.setup.program forfeit utility)
+      parameter (forfeitUtility service.setup.program forfeit utility)
       sample deposit nonnegative source who alternative)
 
 end AsyncServiceSpec

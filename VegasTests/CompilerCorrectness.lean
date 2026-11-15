@@ -68,7 +68,7 @@ example (bonus : Int) (binding : Option (PublicationResult Bool)) (disclose : Bo
         (program bonus).evaluatePayoffs (terminal bonus binding disclose).1)) := by
   dsimp only
   have law := (service bonus).firstTurnClientProfile_outcome_law (fullAdmission bonus)
-    (setup bonus).eventGraph.sequentialize_barrierOrdered 1
+    1
     ((setup bonus).encodeBehavioralProfile (fullAdmission bonus)
       (chosenProfile bonus binding disclose) (permitted bonus binding disclose))
     (fun output => (output, (program bonus).evaluatePayoffs output.1))

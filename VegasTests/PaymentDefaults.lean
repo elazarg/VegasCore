@@ -195,7 +195,7 @@ example (exit : Int) :
         ((cashService exit).paymentSettlement (auditSample exit) (fun _ => 0) final.state).map
           (fun receipts => receipts .alice)) = PMF.pure (exit : ℝ) := by
   have law := (cashService exit).payment_firstTurnClientProfile_settlement_law admission
-    (cashSetup exit).eventGraph.sequentialize_barrierOrdered (auditSample exit) (authentic exit)
+    (auditSample exit) (authentic exit)
     (fun _ => 0) 1 (omissionSource exit)
   have cash := congrArg (PMF.map (fun realized => realized.2 Player.alice)) law
   simp only [PMF.map_bind, PMF.map_comp, Function.comp_def] at cash

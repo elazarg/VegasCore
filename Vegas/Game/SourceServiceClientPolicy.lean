@@ -361,11 +361,11 @@ variable [Fintype Player] (service : AsyncServiceSpec Player L)
 timing and every source profile, each player's client policy is admissible in
 the bounded raw response menu. -/
 theorem rawMenu_admits {turns : Nat}
-    (timing : TurnTiming service.setup turns service.mode)
+    (timing : TurnTiming service.setup turns .sequential)
     (source : Profile (service.sourceModel admission).behavioralSignature) (who : Player) :
-    service.rawMenu.Admissible (serviceInitialLaw service.setup service.mode) service.horizon
+    service.rawMenu.Admissible (serviceInitialLaw service.setup .sequential) service.horizon
       service.scheduler who
-      (serviceClientPolicy service.setup service.mode service.duration service.leaks service.bound
+      (serviceClientPolicy service.setup .sequential service.duration service.leaks service.bound
         turns timing
         (normalizeDisclosureProfile service.setup.program (service.setup.decodeBehavioralProfile
           admission source)) who) :=

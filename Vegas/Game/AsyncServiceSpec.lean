@@ -18,10 +18,10 @@ public import Interaction.ReactiveResponseEvaluation
 /-! # Full-source services under an asynchronous scheduler
 
 `Vegas.AsyncServiceSpec` is the full-source native service with an arbitrary
-public scheduler in place of the roster calendar: the program setup, the
-dependency mode of its event graph and a configured deadline duration per
-event, passive observation rule and message bounds with the compiler's side
-conditions on them, a horizon, and a scheduler satisfying the asynchronous
+public scheduler in place of the roster calendar: the program setup, its
+source information graph and a configured deadline duration per event, passive
+observation rule and message bounds with the compiler's side conditions on them,
+a horizon, and a scheduler satisfying the asynchronous
 contract with per-event reaction bounds `delay` and inclusion bounds `bound`
 that leave room before every configured deadline. It has no rosters and no
 activation opportunities: the contract's opportunity clause replaces them.
@@ -40,40 +40,39 @@ open SourceProgram
 open GameTheory GameTheory.Protocol Interaction EventGraphRuntime
 
 /-- The full-source native service under an asynchronous scheduler: the
-program setup, the dependency mode and configured deadlines of its runtime,
+program setup, the configured deadlines of its source information graph,
 passive observation rule and message bounds, with the compiler's side
 conditions on them, and a scheduler satisfying the asynchronous contract up to
 a fixed horizon, with bounds that fit every configured deadline. -/
 structure AsyncServiceSpec (Player : Type) [DecidableEq Player] (L : IExpr)
     [IExpr.ResultTypes L] where
   setup : Setup (Player := Player) (L := L)
-  /-- The dependency mode of the compiled event graph. -/
-  mode : EventGraph.ExecutionMode
   /-- The configured deadline duration of each event, counted by the runtime
   from the clock at which the event became ready. -/
-  duration : (serviceGraph setup mode).EventId → Nat
-  leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode))
-  bounds : MessageBounds (serviceGraph setup mode)
+  duration : (serviceGraph setup .sequential).EventId → Nat
+  leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup .sequential))
+  bounds : MessageBounds (serviceGraph setup .sequential)
   /-- Every binding value the source can choose has a native message form. -/
   values : bounds.CoversBindingValues
   /-- Every supported initial binding table fits the candidate catalogue. -/
-  initialValues : ∀ state ∈ (serviceInitialLaw setup mode).support, bounds.CandidateValues state
+  initialValues : ∀ state ∈ (serviceInitialLaw setup .sequential).support,
+    bounds.CandidateValues state
   /-- The candidate catalogue has a slot for every event. -/
-  capacity : (serviceGraph setup mode).order.eventCount ≤ bounds.candidateCount
+  capacity : (serviceGraph setup .sequential).order.eventCount ≤ bounds.candidateCount
   /-- The number of scheduler rounds. -/
   horizon : Nat
   /-- The public scheduler: activations, inclusions, clock, sampling and expiry. -/
-  scheduler : (serviceApplication setup mode duration leaks).Scheduler
+  scheduler : (serviceApplication setup .sequential duration leaks).Scheduler
   /-- Per-event reaction bound: slots before the owner's first activation. -/
-  delay : (serviceGraph setup mode).EventId → Nat
+  delay : (serviceGraph setup .sequential).EventId → Nat
   /-- Per-event inclusion bound for an owner's sole packet. -/
-  bound : (serviceGraph setup mode).EventId → Nat
-  contract : AsyncContract (serviceTimeouts setup mode duration) leaks (serviceInitialLaw setup
-    mode)
+  bound : (serviceGraph setup .sequential).EventId → Nat
+  contract : AsyncContract (serviceTimeouts setup .sequential duration) leaks
+    (serviceInitialLaw setup .sequential)
     horizon scheduler delay bound
   /-- Every owned event's reaction and inclusion fit before its configured
   deadline. -/
-  timely : AsyncTimely (serviceTimeouts setup mode duration) delay bound
+  timely : AsyncTimely (serviceTimeouts setup .sequential duration) delay bound
   /-- The prior over initial states is finitely supported. -/
   initialFinite : setup.FiniteInitialLaw
   /-- The leak rule branches finitely. -/
@@ -92,37 +91,37 @@ variable (service : AsyncServiceSpec Player L)
 /-- All of the service's nature branches finitely: the prior, the leak rule and
 the scheduler. -/
 instance finiteNature :
-    (serviceApplication service.setup service.mode service.duration service.leaks).FiniteNature
-      (serviceInitialLaw service.setup service.mode) service.scheduler where
-  initial_finite := serviceInitialLaw_support_finite service.setup service.mode
+    (serviceApplication service.setup .sequential service.duration service.leaks).FiniteNature
+      (serviceInitialLaw service.setup .sequential) service.scheduler where
+  initial_finite := serviceInitialLaw_support_finite service.setup .sequential
   scheduler_finite := service.schedulerFinite
 
 /-- The scheduler completes every event by the horizon. -/
-theorem completes : CompletesPlay (serviceTimeouts service.setup service.mode service.duration)
-    service.leaks (serviceInitialLaw service.setup service.mode) service.horizon
+theorem completes : CompletesPlay (serviceTimeouts service.setup .sequential service.duration)
+    service.leaks (serviceInitialLaw service.setup .sequential) service.horizon
       service.scheduler :=
   service.contract.completes
 
 
 /-- The bounded raw response menu: every native response within the service's
 message bounds. -/
-abbrev rawMenu [Fintype Player] : (serviceApplication service.setup service.mode service.duration
+abbrev rawMenu [Fintype Player] : (serviceApplication service.setup .sequential service.duration
     service.leaks).ResponseMenu :=
-  service.bounds.rawMenu (serviceTimeouts service.setup service.mode service.duration) service.leaks
+  service.bounds.rawMenu (serviceTimeouts service.setup .sequential service.duration) service.leaks
 
 
 /-- The complete behavioral game in a supplied response menu. -/
 abbrev gameForm [Finite Player]
-    (menu : (serviceApplication service.setup service.mode service.duration
+    (menu : (serviceApplication service.setup .sequential service.duration
       service.leaks).ResponseMenu) :=
-  menu.gameForm (serviceInitialLaw service.setup service.mode) service.horizon service.scheduler
+  menu.gameForm (serviceInitialLaw service.setup .sequential) service.horizon service.scheduler
 
 /-- Complete native history law under the service's scheduler and round horizon. -/
 def run [Finite Player]
-    (menu : (serviceApplication service.setup service.mode service.duration
+    (menu : (serviceApplication service.setup .sequential service.duration
       service.leaks).ResponseMenu)
     (profile : Profile (service.gameForm menu).sig) :=
-  menu.run (serviceInitialLaw service.setup service.mode) service.horizon service.scheduler profile
+  menu.run (serviceInitialLaw service.setup .sequential) service.horizon service.scheduler profile
 
 variable (admission : CommitmentInterface service.setup.program)
 
@@ -134,27 +133,27 @@ abbrev sourceModel := service.setup.informationModel admission
 player follows the turn-counted policy of its disclosure-normalized source
 policy, completed by silence after its own off-policy responses
 (`Vegas.serviceClientPolicy`). -/
-def clientProfile (menu : (serviceApplication service.setup service.mode service.duration
+def clientProfile (menu : (serviceApplication service.setup .sequential service.duration
     service.leaks).ResponseMenu)
-    {turns : Nat} (timing : TurnTiming service.setup turns service.mode)
+    {turns : Nat} (timing : TurnTiming service.setup turns .sequential)
     (source : Profile (service.sourceModel admission).behavioralSignature) :
-    Profile (menu.information (serviceInitialLaw service.setup service.mode) service.horizon
+    Profile (menu.information (serviceInitialLaw service.setup .sequential) service.horizon
       service.scheduler).behavioralSignature := fun who =>
-  menu.restrictPolicy (serviceInitialLaw service.setup service.mode) service.horizon
+  menu.restrictPolicy (serviceInitialLaw service.setup .sequential) service.horizon
     service.scheduler who
-    (serviceClientPolicy service.setup service.mode service.duration service.leaks service.bound
+    (serviceClientPolicy service.setup .sequential service.duration service.leaks service.bound
       turns timing
       (normalizeDisclosureProfile service.setup.program
         (service.setup.decodeBehavioralProfile admission
           source)) who)
 
 private theorem clientPolicy_congr {turns : Nat} (timing : TurnTiming service.setup turns
-    service.mode)
+    .sequential)
     (profile other : BehavioralProfile service.setup.program) (who : Player)
     (same : profile who = other who) :
-    serviceClientPolicy service.setup service.mode service.duration service.leaks service.bound
+    serviceClientPolicy service.setup .sequential service.duration service.leaks service.bound
       turns timing profile who =
-      serviceClientPolicy service.setup service.mode service.duration service.leaks service.bound
+      serviceClientPolicy service.setup .sequential service.duration service.leaks service.bound
         turns timing other
         who := by
   unfold serviceClientPolicy serviceReferenceClientPolicy serviceReferenceTurnPolicy
@@ -163,9 +162,9 @@ private theorem clientPolicy_congr {turns : Nat} (timing : TurnTiming service.se
   rw [same]
 
 /-- Each player's client depends only on its own source policy. -/
-theorem clientProfile_congr (menu : (serviceApplication service.setup service.mode service.duration
+theorem clientProfile_congr (menu : (serviceApplication service.setup .sequential service.duration
     service.leaks).ResponseMenu)
-    {turns : Nat} (timing : TurnTiming service.setup turns service.mode)
+    {turns : Nat} (timing : TurnTiming service.setup turns .sequential)
     (source other : Profile (service.sourceModel admission).behavioralSignature) (who : Player)
     (same : source who = other who) :
     service.clientProfile admission menu timing source who = service.clientProfile admission menu
@@ -178,14 +177,14 @@ theorem clientProfile_congr (menu : (serviceApplication service.setup service.mo
         other) who := by
     simp only [normalizeDisclosureProfile, normalizeDisclosureProfileFrom,
       Setup.decodeBehavioralProfile, same]
-  exact congrArg (menu.restrictPolicy (serviceInitialLaw service.setup service.mode) service.horizon
+  exact congrArg (menu.restrictPolicy (serviceInitialLaw service.setup .sequential) service.horizon
     service.scheduler who) (clientPolicy_congr service timing _ _ who decoded)
 
 /-- The clients of a unilateral source deviation are a unilateral deviation of
 the clients. -/
-theorem clientProfile_update (menu : (serviceApplication service.setup service.mode
+theorem clientProfile_update (menu : (serviceApplication service.setup .sequential
     service.duration service.leaks).ResponseMenu)
-    {turns : Nat} (timing : TurnTiming service.setup turns service.mode)
+    {turns : Nat} (timing : TurnTiming service.setup turns .sequential)
     (source : Profile (service.sourceModel admission).behavioralSignature) (who : Player)
     (alternative : (service.sourceModel admission).BehavioralPolicy who) :
     Profile.update (service.clientProfile admission menu timing source) who

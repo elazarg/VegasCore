@@ -97,7 +97,6 @@ def toAsync : AsyncServiceSpec Player L where
   values := service.values
   initialValues := service.initialValues
   capacity := service.capacity
-  mode := .sequential
   duration := rankDuration service.setup .sequential
   horizon := service.planLength
   scheduler := service.scheduler

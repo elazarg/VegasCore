@@ -41,11 +41,11 @@ The direct sequential physical-client laws compose the source continuation
 with silent expiry, typed acceptance and chance sampling in
 [SourceServiceFirstTurnCompletion](../Vegas/Game/SourceServiceFirstTurnCompletion.lean).
 They preserve the joint typed-state/public-default law of every source profile.
-The mode-parametric interfaces in
-[ServiceHonestLaw](../Vegas/Game/ServiceHonestLaw.lean) require public-barrier
-ordering. For compiled service graphs, that premise identifies the graph with
-the same sequential graph (`serviceGraph_eq_sequential`); it adds no concurrent
-compiler mode. [CompilerCorrectness](../Vegas/Game/CompilerCorrectness.lean)
+The full-source interfaces in
+[ServiceHonestLaw](../Vegas/Game/ServiceHonestLaw.lean) use the source information
+graph directly. Asynchronous service retains arbitrary public scheduling and
+per-event deadlines under its service contract.
+[CompilerCorrectness](../Vegas/Game/CompilerCorrectness.lean)
 realizes the law with bounded-menu clients under the supplied value-coverage
 and capacity interfaces. The lower graph APIs retain genuinely nonordered
 results, including the different raw reveal-order laws in
