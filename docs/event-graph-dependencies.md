@@ -26,7 +26,8 @@ an expression's declared read footprint is semantically minimal.
 
 `toEventGraph` constructs the dataflow graph. `toInformationGraph` adds the
 ordering used to preserve the source language's full decision interface.
-Setup exposes these stages as `dataflowGraph` and `informationGraph`.
+Setup exposes these stages as `Vegas.SourceProgram.Setup.dataflowGraph` and
+`Vegas.SourceProgram.Setup.informationGraph`.
 
 The current source interface retains chronological completion metadata and a
 default-log slot for every preceding instruction. Public omissions can affect
