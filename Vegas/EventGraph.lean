@@ -7,11 +7,13 @@ public import Vegas.EventGraph.BarrierInformation
 public import Vegas.EventGraph.Barriers
 public import Vegas.EventGraph.Basic
 public import Vegas.EventGraph.BindingRefinement
+public import Vegas.EventGraph.BindingConcurrency
 public import Vegas.EventGraph.CanonicalStep
 public import Vegas.EventGraph.Code
 public import Vegas.EventGraph.Commutation
 public import Vegas.EventGraph.CommutationRecall
 public import Vegas.EventGraph.NormalizedPolicy
+public import Vegas.EventGraph.PrefixPolicy
 public import Vegas.EventGraph.SchedulerErasure
 public import Vegas.EventGraph.RevealRelaxedScheduling
 public import Vegas.EventGraph.SolitaryEvent
