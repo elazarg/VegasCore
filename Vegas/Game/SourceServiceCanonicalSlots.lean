@@ -751,7 +751,7 @@ def OneCallPerEvent (execution : (serviceApplication setup deps duration leaks).
 variable {setup leaks}
 
 /-- A completed round preserves the owner's timely once-per-event calls. -/
-private theorem freshCalls_round
+theorem round_freshCalls_reference
     {scheduler : (serviceApplication setup deps duration leaks).Scheduler}
     {players : Player → (serviceApplication setup deps duration leaks).Policy} {who : Player}
     {bound : (serviceGraph setup deps).EventId → Nat} {turns : Nat}
@@ -896,7 +896,7 @@ theorem sourceServiceTurnPolicy_freshCalls_reference
       rw [app.roundsFrom_succ] at reached
       obtain ⟨prior, priorMem, moved⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       obtain ⟨calls, once⟩ := ih prior priorMem
-      exact freshCalls_round timing reference follows calls once moved
+      exact round_freshCalls_reference timing reference follows calls once moved
 
 /-- Every prescribed player's transmitted calls are timely and use one identifier
 per event, under arbitrary other policies and scheduler, for every turn timing. -/

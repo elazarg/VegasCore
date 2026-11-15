@@ -155,16 +155,7 @@ theorem runUntil_deviation_focal
     exact round_ready_of_pending alone (currentHolds running) reached
   · exact holds
 
-def actionAt (setup : Setup (Player := Player) (L := L))
-    (deps : setup.dataflowGraph.Dependencies)
-    (event : (serviceGraph setup deps).EventId)
-    {observer : Player} (observed : (serviceGraph setup deps).PlayerObservation observer) :
-    Option (OwnAction Player L) :=
-  (observed.ownActions.find?
-    (fun record => decide (record.event = event))).bind
-    fun record => record.decision.bind (decodeEventAction setup.program record.event)
-
-private theorem actionAt_record (setup : Setup (Player := Player) (L := L))
+private theorem decodeActionAt_own_record (setup : Setup (Player := Player) (L := L))
     (deps : setup.dataflowGraph.Dependencies) (who : Player)
     (native : EventGraphRuntime.State (serviceGraph setup deps))
     (event : (serviceGraph setup deps).EventId)
@@ -173,7 +164,7 @@ private theorem actionAt_record (setup : Setup (Player := Player) (L := L))
     (value : ((serviceGraph setup deps).outputLayout event).Value)
     (present : EventGraph.completion (serviceGraph setup deps) event (some action) value
       ∈ native.config.history) :
-    actionAt setup deps event (native.playerView who).observation =
+    decodeActionAt setup.program event (native.playerView who).observation.ownActions =
       decodeEventAction setup.program event action := by
   let record := EventGraph.completion (serviceGraph setup deps) event (some action) value
   have recalled : record ∈ (serviceGraph setup deps).ownCompletions who native.config.history :=
@@ -194,8 +185,12 @@ private theorem actionAt_record (setup : Setup (Player := Player) (L := L))
         have equal : completion = record :=
           List.inj_on_of_nodup_map native.config.history_nodup retained present matching
         exact congrArg some equal
-  simp only [actionAt, EventGraphRuntime.State.playerView, EventGraph.playerObserve, found,
-    Option.bind_some, record, EventGraph.completion]
+  change (((serviceGraph setup deps).ownCompletions who native.config.history).find?
+    (fun completion => decide (completion.event = event))).bind
+      (fun completion => completion.decision.bind
+        (decodeEventAction setup.program completion.event)) = _
+  rw [found]
+  simp only [Option.bind_some, record, EventGraph.completion]
 private theorem primary_owned_joint {Seed Choice : Type} {Γ Δ : SourceCtx Player L}
     (who : Player) (advance : Config Player L Γ → Choice → Config Player L Δ)
     (rollback : DecisionView who Δ → DecisionView who Γ)
@@ -231,7 +226,8 @@ private theorem primary_owned_joint {Seed Choice : Type} {Γ Δ : SourceCtx Play
           (fun final => event ∈ final.application.config.cut.completed) horizon
           (execution seed)).map fun final =>
             (advance (source seed)
-              (decode (actionAt setup deps event (final.application.playerView who).observation)),
+              (decode (decodeActionAt setup.program event (final.application.playerView
+                who).observation.ownActions)),
               (bindingTraffic (serviceTimeouts setup deps duration)) leaks who final)) =
       ((prior.map source).bind fun config =>
         (choice (config.view who)).map (advance config)).bind fun config =>
@@ -261,7 +257,7 @@ private theorem primary_owned_joint {Seed Choice : Type} {Γ Δ : SourceCtx Play
   let pick := fun traffic : MessageNetwork Player app.Payload ×
       List (MessageId Player × Bool) × List app.EnvironmentEntry × List app.PlayerEntry ×
       PlayerView (serviceGraph setup deps) × PublicView (serviceGraph setup deps) =>
-      decode (actionAt setup deps event traffic.2.2.2.2.1.observation)
+      decode (decodeActionAt setup.program event traffic.2.2.2.2.1.observation.ownActions)
   let choice := fun view => (channel view).map pick
   let nextNoise := fun view : DecisionView who Δ =>
     if who ∈ (rollback view).defaulted then channel (rollback view)
@@ -349,9 +345,8 @@ theorem sourceService_deviator_reveal_law
       (firstTurnTiming setup turns deps) wholeProfile) who deviation
     let readChoice := fun final : (serviceApplication setup deps duration leaks).Execution =>
       OwnAction.disclosure
-        (((final.application.playerView who).observation.ownActions.find?
-          (fun record => decide (record.event = event))).bind fun record =>
-            record.decision.bind (decodeEventAction setup.program record.event))
+        (decodeActionAt setup.program event (final.application.playerView
+          who).observation.ownActions)
     ∃ kernel : DecisionView who Γ → PMF Bool,
       ∃ nextNoise : DecisionView who ((published, .publication payload) :: Γ) → PMF _,
       (prior.bind fun seed =>
@@ -600,8 +595,10 @@ theorem sourceService_deviator_reveal_law
         rw [drained, ← retained, recorded]
         exact List.mem_append_left _ (List.mem_append_right _ (List.mem_singleton_self _))
       have chosen := congrArg OwnAction.disclosure
-        (actionAt_record setup deps who final.application event owned action value present)
-      simpa only [actionAt, readChoice, actionEq, decodedAction, OwnAction.disclosure] using chosen
+        (decodeActionAt_own_record setup deps who final.application event owned action value
+          present)
+      simpa only [decodeActionAt, readChoice, actionEq, decodedAction, OwnAction.disclosure] using
+        chosen
 
 /-- An owned binding head has an observation-local source kernel, including
 public omission and opaque unusability. A defaulted head advances only its typed
@@ -656,9 +653,8 @@ theorem sourceService_deviator_commit_law
       (firstTurnTiming setup turns deps) wholeProfile) who deviation
     let readChoice := fun final : (serviceApplication setup deps duration leaks).Execution =>
       OwnAction.binding who name payload
-        (((final.application.playerView who).observation.ownActions.find?
-          (fun record => decide (record.event = event))).bind fun record =>
-            record.decision.bind (decodeEventAction setup.program record.event))
+        (decodeActionAt setup.program event (final.application.playerView
+          who).observation.ownActions)
     ∃ kernel : DecisionView who Γ → PMF (Option (PublicationResult (L.Val payload))),
       ∃ nextNoise : DecisionView who ((name, .commitment who payload) :: Γ) → PMF _,
       (prior.bind fun seed =>
@@ -904,7 +900,8 @@ theorem sourceService_deviator_commit_law
         rw [drained, ← retained, recorded]
         exact List.mem_append_left _ (List.mem_append_right _ (List.mem_singleton_self _))
       have chosen := congrArg (OwnAction.binding who name payload)
-        (actionAt_record setup deps who final.application event owned action value present)
-      simpa only [actionAt, readChoice, actionEq, decodedAction, OwnAction.binding_commit]
+        (decodeActionAt_own_record setup deps who final.application event owned action value
+          present)
+      simpa only [decodeActionAt, readChoice, actionEq, decodedAction, OwnAction.binding_commit]
         using chosen
 end Vegas

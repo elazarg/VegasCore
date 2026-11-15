@@ -8,9 +8,8 @@ public import Vegas.EventGraph.Information
 
 /-! # Source-ranked recall in reachable event-graph executions
 
-Information discipline orders one player's strategic events by graph rank.
-Reachability turns that dependency order into chronological recall while
-retaining the original dependent actions in the completion records.
+Ordering each player's strategic events by graph rank retains chronological recall.
+Reachable completion records retain the original dependent actions.
 -/
 
 noncomputable section
@@ -101,7 +100,10 @@ theorem Config.Reachable.owned_defaultEvent_eq_none_of_active
 theorem Config.Reachable.ownEventIds_pairwise
     {inputs : graph.Inputs} {config : graph.Config}
     (reachable : Config.Reachable inputs config)
-    (discipline : graph.InformationDiscipline schema) (who : Player) :
+    (ordered : ∀ {earlier later : graph.EventId} {owner : Player},
+      earlier.val < later.val → graph.actor? earlier = some owner →
+      graph.actor? later = some owner → earlier ∈ graph.order.predecessors later)
+    (who : Player) :
     (graph.ownEventIds who config.history).Pairwise fun left right =>
       left.val < right.val := by
   induction reachable with
@@ -139,7 +141,7 @@ theorem Config.Reachable.ownEventIds_pairwise
           exact Nat.lt_of_le_of_ne (Nat.le_of_not_gt notEarlier)
             (fun equal => different (Fin.ext equal))
         have predecessor : event ∈ graph.order.predecessors completion.event :=
-          discipline.same_owner_ordered later owner earlierOwned
+          ordered later owner earlierOwned
         exact ready.1 (prior.cut.predecessor_closed earlierCompleted predecessor)
       · simp only [List.map_append, List.map_nil]
         change (graph.ownEventIds who prior.history ++ []).Pairwise _
@@ -153,7 +155,7 @@ theorem InformationDiscipline.ready_ownEventIds
     {who : Player} (ready : config.cut.Ready event)
     (actor : graph.actor? event = some who) (active : who ∉ config.defaulted) :
     graph.ownEventIds who config.history = schema.ownHistory event := by
-  apply (reachable.ownEventIds_pairwise discipline who).eq_of_mem_iff
+  apply (reachable.ownEventIds_pairwise discipline.same_owner_ordered who).eq_of_mem_iff
     (discipline.own_history_ranked event)
   intro prior
   have actualSet : (graph.ownEventIds who config.history).toFinset =

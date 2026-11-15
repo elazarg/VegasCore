@@ -50,6 +50,18 @@ theorem causesDefault_cases {output : EventField Player L} (code : EventCode lay
   | resolve owner payload binding checks => exact Or.inl ⟨trivial, causes⟩
   | sample => exact absurd causes (by simp [causesDefault])
 
+omit [DecidableEq Player] in
+/-- Failed publication outputs carry their public default flag regardless of the request. -/
+theorem causesDefault_of_failed_publication {output : EventField Player L}
+    (code : EventCode layout output) (publication : output.IsPublication)
+    (action : code.Action) (value : output.Value) (failed : EventField.FailedValue _ value) :
+    code.causesDefault action value := by
+  cases code with
+  | bind => exact publication.elim
+  | sample => exact publication.elim
+  | resolve => exact failed
+
+
 end EventCode
 
 variable (graph) in
@@ -205,5 +217,67 @@ theorem failed_publication_of_defaulted (revealed : graph.BindingsRevealed)
     ⟨reveal, _, actor, publication, failed⟩ | ⟨reveal, pending, _, _⟩
   · exact ⟨reveal, actor, publication, failed⟩
   · exact absurd (terminal ▸ Finset.mem_univ reveal) pending
+
+namespace Config
+
+/-- Every failed completed publication defaults its owner along an actual graph path. -/
+theorem Reachable.defaulted_of_failed_publication
+    {inputs : graph.Inputs} {config : graph.Config} (reach : config.Reachable inputs)
+    (event : graph.EventId) (owner : Player) (actor : graph.actor? event = some owner)
+    (publication : (graph.outputLayout event).IsPublication)
+    (failed : ∃ value, config.outputs event = some value ∧ EventField.FailedValue _ value) :
+    owner ∈ config.defaulted := by
+  induction reach with
+  | initial =>
+      obtain ⟨value, stored, _⟩ := failed
+      cases stored
+  | @step before prior completed ready action after supported ih =>
+      obtain ⟨value, _evaluated, rfl⟩ := PMF.support_map .. ▸ supported
+      by_cases same : completed = event
+      · subst completed
+        by_cases inactive : owner ∈ before.defaulted
+        · exact before.defaulted_step event ready action _
+            supported inactive
+        · have decision := before.actualDecision_of_active event owner actor inactive action
+          obtain ⟨stored, storedEq, failure⟩ := failed
+          have values : value = stored := Option.some.inj
+            ((before.complete_output_same event ready action value).symm.trans storedEq)
+          subst stored
+          have causes := (graph.nodes event).causesDefault_of_failed_publication
+            publication action value failure
+          change owner ∈ (before.complete event ready action value).defaults.defaulted
+          rw [Config.complete_defaults, decision]
+          have recorded : (graph.nodes event).defaultEvent action value = some owner := by
+            simp only [EventCode.defaultEvent, causes, ite_true]
+            exact actor
+          change owner ∈ (before.defaults.record
+            ((graph.nodes event).defaultEvent action value)).defaulted
+          rw [recorded, DefaultHistory.defaulted_record_some]
+          exact Finset.mem_insert_self _ _
+      · have oldOutput : (before.complete completed ready action value).outputs event =
+            before.outputs event := before.complete_output_of_ne completed event ready action
+              value (Ne.symm same)
+        have oldFailed : ∃ value, before.outputs event = some value ∧
+            EventField.FailedValue _ value := by
+          simpa only [oldOutput] using failed
+        exact before.defaulted_step completed ready action _
+          supported (ih oldFailed)
+
+omit [DecidableEq Player] in
+/-- A failed typed publication read is a failed output in the original layout. -/
+theorem failed_output_of_publication_read (config : graph.Config) (event : graph.EventId)
+    (payload : L.Ty) (outputEq : graph.outputLayout event = .publication payload)
+    (failed : (⟨.inr event, outputEq⟩ : FieldRef graph.layout (.publication payload)).get?
+      config.store = some .failure) :
+    ∃ value, config.outputs event = some value ∧ EventField.FailedValue _ value := by
+  have castFailure {kind : EventField Player L} (equal : kind = .publication payload)
+      (value : Option kind.Value)
+      (failure : cast (congrArg (fun kind => Option kind.Value) equal) value = some .failure) :
+      ∃ output, value = some output ∧ EventField.FailedValue kind output := by
+    cases equal
+    exact ⟨.failure, failure, rfl⟩
+  exact castFailure outputEq (config.outputs event) failed
+
+end Config
 
 end Vegas.EventGraph

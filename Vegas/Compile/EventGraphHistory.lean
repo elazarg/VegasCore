@@ -3,6 +3,7 @@ module
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 public import Vegas.Compile.EventGraphPolicy
+public import Vegas.EventGraph.NormalizedPolicy
 
 @[expose] public section
 
@@ -21,6 +22,33 @@ open SourceProgram
 
 variable {Player : Type} [DecidableEq Player]
 variable {L : IExpr} [R : IExpr.ResultTypes L]
+
+/-- Read an event's actual source action from its retained completion record. -/
+def decodeActionAt {Γ : SourceCtx Player L} {openNames : Finset VarId}
+    (program : SourceProgram Player L Γ openNames) (event : Fin (eventCount program))
+    (history : List (toInformationGraph program).Completion) : Option (OwnAction Player L) :=
+  (history.find? (fun record => decide (record.event = event))).bind
+    fun record => record.decision.bind (decodeEventAction program record.event)
+
+/-- An owned event's action is determined by the owner's observed completion records,
+including the distinction between an omitted binding and no actual decision. -/
+theorem decodeActionAt_ownCompletions {Γ : SourceCtx Player L} {openNames : Finset VarId}
+    (program : SourceProgram Player L Γ openNames) (who : Player)
+    (event : Fin (eventCount program)) (owned : (toInformationGraph program).actor? event = some
+      who)
+    (history : List (toInformationGraph program).Completion)
+    (nodup : (history.map EventCompletion.event).Nodup) :
+    decodeActionAt program event ((toInformationGraph program).ownCompletions who history) =
+      decodeActionAt program event history := by
+  unfold decodeActionAt EventGraph.ownCompletions
+  rw [EventGraph.find?_filter_of_nodup history nodup]
+  cases found : history.find? (fun record => decide (record.event = event)) with
+  | none => rfl
+  | some record =>
+      have tagged : record.event = event := by
+        simpa only [decide_eq_true_eq] using List.find?_some found
+      have actor : (toInformationGraph program).actor? record.event = some who := tagged ▸ owned
+      cases decision : record.decision <;> simp [Option.filter, actor, decision]
 
 /-- Source own history retains precisely the player's actual choices. -/
 def decodeHistory {Γ : SourceCtx Player L} {openNames : Finset VarId}

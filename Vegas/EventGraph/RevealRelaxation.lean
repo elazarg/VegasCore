@@ -312,4 +312,17 @@ theorem ready_own_history_exact (relaxed : graph.RevealRelaxedOrdered)
 
 end RevealRelaxedOrdered
 
+
+/-- Events owned by one player retain their source order. -/
+theorem RevealRelaxedOrdered.same_owner_predecessor
+    (relaxed : graph.RevealRelaxedOrdered) (prior event : graph.EventId) (who : Player)
+    (earlier : prior.val < event.val)
+    (priorOwned : graph.actor? prior = some who) (eventOwned : graph.actor? event = some who) :
+    prior ∈ graph.order.predecessors event := by
+  apply relaxed event prior
+  · exact (mem_barrierOrder graph.outputLayout prior event).mpr
+      ⟨earlier, EventCode.barrierRelated_of_visible (graph.nodes event) who eventOwned _
+        (graph.nodes prior) (EventCode.output_visible_of_actor (graph.nodes prior) who priorOwned)⟩
+  · exact IndependentReveals.not_of_actor_eq (priorOwned.trans eventOwned.symm)
+
 end Vegas.EventGraph

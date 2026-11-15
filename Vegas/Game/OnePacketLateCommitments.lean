@@ -138,7 +138,7 @@ theorem decodedCommitValue_sub_eq_historyGain (wellFormed : setup.WellFormed)
     rw [atSite]
     change (execution.application.config.history.map EventCompletion.event).length = rank
     rw [List.length_map]
-    exact history_length_of_isPrefix _ ordered
+    exact EventGraph.Config.history_length_of_isPrefix _ ordered
   have prefixEq : sourceServicePrefix? setup (siteRank (timeouts := timeouts) site.1)
     execution.application.config =
       some point := by

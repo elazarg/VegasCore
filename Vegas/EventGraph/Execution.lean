@@ -739,6 +739,13 @@ theorem path_completed_mono {before after : graph.Config}
   | refl => exact Finset.Subset.refl _
   | @head before middle moved _ ih => exact moved.completed_mono.trans ih
 
+/-- A ready event remains ready along any path that has not completed it. -/
+theorem path_ready_of_not_completed {before after : graph.Config} {event : graph.EventId}
+    (path : Relation.ReflTransGen Step before after)
+    (ready : before.cut.Ready event) (unfinished : event ∉ after.cut.completed) :
+    after.cut.Ready event :=
+  ⟨unfinished, ready.2.trans (path_completed_mono path)⟩
+
 /-- A supported transition preserves reachability from fixed inputs. -/
 theorem reachable {before after : graph.Config} (moved : Step before after)
     {inputs : graph.Inputs} (reachable : before.Reachable inputs) : after.Reachable inputs := by

@@ -124,7 +124,7 @@ theorem pending_phase_value_bounds
     rw [atSite, ← observeEq]
     change (execution.application.config.history.map EventCompletion.event).length = found
     rw [List.length_map]
-    exact history_length_of_isPrefix _ foundOrdered
+    exact EventGraph.Config.history_length_of_isPrefix _ foundOrdered
   have ordered : execution.application.config.cut.IsPrefix
       (siteRank (timeouts := timeouts) site.1) := rankEq.symm ▸ foundOrdered
   subst recallEq

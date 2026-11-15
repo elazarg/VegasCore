@@ -1,0 +1,379 @@
+module
+
+/- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
+
+public import Vegas.EventGraph.StoredBindingProfile
+public import Vegas.EventGraph.BindingChain
+public import Vegas.Game.NativeSlotPolicies
+public import Vegas.Game.BindingPrefixSampling
+public import Interaction.ReactiveMixtureRounds
+
+@[expose] public section
+
+/-! # Jointly predrawing private bindings for compiled clients
+
+A chosen set of compiled owners can draw their binding decisions before the
+complete stopped native execution. The joint draw uses the existing canonical
+graph run, while other clients and the stopping predicate stay unchanged.
+-/
+
+noncomputable section
+
+namespace Vegas.EventGraph
+
+open GameTheory.Math.Probability
+
+variable {Player : Type} [DecidableEq Player]
+  {L : IExpr} [IExpr.ResultTypes L]
+
+private theorem runPlan_add_native_table (graph : Vegas.EventGraph Player L)
+    (plan : graph.EventPlan) : ∀ first second (config : graph.Config),
+    graph.runPlan plan (first + second) config =
+      (graph.runPlan plan first config).bind (graph.runPlan plan second) := by
+  intro first
+  induction first with
+  | zero => intro second config; simp only [Nat.zero_add, runPlan, PMF.pure_bind]
+  | succ first ih =>
+      intro second config
+      by_cases terminal : config.cut.Terminal
+      · cases second <;>
+          simp only [runPlan, dite_eq_left terminal, PMF.pure_bind]
+      · simp only [Nat.succ_add, runPlan, dite_eq_right terminal, PMF.bind_bind]
+        apply bind_congr_on_support _
+        intro choice _
+        apply bind_congr_on_support _
+        intro next _
+        exact ih second next
+
+end Vegas.EventGraph
+
+namespace Vegas.EventGraph
+
+variable {Player : Type} [DecidableEq Player]
+  {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
+
+private theorem prefixProfile_patch_native_table (profile : graph.BehavioralProfile)
+    (owner : Player) (event : graph.EventId) (head : graph.BehavioralPolicy owner) :
+    graph.prefixProfile (Function.update profile owner (patchPolicy event head (profile owner))) =
+      Function.update (graph.prefixProfile profile) owner
+        (patchPolicy event (graph.prefixPolicy owner head)
+          ((graph.prefixProfile profile) owner)) := by
+  funext who current actor observation active
+  by_cases sameOwner : who = owner
+  · subst who
+    by_cases sameEvent : current = event
+    · simp only [prefixProfile, prefixPolicy, Function.update_self, patchPolicy,
+        ite_eq_left sameEvent]
+    · simp only [prefixProfile, prefixPolicy, Function.update_self, patchPolicy,
+        ite_eq_right sameEvent]
+  · simp only [prefixProfile, prefixPolicy, Function.update_of_ne sameOwner]
+
+omit [DecidableEq Player] [IExpr.ResultTypes L] in
+private theorem optional_value_cast_native_table {field : EventField Player L}
+    {owner : Player} {payload : L.Ty} (binding : field = .binding owner payload)
+    (stored : Option field.Value) (value : PublicationResult (L.Val payload))
+    (filled : stored = some (cast (congrArg EventField.Value binding.symm) value)) :
+    cast (congrArg (fun kind => Option kind.Value) binding) stored = some value := by
+  cases binding
+  exact filled
+
+end Vegas.EventGraph
+
+namespace Vegas
+
+open SourceProgram Interaction EventGraphRuntime EventGraph GameTheory.Math.Probability
+
+variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
+  {setup : Setup (Player := Player) (L := L)}
+  {deps : setup.dataflowGraph.Dependencies}
+  {duration : (serviceGraph setup deps).EventId → Nat}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup deps))}
+
+/-- Joint predrawing preserves the full stopped native execution law. -/
+theorem native_binding_subfamily_mixture
+    {horizon nativeCount remaining turns : Nat}
+    (scheduler : (serviceApplication setup deps duration leaks).Scheduler)
+    (bound : (serviceGraph setup deps).EventId → Nat)
+    (relaxed : (serviceGraph setup deps).RevealRelaxedOrdered)
+    (profile : (serviceGraph setup deps).BehavioralProfile)
+    (submits : (serviceGraph setup deps).SubmitsBindings profile)
+    (compiled : Player → Prop) [DecidablePred compiled]
+    (background : Player → (serviceApplication setup deps duration leaks).Policy)
+    (stop : (serviceApplication setup deps duration leaks).Execution → Prop) [DecidablePred stop]
+    (execution : (serviceApplication setup deps duration leaks).Execution)
+    {inputs : (serviceGraph setup deps).Inputs}
+    (initialReach : execution.application.config.Reachable inputs)
+    (start bindingCount : Nat) (ordered : execution.application.config.cut.IsPrefix start)
+    (clear : execution.application.config.defaulted = ∅)
+    (bounded : start + bindingCount ≤ (serviceGraph setup deps).order.eventCount)
+    (bindings : ∀ event : (serviceGraph setup deps).EventId,
+      start ≤ event.val → event.val < start + bindingCount →
+      ∃ owner payload, (serviceGraph setup deps).outputLayout event = .binding owner payload)
+    (truthful : ∀ owner, compiled owner → OwnSubmissionsAtTurn setup leaks execution owner)
+    (untouched : ∀ owner, compiled owner →
+      ∀ event : (serviceGraph setup deps).EventId,
+      start ≤ event.val → event.val < start + bindingCount →
+      (serviceGraph setup deps).actor? event = some owner → Untouched setup leaks event execution)
+    (trace : ((serviceApplication setup deps duration leaks).protocol
+      (serviceInitialLaw setup deps) horizon scheduler).Trace
+        (some ⟨remaining + nativeCount, none, execution⟩)) :
+    let G := serviceGraph setup deps
+    let app := serviceApplication setup deps duration leaks
+    let reference := G.prefixProfile profile
+    let clients := fun reference => serviceReferenceTurnPolicy setup deps duration leaks bound turns
+      (firstTurnTiming setup turns deps) reference
+    let prescribed := fun reference actor =>
+      if compiled actor then clients reference actor else background actor
+    app.runUntil scheduler (prescribed reference) stop nativeCount execution =
+      (G.runPlan (G.policyPlan reference G.canonicalScheduler) bindingCount
+        execution.application.config).bind fun ghost =>
+          app.runUntil scheduler
+            (prescribed (G.prefixProfile (G.freezeBindingsBefore profile start
+              (start + bindingCount) ghost))) stop nativeCount execution := by
+  classical
+  intro G app reference clients prescribed
+  change start + bindingCount ≤ G.order.eventCount at bounded
+  let sourceRun := G.runPlan (G.policyPlan reference G.canonicalScheduler)
+  let frozen := fun rank ghost => G.freezeBindingsBefore profile start rank ghost
+  let players := fun rank ghost => prescribed (G.prefixProfile (frozen rank ghost))
+  let native := fun rank ghost => app.runUntil scheduler (players rank ghost) stop nativeCount
+    execution
+  have sourceSubmits : G.SubmitsBindings reference := by
+    intro owner event actor observation active action selected
+    exact submits owner event actor _ _ action selected
+  have advance : ∀ rest past (ghost : G.Config), past + rest ≤ bindingCount →
+      ghost ∈ (sourceRun past execution.application.config).support →
+      native (start + past) ghost = (sourceRun rest ghost).bind
+        (native (start + past + rest)) := by
+    intro rest
+    induction rest with
+    | zero =>
+        intro past ghost _ _
+        simp only [Nat.add_zero, sourceRun, runPlan, PMF.pure_bind]
+    | succ rest ih =>
+        intro past ghost below supported
+        have frame := runPlan_submitted_binding_frame reference sourceSubmits past start
+          execution.application.config ordered clear (by omega)
+          (fun event lower upper => bindings event lower (by omega)) ghost supported
+        obtain ⟨ghostOrdered, ghostPath, ghostClear, _ghostClean, ghostRecords⟩ := frame
+        let rank := start + past
+        have activeRank : rank < G.order.eventCount := by dsimp only [rank]; omega
+        let event : G.EventId := ⟨rank, activeRank⟩
+        have ready : ghost.cut.Ready event := ghostOrdered.ready activeRank
+        have least (other : G.EventId) (pending : other ∉ ghost.cut.completed) :
+            event.val ≤ other.val := by
+          by_contra earlier
+          exact pending ((ghostOrdered.2 other).mpr (by dsimp only [event, rank] at *; omega))
+        obtain ⟨owner, payload, binding⟩ := bindings event
+          (by dsimp only [event, rank]; omega) (by dsimp only [event, rank]; omega)
+        have owned : G.actor? event = some owner :=
+          EventCode.actor_eq_of_binding (G.nodes event) binding
+        have active : owner ∉ ghost.defaulted := by rw [ghostClear]; simp
+        let kernel := actionLaw reference ghost event
+        have firstLaw (fuel : Nat) : sourceRun (fuel + 1) ghost = kernel.bind fun action =>
+            (ghost.step event ready action).bind (sourceRun fuel) := by
+          dsimp only [sourceRun, kernel]
+          rw [runPlan_canonical_actor reference fuel ghost event ready least owner owned active,
+            actionLaw_of_actor reference ghost owned, dite_eq_right active]
+        have nextSupported (action : G.Action event) (selected : action ∈ kernel.support)
+            (next : G.Config) (moved : next ∈ (ghost.step event ready action).support) :
+            next ∈ (sourceRun (past + 1) execution.application.config).support := by
+          have combined := runPlan_add_native_table G
+            (G.policyPlan reference G.canonicalScheduler) past 1 execution.application.config
+          change sourceRun (past + 1) execution.application.config =
+            (sourceRun past execution.application.config).bind (sourceRun 1) at combined
+          rw [combined, PMF.mem_support_bind_iff]
+          refine ⟨ghost, supported, ?_⟩
+          rw [firstLaw 0]
+          simpa only [sourceRun, runPlan, PMF.bind_pure] using
+            (PMF.mem_support_bind_iff _ _ _).mpr ⟨action, selected, moved⟩
+        have nextLaw (action : G.Action event) (selected : action ∈ kernel.support)
+            (next : G.Config) (moved : next ∈ (ghost.step event ready action).support) :
+            native (rank + 1) next = (sourceRun rest next).bind
+              (native (rank + (rest + 1))) := by
+          have atRank : start + (past + 1) = rank + 1 := by dsimp only [rank]; omega
+          have finalRank : (rank + 1) + rest = rank + (rest + 1) := by omega
+          simpa only [atRank, finalRank] using
+            ih (past + 1) next (by omega) (nextSupported action selected next moved)
+        have referencePatch (action : G.Action event) (next : G.Config)
+            (moved : next ∈ (ghost.step event ready action).support) :
+            Function.update (G.prefixProfile (frozen rank ghost)) owner
+              (patchPolicy event (G.prefixPolicy owner (frozen (rank + 1) next owner))
+                ((G.prefixProfile (frozen rank ghost)) owner)) =
+              G.prefixProfile (frozen (rank + 1) next) := by
+          have patched := freezeBindingsBefore_step_patch profile start ghost next event ready
+            action moved owner owned
+          have observed := congrArg G.prefixProfile patched
+          rw [prefixProfile_patch_native_table] at observed
+          exact observed
+        have clientsPatch (action : G.Action event) (next : G.Config)
+            (moved : next ∈ (ghost.step event ready action).support) :
+            clients (G.prefixProfile (frozen (rank + 1) next)) =
+              Function.update (clients (G.prefixProfile (frozen rank ghost))) owner
+                (clients (G.prefixProfile (frozen (rank + 1) next)) owner) := by
+          funext actor
+          by_cases same : actor = owner
+          · subst actor
+            rw [Function.update_self]
+          · rw [Function.update_of_ne same]
+            have samePolicy := congrFun (referencePatch action next moved) actor
+            rw [Function.update_of_ne same] at samePolicy
+            exact serviceReferenceTurnPolicy_eq_of_owner bound turns
+              (firstTurnTiming setup turns deps) _ _ actor samePolicy.symm
+        by_cases notSelected : ¬ compiled owner
+        · have sameNative (action : G.Action event) (next : G.Config)
+              (moved : next ∈ (ghost.step event ready action).support) :
+              native (rank + 1) next = native rank ghost := by
+            have samePlayers : players (rank + 1) next = players rank ghost := by
+              funext actor
+              dsimp only [players, prescribed]
+              by_cases same : actor = owner
+              · subst actor
+                simp only [ite_eq_right notSelected]
+              · by_cases selectedActor : compiled actor
+                · simp only [ite_eq_left selectedActor]
+                  have sameClient := congrFun (clientsPatch action next moved) actor
+                  rw [Function.update_of_ne same] at sameClient
+                  exact sameClient
+                · simp only [ite_eq_right selectedActor]
+            exact congrArg (fun policies => app.runUntil scheduler policies stop nativeCount
+              execution) samePlayers
+          symm
+          rw [firstLaw rest]
+          simp only [PMF.bind_bind]
+          calc
+            _ = kernel.bind (fun action => (ghost.step event ready action).bind
+                (fun next => native (rank + 1) next)) := by
+              apply bind_congr_on_support _
+              intro action selected
+              apply bind_congr_on_support _
+              intro next moved
+              exact (nextLaw action selected next moved).symm
+            _ = kernel.bind (fun _ => native rank ghost) := by
+              apply bind_congr_on_support _
+              intro action _
+              calc
+                _ = (ghost.step event ready action).bind (fun _ => native rank ghost) :=
+                  bind_congr_on_support _ fun next moved => sameNative action next moved
+                _ = _ := PMF.bind_const _ _
+            _ = _ := PMF.bind_const _ _
+        · have isSelected : compiled owner := Classical.not_not.mp notSelected
+          have notPublication : ¬ (G.outputLayout event).IsPublication := by
+            rw [binding]
+            exact fun impossible => impossible
+          have follows : players rank ghost owner = serviceReferenceTurnPolicy setup deps duration
+              leaks bound turns (firstTurnTiming setup turns deps)
+              (G.prefixProfile (frozen rank ghost)) owner :=
+            by simp only [players, prescribed, clients, ite_eq_left isSelected]
+          have frozenRecords : ∀ prior : G.EventId, start ≤ prior.val → prior.val < event.val →
+              ∀ actor : G.actor? prior = some owner,
+              ∃ (payload : L.Ty) (kind : G.outputLayout prior = .binding owner payload)
+                (value : PublicationResult (L.Val payload)),
+                (∀ observation active, G.prefixProfile (frozen rank ghost) owner prior actor
+                  observation active = PMF.pure
+                    (cast (congrArg EventField.Action kind.symm) (some value))) ∧
+                completionOf ghost prior = some (EventGraph.completion G prior
+                  (some (cast (congrArg EventField.Action kind.symm) (some value)))
+                  (cast (congrArg EventField.Value kind.symm) value)) := by
+            intro prior lower earlier actor
+            obtain ⟨actualOwner, ty, kind, value, recorded, output⟩ :=
+              ghostRecords prior lower earlier
+            have sameOwner : actualOwner = owner := Option.some.inj
+              ((EventCode.actor_eq_of_binding (G.nodes prior) kind).symm.trans actor)
+            subst actualOwner
+            refine ⟨ty, kind, value, ?_, recorded⟩
+            intro observation active
+            change frozen rank ghost owner prior actor _ _ = _
+            exact freezeBindingsBefore_binding profile start rank ghost owner prior actor _ _
+              ⟨lower, earlier⟩ kind value (optional_value_cast_native_table kind _ value output)
+          have sourceKernel : actionLaw (G.prefixProfile (frozen rank ghost)) ghost event =
+              kernel := by
+            change actionLaw (G.prefixProfile (frozen rank ghost)) ghost event =
+              actionLaw reference ghost event
+            rw [actionLaw_of_actor _ _ owned, actionLaw_of_actor _ _ owned,
+              dite_eq_right active, dite_eq_right active]
+            change frozen rank ghost owner event owned _ _ = profile owner event owned _ _
+            exact freezeBindingsBefore_at_rank profile start rank ghost owner event owned _ _ rfl
+          let memberRun := fun action => app.runUntil scheduler
+            (Function.update (players rank ghost) owner
+              (fixedTurnPolicy bound owner event action
+                (clients (G.prefixProfile (frozen rank ghost)) owner))) stop nativeCount execution
+          have mixed : native rank ghost = kernel.bind memberRun := by
+            have mixed := serviceReference_binding_prefix_mixture scheduler bound relaxed
+              (frozen rank ghost) owner event owned notPublication (players rank ghost) follows
+              stop execution initialReach start ordered ghost ghostPath ready active
+              (fun prior lower upper =>
+                bindings prior lower (by dsimp only [event, rank] at *; omega))
+              frozenRecords (truthful owner isSelected)
+              (fun prior lower upper actor => untouched owner isSelected prior lower
+                (by dsimp only [event, rank] at *; omega) actor) trace
+            change native rank ghost =
+              (actionLaw (G.prefixProfile (frozen rank ghost)) ghost event).bind memberRun at mixed
+            rwa [sourceKernel] at mixed
+          have memberLaw (action : G.Action event) (selected : action ∈ kernel.support)
+              (next : G.Config) (moved : next ∈ (ghost.step event ready action).support) :
+              memberRun action = native (rank + 1) next := by
+            obtain ⟨value, actionEq, _nextClear, _nextPath, _nextRecord, output⟩ :=
+              step_submitted_binding_frame reference sourceSubmits ghost ghostClear event ready
+                owner payload binding action selected next moved
+            let head := G.prefixPolicy owner (frozen (rank + 1) next owner)
+            have fixed : ∀ observation active, head event owned observation active =
+                PMF.pure action := by
+              intro observation active
+              rw [actionEq]
+              change frozen (rank + 1) next owner event owned _ _ = _
+              exact freezeBindingsBefore_binding profile start (rank + 1) next owner event owned _ _
+                ⟨by dsimp only [event, rank]; omega, by dsimp only [event]; omega⟩ binding value
+                (optional_value_cast_native_table binding _ value output)
+            have updated : Function.update (players rank ghost) owner
+                (clients (G.prefixProfile (frozen (rank + 1) next)) owner) =
+                players (rank + 1) next := by
+              funext actor
+              by_cases sameOwner : actor = owner
+              · subst actor
+                simp only [Function.update_self, players, prescribed, ite_eq_left isSelected]
+              · rw [Function.update_of_ne sameOwner]
+                dsimp only [players, prescribed]
+                by_cases selectedActor : compiled actor
+                · simp only [ite_eq_left selectedActor]
+                  have sameClient := congrFun (clientsPatch action next moved) actor
+                  rw [Function.update_of_ne sameOwner] at sameClient
+                  exact sameClient.symm
+                · simp only [ite_eq_right selectedActor]
+            have law := serviceReferenceTurnPolicy_patch_runUntil
+              (count := nativeCount) (turns := turns) scheduler bound
+              (G.prefixProfile (frozen rank ghost)) owner event owned action head fixed
+              (players rank ghost) stop execution
+            change app.runUntil scheduler (Function.update (players rank ghost) owner
+              (clients (Function.update (G.prefixProfile (frozen rank ghost)) owner
+                (patchPolicy event head ((G.prefixProfile (frozen rank ghost)) owner))) owner))
+              stop nativeCount execution = memberRun action at law
+            rw [referencePatch action next moved, updated] at law
+            exact law.symm
+          calc
+            native rank ghost = kernel.bind memberRun := mixed
+            _ = kernel.bind (fun action => (ghost.step event ready action).bind
+                (fun next => native (rank + 1) next)) := by
+              apply bind_congr_on_support _
+              intro action selected
+              calc
+                _ = (ghost.step event ready action).bind (fun _ => memberRun action) :=
+                  (PMF.bind_const _ _).symm
+                _ = _ := bind_congr_on_support _ fun next moved =>
+                  memberLaw action selected next moved
+            _ = (sourceRun (rest + 1) ghost).bind (native (rank + (rest + 1))) := by
+              rw [firstLaw rest]
+              simp only [PMF.bind_bind]
+              apply bind_congr_on_support _
+              intro action selected
+              apply bind_congr_on_support _
+              intro next moved
+              exact nextLaw action selected next moved
+  have initial : execution.application.config ∈
+      (sourceRun 0 execution.application.config).support := by
+    simp only [sourceRun, runPlan, PMF.mem_support_pure_iff]
+  have result := advance bindingCount 0 execution.application.config (by omega) initial
+  simpa only [Nat.zero_add, Nat.add_zero, native, players, frozen, freezeBindingsBefore_at_start,
+    sourceRun] using result
+
+end Vegas

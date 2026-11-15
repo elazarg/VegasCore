@@ -240,3 +240,32 @@ theorem path_isPrefix_sequential (graph : Vegas.EventGraph Player L)
       exact ⟨nextRank, by omega, finalPrefix⟩
 
 end Vegas.EventGraph.Config.Step
+
+namespace Vegas.EventGraph.Config
+
+variable {Player : Type} {L : IExpr} [IExpr.ResultTypes L]
+
+/-- A configuration's chronological history has one completion per completed
+event, so at a prefix its length is the prefix rank. -/
+theorem history_length_of_isPrefix {graph : Vegas.EventGraph Player L} (config : graph.Config)
+    {rank : Nat} (ordered : config.cut.IsPrefix rank) : config.history.length = rank := by
+  classical
+  have completed : (config.history.map EventCompletion.event).toFinset =
+      config.cut.completed := by
+    ext event
+    rw [List.mem_toFinset]
+    exact config.history_exact event
+  have filtered : config.cut.completed =
+      (Finset.univ : Finset graph.EventId).filter fun event => event.val < rank := by
+    ext event
+    rw [Finset.mem_filter]
+    exact ⟨fun member => ⟨Finset.mem_univ _, (ordered.2 event).mp member⟩,
+      fun below => (ordered.2 event).mpr below.2⟩
+  rw [← List.length_map (f := EventCompletion.event),
+    ← List.toFinset_card_of_nodup config.history_nodup, completed, filtered]
+  rw [show ((Finset.univ : Finset graph.EventId).filter fun event => event.val < rank) =
+      Finset.univ.filter (fun event : Fin graph.order.eventCount => (event : Nat) < rank) from rfl,
+    Fin.card_filter_val_lt]
+  exact min_eq_right ordered.1
+
+end Vegas.EventGraph.Config

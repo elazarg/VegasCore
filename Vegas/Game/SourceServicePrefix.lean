@@ -4,6 +4,7 @@ module
 
 public import Vegas.Game.SourceServiceCheckpoint
 public import Vegas.Compile.EventGraphReadout
+public import Vegas.Compile.EventGraphParameterReadout
 public import Vegas.Compile.EventGraphPolicy
 public import Vegas.Source.SetupProtocolEvaluation
 public import Vegas.Source.DefaultControl
@@ -66,6 +67,108 @@ def decodeSourcePrefix? {Field : Type} [DecidableEq Field]
         (revelations.reveal selected) (fun tail => outputs tail.succ)
         count store history defaults).map
           Sum.inr
+
+/-- Read the view of `who` at the source position after `count` events from a
+store and `who`'s own decoded actions, walking the program exactly as
+`Vegas.decodeSourcePrefix?` does. Only fields visible to `who` are read at the
+position reached. -/
+def decodeViewPrefix? {Field : Type} [DecidableEq Field]
+    {layout : Field → EventGraph.EventField Player L} (who : Player) :
+    {Γ : SourceCtx Player L} → {openNames : Finset VarId} →
+    (program : SourceProgram Player L Γ openNames) → ContextRefs layout Γ →
+    (∀ event, EventGraph.FieldRef layout (outputLayout program event)) →
+    Nat → EventGraph.Store layout → List (OwnAction Player L) → DefaultHistory Player →
+      Option (ProtocolView who program)
+  | _, _, program, refs, _, 0, store, own, defaults =>
+      (decodeObservation? who refs store).map fun observation =>
+        ProtocolView.entry who program ⟨observation, defaults, own⟩
+  | _, _, .ret _, _, _, _ + 1, _, _, _ => none
+  | _, _, .sample (payload := payload) _ _ _ next, refs, outputs, count + 1, store, own,
+      defaults =>
+      let headRef : EventGraph.FieldRef layout (.publicData payload) := by
+        simpa [outputLayout, eventCount] using outputs ⟨0, by simp [eventCount]⟩
+      (decodeViewPrefix? who next (refs.cons headRef) (fun tail => outputs tail.succ) count store
+        own defaults).map Sum.inr
+  | _, _, .commit (payload := payload) _ owner _ _ next, refs, outputs, count + 1, store, own,
+      defaults =>
+      let headRef : EventGraph.FieldRef layout (.binding owner payload) := by
+        simpa [outputLayout, eventCount] using outputs ⟨0, by simp [eventCount]⟩
+      (decodeViewPrefix? who next (refs.cons headRef) (fun tail => outputs tail.succ) count store
+        own defaults).map Sum.inr
+  | _, _, .reveal (payload := payload) _ _ _ _ _ _ next, refs, outputs, count + 1, store, own,
+      defaults =>
+      let headRef : EventGraph.FieldRef layout (.publication payload) := by
+        simpa [outputLayout, eventCount] using outputs ⟨0, by simp [eventCount]⟩
+      (decodeViewPrefix? who next (refs.cons headRef) (fun tail => outputs tail.succ) count store
+        own defaults).map Sum.inr
+
+/-- **The view decoder reads the decoded point's view.** Wherever the source
+prefix decoder succeeds, the view decoder, given `who`'s part of the history,
+returns `who`'s view of the decoded point. -/
+theorem decodeViewPrefix?_eq_observe {Field : Type} [DecidableEq Field]
+    {layout : Field → EventGraph.EventField Player L} (who : Player) :
+    ∀ (count : Nat) {Γ : SourceCtx Player L} {openNames : Finset VarId}
+      (program : SourceProgram Player L Γ openNames) (refs : ContextRefs layout Γ)
+      (registry : Registry Γ) (revelations : Revelations Γ)
+      (outputs : ∀ event, EventGraph.FieldRef layout (outputLayout program event))
+      (store : EventGraph.Store layout) (history : History Player L)
+      (defaults : DefaultHistory Player)
+      (point : ProtocolState program),
+      decodeSourcePrefix? program refs registry revelations outputs count store history defaults =
+          some point →
+        decodeViewPrefix? who program refs outputs count store (history who) defaults =
+          some (ProtocolState.observe who program point)
+  | 0, _, _, program, refs, registry, revelations, outputs, store, history, defaults, point,
+      decoded => by
+      simp only [decodeSourcePrefix?] at decoded
+      obtain ⟨state, read, rfl⟩ := Option.map_eq_some_iff.mp decoded
+      simp only [decodeViewPrefix?, decodeObservation?_eq_some refs who state store
+        (decodeState?_agrees refs store state read), Option.map_some,
+        ProtocolState.observe_entry]
+      rfl
+  | _ + 1, _, _, .ret _, _, _, _, _, _, _, _, _, decoded => by
+      simp only [decodeSourcePrefix?, reduceCtorEq] at decoded
+  | count + 1, _, _, .sample _ _ _ next, refs, registry, revelations, outputs, store, history,
+      defaults, point, decoded => by
+      simp only [decodeSourcePrefix?] at decoded
+      obtain ⟨rest, read, rfl⟩ := Option.map_eq_some_iff.mp decoded
+      simp only [decodeViewPrefix?, decodeViewPrefix?_eq_observe who count next _ _ _ _ store
+        history defaults rest read, Option.map_some]
+      rfl
+  | count + 1, _, _, .commit _ _ _ _ next, refs, registry, revelations, outputs, store, history,
+      defaults, point, decoded => by
+      simp only [decodeSourcePrefix?] at decoded
+      obtain ⟨rest, read, rfl⟩ := Option.map_eq_some_iff.mp decoded
+      simp only [decodeViewPrefix?, decodeViewPrefix?_eq_observe who count next _ _ _ _ store
+        history defaults rest read, Option.map_some]
+      rfl
+  | count + 1, _, _, .reveal _ _ _ _ _ _ next, refs, registry, revelations, outputs, store,
+      history, defaults, point, decoded => by
+      simp only [decodeSourcePrefix?] at decoded
+      obtain ⟨rest, read, rfl⟩ := Option.map_eq_some_iff.mp decoded
+      simp only [decodeViewPrefix?, decodeViewPrefix?_eq_observe who count next _ _ _ _ store
+        history defaults rest read, Option.map_some]
+      rfl
+
+/-- The view decoder reads only fields visible to `who`, so it gives the same
+result on `who`'s masked store. -/
+theorem decodeViewPrefix?_playerStore {graph : EventGraph Player L} (who : Player) :
+    ∀ (count : Nat) {Γ : SourceCtx Player L} {openNames : Finset VarId}
+      (program : SourceProgram Player L Γ openNames) (refs : ContextRefs graph.layout Γ)
+      (outputs : ∀ event, EventGraph.FieldRef graph.layout (outputLayout program event))
+      (store : EventGraph.Store graph.layout) (own : List (OwnAction Player L))
+      (defaults : DefaultHistory Player),
+      decodeViewPrefix? who program refs outputs count (graph.playerStore who store) own defaults =
+        decodeViewPrefix? who program refs outputs count store own defaults
+  | 0, _, _, program, refs, outputs, store, own, defaults => by
+      simp only [decodeViewPrefix?, decodeObservation?_playerStore]
+  | _ + 1, _, _, .ret _, _, _, _, _, _ => rfl
+  | count + 1, _, _, .sample _ _ _ next, refs, outputs, store, own, defaults => by
+      simp only [decodeViewPrefix?, decodeViewPrefix?_playerStore who count next]
+  | count + 1, _, _, .commit _ _ _ _ next, refs, outputs, store, own, defaults => by
+      simp only [decodeViewPrefix?, decodeViewPrefix?_playerStore who count next]
+  | count + 1, _, _, .reveal _ _ _ _ _ _ next, refs, outputs, store, own, defaults => by
+      simp only [decodeViewPrefix?, decodeViewPrefix?_playerStore who count next]
 
 /-- The decoded actor is the instruction owner unless that owner has publicly defaulted. -/
 theorem decodeSourcePrefix?_actor (who : Player) {Field : Type} [DecidableEq Field]

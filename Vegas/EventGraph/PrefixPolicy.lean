@@ -198,4 +198,33 @@ theorem RevealRelaxedOrdered.runPolicies_prefixProfile_map_runKey
   (relaxed.readyIndependent_prefixProfile profile oblivious).runPolicies_map_runKey scheduler
     inputs
 
+/-- Changing the requested action and value at a foreign hidden completion does not
+change any later prefix-policy kernel. The queried event need not yet be ready. -/
+theorem prefixPolicy_complete_eq_of_hidden
+    (who : Player) (policy : graph.BehavioralPolicy who)
+    (event other : graph.EventId) (actor : graph.actor? event = some who)
+    (config : graph.Config) (ready : config.cut.Ready other)
+    (hidden : ¬ graph.fieldVisibleTo who (.inr other))
+    (notOwned : graph.actor? other ≠ some who)
+    (privateOutput : ¬ (graph.outputLayout other).IsPublic)
+    (leftAction rightAction : graph.Action other)
+    (leftValue rightValue : (graph.outputLayout other).Value)
+    (leftActive : who ∉ (config.complete other ready leftAction leftValue).defaulted)
+    (rightActive : who ∉ (config.complete other ready rightAction rightValue).defaulted) :
+    graph.prefixPolicy who policy event actor
+        (graph.playerObserve who (config.complete other ready leftAction leftValue)) leftActive =
+      graph.prefixPolicy who policy event actor
+        (graph.playerObserve who (config.complete other ready rightAction rightValue))
+          rightActive := by
+  have same := (graph.prefixObservation_playerObserve_complete_of_hidden who config event other
+    ready leftAction leftValue hidden notOwned privateOutput).trans
+      (graph.prefixObservation_playerObserve_complete_of_hidden who config event other ready
+        rightAction rightValue hidden notOwned privateOutput).symm
+  have congruent (left right : graph.PlayerObservation who) (equal : left = right)
+      (activeLeft : who ∉ left.defaulted) (activeRight : who ∉ right.defaulted) :
+      policy event actor left activeLeft = policy event actor right activeRight := by
+    cases equal
+    rfl
+  exact congruent _ _ same _ _
+
 end Vegas.EventGraph

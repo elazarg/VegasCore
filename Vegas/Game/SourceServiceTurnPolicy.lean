@@ -411,6 +411,32 @@ theorem firstTurnTiming_deferralError {deps : setup.dataflowGraph.Dependencies} 
     (firstTurnTiming setup turns deps).deferralError = 0 := by
   simp [TurnTiming.deferralError, firstTurnTiming_deferral]
 
+variable {setup leaks} in
+/-- A client depends only on its owner's graph policy. -/
+theorem serviceReferenceTurnPolicy_eq_of_owner
+    (bound : (serviceGraph setup deps).EventId → Nat) (turns : Nat)
+    (timing : TurnTiming setup turns deps)
+    (left right : (serviceGraph setup deps).BehavioralProfile) (owner : Player)
+    (same : left owner = right owner) :
+    serviceReferenceTurnPolicy setup deps duration leaks bound turns timing left owner =
+      serviceReferenceTurnPolicy setup deps duration leaks bound turns timing right owner := by
+  have policies : serviceReferencePolicy setup deps duration leaks left owner =
+      serviceReferencePolicy setup deps duration leaks right owner := by
+    funext past view
+    simp only [serviceReferencePolicy, same]
+  have opportunities (event : (serviceGraph setup deps).EventId) :
+      serviceReferenceOpportunity setup deps duration leaks bound left owner event =
+        serviceReferenceOpportunity setup deps duration leaks bound right owner event := by
+    funext past view
+    simp only [serviceReferenceOpportunity, policies]
+  have families (event : (serviceGraph setup deps).EventId) :
+      serviceReferenceTurnFamily setup deps duration leaks bound left owner event turns =
+        serviceReferenceTurnFamily setup deps duration leaks bound right owner event turns := by
+    funext slot
+    simp only [serviceReferenceTurnFamily, opportunities]
+  funext past view
+  simp only [serviceReferenceTurnPolicy, families]
+
 end Generic
 
 end Vegas

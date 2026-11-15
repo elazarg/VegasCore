@@ -86,6 +86,21 @@ def terminal : {Γ : SourceCtx Player L} → {O : Finset VarId} →
   | _, _, .reveal _ _ _ _ _ _ next, config => terminal_terminalState next config
 end ProtocolState
 
+/-- The view of a program point's entry configuration, built from that
+configuration's decision view. -/
+def ProtocolView.entry (who : Player) : {Γ : SourceCtx Player L} → {O : Finset VarId} →
+    (program : SourceProgram Player L Γ O) → DecisionView who Γ → ProtocolView who program
+  | _, _, .ret _, view => view
+  | _, _, .sample _ _ _ _, view => Sum.inl view
+  | _, _, .commit _ _ _ _ _, view => Sum.inl view
+  | _, _, .reveal _ _ _ _ _ _ _, view => Sum.inl view
+
+theorem ProtocolState.observe_entry (who : Player) {Γ : SourceCtx Player L} {O : Finset VarId}
+    (program : SourceProgram Player L Γ O) (config : Config Player L Γ) :
+    ProtocolState.observe who program (ProtocolState.entry program config) =
+      ProtocolView.entry who program (config.view who) := by
+  cases program <;> rfl
+
 namespace ProtocolView
 
 def actor (who : Player) : {Γ : SourceCtx Player L} → {O : Finset VarId} →

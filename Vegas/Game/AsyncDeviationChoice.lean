@@ -584,9 +584,7 @@ private theorem foreign_binding_fixed_endpoint
       (decidedTurnPolicy setup leaks bound owner event action)
     let readChoice := fun final : (application setup timeouts leaks).Execution =>
       OwnAction.binding owner name payload
-        ((final.application.config.history.find?
-          (fun record => decide (record.event = event))).bind
-          fun record => record.decision.bind (decodeEventAction setup.program record.event))
+        (decodeActionAt setup.program event final.application.config.history)
     ∀ final ∈ ((application setup timeouts leaks).runUntilHorizon scheduler fixed
         (fun current => event ∈ current.application.config.cut.completed) horizon
         execution).support,
@@ -727,7 +725,8 @@ private theorem foreign_binding_fixed_endpoint
         some (EventGraph.completion setup.informationGraph event (some action) value) := by
     rw [drained, ← growth, List.find?_append, nativeFind]
     rfl
-  simp only [readChoice, finalFind, Option.bind_some, EventGraph.completion, decodedAction,
+  simp only [readChoice, decodeActionAt, finalFind, Option.bind_some, EventGraph.completion,
+    decodedAction,
     OwnAction.binding_commit]
 
 
@@ -853,8 +852,7 @@ theorem sourceService_foreign_commit_law
         (firstTurnTiming setup turns) wholeProfile) focal deviation
     let readChoice := fun final : (application setup timeouts leaks).Execution =>
       OwnAction.binding owner name payload
-        ((final.application.config.history.find? (fun record => decide (record.event = event))).bind
-          fun record => record.decision.bind (decodeEventAction setup.program record.event))
+        (decodeActionAt setup.program event final.application.config.history)
     let kernel := fun config : Config Player L Γ =>
       if inactive : owner ∈ config.defaulted then PMF.pure none
       else commitKernel profile (config.view owner) inactive
@@ -1225,9 +1223,7 @@ private theorem foreign_reveal_fixed_endpoint
       (decidedTurnPolicy setup leaks bound owner event action)
     let readChoice := fun final : (application setup timeouts leaks).Execution =>
       OwnAction.disclosure
-        ((final.application.config.history.find?
-          (fun record => decide (record.event = event))).bind
-          fun record => record.decision.bind (decodeEventAction setup.program record.event))
+        (decodeActionAt setup.program event final.application.config.history)
     (choice = true → ∃ value, EventCode.resolveOutput? (refs.get binding)
       (compileChecks (published := published) refs source.registry source.revelations binding)
       true execution.application.config.store = some (.success value)) ∧
@@ -1415,7 +1411,8 @@ private theorem foreign_reveal_fixed_endpoint
         some (EventGraph.completion setup.informationGraph event (some action) value) := by
     rw [drained, ← growth, List.find?_append, nativeFind]
     rfl
-  simp only [readChoice, finalFind, Option.bind_some, EventGraph.completion, decodedAction,
+  simp only [readChoice, decodeActionAt, finalFind, Option.bind_some, EventGraph.completion,
+    decodedAction,
     OwnAction.disclosure]
 
 private theorem reveal_joint_mixed
@@ -1590,8 +1587,7 @@ theorem sourceService_foreign_reveal_law
         (firstTurnTiming setup turns) wholeProfile) focal deviation
     let readChoice := fun final : (application setup timeouts leaks).Execution =>
       OwnAction.disclosure
-        ((final.application.config.history.find? (fun record => decide (record.event = event))).bind
-          fun record => record.decision.bind (decodeEventAction setup.program record.event))
+        (decodeActionAt setup.program event final.application.config.history)
     let kernel := fun config : Config Player L Γ =>
       if inactive : owner ∈ config.defaulted then PMF.pure false
       else revealKernel profile (config.view owner) inactive

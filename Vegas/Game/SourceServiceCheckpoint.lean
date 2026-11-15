@@ -6,6 +6,7 @@ public import Vegas.Game.SourceServiceStep
 public import Vegas.Game.RevealServiceState
 public import Vegas.Source.SetupProtocol
 public import Vegas.Pending.ExclusionCompletion
+public import Vegas.EventGraph.SequentialNormalization
 
 @[expose] public section
 
@@ -286,5 +287,23 @@ theorem SourceCheckpoint.revealAutomatic
   rw [disclosureResult_false] at next
   simpa only [State.completeAutomatic, State.completeFailure, nodeView_eq_resolve outputEq codeEq]
     using next
+
+
+/-- A source checkpoint survives a change to any valid compiled dependencies. -/
+theorem SourceCheckpoint.fromSequentialConfig
+    {setup : Setup (Player := Player) (L := L)} {deps : setup.dataflowGraph.Dependencies}
+    {Γ : SourceCtx Player L} {source : Config Player L Γ}
+    {refs : ContextRefs setup.informationGraph.layout Γ} {rank : Nat}
+    {ghost : setup.informationGraph.Config}
+    (checkpoint : SourceCheckpoint (deps := setup.informationDependencies) setup source refs rank
+      ghost) :
+    SourceCheckpoint (deps := deps) setup source refs rank
+      ((serviceGraph setup deps).fromSequentialConfig ghost) := by
+  have stores : ((serviceGraph setup deps).fromSequentialConfig ghost).store = ghost.store := by
+    funext field
+    cases field <;> rfl
+  refine ⟨?_, checkpoint.history, checkpoint.defaults, checkpoint.ordered⟩
+  rw [stores]
+  exact checkpoint.agrees
 
 end Vegas

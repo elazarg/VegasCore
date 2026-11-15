@@ -3,6 +3,7 @@ module
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 public import Vegas.Game.ReferenceForeignTraffic
+public import Vegas.EventGraph.BarrierBlocks
 public import Vegas.Pending.CanonicalKeyPublication
 public import Vegas.Pending.EffectiveOpening
 
@@ -1041,59 +1042,7 @@ theorem honest_block_matched {horizon leftRemaining rightRemaining : Nat}
     actor other (fun event _ => congrFun (congrFun (congrArg Prod.snd same) actor) event)
     selected sample sampled
 
-section Block
 
-variable {graph : Vegas.EventGraph Player L}
-
-/-- A configuration inside the block of ranks `[start, finish)`: every earlier
-event has completed and no event from `finish` on has. -/
-def InBlock (start finish : Nat) (config : graph.Config) : Prop :=
-  (∀ event : graph.EventId, event.val < start → event ∈ config.cut.completed) ∧
-    ∀ event : graph.EventId, finish ≤ event.val → event ∉ config.cut.completed
-
-/-- Every event of rank before `finish` has completed. -/
-def BlockDone (finish : Nat) (config : graph.Config) : Prop :=
-  ∀ event : graph.EventId, event.val < finish → event ∈ config.cut.completed
-
-instance (finish : Nat) (config : graph.Config) : Decidable (BlockDone finish config) := by
-  unfold BlockDone
-  infer_instance
-
-/-- The block's shape: inside an unfinished block, only block events are ready. -/
-def BlockShaped (start finish : Nat) : Prop :=
-  ∀ config : graph.Config, InBlock start finish config → ¬ BlockDone finish config →
-    ∀ event, config.cut.Ready event → start ≤ event.val ∧ event.val < finish
-
-/-- Completion is monotone along graph paths, so a finished block stays finished. -/
-theorem BlockDone.path {finish : Nat} {before after : graph.Config}
-    (path : Relation.ReflTransGen Config.Step before after)
-    (done : BlockDone finish before) : BlockDone finish after :=
-  fun event smaller => Config.Step.path_completed_mono path (done event smaller)
-
-/-- Graph steps keep a configuration inside an unfinished block. -/
-theorem InBlock.path {start finish : Nat} (shaped : BlockShaped (graph := graph) start finish)
-    {before after : graph.Config} (path : Relation.ReflTransGen Config.Step before after)
-    (inside : InBlock start finish before) (unfinished : ¬ BlockDone finish after) :
-    InBlock start finish after := by
-  induction path with
-  | refl => exact inside
-  | @tail middle last _ moved previous =>
-      have middleUnfinished : ¬ BlockDone finish middle := fun done =>
-        unfinished (BlockDone.path (Relation.ReflTransGen.single moved) done)
-      have middleInside := previous middleUnfinished
-      obtain ⟨event, ready, action, member⟩ := moved
-      have bounded := shaped middle middleInside middleUnfinished event ready
-      refine ⟨fun other smaller => Config.Step.path_completed_mono
-        (Relation.ReflTransGen.single ⟨event, ready, action, member⟩)
-        (middleInside.1 other smaller), fun other late completed => ?_⟩
-      rw [middle.step_cut event ready action last member, EventOrder.Cut.mem_complete]
-        at completed
-      rcases completed with same | earlier
-      · subst same
-        omega
-      · exact middleInside.2 other late earlier
-
-end Block
 
 /-- Two configurations agree on the stored binding of every reveal of ranks in
 `[start, finish)`. -/

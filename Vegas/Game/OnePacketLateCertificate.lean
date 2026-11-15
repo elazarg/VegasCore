@@ -99,7 +99,7 @@ theorem ordered_of_site {who : Player} {site : (onePacketN).InformationSite who}
     rw [atSite, ← observeEq]
     change (execution.application.config.history.map EventCompletion.event).length = found
     rw [List.length_map]
-    exact history_length_of_isPrefix _ foundOrdered
+    exact EventGraph.Config.history_length_of_isPrefix _ foundOrdered
   exact rankEq ▸ foundOrdered
 
 omit [Fintype Player] [(application setup timeouts leaks).FiniteNature (initialLaw setup)

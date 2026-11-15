@@ -1,10 +1,10 @@
 # Module ownership
 
-The active production modules are the dependency closure of the paper-facing
-results, the sequential monetary specialization and the checked concrete
-runtime instances. Regression tests and examples are retained when their
-production dependencies lie in that core. Umbrellas expose the retained
-subtree; imports do not preserve unused research modules merely to keep a name.
+The core library supports the paper-facing results, the sequential monetary
+specialization, concrete runtime instances and checked concurrency adapters.
+Regression tests and examples exercise these APIs. Umbrellas expose coherent
+library surfaces; research prototypes stay outside them. Checked library
+results and paper-facing results use the same strict proof policy.
 
 | Layer | Responsibility and main owners |
 | --- | --- |
@@ -63,7 +63,11 @@ independent bindings and independent reveals, uniformly over dependency choices
 retaining the required public barriers. It uses source-prefix clients that
 always submit bindings and disclose active reveals; deviations retain their
 actual observations. Native concurrent-binding and concurrent SE preservation
-remain open.
+remain open. Private-binding adapters retain the existing graph configurations
+and source checkpoints. [Joint traffic opacity](../Vegas/Game/BindingBlockOpacity.lean),
+[later-prefix sampling](../Vegas/Game/BindingPrefixSampling.lean) and
+[checkpoint restoration](../Vegas/Game/BindingSourceCheckpoint.lean) provide
+local components for that extension; they are not a complete native preservation result.
 The [physical deviation law](../Vegas/Game/AsyncDeviationReadout.lean)
 backtranslates every raw unilateral policy against first-turn clients to one
 behavioral source policy with the same typed-state/public-default law. Its

@@ -23,19 +23,6 @@ continuation law or equilibrium preservation across publication boundaries.
 
 noncomputable section
 
-namespace Vegas.EventGraph.Config.Step
-
-variable {Player : Type} [DecidableEq Player]
-  {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
-
-theorem path_ready_of_not_completed {before after : graph.Config} {event : graph.EventId}
-    (path : Relation.ReflTransGen Step before after)
-    (ready : before.cut.Ready event) (unfinished : event ∉ after.cut.completed) :
-    after.cut.Ready event :=
-  ⟨unfinished, ready.2.trans (path_completed_mono path)⟩
-
-end Vegas.EventGraph.Config.Step
-
 namespace Vegas
 
 open SourceProgram GameTheory.Math.Probability Interaction EventGraphRuntime EventGraph

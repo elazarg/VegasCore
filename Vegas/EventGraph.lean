@@ -59,4 +59,10 @@ public import Vegas.EventGraph.Sequential
 public import Vegas.EventGraph.SequentialLaw
 public import Vegas.EventGraph.Validation
 
+public import Vegas.EventGraph.RecordedReplay
+public import Vegas.EventGraph.BindingPrefixObservation
+public import Vegas.EventGraph.BindingChain
+public import Vegas.EventGraph.ActionTable
+public import Vegas.EventGraph.StoredBindingProfile
+
 @[expose] public section

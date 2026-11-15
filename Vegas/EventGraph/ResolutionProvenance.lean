@@ -409,4 +409,35 @@ theorem Config.Reachable.publication_decision_of_success
         rw [actual, Option.map_some, requested]
 
 
+namespace Config
+
+/-- A failed subject makes its completed publication fail in every actual graph path. -/
+theorem Reachable.failed_publication_read_of_failed_subject
+    {inputs : graph.Inputs} {config : graph.Config}
+    (reach : config.Reachable inputs) (terminal : config.cut.Terminal)
+    (event : graph.EventId) (owner : Player) (payload : L.Ty)
+    (subject : FieldRef graph.layout (.binding owner payload))
+    (checks : List (GuardCheck graph.layout payload))
+    (outputEq : graph.outputLayout event = .publication payload)
+    (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
+      (graph.nodes event) = .resolve owner payload subject checks)
+    (failed : subject.get? config.store = some .failure) :
+    (⟨.inr event, outputEq⟩ : FieldRef graph.layout (.publication payload)).get?
+      config.store = some .failure := by
+  let published : FieldRef graph.layout (.publication payload) := ⟨.inr event, outputEq⟩
+  have available : (config.store (.inr event)).isSome = true := by
+    rw [Config.store_output, config.output_available, terminal]
+    exact Finset.mem_univ _
+  obtain ⟨result, stored⟩ := Option.isSome_iff_exists.mp
+    (published.get?_isSome config.store available)
+  cases result with
+  | failure => exact stored
+  | success value =>
+      have bound := reach.publication_binding event owner payload subject checks outputEq
+        codeEq value stored
+      rw [failed] at bound
+      cases bound
+
+end Config
+
 end Vegas.EventGraph

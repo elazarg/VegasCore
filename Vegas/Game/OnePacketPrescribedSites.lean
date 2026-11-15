@@ -107,7 +107,7 @@ theorem firstActivation_history_facts (wellFormed : setup.WellFormed) {who : Pla
     rw [← observedState]
     change (execution.application.config.history.map EventCompletion.event).length = found
     rw [List.length_map]
-    exact history_length_of_isPrefix _ ordered
+    exact EventGraph.Config.history_length_of_isPrefix _ ordered
   have decoded : sourceServicePrefix? setup found execution.application.config = some point :=
     (decodedPoint_eq_of_isPrefix ordered).symm.trans pointDecoded
   obtain ⟨decodedRank, ⟨residual⟩, holds⟩ := decodedState_intended_or_owes (timeouts := timeouts)

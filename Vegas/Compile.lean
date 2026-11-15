@@ -32,4 +32,7 @@ public import Vegas.Compile.ConcurrentRevealGraph
 public import Vegas.Compile.RevealFailureReadout
 public import Vegas.Compile.BindingReveal
 
+public import Vegas.Compile.EventGraphReplay
+public import Vegas.Compile.BindingFailure
+
 @[expose] public section

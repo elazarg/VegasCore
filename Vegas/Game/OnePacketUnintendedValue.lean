@@ -233,7 +233,7 @@ theorem unintendedCommitment_stopped_value
     rw [atSite, ← viewEq]
     change (execution.application.config.history.map EventCompletion.event).length = found
     rw [List.length_map]
-    exact history_length_of_isPrefix _ foundOrdered
+    exact EventGraph.Config.history_length_of_isPrefix _ foundOrdered
   have ordered : execution.application.config.cut.IsPrefix
       (siteRank (timeouts := timeouts) site.1) := siteRankEq.symm ▸ foundOrdered
   have actualAt : site.1 = some (execution.logs who,

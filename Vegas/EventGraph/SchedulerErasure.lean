@@ -290,6 +290,39 @@ theorem ReadyIndependent.actorSerial {graph : Vegas.EventGraph Player L}
   by_contra different
   exact independent.actorsDiffer config ready otherReady (Ne.symm different) who actor otherActor
 
+/-- Observation-independent event laws are ready independent under actor-local seriality.
+Binding omissions remain possible; only another actor can complete a simultaneous ready event. -/
+theorem ActorSerial.readyIndependent_of_eventLaws (serial : graph.ActorSerial)
+    (choices : ∀ who event, graph.actor? event = some who → PMF (graph.Action event)) :
+    ReadyIndependent (fun who event actor _ _ => choices who event actor) where
+  actorsDiffer config left right leftReady rightReady different owner leftActor rightActor := by
+    exact different (serial.ready_actor_unique config.cut leftReady rightReady leftActor
+      rightActor).symm
+  stable config event other eventReady otherReady different action value := by
+    cases owned : (graph.nodes event).actor with
+    | none => rw [actionLaw_of_ownerless _ _ owned, actionLaw_of_ownerless _ _ owned]
+    | some owner =>
+      rw [actionLaw_of_actor _ _ owned, actionLaw_of_actor _ _ owned]
+      have notOwned : graph.actor? other ≠ some owner := by
+        intro otherActor
+        exact different (serial.ready_actor_unique config.cut eventReady otherReady owned
+          otherActor)
+      have member := mem_defaulted_complete_of_actor_ne config other otherReady action value
+        owner notOwned
+      by_cases inactive : owner ∈ config.defaulted
+      · rw [dite_eq_left (member.mpr inactive), dite_eq_left inactive]
+      · rw [dite_eq_right (fun active => inactive (member.mp active)), dite_eq_right inactive]
+  congr {left right} same event := by
+    have records : completionOf left = completionOf right := congrArg (fun key => key.2.2) same
+    have defaulted := defaulted_eq_of_completionOf_eq records
+    cases owned : (graph.nodes event).actor with
+    | none => rw [actionLaw_of_ownerless _ _ owned, actionLaw_of_ownerless _ _ owned]
+    | some owner =>
+      rw [actionLaw_of_actor _ _ owned, actionLaw_of_actor _ _ owned]
+      by_cases inactive : owner ∈ left.defaulted
+      · rw [dite_eq_left inactive, dite_eq_left (defaulted ▸ inactive)]
+      · rw [dite_eq_right inactive, dite_eq_right (defaulted ▸ inactive)]
+
 theorem eventStep_congr_event (profile : graph.BehavioralProfile) (config : graph.Config)
     {event other : graph.EventId} (same : event = other) (ready : config.cut.Ready event)
     (otherReady : config.cut.Ready other) :
@@ -600,5 +633,41 @@ theorem ReadyIndependent.runPolicies_map_runKey {profile : graph.BehavioralProfi
   unfold EventGraph.runPolicies EventGraph.run
   rw [independent.runPlan_map_runKey scheduler _ _ initialRemaining,
     independent.runPlan_map_runKey graph.canonicalScheduler _ _ initialRemaining]
+
+end Vegas.EventGraph
+
+namespace Vegas.EventGraph
+
+open GameTheory.Math.Probability
+
+variable {Player : Type} [DecidableEq Player]
+  {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
+
+theorem ReadyIndependent.actionLaw_path_of_unfinished
+    {profile : graph.BehavioralProfile} (independent : ReadyIndependent profile)
+    {before after : graph.Config} {event : graph.EventId}
+    (path : Relation.ReflTransGen Config.Step before after)
+    (ready : before.cut.Ready event) (unfinished : event ∉ after.cut.completed) :
+    actionLaw profile after event = actionLaw profile before event := by
+  revert ready
+  induction path using Relation.ReflTransGen.head_induction_on with
+  | refl => intro _; rfl
+  | @head before middle moved rest ih =>
+      intro ready
+      have middlePending : event ∉ middle.cut.completed :=
+        fun completed => unfinished (Config.Step.path_completed_mono rest completed)
+      have middleReady := Config.Step.path_ready_of_not_completed (.single moved) ready
+        middlePending
+      refine (ih middleReady).trans ?_
+      obtain ⟨other, otherReady, action, supported⟩ := moved
+      have different : other ≠ event := by
+        intro same
+        subst other
+        apply middlePending
+        rw [before.step_cut event otherReady action middle supported]
+        exact Finset.mem_insert_self _ _
+      rw [Config.step, PMF.mem_support_map_iff] at supported
+      obtain ⟨value, _, rfl⟩ := supported
+      exact independent.stable before ready otherReady different action value
 
 end Vegas.EventGraph

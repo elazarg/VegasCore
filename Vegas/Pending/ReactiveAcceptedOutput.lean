@@ -5,6 +5,7 @@ module
 public import Vegas.Pending.ReactiveSignedCommitments
 public import Vegas.Pending.EventBindingInvariant
 public import Vegas.Pending.ExclusionInvariant
+public import Vegas.EventGraph.PrefixRestriction
 
 @[expose] public section
 
@@ -389,5 +390,64 @@ theorem AcceptanceWitness.output_success
     (accepted : handle timeouts state ⟨message.id, message.payload.call⟩ = some next) :
     OutputSucceeded next.config.store event :=
   ⟨output, witness.output_eq timeouts sameConfig accepted, succeeded⟩
+
+omit [DecidableEq Player] in
+/-- A binding acceptance certificate does not depend on the source store at submission. -/
+theorem AcceptanceWitness.binding_rebase {event : graph.EventId}
+    {message : Message Player (WitnessedPacket graph)} {sent current : graph.Config}
+    {action : graph.Action event} {output : (graph.outputLayout event).Value}
+    {state : State graph} {owner : Player} {payload : L.Ty}
+    (binding : graph.outputLayout event = .binding owner payload)
+    (witness : AcceptanceWitness event message sent action output state) :
+    AcceptanceWitness event message current action output state := by
+  rcases witness with bindingWitness | opening
+  · exact Or.inl bindingWitness
+  · obtain ⟨candidate, raw, actor, ty, ref, checks, outputEq, _, _, _, _, _, _⟩ := opening
+    cases binding.symm.trans outputEq
+
+omit [DecidableEq Player] in
+/-- A certified binding action contains exactly its certified stored result. -/
+theorem AcceptanceWitness.binding_action_output {event : graph.EventId}
+    {message : Message Player (WitnessedPacket graph)} {sent : graph.Config}
+    {action : graph.Action event} {output : (graph.outputLayout event).Value}
+    {state : State graph} {owner : Player} {payload : L.Ty}
+    (binding : graph.outputLayout event = .binding owner payload)
+    (witness : AcceptanceWitness event message sent action output state) :
+    cast (congrArg EventField.Action binding) action =
+      some (cast (congrArg EventField.Value binding) output) := by
+  rcases witness with ⟨candidate, actor, ty, outputEq, _, _, decision, result⟩ | opening
+  · have sameKind := binding.symm.trans outputEq
+    cases sameKind
+    rw [decision, result]
+    simp only [cast_cast, cast_eq]
+  · obtain ⟨candidate, raw, actor, ty, ref, checks, outputEq, _, _, _, _, _, _⟩ := opening
+    cases binding.symm.trans outputEq
+
+/-- Native acceptance records a binding's exact action and typed value through drain. -/
+theorem AcceptanceWitness.reactive_binding_record
+    (timeouts : EventTimeouts graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    {event : graph.EventId} {message : Message Player (WitnessedPacket graph)}
+    {sent : graph.Config} {action : graph.Action event}
+    {output : (graph.outputLayout event).Value} {state next : State graph}
+    {owner : Player} {payload : L.Ty}
+    (binding : graph.outputLayout event = .binding owner payload)
+    (witness : AcceptanceWitness event message sent action output state)
+    (accepted : ((reactiveApplication timeouts) leaks).handle state message = some next) :
+    completionOf next.config event =
+        some (EventGraph.completion graph event (some action) output) ∧
+      next.config.outputs event = some output := by
+  obtain ⟨_, actual, native, _, drained, completed⟩ :=
+    (witness.binding_rebase binding).reactive_complete timeouts leaks rfl accepted
+  have records : completionOf native.config event =
+      some (EventGraph.completion graph event (some action) output) := by
+    rw [completed, completionOf_complete, Function.update_self, actual]
+  have stored : native.config.store (.inr event) = some output := by
+    rw [Config.store_output, completed, Config.complete_output_same]
+  constructor
+  · rw [← drained]
+    exact Config.Step.path_completionOf_of_some native.drain_graph_steps event _ records
+  · rw [← drained]
+    exact Config.Step.path_store_of_some native.drain_graph_steps (.inr event) output stored
 
 end Vegas.EventGraphRuntime

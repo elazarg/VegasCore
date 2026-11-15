@@ -88,6 +88,18 @@ and deadline proofs take the local condition; proofs about a whole traffic
 history take `ActorSerial`. Proofs that already know the selected turn can use
 that witness directly.
 
+Fixed-code replay has a weaker requirement. Under `ActorSerial`, every
+reachable terminal configuration has a source-ranked replay with the same full
+configuration in source rank; see [RecordedReplay](../Vegas/EventGraph/RecordedReplay.lean).
+The replay profile may depend on the terminal record table. This is a pointwise
+reachability statement, so it supplies no observation-local strategy map.
+
+Some failure properties need only valid dependencies. A compiled binding that
+stores failure forces an owned failed publication and public default on every
+reachable terminal path; see [BindingFailure](../Vegas/Compile/BindingFailure.lean).
+This uses its actual subject reveal, rather than merely an event that reads
+the binding as a guard input.
+
 Public-barrier ordering and reveal-relaxed ordering remain separate, stronger
 certificates for information and scheduling proofs. They imply actor service
 conditions where needed. Pure initialization, typing and traffic lemmas need

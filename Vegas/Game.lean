@@ -462,4 +462,15 @@ public import Vegas.Game.RevealClosureSolitary
 public import Vegas.Game.RevealClosureSimulation
 public import Vegas.Game.ConcurrentRevealPreservation
 
+public import Vegas.Game.SourceReplayDebt
+public import Vegas.Game.BindingSourceObservation
+public import Vegas.Game.NativeBindingRecord
+public import Vegas.Game.SourceBindingFiber
+public import Vegas.Game.BindingBlockOpacity
+public import Vegas.Game.NativeSlotPolicies
+public import Vegas.Game.NativeFirstTurnSampling
+public import Vegas.Game.BindingPrefixSampling
+public import Vegas.Game.NativeBindingTableSampling
+public import Vegas.Game.BindingSourceCheckpoint
+
 @[expose] public section
