@@ -245,20 +245,6 @@ theorem Vegas.Paper.intended_forfeit_sequentialEquilibrium_preserved
 
 local notation "forfeiture" => CommitmentInterface.forfeiture setup.program
 
-omit [Finite Player] initialFinite in
-/-- The source information order permits both independent-reveal and
-independent-binding relaxation while retaining the preservation barriers. -/
-theorem Vegas.Paper.concurrent_dependencies :
-    setup.informationGraph.relaxReveals.relaxBindings.RevealRelaxedOrdered :=
-  setup.informationGraph.relaxReveals.relaxBindings_revealRelaxedOrdered
-    (setup.informationGraph.relaxReveals_revealRelaxedOrdered
-      (toInformationGraph_barrierOrdered setup.program).revealRelaxedOrdered)
-
-/-- info: 'Vegas.Paper.concurrent_dependencies' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Vegas.Paper.concurrent_dependencies
-
 include finite wellFormed initialFinite in
 /-- Prescribed clients of every disclosing intended extension preserve its Nash error,
 complete configuration/payoff law and clean play for all dependency choices retaining
@@ -315,6 +301,65 @@ theorem Vegas.Paper.intended_concurrent_forfeit
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.intended_concurrent_forfeit
+
+local notation "bindingRevealDeps" =>
+  setup.dataflowGraph.bindingDependencies setup.revealDependencies
+
+local notation "bindingRevealGraph" =>
+  setup.dataflowGraph.withDependencies bindingRevealDeps
+
+include finite wellFormed initialFinite in
+/-- The combined binding/reveal relaxation is a concrete instance of intended
+forfeiture preservation, with the complete payoff law and prescribed-client discipline. -/
+theorem Vegas.Paper.intended_bindingReveal_forfeit
+    (range : ∀ high low who, utility high who - utility low who ≤ forfeit)
+    (intended : Profile setup.intendedModel.behavioralSignature)
+    (target : Profile (setup.informationModel forfeiture).behavioralSignature)
+    (agrees : (setup.intendedRestriction forfeiture).ExtendsProfile intended target) (ε : ℝ)
+    (equilibrium : IsεNash (setup.intendedModel.toBehavioralGameForm horizon)
+      (fun final => readoutPayoff setup base final.state) ε intended)
+    (disclosing : ∀ who, Disclosing setup.program
+      (setup.decodeBehavioralProfile forfeiture target who))
+    (scheduler : (bindingRevealGraph).PublicScheduler) :
+    IsεNash ((bindingRevealGraph).gameForm (setup.graphInputs bindingRevealDeps) scheduler)
+        (setup.graphForfeitPayoff bindingRevealDeps parameter utility forfeit) ε
+        (compilePrescribedProfile setup.program bindingRevealDeps
+          (setup.decodeBehavioralProfile forfeiture target)) ∧
+      (∀ outcome ∈ (((bindingRevealGraph).gameForm (setup.graphInputs bindingRevealDeps)
+          scheduler).play (compilePrescribedProfile setup.program bindingRevealDeps
+            (setup.decodeBehavioralProfile forfeiture target))).support,
+        (setup.graphReadout bindingRevealDeps outcome).defaulted = ∅ ∧
+          NoFailedReveals setup (setup.graphReadout bindingRevealDeps outcome)) ∧
+      (((bindingRevealGraph).gameForm (setup.graphInputs bindingRevealDeps) scheduler).play
+          (compilePrescribedProfile setup.program bindingRevealDeps
+            (setup.decodeBehavioralProfile forfeiture target))).map
+          (fun outcome => (some (setup.graphReadout bindingRevealDeps outcome),
+            setup.graphForfeitPayoff bindingRevealDeps parameter utility forfeit outcome)) =
+        (setup.intendedModel.runBehavioral intended horizon).map
+          (fun final => (setup.protocolReadout final.state,
+            readoutPayoff setup base final.state)) ∧
+      (bindingRevealGraph).SubmitsBindings
+        (compilePrescribedProfile setup.program bindingRevealDeps
+          (setup.decodeBehavioralProfile forfeiture target)) ∧
+      (∀ who event (actor : (bindingRevealGraph).actor? event = some who),
+        (publication : ((bindingRevealGraph).outputLayout event).IsPublication) →
+          ∀ (observation : (bindingRevealGraph).PlayerObservation who)
+            (active : who ∉ observation.defaulted),
+            compilePrescribedProfile setup.program bindingRevealDeps
+              (setup.decodeBehavioralProfile forfeiture target) who event actor observation active =
+                PMF.pure (EventGraph.EventField.openAction _ publication)) := by
+  have relaxed : (bindingRevealGraph).RevealRelaxedOrdered :=
+    setup.informationGraph.relaxReveals.relaxBindings_revealRelaxedOrdered
+      (setup.informationGraph.relaxReveals_revealRelaxedOrdered
+        (toInformationGraph_barrierOrdered setup.program).revealRelaxedOrdered)
+  exact Vegas.Paper.intended_concurrent_forfeit (setup := setup) (parameter := parameter)
+    (utility := utility) (finite := finite) (wellFormed := wellFormed) (forfeit := forfeit)
+    bindingRevealDeps relaxed range intended target agrees ε equilibrium disclosing scheduler
+
+/-- info: 'Vegas.Paper.intended_bindingReveal_forfeit' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.intended_bindingReveal_forfeit
 
 include finite wellFormed initialFinite in
 /-- The effective-opening clients preserve intended approximate Nash equilibrium,
