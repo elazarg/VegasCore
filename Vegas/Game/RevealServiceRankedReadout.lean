@@ -3,7 +3,7 @@ module
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 public import Vegas.Game.RevealServicePayoffs
-public import Vegas.Compile.ConcurrentRevealGraph
+public import Vegas.EventGraph.RankedConfig
 
 @[expose] public section
 

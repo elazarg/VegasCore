@@ -34,7 +34,7 @@ private theorem erase_eq_of_defaulted_empty {graph : Vegas.EventGraph Player L}
 private theorem concurrent_play_outcomeLaw (setup : Setup (Player := Player) (L := L))
     (profile : setup.revealRelaxedGraph.BehavioralProfile) {Outcome : Type*}
     (read : setup.revealRelaxedGraph.Config → Outcome) :
-    ((setup.revealRelaxedGraph.gameForm setup.concurrentInputs
+    ((setup.revealRelaxedGraph.gameForm (setup.graphInputs setup.revealDependencies)
         setup.revealRelaxedGraph.canonicalScheduler).play profile).map
         (fun outcome => read outcome.1) =
       (serviceInitialLaw setup setup.revealDependencies).bind fun state =>
@@ -114,7 +114,8 @@ theorem concurrentReveal_intended_ledger (setup : Setup (Player := Player) (L :=
   let G := setup.revealRelaxedGraph
   let source := setup.decodeBehavioralProfile (CommitmentInterface.forfeiture setup.program) target
   let reference := concurrentReference setup source
-  let graphPlay := (G.gameForm setup.concurrentInputs G.canonicalScheduler).play reference
+  let graphPlay := (G.gameForm (setup.graphInputs setup.revealDependencies)
+      G.canonicalScheduler).play reference
   let ledgerPlay := (concurrentLedgerGame setup duration leaks scheduler horizon).play
     (concurrentLedgerClients setup duration leaks bound turns source)
   let observe := fun config : G.Config =>
@@ -157,8 +158,8 @@ theorem concurrentReveal_intended_ledger (setup : Setup (Player := Player) (L :=
         at clean
     rwa [defaulted_rankedConfig] at clean
   have graphObserve : ∀ outcome ∈ graphPlay.support,
-      observe outcome.1 = (some (setup.concurrentReadout outcome),
-        setup.concurrentForfeitPayoff parameter utility forfeit outcome) := by
+      observe outcome.1 = (some (setup.graphReadout setup.revealDependencies outcome),
+        setup.graphForfeitPayoff setup.revealDependencies parameter utility forfeit outcome) := by
     intro outcome supported
     simp only [observe, erase_eq_of_defaulted_empty outcome.1 (graphDefaults outcome supported),
       concurrentRankedRead_terminal setup outcome.1 outcome.2,
@@ -166,8 +167,8 @@ theorem concurrentReveal_intended_ledger (setup : Setup (Player := Player) (L :=
     rfl
   have represented : ∀ config ∈ ledgerPlay.support,
       ∃ outcome ∈ graphPlay.support, observe config =
-        (some (setup.concurrentReadout outcome),
-          setup.concurrentForfeitPayoff parameter utility forfeit outcome) := by
+        (some (setup.graphReadout setup.revealDependencies outcome),
+          setup.graphForfeitPayoff setup.revealDependencies parameter utility forfeit outcome) := by
     intro config supported
     have member : observe config ∈ (ledgerPlay.map observe).support :=
       (PMF.mem_support_map_iff _ _ _).mpr ⟨config, supported, rfl⟩
@@ -178,7 +179,8 @@ theorem concurrentReveal_intended_ledger (setup : Setup (Player := Player) (L :=
     intro config supported
     obtain ⟨outcome, present, same⟩ := represented config supported
     have read := congrArg Prod.fst same
-    change concurrentRankedRead setup config.erase = some (setup.concurrentReadout outcome)
+    change concurrentRankedRead setup config.erase = some (setup.graphReadout
+        setup.revealDependencies outcome)
       at read
     have terminal : config.cut.Terminal := by
       by_contra unfinished
@@ -189,7 +191,7 @@ theorem concurrentReveal_intended_ledger (setup : Setup (Player := Player) (L :=
     have defaults := congrArg (fun final : Config Player L setup.program.terminalCtx =>
       final.defaulted) (Option.some.inj read)
     change (rankedConfig (graph := setup.revealRelaxedGraph) config.erase terminal).defaulted =
-      (setup.concurrentReadout outcome).defaulted at defaults
+      (setup.graphReadout setup.revealDependencies outcome).defaulted at defaults
     rw [defaulted_rankedConfig, EventGraph.Config.erase_defaulted,
       (graphClean outcome present).1] at defaults
     exact defaults
@@ -198,10 +200,12 @@ theorem concurrentReveal_intended_ledger (setup : Setup (Player := Player) (L :=
   · intro config supported
     obtain ⟨outcome, present, same⟩ := represented config supported
     have reads := congrArg Prod.fst same
-    change concurrentRankedRead setup config.erase = some (setup.concurrentReadout outcome)
+    change concurrentRankedRead setup config.erase = some (setup.graphReadout
+        setup.revealDependencies outcome)
       at reads
     rw [erase_eq_of_defaulted_empty config (ledgerDefaults config supported)] at reads
-    refine ⟨?_, ledgerDefaults config supported, setup.concurrentReadout outcome, reads,
+    refine ⟨?_, ledgerDefaults config supported, setup.graphReadout setup.revealDependencies
+        outcome, reads,
       (graphClean outcome present).2⟩
     by_contra unfinished
     rw [concurrentRankedRead, ite_eq_right unfinished] at reads

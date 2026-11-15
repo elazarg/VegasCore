@@ -66,8 +66,12 @@ in all these choices, and all are contained in source rank.
 Relaxing dependencies does not itself prove preservation. A result states the
 property it preserves and the prescribed policies, observation projection and
 payoff discipline under which it does so. Arbitrary deviations retain their
-actual observations. The existing reveal-preservation result and the ongoing
-commitment-preservation proof use this distinction.
+actual observations. The checked graph Nash result covers both independent
+bindings and independent reveals, uniformly over dependency choices satisfying
+`RevealRelaxedOrdered`. Source-prefix clients always submit bindings and open
+active reveals; the same Nash error, full source-configuration/payoff law and
+absence of defaults and failed reveals are preserved. The native ledger result
+permits concurrent reveals. Its extension to concurrent bindings remains open.
 
 ## Runtime and proof interfaces
 

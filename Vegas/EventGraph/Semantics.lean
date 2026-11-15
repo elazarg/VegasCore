@@ -195,6 +195,14 @@ def gameForm (graph : Vegas.EventGraph Player L) (inputs : PMF graph.Inputs)
   sig := graph.gameSignature
   play profile := inputs.bind fun initial => graph.terminalOutcomes scheduler profile initial
 
+/-- Forgetting terminality proofs gives the complete configuration execution law. -/
+theorem gameForm_play_map_val (graph : Vegas.EventGraph Player L) (inputs : PMF graph.Inputs)
+    (scheduler : PublicScheduler graph) (profile : BehavioralProfile graph) :
+    ((graph.gameForm inputs scheduler).play profile).map Subtype.val =
+      inputs.bind (graph.runPolicies scheduler profile) := by
+  change (inputs.bind fun initial => graph.terminalOutcomes scheduler profile initial).map _ = _
+  simp only [PMF.map_bind, terminalOutcomes_map_val]
+
 /-- Every play of a finitely branching profile from a finite input law has
 finite support, so every utility is integrable against it. -/
 theorem gameForm_play_support_finite (graph : Vegas.EventGraph Player L)

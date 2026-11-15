@@ -7,7 +7,7 @@ public import Vegas.Source.ProtocolBehavioralPolicy
 
 @[expose] public section
 
-/-! # The value interface admits exactly the value-binding policies
+/-! # Admission by the value and forfeiture interfaces
 
 A behavioral policy is admitted by the value interface
 (`Vegas.SourceProgram.CommitmentInterface.values`) exactly when it never
@@ -15,6 +15,7 @@ chooses an accepted unusable binding. Public omission is admitted. This is the
 value-binding condition
 (`Vegas.SourceProgram.ValueBinding`). The policies of the source protocol model
 under the value interface are therefore the value-binding policies.
+The forfeiture interface admits every source policy.
 -/
 
 namespace Vegas.SourceProgram
@@ -66,4 +67,18 @@ theorem BehavioralPolicy.admitted_of_valueBinding {who : Player} :
   | _, _, .reveal _ _ _ _ _ _ next, policy, binding, admission =>
       admitted_of_valueBinding next policy.2 binding admission
 
+/-- The forfeiture interface admits every source policy. -/
+theorem BehavioralPolicy.admitted_forfeiture {who : Player} :
+    {Γ : SourceCtx Player L} → {O : Finset VarId} → (program : SourceProgram Player L Γ O) →
+    (policy : BehavioralPolicy who program) →
+      policy.Admitted program (CommitmentInterface.forfeiture program)
+  | _, _, .ret _, _ => trivial
+  | _, _, .sample _ _ _ next, policy => admitted_forfeiture next policy
+  | _, _, .commit _ _ _ _ next, policy => by
+      refine ⟨fun _ _ _ choice _ => ?_, admitted_forfeiture next policy.2⟩
+      rcases choice with _ | _ | _
+      · trivial
+      · rfl
+      · trivial
+  | _, _, .reveal _ _ _ _ _ _ next, policy => admitted_forfeiture next policy.2
 end Vegas.SourceProgram

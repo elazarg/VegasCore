@@ -2,6 +2,8 @@ module
 
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
+public import Vegas.Compile.ConcurrentRevealGraph
+public import Vegas.Compile.PublicationPolicy
 public import Vegas.Game.RevealServiceRankedReadout
 public import Vegas.Pending.CanonicalKeyPublication
 public import Vegas.EventGraph.DecisionTwin

@@ -4,6 +4,7 @@ module
 
 public import Vegas.Source.Accounting
 public import Vegas.Source.Basic
+public import Vegas.Source.BindingSubmission
 public import Vegas.Source.BindingNormalization
 public import Vegas.Source.CellSwap
 public import Vegas.Source.CellSwapDebt

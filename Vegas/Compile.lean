@@ -26,6 +26,8 @@ public import Vegas.Compile.EventGraphScheduling
 public import Vegas.Compile.EventGraphState
 public import Vegas.Compile.EventGraphStep
 public import Vegas.Compile.EventGraphSuffix
+public import Vegas.Compile.PublicationPolicy
+public import Vegas.Compile.PrescribedProfile
 public import Vegas.Compile.ConcurrentRevealGraph
 public import Vegas.Compile.RevealFailureReadout
 public import Vegas.Compile.BindingReveal

@@ -2,6 +2,7 @@ module
 
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
+public import Vegas.Compile.PublicationPolicy
 public import Vegas.Game.RevealClosureSimulation
 public import Vegas.Game.ConcurrentRevealForfeit
 public import Vegas.Game.RevealServiceEffectiveOutcomeLaw
@@ -60,7 +61,8 @@ theorem concurrentConfigPayoff_congr (setup : Setup (Player := Player) (L := L))
 theorem concurrentRankedRead_terminal (setup : Setup (Player := Player) (L := L))
     (config : setup.revealRelaxedGraph.Config) (terminal :
       config.cut.Terminal) :
-    concurrentRankedRead setup config = some (setup.concurrentReadout ⟨config, terminal⟩) := by
+    concurrentRankedRead setup config = some ((setup.graphReadout setup.revealDependencies)
+        ⟨config, terminal⟩) := by
   unfold concurrentRankedRead
   rw [ite_eq_left terminal]
   have storeEq : (rankedConfig (graph := setup.revealRelaxedGraph) config terminal).store =
@@ -83,7 +85,8 @@ theorem concurrentConfigPayoff_terminal (setup : Setup (Player := Player) (L := 
     (config : setup.revealRelaxedGraph.Config) (terminal :
       config.cut.Terminal) :
     concurrentConfigPayoff setup parameter utility forfeit config =
-      setup.concurrentForfeitPayoff parameter utility forfeit ⟨config, terminal⟩ := by
+      setup.graphForfeitPayoff setup.revealDependencies parameter utility forfeit ⟨config,
+          terminal⟩ := by
   unfold concurrentConfigPayoff concurrentOutcome
   rw [concurrentRankedRead_terminal setup config terminal]
   rfl
@@ -115,9 +118,9 @@ theorem play_payoff_eq_lastRun (setup : Setup (Player := Player) (L := L)) {Para
     (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ) (forfeit : ℝ)
     (who : Player) (profile : setup.revealRelaxedGraph.BehavioralProfile) :
-    ((setup.revealRelaxedGraph.gameForm setup.concurrentInputs
+    ((setup.revealRelaxedGraph.gameForm (setup.graphInputs setup.revealDependencies)
         (setup.revealRelaxedGraph.lastScheduler who)).play profile).map
-      (setup.concurrentForfeitPayoff parameter utility forfeit) =
+      (setup.graphForfeitPayoff setup.revealDependencies parameter utility forfeit) =
     (serviceInitialLaw setup setup.revealDependencies).bind fun state =>
       (lastRun profile who state.config).map
         (concurrentConfigPayoff setup parameter utility forfeit) := by
@@ -128,7 +131,7 @@ theorem play_payoff_eq_lastRun (setup : Setup (Player := Player) (L := L)) {Para
   apply bind_congr_on_support _
   intro initial _
   simp only [Function.comp_apply]
-  have payoffs : setup.concurrentForfeitPayoff parameter utility forfeit =
+  have payoffs : setup.graphForfeitPayoff setup.revealDependencies parameter utility forfeit =
       concurrentConfigPayoff setup parameter utility forfeit ∘ Subtype.val := by
     funext outcome
     exact (concurrentConfigPayoff_terminal setup parameter utility forfeit outcome.1
@@ -182,10 +185,10 @@ theorem honest_play_payoff_law (setup : Setup (Player := Player) (L := L)) {Para
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ) (forfeit : ℝ)
     (source : BehavioralProfile setup.program)
     (disclosing : ∀ who, Disclosing setup.program (source who)) (who : Player) :
-    ((setup.revealRelaxedGraph.gameForm setup.concurrentInputs
+    ((setup.revealRelaxedGraph.gameForm (setup.graphInputs setup.revealDependencies)
         (setup.revealRelaxedGraph.lastScheduler who)).play
           (concurrentReference setup source)).map
-      (setup.concurrentForfeitPayoff parameter utility forfeit) =
+      (setup.graphForfeitPayoff setup.revealDependencies parameter utility forfeit) =
     (setup.run source).map fun final =>
       concurrentStatePayoff setup parameter utility forfeit (final.state, final.defaults) := by
   rw [play_payoff_eq_lastRun]
@@ -449,13 +452,14 @@ theorem concurrentEffectiveClients_deviation_bound (setup : Setup (Player := Pla
           final.application.config) := by
     rw [extendedExpectedUtility_map]
   have viaGame (profile : G.BehavioralProfile) :
-      extendedExpectedUtility (setup.concurrentForfeitPayoff parameter utility forfeit) who
-        ((setup.revealRelaxedGraph.gameForm setup.concurrentInputs
+      extendedExpectedUtility (setup.graphForfeitPayoff setup.revealDependencies parameter utility
+          forfeit) who
+        ((setup.revealRelaxedGraph.gameForm (setup.graphInputs setup.revealDependencies)
           (setup.revealRelaxedGraph.lastScheduler who)).play profile) =
       extendedExpectedUtility (fun pay player => pay player) who
-        (((setup.revealRelaxedGraph.gameForm setup.concurrentInputs
+        (((setup.revealRelaxedGraph.gameForm (setup.graphInputs setup.revealDependencies)
           (setup.revealRelaxedGraph.lastScheduler who)).play profile).map
-            (setup.concurrentForfeitPayoff parameter utility forfeit)) := by
+            (setup.graphForfeitPayoff setup.revealDependencies parameter utility forfeit)) := by
     rw [extendedExpectedUtility_map]
   rw [viaPayoffs, viaPayoffs, deviationLaw,
     ledger_honest_payoff_law setup parameter utility forfeit duration leaks contract timely source

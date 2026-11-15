@@ -2,7 +2,7 @@ module
 
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-public import Vegas.Source.Disclosure
+public import Vegas.Source.BindingSubmission
 
 @[expose] public section
 
@@ -41,6 +41,29 @@ def Honest {who : Player} : {Γ : SourceCtx Player L} → {O : Finset VarId} →
         ∃ value, choice = some (.success value)) ∧ Honest next policy.2
   | _, _, .reveal _ _ _ _ _ _ next, policy =>
       (∀ own view active, false ∉ (policy.1 own view active).support) ∧ Honest next policy.2
+
+/-- Honest policies never refuse an active disclosure. -/
+theorem Honest.disclosing {who : Player} :
+    {Γ : SourceCtx Player L} → {O : Finset VarId} →
+    (program : SourceProgram Player L Γ O) → (policy : BehavioralPolicy who program) →
+    Honest program policy → Disclosing program policy
+  | _, _, .ret _, _, _ => trivial
+  | _, _, .sample _ _ _ next, policy, honest => disclosing next policy honest
+  | _, _, .commit _ _ _ _ next, policy, honest => disclosing next policy.2 honest.2
+  | _, _, .reveal _ _ _ _ _ _ next, policy, honest =>
+      ⟨honest.1, disclosing next policy.2 honest.2⟩
+
+theorem Honest.submitsBindings {who : Player} :
+    {Γ : SourceCtx Player L} → {O : Finset VarId} → (program : SourceProgram Player L Γ O) →
+    (policy : BehavioralPolicy who program) → Honest program policy → SubmitsBindings program policy
+  | _, _, .ret _, _, _ => trivial
+  | _, _, .sample _ _ _ next, policy, honest => submitsBindings next policy honest
+  | _, _, .commit _ _ _ _ next, policy, honest => by
+      refine ⟨?_, submitsBindings next policy.2 honest.2⟩
+      intro own view active omitted
+      obtain ⟨value, impossible⟩ := honest.1 own view active none omitted
+      cases impossible
+  | _, _, .reveal _ _ _ _ _ _ next, policy, honest => submitsBindings next policy.2 honest.2
 
 /-- No cell records a failure: every binding holds a value, and every
 publication carries one. -/

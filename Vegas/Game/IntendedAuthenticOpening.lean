@@ -3,7 +3,7 @@ module
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 public import Vegas.Source.AuthenticOpening
-public import Vegas.Game.IntendedOpeningExtension
+public import Vegas.Game.IntendedSourceProfile
 public import Vegas.Game.IntendedPreservation
 
 @[expose] public section
@@ -31,43 +31,13 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
 
-/-- An intended profile read as a law of source choices at every source view. -/
-def intendedSourceProfile (intended : ∀ who, setup.intendedModel.BehavioralPolicy who) :
-    ∀ who, (setup.informationModel (CommitmentInterface.values setup.program)).BehavioralPolicy
-      who :=
-  fun who info => (intended who info).map
-    ((setup.intendedRestriction (CommitmentInterface.values setup.program)).choice who info)
-
-/-- The intended source profile never refuses a disclosure. -/
-theorem intendedSourceProfile_notRefusal
-    (intended : ∀ who, setup.intendedModel.BehavioralPolicy who) (who : Player)
-    (info : setup.ProtocolView who) :
-    ∀ choice ∈ (setup.intendedSourceProfile intended who info).support,
-      NotRefusal choice.1 := by
-  intro choice member
-  obtain ⟨intendedChoice, _, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp member
-  have legal := intendedChoice.2
-  change intendedChoice.1 ∈ setup.intendedMenu who info at legal
-  change NotRefusal intendedChoice.1
-  cases info with
-  | none =>
-      change intendedChoice.1 = none at legal
-      rw [legal]
-      exact fun _ _ => nofun
-  | some view =>
-      change ProtocolView.intendedMenu who setup.program view intendedChoice.1 at legal
-      cases chosen : intendedChoice.1 with
-      | none => exact fun _ _ => nofun
-      | some action =>
-          rw [chosen] at legal
-          exact ProtocolView.intendedAvailable_notRefusal who setup.program view action legal.2
-
 /-- **The intended authentic opening.** The intended profile's source policies,
 opening exactly their effective disclosures. -/
 def intendedOpeningProfile (intended : ∀ who, setup.intendedModel.BehavioralPolicy who) :
     BehavioralProfile setup.program := fun who =>
   (setup.decodeBehavioralProfile (CommitmentInterface.values setup.program)
-    (setup.intendedSourceProfile intended) who).authenticOpening setup.program
+    (setup.intendedSourceProfile (CommitmentInterface.values setup.program) intended)
+      who).authenticOpening setup.program
 
 theorem intendedOpeningProfile_admitted
     (intended : ∀ who, setup.intendedModel.BehavioralPolicy who) (who : Player) :
@@ -75,7 +45,7 @@ theorem intendedOpeningProfile_admitted
       (CommitmentInterface.values setup.program) :=
   BehavioralPolicy.admitted_authenticOpening _ _ _
     ((setup.behavioralPolicyEquiv (CommitmentInterface.values setup.program) who).symm
-      (setup.intendedSourceProfile intended who)).2
+      (setup.intendedSourceProfile (CommitmentInterface.values setup.program) intended who)).2
 
 /-- Every state of the intended game carries the program's registry and
 publication status. -/
@@ -113,7 +83,7 @@ theorem intendedOpeningProfile_extends (wellFormed : setup.WellFormed)
   change setup.toProtocolBehavioralPolicy (CommitmentInterface.values setup.program) who
       (setup.intendedOpeningProfile intended who)
       (setup.intendedOpeningProfile_admitted intended who) info =
-    setup.intendedSourceProfile intended who info
+    setup.intendedSourceProfile (CommitmentInterface.values setup.program) intended who info
   obtain ⟨⟨history, infoEq⟩, -, action, offered⟩ := occurs
   have observed : setup.intendedModel.infoOf who history.trace =
       setup.protocolObserve who history.state := by
@@ -138,7 +108,7 @@ theorem intendedOpeningProfile_extends (wellFormed : setup.WellFormed)
           (setup.intendedOpeningProfile intended who)
           (setup.intendedOpeningProfile_admitted intended who)
           (some (ProtocolState.observe who setup.program state)) =
-        setup.intendedSourceProfile intended who
+        setup.intendedSourceProfile (CommitmentInterface.values setup.program) intended who
           (some (ProtocolState.observe who setup.program state))
       apply pmf_map_injective Subtype.val_injective
       rw [setup.toProtocolBehavioralPolicy_map_val]
@@ -146,10 +116,11 @@ theorem intendedOpeningProfile_extends (wellFormed : setup.WellFormed)
           (ProtocolState.observe who setup.program state) = _
       unfold intendedOpeningProfile
       have disclosing : Disclosing setup.program (setup.decodeBehavioralProfile
-          (CommitmentInterface.values setup.program) (setup.intendedSourceProfile intended)
+          (CommitmentInterface.values setup.program) (setup.intendedSourceProfile
+            (CommitmentInterface.values setup.program) intended)
           who) :=
-        BehavioralPolicy.disclosing_fromProtocol setup.program _ _
-          (fun view => setup.intendedSourceProfile_notRefusal intended who (some view))
+        setup.intendedSourceProfile_disclosing (CommitmentInterface.values setup.program)
+          intended who
       rw [BehavioralPolicy.protocolAction_authenticOpening setup.program _ disclosing
         state staticState intendedState]
       exact BehavioralPolicy.protocolAction_fromProtocol setup.program _ _ _

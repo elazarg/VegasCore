@@ -2,6 +2,7 @@ module
 
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
+public import Vegas.Compile.PublicationPolicy
 public import Vegas.Game.RevealServiceEffectiveHonestLaw
 public import Vegas.Game.RevealServiceOutcomeLaw
 

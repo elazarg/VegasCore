@@ -80,6 +80,11 @@ jobs:
           build-args: "--wfail"
       # docgen-action builds any existing `homepage` folder as a Jekyll site.
       # `docs/` holds design notes, not a site, so the API docs get their own.
+      # Bound the native ordinary-worker baseline and each thread's stack reservation.
+      # Awaited jobs can create extra workers; this is not a hard process cap.
       - uses: leanprover-community/docgen-action@56dff2bb89f3e9b8c1b6d5c8410362c19de2d904 # v1
+        env:
+          LEAN_NUM_THREADS: "1"
+          LEAN_STACK_SIZE_KB: "65536"
         with:
           homepage: site

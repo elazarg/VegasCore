@@ -57,9 +57,13 @@ The [concurrent-reveal preservation theorem](../Vegas/Game/ConcurrentRevealPrese
 uses the same native application with reveal-relaxed dependencies. Against
 arbitrary native policies, effective-opening clients preserve intended Nash
 equilibrium under the forfeit, with the complete source-configuration/payoff
-law and no defaults or failed reveals. Its graph counterpart quantifies over
-actual scheduling choices between independent reveals; neither result asserts
-concurrent SE preservation.
+law and no defaults or failed reveals. The dependency-parametric graph result
+in [SourcePrefixForfeit](../Vegas/Game/SourcePrefixForfeit.lean) covers both
+independent bindings and independent reveals, uniformly over dependency choices
+retaining the required public barriers. It uses source-prefix clients that
+always submit bindings and disclose active reveals; deviations retain their
+actual observations. Native concurrent-binding and concurrent SE preservation
+remain open.
 The [physical deviation law](../Vegas/Game/AsyncDeviationReadout.lean)
 backtranslates every raw unilateral policy against first-turn clients to one
 behavioral source policy with the same typed-state/public-default law. Its

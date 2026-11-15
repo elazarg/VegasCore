@@ -538,15 +538,17 @@ theorem asIfHonest_bind_step_eq_behavioralStateStep [Fintype Player]
       (ProtocolState.observe player setup.program point) = some who := fun player =>
     (ProtocolState.actor_observe setup.program point player who).trans actsHere
   have disclosing : Disclosing setup.program (setup.decodeBehavioralProfile
-      (CommitmentInterface.values setup.program) (setup.intendedSourceProfile source.strategy)
+      (CommitmentInterface.values setup.program) (setup.intendedSourceProfile
+        (CommitmentInterface.values setup.program) source.strategy)
       who) :=
-    BehavioralPolicy.disclosing_fromProtocol setup.program _ _
-      (fun view => setup.intendedSourceProfile_notRefusal source.strategy who (some view))
+    setup.intendedSourceProfile_disclosing (CommitmentInterface.values setup.program)
+      source.strategy who
   have actionLaw : (setup.intendedOpeningProfile source.strategy who).protocolAction
       setup.program (ProtocolState.observe who setup.program point) =
       (source.strategy who (setup.protocolObserve who (some point))).map Subtype.val := by
     change (((setup.decodeBehavioralProfile (CommitmentInterface.values setup.program)
-      (setup.intendedSourceProfile source.strategy) who).authenticOpening
+      (setup.intendedSourceProfile (CommitmentInterface.values setup.program) source.strategy)
+        who).authenticOpening
         setup.program).protocolAction setup.program _) = _
     have static := decodeSourcePrefix?_staticAt rank setup.program
       (ContextRefs.initial setup.context (outputLayout setup.program)) []

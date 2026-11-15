@@ -40,6 +40,7 @@ public import GameTheoryExtensions.Analysis.Protocol.UniformPolicyLimit
 public import GameTheoryExtensions.Analysis.Protocol.UtilityLinearity
 public import GameTheoryExtensions.Analysis.QuasilinearBounds
 public import GameTheoryExtensions.Analysis.QuasilinearSettlement
+public import GameTheoryExtensions.Analysis.UtilityComparison
 public import GameTheoryExtensions.Math.FiniteIntervalBounds
 public import GameTheoryExtensions.Math.Probability.ActionSplitting
 public import GameTheoryExtensions.Math.Probability.AffineDecorrelation

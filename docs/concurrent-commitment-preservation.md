@@ -1,12 +1,10 @@
 # Concurrent commitment preservation
 
-This is the proof design for intended Nash preservation. The dependency and
-prescribed-policy scheduling lemmas are checked in
-[DependencyRelaxation](../Vegas/EventGraph/DependencyRelaxation.lean) and
-[PrefixPolicy](../Vegas/EventGraph/PrefixPolicy.lean). The equilibrium and native
-runtime statements below remain proof obligations; they are not paper claims.
+The graph result is checked in
+[SourcePrefixForfeit](../Vegas/Game/SourcePrefixForfeit.lean) and pinned in
+[Paper.lean](../Paper.lean). Native concurrent-binding preservation remains open.
 
-## Target
+## Checked graph result
 
 Retain the source program, information model, initial distribution, payoff and
 native application. Permit independent bindings of different owners and
@@ -14,13 +12,18 @@ independent reveals to complete in either order. Retain public barriers, causal
 reads and the order of each owner's bindings. No independence assumption on
 private inputs is needed.
 
-For every intended approximate Nash equilibrium, construct prescribed clients
-with the same approximation error and the same joint law of the full terminal
-source configuration and payoff vector. Their supported outcomes have no
+For every intended approximate Nash equilibrium and every supplied disclosing
+extension under the full commitment interface, its prescribed graph clients have
+the same approximation error and the same joint law of the full terminal source
+configuration and payoff vector. Their supported outcomes have no
 defaults or failed reveals. Deviations retain the full chronological observation
 and all available actions. Use the existing fixed-exit utility, or the existing
-forfeit at least as large as the utility spread. Native transport should use
-the existing service and timeliness contracts.
+forfeit at least as large as the utility spread. The theorem is uniform over
+valid dependencies satisfying `Vegas.EventGraph.RevealRelaxedOrdered`, including
+the source information order with both independent-edge relaxations applied.
+The fixed-exit theorem is in [SourcePrefixNash](../Vegas/Game/SourcePrefixNash.lean).
+Native transport must still be proved under the existing service and timeliness
+contracts.
 
 The target concerns intended equilibrium preservation. Arbitrary source profiles
 can condition on an earlier commitment's public omission, which an early
@@ -80,10 +83,20 @@ This transfers the deviation bound without an additional economic assumption.
 
 The native application already has hidden-binding inclusion and prepared-handle
 opacity lemmas. Canonical commitment packets do not expose the chosen value;
-same-owner order fixes the prepared serial at each binding. The required new
-operational proof is a coupling for a whole private-binding block under the
-existing service contract. Treating each binding as the sole ready event would
-restore serialization and would not establish the target.
+same-owner order fixes the prepared serial at each binding. The checked
+[BindingWindowTransport](../Vegas/Game/BindingWindowTransport.lean) couples a
+whole binding window while keeping other owners active, including their private
+binding completions. Its comparison uses the focal player's native traffic and
+turn/submission counters; honest private inputs and kernels may vary jointly.
+It is an operational component, not an end-to-end preservation theorem.
+
+The remaining native obligations are to factor these stopped native laws through
+the source-visible decision, remove intermediate counter premises using actual
+traffic, and compose decisions across partially completed private-binding runs.
+Intermediate configurations need not be source prefixes. Treating each binding
+as the sole ready event would restore serialization and would not establish the
+target. The accepted-opening discipline from native reveal preservation must
+also be retained when composing binding and reveal windows.
 
 Exact sequential assessment replay and concurrent sequential equilibrium are
 separate obligations. A native prefix can contain a later binding before an
