@@ -39,9 +39,9 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- Operational steps of one profile sequence are operational steps of every
@@ -208,7 +208,8 @@ theorem onePacket_beliefConverges (wellFormed : setup.WellFormed)
     (forced : forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks) (initialLaw
       setup) horizon
       scheduler who site.1)
-    {event : (graph setup).EventId} (turn : view.application.publicView.ownTurn? who = some event)
+    {event : setup.informationGraph.EventId} (turn : view.application.publicView.ownTurn? who =
+      some event)
     (inputs : OnePacketBeliefInputs setup timeouts leaks bounds horizon scheduler sequence
       targetSequence
       site sourceSite decision projected) :
@@ -463,7 +464,7 @@ def assembledOperationalSteps (wellFormed : setup.WellFormed)
     (scaleEq : ∀ n, scale n = trembleScale
       (combinedFloor setup timeouts leaks bounds horizon scheduler (sequence n)) depth n)
     (covers : bounds.CoversOutputValues)
-    (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
+    (capacity : ∀ who, bindingEventCount setup.informationGraph who < bounds.candidateCount)
     {slots : Nat}
     (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
       horizon scheduler slots p))
@@ -505,7 +506,7 @@ def OnePacketBeliefInputs.ofCertificate (wellFormed : setup.WellFormed)
     (scaleEq : ∀ n, scale n = trembleScale
       (combinedFloor setup timeouts leaks bounds horizon scheduler (sequence n)) depth n)
     (covers : bounds.CoversOutputValues)
-    (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
+    (capacity : ∀ who, bindingEventCount setup.informationGraph who < bounds.candidateCount)
     {slots : Nat}
     {weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
       horizon scheduler slots p)}

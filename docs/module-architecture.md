@@ -26,8 +26,11 @@ it does not reproduce their state updates in another interpreter.
 
 The [absorbing-default semantics](source-absorbing-failure.md) checks that this source
 executor and the graph executor preserve full configurations under compilation.
-The compiler generates sequential dependencies to retain public default timing;
-its scheduling proof uses the unique ready event. The sole ledger application
+The compiler first constructs declared dataflow dependencies, then adds the
+source information order to retain public completion and default timing. The
+full-source scheduling proof uses the information graph's unique ready event.
+The [dependency design](event-graph-dependencies.md) separates these choices
+from edge relaxation and actor service. The sole ledger application
 derives default control from the graph configuration and performs bounded
 automatic completion. Its raw transitions refine finite supported graph paths;
 initialized histories retain reachability, cells, deadlines and quiescence.

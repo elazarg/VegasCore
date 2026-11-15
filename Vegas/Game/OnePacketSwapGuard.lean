@@ -43,7 +43,8 @@ def commitmentRawPair : VarId × CellTy Player L → Option (Raw L × Raw L)
 
 open Classical in
 /-- **The handle pairs between two points at a table of accepted handles.** -/
-def betweenHandlePairs (table : AcceptedHandles (graph setup)) (handle : Handle (graph setup)) :
+def betweenHandlePairs (table : AcceptedHandles setup.informationGraph) (handle : Handle
+  setup.informationGraph) :
     Option (Raw L × Raw L) :=
   if accepted : ∃ field, table field = some handle then
     commitmentRawPair setup first second (fieldCell setup accepted.choose)
@@ -52,16 +53,16 @@ def betweenHandlePairs (table : AcceptedHandles (graph setup)) (handle : Handle 
 end Pairs
 
 /-- A table of accepted handles is injective. -/
-def AcceptedInjective (table : AcceptedHandles (graph setup)) : Prop :=
+def AcceptedInjective (table : AcceptedHandles setup.informationGraph) : Prop :=
   ∀ left right handle, table left = some handle → table right = some handle → left = right
 
 variable {first second : ProtocolState setup.program}
   {publicAgree : PublicCellsAgree setup first second}
   {succeed : CommitmentCellsSucceed setup first second}
 
-theorem betweenHandlePairs_of_accepted {table : AcceptedHandles (graph setup)}
-    (injective : AcceptedInjective table) {field : (graph setup).Field}
-    {handle : Handle (graph setup)} (accepted : table field = some handle) :
+theorem betweenHandlePairs_of_accepted {table : AcceptedHandles setup.informationGraph}
+    (injective : AcceptedInjective table) {field : setup.informationGraph.Field}
+    {handle : Handle setup.informationGraph} (accepted : table field = some handle) :
     betweenHandlePairs setup first second table handle =
       commitmentRawPair setup first second (fieldCell setup field) := by
   unfold betweenHandlePairs
@@ -69,15 +70,16 @@ theorem betweenHandlePairs_of_accepted {table : AcceptedHandles (graph setup)}
   rw [dite_eq_left_of_eq_true (eq_true found),
     injective _ _ _ found.choose_spec accepted]
 
-theorem betweenPair_eq {field : (graph setup).Field} {name : VarId} {kind : CellTy Player L}
+theorem betweenPair_eq {field : setup.informationGraph.Field} {name : VarId} {kind : CellTy Player
+  L}
     (cell : fieldCell setup field = (name, kind))
-    (layoutEq : (graph setup).layout field = cellField kind) :
+    (layoutEq : setup.informationGraph.layout field = cellField kind) :
     betweenPair setup first second field = transportPair layoutEq.symm
       (cellPair (ProtocolState.cell? setup.program first name kind)
         (ProtocolState.cell? setup.program second name kind)) := by
   unfold betweenPair
   have general : ∀ (found : VarId × CellTy Player L)
-      (fieldEq : (graph setup).layout field = cellField found.2), found = (name, kind) →
+      (fieldEq : setup.informationGraph.layout field = cellField found.2), found = (name, kind) →
       cellPairAt setup first second found fieldEq = transportPair layoutEq.symm
         (cellPair (ProtocolState.cell? setup.program first name kind)
           (ProtocolState.cell? setup.program second name kind)) := by
@@ -86,9 +88,9 @@ theorem betweenPair_eq {field : (graph setup).Field} {name : VarId} {kind : Cell
   exact general _ _ cell
 
 /-- **Accepted handles are compatible with the swap between two points.** -/
-theorem bindCompatible_betweenHandlePairs {table : AcceptedHandles (graph setup)}
-    (injective : AcceptedInjective table) {event : (graph setup).EventId}
-    {handle : Handle (graph setup)} (accepted : table (.inr event) = some handle) :
+theorem bindCompatible_betweenHandlePairs {table : AcceptedHandles setup.informationGraph}
+    (injective : AcceptedInjective table) {event : setup.informationGraph.EventId}
+    {handle : Handle setup.informationGraph} (accepted : table (.inr event) = some handle) :
     BindCompatible (HiddenSwap.ofPairs (betweenPairs publicAgree succeed)
       (betweenHandlePairs setup first second table)) event handle := by
   intro owner payload outputEq candidate
@@ -153,7 +155,7 @@ theorem bindCompatible_betweenHandlePairs {table : AcceptedHandles (graph setup)
                       handlePair owner payload outputEq candidate
 
 /-- A swap pair at a field whose cells agree at both points is absent. -/
-theorem betweenPair_eq_none_of_agree {field : (graph setup).Field} {name : VarId}
+theorem betweenPair_eq_none_of_agree {field : setup.informationGraph.Field} {name : VarId}
     {kind : CellTy Player L} (cell : fieldCell setup field = (name, kind))
     (agree : ProtocolState.cell? setup.program first name kind =
       ProtocolState.cell? setup.program second name kind) :
@@ -178,12 +180,13 @@ theorem commitmentRawPair_eq_none_of_agree {name : VarId} {owner : Player} {payl
   | some value => cases value <;> simp
 
 /-- **The swap between two points fixes every reveal of a binding they agree on.** -/
-theorem revealFixed_between {table : AcceptedHandles (graph setup)}
-    (injective : AcceptedInjective table) (state : EventGraphRuntime.State (graph setup))
+theorem revealFixed_between {table : AcceptedHandles setup.informationGraph}
+    (injective : AcceptedInjective table) (state : EventGraphRuntime.State setup.informationGraph)
     (kept : ∀ field handle, state.accepted field = some handle → table field = some handle)
-    (event : (graph setup).EventId)
+    (event : setup.informationGraph.EventId)
     (agree : ∀ owner payload binding checks outputEq codeEq,
-      nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq →
+      nodeView setup.informationGraph event = .resolve owner payload binding checks outputEq codeEq
+        →
       ProtocolState.cell? setup.program first (fieldCell setup binding.field).1
           (.commitment owner payload) =
         ProtocolState.cell? setup.program second (fieldCell setup binding.field).1
@@ -191,7 +194,7 @@ theorem revealFixed_between {table : AcceptedHandles (graph setup)}
     RevealFixed (HiddenSwap.ofPairs (betweenPairs publicAgree succeed)
       (betweenHandlePairs setup first second table)) state event := by
   unfold RevealFixed
-  cases view : nodeView (graph setup) event with
+  cases view : nodeView setup.informationGraph event with
   | bind | sample => trivial
   | resolve owner payload binding checks outputEq codeEq =>
       have same := agree owner payload binding checks outputEq codeEq view

@@ -63,8 +63,8 @@ end Scale
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
-  (timeouts : EventTimeouts (graph setup))
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+  (timeouts : EventTimeouts setup.informationGraph)
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
 
 /-- The content factor of a response is at most one. -/
 theorem contentFactor_le_one (assessment : setup.intendedModel.BehavioralAssessment)
@@ -82,7 +82,7 @@ theorem contentFactor_silence (assessment : setup.intendedModel.BehavioralAssess
     (who : Player) (before after : (application setup timeouts leaks).Execution) :
     contentFactor setup timeouts leaks assessment who before after ⟨none⟩ = 1 := rfl
 
-variable [Fintype Player] (bounds : MessageBounds (graph setup)) (horizon : Nat)
+variable [Fintype Player] (bounds : MessageBounds setup.informationGraph) (horizon : Nat)
   (scheduler : (application setup timeouts leaks).Scheduler)
 
 /-- The content factors of the responses the one-packet menu offers `who`

@@ -25,9 +25,9 @@ open SourceProgram GameTheory.Protocol Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] (setup : Setup (Player := Player) (L := L))
-  (timeouts : EventTimeouts (graph setup))
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-  (bounds : MessageBounds (graph setup))
+  (timeouts : EventTimeouts setup.informationGraph)
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
+  (bounds : MessageBounds setup.informationGraph)
 
 local notation "N" => application setup timeouts leaks
 local notation "nativeMenu" => MessageBounds.onePacketMenu timeouts leaks bounds
@@ -35,13 +35,13 @@ local notation "nativeMenu" => MessageBounds.onePacketMenu timeouts leaks bounds
 /-- Every fresh call settles at every actual clear native counted history under
 pointwise counted inclusion. Service is instantiated only at genuine counted prefixes. -/
 theorem settlesFreshCalls_counted_clear_history
-    (horizon : Nat) (scheduler : (N).Scheduler) (bound : (graph setup).EventId → Nat)
+    (horizon : Nat) (scheduler : (N).Scheduler) (bound : setup.informationGraph.EventId → Nat)
     (inclusion : ∀ control : (N).Control,
       ((nativeMenu).protocol (initialLaw setup) horizon scheduler).Trace (some control) →
       control.execution.application.config.defaulted = ∅ →
       ProtectedInclusionAt timeouts leaks control.execution bound)
-    (owner : Player) (event : (graph setup).EventId)
-    (owned : (graph setup).actor? event = some owner) :
+    (owner : Player) (event : setup.informationGraph.EventId)
+    (owned : setup.informationGraph.actor? event = some owner) :
     ∀ {state}
       (_trace : ((nativeMenu).protocol (initialLaw setup) horizon scheduler).Trace state),
       (∀ current, state = some current → current.execution.application.config.defaulted = ∅) →
@@ -79,20 +79,21 @@ theorem settlesFreshCalls_counted_clear_history
                   obtain ⟨next, supported, rfl⟩ := PMF.support_map .. ▸ moved
                   have atPrefix := inclusion ⟨remaining + 1, none, execution⟩ prior
                     (beforeClear _ rfl)
-                  exact SettlesFreshCalls.environment setup leaks owner event owned
+                  exact SettlesFreshCalls.environment setup leaks owner event
+                    (setup.informationGraph.sequentialize_solitary event).ownerSolitary owned
                     remaining
                     execution atPrefix rawPrior valid command next supported
 
 /-- One command from an actual clear counted prefix preserves settlement even
 when this command creates the first public failure; no service is imposed after it. -/
 theorem settlesFreshCalls_counted_clear_environment
-    (horizon : Nat) (scheduler : (N).Scheduler) (bound : (graph setup).EventId → Nat)
+    (horizon : Nat) (scheduler : (N).Scheduler) (bound : setup.informationGraph.EventId → Nat)
     (inclusion : ∀ control : (N).Control,
       ((nativeMenu).protocol (initialLaw setup) horizon scheduler).Trace (some control) →
       control.execution.application.config.defaulted = ∅ →
       ProtectedInclusionAt timeouts leaks control.execution bound)
-    (owner : Player) (event : (graph setup).EventId)
-    (owned : (graph setup).actor? event = some owner)
+    (owner : Player) (event : setup.informationGraph.EventId)
+    (owned : setup.informationGraph.actor? event = some owner)
     (remaining : Nat) (execution : (N).Execution)
     (prior : ((nativeMenu).protocol (initialLaw setup) horizon scheduler).Trace
         (some ⟨remaining + 1, none, execution⟩))
@@ -107,13 +108,14 @@ theorem settlesFreshCalls_counted_clear_environment
   have atPrefix := inclusion ⟨remaining + 1, none, execution⟩ prior clear
   have rawPrior := (nativeMenu).toRawTrace (initialLaw setup) horizon
     scheduler prior
-  exact SettlesFreshCalls.environment setup leaks owner event owned remaining execution
+  exact SettlesFreshCalls.environment setup leaks owner event
+    (setup.informationGraph.sequentialize_solitary event).ownerSolitary owned remaining execution
     atPrefix rawPrior valid command next reached
 
 /-- Actual clear counted prefixes carry accepting receipts for every completed
 protected fresh call, and once its original strict protected window has elapsed. -/
 theorem prescribed_packet_counted_clear_settles
-    (horizon : Nat) (scheduler : (N).Scheduler) (bound : (graph setup).EventId → Nat)
+    (horizon : Nat) (scheduler : (N).Scheduler) (bound : setup.informationGraph.EventId → Nat)
     (inclusion : ∀ control : (N).Control,
       ((nativeMenu).protocol (initialLaw setup) horizon scheduler).Trace (some control) →
       control.execution.application.config.defaulted = ∅ →
@@ -121,10 +123,10 @@ theorem prescribed_packet_counted_clear_settles
     (control : (N).Control)
     (trace : ((nativeMenu).protocol (initialLaw setup) horizon scheduler).Trace (some control))
     (clear : control.execution.application.config.defaulted = ∅)
-    (event : (graph setup).EventId) (owner : Player)
-    (owned : (graph setup).actor? event = some owner)
+    (event : setup.informationGraph.EventId) (owner : Player)
+    (owned : setup.informationGraph.actor? event = some owner)
     (earlier later : List (N).PlayerEntry) (entry : (N).PlayerEntry)
-    (message : Message Player (WitnessedPacket (graph setup)))
+    (message : Message Player (WitnessedPacket setup.informationGraph))
     (split : control.execution.logs owner = earlier ++ entry :: later)
     (call : FreshCall setup leaks owner event bound entry message)
     (sole : ∀ other ∈ earlier ++ later,

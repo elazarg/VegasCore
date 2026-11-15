@@ -28,8 +28,8 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
 
 /-- Laws pushed along maps agreeing on the support agree. -/
 private theorem map_congr_support {α β : Type} (law : PMF α) {f g : α → β}
@@ -55,7 +55,7 @@ private theorem eq_pure_of_support_subset {α : Type} (law : PMF α) (a : α)
       rw [support]
       exact same)]
 
-variable [Fintype Player] (bounds : MessageBounds (graph setup))
+variable [Fintype Player] (bounds : MessageBounds setup.informationGraph)
 
 variable (setup timeouts leaks) in
 /-- **The canonical disclosure.** At a pending reveal of a player, its
@@ -64,15 +64,17 @@ the one-packet menu offers is that disclosure. -/
 def DisclosureCanonical (who : Player) (past : List (application setup timeouts leaks).PlayerEntry)
     (view : (application setup timeouts leaks).PlayerView) : Prop :=
   ∀ event, pendingEvent setup timeouts leaks who (some (past, view)) = some event →
-    ∀ owner payload (binding : EventGraph.FieldRef (graph setup).layout (.binding owner payload))
+    ∀ owner payload (binding : EventGraph.FieldRef setup.informationGraph.layout (.binding owner
+      payload))
       checks outputEq codeEq,
-      nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq →
+      nodeView setup.informationGraph event = .resolve owner payload binding checks outputEq codeEq
+        →
       ((canonicalServiceDecision timeouts) leaks who past view event
           (cast (congrArg EventGraph.EventField.Action outputEq.symm) true)).transmission ≠
         none ∧
       ∀ response ∈ bounds.onePacketActions timeouts leaks who past view,
         ∀ material, response.transmission = some material →
-          material.call.packet.event? (graph setup) = some event →
+          material.call.packet.event? setup.informationGraph = some event →
           response = (canonicalServiceDecision timeouts) leaks who past view event
             (cast (congrArg EventGraph.EventField.Action outputEq.symm) true)
 
@@ -87,16 +89,17 @@ theorem onePacket_pendingReveal_masses (assessment : setup.intendedModel.Behavio
     (covers : bounds.CoversOutputValues) {control : (application setup timeouts leaks).Control}
     (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control))
-    (who : Player) (event : (graph setup).EventId)
+    (who : Player) (event : setup.informationGraph.EventId)
     (turn : control.execution.application.publicView.ownTurn? who = some event)
     (unsent : (eventRecorded timeouts) leaks (control.execution.logs who) event = false)
-    {owner : Player} {payload : L.Ty} {binding : EventGraph.FieldRef (graph setup).layout
+    {owner : Player} {payload : L.Ty} {binding : EventGraph.FieldRef setup.informationGraph.layout
       (.binding owner payload)}
-    {checks : List (EventGraph.GuardCheck (graph setup).layout payload)}
-    {outputEq : (graph setup).outputLayout event = .publication payload}
-    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .resolve owner payload binding checks}
-    (node : nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq)
+    {checks : List (EventGraph.GuardCheck setup.informationGraph.layout payload)}
+    {outputEq : setup.informationGraph.outputLayout event = .publication payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .resolve owner payload binding checks}
+    (node : nodeView setup.informationGraph event = .resolve owner payload binding checks outputEq
+      codeEq)
     (canonical : DisclosureCanonical setup timeouts leaks bounds who (control.execution.logs who)
       (control.execution.observe (application setup timeouts leaks) who))
     (response : (application setup timeouts leaks).Action)

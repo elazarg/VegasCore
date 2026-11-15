@@ -3,23 +3,21 @@ module
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 public import Vegas.EventGraph.SchedulerErasure
-public import Vegas.EventGraph.Sequential
+public import Vegas.EventGraph.DependencyRelaxation
 
 @[expose] public section
 
 /-! # Scheduling graphs whose only concurrency is between reveals
 
-Relaxing the reveal dependencies of a totally ordered graph makes exactly the
+Relaxing the reveal dependencies of a totally ordered graph makes only
 independent reveals concurrent: two simultaneously ready events are always
 independent reveals of different owners. A foreign reveal can complete before a
-reveal's own kernel acts, so a profile is scheduler independent only when its
-kernels ignore the observation at publications, for example a profile that
-always opens. Normalizing such a profile makes it ready independent, so its
+reveal's own kernel acts. For a profile whose kernels ignore observations at
+publications, for example one that always opens, normalization gives ready independence. Its
 law of the final store and completion records is the same under every public
 scheduler.
 
-Bindings stay ordered. Concurrent bindings would not be ready independent:
-an omitted binding is public, so a binder scheduled later could react to it.
+Bindings stay ordered in this specialization.
 -/
 
 noncomputable section
@@ -40,18 +38,18 @@ def RevealsOnlyConcurrent : Prop :=
 
 omit [DecidableEq Player] in
 /-- Relaxing the reveal dependencies of a totally ordered graph makes only reveals concurrent. -/
-theorem withMode_concurrentReveals_revealsOnlyConcurrent
+theorem relaxReveals_revealsOnlyConcurrent
     (graph : Vegas.EventGraph Player L)
     (total : ∀ prior event : graph.EventId, prior.val < event.val →
       prior ∈ graph.order.predecessors event) :
-    (graph.withMode .concurrentReveals).RevealsOnlyConcurrent := by
+    (graph.relaxReveals).RevealsOnlyConcurrent := by
   intro cut left right leftReady rightReady different
   have independent (prior event : graph.EventId) (earlier : prior.val < event.val)
       (priorReady : cut.Ready prior) (eventReady : cut.Ready event) :
       graph.IndependentReveals prior event := by
     by_contra dependent
     exact priorReady.1 (eventReady.2
-      ((graph.withMode_concurrentReveals_predecessors prior event).mpr
+      ((graph.relaxReveals_predecessors prior event).mpr
         ⟨total prior event earlier, dependent⟩))
   rcases lt_or_gt_of_ne (Fin.val_ne_of_ne different) with earlier | later
   · exact Or.inl (independent left right earlier leftReady rightReady)

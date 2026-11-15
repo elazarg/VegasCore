@@ -3,6 +3,7 @@ module
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 public import Vegas.EventGraph.BarrierInformation
+public import Vegas.EventGraph.ActorTurns
 
 @[expose] public section
 
@@ -230,6 +231,11 @@ theorem ready_actor_unique (relaxed : graph.RevealRelaxedOrdered)
   rw [otherActor] at otherActor'
   rw [actor] at eventActor'
   exact ownersNe ((Option.some.inj otherActor').symm.trans (Option.some.inj eventActor'))
+
+/-- Reveal-relaxed public barriers give each actor an unambiguous ready turn. -/
+theorem actorSerial (relaxed : graph.RevealRelaxedOrdered) : graph.ActorSerial := by
+  intro _ cut _ _ ready otherReady actor otherActor
+  exact relaxed.ready_actor_unique cut ready otherReady actor otherActor
 
 /-- At a ready strategic event, an output visible to the actor that is not
 independent of the event in either direction is available exactly when its

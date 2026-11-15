@@ -42,8 +42,8 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
 
 variable (setup timeouts leaks) in
 /-- **The own-turn record.** The configuration decodes at a prefix, and every
@@ -58,7 +58,7 @@ def OwnTurnRecord (profile : BehavioralProfile setup.program)
         DecodedHolds (ProtocolState.OwesFailure who setup.program) rank
           execution.application.config
 
-variable [Fintype Player] (bounds : MessageBounds (graph setup))
+variable [Fintype Player] (bounds : MessageBounds setup.informationGraph)
 
 /-- **A one-packet submission is at its owner's turn, or the owner owes.** At a
 history of the one-packet game, every transmitting one-packet response of
@@ -75,7 +75,7 @@ theorem onePacket_submission_atTurn {horizon : Nat}
     (action : (application setup timeouts leaks).Action)
     (member : action ∈ bounds.onePacketActions timeouts leaks who (execution.logs who)
       (execution.observe (application setup timeouts leaks) who))
-    (event : (graph setup).EventId)
+    (event : setup.informationGraph.EventId)
     (submitted : (submittedEvent? timeouts) leaks action = some event) :
     execution.application.publicView.ownTurn? who = some event ∨
       DecodedHolds (ProtocolState.OwesFailure who setup.program) rank
@@ -86,7 +86,7 @@ theorem onePacket_submission_atTurn {horizon : Nat}
   · unfold EventGraphRuntime.submittedEvent? at submitted
     rw [silent] at submitted
     cases submitted
-  have materialNamed : material.call.packet.event? (graph setup) = some event := by
+  have materialNamed : material.call.packet.event? setup.informationGraph = some event := by
     unfold EventGraphRuntime.submittedEvent? at submitted
     rw [transmits] at submitted
     exact submitted
@@ -104,7 +104,7 @@ theorem onePacket_submission_atTurn {horizon : Nat}
   have sender : envelope.sender = who := rfl
   have actor := correct.actor namedEvent
   rw [sender] at actor
-  have issued : ∀ predecessor ∈ (graph setup).order.predecessors named,
+  have issued : ∀ predecessor ∈ setup.informationGraph.order.predecessors named,
       predecessor ∈ execution.application.config.cut.completed := by
     have token : execution.application.publicView.tokenFor envelope.payload.call =
         some ⟨named⟩ := tokenEq
@@ -142,7 +142,7 @@ theorem onePacket_submission_atTurn {horizon : Nat}
     refine PublicView.ownTurn?_of_ownTurn _ who named
       ⟨(execution.application.publicView_eventReady named).mpr ready, actor,
         fun other otherReady _ => ?_⟩
-    exact setup.eventGraph.sequentialize_ready_unique _
+    exact setup.informationGraph.sequentialize_ready_unique _
       ((execution.application.publicView_eventReady other).mp otherReady) ready
 
 /-- **The own-turn record holds along one-packet histories.** At every history
@@ -271,7 +271,7 @@ one-packet game ending between rounds at an execution whose configuration is a
 prefix of `rank`, with every event from `rank` on untouched and a decoding to a
 point of the intended game, ends at a reached boundary: its own submissions
 were made at the owners' turns (`Vegas.onePacket_ownSubmissionsAtTurn`). -/
-theorem reachedBoundary_of_onePacket (bounds : MessageBounds (graph setup))
+theorem reachedBoundary_of_onePacket (bounds : MessageBounds setup.informationGraph)
     {horizon : Nat} {scheduler : (application setup timeouts leaks).Scheduler} {rank : Nat}
     {anchor : (application setup timeouts leaks).Execution}
     (start : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
@@ -279,7 +279,7 @@ theorem reachedBoundary_of_onePacket (bounds : MessageBounds (graph setup))
     (state : start.state = some ⟨horizon - anchor.environmentRecall.length, none, anchor⟩)
     (bounded : anchor.environmentRecall.length ≤ horizon)
     (ordered : anchor.application.config.cut.IsPrefix rank)
-    (untouched : ∀ event : (graph setup).EventId, rank ≤ event.val →
+    (untouched : ∀ event : setup.informationGraph.EventId, rank ≤ event.val →
       Untouched setup leaks event anchor)
     (point : ProtocolState setup.program)
     (decoded : sourceServicePrefix? setup rank anchor.application.config = some point)

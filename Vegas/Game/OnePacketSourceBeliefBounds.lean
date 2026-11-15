@@ -18,9 +18,9 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L] (setup : Setup (Player := Player) (L := L))
-  (timeouts : EventTimeouts (graph setup))
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-  (bounds : MessageBounds (graph setup)) (horizon : Nat)
+  (timeouts : EventTimeouts setup.informationGraph)
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
+  (bounds : MessageBounds setup.informationGraph) (horizon : Nat)
   (scheduler : (application setup timeouts leaks).Scheduler)
   [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
   [Finite setup.intendedProtocol.History]
@@ -50,7 +50,7 @@ theorem source_belief_bounds_of_assembled
       (combinedFloor setup timeouts leaks bounds horizon scheduler (sequence n))
       (2 * horizon + 2) n)
     (covers : bounds.CoversOutputValues) (coversInputs : bounds.CoversInputValues)
-    (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
+    (capacity : ∀ who, bindingEventCount setup.informationGraph who < bounds.candidateCount)
     (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
       horizon scheduler bounds.candidateCount p))
     (target : ℕ → (N).BehavioralAssessment)
@@ -69,7 +69,7 @@ theorem source_belief_bounds_of_assembled
         ∀ {past : List (application setup timeouts leaks).PlayerEntry}
           {view : (application setup timeouts leaks).PlayerView} (atSite : site.1 = some (past,
             view)),
-        ∀ {event : (graph setup).EventId},
+        ∀ {event : setup.informationGraph.EventId},
           view.application.publicView.ownTurn? who = some event →
         ∀ decision : setup.intendedModel.IsDecisionInfo who (projectView setup timeouts leaks who
           site.1),
@@ -85,12 +85,14 @@ theorem source_belief_bounds_of_assembled
       ¬ Vegas.OwingAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler
           ((N).agentAt site) ∧
       ∃ (past : List (application setup timeouts leaks).PlayerEntry)
-        (view : (application setup timeouts leaks).PlayerView) (event : (graph setup).EventId),
+        (view : (application setup timeouts leaks).PlayerView) (event :
+          setup.informationGraph.EventId),
         site.1 = some (past, view) ∧ view.application.publicView.ownTurn? who = some event
   let estimate := fun n who (site : (N).InformationSite who) error =>
     ∀ (past : List (application setup timeouts leaks).PlayerEntry)
       (view : (application setup timeouts leaks).PlayerView) (atSite : site.1 = some (past, view))
-      (event : (graph setup).EventId), view.application.publicView.ownTurn? who = some event →
+      (event : setup.informationGraph.EventId), view.application.publicView.ownTurn? who = some
+        event →
       ∀ decision : setup.intendedModel.IsDecisionInfo who (projectView setup timeouts leaks who
         site.1),
       ∑' point,

@@ -26,9 +26,9 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 variable {Player : Type} [instDecEq : DecidableEq Player] [instFintype : Fintype Player]
   {L : IExpr} [instResult : IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
-  (timeouts : EventTimeouts (Vegas.graph setup))
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-  (bounds : MessageBounds (graph setup)) (horizon : Nat)
+  (timeouts : EventTimeouts setup.informationGraph)
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
+  (bounds : MessageBounds setup.informationGraph) (horizon : Nat)
   (scheduler : (application setup timeouts leaks).Scheduler)
 
 local notation "app" => application setup timeouts leaks

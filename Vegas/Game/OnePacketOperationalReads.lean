@@ -29,8 +29,8 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
   {horizon : Nat} {scheduler : (application setup timeouts leaks).Scheduler}
   {control : (application setup timeouts leaks).Control}
 
@@ -96,10 +96,10 @@ theorem history_eventRecorded_iff
     (trace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace
       (some control))
-    (who : Player) (event : (graph setup).EventId) :
+    (who : Player) (event : setup.informationGraph.EventId) :
     (eventRecorded timeouts) leaks (control.execution.logs who) event = true ↔
       ∃ message ∈ (application setup timeouts leaks).outputs (control.execution.logs who),
-        message.payload.call.event? (graph setup) = some event := by
+        message.payload.call.event? setup.informationGraph = some event := by
   have emitted := (transmissionsEmitted_serviceInvariant (timeouts := timeouts) scheduler).history
     (initialLaw setup)
     horizon (fun _ _ _ _ member => (List.not_mem_nil member).elim) trace
@@ -127,7 +127,7 @@ theorem history_eventRecorded_iff
     refine List.any_eq_true.mpr ⟨entry, entryMember, decide_eq_true ?_⟩
     unfold EventGraphRuntime.submittedEvent?
     rw [sends]
-    change material.call.packet.event? (graph setup) = some event
+    change material.call.packet.event? setup.informationGraph = some event
     rw [← call]
     exact named
 

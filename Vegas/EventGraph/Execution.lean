@@ -73,6 +73,28 @@ def initial (inputs : graph.Inputs) : graph.Config where
   history_nodup := by simp
   history_exact := by simp [EventOrder.Cut.empty]
 
+/-- Every cut has a structurally coherent configuration. No reachability is asserted. -/
+theorem cut_surjective (graph : Vegas.EventGraph Player L) :
+    Function.Surjective (fun config : graph.Config => config.cut) := by
+  intro cut
+  classical
+  let value : (field : EventField Player L) → field.Value
+    | .publicData payload => L.someValue payload
+    | .privateInput _ payload => L.someValue payload
+    | .binding _ _ => .failure
+    | .publication _ => .failure
+  refine ⟨{
+    inputs := fun input => value (graph.inputLayout input)
+    cut := cut
+    outputs := fun event => if event ∈ cut.completed then some (value (graph.outputLayout event))
+      else none
+    output_available := by
+      intro event
+      split_ifs <;> simp_all
+    history := cut.completed.toList.map fun event => ⟨event, none, none⟩
+    history_nodup := by simpa [Function.comp_def] using cut.completed.nodup_toList
+    history_exact := by intro event; simp }, rfl⟩
+
 /-- The combined typed partial store seen by node code. Inputs are always
 available; event outputs are available exactly at completed events. -/
 def store (config : graph.Config) : Store graph.layout

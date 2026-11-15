@@ -19,9 +19,9 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 private theorem recall_subset_at_tracePrefix {before : (application setup timeouts leaks).Control}
@@ -79,7 +79,7 @@ theorem response_atTurn_of_forced_prefix {focal : Player}
     (afterTrace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace
       (some ⟨remaining, none, original.respond (application setup timeouts leaks) owner response⟩))
     (isPrefix : TracePrefix afterTrace history.1.trace)
-    (event : (graph setup).EventId)
+    (event : setup.informationGraph.EventId)
     (submitted : (submittedEvent? timeouts) leaks response = some event) :
     original.application.publicView.ownTurn? owner = some event := by
   let app := application setup timeouts leaks

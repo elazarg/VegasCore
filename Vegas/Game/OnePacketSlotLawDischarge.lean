@@ -83,9 +83,9 @@ section Factors
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  (bounds : MessageBounds (graph setup))
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  (bounds : MessageBounds setup.informationGraph)
 
 open Classical in
 /-- **The factor of the main law**: the as-if-honest factor, and at a late
@@ -163,9 +163,9 @@ end Factors
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
-  (timeouts : EventTimeouts (graph setup))
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-  (bounds : MessageBounds (graph setup)) (horizon : Nat)
+  (timeouts : EventTimeouts setup.informationGraph)
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
+  (bounds : MessageBounds setup.informationGraph) (horizon : Nat)
   (scheduler : (application setup timeouts leaks).Scheduler)
   [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
   [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
@@ -368,7 +368,7 @@ theorem certificate_slotLaw_at (sequence : ℕ → setup.intendedModel.Behaviora
     (scale : ℕ → ℝ) (scale_pos : ∀ n, 0 < scale n) (scale_le_one : ∀ n, scale n ≤ 1)
     (small : ∀ n, scale n ≤ 1 / 4) (floor : ℕ → ℝ) (floor_pos : ∀ n, 0 < floor n)
     (covers : bounds.CoversOutputValues)
-    (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
+    (capacity : ∀ who, bindingEventCount setup.informationGraph who < bounds.candidateCount)
     {slots : Nat}
     (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup) horizon
       scheduler slots p))
@@ -577,7 +577,7 @@ theorem certificate_slotLaw_at (sequence : ℕ → setup.intendedModel.Behaviora
               ((control.execution.respond (application setup timeouts leaks) actor response).observe
                 (application setup timeouts leaks) actor)) := by
           have owned := (PublicView.ownTurn?_spec _ actor event turn).2
-          cases node : nodeView (graph setup) event with
+          cases node : nodeView setup.informationGraph event with
           | sample payload law outputEq codeEq =>
               have none := nodeView_sample_actor outputEq codeEq
               rw [owned] at none
@@ -778,7 +778,7 @@ theorem certificate_slotLaw (sequence : ℕ → setup.intendedModel.BehavioralAs
     (floored : ∀ n, floor n ≤ contentFloor setup timeouts leaks bounds horizon scheduler (sequence
       n))
     (covers : bounds.CoversOutputValues)
-    (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
+    (capacity : ∀ who, bindingEventCount setup.informationGraph who < bounds.candidateCount)
     {slots : Nat}
     (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup) horizon
       scheduler slots p))

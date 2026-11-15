@@ -32,14 +32,14 @@ open GameTheory GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
-  (timeouts : EventTimeouts (graph setup))
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+  (timeouts : EventTimeouts setup.informationGraph)
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
 
 /-- The local envelope of a commitment of `who` for `event` at a prepared
 slot: no evidence and the event's readiness token from the view. -/
 def slotEnvelope (who : Player) (past : List (application setup timeouts leaks).PlayerEntry)
-    (view : (application setup timeouts leaks).PlayerView) (event : (graph setup).EventId)
-    (slot : Nat) : Message Player (WitnessedPacket (graph setup)) :=
+    (view : (application setup timeouts leaks).PlayerView) (event : setup.informationGraph.EventId)
+    (slot : Nat) : Message Player (WitnessedPacket setup.informationGraph) :=
   ⟨(who, (application setup timeouts leaks).submissionCount past),
     ⟨.commitment event (who, .prepared slot), none,
       view.application.publicView.tokenFor (.commitment event (who, .prepared slot))⟩⟩
@@ -48,13 +48,14 @@ def slotEnvelope (who : Player) (past : List (application setup timeouts leaks).
 normalized commitment at the slot. -/
 theorem slotResponse_of_bind (who : Player) (past : List (application setup timeouts
   leaks).PlayerEntry)
-    (view : (application setup timeouts leaks).PlayerView) (event : (graph setup).EventId)
+    (view : (application setup timeouts leaks).PlayerView) (event : setup.informationGraph.EventId)
     {owner : Player} {payload : L.Ty}
-    {outputEq : (graph setup).outputLayout event = .binding owner payload}
-    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .bind owner payload}
-    (node : nodeView (graph setup) event = .bind owner payload outputEq codeEq) (slot : Nat)
-    (choice : Option (OwnAction Player L)) (action : (graph setup).Action event)
+    {outputEq : setup.informationGraph.outputLayout event = .binding owner payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .bind owner payload}
+    (node : nodeView setup.informationGraph event = .bind owner payload outputEq codeEq) (slot :
+      Nat)
+    (choice : Option (OwnAction Player L)) (action : setup.informationGraph.Action event)
     (encoded : choice.bind (encodeEventAction? setup.program event) = some action) :
     slotResponse setup timeouts leaks who past view event slot choice =
       match cast (congrArg EventGraph.EventField.Action outputEq) action with
@@ -71,13 +72,14 @@ binding, committed at a slot, transmits a packet whose local envelope is the
 slot's envelope. -/
 theorem slotResponse_transmission (who : Player)
     (past : List (application setup timeouts leaks).PlayerEntry)
-    (view : (application setup timeouts leaks).PlayerView) (event : (graph setup).EventId)
+    (view : (application setup timeouts leaks).PlayerView) (event : setup.informationGraph.EventId)
     {owner : Player} {payload : L.Ty}
-    {outputEq : (graph setup).outputLayout event = .binding owner payload}
-    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .bind owner payload}
-    (node : nodeView (graph setup) event = .bind owner payload outputEq codeEq) (slot : Nat)
-    (choice : Option (OwnAction Player L)) (action : (graph setup).Action event)
+    {outputEq : setup.informationGraph.outputLayout event = .binding owner payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .bind owner payload}
+    (node : nodeView setup.informationGraph event = .bind owner payload outputEq codeEq) (slot :
+      Nat)
+    (choice : Option (OwnAction Player L)) (action : setup.informationGraph.Action event)
     (encoded : choice.bind (encodeEventAction? setup.program event) = some action)
     (present : (cast (congrArg EventGraph.EventField.Action outputEq) action).isSome = true) :
     ∃ material, (slotResponse setup timeouts leaks who past view event slot choice).transmission =
@@ -89,15 +91,15 @@ theorem slotResponse_transmission (who : Player)
   | none => simp [result] at present
   | some value => exact ⟨_, rfl, rfl⟩
 
-variable [Fintype Player] (bounds : MessageBounds (graph setup))
+variable [Fintype Player] (bounds : MessageBounds setup.informationGraph)
 
 /-- A source choice encodes, at a binding event, to a successful binding value
 the message bounds contain. -/
-def CoveredBinding (event : (graph setup).EventId) (choice : Option (OwnAction Player L)) :
+def CoveredBinding (event : setup.informationGraph.EventId) (choice : Option (OwnAction Player L)) :
     Prop :=
   ∃ action, choice.bind (encodeEventAction? setup.program event) = some action ∧
     ∀ owner payload outputEq codeEq,
-      nodeView (graph setup) event = .bind owner payload outputEq codeEq →
+      nodeView setup.informationGraph event = .bind owner payload outputEq codeEq →
         ∃ value, (cast (congrArg EventGraph.EventField.Action outputEq) action :
             Option (PublicationResult (L.Val payload))) = some (.success value) ∧
           (⟨payload, value⟩ : Raw L) ∈ bounds.values
@@ -108,12 +110,13 @@ exactly when the count verdict permits the slot's envelope against the
 player's earlier packets. -/
 theorem slotResponse_mem_onePacket_iff (who : Player)
     (past : List (application setup timeouts leaks).PlayerEntry)
-    (view : (application setup timeouts leaks).PlayerView) (event : (graph setup).EventId)
+    (view : (application setup timeouts leaks).PlayerView) (event : setup.informationGraph.EventId)
     {owner : Player} {payload : L.Ty}
-    {outputEq : (graph setup).outputLayout event = .binding owner payload}
-    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .bind owner payload}
-    (node : nodeView (graph setup) event = .bind owner payload outputEq codeEq) (slot : Nat)
+    {outputEq : setup.informationGraph.outputLayout event = .binding owner payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .bind owner payload}
+    (node : nodeView setup.informationGraph event = .bind owner payload outputEq codeEq) (slot :
+      Nat)
     (capacity : slot < bounds.candidateCount) (choice : Option (OwnAction Player L))
     (covered : CoveredBinding setup bounds event choice) :
     slotResponse setup timeouts leaks who past view event slot choice ∈
@@ -150,12 +153,12 @@ omit [Fintype Player] in
 /-- **Distinct slots or values give distinct responses** at fresh slots. -/
 theorem slotResponse_injective (who : Player)
     (past : List (application setup timeouts leaks).PlayerEntry)
-    (view : (application setup timeouts leaks).PlayerView) (event : (graph setup).EventId)
+    (view : (application setup timeouts leaks).PlayerView) (event : setup.informationGraph.EventId)
     {owner : Player} {payload : L.Ty}
-    {outputEq : (graph setup).outputLayout event = .binding owner payload}
-    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .bind owner payload}
-    (node : nodeView (graph setup) event = .bind owner payload outputEq codeEq)
+    {outputEq : setup.informationGraph.outputLayout event = .binding owner payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .bind owner payload}
+    (node : nodeView setup.informationGraph event = .bind owner payload outputEq codeEq)
     (slot other : Nat) (slotFresh : view.application.candidates (.prepared slot) = .fresh)
     (otherFresh : view.application.candidates (.prepared other) = .fresh)
     (first second : Option (OwnAction Player L))
@@ -180,9 +183,9 @@ theorem slotResponse_injective (who : Player)
       otherFresh] at same
   have transmission := congrArg ReactiveApplication.Action.transmission same
   simp only [EventGraphRuntime.reactiveBinding, Option.some.injEq] at transmission
-  have packetEq := congrArg (fun material : WitnessedSubmission (graph setup) =>
+  have packetEq := congrArg (fun material : WitnessedSubmission setup.informationGraph =>
     material.call.packet) transmission
-  have openingEq := congrArg (fun material : WitnessedSubmission (graph setup) =>
+  have openingEq := congrArg (fun material : WitnessedSubmission setup.informationGraph =>
     material.call.opening) transmission
   simp only [Payload.commitment.injEq, Prod.mk.injEq, Slot.prepared.injEq, true_and]
     at packetEq

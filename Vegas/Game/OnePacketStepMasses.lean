@@ -29,8 +29,8 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
 
 /-- Laws pushed along maps agreeing on the support agree. -/
 private theorem map_congr_support {α β : Type} (law : PMF α) {f g : α → β}
@@ -99,7 +99,7 @@ end Reads
 
 section Late
 
-variable [Fintype Player] {bounds : MessageBounds (graph setup)} {horizon : Nat}
+variable [Fintype Player] {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- **Late options without a pending event.** Along every history of the
@@ -160,17 +160,17 @@ the late-option factor. -/
 theorem onePacket_pendingBinding_lateChoice
     (assessment : setup.intendedModel.BehavioralAssessment)
     (covers : bounds.CoversOutputValues)
-    (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
+    (capacity : ∀ who, bindingEventCount setup.informationGraph who < bounds.candidateCount)
     {control : (application setup timeouts leaks).Control}
     (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control))
-    (who : Player) (event : (graph setup).EventId)
+    (who : Player) (event : setup.informationGraph.EventId)
     (turn : control.execution.application.publicView.ownTurn? who = some event)
     (unsent : (eventRecorded timeouts) leaks (control.execution.logs who) event = false)
-    {payload : L.Ty} {outputEq : (graph setup).outputLayout event = .binding who payload}
-    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .bind who payload}
-    (node : nodeView (graph setup) event = .bind who payload outputEq codeEq)
+    {payload : L.Ty} {outputEq : setup.informationGraph.outputLayout event = .binding who payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .bind who payload}
+    (node : nodeView setup.informationGraph event = .bind who payload outputEq codeEq)
     (response : (application setup timeouts leaks).Action)
     (member : response ∈ bounds.onePacketActions timeouts leaks who
       (control.execution.logs who) (control.execution.observe (application setup timeouts leaks)
@@ -243,7 +243,7 @@ theorem onePacket_pendingBinding_lateChoice
               ((control.execution.respond (application setup timeouts leaks) who ⟨none⟩).observe
                 (application setup timeouts leaks) who)).lastEmitted.map fun
                   message =>
-                  message.payload.call : Option (Payload (graph setup))) = none := by
+                  message.payload.call : Option (Payload setup.informationGraph)) = none := by
             rw [LateKey.respond_lastEmitted]
             rfl
           rw [contentOne, one_mul, lastNone]
@@ -298,7 +298,8 @@ theorem onePacket_pendingBinding_lateChoice
                     other action encoded (by rw [successful]; rfl)
                   have packetEq : material.call.packet =
                       .commitment event (who, .prepared slot.val) :=
-                    congrArg (fun message : Message Player (WitnessedPacket (graph setup)) =>
+                    congrArg (fun message : Message Player (WitnessedPacket setup.informationGraph)
+                      =>
                       message.payload.call) envelope
                   have slotCapacity := offered_commitment_capacity (timeouts := timeouts) who _ _ _
                     ((bounds.mem_onePacketActions timeouts leaks who _ _ _).mp offered).1
@@ -344,7 +345,7 @@ theorem onePacket_pendingBinding_lateChoice
           rw [← responseEq, sends] at transmits
           cases Option.some.inj transmits
           have packetEq : material.call.packet = .commitment event (who, .prepared serial) :=
-            congrArg (fun message : Message Player (WitnessedPacket (graph setup)) =>
+            congrArg (fun message : Message Player (WitnessedPacket setup.informationGraph) =>
               message.payload.call) envelope
           have lastCall : ((LateKey.ofView setup timeouts leaks who
               ((control.execution.respond (application setup timeouts leaks) who response).logs
@@ -352,7 +353,7 @@ theorem onePacket_pendingBinding_lateChoice
               ((control.execution.respond (application setup timeouts leaks) who response).observe
                 (application setup timeouts leaks) who)).lastEmitted.map fun
                   message =>
-                  message.payload.call : Option (Payload (graph setup))) =
+                  message.payload.call : Option (Payload setup.informationGraph)) =
               some (.commitment event (who, .prepared serial)) := by
             rw [LateKey.respond_lastEmitted, sends]
             exact congrArg some packetEq

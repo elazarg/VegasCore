@@ -37,7 +37,7 @@ theorem compileEventProfile_update
     compileEventProfile program
         (Profile.update (sig := SourceProgram.gameSignature program)
           profile who replacement) =
-      Profile.update (sig := (toEventGraph program).gameSignature)
+      Profile.update (sig := (toInformationGraph program).gameSignature)
         (compileEventProfile program profile) who
         (compileEventPolicy program who replacement) := by
   funext owner
@@ -52,7 +52,7 @@ private theorem compilePolicyTable_backtranslate_eq
     {wholeΓ : SourceCtx Player L} {wholeOpen : Finset VarId}
     (whole : SourceProgram Player L wholeΓ wholeOpen)
     (who : Player)
-    (replacement : (toEventGraph whole).BehavioralPolicy who) :
+    (replacement : (toInformationGraph whole).BehavioralPolicy who) :
     ∀ {Γ : SourceCtx Player L} {openNames : Finset VarId}
       (program : SourceProgram Player L Γ openNames)
       (refs : ContextRefs (graphLayout whole) Γ)
@@ -60,30 +60,30 @@ private theorem compilePolicyTable_backtranslate_eq
       (_refsBefore : ContextRefsBefore refs embedding)
       (suffixOffset : Nat),
       (actorEq : ∀ index,
-        (toEventGraph whole).actor? (embedding.event index) =
+        (toInformationGraph whole).actor? (embedding.event index) =
           eventOwner? program index) →
       (rankEq : ∀ index, (embedding.event index).val = suffixOffset + index.val) →
       refs.CoversPrefix whole suffixOffset →
-      ∀ (inputs : (toEventGraph whole).Inputs)
-        (config : (toEventGraph whole).Config),
+      ∀ (inputs : (toInformationGraph whole).Inputs)
+        (config : (toInformationGraph whole).Config),
       config.Reachable inputs →
       ∀ (selectedOffset : Nat), config.cut.IsPrefix selectedOffset →
       ∀ (index : Fin (eventCount program)),
       (rank : (embedding.event index).val = selectedOffset) →
       (ready : config.cut.Ready (embedding.event index)) →
-      (actor : (toEventGraph whole).actor?
+      (actor : (toInformationGraph whole).actor?
         (embedding.event index) = some who) →
       (active : who ∉ config.defaulted) →
       compilePolicyTable program refs embedding.ref who
           (backtranslatePolicyTable whole who replacement program refs
             embedding actorEq)
-          index ((toEventGraph whole).playerObserve who config).store config.defaults
+          index ((toInformationGraph whole).playerObserve who config).store config.defaults
           (decodeCompletions whole
-            ((toEventGraph whole).playerObserve who config).ownActions) =
+            ((toInformationGraph whole).playerObserve who config).ownActions) =
         cast (congrArg PMF
           (congrArg Vegas.EventGraph.EventField.Action (embedding.layout_eq index)))
           (replacement (embedding.event index) actor
-            ((toEventGraph whole).playerObserve who config) active) := by
+            ((toInformationGraph whole).playerObserve who config) active) := by
   intro Γ openNames program
   induction program with
   | ret payoffs =>
@@ -96,10 +96,10 @@ private theorem compilePolicyTable_backtranslate_eq
       refine Fin.cases ?_ (fun tail => ?_) index <;> intro rank ready actor active
       · let headIndex : Fin (eventCount (.sample name fresh law next)) :=
           ⟨0, by simp [eventCount]⟩
-        have ownerless : (toEventGraph whole).actor?
+        have ownerless : (toInformationGraph whole).actor?
             (embedding.event headIndex) = none := by
           simpa [headIndex, eventOwner?] using actorEq headIndex
-        have strategic : (toEventGraph whole).actor?
+        have strategic : (toInformationGraph whole).actor?
             (embedding.event headIndex) = some who := by
           simpa [headIndex] using actor
         rw [strategic] at ownerless
@@ -112,7 +112,7 @@ private theorem compilePolicyTable_backtranslate_eq
         have tailRefsBefore : ContextRefsBefore tailRefs tailEmbedding := by
           exact refsBefore.tail_cons next (by simp [eventCount]) (fun _ => rfl) _ rfl
         have tailActorEq : ∀ current,
-            (toEventGraph whole).actor? (tailEmbedding.event current) =
+            (toInformationGraph whole).actor? (tailEmbedding.event current) =
               eventOwner? next current := by
           intro current
           simpa [tailEmbedding, OutputEmbedding.tail, eventOwner?, eventCount,
@@ -148,7 +148,7 @@ private theorem compilePolicyTable_backtranslate_eq
       refine Fin.cases ?_ (fun tail => ?_) index <;> intro rank ready actor active
       · let headIndex : Fin (eventCount (.commit name owner fresh guard next)) :=
           ⟨0, by simp [eventCount]⟩
-        have headActor : (toEventGraph whole).actor?
+        have headActor : (toInformationGraph whole).actor?
             (embedding.event headIndex) = some who := by
           simpa [headIndex] using actor
         have ownerEq : owner = who := by
@@ -168,7 +168,7 @@ private theorem compilePolicyTable_backtranslate_eq
             refsBefore headIndex suffixOffset config ordered headRank who
         let view : DecisionView who _ :=
           ⟨sourceObservation, config.defaults, decodeCompletions whole
-            ((toEventGraph whole).playerObserve who config).ownActions⟩
+            ((toInformationGraph whole).playerObserve who config).ownActions⟩
         have encoded := encodeDecisionView?_decodeActual_eq
           whole refs suffixOffset covered inputs config reachable
           ordered (embedding.event headIndex) headRank headReady who headActor active
@@ -180,20 +180,20 @@ private theorem compilePolicyTable_backtranslate_eq
             embedding.ref who
             (backtranslatePolicyTable whole who replacement
               (.commit name owner fresh guard next) refs embedding actorEq)
-            headIndex ((toEventGraph whole).playerStore who config.store) config.defaults
+            headIndex ((toInformationGraph whole).playerStore who config.store) config.defaults
             (decodeCompletions whole
-              ((toEventGraph whole).ownCompletions who config.history)) =
+              ((toInformationGraph whole).ownCompletions who config.history)) =
           cast (congrArg PMF (congrArg Vegas.EventGraph.EventField.Action
             (embedding.layout_eq headIndex)))
             (replacement (embedding.event headIndex) headActor
-              ((toEventGraph whole).playerObserve who config) active)
+              ((toInformationGraph whole).playerObserve who config) active)
         rw [compilePolicyTable_commit_of_decode refs embedding.ref
           (backtranslatePolicyTable whole who replacement
             (.commit name owner fresh guard next) refs embedding actorEq)
           ownerEq _ _ active _ sourceObservation decodedStore]
         rw [cast_eq_map_cast]
         change _ = (replacement (embedding.event headIndex) headActor
-          ((toEventGraph whole).playerObserve who config) active).map
+          ((toInformationGraph whole).playerObserve who config) active).map
               embedding.commitHeadAction
         simpa [headIndex, view] using kernel
       · let headIndex : Fin (eventCount (.commit name owner fresh guard next)) :=
@@ -204,7 +204,7 @@ private theorem compilePolicyTable_backtranslate_eq
         have tailRefsBefore : ContextRefsBefore tailRefs tailEmbedding := by
           exact refsBefore.tail_cons next (by simp [eventCount]) (fun _ => rfl) _ rfl
         have tailActorEq : ∀ current,
-            (toEventGraph whole).actor? (tailEmbedding.event current) =
+            (toInformationGraph whole).actor? (tailEmbedding.event current) =
               eventOwner? next current := by
           intro current
           simpa [tailEmbedding, OutputEmbedding.tail, eventOwner?, eventCount,
@@ -240,7 +240,7 @@ private theorem compilePolicyTable_backtranslate_eq
       · let headIndex : Fin (eventCount
             (.reveal published owner name fresh selected unresolved next)) :=
           ⟨0, by simp [eventCount]⟩
-        have headActor : (toEventGraph whole).actor?
+        have headActor : (toInformationGraph whole).actor?
             (embedding.event headIndex) = some who := by
           simpa [headIndex] using actor
         have ownerEq : owner = who := by
@@ -261,7 +261,7 @@ private theorem compilePolicyTable_backtranslate_eq
             refsBefore headIndex suffixOffset config ordered headRank who
         let view : DecisionView who _ :=
           ⟨sourceObservation, config.defaults, decodeCompletions whole
-            ((toEventGraph whole).playerObserve who config).ownActions⟩
+            ((toInformationGraph whole).playerObserve who config).ownActions⟩
         have encoded := encodeDecisionView?_decodeActual_eq
           whole refs suffixOffset covered inputs config reachable
           ordered (embedding.event headIndex) headRank headReady who headActor active
@@ -275,13 +275,13 @@ private theorem compilePolicyTable_backtranslate_eq
             (backtranslatePolicyTable whole who replacement
               (.reveal published owner name fresh selected unresolved next) refs
                 embedding actorEq)
-            headIndex ((toEventGraph whole).playerStore who config.store) config.defaults
+            headIndex ((toInformationGraph whole).playerStore who config.store) config.defaults
             (decodeCompletions whole
-              ((toEventGraph whole).ownCompletions who config.history)) =
+              ((toInformationGraph whole).ownCompletions who config.history)) =
           cast (congrArg PMF (congrArg Vegas.EventGraph.EventField.Action
             (embedding.layout_eq headIndex)))
             (replacement (embedding.event headIndex) headActor
-              ((toEventGraph whole).playerObserve who config) active)
+              ((toInformationGraph whole).playerObserve who config) active)
         rw [compilePolicyTable_reveal_of_decode refs embedding.ref
           (backtranslatePolicyTable whole who replacement
             (.reveal published owner name fresh selected unresolved next) refs
@@ -289,7 +289,7 @@ private theorem compilePolicyTable_backtranslate_eq
           ownerEq _ _ active _ sourceObservation decodedStore]
         rw [cast_eq_map_cast]
         change _ = (replacement (embedding.event headIndex) headActor
-          ((toEventGraph whole).playerObserve who config) active).map
+          ((toInformationGraph whole).playerObserve who config) active).map
               embedding.revealHeadAction
         simpa [headIndex, view] using kernel
       · let headIndex : Fin (eventCount
@@ -303,7 +303,7 @@ private theorem compilePolicyTable_backtranslate_eq
         have tailRefsBefore : ContextRefsBefore tailRefs tailEmbedding := by
           exact refsBefore.tail_cons next (by simp [eventCount]) (fun _ => rfl) _ rfl
         have tailActorEq : ∀ current,
-            (toEventGraph whole).actor? (tailEmbedding.event current) =
+            (toInformationGraph whole).actor? (tailEmbedding.event current) =
               eventOwner? next current := by
           intro current
           simpa [tailEmbedding, OutputEmbedding.tail, eventOwner?, eventCount,
@@ -340,19 +340,19 @@ theorem compileEventPolicy_backtranslate_at_prefix
     {Γ : SourceCtx Player L} {openNames : Finset VarId}
     (program : SourceProgram Player L Γ openNames)
     (who : Player)
-    (replacement : (toEventGraph program).BehavioralPolicy who)
-    (inputs : (toEventGraph program).Inputs)
-    (config : (toEventGraph program).Config)
+    (replacement : (toInformationGraph program).BehavioralPolicy who)
+    (inputs : (toInformationGraph program).Inputs)
+    (config : (toInformationGraph program).Config)
     (reachable : config.Reachable inputs)
     (offset : Nat) (ordered : config.cut.IsPrefix offset)
     (event : Fin (eventCount program)) (ready : config.cut.Ready event)
     (rank : event.val = offset)
-    (actor : (toEventGraph program).actor? event = some who)
+    (actor : (toInformationGraph program).actor? event = some who)
     (active : who ∉ config.defaulted) :
     compileEventPolicy program who
         (backtranslateEventPolicy program who replacement)
-        event actor ((toEventGraph program).playerObserve who config) active =
-      replacement event actor ((toEventGraph program).playerObserve who config) active := by
+        event actor ((toInformationGraph program).playerObserve who config) active =
+      replacement event actor ((toInformationGraph program).playerObserve who config) active := by
   have aligned := compilePolicyTable_backtranslate_eq
     program who replacement program
     (ContextRefs.initial Γ (outputLayout program))
@@ -366,6 +366,6 @@ theorem compileEventPolicy_backtranslate_at_prefix
     exact outputEmbedding_ref program current
   rw [refsEq] at aligned
   simpa [compileEventPolicy, backtranslateEventPolicy, outputEmbedding,
-    outputEmbedding_ref, toEventGraph] using aligned
+    outputEmbedding_ref, toInformationGraph] using aligned
 
 end Vegas

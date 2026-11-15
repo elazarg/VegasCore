@@ -28,9 +28,9 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L] (setup : Setup (Player := Player) (L := L))
-  (timeouts : EventTimeouts (graph setup))
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-  (bounds : MessageBounds (graph setup)) (horizon : Nat)
+  (timeouts : EventTimeouts setup.informationGraph)
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
+  (bounds : MessageBounds setup.informationGraph) (horizon : Nat)
   (scheduler : (application setup timeouts leaks).Scheduler)
 
 local notation "N" => onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
@@ -40,7 +40,7 @@ local notation "NP" => ReactiveApplication.ResponseMenu.protocol
 local notation "Menu" => bounds.onePacketMenu timeouts leaks
 local notation "Clear" => ReactiveApplication.stateInvariant
   (app := application setup timeouts leaks)
-    (fun native : EventGraphRuntime.State (graph setup) =>
+    (fun native : EventGraphRuntime.State setup.informationGraph =>
       EventGraph.Config.defaulted (EventGraphRuntime.State.config native) = ∅)
 
 open Classical in
@@ -50,7 +50,7 @@ theorem assembled_intendedCommitment_history_comparisons
     [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
     [∀ who, DecidableEq ((N).InfoState who)]
     (wellFormed : setup.WellFormed) (covers : bounds.CoversOutputValues)
-    (capacity : ∀ player, bindingEventCount (graph setup) player < bounds.candidateCount)
+    (capacity : ∀ player, bindingEventCount setup.informationGraph player < bounds.candidateCount)
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (scale : ℕ → ℝ) (positive : ∀ n, 0 < scale n) (le_one : ∀ n, scale n ≤ 1)
     {slots : Nat}
@@ -59,7 +59,7 @@ theorem assembled_intendedCommitment_history_comparisons
     (targetSequence : ℕ → (N).BehavioralAssessment)
     (assembled : OnePacketAssembled setup timeouts leaks bounds horizon scheduler sequence scale
       positive le_one weights targetSequence) (n : ℕ)
-    {delay bound : (graph setup).EventId → Nat}
+    {delay bound : setup.informationGraph.EventId → Nat}
     (opportunity : ∀ control : (application setup timeouts leaks).Control,
       (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some
         control) →
@@ -180,8 +180,8 @@ theorem assembled_intendedCommitment_history_comparisons
   have payloadEq : foundPayload = payload := by
     exact (EventGraph.EventField.binding.inj (foundOutput.symm.trans outputEq)).2
   subst foundPayload
-  have code : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .bind who payload := by
+  have code : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .bind who payload := by
     exact codeEq
   let key := LateKey.ofView setup timeouts leaks who (execution.logs who)
     (execution.observe (application setup timeouts leaks) who)
@@ -227,7 +227,7 @@ theorem assembled_intendedCommitment_belief_comparison
     [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
     [∀ who, DecidableEq ((N).InfoState who)]
     (wellFormed : setup.WellFormed) (covers : bounds.CoversOutputValues)
-    (capacity : ∀ player, bindingEventCount (graph setup) player < bounds.candidateCount)
+    (capacity : ∀ player, bindingEventCount setup.informationGraph player < bounds.candidateCount)
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (scale : ℕ → ℝ) (positive : ∀ n, 0 < scale n) (le_one : ∀ n, scale n ≤ 1)
     {slots : Nat}
@@ -236,7 +236,7 @@ theorem assembled_intendedCommitment_belief_comparison
     (targetSequence : ℕ → (N).BehavioralAssessment)
     (assembled : OnePacketAssembled setup timeouts leaks bounds horizon scheduler sequence scale
       positive le_one weights targetSequence) (n : ℕ)
-    {delay bound : (graph setup).EventId → Nat}
+    {delay bound : setup.informationGraph.EventId → Nat}
     (opportunity : ∀ control : (application setup timeouts leaks).Control,
       (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some
         control) →
@@ -409,7 +409,7 @@ theorem assembled_intendedCommitment_gain_bounds
     (wellFormed : setup.WellFormed) (independent : setup.PrivateInputsIndependentGiven signal)
     (observable : setup.PublicInitialSignal signal)
     (covers : bounds.CoversOutputValues) (coversInputs : bounds.CoversInputValues)
-    (capacity : ∀ player, bindingEventCount (graph setup) player < bounds.candidateCount)
+    (capacity : ∀ player, bindingEventCount setup.informationGraph player < bounds.candidateCount)
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (sourceMixed : ∀ n, (sequence n).IsFullyMixed)
     (sourceBayes : ∀ n, BehavioralAssessment.IsBayesConsistent setup.intendedModel (sequence n)
@@ -428,7 +428,7 @@ theorem assembled_intendedCommitment_gain_bounds
     (bayes : ∀ n, BehavioralAssessment.IsBayesConsistent (N) (targetSequence n)
       ((bounds.onePacketMenu timeouts leaks).decisionRecall
         (initialLaw setup) horizon scheduler).decisionInformationAntichain)
-    {delay bound : (graph setup).EventId → Nat}
+    {delay bound : setup.informationGraph.EventId → Nat}
     (opportunity : ∀ control : (application setup timeouts leaks).Control,
       (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some
         control) →

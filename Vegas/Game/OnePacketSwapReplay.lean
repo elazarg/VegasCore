@@ -95,7 +95,7 @@ theorem decodeSourcePrefix?_available (who : Player) {Field : Type} [DecidableEq
             restDecoded (by simpa [eventCount] using inside)
 
 variable {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
+  {timeouts : EventTimeouts setup.informationGraph}
 
 private theorem sourceStep_congr :
     {Γ : SourceCtx Player L} → {O : Finset VarId} →
@@ -135,10 +135,10 @@ private theorem sourceStep_congr :
           exact congrArg (fun law => law.map Sum.inr)
             (sourceStep_congr next point first second agree)
 
-private theorem decodedPoint_step_actualDecision {config : (graph setup).Config}
-    {event : (graph setup).EventId} (ready : config.cut.Ready event)
+private theorem decodedPoint_step_actualDecision {config : setup.informationGraph.Config}
+    {event : setup.informationGraph.EventId} (ready : config.cut.Ready event)
     {point : ProtocolState setup.program} (decoded : decodedPoint setup config = some point)
-    (action : (graph setup).Action event) :
+    (action : setup.informationGraph.Action event) :
     ProtocolState.step setup.program point
         (fun _ => (config.actualDecision event action).bind
           (decodeEventAction setup.program event)) =
@@ -154,9 +154,11 @@ private theorem decodedPoint_step_actualDecision {config : (graph setup).Config}
 
 /-- **A completion's decoded action is addressed to its decoded point**: it is
 available there to every active player under the forfeiture interface. -/
-theorem decoded_addressed {config : (graph setup).Config} {event : (graph setup).EventId}
+theorem decoded_addressed {config : setup.informationGraph.Config} {event :
+  setup.informationGraph.EventId}
     (ready : config.cut.Ready event) {point : ProtocolState setup.program}
-    (decoded : decodedPoint setup config = some point) (graphAction : (graph setup).Action event) :
+    (decoded : decodedPoint setup config = some point) (graphAction : setup.informationGraph.Action
+      event) :
     ∀ who action, decodeEventAction setup.program event graphAction = some action →
       (setup.executionProtocol (CommitmentInterface.forfeiture setup.program)).active
         (some point) who →
@@ -165,7 +167,7 @@ theorem decoded_addressed {config : (graph setup).Config} {event : (graph setup)
   intro who action decodedAction _
   have ordered : config.cut.IsPrefix event.val :=
     ⟨event.isLt.le, fun query =>
-      setup.eventGraph.sequentialize_mem_completed_iff_lt_of_ready _ ready⟩
+      setup.informationGraph.sequentialize_mem_completed_iff_lt_of_ready _ ready⟩
   rw [decodedPoint_eq_of_isPrefix ordered] at decoded
   exact decodeSourcePrefix?_available who event.val setup.program _ _ _ _ _ _ _ point
     decoded event.isLt graphAction action decodedAction
@@ -177,7 +179,7 @@ variable [DecidableEq (CellTy Player L)] {first second : ProtocolState setup.pro
   {succeed : CommitmentCellsSucceed setup first second}
 
 /-- **The decoded point of a swapped configuration** is the swapped decoded point. -/
-theorem decodedPoint_betweenPairs (config : (graph setup).Config) :
+theorem decodedPoint_betweenPairs (config : setup.informationGraph.Config) :
     decodedPoint setup (config.swap (EventGraph.ValueSwap.ofPairs
         (betweenPairs publicAgree succeed))) =
       (decodedPoint setup config).map
@@ -208,7 +210,7 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol Intera
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
+  {timeouts : EventTimeouts setup.informationGraph}
 
 omit [DecidableEq Player] [IExpr.ResultTypes L] in
 /-- A nonempty history extends a shorter one by one step. -/
@@ -233,7 +235,7 @@ theorem TracePrefix.of_extend {ι : Type*} {E : ExecutionProtocol ι} {source ta
 
 /-- An advanced replay extends the replay it advances. -/
 theorem tracePrefix_of_advanceIntended? {leaks : MessageNetwork.ObservationRule Player
-      (WitnessedPacket (graph setup))}
+      (WitnessedPacket setup.informationGraph)}
     {history result : setup.intendedProtocol.History}
     {before after : (application setup timeouts leaks).ProtocolState}
     (advanced : advanceIntended? setup timeouts leaks history before after = some result) :
@@ -406,15 +408,16 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol Intera
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)} [Fintype Player]
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {timeouts : EventTimeouts setup.informationGraph} [Fintype Player]
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
   [DecidableEq (CellTy Player L)]
 
 omit [Fintype Player] [DecidableEq (CellTy Player L)] in
 /-- The history of a swapped configuration from a later step. -/
-theorem drop_history_swap (swap : (graph setup).ValueSwap) (before after : (graph setup).Config) :
+theorem drop_history_swap (swap : setup.informationGraph.ValueSwap) (before after :
+  setup.informationGraph.Config) :
     (after.swap swap).history.drop (before.swap swap).history.length =
       (after.history.drop before.history.length).map swap.completion := by
   rw [EventGraph.Config.swap_history, EventGraph.Config.swap_history, List.length_map,
@@ -430,8 +433,9 @@ theorem advanceIntended?_of_drop_nil (history : setup.intendedProtocol.History)
 
 omit [Fintype Player] [DecidableEq (CellTy Player L)] in
 theorem advanceIntended?_of_drop_single (history : setup.intendedProtocol.History)
-    (before after : (application setup timeouts leaks).Control) (event : (graph setup).EventId)
-    (decision : Option ((graph setup).Action event)) (defaultEvent : Option Player)
+    (before after : (application setup timeouts leaks).Control) (event :
+      setup.informationGraph.EventId)
+    (decision : Option (setup.informationGraph.Action event)) (defaultEvent : Option Player)
     (dropped : after.execution.application.config.history.drop
       before.execution.application.config.history.length = [⟨event, decision, defaultEvent⟩]) :
     advanceIntended? setup timeouts leaks history (some before) (some after) =
@@ -447,8 +451,8 @@ theorem intendedHistory?_mapTrace (wellFormed : setup.WellFormed)
     (secondState : second.state = some q)
     (sameLength : first.trace.length = second.trace.length)
     {publicAgree : PublicCellsAgree setup p q} {succeed : CommitmentCellsSucceed setup p q}
-    (handlePairs : Handle (graph setup) → Option (Raw L × Raw L))
-    {allowed : Set (graph setup).Inputs}
+    (handlePairs : Handle setup.informationGraph → Option (Raw L × Raw L))
+    {allowed : Set setup.informationGraph.Inputs}
     (initialClosed : ∀ state ∈ (initialLaw setup).support, state.config.inputs ∈ allowed →
       state.swap (HiddenSwap.ofPairs (betweenPairs publicAgree succeed) handlePairs) ∈
         (initialLaw setup).support)
@@ -642,12 +646,12 @@ theorem intendedHistory?_mapTrace (wellFormed : setup.WellFormed)
             (EventGraph.ValueSwap.ofPairs (betweenPairs publicAgree succeed))).history =
               (current.execution.application.config.swap
                 (EventGraph.ValueSwap.ofPairs (betweenPairs publicAgree succeed))).history ++
-                [EventGraph.completion (graph setup) record.event
+                [EventGraph.completion setup.informationGraph record.event
                   ((current.execution.application.config.swap
                     (EventGraph.ValueSwap.ofPairs
                       (betweenPairs publicAgree succeed))).actualDecision
                       record.event stepAction) value] at historyEq
-          have recordEq : EventGraph.completion (graph setup) record.event
+          have recordEq : EventGraph.completion setup.informationGraph record.event
               ((current.execution.application.config.swap
                 (EventGraph.ValueSwap.ofPairs (betweenPairs publicAgree succeed))).actualDecision
                   record.event stepAction) value =
@@ -661,9 +665,9 @@ theorem intendedHistory?_mapTrace (wellFormed : setup.WellFormed)
               (current.execution.application.config.swap
                 (EventGraph.ValueSwap.ofPairs (betweenPairs publicAgree succeed))).actualDecision
                   record.event stepAction := by
-            have packed := congrArg (fun completion : (graph setup).Completion =>
+            have packed := congrArg (fun completion : setup.informationGraph.Completion =>
               (⟨completion.event, completion.decision⟩ :
-                Σ event, Option ((graph setup).Action event))) recordEq
+                Σ event, Option (setup.informationGraph.Action event))) recordEq
             exact (eq_of_heq (Sigma.mk.inj packed).2).symm
           have previousPoint : previous'.state = some point := by
             rw [previousState, previousStateEq, ← decodedPoint_betweenPairs

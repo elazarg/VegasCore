@@ -74,8 +74,8 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
-  (timeouts : EventTimeouts (graph setup))
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+  (timeouts : EventTimeouts setup.informationGraph)
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
 
 section Records
 
@@ -122,14 +122,14 @@ def ownerRecall (who : Player) :
 /-- The chance factor of a native completion: the evaluator mass of the first
 new record's retained output when it is a sample. Deterministic decisions and
 automatic completions contribute one. -/
-def completionMass (before after : EventGraphRuntime.State (graph setup)) : ℝ :=
+def completionMass (before after : EventGraphRuntime.State setup.informationGraph) : ℝ :=
   match after.config.history.drop before.config.history.length with
   | [] => 1
   | completion :: _ =>
-      if chance : (graph setup).actor? completion.event = none then
+      if chance : setup.informationGraph.actor? completion.event = none then
           match after.config.outputs completion.event with
           | some value =>
-              match ((graph setup).nodes completion.event).eval?
+              match (setup.informationGraph.nodes completion.event).eval?
                   (EventGraph.EventCode.actionOfActorNone _ chance) before.config.store with
               | none => 0
               | some law => (law value).toReal
@@ -167,7 +167,7 @@ def transitionSourceFactor (assessment : setup.intendedModel.BehavioralAssessmen
       | none => completionMass setup before.execution.application after.execution.application
   | _, _, _ => 1
 
-variable [Fintype Player] (bounds : MessageBounds (graph setup)) (horizon : Nat)
+variable [Fintype Player] (bounds : MessageBounds setup.informationGraph) (horizon : Nat)
   (scheduler : (application setup timeouts leaks).Scheduler)
 
 /-- The native protocol of the one-packet game from the default initial law. -/
@@ -226,7 +226,7 @@ end Records
 
 section Owner
 
-variable [Fintype Player] (bounds : MessageBounds (graph setup)) (horizon : Nat)
+variable [Fintype Player] (bounds : MessageBounds setup.informationGraph) (horizon : Nat)
   (scheduler : (application setup timeouts leaks).Scheduler) {who : Player}
   (policy : (onePacketInformation setup timeouts leaks bounds horizon scheduler).BehavioralPolicy
     who)
@@ -344,7 +344,7 @@ end Operational
 
 section Factorization
 
-variable [Fintype Player] (bounds : MessageBounds (graph setup)) (horizon : Nat)
+variable [Fintype Player] (bounds : MessageBounds setup.informationGraph) (horizon : Nat)
   (scheduler : (application setup timeouts leaks).Scheduler)
 
 /-- **Operational steps.** The two local hypotheses of the factorization along a
@@ -408,7 +408,7 @@ structure OperationalSteps (sequence : ℕ → setup.intendedModel.BehavioralAss
 variable {setup timeouts leaks bounds horizon scheduler}
 
 omit [Fintype Player] in
-theorem completionMass_nonneg (before after : EventGraphRuntime.State (graph setup)) :
+theorem completionMass_nonneg (before after : EventGraphRuntime.State setup.informationGraph) :
     0 ≤ completionMass setup before after := by
   unfold completionMass
   repeat' first | split | exact zero_le_one | exact le_rfl | exact ENNReal.toReal_nonneg

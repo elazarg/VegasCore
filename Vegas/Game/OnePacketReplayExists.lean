@@ -83,11 +83,12 @@ theorem decodeSourcePrefix?_not_terminal {Field : Type} [DecidableEq Field]
             restDecoded (by simpa [eventCount] using inside)
 
 variable {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
+  {timeouts : EventTimeouts setup.informationGraph}
 
 /-- At a native configuration with a ready event, the decoded point is the
 whole-program decoding at the rank of the ready event. -/
-theorem decodedPoint_decode {config : (graph setup).Config} {event : (graph setup).EventId}
+theorem decodedPoint_decode {config : setup.informationGraph.Config} {event :
+  setup.informationGraph.EventId}
     (ready : config.cut.Ready event) {point : ProtocolState setup.program}
     (decoded : decodedPoint setup config = some point) :
     decodeSourcePrefix? setup.program
@@ -99,15 +100,15 @@ theorem decodedPoint_decode {config : (graph setup).Config} {event : (graph setu
   · rename_i ordered
     have atEvent : config.cut.IsPrefix event.val :=
       ⟨event.isLt.le, fun query =>
-        setup.eventGraph.sequentialize_mem_completed_iff_lt_of_ready _ ready⟩
+        setup.informationGraph.sequentialize_mem_completed_iff_lt_of_ready _ ready⟩
     have rank := atEvent.unique ordered.choose_spec
     rw [rank]
     exact decoded
   · cases decoded
 
 /-- **A decoded point with a ready event is not terminal.** -/
-theorem decodedPoint_not_terminal {config : (graph setup).Config}
-    {event : (graph setup).EventId} (ready : config.cut.Ready event)
+theorem decodedPoint_not_terminal {config : setup.informationGraph.Config}
+    {event : setup.informationGraph.EventId} (ready : config.cut.Ready event)
     {point : ProtocolState setup.program} (decoded : decodedPoint setup config = some point) :
     ¬ ProtocolState.terminal setup.program point :=
   decodeSourcePrefix?_not_terminal event.val setup.program _ _ _ _ _ _ _ point
@@ -139,11 +140,11 @@ theorem intendedAvailable_of_pos (assessment : setup.intendedModel.BehavioralAss
 intended action of the event's actor. At a chance event the acting joint gives
 nothing to anybody. -/
 theorem intendedLegal_of_completion {history : setup.intendedProtocol.History}
-    {config : (graph setup).Config} {event : (graph setup).EventId}
+    {config : setup.informationGraph.Config} {event : setup.informationGraph.EventId}
     (ready : config.cut.Ready event) {point : ProtocolState setup.program}
     (decoded : decodedPoint setup config = some point) (current : history.state = some point)
     {choice : Option (OwnAction Player L)}
-    (intended : ∀ actor, (graph setup).actor? event = some actor → ∃ action,
+    (intended : ∀ actor, setup.informationGraph.actor? event = some actor → ∃ action,
       choice = some action ∧ action ∈ ProtocolView.intendedAvailable actor setup.program
         (ProtocolState.observe actor setup.program point)) :
     setup.intendedProtocol.Legal history.state (actingJoint setup history.state choice) := by
@@ -164,8 +165,8 @@ theorem intendedLegal_of_completion {history : setup.intendedProtocol.History}
     exact acts
 
 variable [Fintype Player]
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- **Unsettled content is positive along regular histories.** -/
@@ -214,12 +215,13 @@ theorem completion_choice_pos (assessment : setup.intendedModel.BehavioralAssess
       (some current) ⟨joint, legal⟩).support)
     (forcedNext : ForcedState setup timeouts leaks who (some next))
     (regular : RegularTrace setup timeouts leaks bounds horizon scheduler assessment who prior)
-    (idle : current.actor = none) {event : (graph setup).EventId}
+    (idle : current.actor = none) {event : setup.informationGraph.EventId}
     (ready : current.execution.application.config.cut.Ready event)
-    (action : (graph setup).Action event)
+    (action : setup.informationGraph.Action event)
     (member : next.execution.application.config ∈
       (current.execution.application.config.step event ready action).support)
-    {actor : Player} (acts : (graph setup).actor? event = some actor) (other : actor ≠ who) :
+    {actor : Player} (acts : setup.informationGraph.actor? event = some actor) (other : actor ≠
+      who) :
     ((assessment.strategy actor (setup.protocolObserve actor
         (decodedPoint setup current.execution.application.config))).map Subtype.val)
       (decodeEventAction setup.program event action) ≠ 0 := by
@@ -259,7 +261,7 @@ theorem completion_choice_pos (assessment : setup.intendedModel.BehavioralAssess
   · exact (config_ne_of_step member (by rw [sameExecution])).elim
   obtain ⟨value, _output, recorded⟩ :=
     current.execution.application.config.step_completion event ready action _ member
-  let record := EventGraph.completion (graph setup) event
+  let record := EventGraph.completion setup.informationGraph event
     (current.execution.application.config.actualDecision event action) value
   have fresh : record ∉ current.execution.application.config.history := by
     intro present
@@ -382,7 +384,7 @@ theorem intendedHistory?_isSome (assessment : setup.intendedModel.BehavioralAsse
             setup.intendedProtocol.legal_of_legalOption (fun impossible => impossible)
               fun _ impossible => impossible
           have reachedStart : decodedPoint setup (EventGraphRuntime.State.initial
-              (graph := graph setup) (setup.eventInputs initial)).config ∈
+              (graph := setup.informationGraph) (setup.eventInputs initial)).config ∈
               (setup.intendedProtocol.step setup.intendedProtocol.initHistory.state
                 ⟨_, legalStart⟩).support := by
             rw [decodedPoint_initial]
@@ -463,15 +465,15 @@ theorem intendedHistory?_isSome (assessment : setup.intendedModel.BehavioralAsse
                     (current.execution.application.config.actualDecision event action).bind
                         (decodeEventAction setup.program event) =
                       decodeEventAction setup.program event action := by
-                  cases owned : (graph setup).actor? event with
+                  cases owned : setup.informationGraph.actor? event with
                   | none =>
                       have noChoice := decodeEventAction_owner setup.program event action
                       rw [eventOwner?_eq_actor] at noChoice
                       change (decodeEventAction setup.program event action).map sourceActionOwner =
-                        (graph setup).actor? event at noChoice
+                        setup.informationGraph.actor? event at noChoice
                       rw [owned] at noChoice
                       have silent := Option.map_eq_none_iff.mp noChoice
-                      change ((graph setup).nodes event).actor = none at owned
+                      change (setup.informationGraph.nodes event).actor = none at owned
                       simp only [EventGraph.Config.actualDecision,
                         EventGraph.EventCode.actualDecision,
                         owned, Option.bind_none, silent]
@@ -556,7 +558,7 @@ def ForcedBeliefInputs.ofForcedHistories
     (forced : forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks) (initialLaw
       setup) horizon
       scheduler who site.1)
-    (decision : site.1 = some (past, view)) {event : (graph setup).EventId}
+    (decision : site.1 = some (past, view)) {event : setup.informationGraph.EventId}
     (turn : view.application.publicView.ownTurn? who = some event)
     (projected : sourceSite.1 = projectView setup timeouts leaks who site.1)
     (mixed : (sequence n).IsFullyMixed)

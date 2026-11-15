@@ -35,7 +35,7 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol Intera
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
+  {timeouts : EventTimeouts setup.informationGraph}
 
 omit [IExpr.ResultTypes L] in
 /-- A typed initial value makes openable only a value of a binding field. -/
@@ -53,15 +53,16 @@ private theorem openable_of_candidateOfValue (owner : Player)
       | failure => cases found
       | success typed => cases found; exact ⟨inputOwner, payload, typed, rfl, rfl⟩
 
-variable {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+variable {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
 
-variable {bounds : MessageBounds (graph setup)} {horizon : Nat}
+variable {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- Every initial state of the supplied runtime has its openable candidates
 within the bounds when the bounds cover the initial binding inputs. -/
 private theorem candidateValues_initial (covers : bounds.CoversInputValues)
-    (state : EventGraphRuntime.State (graph setup)) (member : state ∈ (initialLaw setup).support) :
+    (state : EventGraphRuntime.State setup.informationGraph) (member : state ∈ (initialLaw
+      setup).support) :
     bounds.CandidateValues state := by
   rw [initialLaw, serviceInitialLaw, PMF.support_map] at member
   obtain ⟨initial, _, rfl⟩ := member
@@ -101,7 +102,7 @@ private theorem pairSwap_mem_values {pair : Option (Raw L × Raw L)}
 /-- **The owner swap keeps the bounds** when the openable candidates of both
 views are within the bounds. -/
 theorem ownerSwap_bounded_of_candidates (who : Player)
-    (first second : EventGraphRuntime.PlayerView (graph setup))
+    (first second : EventGraphRuntime.PlayerView setup.informationGraph)
     (firstWithin : ∀ slot raw, first.candidates slot = .openable raw → raw ∈ bounds.values)
     (secondWithin : ∀ slot raw, second.candidates slot = .openable raw → raw ∈ bounds.values) :
     ∀ handle raw, raw ∈ bounds.values →
@@ -142,7 +143,7 @@ bounds, when the bounds cover every value of every initial binding input. -/
 theorem candidate_mem_values_of_trace (covers : bounds.CoversInputValues)
     {control : (application setup timeouts leaks).Control}
     (trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some control))
-    {handle : Handle (graph setup)} {raw : Raw L}
+    {handle : Handle setup.informationGraph} {raw : Raw L}
     (found : control.execution.application.candidates.lookup handle = .openable raw) :
     raw ∈ bounds.values :=
   (candidateValues_serviceInvariant (timeouts := timeouts) leaks bounds).history (initialLaw setup)

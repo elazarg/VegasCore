@@ -19,8 +19,8 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
   {memory : BindingMemory timeouts leaks} {owner : Player}
   {original repaired : (application setup timeouts leaks).Execution}
 
@@ -36,18 +36,19 @@ theorem ready_opening_inclusion
     (onlyBindings : memory.shadow.OwnBindings owner)
     (leftBinding : original.application.BindingInvariant)
     (rightBinding : repaired.application.BindingInvariant)
-    (event : (graph setup).EventId) (actor : Player) (payload : L.Ty)
-    (binding : EventGraph.FieldRef (graph setup).layout (.binding actor payload))
-    (checks : List (EventGraph.GuardCheck (graph setup).layout payload))
-    (outputEq : (graph setup).outputLayout event = .publication payload)
-    (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .resolve actor payload binding checks)
-    (node : nodeView (graph setup) event = .resolve actor payload binding checks outputEq codeEq)
+    (event : setup.informationGraph.EventId) (actor : Player) (payload : L.Ty)
+    (binding : EventGraph.FieldRef setup.informationGraph.layout (.binding actor payload))
+    (checks : List (EventGraph.GuardCheck setup.informationGraph.layout payload))
+    (outputEq : setup.informationGraph.outputLayout event = .publication payload)
+    (codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .resolve actor payload binding checks)
+    (node : nodeView setup.informationGraph event = .resolve actor payload binding checks outputEq
+      codeEq)
     (ready : original.application.config.cut.Ready event)
     (value : L.Val payload)
     (successful : binding.get? original.application.config.store = some (.success value))
-    (id : MessageId Player) (candidate : Handle (graph setup)) (raw : Raw L)
-    (evidence : Option (OpeningFact (graph setup)))
+    (id : MessageId Player) (candidate : Handle setup.informationGraph) (raw : Raw L)
+    (evidence : Option (OpeningFact setup.informationGraph))
     (found : original.network.lookup id =
       some ⟨id, ⟨.opening event candidate raw, evidence, some ⟨event⟩⟩⟩)
     (endpointClear :
@@ -101,7 +102,8 @@ theorem ready_opening_inclusion
         apply EventGraph.EventCode.resolveOutput?_isSome
         intro field member
         apply original.application.config.read_available ready
-        rw [← EventGraph.EventCode.readFields_cast outputEq ((graph setup).nodes event), codeEq]
+        rw [← EventGraph.EventCode.readFields_cast outputEq (setup.informationGraph.nodes event),
+          codeEq]
         exact member
       obtain ⟨result, resolved⟩ := Option.isSome_iff_exists.mp available
       exact frame.opening_inclusion clear onlyBindings id event candidate actor payload binding

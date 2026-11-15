@@ -32,8 +32,8 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 each observation in instruction order. -/
 def concurrentReference (setup : Setup (Player := Player) (L := L))
     (source : BehavioralProfile setup.program) :
-    (serviceGraph setup .concurrentReveals).BehavioralProfile :=
-  (serviceGraph setup .concurrentReveals).normalizeProfile
+    setup.revealRelaxedGraph.BehavioralProfile :=
+  setup.revealRelaxedGraph.normalizeProfile
     (compileEventProfile setup.program source)
 
 /-- **Ready independence of the order-blind reference.** A disclosing source
@@ -42,17 +42,18 @@ theorem concurrentReference_readyIndependent (setup : Setup (Player := Player) (
     (source : BehavioralProfile setup.program)
     (disclosing : ∀ who, Disclosing setup.program (source who)) :
     ReadyIndependent (concurrentReference setup source) := by
-  have opens (who : Player) (event : (serviceGraph setup .concurrentReveals).EventId)
-      (actor : (serviceGraph setup .concurrentReveals).actor? event = some who)
-      (publication : ((serviceGraph setup .concurrentReveals).outputLayout event).IsPublication)
-      (observation : (serviceGraph setup .concurrentReveals).PlayerObservation who)
+  have opens (who : Player) (event : setup.revealRelaxedGraph.EventId)
+      (actor : setup.revealRelaxedGraph.actor? event = some who)
+      (publication : (setup.revealRelaxedGraph.outputLayout
+        event).IsPublication)
+      (observation : setup.revealRelaxedGraph.PlayerObservation who)
       (active : who ∉ observation.defaulted) :
       compileEventProfile setup.program source who event actor observation active =
         PMF.pure (EventField.openAction _ publication) :=
     compileEventPolicy_publication setup.program who (source who) (disclosing who) event actor
       publication observation active
-  exact (setup.eventGraph.withMode_concurrentReveals_revealsOnlyConcurrent
-    setup.eventGraph_total).readyIndependent_normalizeProfile _
+  exact (setup.informationGraph.relaxReveals_revealsOnlyConcurrent
+    setup.informationGraph_total).readyIndependent_normalizeProfile _
     fun who event actor publication left right leftActive rightActive => by
       rw [opens who event actor publication left leftActive,
         opens who event actor publication right rightActive]
@@ -66,25 +67,25 @@ theorem concurrentReference_opensPublications (setup : Setup (Player := Player) 
   fun config event who actor publication active =>
     compileEventPolicy_publication setup.program who (source who) (disclosing who) event actor
       publication _ (fun normalized => active
-        ((serviceGraph setup .concurrentReveals).normalizeObservation_defaulted_subset who
-          ((serviceGraph setup .concurrentReveals).playerObserve who config)
+        (setup.revealRelaxedGraph.normalizeObservation_defaulted_subset who
+          (setup.revealRelaxedGraph.playerObserve who config)
           normalized))
 
 /-- The complete source configuration read from a concurrent-reveal
 configuration in instruction order; unfinished configurations have none. -/
 def concurrentRankedRead (setup : Setup (Player := Player) (L := L))
-    (config : (serviceGraph setup .concurrentReveals).Config) :
+    (config : setup.revealRelaxedGraph.Config) :
     Option (Config Player L setup.program.terminalCtx) :=
   if config.cut.Terminal then
     Vegas.decodeConfig? setup.program setup.program
       (ContextRefs.initial setup.context (outputLayout setup.program))
       (Revelations.initial setup.context) [] (outputEmbedding setup.program) config.store
-      (EventGraph.rankedHistory (graph := serviceGraph setup .concurrentReveals) config)
+      (EventGraph.rankedHistory (graph := setup.revealRelaxedGraph) config)
   else none
 
 /-- The instruction-order reader depends only on the order-free key. -/
 theorem concurrentRankedRead_congr (setup : Setup (Player := Player) (L := L))
-    {left right : (serviceGraph setup .concurrentReveals).Config}
+    {left right : setup.revealRelaxedGraph.Config}
     (same : runKey left = runKey right) :
     concurrentRankedRead setup left = concurrentRankedRead setup right := by
   have cut : left.cut = right.cut := congrArg Prod.fst same
@@ -113,14 +114,14 @@ order: the parameter, public values and defaults of the decoded source
 configuration. -/
 def concurrentOutcome {Parameter : Type} (setup : Setup (Player := Player) (L := L))
     (parameter : State L setup.context → Parameter)
-    (config : (serviceGraph setup .concurrentReveals).Config) :
+    (config : setup.revealRelaxedGraph.Config) :
     Option (Parameter × PublicOutcome setup.program) :=
   (concurrentRankedRead setup config).map (setup.parameterOutcome parameter)
 
 /-- **The outcome ignores the decisions of defaulted players.** -/
 theorem concurrentOutcome_erase {Parameter : Type} (setup : Setup (Player := Player) (L := L))
     (parameter : State L setup.context → Parameter)
-    (config : (serviceGraph setup .concurrentReveals).Config) :
+    (config : setup.revealRelaxedGraph.Config) :
     concurrentOutcome setup parameter config.erase = concurrentOutcome setup parameter config := by
   have defaultsEq : Vegas.EventCompletion.defaults (EventGraph.rankedHistory config.erase) =
       Vegas.EventCompletion.defaults (EventGraph.rankedHistory config) := by
@@ -143,11 +144,11 @@ theorem concurrentOutcome_erase {Parameter : Type} (setup : Setup (Player := Pla
 /-- The service's instruction-order readout is the configuration reader at the
 native terminal configuration. -/
 theorem serviceRankedReadout_some (setup : Setup (Player := Player) (L := L))
-    (duration : (serviceGraph setup .concurrentReveals).EventId → Nat)
+    (duration : setup.revealRelaxedGraph.EventId → Nat)
     (leaks : MessageNetwork.ObservationRule Player
-      (WitnessedPacket (serviceGraph setup .concurrentReveals)))
-    (control : (serviceApplication setup .concurrentReveals duration leaks).Control) :
-    serviceRankedReadout setup .concurrentReveals duration leaks (some control) =
+      (WitnessedPacket setup.revealRelaxedGraph))
+    (control : (serviceApplication setup setup.revealDependencies duration leaks).Control) :
+    serviceRankedReadout setup setup.revealDependencies duration leaks (some control) =
       concurrentRankedRead setup control.execution.application.config := rfl
 
 end Vegas

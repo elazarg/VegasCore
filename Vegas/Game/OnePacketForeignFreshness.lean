@@ -50,9 +50,9 @@ private theorem prefixes_comparable {Principal : Type} {protocol : ExecutionProt
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- Every actual ready prefix of an unfinished foreign event lies after a
@@ -69,9 +69,9 @@ theorem foreign_ready_prefix_after_ownTurn
     (startPrefix : TracePrefix startTrace trace)
     (beforePrefix : TracePrefix beforeTrace trace)
     (focal owner : Player) (different : owner ≠ focal)
-    (current event : (graph setup).EventId)
+    (current event : setup.informationGraph.EventId)
     (turn : start.execution.application.publicView.ownTurn? focal = some current)
-    (owned : (graph setup).actor? event = some owner)
+    (owned : setup.informationGraph.actor? event = some owner)
     (unfinished : event ∉ start.execution.application.config.cut.completed)
     (ready : before.execution.application.config.cut.Ready event) :
     TracePrefix startTrace beforeTrace := by
@@ -83,13 +83,14 @@ theorem foreign_ready_prefix_after_ownTurn
     rcases preserved with readyNow | completed
     · have focalFacts := PublicView.ownTurn?_spec _ focal current turn
       have focalReady := (start.execution.application.publicView_eventReady current).mp focalFacts.1
-      have sameEvent := setup.eventGraph.sequentialize_ready_unique _ focalReady readyNow
+      have sameEvent := setup.informationGraph.sequentialize_ready_unique _ focalReady readyNow
       rw [← sameEvent] at owned
       exact (different (Option.some.inj (owned.symm.trans focalFacts.2))).elim
     · exact (unfinished completed).elim
 
 omit [Fintype Player] in
-private theorem first_activated_recall_split (owner : Player) (event : (graph setup).EventId)
+private theorem first_activated_recall_split (owner : Player) (event :
+  setup.informationGraph.EventId)
     (past : List (application setup timeouts leaks).PlayerEntry)
     (occurs : ∃ entry ∈ past, ActivatedAt setup timeouts leaks owner event entry) :
     ∃ earlier entry later, past = earlier ++ entry :: later ∧
@@ -117,7 +118,7 @@ makes that earliest ready activation genuinely pending. -/
 theorem firstActivation_response_prefix_of_recall
     {control : (application setup timeouts leaks).Control}
     (trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some control))
-    (owner : Player) (event : (graph setup).EventId)
+    (owner : Player) (event : setup.informationGraph.EventId)
     (occurs : ∃ entry ∈ control.execution.logs owner, ActivatedAt setup timeouts leaks owner
       event entry)
     (submissions : OwnSubmissionsAtTurn setup leaks control.execution owner) :

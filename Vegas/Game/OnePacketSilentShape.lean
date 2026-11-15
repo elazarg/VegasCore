@@ -36,9 +36,9 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
-  (timeouts : EventTimeouts (graph setup))
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-  (bounds : MessageBounds (graph setup)) (horizon : Nat)
+  (timeouts : EventTimeouts setup.informationGraph)
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
+  (bounds : MessageBounds setup.informationGraph) (horizon : Nat)
   (scheduler : (application setup timeouts leaks).Scheduler)
   [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
   [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
@@ -54,7 +54,7 @@ omit [Fintype Player] [(application setup timeouts leaks).FiniteNature (initialL
 `event`. -/
 theorem respondEntry_activatedAt {who : Player} {execution : (application setup timeouts
   leaks).Execution}
-    {event : (graph setup).EventId}
+    {event : setup.informationGraph.EventId}
     (turn : execution.application.publicView.ownTurn? who = some event)
     (response : (application setup timeouts leaks).Action) :
     ActivatedAt setup timeouts leaks who event (respondEntry setup timeouts leaks execution who
@@ -77,7 +77,7 @@ theorem certificate_firstActivation_lateOwnerShape
     (assembled : OnePacketAssembled setup timeouts leaks bounds horizon scheduler sequence scale
       scale_pos
       scale_le_one weights targetSequence) (n : ℕ) {who : Player}
-    (site : (onePacketN).InformationSite who) {event : (graph setup).EventId}
+    (site : (onePacketN).InformationSite who) {event : setup.informationGraph.EventId}
     (pending : pendingEvent setup timeouts leaks who site.1 = some event)
     (law : PMF ((onePacketN).Choice who site.1))
     (history : (onePacketN).InformationHistory who site.1)
@@ -144,7 +144,7 @@ theorem certificate_firstActivation_lateOwnerShapeFrom
     (assembled : OnePacketAssembled setup timeouts leaks bounds horizon scheduler sequence scale
       scale_pos
       scale_le_one weights targetSequence) (n : ℕ) {who : Player}
-    (site : (onePacketN).InformationSite who) {event : (graph setup).EventId}
+    (site : (onePacketN).InformationSite who) {event : setup.informationGraph.EventId}
     (pending : pendingEvent setup timeouts leaks who site.1 = some event)
     (law : PMF ((onePacketN).Choice who site.1))
     (lawShape : (∃ option : LateOption slots, law = onePacketLate setup timeouts leaks bounds

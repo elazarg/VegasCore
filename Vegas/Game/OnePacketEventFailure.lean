@@ -83,7 +83,7 @@ variable (setup : Setup (Player := Player) (L := L))
 
 /-- A cell of the terminal context read from the event's output holds a
 failure. -/
-def EventCellFailed (event : (graph setup).EventId)
+def EventCellFailed (event : setup.informationGraph.EventId)
     (terminal : Config Player L setup.program.terminalCtx) : Prop :=
   ∃ (name : VarId) (cell : CellTy Player L) (source : HasVar setup.program.terminalCtx name cell),
     ((terminalRefs setup.program).get source).field = .inr event ∧
@@ -91,21 +91,21 @@ def EventCellFailed (event : (graph setup).EventId)
 
 /-- **The event-level failed readouts.** Readouts recording a failure of the
 event and a failed reveal of the player. -/
-def EventFailedReadout (who : Player) (event : (graph setup).EventId) :
+def EventFailedReadout (who : Player) (event : setup.informationGraph.EventId) :
     Set (Option (Config Player L setup.program.terminalCtx)) :=
   {readout | ∃ terminal, readout = some terminal ∧
     1 ≤ failedReveals setup.program who (publicOutcome setup.program terminal) ∧
     EventCellFailed setup event terminal}
 
-variable (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+variable (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
 
-variable (timeouts : EventTimeouts (graph setup)) [Fintype Player]
-  (bounds : MessageBounds (graph setup)) (horizon : Nat)
+variable (timeouts : EventTimeouts setup.informationGraph) [Fintype Player]
+  (bounds : MessageBounds setup.informationGraph) (horizon : Nat)
   (scheduler : (application setup timeouts leaks).Scheduler)
 
 /-- **The event-level failed histories** of the one-packet game: those whose
 typed readout records a failure of `event` and a failed reveal of `who`. -/
-def EventFailedHistory (who : Player) (event : (graph setup).EventId) :
+def EventFailedHistory (who : Player) (event : setup.informationGraph.EventId) :
     Set ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).History :=
   {history | sourceReadout setup timeouts leaks history.state ∈ EventFailedReadout setup who event}

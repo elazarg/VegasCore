@@ -28,7 +28,7 @@ open GameTheory GameTheory.Protocol GameTheory.Math.Probability Interaction Even
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
+  {timeouts : EventTimeouts setup.informationGraph}
   {profile : BehavioralProfile setup.program}
 
 /-- A property of source points closed under every source step, whatever the
@@ -46,18 +46,18 @@ theorem owesFailure_stepClosed (who : Player) :
 
 /-- A property holds at the decoding of a configuration at a prefix. -/
 def DecodedHolds (property : ProtocolState setup.program → Prop) (rank : Nat)
-    (config : (graph setup).Config) : Prop :=
+    (config : setup.informationGraph.Config) : Prop :=
   ∀ state, sourceServicePrefix? setup rank config = some state → property state
 
 /-- One actual graph completion keeps a step-closed property at its decoded
 source successor. The successor rank belongs only to this single completion. -/
 theorem SourceResidual.decodedHolds_step
     {property : ProtocolState setup.program → Prop} (closed : StepClosed setup property)
-    {rank : Nat} {before : (graph setup).Config}
+    {rank : Nat} {before : setup.informationGraph.Config}
     (residual : SourceResidual setup profile rank before)
     (holds : DecodedHolds property rank before)
-    (event : (graph setup).EventId) (ready : before.cut.Ready event)
-    (action : (graph setup).Action event) (after : (graph setup).Config)
+    (event : setup.informationGraph.EventId) (ready : before.cut.Ready event)
+    (action : setup.informationGraph.Action event) (after : setup.informationGraph.Config)
     (member : after ∈ (before.step event ready action).support) :
     ∃ _next : SourceResidual setup profile (rank + 1) after,
       DecodedHolds property (rank + 1) after := by
@@ -72,7 +72,7 @@ theorem SourceResidual.decodedHolds_step
 endpoint prefix, without a bound of one completion per native transition. -/
 theorem SourceResidual.decodedHolds_path
     {property : ProtocolState setup.program → Prop} (closed : StepClosed setup property)
-    {rank : Nat} {before after : (graph setup).Config}
+    {rank : Nat} {before after : setup.informationGraph.Config}
     (residual : SourceResidual setup profile rank before)
     (holds : DecodedHolds property rank before)
     (path : Relation.ReflTransGen EventGraph.Config.Step before after) :
@@ -89,7 +89,8 @@ theorem SourceResidual.decodedHolds_path
 variable (setup timeouts) in
 /-- An initialized native protocol state whose configuration has a source
 residual at a prefix where a step-closed property holds of its decoding. -/
-def DecodedState (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+def DecodedState (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket
+  setup.informationGraph))
     (profile : BehavioralProfile setup.program)
     (property : ProtocolState setup.program → Prop) :
     (application setup timeouts leaks).ProtocolState → Prop
@@ -102,7 +103,7 @@ def DecodedState (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket
 initialized native state holds after every protocol transition, under arbitrary
 responses and scheduler choices. -/
 theorem decodedHolds_transition
-    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
     {property : ProtocolState setup.program → Prop} (closed : StepClosed setup property)
     (initial : PMF (application setup timeouts leaks).State) (horizon : Nat)
     (scheduler : (application setup timeouts leaks).Scheduler)
@@ -137,7 +138,7 @@ theorem decodedHolds_transition
 /-- A step-closed source property initialized on every supported setup draw
 holds at the decoding of every initialized menu history, for any scheduler. -/
 theorem decodedState_history_of_stepClosed
-    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
     {property : ProtocolState setup.program → Prop} (closed : StepClosed setup property)
     (initialized : ∀ initial ∈ setup.initialLaw.support,
       property (ProtocolState.entry setup.program (Config.initial initial)))
@@ -162,8 +163,9 @@ theorem decodedState_history_of_stepClosed
           obtain ⟨initial, member, rfl⟩ := PMF.support_map .. ▸ supported
           let residual := SourceResidual.initial setup profile initial
           refine ⟨0, ⟨residual⟩, fun point decoded => ?_⟩
-          change sourceServicePrefix? setup 0 (EventGraphRuntime.State.initial
-            (graph := graph setup) (setup.eventInputs initial)).config = some point at decoded
+          change sourceServicePrefix? setup 0
+            (EventGraphRuntime.State.initial (graph := setup.informationGraph)
+              (setup.eventInputs initial)).config = some point at decoded
           rw [residual.decode, Option.some.injEq] at decoded
           subst decoded
           exact initialized initial member
@@ -172,13 +174,14 @@ theorem decodedState_history_of_stepClosed
             (some previous) (some control) joint (ih previous rfl) realized
 
 /-- A terminal cut is a prefix only of the full event count. -/
-theorem isPrefix_eventCount_of_terminal {cut : (graph setup).order.Cut} {rank : Nat}
+theorem isPrefix_eventCount_of_terminal {cut : setup.informationGraph.order.Cut} {rank : Nat}
     (ordered : cut.IsPrefix rank) (terminal : cut.Terminal) :
-    rank = (graph setup).order.eventCount := by
+    rank = setup.informationGraph.order.eventCount := by
   apply le_antisymm ordered.1
   by_contra short
   push Not at short
-  have completed : (⟨rank, short⟩ : Fin (graph setup).order.eventCount) ∈ cut.completed := by
+  have completed : (⟨rank, short⟩ : Fin setup.informationGraph.order.eventCount) ∈ cut.completed :=
+    by
     rw [terminal]
     exact Finset.mem_univ _
   exact Nat.lt_irrefl _ ((ordered.2 _).mp completed)

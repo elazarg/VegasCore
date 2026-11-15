@@ -43,11 +43,11 @@ structure CompiledPolicySuffix
   graphSuffix : CompiledSuffix whole program refs revelations registry
     embedding refsBefore offset
   actorEq : ∀ index,
-    (toEventGraph whole).actor? (embedding.event index) =
+    (toInformationGraph whole).actor? (embedding.event index) =
       eventOwner? program index
   policyEq : ∀ (who : Player) (index : Fin (eventCount program))
-      (actor : (toEventGraph whole).actor? (embedding.event index) = some who)
-      (observation : (toEventGraph whole).PlayerObservation who)
+      (actor : (toInformationGraph whole).actor? (embedding.event index) = some who)
+      (observation : (toInformationGraph whole).PlayerObservation who)
       (active : who ∉ observation.defaulted),
     cast (congrArg PMF
       (congrArg Vegas.EventGraph.EventField.Action (embedding.layout_eq index)))
@@ -277,9 +277,9 @@ player's component of the decoded whole source history. -/
 @[simp] theorem decodeCompletions_playerObserve
     {Γ : SourceCtx Player L} {openNames : Finset VarId}
     (program : SourceProgram Player L Γ openNames)
-    (config : (toEventGraph program).Config) (who : Player) :
+    (config : (toInformationGraph program).Config) (who : Player) :
     decodeCompletions program
-        ((toEventGraph program).playerObserve who config).ownActions =
+        ((toInformationGraph program).playerObserve who config).ownActions =
       decodeHistory program config.history who := by
   rfl
 

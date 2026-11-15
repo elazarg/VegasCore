@@ -27,9 +27,9 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 omit [DecidableEq Player] [Fintype Player] [IExpr.ResultTypes L] in
@@ -40,7 +40,7 @@ private theorem cast_option_some {A B : Type} (same : A = B) (value : A) :
 
 variable (setup timeouts leaks) in
 /-- The event has completed with a failure. -/
-def EventFailedState (event : (graph setup).EventId) :
+def EventFailedState (event : setup.informationGraph.EventId) :
     (application setup timeouts leaks).ProtocolState → Prop
   | none => False
   | some control => event ∈ control.execution.application.config.cut.completed ∧
@@ -50,11 +50,11 @@ open Classical in
 /-- At a stop one step of the event from `sent` by the committed action, the
 completion point is the target when it is intended and the control fresh. -/
 theorem completionPoint_of_mem_step {rank : Nat} {profile : BehavioralProfile setup.program}
-    {sent : (graph setup).Config} (residual : SourceResidual setup profile rank sent)
+    {sent : setup.informationGraph.Config} (residual : SourceResidual setup profile rank sent)
     {point : ProtocolState setup.program}
     (decoded : sourceServicePrefix? setup rank sent = some point)
-    {event : (graph setup).EventId} (ready : sent.cut.Ready event)
-    {action : (graph setup).Action event} {target : ProtocolState setup.program}
+    {event : setup.informationGraph.EventId} (ready : sent.cut.Ready event)
+    {action : setup.informationGraph.Action event} {target : ProtocolState setup.program}
     (stepEq : ProtocolState.step setup.program point
       (fun _ => decodeEventAction setup.program event action) = PMF.pure target)
     {fresh : (application setup timeouts leaks).Control → Prop}
@@ -84,16 +84,16 @@ theorem completionPoint_of_mem_step {rank : Nat} {profile : BehavioralProfile se
 omit [Fintype Player] in
 /-- A primitive source step to an intended target has no public default. -/
 theorem defaulted_eq_empty_of_intended_source_step {rank : Nat}
-    {profile : BehavioralProfile setup.program} {sent : (graph setup).Config}
+    {profile : BehavioralProfile setup.program} {sent : setup.informationGraph.Config}
     (residual : SourceResidual setup profile rank sent)
     {point : ProtocolState setup.program}
     (decoded : sourceServicePrefix? setup rank sent = some point)
-    {event : (graph setup).EventId} (ready : sent.cut.Ready event)
-    {action : (graph setup).Action event} {target : ProtocolState setup.program}
+    {event : setup.informationGraph.EventId} (ready : sent.cut.Ready event)
+    {action : setup.informationGraph.Action event} {target : ProtocolState setup.program}
     (stepEq : ProtocolState.step setup.program point
       (fun _ => decodeEventAction setup.program event action) = PMF.pure target)
     (intended : ProtocolState.Intended setup.program target)
-    (primary : EventGraphRuntime.State (graph setup))
+    (primary : EventGraphRuntime.State setup.informationGraph)
     (member : primary.config ∈ (sent.step event ready action).support) :
     primary.config.defaulted = ∅ := by
   obtain ⟨before, after, beforeDecoded, afterDecoded, reachedPoint⟩ :=
@@ -117,13 +117,14 @@ theorem expect_completionIndicator_of_openableCommitment
     (players : ∀ player, ((bounds.onePacketMenu timeouts leaks).information
       (initialLaw setup) horizon scheduler).BehavioralPolicy player)
     {who : Player} {entry : (application setup timeouts leaks).PlayerEntry}
-    {message : Message Player (WitnessedPacket (graph setup))} {event : (graph setup).EventId}
-    {candidate : Handle (graph setup)} {payload : L.Ty}
-    {outputEq : (graph setup).outputLayout event = .binding who payload}
-    (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .bind who payload)
-    {value : L.Val payload} {sent : (graph setup).Config} {ready : sent.cut.Ready event}
-    {action : (graph setup).Action event}
+    {message : Message Player (WitnessedPacket setup.informationGraph)} {event :
+      setup.informationGraph.EventId}
+    {candidate : Handle setup.informationGraph} {payload : L.Ty}
+    {outputEq : setup.informationGraph.outputLayout event = .binding who payload}
+    (codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .bind who payload)
+    {value : L.Val payload} {sent : setup.informationGraph.Config} {ready : sent.cut.Ready event}
+    {action : setup.informationGraph.Action event}
     (successful : (cast (congrArg EventGraph.EventField.Action outputEq) action :
       Option (PublicationResult (L.Val payload))) = some (.success value))
     {rank : Nat} {profile : BehavioralProfile setup.program}
@@ -238,7 +239,7 @@ theorem expect_completionIndicator_of_openableCommitment
             (PublicationResult.success value)) := by
         rw [endpoint]
         exact Function.update_self ..
-      have read : (⟨.inr event, outputEq⟩ : EventGraph.FieldRef (graph setup).layout
+      have read : (⟨.inr event, outputEq⟩ : EventGraph.FieldRef setup.informationGraph.layout
           (.binding who payload)).get? final.execution.application.config.store =
           some (.success value) := by
         simp only [EventGraph.FieldRef.get?]

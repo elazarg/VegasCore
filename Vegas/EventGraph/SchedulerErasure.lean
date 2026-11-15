@@ -3,6 +3,7 @@ module
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 public import Vegas.EventGraph.NormalizedPolicy
+public import Vegas.EventGraph.ActorTurns
 
 @[expose] public section
 
@@ -278,6 +279,16 @@ structure ReadyIndependent (profile : graph.BehavioralProfile) : Prop where
           actionLaw profile config event
   congr : ∀ {left right : graph.Config}, runKey left = runKey right →
     ∀ event, actionLaw profile left event = actionLaw profile right event
+
+/-- Ready independence entails actor-local uniqueness on every cut. -/
+theorem ReadyIndependent.actorSerial {graph : Vegas.EventGraph Player L}
+    {profile : graph.BehavioralProfile} (independent : graph.ReadyIndependent profile) :
+    graph.ActorSerial := by
+  intro event cut other who ready otherReady actor otherActor
+  obtain ⟨config, same⟩ := Config.cut_surjective graph cut
+  subst same
+  by_contra different
+  exact independent.actorsDiffer config ready otherReady (Ne.symm different) who actor otherActor
 
 theorem eventStep_congr_event (profile : graph.BehavioralProfile) (config : graph.Config)
     {event other : graph.EventId} (same : event = other) (ready : config.cut.Ready event)

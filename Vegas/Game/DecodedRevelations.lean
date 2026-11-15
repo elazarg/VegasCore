@@ -37,8 +37,8 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 /-- The resolve nodes of the default graph read the fields of the commitment
 cells their reveals reveal. -/
 theorem nodes_revealedCell (setup : Setup (Player := Player) (L := L))
-    (event : (graph setup).EventId) :
-    (((graph setup).nodes event).resolutionField?).map (fieldCell setup) =
+    (event : setup.informationGraph.EventId) :
+    ((setup.informationGraph.nodes event).resolutionField?).map (fieldCell setup) =
       revealedCell setup.program event := by
   conv_rhs => rw [← show (revealedCell setup.program event).map id =
     revealedCell setup.program event from congrFun Option.map_id _]
@@ -62,12 +62,13 @@ variable {setup : Setup (Player := Player) (L := L)}
 an event whose node code is a resolve node, the event is a reveal of a commitment
 name, and the binding field the node reads is the field of that commitment
 cell. -/
-theorem fieldCell_resolveBinding {event : (graph setup).EventId} {owner : Player}
-    {payload : L.Ty} {binding : EventGraph.FieldRef (graph setup).layout (.binding owner payload)}
-    {checks : List (EventGraph.GuardCheck (graph setup).layout payload)}
-    (outputEq : (graph setup).outputLayout event = .publication payload)
-    (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .resolve owner payload binding checks) :
+theorem fieldCell_resolveBinding {event : setup.informationGraph.EventId} {owner : Player}
+    {payload : L.Ty} {binding : EventGraph.FieldRef setup.informationGraph.layout (.binding owner
+      payload)}
+    {checks : List (EventGraph.GuardCheck setup.informationGraph.layout payload)}
+    (outputEq : setup.informationGraph.outputLayout event = .publication payload)
+    (codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .resolve owner payload binding checks) :
     ∃ name, resolutionName? setup.program event = some name ∧
       revealedCell setup.program event = some (name, .commitment owner payload) ∧
       fieldCell setup binding.field = (name, .commitment owner payload) := by
@@ -190,15 +191,15 @@ theorem decodeSourcePrefix?_revealedInto {Field : Type} [DecidableEq Field]
 /-- **Decoded points record completed reveals.** At the decoded point of a
 native configuration, every completed resolve event has revealed the commitment
 cell its binding reads into its own publication cell. -/
-theorem decodedPoint_revealedInto {config : (graph setup).Config}
+theorem decodedPoint_revealedInto {config : setup.informationGraph.Config}
     {point : ProtocolState setup.program} (decoded : decodedPoint setup config = some point)
-    {event : (graph setup).EventId} (completed : event ∈ config.cut.completed)
+    {event : setup.informationGraph.EventId} (completed : event ∈ config.cut.completed)
     {owner : Player} {payload : L.Ty}
-    {binding : EventGraph.FieldRef (graph setup).layout (.binding owner payload)}
-    {checks : List (EventGraph.GuardCheck (graph setup).layout payload)}
-    (outputEq : (graph setup).outputLayout event = .publication payload)
-    (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .resolve owner payload binding checks) :
+    {binding : EventGraph.FieldRef setup.informationGraph.layout (.binding owner payload)}
+    {checks : List (EventGraph.GuardCheck setup.informationGraph.layout payload)}
+    (outputEq : setup.informationGraph.outputLayout event = .publication payload)
+    (codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .resolve owner payload binding checks) :
     ProtocolState.RevealedInto setup.program point owner payload
       (fieldCell setup binding.field).1 (eventCell setup.program event).1 := by
   obtain ⟨name, -, revealed, cell⟩ := fieldCell_resolveBinding outputEq codeEq

@@ -66,7 +66,7 @@ def setup : Setup (Player := Player) (L := simpleExpr) where
   accounts := rfl
   exitTransfers := fun _ => 0
 
-abbrev compiled := graph setup
+abbrev compiled := setup.informationGraph
 
 def sourceUtility (result : Unit × PublicOutcome program) (who : Player) : ℝ :=
   cash (result.2.values.get (.there .here)) (result.2.values.get .here) who

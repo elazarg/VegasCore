@@ -25,13 +25,15 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 /-- Every supported tagged scheduler command preserves the native calendar. -/
 theorem RosterCalendarPhase.environment
     {setup : Setup (Player := Player) (L := L)}
-    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-    {rosters : (graph setup).EventId → List Player} {event : (graph setup).EventId}
+    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+    {rosters : setup.informationGraph.EventId → List Player} {event :
+      setup.informationGraph.EventId}
     {offset entryClock : Nat} {obsolete : Bool}
     {control : (application setup (Vegas.timeouts setup) leaks).Control}
     (network : (NetworkPolicy (timeouts setup)) leaks)
     (phase : RosterCalendarPhase setup leaks rosters event offset entryClock obsolete control)
-    {inputs : (graph setup).Inputs} (invariant : control.execution.application.Invariant inputs)
+    {inputs : setup.informationGraph.Inputs} (invariant : control.execution.application.Invariant
+      inputs)
     (stable : EntryEventStable (timeouts setup) leaks control.execution)
     (quiescent : ∀ query, ¬ control.execution.application.AutomaticReady query)
     (origins : control.execution.Provenance (application setup (Vegas.timeouts setup) leaks))
@@ -70,7 +72,7 @@ theorem RosterCalendarPhase.environment
       phase.activate_step early _ (List.getElem?_eq_getElem early) remaining counted next reached⟩
   · have atEnd := rosterBlock_ending setup rosters event 0
     rw [rosterPhaseEnding_first, Nat.add_zero, ← atEnding] at atEnd
-    cases owned : (graph setup).actor? event with
+    cases owned : setup.informationGraph.actor? event with
     | none =>
         simp only [rosterScheduler, found, atEnd, owned, Option.map_some, interactionInstruction,
           PMF.mem_support_pure_iff] at selected
@@ -122,8 +124,8 @@ theorem RosterCalendarPhase.environment
 
 theorem RosterCalendarInvariant.transition
     (setup : Setup (Player := Player) (L := L))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-    (rosters : (graph setup).EventId → List Player)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
+    (rosters : setup.informationGraph.EventId → List Player)
     (network : (NetworkPolicy (timeouts setup)) leaks)
     (before after : (application setup (Vegas.timeouts setup) leaks).ProtocolState)
     (prior : ((application setup (Vegas.timeouts setup) leaks).protocol (initialLaw setup)
@@ -168,8 +170,8 @@ theorem RosterCalendarInvariant.transition
 /-- Every initialized raw history retains the public roster calendar certificate. -/
 theorem RosterCalendarInvariant.history
     (setup : Setup (Player := Player) (L := L))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-    (rosters : (graph setup).EventId → List Player)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
+    (rosters : setup.informationGraph.EventId → List Player)
     (network : (NetworkPolicy (timeouts setup)) leaks) :
     ∀ {state} (_trace : ((application setup (Vegas.timeouts setup) leaks).protocol (initialLaw
       setup)

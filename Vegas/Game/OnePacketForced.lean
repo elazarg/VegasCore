@@ -258,8 +258,8 @@ theorem history_length_of_isPrefix {graph : EventGraph Player L} (config : graph
 section Runtime
 
 variable (setup : Setup (Player := Player) (L := L))
-  (timeouts : EventTimeouts (graph setup))
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+  (timeouts : EventTimeouts setup.informationGraph)
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
 
 /-- The source view a native player view of the supplied runtime shows `who`:
 its masked store read at the length of its completion order, with its own
@@ -268,7 +268,8 @@ player's identity and where decoding fails. -/
 def sourceViewOf (who : Player) (view : (application setup timeouts leaks).PlayerView) :
     setup.ProtocolView who :=
   if same : view.application.who = who then
-    let observed : (graph setup).PlayerObservation who := same ▸ view.application.observation
+    let observed : setup.informationGraph.PlayerObservation who := same ▸
+      view.application.observation
     decodeViewPrefix? who setup.program
       (ContextRefs.initial setup.context (outputLayout setup.program))
       (outputRef setup.program) observed.completionOrder.length observed.store
@@ -305,14 +306,15 @@ theorem projectView_observe (who : Player) (execution : (application setup timeo
       rfl)]
   change decodeViewPrefix? who setup.program
       (ContextRefs.initial setup.context (outputLayout setup.program)) (outputRef setup.program)
-      ((graph setup).playerObserve who execution.application.config).completionOrder.length
-      ((graph setup).playerStore who execution.application.config.store)
+      (setup.informationGraph.playerObserve who execution.application.config).completionOrder.length
+      (setup.informationGraph.playerStore who execution.application.config.store)
       (decodeCompletions setup.program
-        (((graph setup).ownCompletions who execution.application.config.history)))
+        ((setup.informationGraph.ownCompletions who execution.application.config.history)))
       execution.application.config.defaults = _
   rw [EventGraph.playerObserve_completionOrder, List.length_map,
     history_length_of_isPrefix execution.application.config ordered]
-  refine (decodeViewPrefix?_playerStore (graph := graph setup) who rank setup.program _ _ _
+  refine (decodeViewPrefix?_playerStore (graph := setup.informationGraph) who rank setup.program _
+    _ _
     _ _).trans ?_
   exact decodeViewPrefix?_eq_observe who rank setup.program _ [] _ _ _ _ _ point decoded
 

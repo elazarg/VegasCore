@@ -85,10 +85,10 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
 variable {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
 
-variable [Fintype Player] {bounds : MessageBounds (graph setup)} {horizon : Nat}
+variable [Fintype Player] {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- **Debt-freedom reaches back along native transitions.** If nobody owes a
@@ -141,7 +141,7 @@ theorem intendedHistory?_isSome_of_debtFree (wellFormed : setup.WellFormed) : �
             setup.intendedProtocol.legal_of_legalOption (fun impossible => impossible)
               fun _ impossible => impossible
           have reachedStart : decodedPoint setup (EventGraphRuntime.State.initial
-              (graph := graph setup) (setup.eventInputs initial)).config ∈
+              (graph := setup.informationGraph) (setup.eventInputs initial)).config ∈
               (setup.intendedProtocol.step setup.intendedProtocol.initHistory.state
                 ⟨_, legalStart⟩).support := by
             rw [decodedPoint_initial]
@@ -225,15 +225,15 @@ theorem intendedHistory?_isSome_of_debtFree (wellFormed : setup.WellFormed) : �
                     (current.execution.application.config.actualDecision event action).bind
                         (decodeEventAction setup.program event) =
                       decodeEventAction setup.program event action := by
-                  cases owned : (graph setup).actor? event with
+                  cases owned : setup.informationGraph.actor? event with
                   | none =>
                       have noChoice := decodeEventAction_owner setup.program event action
                       rw [eventOwner?_eq_actor] at noChoice
                       change (decodeEventAction setup.program event action).map sourceActionOwner =
-                        (graph setup).actor? event at noChoice
+                        setup.informationGraph.actor? event at noChoice
                       rw [owned] at noChoice
                       have silent := Option.map_eq_none_iff.mp noChoice
-                      change ((graph setup).nodes event).actor = none at owned
+                      change (setup.informationGraph.nodes event).actor = none at owned
                       simp only [EventGraph.Config.actualDecision,
                         EventGraph.EventCode.actualDecision, owned, Option.bind_none, silent]
                   | some actor =>
@@ -302,7 +302,8 @@ theorem projectedDecision_of_debtFree (wellFormed : setup.WellFormed) {who : Pla
     (native : (onePacketInformation setup timeouts leaks bounds horizon
       scheduler).InformationHistory who
       (some (past, view)))
-    {event : (graph setup).EventId} (turn : view.application.publicView.ownTurn? who = some event)
+    {event : setup.informationGraph.EventId} (turn : view.application.publicView.ownTurn? who =
+      some event)
     (forced : ForcedState setup timeouts leaks who native.1.state)
     (notOwed : ∀ point, nativeDecodedState setup timeouts leaks native.1.state = some point →
       ¬ ProtocolState.OwesFailure who setup.program point) :
@@ -373,7 +374,7 @@ theorem projectedDecision_of_forcedAgent (wellFormed : setup.WellFormed) {who : 
       scheduler who info)
     {past : List (application setup timeouts leaks).PlayerEntry}
     {view : (application setup timeouts leaks).PlayerView}
-    (decision : info = some (past, view)) {event : (graph setup).EventId}
+    (decision : info = some (past, view)) {event : setup.informationGraph.EventId}
     (turn : view.application.publicView.ownTurn? who = some event)
     (notOwed : ∀ history : (onePacketInformation setup timeouts leaks bounds horizon
         scheduler).InformationHistory who info,

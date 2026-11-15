@@ -26,18 +26,18 @@ open SourceProgram
 open Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
-  (setup : Setup (Player := Player) (L := L)) {mode : EventGraph.ExecutionMode}
-  {duration : (serviceGraph setup mode).EventId → Nat}
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
+  (setup : Setup (Player := Player) (L := L)) {deps : setup.dataflowGraph.Dependencies}
+  {duration : (serviceGraph setup deps).EventId → Nat}
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup deps)))
 
 /-- The identity carried in an arbitrary native view is checked before reading
 its dependent observation. At an actual observation that check is reflexive. -/
 def decisionView? {Γ : SourceCtx Player L}
     (refs : ContextRefs (graphLayout setup.program) Γ) (who : Player)
-    (view : (serviceApplication setup mode duration leaks).PlayerView) : Option
+    (view : (serviceApplication setup deps duration leaks).PlayerView) : Option
     (DecisionView who Γ) :=
   if same : view.application.who = who then
-    let observed : (serviceGraph setup mode).PlayerObservation who := same ▸
+    let observed : (serviceGraph setup deps).PlayerObservation who := same ▸
         view.application.observation
     (decodeObservation? who refs observed.store).map fun source =>
       ⟨source, observed.defaults, decodeCompletions setup.program
@@ -48,25 +48,25 @@ def decisionView? {Γ : SourceCtx Player L}
 theorem decisionView?_observe {Γ : SourceCtx Player L}
     (refs : ContextRefs (graphLayout setup.program) Γ) (who : Player)
     (source : Config Player L Γ)
-    (execution : (serviceApplication setup mode duration leaks).Execution)
+    (execution : (serviceApplication setup deps duration leaks).Execution)
     (store : refs.Agrees source.state execution.application.config.store)
     (history : decodeHistory setup.program
         (execution.application.config.history) = source.history)
     (defaults : execution.application.config.defaults = source.defaults) :
     decisionView? setup leaks refs who
-        (execution.observe (serviceApplication setup mode duration leaks) who) =
+        (execution.observe (serviceApplication setup deps duration leaks) who) =
       some (source.view who) := by
   unfold decisionView?
   rw [dite_eq_left
-          (show (execution.observe (serviceApplication setup mode duration leaks)
+          (show (execution.observe (serviceApplication setup deps duration leaks)
           who).application.who = who from rfl)]
   change (decodeObservation? who refs
-      ((serviceGraph setup mode).playerStore who execution.application.config.store)).map
+      ((serviceGraph setup deps).playerStore who execution.application.config.store)).map
         (fun observed => DecisionView.mk observed execution.application.config.defaults
           (decodeCompletions setup.program
-            ((serviceGraph setup mode).ownCompletions who
+            ((serviceGraph setup deps).ownCompletions who
               execution.application.config.history))) = _
-  rw [decodeObservation?_playerStore_eq_some (graph := serviceGraph setup mode) refs who
+  rw [decodeObservation?_playerStore_eq_some (graph := serviceGraph setup deps) refs who
           source.state execution.application.config.store store, Option.map_some]
   change some (DecisionView.mk (sourceObserve who source.state)
     execution.application.config.defaults (decodeHistory setup.program
@@ -79,7 +79,7 @@ views when the operational compiler invariants hold at both histories. -/
 theorem source_view_eq_of_observe_eq {Γ : SourceCtx Player L}
     (refs : ContextRefs (graphLayout setup.program) Γ) (who : Player)
     (left right : Config Player L Γ)
-    (nativeLeft nativeRight : (serviceApplication setup mode duration leaks).Execution)
+    (nativeLeft nativeRight : (serviceApplication setup deps duration leaks).Execution)
     (leftStore : refs.Agrees left.state nativeLeft.application.config.store)
     (rightStore : refs.Agrees right.state nativeRight.application.config.store)
     (leftHistory : decodeHistory setup.program
@@ -88,8 +88,8 @@ theorem source_view_eq_of_observe_eq {Γ : SourceCtx Player L}
         (nativeRight.application.config.history) = right.history)
     (leftDefaults : nativeLeft.application.config.defaults = left.defaults)
     (rightDefaults : nativeRight.application.config.defaults = right.defaults)
-    (same : nativeLeft.observe (serviceApplication setup mode duration leaks) who =
-      nativeRight.observe (serviceApplication setup mode duration leaks) who) : left.view who =
+    (same : nativeLeft.observe (serviceApplication setup deps duration leaks) who =
+      nativeRight.observe (serviceApplication setup deps duration leaks) who) : left.view who =
           right.view who := by
   have first := decisionView?_observe setup leaks refs who left nativeLeft leftStore
     leftHistory leftDefaults

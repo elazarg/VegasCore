@@ -28,9 +28,9 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 local notation "N" =>
@@ -50,7 +50,8 @@ theorem exists_initial_native_boundary
         some (ProtocolState.entry setup.program (Config.initial inputs)) ∧
       ProtocolState.Intended setup.program (ProtocolState.entry setup.program (Config.initial
         inputs)) := by
-  let native := EventGraphRuntime.State.initial (graph := graph setup) (setup.eventInputs inputs)
+  let native := EventGraphRuntime.State.initial (graph := setup.informationGraph)
+    (setup.eventInputs inputs)
   let execution := ReactiveApplication.Execution.initial (application setup timeouts leaks) native
   have initial : native ∈ (initialLaw setup).support :=
     (PMF.mem_support_map_iff _ _ _).mpr ⟨inputs, supported, rfl⟩
@@ -98,7 +99,7 @@ theorem source_step_mem_support_honest_kernel_of_fullyMixed
     (ordered : execution.application.config.cut.IsPrefix rank)
     (decoded : sourceServicePrefix? setup rank execution.application.config = some point)
     (intended : ProtocolState.Intended setup.program point)
-    (who : Player) (event : (graph setup).EventId)
+    (who : Player) (event : setup.informationGraph.EventId)
     (turn : execution.application.publicView.ownTurn? who = some event)
     (clear : execution.application.config.defaulted = ∅) :
     target ∈ (ProtocolState.behavioralStateStep setup.program
@@ -156,7 +157,7 @@ theorem source_step_mem_support_honest_kernel_of_fullyMixed
 clean native successor boundary with exactly that decoded source state. -/
 theorem exists_owned_successor_native_boundary
     (wellFormed : setup.WellFormed)
-    {delay bound : (graph setup).EventId → Nat}
+    {delay bound : setup.informationGraph.EventId → Nat}
     (opportunity : ∀ control : (application setup timeouts leaks).Control,
       (E).Trace (some control) → control.execution.application.config.defaulted = ∅ →
       OpportunityAt timeouts leaks control.execution delay)
@@ -169,7 +170,7 @@ theorem exists_owned_successor_native_boundary
       (application setup timeouts leaks).terminal (some control) →
       control.execution.application.config.cut.Terminal)
     (covers : bounds.CoversOutputValues)
-    (capacity : ∀ player, bindingEventCount (graph setup) player < bounds.candidateCount)
+    (capacity : ∀ player, bindingEventCount setup.informationGraph player < bounds.candidateCount)
     (certificate : (E).WellFoundedHistories)
     (source : setup.intendedModel.BehavioralAssessment) (full : source.IsFullyMixed)
     (history : setup.intendedProtocol.History)
@@ -184,8 +185,8 @@ theorem exists_owned_successor_native_boundary
     (boundary : ReachedBoundary setup timeouts leaks horizon scheduler rank execution)
     (decoded : sourceServicePrefix? setup rank execution.application.config = some point)
     (intended : ProtocolState.Intended setup.program point)
-    (owner : Player) (event : (graph setup).EventId) (atRank : event.val = rank)
-    (owned : (graph setup).actor? event = some owner) :
+    (owner : Player) (event : setup.informationGraph.EventId) (atRank : event.val = rank)
+    (owned : setup.informationGraph.actor? event = some owner) :
     ∃ (final : (E).History) (anchor : (application setup timeouts leaks).Execution),
       final.state = some ⟨horizon - anchor.environmentRecall.length, none, anchor⟩ ∧
       ReachedBoundary setup timeouts leaks horizon scheduler (rank + 1) anchor ∧
@@ -224,7 +225,8 @@ theorem exists_owned_successor_native_boundary
       (((N).runBehavioralUntil certificate players
         (fun stop => LateStopped setup timeouts leaks bounds horizon scheduler rank stop ∨
           ¬ ReactiveApplication.stateInvariant (app := application setup timeouts leaks)
-            (fun native : EventGraphRuntime.State (graph setup) => native.config.defaulted = ∅)
+            (fun native : EventGraphRuntime.State setup.informationGraph => native.config.defaulted
+              = ∅)
             stop.state) callback).map
         (fun stop => nativeDecodedState setup timeouts leaks stop.state)).support := by
     rw [sourceLaw]
@@ -263,8 +265,8 @@ theorem exists_chance_successor_native_boundary
     (boundary : ReachedBoundary setup timeouts leaks horizon scheduler rank execution)
     (decoded : sourceServicePrefix? setup rank execution.application.config = some point)
     (intended : ProtocolState.Intended setup.program point)
-    (focal : Player) (event : (graph setup).EventId) (atRank : event.val = rank)
-    (actorless : (graph setup).actor? event = none) :
+    (focal : Player) (event : setup.informationGraph.EventId) (atRank : event.val = rank)
+    (actorless : setup.informationGraph.actor? event = none) :
     ∃ (final : (E).History) (anchor : (application setup timeouts leaks).Execution),
       final.state = some ⟨horizon - anchor.environmentRecall.length, none, anchor⟩ ∧
       ReachedBoundary setup timeouts leaks horizon scheduler (rank + 1) anchor ∧
@@ -298,7 +300,8 @@ theorem exists_chance_successor_native_boundary
       (((N).runBehavioralUntil certificate players
         (fun stop => LateStopped setup timeouts leaks bounds horizon scheduler rank stop ∨
           ¬ ReactiveApplication.stateInvariant (app := application setup timeouts leaks)
-            (fun native : EventGraphRuntime.State (graph setup) => native.config.defaulted = ∅)
+            (fun native : EventGraphRuntime.State setup.informationGraph => native.config.defaulted
+              = ∅)
             stop.state) start).map
         (fun stop => nativeDecodedState setup timeouts leaks stop.state)).support := by
     rw [sourceLaw]
@@ -320,14 +323,14 @@ theorem native_prefix_rank_lt_of_source_nonterminal
     {point : ProtocolState setup.program}
     (decoded : sourceServicePrefix? setup rank execution.application.config = some point)
     (running : ¬ ProtocolState.terminal setup.program point) :
-    rank < (graph setup).order.eventCount := by
+    rank < setup.informationGraph.order.eventCount := by
   by_contra outside
-  have within : rank ≤ (graph setup).order.eventCount := ordered.1
-  have full : rank = (graph setup).order.eventCount := by omega
+  have within : rank ≤ setup.informationGraph.order.eventCount := ordered.1
+  have full : rank = setup.informationGraph.order.eventCount := by omega
   subst rank
-  obtain ⟨final, read, stopped⟩ := serviceSourcePrefix?_terminal setup .sequential
+  obtain ⟨final, read, stopped⟩ := serviceSourcePrefix?_terminal setup setup.informationDependencies
     execution.application.config ordered.terminal
-  change sourceServicePrefix? setup (graph setup).order.eventCount
+  change sourceServicePrefix? setup setup.informationGraph.order.eventCount
     execution.application.config = some final at read
   rw [decoded] at read
   cases Option.some.inj read
@@ -337,7 +340,7 @@ theorem native_prefix_rank_lt_of_source_nonterminal
 scheduler boundary, including histories outside a later equilibrium's support. -/
 theorem exists_native_boundary_of_intended_history
     (wellFormed : setup.WellFormed)
-    {delay bound : (graph setup).EventId → Nat}
+    {delay bound : setup.informationGraph.EventId → Nat}
     (opportunity : ∀ control : (application setup timeouts leaks).Control,
       (E).Trace (some control) → control.execution.application.config.defaulted = ∅ →
       OpportunityAt timeouts leaks control.execution delay)
@@ -350,7 +353,7 @@ theorem exists_native_boundary_of_intended_history
       (application setup timeouts leaks).terminal (some control) →
       control.execution.application.config.cut.Terminal)
     (covers : bounds.CoversOutputValues)
-    (capacity : ∀ player, bindingEventCount (graph setup) player < bounds.candidateCount)
+    (capacity : ∀ player, bindingEventCount setup.informationGraph player < bounds.candidateCount)
     (certificate : (E).WellFoundedHistories)
     (source : setup.intendedModel.BehavioralAssessment) (full : source.IsFullyMixed)
     (focal : Player) :
@@ -390,8 +393,8 @@ theorem exists_native_boundary_of_intended_history
       have running : ¬ ProtocolState.terminal setup.program before := legal.1
       have inside := native_prefix_rank_lt_of_source_nonterminal execution boundary.ordered
         decoded running
-      let event : (graph setup).EventId := ⟨rank, inside⟩
-      cases owned : (graph setup).actor? event with
+      let event : setup.informationGraph.EventId := ⟨rank, inside⟩
+      cases owned : setup.informationGraph.actor? event with
       | none =>
         obtain ⟨final, anchor, nextState, nextBoundary, nextDecoded, nextIntended⟩ :=
           exists_chance_successor_native_boundary wellFormed completes certificate source history

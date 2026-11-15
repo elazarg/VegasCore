@@ -28,13 +28,13 @@ the service is not assumed on other native or recovery histories. -/
 theorem inclusionFitsDeadline_of_unrecalled_turn
     (initial : PMF ((reactiveApplication timeouts) leaks).State) (horizon : Nat)
     (scheduler : ((reactiveApplication timeouts) leaks).Scheduler)
-    (ordered : graph.RevealRelaxedOrdered)
     (control : ((reactiveApplication timeouts) leaks).Control)
     (trace : (((reactiveApplication timeouts) leaks).protocol initial horizon scheduler).Trace
       (some control)) (idle : control.actor = none)
     (delay bound : graph.EventId → Nat) (timely : (AsyncTimely timeouts) delay bound)
     (opportunity : OpportunityAt timeouts leaks control.execution delay)
-    (event : graph.EventId) (owner : Player) (acting : graph.actor? event = some owner)
+    (event : graph.EventId) (unique : graph.OwnerSolitary event) (owner : Player) (acting :
+      graph.actor? event = some owner)
     (ready : control.execution.application.publicView.EventReady event)
     (entered : Nat) (activated : control.execution.application.activatedAt event = some entered)
     (never : ∀ entry ∈ control.execution.logs owner,
@@ -45,8 +45,8 @@ theorem inclusionFitsDeadline_of_unrecalled_turn
   by_contra late
   push Not at late
   obtain ⟨response, remembered, turn⟩ :=
-    recalled_turn_of_ownerActivatedSince timeouts leaks initial horizon scheduler ordered control
-      trace idle event owner entered acting (opportunity event owner entered acting ready
+    recalled_turn_of_ownerActivatedSince timeouts leaks initial horizon scheduler control
+      trace idle event unique owner entered acting (opportunity event owner entered acting ready
         activated late)
   exact never response remembered turn
 

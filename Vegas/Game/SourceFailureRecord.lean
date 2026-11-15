@@ -24,9 +24,9 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 /-- A source residual together with the debt recorded by every completed
 owned event whose output is a failure. -/
 def SourceFailureRecord (profile : BehavioralProfile setup.program)
-    (config : (graph setup).Config) : Prop :=
+    (config : setup.informationGraph.Config) : Prop :=
   ∃ rank, Nonempty (SourceResidual setup profile rank config) ∧
-    ∀ event ∈ config.cut.completed, ∀ owner, (graph setup).actor? event = some owner →
+    ∀ event ∈ config.cut.completed, ∀ owner, setup.informationGraph.actor? event = some owner →
       StoreEventFailed config.store event →
         DecodedHolds (ProtocolState.OwesFailure owner setup.program) rank config
 
@@ -36,7 +36,7 @@ namespace SourceFailureRecord
 theorem initial (setup : Setup (Player := Player) (L := L))
     (profile : BehavioralProfile setup.program) (initial : State L setup.context) :
     SourceFailureRecord profile
-      (EventGraphRuntime.State.initial (graph := graph setup)
+      (EventGraphRuntime.State.initial (graph := setup.informationGraph)
         (setup.eventInputs initial)).config := by
   let residual := SourceResidual.initial setup profile initial
   refine ⟨0, ⟨residual⟩, fun event completed => ?_⟩
@@ -44,7 +44,7 @@ theorem initial (setup : Setup (Player := Player) (L := L))
   exact absurd below (Nat.not_lt_zero _)
 
 /-- Any supported compiled graph completion preserves the failed-output record. -/
-theorem step {before after : (graph setup).Config}
+theorem step {before after : setup.informationGraph.Config}
     (valid : SourceFailureRecord profile before) (moved : EventGraph.Config.Step before after) :
     SourceFailureRecord profile after := by
   obtain ⟨completed, ready, action, member⟩ := moved
@@ -58,7 +58,7 @@ theorem step {before after : (graph setup).Config}
   refine ⟨rank + 1, ⟨successor⟩, fun other done owner acting failed => ?_⟩
   rw [before.step_cut completed ready action _ member, EventOrder.Cut.mem_complete] at done
   rcases done with rfl | earlier
-  · cases view : nodeView (graph setup) other with
+  · cases view : nodeView setup.informationGraph other with
     | sample payload law outputEq codeEq =>
         rw [nodeView_sample_actor outputEq codeEq] at acting
         cases acting
@@ -67,7 +67,7 @@ theorem step {before after : (graph setup).Config}
           Option.some.inj ((nodeView_resolve_actor outputEq codeEq).symm.trans acting)
         subst resolveOwner
         obtain ⟨value, read, isFailure⟩ := storeEventFailed_get? failed
-          (⟨.inr other, outputEq⟩ : EventGraph.FieldRef (graph setup).layout
+          (⟨.inr other, outputEq⟩ : EventGraph.FieldRef setup.informationGraph.layout
             (.publication payload)) rfl
         change value = .failure at isFailure
         subst isFailure
@@ -97,7 +97,7 @@ theorem step {before after : (graph setup).Config}
           Option.some.inj ((nodeView_bind_actor outputEq codeEq).symm.trans acting)
         subst bindOwner
         obtain ⟨value, read, isFailure⟩ := storeEventFailed_get? failed
-          (⟨.inr other, outputEq⟩ : EventGraph.FieldRef (graph setup).layout
+          (⟨.inr other, outputEq⟩ : EventGraph.FieldRef setup.informationGraph.layout
             (.binding owner payload)) rfl
         change value = .failure at isFailure
         subst isFailure
@@ -142,7 +142,7 @@ theorem step {before after : (graph setup).Config}
     exact retained
 
 /-- A finite graph path preserves failed-output debt at its actual endpoint. -/
-theorem path {before after : (graph setup).Config}
+theorem path {before after : setup.informationGraph.Config}
     (valid : SourceFailureRecord profile before)
     (moved : Relation.ReflTransGen EventGraph.Config.Step before after) :
     SourceFailureRecord profile after := by
@@ -152,8 +152,8 @@ theorem path {before after : (graph setup).Config}
 
 /-- Every initialized native history retains the debt recorded by failed
 outputs, under arbitrary responses and scheduler choices. -/
-theorem history {timeouts : EventTimeouts (graph setup)}
-    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+theorem history {timeouts : EventTimeouts setup.informationGraph}
+    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
     (profile : BehavioralProfile setup.program) (horizon : Nat)
     (scheduler : (application setup timeouts leaks).Scheduler)
     {control : (application setup timeouts leaks).Control}

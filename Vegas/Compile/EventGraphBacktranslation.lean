@@ -208,7 +208,7 @@ Every retained choice has a decision and introduces no default of that player. -
 def encodeCompletions? {Γ : SourceCtx Player L} {openNames : Finset VarId}
     (program : SourceProgram Player L Γ openNames) :
     List (Fin (eventCount program)) → List (OwnAction Player L) →
-      Option (List (toEventGraph program).Completion)
+      Option (List (toInformationGraph program).Completion)
   | [], [] => some []
   | event :: events, action :: actions => do
       let encoded ← encodeEventAction? program event action
@@ -221,7 +221,7 @@ its event identities and decoded original actions. -/
 theorem encodeCompletions?_decodeCompletions_eq_some
     {Γ : SourceCtx Player L} {openNames : Finset VarId}
     (program : SourceProgram Player L Γ openNames)
-    (completions : List (toEventGraph program).Completion)
+    (completions : List (toInformationGraph program).Completion)
     (strategic : ∀ completion ∈ completions,
       ∃ action sourceAction, completion.decision = some action ∧
         decodeEventAction program completion.event action = some sourceAction)

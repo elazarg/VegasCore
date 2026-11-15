@@ -22,9 +22,9 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
-  (timeouts : EventTimeouts (graph setup))
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-  (bounds : MessageBounds (graph setup)) (horizon : Nat)
+  (timeouts : EventTimeouts setup.informationGraph)
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
+  (bounds : MessageBounds setup.informationGraph) (horizon : Nat)
   (scheduler : (application setup timeouts leaks).Scheduler)
 
 local notation "N" => onePacketInformation setup timeouts leaks bounds horizon scheduler
@@ -49,8 +49,9 @@ theorem intendedCommitment_sourcePolicy_gain
     {bound : ℝ} (readoutBounded : ∀ readout,
       |exclusionReadoutUtility setup parameter utility excludedPayoff readout who| ≤ bound) :
     ∃ (sourceChoice : setup.intendedModel.Choice who (projectView setup timeouts leaks who site.1))
-      (event : (graph setup).EventId) (payload : L.Ty)
-      (outputEq : (graph setup).outputLayout event = .binding who payload) (value : L.Val payload),
+      (event : setup.informationGraph.EventId) (payload : L.Ty)
+      (outputEq : setup.informationGraph.outputLayout event = .binding who payload) (value : L.Val
+        payload),
       sourceChoice.1 = sourceOfValue setup event outputEq value ∧
       (∃ (response : (application setup timeouts leaks).Action)
         (material : (application setup timeouts leaks).Submission) (serial : Nat),
@@ -91,7 +92,7 @@ theorem intendedCommitment_sourcePolicy_gain
   have named : turnEvent = event := by
     unfold EventGraphRuntime.submittedEvent? at submitted
     rw [sends] at submitted
-    change material.call.packet.event? (graph setup) = some turnEvent at submitted
+    change material.call.packet.event? setup.informationGraph = some turnEvent at submitted
     rw [packet] at submitted
     exact (Option.some.inj submitted).symm
   subst turnEvent

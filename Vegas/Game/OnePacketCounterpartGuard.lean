@@ -125,9 +125,9 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol Intera
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
   [DecidableEq (CellTy Player L)]
 
@@ -188,7 +188,7 @@ decoded point and a point finding the cells of a supported setup draw, when the
 initial handles are compatible with the swap. -/
 theorem inputs_mem_swapAllowed_of_drawn
     (drawn : ∃ other ∈ setup.initialLaw.support, InitialCellsAt other q)
-    (handlePairs : Handle (graph setup) → Option (Raw L × Raw L))
+    (handlePairs : Handle setup.informationGraph → Option (Raw L × Raw L))
     (compatible : (HiddenSwap.ofPairs (betweenPairs publicAgree succeed)
       handlePairs).InitialHandlesCompatible)
     {control : (application setup timeouts leaks).Control}
@@ -202,7 +202,7 @@ theorem inputs_mem_swapAllowed_of_drawn
   subst pointEq
   obtain ⟨other, otherMember, otherFound⟩ := drawn
   have drawnMember : ∀ draw ∈ setup.initialLaw.support,
-      EventGraphRuntime.State.initial (graph := graph setup) (setup.eventInputs draw) ∈
+      EventGraphRuntime.State.initial (graph := setup.informationGraph) (setup.eventInputs draw) ∈
         (initialLaw setup).support := fun draw drawMember => by
     rw [initialLaw, serviceInitialLaw, PMF.support_map]
     exact ⟨draw, drawMember, rfl⟩
@@ -229,18 +229,20 @@ theorem bindingCellsAgree_of_decoded (wellFormed : setup.WellFormed)
     (staticQ : ProtocolState.StaticAt setup.program [] (Revelations.initial setup.context) q)
     (readyOwn : ∀ event, control.execution.application.config.cut.Ready event →
       ∀ owner payload binding checks outputEq codeEq,
-        nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq →
+        nodeView setup.informationGraph event = .resolve owner payload binding checks outputEq
+          codeEq →
           owner = who)
-    {event : (graph setup).EventId}
+    {event : setup.informationGraph.EventId}
     (active : control.execution.application.config.cut.Ready event ∨
       event ∈ control.execution.application.config.cut.completed)
     {owner : Player} {payload : L.Ty}
-    {binding : EventGraph.FieldRef (graph setup).layout (.binding owner payload)}
-    {checks : List (EventGraph.GuardCheck (graph setup).layout payload)}
-    {outputEq : (graph setup).outputLayout event = .publication payload}
-    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .resolve owner payload binding checks}
-    (view : nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq) :
+    {binding : EventGraph.FieldRef setup.informationGraph.layout (.binding owner payload)}
+    {checks : List (EventGraph.GuardCheck setup.informationGraph.layout payload)}
+    {outputEq : setup.informationGraph.outputLayout event = .publication payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .resolve owner payload binding checks}
+    (view : nodeView setup.informationGraph event = .resolve owner payload binding checks outputEq
+      codeEq) :
     ProtocolState.cell? setup.program p (fieldCell setup binding.field).1
         (.commitment owner payload) =
       ProtocolState.cell? setup.program q (fieldCell setup binding.field).1
@@ -300,12 +302,13 @@ theorem swapGuardState_of_agree
     (agree : ∀ event, (control.execution.application.config.cut.Ready event ∨
         event ∈ control.execution.application.config.cut.completed) →
       ∀ owner payload binding checks outputEq codeEq,
-        nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq →
+        nodeView setup.informationGraph event = .resolve owner payload binding checks outputEq
+          codeEq →
           ProtocolState.cell? setup.program p (fieldCell setup binding.field).1
               (.commitment owner payload) =
             ProtocolState.cell? setup.program q (fieldCell setup binding.field).1
               (.commitment owner payload))
-    {table : AcceptedHandles (graph setup)}
+    {table : AcceptedHandles setup.informationGraph}
     (tableEq : control.execution.application.accepted = table) :
     SwapGuardState setup timeouts (HiddenSwap.ofPairs (betweenPairs publicAgree succeed)
         (betweenHandlePairs setup p q table))
@@ -360,9 +363,10 @@ theorem swapGuardState_of_decoded (wellFormed : setup.WellFormed)
     (staticQ : ProtocolState.StaticAt setup.program [] (Revelations.initial setup.context) q)
     (readyOwn : ∀ event, control.execution.application.config.cut.Ready event →
       ∀ owner payload binding checks outputEq codeEq,
-        nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq →
+        nodeView setup.informationGraph event = .resolve owner payload binding checks outputEq
+          codeEq →
           owner = who)
-    {table : AcceptedHandles (graph setup)}
+    {table : AcceptedHandles setup.informationGraph}
     (tableEq : control.execution.application.accepted = table) :
     SwapGuardState setup timeouts (HiddenSwap.ofPairs (betweenPairs publicAgree succeed)
         (betweenHandlePairs setup p q table))

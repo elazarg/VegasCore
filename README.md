@@ -45,14 +45,15 @@ game is the analysis view in which commitments and reveals succeed. Public defau
 instructions. The graph and ledger preserve the same source configuration.
 See [source semantics](docs/source-semantics.md).
 
-The compiler lowers source instructions to a typed event graph. Its checked
-source law, scheduler correspondence and Nash results remain in the core,
-including approximate Nash correspondence. The compiled graph is a total source
-order: every permitted public graph scheduler produces the same event plan
-(`Vegas.toEventGraph_policyPlan_eq`). Scheduler quantification adds no choice of
-execution order for this compiler. The concurrent-reveal mode relaxes only
-independent reveals of different owners; its intended Nash theorem has real
-scheduling choices, while bindings remain source ordered. Source execution and the native runtime
+The compiler lowers source instructions to a typed dataflow graph. Its
+information-preserving compilation adds total source order: every public graph
+scheduler then produces the same event plan
+(`Vegas.toInformationGraph_policyPlan_eq`). The checked source-law and Nash
+correspondence results use that information graph. Relaxing independent reveals
+of different owners permits real scheduling choices; the intended Nash
+preservation theorem covers those choices while bindings remain source ordered.
+See the [dependency design](docs/event-graph-dependencies.md).
+Source execution and the native runtime
 share absorbing public defaults; the runtime mechanically
 completes instructions of owners who have defaulted.
 There is no API compatibility requirement.

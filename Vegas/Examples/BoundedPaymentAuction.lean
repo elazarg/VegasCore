@@ -200,7 +200,7 @@ theorem paymentSumUtility_eq_economic (penalty : Int) (values : Player → ℝ)
 /-- The finite report alphabet supports the existing full-deviation compiler
 Nash equivalence for the program's evaluated instruction-payment sum. -/
 theorem compiled_nash_iff (penalty : Int) (values : Player → ℝ)
-    (scheduler : (setup penalty).eventGraph.PublicScheduler) (error : ℝ)
+    (scheduler : (setup penalty).informationGraph.PublicScheduler) (error : ℝ)
     (profile : BehavioralProfile (program penalty)) :
     IsεNash ((setup penalty).eventGame scheduler)
         (fun outcome who =>

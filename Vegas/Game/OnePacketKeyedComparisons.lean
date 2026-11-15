@@ -34,9 +34,9 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L] (setup : Setup (Player := Player) (L := L))
-  (timeouts : EventTimeouts (graph setup))
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-  (bounds : MessageBounds (graph setup)) (horizon : Nat)
+  (timeouts : EventTimeouts setup.informationGraph)
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
+  (bounds : MessageBounds setup.informationGraph) (horizon : Nat)
   (scheduler : (application setup timeouts leaks).Scheduler)
   {Public : Type*} {signal : State L setup.context → Public}
 
@@ -47,7 +47,7 @@ local notation "NP" => ReactiveApplication.ResponseMenu.protocol
 local notation "Menu" => bounds.onePacketMenu timeouts leaks
 local notation "Clear" => ReactiveApplication.stateInvariant
   (app := application setup timeouts leaks)
-    (fun native : EventGraphRuntime.State (graph setup) =>
+    (fun native : EventGraphRuntime.State setup.informationGraph =>
       EventGraph.Config.defaulted (EventGraphRuntime.State.config native) = ∅)
 
 open Classical in
@@ -111,14 +111,14 @@ private theorem lateChoice_eq_pure_opening
     (debtFree : SiteDebtFree setup timeouts leaks bounds horizon scheduler site)
     {past : List (application setup timeouts leaks).PlayerEntry}
     {view : (application setup timeouts leaks).PlayerView} (atSite : site.1 = some (past, view))
-    {event : (graph setup).EventId}
+    {event : setup.informationGraph.EventId}
     (pending : pendingEvent setup timeouts leaks who site.1 = some event)
     (choice : (N).Choice who site.1) {response : (application setup timeouts leaks).Action}
     (chosen : choice.1 = some response)
     (member : response ∈ bounds.onePacketActions timeouts leaks who past view)
     {material : (application setup timeouts leaks).Submission}
     (sends : response.transmission = some material)
-    {handle : Handle (graph setup)} {raw : Raw L}
+    {handle : Handle setup.informationGraph} {raw : Raw L}
     (packet : material.call.packet = .opening event handle raw) (slot : Fin slots) :
     lateChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler source who
       site.1
@@ -156,7 +156,8 @@ private theorem lateChoice_eq_pure_opening
     (resolves _ pending who payload binding checks outputEq codeEq node)
   have responseEq := onePacket_opening_eq_disclosure (timeouts := timeouts) trace who _ node
     disclosed sendsDisclosure
-    response member material sends ((congrArg (Payload.event? (graph setup)) packet).trans rfl)
+    response member material sends ((congrArg (Payload.event? setup.informationGraph) packet).trans
+      rfl)
   have lateEq := lateChoice_reveal (timeouts := timeouts) source trace who _ turn node slot
   have choiceEq : choice = responseChoice setup timeouts leaks bounds (initialLaw setup) horizon
       scheduler who _ ((canonicalServiceDecision timeouts) leaks who
@@ -189,7 +190,7 @@ theorem assembled_keyed_local_comparisons
       (combinedFloor setup timeouts leaks bounds horizon scheduler (sequence n))
       (2 * horizon + 2) n)
     (covers : bounds.CoversOutputValues) (coversInputs : bounds.CoversInputValues)
-    (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
+    (capacity : ∀ who, bindingEventCount setup.informationGraph who < bounds.candidateCount)
     (slots_pos : 0 < bounds.candidateCount)
     (weights : ℕ → ∀ p,
       PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup) horizon scheduler
@@ -200,7 +201,7 @@ theorem assembled_keyed_local_comparisons
     (mixed : ∀ n, (targetSequence n).IsFullyMixed)
     (bayes : ∀ n, BehavioralAssessment.IsBayesConsistent (N) (targetSequence n)
       ((Menu).decisionRecall (initialLaw setup) horizon scheduler).decisionInformationAntichain)
-    {delay bound : (graph setup).EventId → Nat}
+    {delay bound : setup.informationGraph.EventId → Nat}
     (opportunity : Opportunity timeouts leaks (initialLaw setup) horizon scheduler delay)
     (inclusion : ProtectedInclusion timeouts leaks (initialLaw setup) horizon scheduler bound)
     (timely : (AsyncTimely timeouts) delay bound)

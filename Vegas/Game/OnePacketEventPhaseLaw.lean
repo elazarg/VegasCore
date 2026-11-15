@@ -20,9 +20,9 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 local notation "menu" => bounds.onePacketMenu timeouts leaks
@@ -32,7 +32,7 @@ local notation "E" => ReactiveApplication.ResponseMenu.protocol menu (initialLaw
   scheduler
 local notation "Clear" => ReactiveApplication.stateInvariant
   (app := application setup timeouts leaks)
-    (fun native : EventGraphRuntime.State (graph setup) =>
+    (fun native : EventGraphRuntime.State setup.informationGraph =>
       EventGraph.Config.defaulted (EventGraphRuntime.State.config native) = ∅)
 
 /-- From a clear sequential prefix, adding a public-default stop preserves the
@@ -43,7 +43,7 @@ theorem pending_until_eq_clearUntil
     (current : start.state = some control) {rank : Nat}
     (ordered : control.execution.application.config.cut.IsPrefix rank)
     (clear : control.execution.application.config.defaulted = ∅)
-    (event : (graph setup).EventId)
+    (event : setup.informationGraph.EventId)
     (ready : control.execution.application.config.cut.Ready event) :
     (N).runBehavioralUntil certificate players
         (LateStopped setup timeouts leaks bounds horizon scheduler rank) start =
@@ -55,9 +55,9 @@ theorem pending_until_eq_clearUntil
   let early := fun final : (E).History => late final ∨ ¬ Clear final.state
   have lower : rank ≤ event.val := Nat.le_of_not_gt fun earlier =>
     ready.1 ((ordered.2 event).mpr earlier)
-  have within : rank < (graph setup).order.eventCount := lt_of_le_of_lt lower event.isLt
+  have within : rank < setup.informationGraph.order.eventCount := lt_of_le_of_lt lower event.isLt
   have eventRank : event.val = rank := congrArg Fin.val
-    (setup.eventGraph.sequentialize_ready_unique _ ready (ordered.ready within))
+    (setup.informationGraph.sequentialize_ready_unique _ ready (ordered.ready within))
   suffices agree : ∀ history,
       (late history ∨ ∃ before : (application setup timeouts leaks).Control,
         history.state = some before ∧
@@ -102,7 +102,8 @@ theorem pending_until_eq_clearUntil
     exact Or.inr ⟨after, afterState,
       (EventGraph.Config.Step.path_eq_of_ready_of_not_completed event
         (fun other otherReady =>
-          setup.eventGraph.sequentialize_ready_unique _ otherReady beforeReady) done path).trans
+          setup.informationGraph.sequentialize_ready_unique _ otherReady beforeReady) done
+            path).trans
         configEq⟩
 
 end Vegas

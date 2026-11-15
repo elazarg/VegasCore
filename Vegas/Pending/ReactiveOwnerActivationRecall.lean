@@ -25,11 +25,10 @@ theorem recalled_turn_of_ownerActivatedSince (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (initial : PMF ((reactiveApplication timeouts) leaks).State) (horizon : Nat)
     (scheduler : ((reactiveApplication timeouts) leaks).Scheduler)
-    (ordered : graph.RevealRelaxedOrdered)
     (control : ((reactiveApplication timeouts) leaks).Control)
     (trace : (((reactiveApplication timeouts) leaks).protocol initial horizon scheduler).Trace
       (some control)) (idle : control.actor = none)
-    (event : graph.EventId) (owner : Player) (entered : Nat)
+    (event : graph.EventId) (unique : graph.OwnerSolitary event) (owner : Player) (entered : Nat)
     (actor : graph.actor? event = some owner)
     (activated : (OwnerActivatedSince timeouts) leaks control.execution.environmentRecall
       event owner entered) :
@@ -45,7 +44,7 @@ theorem recalled_turn_of_ownerActivatedSince (timeouts : EventTimeouts graph)
       State.playerView] using publicEqual
   have turn : before.execution.application.publicView.ownTurn? owner = some event := by
     apply PublicView.ownTurn?_of_ownTurn
-    apply State.ownTurn_of_ready _ ordered owner event
+    apply State.ownTurn_of_ready _ owner event unique
     · rw [publicState]
       exact ready
     · exact actor
@@ -60,12 +59,13 @@ theorem due_owner_recalled_turn_of_opportunity (timeouts : EventTimeouts graph)
     {initial : PMF ((reactiveApplication timeouts) leaks).State} {horizon : Nat}
     {scheduler : ((reactiveApplication timeouts) leaks).Scheduler}
     {delay bound : graph.EventId → Nat}
-    (timely : (AsyncTimely timeouts) delay bound) (ordered : graph.RevealRelaxedOrdered)
+    (timely : (AsyncTimely timeouts) delay bound)
     (control : ((reactiveApplication timeouts) leaks).Control)
     (trace : (((reactiveApplication timeouts) leaks).protocol initial horizon scheduler).Trace
       (some control)) (idle : control.actor = none)
     (opportunity : OpportunityAt timeouts leaks control.execution delay)
-    (event : graph.EventId) (owner : Player) (actor : graph.actor? event = some owner)
+    (event : graph.EventId) (unique : graph.OwnerSolitary event) (owner : Player) (actor :
+      graph.actor? event = some owner)
     (ready : control.execution.application.config.cut.Ready event)
     (entered : Nat) (activated : control.execution.application.activatedAt event = some entered)
     (due : timeouts.duration event ≤ control.execution.application.clock - entered) :
@@ -75,7 +75,7 @@ theorem due_owner_recalled_turn_of_opportunity (timeouts : EventTimeouts graph)
     ((control.execution.application.publicView_eventReady event).mpr ready) activated (by
       have margin := timely event (by simp only [actor, Option.isSome_some])
       omega)
-  exact recalled_turn_of_ownerActivatedSince timeouts leaks initial horizon scheduler ordered
-    control trace idle event owner entered actor occurred
+  exact recalled_turn_of_ownerActivatedSince timeouts leaks initial horizon scheduler
+    control trace idle event unique owner entered actor occurred
 
 end Vegas.EventGraphRuntime

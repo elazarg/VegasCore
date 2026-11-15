@@ -30,13 +30,13 @@ theorem fair_finiteBindingTypes : SourceSetup.fairSetup.program.FiniteBindingTyp
   ⟨inferInstanceAs (Finite Bool), trivial⟩
 
 /-- One deviation mixture serves both private worlds of the guessing game. -/
-example (scheduler : SourceSetup.fairSetup.eventGraph.PublicScheduler)
+example (scheduler : SourceSetup.fairSetup.informationGraph.PublicScheduler)
     (chosen : Bool) (who : SourceSetup.Player)
-    (replacement : SourceSetup.fairSetup.eventGraph.BehavioralPolicy who) :
+    (replacement : SourceSetup.fairSetup.informationGraph.BehavioralPolicy who) :
     ∃ mixture : PMF
         (SourceProgram.BehavioralPolicy who SourceSetup.fairSetup.program),
       ((SourceSetup.fairSetup.eventGame scheduler).play
-        (Profile.update (sig := SourceSetup.fairSetup.eventGraph.gameSignature)
+        (Profile.update (sig := SourceSetup.fairSetup.informationGraph.gameSignature)
           (compileEventProfile SourceSetup.fairSetup.program
             (SourceSetup.profile chosen)) who replacement)).map
               (terminalConfig SourceSetup.fairSetup.program) =
@@ -57,7 +57,7 @@ instance : mixedSetup.FiniteInitialLaw := ⟨by simp [mixedSetup, SourceSemantic
 
 /-- The strategic theorem does not require sample-free code, homogeneous
 payloads, universally accepting guards, or commitments created during play. -/
-example (scheduler : mixedSetup.eventGraph.PublicScheduler)
+example (scheduler : mixedSetup.informationGraph.PublicScheduler)
     (utility : SourceProgram.PublicOutcome mixedSetup.program → SourceSemantics.Player → ℝ)
     (ε : ℝ) (profile : SourceProgram.BehavioralProfile mixedSetup.program) :
     IsεNash (mixedSetup.eventGame scheduler)

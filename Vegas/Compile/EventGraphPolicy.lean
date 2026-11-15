@@ -106,7 +106,7 @@ event graph. -/
 theorem eventOwner?_eq_actor {Γ : SourceCtx Player L} {openNames : Finset VarId}
     (program : SourceProgram Player L Γ openNames)
     (event : Fin (eventCount program)) :
-    eventOwner? program event = (toEventGraph program).actor? event := by
+    eventOwner? program event = (toInformationGraph program).actor? event := by
   symm
   exact compileRankedNodes_actor program _ _ _ _ _ event
 
@@ -155,7 +155,7 @@ theorem decodeEventAction_owner : {Γ : SourceCtx Player L} →
 completions contribute no fabricated source action. -/
 def decodeCompletions {Γ : SourceCtx Player L} {openNames : Finset VarId}
     (program : SourceProgram Player L Γ openNames)
-    (history : List (toEventGraph program).Completion) :
+    (history : List (toInformationGraph program).Completion) :
     List (OwnAction Player L) :=
   history.filterMap fun completion =>
     completion.decision.bind (decodeEventAction program completion.event)
@@ -166,7 +166,7 @@ def decodeCompletions {Γ : SourceCtx Player L} {openNames : Finset VarId}
 
 @[simp] theorem decodeCompletions_append {Γ : SourceCtx Player L}
     {openNames : Finset VarId} (program : SourceProgram Player L Γ openNames)
-    (left right : List (toEventGraph program).Completion) :
+    (left right : List (toInformationGraph program).Completion) :
     decodeCompletions program (left ++ right) =
       decodeCompletions program left ++ decodeCompletions program right := by
   simp [decodeCompletions, List.filterMap_append]
@@ -329,7 +329,7 @@ def compileEventPolicy {Γ : SourceCtx Player L} {openNames : Finset VarId}
     (program : SourceProgram Player L Γ openNames)
     (who : Player)
     (policy : BehavioralPolicy who program) :
-    (toEventGraph program).BehavioralPolicy who :=
+    (toInformationGraph program).BehavioralPolicy who :=
   fun event _actor observation _active =>
     compilePolicyTable program
       (ContextRefs.initial Γ (outputLayout program))
@@ -340,7 +340,7 @@ def compileEventPolicy {Γ : SourceCtx Player L} {openNames : Finset VarId}
 def compileEventProfile {Γ : SourceCtx Player L} {openNames : Finset VarId}
     (program : SourceProgram Player L Γ openNames)
     (profile : BehavioralProfile program) :
-    (toEventGraph program).BehavioralProfile :=
+    (toInformationGraph program).BehavioralProfile :=
   fun who => compileEventPolicy program who (profile who)
 
 end Vegas

@@ -38,11 +38,11 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
-  (timeouts : EventTimeouts (graph setup))
+  (timeouts : EventTimeouts setup.informationGraph)
 
 section LateRule
 
-variable (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+variable (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
 
 /-- A late-delivery option among the first `slots` prepared slots: wait, or
 send now at a slot. A reveal has no slot, and every slot sends its opening. -/
@@ -65,7 +65,7 @@ def lateResponse (assessment : setup.intendedModel.BehavioralAssessment) {slots 
         view))).map
           (slotResponse setup timeouts leaks who past view event slot.val)
 
-variable [Fintype Player] (bounds : MessageBounds (graph setup))
+variable [Fintype Player] (bounds : MessageBounds setup.informationGraph)
   (initial : PMF (application setup timeouts leaks).State) (horizon : Nat)
   (scheduler : (application setup timeouts leaks).Scheduler)
 
@@ -134,8 +134,9 @@ end LateRule
 section Pools
 
 variable [Fintype Player]
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-  (bounds : MessageBounds (graph setup)) (initial : PMF (application setup timeouts leaks).State)
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
+  (bounds : MessageBounds setup.informationGraph) (initial : PMF (application setup timeouts
+    leaks).State)
   (horizon : Nat) (scheduler : (application setup timeouts leaks).Scheduler)
   [Fintype ((bounds.onePacketMenu timeouts leaks).protocol initial horizon
     scheduler).History]
@@ -153,8 +154,9 @@ end Pools
 section Obligations
 
 variable [Fintype Player]
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-  (bounds : MessageBounds (graph setup)) (initial : PMF (application setup timeouts leaks).State)
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
+  (bounds : MessageBounds setup.informationGraph) (initial : PMF (application setup timeouts
+    leaks).State)
   (horizon : Nat) (scheduler : (application setup timeouts leaks).Scheduler)
   [Fintype ((bounds.onePacketMenu timeouts leaks).protocol initial horizon
     scheduler).History]

@@ -21,9 +21,9 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L] (setup : Setup (Player := Player) (L := L))
-  (timeouts : EventTimeouts (graph setup))
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-  (bounds : MessageBounds (graph setup)) (horizon : Nat)
+  (timeouts : EventTimeouts setup.informationGraph)
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
+  (bounds : MessageBounds setup.informationGraph) (horizon : Nat)
   (scheduler : (application setup timeouts leaks).Scheduler)
 
 local notation "N" => onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
@@ -33,7 +33,7 @@ local notation "NP" => ReactiveApplication.ResponseMenu.protocol
 local notation "Menu" => bounds.onePacketMenu timeouts leaks
 local notation "Clear" => ReactiveApplication.stateInvariant
   (app := application setup timeouts leaks)
-    (fun native : EventGraphRuntime.State (graph setup) =>
+    (fun native : EventGraphRuntime.State setup.informationGraph =>
       EventGraph.Config.defaulted (EventGraphRuntime.State.config native) = ∅)
 
 open Classical in
@@ -43,7 +43,7 @@ theorem assembled_unintendedCommitment_history_comparison
     [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
     [∀ who, DecidableEq ((N).InfoState who)]
     (wellFormed : setup.WellFormed) (covers : bounds.CoversOutputValues)
-    (capacity : ∀ player, bindingEventCount (graph setup) player < bounds.candidateCount)
+    (capacity : ∀ player, bindingEventCount setup.informationGraph player < bounds.candidateCount)
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (scale : ℕ → ℝ) (positive : ∀ n, 0 < scale n) (le_one : ∀ n, scale n ≤ 1)
     {slots : Nat}
@@ -52,7 +52,7 @@ theorem assembled_unintendedCommitment_history_comparison
     (targetSequence : ℕ → (N).BehavioralAssessment)
     (assembled : OnePacketAssembled setup timeouts leaks bounds horizon scheduler sequence scale
       positive le_one weights targetSequence) (n : ℕ)
-    {delay bound : (graph setup).EventId → Nat}
+    {delay bound : setup.informationGraph.EventId → Nat}
     (opportunity : ∀ control : (application setup timeouts leaks).Control,
       (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some
         control) →
@@ -84,7 +84,7 @@ theorem assembled_unintendedCommitment_history_comparison
     (response : (application setup timeouts leaks).Action) (selected : choice.1 = some response)
     (material : (application setup timeouts leaks).Submission)
     (sends : response.transmission = some material)
-    (event : (graph setup).EventId) (candidate : Handle (graph setup))
+    (event : setup.informationGraph.EventId) (candidate : Handle setup.informationGraph)
     (packet : material.call.packet = .commitment event candidate)
     {Parameter : Type} (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)

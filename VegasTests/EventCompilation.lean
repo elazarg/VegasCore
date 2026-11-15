@@ -15,7 +15,7 @@ public import VegasTests.SourceSemantics
 
 /-! # Source-ranked compiler regressions
 
-Generated dependencies retain source order, public default timing and actual
+Information dependencies retain source order, public default timing and actual
 choices. Arbitrary schedulers and deviations use exact full-configuration laws.
 Heterogeneous values, correlated initial inputs and public chance stay supported.
 -/
@@ -41,14 +41,14 @@ def pairSource : SourceProgram Bool simpleExpr [] ∅ :=
   .reveal 3 true 1 (by decide) (.there .here) (by decide) <|
   .ret []
 
-def pairGraph := toEventGraph pairSource
+def pairGraph := toInformationGraph pairSource
 def pairConfig : pairGraph.Config := .initial (fun input => nomatch input)
 abbrev first : pairGraph.EventId := ⟨0, by decide⟩
 abbrev second : pairGraph.EventId := ⟨1, by decide⟩
 theorem first_ready : pairConfig.cut.Ready first := by decide
 
 example : pairGraph.InformationDiscipline pairGraph.prefixSchema :=
-  toEventGraph_informationDiscipline pairSource
+  toInformationGraph_informationDiscipline pairSource
 
 /-- Full source ranking makes only the first binding initially ready. -/
 example : pairConfig.cut.enabled = {first} := by decide
@@ -106,7 +106,7 @@ def pairProfile : SourceProgram.BehavioralProfile pairSource :=
 example (scheduler : pairGraph.PublicScheduler) (profile : pairGraph.BehavioralProfile) :
     pairGraph.runPolicies scheduler profile pairConfig.inputs =
       pairGraph.runPolicies pairGraph.canonicalScheduler profile pairConfig.inputs :=
-  toEventGraph_runPolicies_eq pairSource profile scheduler pairGraph.canonicalScheduler _
+  toInformationGraph_runPolicies_eq pairSource profile scheduler pairGraph.canonicalScheduler _
 
 def pairSetup : SourceProgram.Setup (Player := Bool) (L := simpleExpr) where
   context := []
@@ -119,11 +119,11 @@ def pairSetup : SourceProgram.Setup (Player := Bool) (L := simpleExpr) where
 
 /-- One replacement source policy works before private setup is sampled.
 The exact configuration law requires neither a mixture nor finite payloads. -/
-example (scheduler : pairSetup.eventGraph.PublicScheduler)
-    (replacement : pairSetup.eventGraph.BehavioralPolicy false) :
+example (scheduler : pairSetup.informationGraph.PublicScheduler)
+    (replacement : pairSetup.informationGraph.BehavioralPolicy false) :
     (pairSetup.initialLaw.bind fun initial =>
-      (pairSetup.eventGraph.terminalOutcomes scheduler
-        (GameTheory.Profile.update (sig := pairSetup.eventGraph.gameSignature)
+      (pairSetup.informationGraph.terminalOutcomes scheduler
+        (GameTheory.Profile.update (sig := pairSetup.informationGraph.gameSignature)
           (compileEventProfile pairSource pairProfile) false replacement)
         (pairSetup.eventInputs initial)).map (terminalConfig pairSource)) =
       pairSetup.run (GameTheory.Profile.update
@@ -145,12 +145,12 @@ example : outputLayout SourceSemantics.mixedProgram ⟨3, by decide⟩ = .public
 
 /-- The complete mixed source compiles with its initial private input and
 deferred guard; no sample-free or homogeneous-payload restriction is needed. -/
-example : SourceSemantics.mixedSetup.eventGraph.InformationDiscipline
-    SourceSemantics.mixedSetup.eventGraph.prefixSchema :=
-  toEventGraph_informationDiscipline SourceSemantics.mixedSetup.program
+example : SourceSemantics.mixedSetup.informationGraph.InformationDiscipline
+    SourceSemantics.mixedSetup.informationGraph.prefixSchema :=
+  toInformationGraph_informationDiscipline SourceSemantics.mixedSetup.program
 
 
-example : SourceSemantics.mixedSetup.eventGraph.order.eventCount = 4 := rfl
+example : SourceSemantics.mixedSetup.informationGraph.order.eventCount = 4 := rfl
 
 /-- Private initial values are graph inputs rather than another player move. -/
 example : inputLayout SourceSemantics.mixedSetup.context ⟨0, by decide⟩ =
@@ -161,9 +161,9 @@ example : encodeInputs SourceSemantics.mixedState ⟨0, by decide⟩ =
 
 /-- The complete mixed program has its source law under every adaptive public
 scheduler, not just under the canonical schedule. -/
-example (scheduler : SourceSemantics.mixedSetup.eventGraph.PublicScheduler)
+example (scheduler : SourceSemantics.mixedSetup.informationGraph.PublicScheduler)
     (profile : SourceProgram.BehavioralProfile SourceSemantics.mixedSetup.program) :
-    (SourceSemantics.mixedSetup.eventGraph.terminalOutcomes scheduler
+    (SourceSemantics.mixedSetup.informationGraph.terminalOutcomes scheduler
       (compileEventProfile SourceSemantics.mixedSetup.program profile)
       (encodeInputs SourceSemantics.mixedState)).map
         (terminalState SourceSemantics.mixedSetup.program) =
@@ -172,7 +172,7 @@ example (scheduler : SourceSemantics.mixedSetup.eventGraph.PublicScheduler)
   scheduled_terminalState_law SourceSemantics.mixedSetup.program scheduler profile
     SourceSemantics.mixedState
 
-def rejectingGraph := toEventGraph SourceSemantics.falseGuardProgram
+def rejectingGraph := toInformationGraph SourceSemantics.falseGuardProgram
 
 abbrev rejectingBind : rejectingGraph.EventId := ⟨0, by decide⟩
 abbrev rejectingReveal : rejectingGraph.EventId := ⟨1, by decide⟩
@@ -207,7 +207,7 @@ def defaultChain : SourceProgram Bool simpleExpr [] ∅ :=
   .commit 2 false (by decide) (unrestricted false 2) <|
   .reveal 3 false 2 (by decide) .here (by decide) <| .ret []
 
-abbrev defaultGraph := (toEventGraph defaultChain).sequentialize
+abbrev defaultGraph := (toInformationGraph defaultChain).sequentialize
 
 def defaultInitial : EventGraphRuntime.State defaultGraph :=
   .initial (encodeInputs (Env.empty (CellVal simpleExpr)))

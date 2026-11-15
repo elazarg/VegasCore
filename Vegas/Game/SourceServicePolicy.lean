@@ -30,7 +30,7 @@ open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
 
 /-- The source compiler's decision at the player's turn, represented by one
 actual native response. This definition introduces neither strategy memory nor
@@ -41,7 +41,7 @@ def sourceServicePolicy (profile : BehavioralProfile setup.program) (who : Playe
     match view.application.publicView.ownTurn? who with
     | none => PMF.pure ⟨none⟩
     | some event =>
-        if owned : (graph setup).actor? event = some who then
+        if owned : setup.informationGraph.actor? event = some who then
           let observed := id
             (identity ▸ view.application.observation)
           if active : who ∉ observed.defaulted then

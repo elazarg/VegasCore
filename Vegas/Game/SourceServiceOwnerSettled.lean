@@ -3,6 +3,7 @@ module
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 public import Vegas.Game.SourceServiceSettledSound
+public import Vegas.Game.SourceServiceCanonicalConformance
 public import Vegas.Game.ServiceSettledEvidence
 public import Vegas.Game.SourceServiceAsyncTimeliness
 public import Interaction.ReactiveReceipts
@@ -27,32 +28,33 @@ open GameTheory.Math.Probability GameTheory.Protocol Interaction EventGraphRunti
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
-  {setup : Setup (Player := Player) (L := L)} {mode : EventGraph.ExecutionMode}
-  {duration : (serviceGraph setup mode).EventId → Nat}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode))}
+  {setup : Setup (Player := Player) (L := L)} {deps : setup.dataflowGraph.Dependencies}
+  {duration : (serviceGraph setup deps).EventId → Nat}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup deps))}
 
 /-- A completed event accepts the selected owner's protected sole packet.
 All conformance and once-per-event premises concern that owner alone. -/
 theorem owner_packet_accepted {horizon : Nat}
-    {scheduler : (serviceApplication setup mode duration leaks).Scheduler}
-    {bound : (serviceGraph setup mode).EventId → Nat}
-    (inclusion : ProtectedInclusion (serviceTimeouts setup mode duration) leaks
-        (serviceInitialLaw setup mode) horizon scheduler bound)
-    {control : (serviceApplication setup mode duration leaks).Control}
+    {scheduler : (serviceApplication setup deps duration leaks).Scheduler}
+    {bound : (serviceGraph setup deps).EventId → Nat}
+    (inclusion : ProtectedInclusion (serviceTimeouts setup deps duration) leaks
+        (serviceInitialLaw setup deps) horizon scheduler bound)
+    {control : (serviceApplication setup deps duration leaks).Control}
     (trace :
-        ((serviceApplication setup mode duration leaks).protocol (serviceInitialLaw setup mode)
+        ((serviceApplication setup deps duration leaks).protocol (serviceInitialLaw setup deps)
         horizon scheduler).Trace (some control))
     (who : Player) (calls : OwnFreshCalls setup leaks bound control.execution who)
     (conform : FreshCallsConform setup leaks control.execution who)
     (once : OneCallPerEvent setup leaks control.execution who)
-    (message : Message Player (WitnessedPacket (serviceGraph setup mode)))
+    (message : Message Player (WitnessedPacket (serviceGraph setup deps)))
     (authored : message.sender = who)
     (emitted : Emitted setup leaks control.execution message)
-    (event : (serviceGraph setup mode).EventId)
-    (named : message.payload.call.event? (serviceGraph setup mode) = some event)
+    (event : (serviceGraph setup deps).EventId)
+    (ownerSolitary : (serviceGraph setup deps).OwnerSolitary event)
+    (named : message.payload.call.event? (serviceGraph setup deps) = some event)
     (completed : event ∈ control.execution.application.config.cut.completed) :
     (message.id, true) ∈ control.execution.receipts := by
-  let app := serviceApplication setup mode duration leaks
+  let app := serviceApplication setup deps duration leaks
   have facts := legalFacts setup leaks _ _ control trace
   obtain ⟨entry, entryMember, material, transmission, entryEmitted, state, known, packet⟩ :=
     facts.provenance.inputs message emitted
@@ -61,10 +63,10 @@ theorem owner_packet_accepted {horizon : Nat}
   rw [authored] at entryMember
   have fresh := conform entry entryMember material message transmission entryEmitted
   obtain ⟨freshEvent, freshNamed, readyView, owned⟩ :=
-    (freshServiceEnvelope_owned (serviceTimeouts setup mode duration)) _ message fresh
+    (freshServiceEnvelope_owned (serviceTimeouts setup deps duration)) _ message fresh
   rw [named] at freshNamed
   cases Option.some.inj freshNamed
-  change (serviceGraph setup mode).actor? event = some message.id.1 at owned
+  change (serviceGraph setup deps).actor? event = some message.id.1 at owned
   rw [authored] at owned
   obtain ⟨callEvent, issued, issuedEq, _, _, entryEvent, fits⟩ :=
     calls entry entryMember material transmission
@@ -83,9 +85,9 @@ theorem owner_packet_accepted {horizon : Nat}
     ready := readyView
     fits := fits
     conforming := EventGraphRuntime.freshServiceEnvelope.acceptable
-        (serviceTimeouts setup mode duration) fresh }
+        (serviceTimeouts setup deps duration) fresh }
   have sole : ∀ other ∈ earlier ++ later,
-      ¬ EmitsOtherFor (serviceTimeouts setup mode duration) leaks other event message.id := by
+      ¬ EmitsOtherFor (serviceTimeouts setup deps duration) leaks other event message.id := by
     intro other otherMember ⟨second, emittedOther, secondAuthor, secondAddressed,
       differentId⟩
     have otherRecall : other ∈ control.execution.logs who := by
@@ -102,59 +104,61 @@ theorem owner_packet_accepted {horizon : Nat}
     change issuer ∈ control.execution.logs second.id.1 at issuerMember
     change second.id.1 = message.id.1 at secondAuthor
     rw [secondAuthor, authored] at issuerMember
-    have issuerEvent : (submittedEvent? (serviceTimeouts setup mode duration)) leaks issuer.action =
+    have issuerEvent : (submittedEvent? (serviceTimeouts setup deps duration)) leaks issuer.action =
         some event := by
       rw [submittedEvent_of_issued issuerTransmission issuerPacket]
       exact secondAddressed
     exact differentId (once issuer issuerMember entry entryMember event _ _ issuerEvent
       entryEvent issuerEmitted entryEmitted)
   have settles : SettlesFreshCalls setup leaks who event bound control.execution :=
-    settlesFreshCalls_history setup leaks inclusion who event owned trace
+    settlesFreshCalls_history setup leaks inclusion who event ownerSolitary owned trace
   exact (settles earlier entry later message split call sole).1 completed
 
 /-- A service command preserves good content for a packet of one prescribed
 owner, without any conformance premise on foreign packets. -/
-theorem SettledGood.owner_environment {horizon : Nat}
-    {scheduler : (serviceApplication setup mode duration leaks).Scheduler}
-    {bound : (serviceGraph setup mode).EventId → Nat}
-    (inclusion : ProtectedInclusion (serviceTimeouts setup mode duration) leaks
-        (serviceInitialLaw setup mode) horizon scheduler bound)
-    {execution next : (serviceApplication setup mode duration leaks).Execution}
-    {command : (serviceApplication setup mode duration leaks).Command}
+theorem SettledGood.owner_environment (serial : (serviceGraph setup deps).ActorSerial)
+    {horizon : Nat}
+    {scheduler : (serviceApplication setup deps duration leaks).Scheduler}
+    {bound : (serviceGraph setup deps).EventId → Nat}
+    (inclusion : ProtectedInclusion (serviceTimeouts setup deps duration) leaks
+        (serviceInitialLaw setup deps) horizon scheduler bound)
+    {execution next : (serviceApplication setup deps duration leaks).Execution}
+    {command : (serviceApplication setup deps duration leaks).Command}
     (facts : SettledFacts setup leaks execution)
     (reached : next ∈
-        (execution.environmentStep (serviceApplication setup mode duration leaks) command).support)
+        (execution.environmentStep (serviceApplication setup deps duration leaks) command).support)
     {remaining : Nat}
     (trace :
-        ((serviceApplication setup mode duration leaks).protocol (serviceInitialLaw setup mode)
+        ((serviceApplication setup deps duration leaks).protocol (serviceInitialLaw setup deps)
         horizon scheduler).Trace
-        (some ⟨remaining, command.actor? (serviceApplication setup mode duration leaks), next⟩))
+        (some ⟨remaining, command.actor? (serviceApplication setup deps duration leaks), next⟩))
     (who : Player) (calls : OwnFreshCalls setup leaks bound next who)
     (conform : FreshCallsConform setup leaks next who)
     (once : OneCallPerEvent setup leaks next who)
-    {message : Message Player (WitnessedPacket (serviceGraph setup mode))}
+    {message : Message Player (WitnessedPacket (serviceGraph setup deps))}
     (authored : message.sender = who)
     (emitted : Emitted setup leaks execution message)
     (good : SettledGood setup leaks execution message) :
     SettledGood setup leaks next message := by
-  let app := serviceApplication setup mode duration leaks
+  let app := serviceApplication setup deps duration leaks
   obtain ⟨inputsEq, _, _⟩ := environmentStep_shape setup leaks execution next command reached
   have nextEmitted : Emitted setup leaks next message := by
     unfold Emitted at emitted ⊢
     rw [inputsEq]
     exact emitted
-  have path := (reactiveApplication_graphSteps (serviceTimeouts setup mode duration)
+  have path := (reactiveApplication_graphSteps (serviceTimeouts setup deps duration)
     leaks).environmentStep execution next command reached
   have prefixOf := app.environmentStep_receipts_prefix execution next command reached
-  obtain ⟨event, named, ⟨ready, unaccepted, pending⟩ | ⟨accepted, completed, content⟩⟩ := good
+  obtain ⟨event, named,
+    ⟨ready, unaccepted, pending⟩ | ⟨accepted, completed, content⟩⟩ := good
   · by_cases completedNext : event ∈ next.application.config.cut.completed
-    · have acceptedNow := owner_packet_accepted inclusion trace who calls conform once message
-        authored nextEmitted event named completedNext
+    · have acceptedNow := owner_packet_accepted inclusion trace who calls conform once
+        message authored nextEmitted event (serial event) named completedNext
       obtain ⟨after, handled, applicationEq⟩ := app.environmentStep_newly_accepted
         execution next command facts.unique reached emitted unaccepted acceptedNow
       obtain ⟨native, nativeHandle, drained⟩ := reactiveHandle_call handled
       obtain ⟨stepEvent, stepNamed, stepReady, stepAction, stepMember⟩ := handle_config_mem_step
-        (serviceTimeouts setup mode duration) execution.application native _ nativeHandle
+        (serviceTimeouts setup deps duration) execution.application native _ nativeHandle
       have sameEvent : stepEvent = event := Option.some.inj (stepNamed.symm.trans named)
       subst stepEvent
       have nativeDone : event ∈ native.config.cut.completed := by
@@ -169,19 +173,19 @@ theorem SettledGood.owner_environment {horizon : Nat}
       unfold settledRecord
       rw [applicationEq, ← drained]
       exact retained
-    · have owned : (serviceGraph setup mode).actor? event = some message.sender := by
+    · have owned : (serviceGraph setup deps).actor? event = some message.sender := by
         have legal := legalFacts setup leaks horizon scheduler _ trace
         obtain ⟨issuer, issuerMember, material, transmission, issuerEmitted, _, _, _⟩ :=
           legal.provenance.inputs message nextEmitted
         rw [authored] at issuerMember
         have conforming := conform issuer issuerMember material message transmission issuerEmitted
         obtain ⟨named', namedEq, _, actor⟩ :=
-          (freshServiceEnvelope_owned (serviceTimeouts setup mode duration)) _ message conforming
+          (freshServiceEnvelope_owned (serviceTimeouts setup deps duration)) _ message conforming
         rw [named] at namedEq
         cases Option.some.inj namedEq
         exact actor
       refine ⟨event, named, Or.inl ⟨?_, ?_,
-        pendingContent_of_path owned ready path completedNext pending⟩⟩
+        pendingContent_of_path (serial event) owned ready path completedNext pending⟩⟩
       · exact ⟨completedNext, fun predecessor member =>
           EventGraph.Config.Step.path_completed_mono path (ready.2 member)⟩
       · intro acceptedNow
@@ -200,26 +204,26 @@ theorem SettledGood.owner_environment {horizon : Nat}
 
 /-- An arbitrary response preserves prior good packets of the selected owner;
 only a fresh response authored by that owner needs a conformance premise. -/
-theorem owner_good_response {execution : (serviceApplication setup mode duration leaks).Execution}
+theorem owner_good_response {execution : (serviceApplication setup deps duration leaks).Execution}
     (facts : SettledFacts setup leaks execution) (who responder : Player)
-    (response : (serviceApplication setup mode duration leaks).Action)
+    (response : (serviceApplication setup deps duration leaks).Action)
     (prior : ∀ message, message.sender = who → Emitted setup leaks execution message →
       SettledGood setup leaks execution message)
     (fresh : responder = who → ∀ material, response.transmission = some material →
-      (freshServiceEnvelope (serviceTimeouts setup mode duration)) execution.application.publicView
+      (freshServiceEnvelope (serviceTimeouts setup deps duration)) execution.application.publicView
         ⟨(responder, execution.network.nextSerial responder),
-          (serviceApplication setup mode duration leaks).packet
-          ((serviceApplication setup mode duration leaks).submit execution.application responder
+          (serviceApplication setup deps duration leaks).packet
+          ((serviceApplication setup deps duration leaks).submit execution.application responder
               material) responder (execution.network.known responder) material⟩) :
     ∀ message, message.sender = who →
       Emitted setup leaks
-          (execution.respond (serviceApplication setup mode duration leaks) responder response)
+          (execution.respond (serviceApplication setup deps duration leaks) responder response)
           message →
       SettledGood setup leaks
-          (execution.respond (serviceApplication setup mode duration leaks) responder response)
+          (execution.respond (serviceApplication setup deps duration leaks) responder response)
         message := by
-  let app := serviceApplication setup mode duration leaks
-  obtain ⟨configEq, publicEq⟩ := (reactive_respond_application (serviceTimeouts setup mode
+  let app := serviceApplication setup deps duration leaks
+  obtain ⟨configEq, publicEq⟩ := (reactive_respond_application (serviceTimeouts setup deps
     duration))
       leaks execution responder response
   intro message authored emitted
@@ -228,7 +232,7 @@ theorem owner_good_response {execution : (serviceApplication setup mode duration
   · exact (prior message authored before).respond responder response
   · have conforms := fresh authored material submitted
     obtain ⟨event, named, readyView⟩ :=
-      (freshServiceEnvelope_ready (serviceTimeouts setup mode duration)) _ _ conforms
+      (freshServiceEnvelope_ready (serviceTimeouts setup deps duration)) _ _ conforms
     refine ⟨event, named, Or.inl ⟨?_, ?_, ?_⟩⟩
     · rw [configEq]
       exact (execution.application.publicView_eventReady event).mp readyView
@@ -243,24 +247,25 @@ theorem owner_good_response {execution : (serviceApplication setup mode duration
 
 /-- Every actual packet of the selected owner is either pending with stable
 content or accepted with the content checked by the actual record. -/
-theorem sourceServiceTurnPolicy_settledGood_reference {horizon : Nat}
-    {scheduler : (serviceApplication setup mode duration leaks).Scheduler}
-    {delay bound : (serviceGraph setup mode).EventId → Nat}
-    (contract : AsyncContract (serviceTimeouts setup mode duration) leaks
-        (serviceInitialLaw setup mode) horizon scheduler delay bound)
-    (players : Player → (serviceApplication setup mode duration leaks).Policy) (who : Player)
-    {turns : Nat} (timing : TurnTiming setup turns mode) (reference :
-      (serviceGraph setup mode).BehavioralProfile)
-    (follows : players who = serviceReferenceTurnPolicy setup mode duration leaks bound turns timing
+theorem sourceServiceTurnPolicy_settledGood_reference
+    (serial : (serviceGraph setup deps).ActorSerial) {horizon : Nat}
+    {scheduler : (serviceApplication setup deps duration leaks).Scheduler}
+    {delay bound : (serviceGraph setup deps).EventId → Nat}
+    (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
+        (serviceInitialLaw setup deps) horizon scheduler delay bound)
+    (players : Player → (serviceApplication setup deps duration leaks).Policy) (who : Player)
+    {turns : Nat} (timing : TurnTiming setup turns deps) (reference :
+      (serviceGraph setup deps).BehavioralProfile)
+    (follows : players who = serviceReferenceTurnPolicy setup deps duration leaks bound turns timing
         reference who)
     (count : Nat) (within : count ≤ horizon)
-    (execution : (serviceApplication setup mode duration leaks).Execution)
+    (execution : (serviceApplication setup deps duration leaks).Execution)
     (reached : execution ∈
-        ((serviceApplication setup mode duration leaks).roundsFrom (serviceInitialLaw setup mode)
+        ((serviceApplication setup deps duration leaks).roundsFrom (serviceInitialLaw setup deps)
         scheduler players count).support) :
     ∀ message, message.sender = who → Emitted setup leaks execution message →
       SettledGood setup leaks execution message := by
-  let app := serviceApplication setup mode duration leaks
+  let app := serviceApplication setup deps duration leaks
   induction count generalizing execution with
   | zero =>
       obtain ⟨state, _, supported⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
@@ -270,23 +275,24 @@ theorem sourceServiceTurnPolicy_settledGood_reference {horizon : Nat}
       cases emitted
   | succ count ih =>
       have fullReached := reached
-      rw [app.roundsFrom_succ (serviceInitialLaw setup mode) scheduler players count] at reached
+      rw [app.roundsFrom_succ (serviceInitialLaw setup deps) scheduler players count] at reached
       obtain ⟨prior, priorMem, moved⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       have good := ih (by omega) prior priorMem
-      obtain ⟨trace⟩ := app.raw_trace_roundsFrom (serviceInitialLaw setup mode) horizon scheduler
-          players count (by omega) prior priorMem
+      obtain ⟨trace⟩ := app.raw_trace_roundsFrom (serviceInitialLaw setup deps) horizon
+          scheduler players count (by omega) prior priorMem
       rw [show horizon - count = (horizon - (count + 1)) + 1 by omega] at trace
-      have facts := settledFacts_history (serviceInitialLaw setup mode) horizon scheduler trace
+      have facts := settledFacts_history serial (serviceInitialLaw setup deps) horizon
+        scheduler trace
       obtain ⟨calls, once⟩ := sourceServiceTurnPolicy_freshCalls_reference scheduler players who
         timing
         reference follows count prior priorMem
       have conform : FreshCallsConform setup leaks prior who :=
         fun entry member material message transmission emitted =>
-          sourceServiceTurnPolicy_freshServiceEnvelope_reference scheduler players who timing
-            reference
+          sourceServiceTurnPolicy_freshServiceEnvelope_reference serial scheduler players who
+            timing reference
             follows count prior priorMem entry member material transmission message emitted
       obtain ⟨command, selected, middle, observed, effect⟩ := round_cases setup leaks moved
-      obtain ⟨middleTrace⟩ := app.raw_trace_environment (serviceInitialLaw setup mode) horizon
+      obtain ⟨middleTrace⟩ := app.raw_trace_environment (serviceInitialLaw setup deps) horizon
           scheduler (horizon - (count + 1)) prior middle command trace selected observed
       have recallEq := app.environmentStep_recall prior middle command observed
       have callsMiddle : OwnFreshCalls setup leaks bound middle who := by
@@ -308,16 +314,18 @@ theorem sourceServiceTurnPolicy_settledGood_reference {horizon : Nat}
           unfold Emitted at emitted ⊢
           rw [← app.environmentStep_inputs prior middle command observed]
           exact emitted
-        exact (good message authored emittedBefore).owner_environment contract.inclusion facts
-          observed middleTrace who callsMiddle conformMiddle onceMiddle authored emittedBefore
+        exact (good message authored emittedBefore).owner_environment serial contract.inclusion
+          facts observed middleTrace who callsMiddle conformMiddle onceMiddle authored emittedBefore
       rcases effect with ⟨_, rfl⟩ | ⟨responder, active, response, chosen, rfl⟩
       · exact middleGood
       · apply owner_good_response
-            (settledFacts_history (serviceInitialLaw setup mode) horizon scheduler middleTrace) who
+            (settledFacts_history serial (serviceInitialLaw setup deps) horizon scheduler
+              middleTrace)
+            who
             responder response middleGood
         intro same material submitted
         subst responder
-        let message : Message Player (WitnessedPacket (serviceGraph setup mode)) :=
+        let message : Message Player (WitnessedPacket (serviceGraph setup deps)) :=
           ⟨(who, middle.network.nextSerial who),
             app.packet (app.submit middle.application who material) who
               (middle.network.known who) material⟩
@@ -327,56 +335,58 @@ theorem sourceServiceTurnPolicy_settledGood_reference {horizon : Nat}
           cases submitted
           simp only [ReactiveApplication.Execution.respond, ↓reduceIte]
           exact List.mem_append_right _ (List.mem_singleton_self _)
-        exact sourceServiceTurnPolicy_freshServiceEnvelope_reference scheduler players who timing
-          reference
+        exact sourceServiceTurnPolicy_freshServiceEnvelope_reference serial scheduler players who
+          timing reference
           follows (count + 1) _ fullReached entry entryMember material submitted message rfl
 
 /-- Every actual packet of the selected owner is either pending with stable
 content or accepted with the content checked by the actual record. -/
-theorem sourceServiceTurnPolicy_settledGood {horizon : Nat}
-    {scheduler : (serviceApplication setup mode duration leaks).Scheduler}
-    {delay bound : (serviceGraph setup mode).EventId → Nat}
-    (contract : AsyncContract (serviceTimeouts setup mode duration) leaks
-        (serviceInitialLaw setup mode) horizon scheduler delay bound)
-    (players : Player → (serviceApplication setup mode duration leaks).Policy) (who : Player)
-    {turns : Nat} (timing : TurnTiming setup turns mode) (profile : BehavioralProfile setup.program)
-    (follows : players who = serviceTurnPolicy setup mode duration leaks bound turns timing
+theorem sourceServiceTurnPolicy_settledGood
+    (serial : (serviceGraph setup deps).ActorSerial) {horizon : Nat}
+    {scheduler : (serviceApplication setup deps duration leaks).Scheduler}
+    {delay bound : (serviceGraph setup deps).EventId → Nat}
+    (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
+        (serviceInitialLaw setup deps) horizon scheduler delay bound)
+    (players : Player → (serviceApplication setup deps duration leaks).Policy) (who : Player)
+    {turns : Nat} (timing : TurnTiming setup turns deps) (profile : BehavioralProfile setup.program)
+    (follows : players who = serviceTurnPolicy setup deps duration leaks bound turns timing
         profile who)
     (count : Nat) (within : count ≤ horizon)
-    (execution : (serviceApplication setup mode duration leaks).Execution)
+    (execution : (serviceApplication setup deps duration leaks).Execution)
     (reached : execution ∈
-        ((serviceApplication setup mode duration leaks).roundsFrom (serviceInitialLaw setup mode)
+        ((serviceApplication setup deps duration leaks).roundsFrom (serviceInitialLaw setup deps)
         scheduler players count).support) :
     ∀ message, message.sender = who → Emitted setup leaks execution message →
       SettledGood setup leaks execution message := by
-  apply sourceServiceTurnPolicy_settledGood_reference
-    (reference := compileEventProfile setup.program profile) <;> assumption
+  exact sourceServiceTurnPolicy_settledGood_reference serial contract players who timing
+    (compileEventProfile setup.program profile) follows count within execution reached
 
 /-- Owner-local verdict soundness at every supported completed scheduler round.
 No assumption constrains another player's response policy. -/
-theorem sourceServiceTurnPolicy_owner_settled_reference {horizon : Nat}
-    {scheduler : (serviceApplication setup mode duration leaks).Scheduler}
-    {delay bound : (serviceGraph setup mode).EventId → Nat}
-    (contract : AsyncContract (serviceTimeouts setup mode duration) leaks
-        (serviceInitialLaw setup mode) horizon scheduler delay bound)
-    (players : Player → (serviceApplication setup mode duration leaks).Policy) (who : Player)
-    {turns : Nat} (timing : TurnTiming setup turns mode) (reference :
-      (serviceGraph setup mode).BehavioralProfile)
-    (follows : players who = serviceReferenceTurnPolicy setup mode duration leaks bound turns timing
+theorem sourceServiceTurnPolicy_owner_settled_reference
+    (serial : (serviceGraph setup deps).ActorSerial) {horizon : Nat}
+    {scheduler : (serviceApplication setup deps duration leaks).Scheduler}
+    {delay bound : (serviceGraph setup deps).EventId → Nat}
+    (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
+        (serviceInitialLaw setup deps) horizon scheduler delay bound)
+    (players : Player → (serviceApplication setup deps duration leaks).Policy) (who : Player)
+    {turns : Nat} (timing : TurnTiming setup turns deps) (reference :
+      (serviceGraph setup deps).BehavioralProfile)
+    (follows : players who = serviceReferenceTurnPolicy setup deps duration leaks bound turns timing
         reference who)
     (count : Nat) (within : count ≤ horizon)
-    (execution : (serviceApplication setup mode duration leaks).Execution)
+    (execution : (serviceApplication setup deps duration leaks).Execution)
     (reached : execution ∈
-        ((serviceApplication setup mode duration leaks).roundsFrom (serviceInitialLaw setup mode)
+        ((serviceApplication setup deps duration leaks).roundsFrom (serviceInitialLaw setup deps)
         scheduler players count).support) :
-    ∀ record ∈ (serviceApplication setup mode duration leaks).executionTraffic execution,
+    ∀ record ∈ (serviceApplication setup deps duration leaks).executionTraffic execution,
       record.envelope.sender = who →
-        ((settledRecord (serviceTimeouts setup mode duration)) leaks execution).permits
+        ((settledRecord (serviceTimeouts setup deps duration)) leaks execution).permits
         record.envelope = true := by
-  let app := serviceApplication setup mode duration leaks
-  obtain ⟨trace⟩ := app.raw_trace_roundsFrom (serviceInitialLaw setup mode) horizon scheduler
+  let app := serviceApplication setup deps duration leaks
+  obtain ⟨trace⟩ := app.raw_trace_roundsFrom (serviceInitialLaw setup deps) horizon scheduler
       players count within execution reached
-  have inputs := app.stateTraffic_inputs (serviceInitialLaw setup mode) horizon scheduler trace
+  have inputs := app.stateTraffic_inputs (serviceInitialLaw setup deps) horizon scheduler trace
   change (app.executionTraffic execution).map ReactiveApplication.TrafficRecord.envelope =
     execution.network.inputs at inputs
   intro record member authored
@@ -384,31 +394,32 @@ theorem sourceServiceTurnPolicy_owner_settled_reference {horizon : Nat}
     unfold Emitted
     rw [← inputs]
     exact List.mem_map.mpr ⟨record, member, rfl⟩
-  exact (sourceServiceTurnPolicy_settledGood_reference contract players who timing reference
+  exact (sourceServiceTurnPolicy_settledGood_reference serial contract players who timing reference
     follows count
     within execution reached record.envelope authored emitted).permits
 
 /-- Owner-local verdict soundness at every supported completed scheduler round.
 No assumption constrains another player's response policy. -/
-theorem sourceServiceTurnPolicy_owner_settled {horizon : Nat}
-    {scheduler : (serviceApplication setup mode duration leaks).Scheduler}
-    {delay bound : (serviceGraph setup mode).EventId → Nat}
-    (contract : AsyncContract (serviceTimeouts setup mode duration) leaks
-        (serviceInitialLaw setup mode) horizon scheduler delay bound)
-    (players : Player → (serviceApplication setup mode duration leaks).Policy) (who : Player)
-    {turns : Nat} (timing : TurnTiming setup turns mode) (profile : BehavioralProfile setup.program)
-    (follows : players who = serviceTurnPolicy setup mode duration leaks bound turns timing
+theorem sourceServiceTurnPolicy_owner_settled
+    (serial : (serviceGraph setup deps).ActorSerial) {horizon : Nat}
+    {scheduler : (serviceApplication setup deps duration leaks).Scheduler}
+    {delay bound : (serviceGraph setup deps).EventId → Nat}
+    (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
+        (serviceInitialLaw setup deps) horizon scheduler delay bound)
+    (players : Player → (serviceApplication setup deps duration leaks).Policy) (who : Player)
+    {turns : Nat} (timing : TurnTiming setup turns deps) (profile : BehavioralProfile setup.program)
+    (follows : players who = serviceTurnPolicy setup deps duration leaks bound turns timing
         profile who)
     (count : Nat) (within : count ≤ horizon)
-    (execution : (serviceApplication setup mode duration leaks).Execution)
+    (execution : (serviceApplication setup deps duration leaks).Execution)
     (reached : execution ∈
-        ((serviceApplication setup mode duration leaks).roundsFrom (serviceInitialLaw setup mode)
+        ((serviceApplication setup deps duration leaks).roundsFrom (serviceInitialLaw setup deps)
         scheduler players count).support) :
-    ∀ record ∈ (serviceApplication setup mode duration leaks).executionTraffic execution,
+    ∀ record ∈ (serviceApplication setup deps duration leaks).executionTraffic execution,
       record.envelope.sender = who →
-        ((settledRecord (serviceTimeouts setup mode duration)) leaks execution).permits
+        ((settledRecord (serviceTimeouts setup deps duration)) leaks execution).permits
         record.envelope = true := by
-  apply sourceServiceTurnPolicy_owner_settled_reference
-    (reference := compileEventProfile setup.program profile) <;> assumption
+  exact sourceServiceTurnPolicy_owner_settled_reference serial contract players who timing
+    (compileEventProfile setup.program profile) follows count within execution reached
 
 end Vegas

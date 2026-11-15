@@ -46,8 +46,8 @@ open GameTheory GameTheory.Protocol Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
 
 /-- **How an event with an actor completes.** When a scheduler command completes
 an event with an actor, either an included packet of that actor naming the
@@ -57,11 +57,13 @@ theorem actor_completion_cause (execution next : (application setup timeouts lea
     (command : (application setup timeouts leaks).Command)
     (reached : next ∈ (execution.environmentStep (application setup timeouts leaks)
       command).support)
-    (record : (graph setup).Completion) (fresh : record ∉ execution.application.config.history)
+    (record : setup.informationGraph.Completion) (fresh : record ∉
+      execution.application.config.history)
     (present : record ∈ next.application.config.history)
-    {actor : Player} (acts : (graph setup).actor? record.event = some actor) :
+    {actor : Player} (acts : setup.informationGraph.actor? record.event = some actor) :
     (∃ message ∈ next.network.ledger, (message.id, true) ∈ next.receipts ∧
-        message.payload.call.event? (graph setup) = some record.event ∧ message.sender = actor) ∨
+        message.payload.call.event? setup.informationGraph = some record.event ∧ message.sender =
+          actor) ∨
       Failing (record.decision.bind (decodeEventAction setup.program record.event)) := by
   rcases owned_completion_cases (timeouts := timeouts) execution next command reached record fresh
     present acts with accepted | expired | automatic
@@ -84,19 +86,21 @@ def ActorRecord (profile : BehavioralProfile setup.program)
     (execution : (application setup timeouts leaks).Execution) : Prop :=
   ∃ rank, Nonempty (SourceResidual setup profile rank execution.application.config) ∧
     ∀ event ∈ execution.application.config.cut.completed, ∀ actor,
-      (graph setup).actor? event = some actor →
+      setup.informationGraph.actor? event = some actor →
         (∃ message ∈ execution.network.ledger, (message.id, true) ∈ execution.receipts ∧
-          message.payload.call.event? (graph setup) = some event ∧ message.sender = actor) ∨
+          message.payload.call.event? setup.informationGraph = some event ∧ message.sender = actor)
+            ∨
         DecodedHolds (ProtocolState.OwesFailure actor setup.program) rank
           execution.application.config
 
 private theorem SourceResidual.debt_of_failing_record_path
     {profile : BehavioralProfile setup.program}
-    {before after : (graph setup).Config}
+    {before after : setup.informationGraph.Config}
     (path : Relation.ReflTransGen EventGraph.Config.Step before after) :
-    ∀ {rank}, SourceResidual setup profile rank before → ∀ record : (graph setup).Completion,
+    ∀ {rank}, SourceResidual setup profile rank before → ∀ record :
+      setup.informationGraph.Completion,
       record ∉ before.history → record ∈ after.history → ∀ {actor},
-      (graph setup).actor? record.event = some actor →
+      setup.informationGraph.actor? record.event = some actor →
       Failing (record.decision.bind (decodeEventAction setup.program record.event)) →
       ∃ nextRank, Nonempty (SourceResidual setup profile nextRank after) ∧
         DecodedHolds (ProtocolState.OwesFailure actor setup.program) nextRank after := by
@@ -114,13 +118,13 @@ private theorem SourceResidual.debt_of_failing_record_path
         have recorded := List.mem_singleton.mp ((List.mem_append.mp primary).resolve_left fresh)
         have eventEq : record.event = event := congrArg EventCompletion.event recorded
         subst event
-        have failingStep : ∃ choice : (graph setup).Action record.event,
+        have failingStep : ∃ choice : setup.informationGraph.Action record.event,
             middle ∈ (current.step record.event ready choice).support ∧
               Failing (decodeEventAction setup.program record.event choice) := by
           by_cases inactive : actor ∈ current.defaulted
-          · have expires : ∃ choice : (graph setup).Action record.event,
+          · have expires : ∃ choice : setup.informationGraph.Action record.event,
                 ExpiredAction record.event choice := by
-              cases view : nodeView (graph setup) record.event with
+              cases view : nodeView setup.informationGraph record.event with
               | bind owner payload outputEq codeEq =>
                   exact ⟨_, .binding owner payload outputEq⟩
               | resolve owner payload binding checks outputEq codeEq =>
@@ -143,7 +147,7 @@ private theorem SourceResidual.debt_of_failing_record_path
         have rankEq : record.event.val = rank := by
           have actual : current.cut.IsPrefix record.event.val :=
             ⟨record.event.isLt.le, fun query =>
-              setup.eventGraph.sequentialize_mem_completed_iff_lt_of_ready _ ready⟩
+              setup.informationGraph.sequentialize_mem_completed_iff_lt_of_ready _ ready⟩
           exact actual.unique residual.checkpoint.ordered
         have debt : DecodedHolds (ProtocolState.OwesFailure actor setup.program)
             (rank + 1) middle := by
@@ -218,7 +222,7 @@ theorem actorRecord_serviceInvariant (profile : BehavioralProfile setup.program)
         rw [← eventEq]
         exact (execution.application.config.history_exact completion.event).mp
           (List.mem_map_of_mem old)
-      have owned : (graph setup).actor? completion.event = some actor := eventEq ▸ acts
+      have owned : setup.informationGraph.actor? completion.event = some actor := eventEq ▸ acts
       rcases actor_completion_cause execution next command reached completion fresh present owned
         with accepted | failed
       · exact Or.inl (by simpa only [eventEq] using accepted)
@@ -247,7 +251,7 @@ theorem actorRecord_history (profile : BehavioralProfile setup.program) (horizon
       exact absurd below (Nat.not_lt_zero _)) trace
 
 
-variable [Fintype Player] (bounds : MessageBounds (graph setup))
+variable [Fintype Player] (bounds : MessageBounds setup.informationGraph)
 
 /-- **Other players are silent while an event is pending.** At a history of the
 one-packet game in a forced state of `owner`, while an event of `owner` is
@@ -262,8 +266,10 @@ theorem onePacket_silent_of_pending (horizon : Nat)
       scheduler).History)
     (forced : ForcedState setup timeouts leaks owner history.state)
     {control : (application setup timeouts leaks).Control} (current : history.state = some control)
-    {event : (graph setup).EventId} (ready : control.execution.application.config.cut.Ready event)
-    (owned : (graph setup).actor? event = some owner) (other : Player) (different : other ≠ owner)
+    {event : setup.informationGraph.EventId} (ready :
+      control.execution.application.config.cut.Ready event)
+    (owned : setup.informationGraph.actor? event = some owner) (other : Player) (different : other
+      ≠ owner)
     (response : (application setup timeouts leaks).Action)
     (member : response ∈ bounds.onePacketActions timeouts leaks other
       (control.execution.logs other)
@@ -293,7 +299,7 @@ theorem onePacket_silent_of_pending (horizon : Nat)
   have sender : envelope.sender = other := rfl
   have actor := correct.actor namedEvent
   rw [sender] at actor
-  have issued : ∀ predecessor ∈ (graph setup).order.predecessors named,
+  have issued : ∀ predecessor ∈ setup.informationGraph.order.predecessors named,
       predecessor ∈ control.execution.application.config.cut.completed := by
     have token : control.execution.application.publicView.tokenFor envelope.payload.call =
         some ⟨named⟩ := tokenEq
@@ -305,7 +311,7 @@ theorem onePacket_silent_of_pending (horizon : Nat)
       (complete predecessor member)
   have completed : named ∈ control.execution.application.config.cut.completed := by
     by_contra open_
-    have same := setup.eventGraph.sequentialize_ready_unique _
+    have same := setup.informationGraph.sequentialize_ready_unique _
       ⟨open_, fun predecessor member => issued predecessor member⟩ ready
     subst same
     exact different (Option.some.inj (actor.symm.trans owned))

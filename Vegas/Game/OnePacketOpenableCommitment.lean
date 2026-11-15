@@ -32,10 +32,10 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
 
-variable [Fintype Player] (bounds : MessageBounds (graph setup)) (horizon : Nat)
+variable [Fintype Player] (bounds : MessageBounds setup.informationGraph) (horizon : Nat)
   (scheduler : (application setup timeouts leaks).Scheduler)
 
 variable (setup timeouts leaks) in
@@ -44,11 +44,13 @@ at the original binding, and completion retains either an actual failed output
 or a successful primary step followed by native automatic service. -/
 def OpenableCommitmentInvariant (who : Player) (entry : (application setup timeouts
   leaks).PlayerEntry)
-    (message : Message Player (WitnessedPacket (graph setup))) (event : (graph setup).EventId)
-    (candidate : Handle (graph setup)) {payload : L.Ty}
-    (_outputEq : (graph setup).outputLayout event = .binding who payload) (value : L.Val payload)
-    (sent : (graph setup).Config) (ready : sent.cut.Ready event)
-    (action : (graph setup).Action event) :
+    (message : Message Player (WitnessedPacket setup.informationGraph)) (event :
+      setup.informationGraph.EventId)
+    (candidate : Handle setup.informationGraph) {payload : L.Ty}
+    (_outputEq : setup.informationGraph.outputLayout event = .binding who payload) (value : L.Val
+      payload)
+    (sent : setup.informationGraph.Config) (ready : sent.cut.Ready event)
+    (action : setup.informationGraph.Action event) :
     (application setup timeouts leaks).ProtocolState → Prop
   | none => False
   | some control =>
@@ -61,7 +63,7 @@ def OpenableCommitmentInvariant (who : Player) (entry : (application setup timeo
         control.execution.application.config = sent) ∧
       (event ∈ control.execution.application.config.cut.completed →
         StoreEventFailed control.execution.application.config.store event ∨
-          ∃ primary : EventGraphRuntime.State (graph setup),
+          ∃ primary : EventGraphRuntime.State setup.informationGraph,
             primary.config ∈ (sent.step event ready action).support ∧
               control.execution.application.config = primary.drain.config)
 
@@ -81,13 +83,14 @@ private theorem cast_cast_back {A B : Type} (same : A = B) (value : B) :
 successful primary completion followed by automatic service. -/
 theorem openableCommitmentInvariant_transition {who : Player}
     {entry : (application setup timeouts leaks).PlayerEntry}
-    {message : Message Player (WitnessedPacket (graph setup))} {event : (graph setup).EventId}
-    {candidate : Handle (graph setup)} {payload : L.Ty}
-    {outputEq : (graph setup).outputLayout event = .binding who payload}
-    (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .bind who payload)
-    {value : L.Val payload} {sent : (graph setup).Config} {ready : sent.cut.Ready event}
-    {action : (graph setup).Action event}
+    {message : Message Player (WitnessedPacket setup.informationGraph)} {event :
+      setup.informationGraph.EventId}
+    {candidate : Handle setup.informationGraph} {payload : L.Ty}
+    {outputEq : setup.informationGraph.outputLayout event = .binding who payload}
+    (codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .bind who payload)
+    {value : L.Val payload} {sent : setup.informationGraph.Config} {ready : sent.cut.Ready event}
+    {action : setup.informationGraph.Action event}
     (successful : (cast (congrArg EventGraph.EventField.Action outputEq) action :
       Option (PublicationResult (L.Val payload))) = some (.success value))
     (before after : (application setup timeouts leaks).ProtocolState)
@@ -122,7 +125,8 @@ theorem openableCommitmentInvariant_transition {who : Player}
           have lookupEq := kept candidate (by
             rw [fixed]
             exact fun impossible => by cases impossible)
-          have owned : (graph setup).actor? event = some who := nodeView_bind_actor outputEq codeEq
+          have owned : setup.informationGraph.actor? event = some who := nodeView_bind_actor
+            outputEq codeEq
           have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup)
             horizon scheduler trace
           have nextRawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup)
@@ -139,7 +143,7 @@ theorem openableCommitmentInvariant_transition {who : Player}
           · have readyEvent : control.execution.application.config.cut.Ready event :=
               atSent.symm ▸ ready
             have eventEq : completed = event :=
-              setup.eventGraph.sequentialize_ready_unique _ completedReady readyEvent
+              setup.informationGraph.sequentialize_ready_unique _ completedReady readyEvent
             subst completed
             have primaryDone : event ∈ primary.config.cut.completed := by
               rw [control.execution.application.config.step_cut event completedReady found _
@@ -177,7 +181,7 @@ theorem openableCommitmentInvariant_transition {who : Player}
                   (choice.getD .failure)) := by
               rw [drained]
               exact primary.drain_store_of_some (.inr event) _ primaryStored
-            have reads : (⟨.inr event, outputEq⟩ : EventGraph.FieldRef (graph setup).layout
+            have reads : (⟨.inr event, outputEq⟩ : EventGraph.FieldRef setup.informationGraph.layout
                 (.binding who payload)).get? next.execution.application.config.store =
                 some (choice.getD .failure) := by
               simp only [EventGraph.FieldRef.get?]
@@ -222,20 +226,21 @@ theorem openableCommitmentInvariant_transition {who : Player}
 
 
 /-- Native first-completion classification at the monotone target stop. -/
-theorem openableCommitment_stop (bounds : MessageBounds (graph setup)) (horizon : Nat)
+theorem openableCommitment_stop (bounds : MessageBounds setup.informationGraph) (horizon : Nat)
     (scheduler : (application setup timeouts leaks).Scheduler)
     (certificate : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup)
       horizon scheduler).WellFoundedHistories)
     (players : ∀ player, ((bounds.onePacketMenu timeouts leaks).information
       (initialLaw setup) horizon scheduler).BehavioralPolicy player)
     {who : Player} {entry : (application setup timeouts leaks).PlayerEntry}
-    {message : Message Player (WitnessedPacket (graph setup))} {event : (graph setup).EventId}
-    {candidate : Handle (graph setup)} {payload : L.Ty}
-    {outputEq : (graph setup).outputLayout event = .binding who payload}
-    (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .bind who payload)
-    {value : L.Val payload} {sent : (graph setup).Config} {ready : sent.cut.Ready event}
-    {action : (graph setup).Action event}
+    {message : Message Player (WitnessedPacket setup.informationGraph)} {event :
+      setup.informationGraph.EventId}
+    {candidate : Handle setup.informationGraph} {payload : L.Ty}
+    {outputEq : setup.informationGraph.outputLayout event = .binding who payload}
+    (codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .bind who payload)
+    {value : L.Val payload} {sent : setup.informationGraph.Config} {ready : sent.cut.Ready event}
+    {action : setup.informationGraph.Action event}
     (successful : (cast (congrArg EventGraph.EventField.Action outputEq) action :
       Option (PublicationResult (L.Val payload))) = some (.success value))
     {rank : Nat} (ordered : sent.cut.IsPrefix rank)
@@ -255,7 +260,7 @@ theorem openableCommitment_stop (bounds : MessageBounds (graph setup)) (horizon 
         (LateStopped setup timeouts leaks bounds horizon scheduler rank) start).support,
       ∃ final, stop.state = some final ∧
         (StoreEventFailed final.execution.application.config.store event ∨
-          ∃ primary : EventGraphRuntime.State (graph setup),
+          ∃ primary : EventGraphRuntime.State setup.informationGraph,
             primary.config ∈ (sent.step event ready action).support ∧
               final.execution.application.config = primary.drain.config) := by
   intro stop member
@@ -300,13 +305,14 @@ theorem openableCommitment_stop (bounds : MessageBounds (graph setup)) (horizon 
 /-- Every completed output is the committed value or a persistent failure. -/
 theorem openableCommitmentInvariant_output {who : Player}
     {entry : (application setup timeouts leaks).PlayerEntry}
-    {message : Message Player (WitnessedPacket (graph setup))} {event : (graph setup).EventId}
-    {candidate : Handle (graph setup)} {payload : L.Ty}
-    {outputEq : (graph setup).outputLayout event = .binding who payload}
-    (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .bind who payload)
-    {value : L.Val payload} {sent : (graph setup).Config} {ready : sent.cut.Ready event}
-    {action : (graph setup).Action event}
+    {message : Message Player (WitnessedPacket setup.informationGraph)} {event :
+      setup.informationGraph.EventId}
+    {candidate : Handle setup.informationGraph} {payload : L.Ty}
+    {outputEq : setup.informationGraph.outputLayout event = .binding who payload}
+    (codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .bind who payload)
+    {value : L.Val payload} {sent : setup.informationGraph.Config} {ready : sent.cut.Ready event}
+    {action : setup.informationGraph.Action event}
     (successful : (cast (congrArg EventGraph.EventField.Action outputEq) action :
       Option (PublicationResult (L.Val payload))) = some (.success value))
     {control : (application setup timeouts leaks).Control}
@@ -349,9 +355,9 @@ theorem openableCommitmentInvariant_output {who : Player}
 omit [Fintype Player] in
 /-- A configuration one step of the ready event of rank `rank` from a prefix of
 `rank` events is a prefix of `rank + 1` events. -/
-theorem isPrefix_succ_of_mem_step {sent after : (graph setup).Config} {rank : Nat}
-    (ordered : sent.cut.IsPrefix rank) {event : (graph setup).EventId}
-    (ready : sent.cut.Ready event) {action : (graph setup).Action event}
+theorem isPrefix_succ_of_mem_step {sent after : setup.informationGraph.Config} {rank : Nat}
+    (ordered : sent.cut.IsPrefix rank) {event : setup.informationGraph.EventId}
+    (ready : sent.cut.Ready event) {action : setup.informationGraph.Action event}
     (member : after ∈ (sent.step event ready action).support) :
     after.cut.IsPrefix (rank + 1) := by
   rw [sent.step_cut event ready action _ member]
@@ -366,13 +372,13 @@ theorem openableCommitmentInvariant_slot {remaining : Nat} {who : Player}
     {execution : (application setup timeouts leaks).Execution}
     (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some ⟨remaining, some who, execution⟩))
-    {event : (graph setup).EventId} {payload : L.Ty}
-    {outputEq : (graph setup).outputLayout event = .binding who payload}
-    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .bind who payload}
-    (node : nodeView (graph setup) event = .bind who payload outputEq codeEq)
+    {event : setup.informationGraph.EventId} {payload : L.Ty}
+    {outputEq : setup.informationGraph.outputLayout event = .binding who payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .bind who payload}
+    (node : nodeView setup.informationGraph event = .bind who payload outputEq codeEq)
     (ready : execution.application.config.cut.Ready event) (slot : Nat)
-    (choice : Option (OwnAction Player L)) (action : (graph setup).Action event)
+    (choice : Option (OwnAction Player L)) (action : setup.informationGraph.Action event)
     (encoded : choice.bind (encodeEventAction? setup.program event) = some action)
     {value : L.Val payload}
     (successful : (cast (congrArg EventGraph.EventField.Action outputEq) action :
@@ -397,7 +403,7 @@ theorem openableCommitmentInvariant_slot {remaining : Nat} {who : Player}
     (execution.logs who) (execution.observe (application setup timeouts leaks) who) event node slot
     choice action encoded (by rw [successful]; rfl)
   have call : material.call.packet = .commitment event (who, .prepared slot) :=
-    congrArg (fun message : Message Player (WitnessedPacket (graph setup)) =>
+    congrArg (fun message : Message Player (WitnessedPacket setup.informationGraph) =>
       message.payload.call) envelope
   have sends : response.transmission = some material := transmits
   have bound := slotResponse_of_bind setup timeouts leaks who (execution.logs who)

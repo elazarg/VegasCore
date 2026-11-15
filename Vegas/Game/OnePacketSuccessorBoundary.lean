@@ -25,8 +25,8 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
 
 /-- In the internally clear region a raw transition keeps the current prefix or
 completes its one ready event, while retaining the prior bound on response views. -/
@@ -58,7 +58,7 @@ private theorem clear_transition_prefix {horizon rank : Nat}
         have ready := (execution.application.publicView_eventReady event).mp readyView
         have actual : execution.application.config.cut.IsPrefix event.val :=
           ⟨event.isLt.le, fun query =>
-            setup.eventGraph.sequentialize_mem_completed_iff_lt_of_ready _ ready⟩
+            setup.informationGraph.sequentialize_mem_completed_iff_lt_of_ready _ ready⟩
         exact (actual.unique ordered).le
   | none =>
       cases remaining with
@@ -90,14 +90,14 @@ private theorem clear_transition_prefix {horizon rank : Nat}
             refine Or.inr ⟨idle, ?_, nextSeen⟩
             have actual : execution.application.config.cut.IsPrefix event.val :=
               ⟨event.isLt.le, fun query =>
-                setup.eventGraph.sequentialize_mem_completed_iff_lt_of_ready _ ready⟩
+                setup.informationGraph.sequentialize_mem_completed_iff_lt_of_ready _ ready⟩
             rw [execution.application.config.step_cut event ready action next.application.config
               stepped]
             exact ordered.complete_at event ready (actual.unique ordered)
 
 section Successor
 
-variable [Fintype Player] {bounds : MessageBounds (graph setup)}
+variable [Fintype Player] {bounds : MessageBounds setup.informationGraph}
   {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
   (completes : ∀ control : (application setup timeouts leaks).Control,
@@ -114,7 +114,7 @@ local notation "E" => ReactiveApplication.ResponseMenu.protocol menu (initialLaw
   scheduler
 local notation "Clear" => ReactiveApplication.stateInvariant
   (app := application setup timeouts leaks)
-    (fun native : EventGraphRuntime.State (graph setup) =>
+    (fun native : EventGraphRuntime.State setup.informationGraph =>
       EventGraph.Config.defaulted (EventGraphRuntime.State.config native) = ∅)
 
 include completes in
@@ -127,7 +127,7 @@ theorem counted_stopped_boundary_of_intended
     (start : (E).History) {control : (application setup timeouts leaks).Control}
     (current : start.state = some control) {rank : Nat}
     (ordered : control.execution.application.config.cut.IsPrefix rank)
-    (event : (graph setup).EventId)
+    (event : setup.informationGraph.EventId)
     (ready : control.execution.application.config.cut.Ready event)
     (final : (E).History)
     (supported : final ∈ ((N).runBehavioralUntil certificate players
@@ -228,7 +228,7 @@ theorem counted_stopped_boundary_of_intended
     rw [lastState, show horizon - anchor.environmentRecall.length = remaining by omega]
   have nextDecoded : sourceServicePrefix? setup (rank + 1) anchor.application.config =
       some point := (decodedPoint_eq_of_isPrefix nextPrefix).symm.trans lastDecoded
-  have untouched : ∀ later : (graph setup).EventId, rank + 1 ≤ later.val →
+  have untouched : ∀ later : setup.informationGraph.EventId, rank + 1 ≤ later.val →
       Untouched setup leaks later anchor := fun later beyond observer entry member readyView => by
     have := seen observer entry member later readyView
     omega
@@ -240,7 +240,7 @@ theorem counted_stopped_boundary_of_intended
     have := (ready_iff_rank setup _ rank ordered event).mp ready
     omega)
 
-variable {delay bound : (graph setup).EventId → Nat}
+variable {delay bound : setup.informationGraph.EventId → Nat}
   (opportunity : ∀ control : (application setup timeouts leaks).Control,
     ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control) →
@@ -259,7 +259,7 @@ successor boundary, with the source behavioral successor and untouched later eve
 theorem counted_firstActivation_honest_successorBoundary
     [∀ player, DecidableEq ((N).InfoState player)]
     (covers : bounds.CoversOutputValues)
-    (capacity : ∀ player, bindingEventCount (graph setup) player < bounds.candidateCount)
+    (capacity : ∀ player, bindingEventCount setup.informationGraph player < bounds.candidateCount)
     (source : setup.intendedModel.BehavioralAssessment)
     (certificate : (E).WellFoundedHistories)
     (players : ∀ player, (N).BehavioralPolicy player)
@@ -267,7 +267,7 @@ theorem counted_firstActivation_honest_successorBoundary
     {remaining : Nat} {who : Player} {execution : (application setup timeouts leaks).Execution}
     (current : history.state = some ⟨remaining, some who, execution⟩)
     (clear : execution.application.config.defaulted = ∅)
-    (event : (graph setup).EventId)
+    (event : setup.informationGraph.EventId)
     (pending : pendingEvent setup timeouts leaks who (some (execution.logs who,
       execution.observe (application setup timeouts leaks) who)) = some event)
     (never : ∀ entry ∈ execution.logs who, ¬ ActivatedAt setup timeouts leaks who event entry)

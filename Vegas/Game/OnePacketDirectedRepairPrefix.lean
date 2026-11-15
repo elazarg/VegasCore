@@ -23,9 +23,9 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- Every initialized prefix's ready or completed event remains ready or
@@ -34,7 +34,7 @@ theorem readyOrCompleted_of_tracePrefix {before : (application setup timeouts le
     (prior : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some before))
     {state : (application setup timeouts leaks).ProtocolState}
     {trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace state}
-    (isPrefix : TracePrefix prior trace) {event : (graph setup).EventId}
+    (isPrefix : TracePrefix prior trace) {event : setup.informationGraph.EventId}
     (active : before.execution.application.config.cut.Ready event ∨
       event ∈ before.execution.application.config.cut.completed) :
     ∃ after : (application setup timeouts leaks).Control, state = some after ∧
@@ -84,11 +84,11 @@ extension, including arbitrary admitted responses and environment commands. -/
 theorem storedValue_of_tracePrefix {before after : (application setup timeouts leaks).Control}
     (prior : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some before))
     {trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some after)}
-    (isPrefix : TracePrefix prior trace) (field : (graph setup).Field)
-    (value : ((graph setup).layout field).Value)
+    (isPrefix : TracePrefix prior trace) (field : setup.informationGraph.Field)
+    (value : (setup.informationGraph.layout field).Value)
     (stored : before.execution.application.config.store field = some value) :
     after.execution.application.config.store field = some value := by
-  have retain {first last : (graph setup).Config}
+  have retain {first last : setup.informationGraph.Config}
       (path : Relation.ReflTransGen EventGraph.Config.Step first last)
       (present : first.store field = some value) : last.store field = some value := by
     induction path using Relation.ReflTransGen.head_induction_on with

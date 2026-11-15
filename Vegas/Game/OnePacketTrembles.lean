@@ -60,7 +60,7 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
-  (timeouts : EventTimeouts (graph setup))
+  (timeouts : EventTimeouts setup.informationGraph)
 
 open Classical in
 /-- The positive probabilities of single steps of intended play under an
@@ -190,8 +190,8 @@ end Scale
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
-  (timeouts : EventTimeouts (graph setup))
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+  (timeouts : EventTimeouts setup.informationGraph)
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
 
 section AsIfHonest
 
@@ -224,7 +224,7 @@ end AsIfHonest
 
 section Components
 
-variable [Fintype Player] (bounds : MessageBounds (graph setup))
+variable [Fintype Player] (bounds : MessageBounds setup.informationGraph)
   (initial : PMF (application setup timeouts leaks).State) (horizon : Nat)
   (scheduler : (application setup timeouts leaks).Scheduler)
 
@@ -291,7 +291,7 @@ section LateKey
 network view and the receipts. It leaves out the masked store, the player's own
 source actions and its candidate material. -/
 abbrev OperationalView :=
-  EventGraphRuntime.PublicView (graph setup) ×
+  EventGraphRuntime.PublicView setup.informationGraph ×
     MessageNetwork.PlayerView Player (application setup timeouts leaks).Payload ×
     List (MessageId Player × Bool)
 
@@ -308,7 +308,7 @@ def deliveredValue (who : Player) (view : (application setup timeouts leaks).Pla
   match view.application.publicView.ownTurn? who with
   | none => none
   | some event =>
-      match nodeView (graph setup) event with
+      match nodeView setup.informationGraph event with
       | .resolve owner payload binding _ _ _ =>
           some ⟨.binding owner payload, binding.get? view.application.observation.store⟩
       | _ => none

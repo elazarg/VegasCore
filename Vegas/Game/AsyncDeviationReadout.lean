@@ -27,10 +27,10 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 has the typed-state and public-default law of a behavioral source deviation. -/
 theorem asyncDeviation_readout_law
     (setup : Setup (Player := Player) (L := L))
-    {duration : (graph setup).EventId → Nat}
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    {duration : setup.informationGraph.EventId → Nat}
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
     {horizon : Nat} {scheduler : (application setup ⟨duration⟩ leaks).Scheduler}
-    {delay bound : (graph setup).EventId → Nat}
+    {delay bound : setup.informationGraph.EventId → Nat}
     (contract : AsyncContract ⟨duration⟩ leaks (initialLaw setup) horizon scheduler delay bound)
     (timely : AsyncTimely ⟨duration⟩ delay bound) (turns : Nat)
     (original : BehavioralProfile setup.program)
@@ -38,7 +38,8 @@ theorem asyncDeviation_readout_law
     ∃ policy : BehavioralPolicy who setup.program,
       ((application setup ⟨duration⟩ leaks).roundsFrom
         (initialLaw setup) scheduler
-        (Function.update (serviceTurnPolicy setup .sequential duration leaks bound turns
+        (Function.update (serviceTurnPolicy setup setup.informationDependencies duration leaks
+          bound turns
           (firstTurnTiming setup turns) (normalizeDisclosureProfile setup.program original))
           who deviation) horizon).map (fun execution =>
             (sourceReadout setup ⟨duration⟩ leaks

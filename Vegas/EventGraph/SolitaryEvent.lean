@@ -12,7 +12,7 @@ An event is solitary when no other event is ready together with it, and leading
 when every unfinished event comes no earlier than it in source order whenever it
 is ready. Every event of a sequential graph is both. On a graph where only
 independent reveals are concurrent, every event that is not a publication is
-solitary, and leading when the relaxed order is total.
+solitary, and leading when the graph is obtained by relaxing reveals in a total order.
 -/
 
 noncomputable section
@@ -28,6 +28,13 @@ variable (graph) in
 def Solitary (event : graph.EventId) : Prop :=
   ∀ (cut : graph.order.Cut) {other : graph.EventId}, cut.Ready other → cut.Ready event →
     other = event
+
+omit [DecidableEq Player] in
+/-- A globally solitary event is also solitary among its owner's events. -/
+theorem Solitary.ownerSolitary {event : graph.EventId} (solitary : graph.Solitary event) :
+    graph.OwnerSolitary event := by
+  intro cut _ _ ready otherReady _ _
+  exact solitary cut otherReady ready
 
 variable (graph) in
 /-- Whenever `event` is ready, every unfinished event comes no earlier in source
@@ -63,15 +70,15 @@ theorem RevealsOnlyConcurrent.solitary (only : graph.RevealsOnlyConcurrent)
 omit [DecidableEq Player] in
 /-- Relaxing the reveal dependencies of a totally ordered graph keeps every
 event that is not a publication leading. -/
-theorem withMode_concurrentReveals_leading (graph : Vegas.EventGraph Player L)
+theorem relaxReveals_leading (graph : Vegas.EventGraph Player L)
     (total : ∀ prior event : graph.EventId, prior.val < event.val →
       prior ∈ graph.order.predecessors event)
     {event : graph.EventId} (notPublication : ¬ (graph.outputLayout event).IsPublication) :
-    (graph.withMode .concurrentReveals).Leading event := by
+    (graph.relaxReveals).Leading event := by
   intro cut other ready unfinished
   by_contra later
   apply unfinished
-  exact ready.2 ((graph.withMode_concurrentReveals_predecessors other event).mpr
+  exact ready.2 ((graph.relaxReveals_predecessors other event).mpr
     ⟨total other event (by omega), fun independent => notPublication independent.2.1⟩)
 
 end Vegas.EventGraph

@@ -27,9 +27,9 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol Intera
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- An actual single-owner repair constructor at a forced focal information
@@ -46,7 +46,8 @@ theorem counterpart_of_owner_repairs (wellFormed : setup.WellFormed)
     (forced : forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks) (initialLaw
       setup)
       horizon scheduler focal site.1)
-    {event : (graph setup).EventId} (turn : view.application.publicView.ownTurn? focal = some event)
+    {event : setup.informationGraph.EventId} (turn : view.application.publicView.ownTurn? focal =
+      some event)
     (history witness :
       (onePacketInformation setup timeouts leaks bounds horizon scheduler).InformationHistory
         focal (some (past, view)))

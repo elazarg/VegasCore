@@ -256,7 +256,7 @@ theorem zero_true_not_isNash :
 
 /-- The ideal compiled game values the decoded publication and the actual
 compiled payment instructions under an arbitrary public scheduler. -/
-def compiledGame (bonus : Int) (scheduler : (setup bonus).eventGraph.PublicScheduler) :
+def compiledGame (bonus : Int) (scheduler : (setup bonus).informationGraph.PublicScheduler) :
     UtilityGame Player where
   form := (setup bonus).eventGame scheduler
   utility outcome who := valuation bonus ((setup bonus).eventPublicOutcome outcome) who +
@@ -265,7 +265,7 @@ def compiledGame (bonus : Int) (scheduler : (setup bonus).eventGraph.PublicSched
 /-- Compilation preserves and reflects full-policy Nash for this concrete
 payment game; compiled deviations are not restricted to compiled source policies. -/
 theorem compiled_isNash_iff (bonus : Int)
-    (scheduler : (setup bonus).eventGraph.PublicScheduler)
+    (scheduler : (setup bonus).informationGraph.PublicScheduler)
     (sourceProfile : BehavioralProfile (program bonus)) :
     IsNash (compiledGame bonus scheduler).form
         (euPreference (compiledGame bonus scheduler).utility)
@@ -278,25 +278,25 @@ theorem compiled_isNash_iff (bonus : Int)
   simpa only [compiledGame, game, Setup.gameForm, Setup.publicRun, Setup.run, setup,
     SourceProgram.gameForm, PMF.pure_bind] using correspondence
 
-theorem compiled_bonus_true_isNash (scheduler : (setup 2).eventGraph.PublicScheduler) :
+theorem compiled_bonus_true_isNash (scheduler : (setup 2).informationGraph.PublicScheduler) :
     IsNash (compiledGame 2 scheduler).form
       (euPreference (compiledGame 2 scheduler).utility)
       (compileEventProfile (program 2) (profile 2 true)) :=
   (compiled_isNash_iff 2 scheduler _).mpr bonus_true_isNash
 
-theorem compiled_zero_false_isNash (scheduler : (setup 0).eventGraph.PublicScheduler) :
+theorem compiled_zero_false_isNash (scheduler : (setup 0).informationGraph.PublicScheduler) :
     IsNash (compiledGame 0 scheduler).form
       (euPreference (compiledGame 0 scheduler).utility)
       (compileEventProfile (program 0) (profile 0 false)) :=
   (compiled_isNash_iff 0 scheduler _).mpr zero_false_isNash
 
-theorem compiled_bonus_false_not_isNash (scheduler : (setup 2).eventGraph.PublicScheduler) :
+theorem compiled_bonus_false_not_isNash (scheduler : (setup 2).informationGraph.PublicScheduler) :
     ¬ IsNash (compiledGame 2 scheduler).form
       (euPreference (compiledGame 2 scheduler).utility)
       (compileEventProfile (program 2) (profile 2 false)) :=
   fun equilibrium => bonus_false_not_isNash ((compiled_isNash_iff 2 scheduler _).mp equilibrium)
 
-theorem compiled_zero_true_not_isNash (scheduler : (setup 0).eventGraph.PublicScheduler) :
+theorem compiled_zero_true_not_isNash (scheduler : (setup 0).informationGraph.PublicScheduler) :
     ¬ IsNash (compiledGame 0 scheduler).form
       (euPreference (compiledGame 0 scheduler).utility)
       (compileEventProfile (program 0) (profile 0 true)) :=
@@ -324,16 +324,16 @@ theorem audited_expectedUtility {Observation : Type} (bonus : Int) (choice : Boo
 
 /-- The actual compiled payment list has the program-selected bonus law. -/
 theorem compiled_payout_law (bonus : Int) (choice : Bool) :
-    ((toEventGraph (program bonus)).terminalOutcomes
-        (toEventGraph (program bonus)).canonicalScheduler
+    ((toInformationGraph (program bonus)).terminalOutcomes
+        (toInformationGraph (program bonus)).canonicalScheduler
         (compileEventProfile (program bonus) (profile bonus choice)) (encodeInputs initial)).map
         (terminalPayouts (program bonus)) = PMF.pure [(.alice, if choice then bonus else 0)] := by
   rw [Vegas.canonical_payout_law, run_profile, PMF.pure_map, evaluatePayoffs_final]
 
 /-- The compiled monetary receipts agree with the transfer read by strategic utility. -/
 theorem compiled_transfer_law (bonus : Int) (choice : Bool) :
-    ((toEventGraph (program bonus)).terminalOutcomes
-        (toEventGraph (program bonus)).canonicalScheduler
+    ((toInformationGraph (program bonus)).terminalOutcomes
+        (toInformationGraph (program bonus)).canonicalScheduler
         (compileEventProfile (program bonus) (profile bonus choice)) (encodeInputs initial)).map
         (fun terminal who => (transferAmount (terminalPayouts (program bonus) terminal) who : ℝ)) =
       PMF.pure ((program bonus).publicTransfers (result bonus choice)) := by

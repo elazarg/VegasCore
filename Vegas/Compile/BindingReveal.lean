@@ -143,9 +143,9 @@ theorem compileRankedNodes_binding_revealed {inputCount totalCount : Nat}
           exact ⟨index.succ, owned, publication, read⟩
 
 /-- **Compiled bindings are revealed.** -/
-theorem toEventGraph_bindingsRevealed {Γ : SourceCtx Player L} {openNames : Finset VarId}
+theorem toInformationGraph_bindingsRevealed {Γ : SourceCtx Player L} {openNames : Finset VarId}
     (program : SourceProgram Player L Γ openNames) :
-    (toEventGraph program).BindingsRevealed := by
+    (toInformationGraph program).BindingsRevealed := by
   intro event owner payload binding
   obtain ⟨index, owned, publication, read⟩ := compileRankedNodes_binding_revealed program
     (ContextRefs.initial Γ (outputLayout program)) (Revelations.initial Γ) []

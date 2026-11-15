@@ -20,9 +20,9 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph}
 
 /-- A due foreign event at a clear regular endpoint before focal debt has an
 actual first owner response after an earlier focal source turn. The witness
@@ -32,7 +32,7 @@ theorem foreign_firstActivation_prefix_of_due
     (source : setup.intendedModel.BehavioralAssessment) (focal owner : Player)
     (different : owner ≠ focal)
     {horizon : Nat} {scheduler : (application setup timeouts leaks).Scheduler}
-    {delay bound : (graph setup).EventId → Nat}
+    {delay bound : setup.informationGraph.EventId → Nat}
     (timely : (AsyncTimely timeouts) delay bound)
     (start control : (application setup timeouts leaks).Control)
     (startTrace : (onePacketProtocol setup timeouts leaks bounds horizon
@@ -41,14 +41,14 @@ theorem foreign_firstActivation_prefix_of_due
       scheduler).Trace (some control))
     (opportunity : OpportunityAt timeouts leaks control.execution delay)
     (startPrefix : TracePrefix startTrace trace)
-    (current event : (graph setup).EventId)
+    (current event : setup.informationGraph.EventId)
     (turn : start.execution.application.publicView.ownTurn? focal = some current)
     (clear : control.execution.application.config.defaulted = ∅)
     (regular : RegularTrace setup timeouts leaks bounds horizon
       scheduler source focal trace)
     (notOwed : ∀ point, decodedPoint setup control.execution.application.config = some point →
       ¬ ProtocolState.OwesFailure focal setup.program point)
-    (idle : control.actor = none) (owned : (graph setup).actor? event = some owner)
+    (idle : control.actor = none) (owned : setup.informationGraph.actor? event = some owner)
     (ready : control.execution.application.config.cut.Ready event)
     (entered : Nat) (activated : control.execution.application.activatedAt event = some entered)
     (due : timeouts.duration event ≤ control.execution.application.clock - entered) :
@@ -78,8 +78,8 @@ theorem foreign_firstActivation_prefix_of_due
       have margin := timely event (by simp only [owned, Option.isSome_some])
       omega)
   obtain ⟨entry, remembered, atTurn⟩ := recalled_turn_of_ownerActivatedSince timeouts leaks
-    (initialLaw setup) horizon scheduler (serviceGraph_revealRelaxedOrdered setup .sequential)
-    control rawTrace idle event owner entered owned occurred
+    (initialLaw setup) horizon scheduler control rawTrace idle event
+    (setup.informationGraph.sequentialize_solitary event).ownerSolitary owner entered owned occurred
   have occurs : ∃ entry ∈ control.execution.logs owner,
       ActivatedAt setup timeouts leaks owner event entry := ⟨entry, remembered, atTurn⟩
   obtain ⟨point, decoded, intended⟩ :=

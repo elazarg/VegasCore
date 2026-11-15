@@ -29,9 +29,9 @@ open GameTheory GameTheory.Protocol Interaction EventGraphRuntime
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  (bounds : MessageBounds (graph setup))
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  (bounds : MessageBounds setup.informationGraph)
 
 /-- At a forced native history, every pending packet is an evidence-free
 commitment or an owned opening carrying its exact certificate for a ready event. -/
@@ -41,14 +41,14 @@ theorem onePacket_pending_of_forced (horizon : Nat)
       scheduler).History)
     (forced : ForcedState setup timeouts leaks who history.state)
     {control : (application setup timeouts leaks).Control} (current : history.state = some control)
-    (message : Message Player (WitnessedPacket (graph setup)))
+    (message : Message Player (WitnessedPacket setup.informationGraph))
     (pending : message ∈ control.execution.network.pending) :
     (∃ event candidate, message.payload.call = .commitment event candidate ∧
         message.payload.evidence = none) ∨
       ∃ event candidate raw, message.payload.call = .opening event candidate raw ∧
         message.payload.evidence = some ⟨candidate, raw⟩ ∧
         control.execution.application.config.cut.Ready event ∧
-        (graph setup).actor? event = some message.sender := by
+        setup.informationGraph.actor? event = some message.sender := by
   let app := application setup timeouts leaks
   have trace : (app.protocol (initialLaw setup) horizon scheduler).Trace (some control) :=
     current ▸ (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon
@@ -58,7 +58,8 @@ theorem onePacket_pending_of_forced (horizon : Nat)
     history.trace
   rw [current] at clean forced
   change (CountClean timeouts) leaks control.execution at clean
-  have facts := settledFacts_history (initialLaw setup) horizon scheduler trace
+  have facts := settledFacts_history ((toInformationGraph_barrierOrdered
+    setup.program).revealRelaxedOrdered.actorSerial) (initialLaw setup) horizon scheduler trace
   have distinct := app.idsDistinct_history scheduler (initialLaw setup) horizon trace
   change control.execution.network.IdsDistinct at distinct
   unfold MessageNetwork.IdsDistinct at distinct
@@ -83,7 +84,7 @@ theorem onePacket_pending_of_forced (horizon : Nat)
       rw [shape] at call
       cases call
       have evidence : message.payload.evidence = some ⟨candidate, raw⟩ := by rw [shape]
-      cases view : nodeView (graph setup) event with
+      cases view : nodeView setup.informationGraph event with
       | bind _ _ _ _ =>
           rw [view] at owned
           exact owned.elim
@@ -92,7 +93,7 @@ theorem onePacket_pending_of_forced (horizon : Nat)
           exact owned.elim
       | resolve owner payload binding checks outputEq codeEq =>
           rw [view] at owned
-          have actor : (graph setup).actor? event = some message.sender :=
+          have actor : setup.informationGraph.actor? event = some message.sender :=
             (nodeView_resolve_actor outputEq codeEq).trans (congrArg some owned.1.symm)
           obtain ⟨tokenEvent, tokenNamed, tokenEq⟩ :=
             (WitnessedPacket.tokenValid_iff _).mp tokenValid
@@ -116,7 +117,8 @@ theorem onePacket_pending_of_forced (horizon : Nat)
                 facts.carried.ledger other onLedger
               obtain ⟨_, _, otherFirst⟩ :=
                 (countPermits_eq_true_iff _ _).mp (clean.2 other otherEmitted)
-              have messageNamed : message.payload.call.event? (graph setup) = some event := by
+              have messageNamed : message.payload.call.event? setup.informationGraph = some event
+                := by
                 rw [shape]
                 rfl
               rcases Nat.lt_or_gt_of_ne differentSerials with lower | upper

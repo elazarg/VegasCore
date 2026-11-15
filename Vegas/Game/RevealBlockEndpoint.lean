@@ -96,39 +96,39 @@ end Generic
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {mode : EventGraph.ExecutionMode}
+  {deps : setup.dataflowGraph.Dependencies}
 
 /-- Publications are visible to every player. -/
-theorem fieldVisibleTo_of_publication (who : Player) {event : (serviceGraph setup mode).EventId}
-    (publication : ((serviceGraph setup mode).outputLayout event).IsPublication) :
-    (serviceGraph setup mode).fieldVisibleTo who (.inr event) := by
+theorem fieldVisibleTo_of_publication (who : Player) {event : (serviceGraph setup deps).EventId}
+    (publication : ((serviceGraph setup deps).outputLayout event).IsPublication) :
+    (serviceGraph setup deps).fieldVisibleTo who (.inr event) := by
   unfold EventGraph.fieldVisibleTo
-  change ((serviceGraph setup mode).outputLayout event).VisibleTo who
-  generalize (serviceGraph setup mode).outputLayout event = field at publication ⊢
+  change ((serviceGraph setup deps).outputLayout event).VisibleTo who
+  generalize (serviceGraph setup deps).outputLayout event = field at publication ⊢
   cases field <;> simp_all [EventField.IsPublication, EventField.VisibleTo]
 
 /-- The record and output of a new event of a block run, read from the
 deviator's view. -/
 private theorem block_new_congr {who : Player} {start finish : Nat}
-    (publications : ∀ event : (serviceGraph setup mode).EventId, start ≤ event.val →
-      event.val < finish → ((serviceGraph setup mode).outputLayout event).IsPublication)
-    {originLeft originRight left right : (serviceGraph setup mode).Config}
+    (publications : ∀ event : (serviceGraph setup deps).EventId, start ≤ event.val →
+      event.val < finish → ((serviceGraph setup deps).outputLayout event).IsPublication)
+    {originLeft originRight left right : (serviceGraph setup deps).Config}
     (soundLeft : BlockRecordsSound who start finish originLeft left)
     (soundRight : BlockRecordsSound who start finish originRight right)
-    (views : (serviceGraph setup mode).normalizeObservation who
-        ((serviceGraph setup mode).playerObserve who left) =
-      (serviceGraph setup mode).normalizeObservation who
-        ((serviceGraph setup mode).playerObserve who right))
-    (event : (serviceGraph setup mode).EventId)
+    (views : (serviceGraph setup deps).normalizeObservation who
+        ((serviceGraph setup deps).playerObserve who left) =
+      (serviceGraph setup deps).normalizeObservation who
+        ((serviceGraph setup deps).playerObserve who right))
+    (event : (serviceGraph setup deps).EventId)
     (freshLeft : event ∉ originLeft.cut.completed) (doneLeft : event ∈ left.cut.completed)
     (freshRight : event ∉ originRight.cut.completed) (doneRight : event ∈ right.cut.completed) :
     completionOf left event = completionOf right event ∧
       left.outputs event = right.outputs event := by
-  have stores := congrArg (fun observation : (serviceGraph setup mode).PlayerObservation who =>
+  have stores := congrArg (fun observation : (serviceGraph setup deps).PlayerObservation who =>
     observation.store) views
   rw [normalizeObservation_playerObserve, normalizeObservation_playerObserve] at stores
   simp only at stores
-  have published (publication : ((serviceGraph setup mode).outputLayout event).IsPublication) :
+  have published (publication : ((serviceGraph setup deps).outputLayout event).IsPublication) :
       left.outputs event = right.outputs event := by
     have visible := congrFun stores (.inr event)
     rwa [playerStore_of_visible (visible := fieldVisibleTo_of_publication who publication),
@@ -213,28 +213,28 @@ private theorem block_new_congr {who : Player} {start finish : Nat}
 run keys end with equal run keys when the deviator's normalized end views are
 equal. -/
 theorem blockEnd_runKey_congr {who : Player} {start finish : Nat}
-    (publications : ∀ event : (serviceGraph setup mode).EventId, start ≤ event.val →
-      event.val < finish → ((serviceGraph setup mode).outputLayout event).IsPublication)
-    {originLeft originRight left right : (serviceGraph setup mode).Config}
+    (publications : ∀ event : (serviceGraph setup deps).EventId, start ≤ event.val →
+      event.val < finish → ((serviceGraph setup deps).outputLayout event).IsPublication)
+    {originLeft originRight left right : (serviceGraph setup deps).Config}
     (keys : runKey originLeft = runKey originRight)
     (pathLeft : Relation.ReflTransGen Config.Step originLeft left)
     (pathRight : Relation.ReflTransGen Config.Step originRight right)
     (soundLeft : BlockRecordsSound who start finish originLeft left)
     (soundRight : BlockRecordsSound who start finish originRight right)
-    (views : (serviceGraph setup mode).normalizeObservation who
-        ((serviceGraph setup mode).playerObserve who left) =
-      (serviceGraph setup mode).normalizeObservation who
-        ((serviceGraph setup mode).playerObserve who right)) :
+    (views : (serviceGraph setup deps).normalizeObservation who
+        ((serviceGraph setup deps).playerObserve who left) =
+      (serviceGraph setup deps).normalizeObservation who
+        ((serviceGraph setup deps).playerObserve who right)) :
     runKey left = runKey right := by
   have cuts : originLeft.cut = originRight.cut := congrArg Prod.fst keys
   have stores : originLeft.store = originRight.store := congrArg (fun key => key.2.1) keys
   have records : completionOf originLeft = completionOf originRight :=
     congrArg (fun key => key.2.2) keys
-  have doneIff (event : (serviceGraph setup mode).EventId) :
+  have doneIff (event : (serviceGraph setup deps).EventId) :
       event ∈ left.cut.completed ↔ event ∈ right.cut.completed := by
     rw [← completionOf_isSome_iff, ← completionOf_isSome_iff,
       normalize_present_congr who views event]
-  have each (event : (serviceGraph setup mode).EventId) :
+  have each (event : (serviceGraph setup deps).EventId) :
       completionOf left event = completionOf right event ∧
         left.outputs event = right.outputs event := by
     by_cases old : event ∈ originLeft.cut.completed

@@ -35,8 +35,8 @@ open GameTheory GameTheory.Protocol GameTheory.Math.Probability Interaction Even
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
 
 /-- The envelope a response emits. -/
 def emittedEnvelope (execution : (application setup timeouts leaks).Execution) (who : Player)
@@ -93,10 +93,10 @@ theorem respond_observe_operational (execution : (application setup timeouts lea
     · change (execution.respond (application setup timeouts leaks) responder
         action).application.publicView.ownTurn? who = execution.application.publicView.ownTurn? who
       rw [contract.2]
-    · change ((graph setup).playerObserve who
+    · change (setup.informationGraph.playerObserve who
           (execution.respond (application setup timeouts leaks) responder
             action).application.config).store =
-        ((graph setup).playerObserve who execution.application.config).store
+        (setup.informationGraph.playerObserve who execution.application.config).store
       rw [contract.1]
 
 /-- **A response on the operational state.** -/
@@ -151,17 +151,17 @@ theorem operationalState_respond (control : (application setup timeouts leaks).C
 
 /-- **An opening of a bound value.** The response opens the event with the
 handle accepted at the binding, carrying the binding's successful value. -/
-def OpensBinding (execution : (application setup timeouts leaks).Execution) (event : (graph
-  setup).EventId)
+def OpensBinding (execution : (application setup timeouts leaks).Execution) (event :
+  setup.informationGraph.EventId)
     {owner : Player} {payload : L.Ty}
-    (binding : EventGraph.FieldRef (graph setup).layout (.binding owner payload))
+    (binding : EventGraph.FieldRef setup.informationGraph.layout (.binding owner payload))
     (action : (application setup timeouts leaks).Action) : Prop :=
   ∃ submission candidate value, action.transmission = some submission ∧
     submission.call.packet = .opening event candidate ⟨payload, value⟩ ∧
     execution.application.accepted binding.field = some candidate ∧
     binding.get? execution.application.config.store = some (.success value)
 
-variable [Fintype Player] (bounds : MessageBounds (graph setup))
+variable [Fintype Player] (bounds : MessageBounds setup.informationGraph)
 
 /-- **The envelope of a menu opening.** At a state of a one-packet history, a
 one-packet response opening an event emits the next envelope of the responder
@@ -176,7 +176,8 @@ theorem emittedEnvelope_of_opening {horizon : Nat} {scheduler : (application set
         who))
     {submission : (application setup timeouts leaks).Submission}
     (sent : action.transmission = some submission)
-    {event : (graph setup).EventId} {candidate : Handle (graph setup)} {raw : Raw L}
+    {event : setup.informationGraph.EventId} {candidate : Handle setup.informationGraph} {raw : Raw
+      L}
     (call : submission.call.packet = .opening event candidate raw) :
     emittedEnvelope (timeouts := timeouts) control.execution who action =
       some ⟨(who, control.execution.network.nextSerial who),
@@ -222,8 +223,8 @@ theorem emittedEnvelope_of_opening {horizon : Nat} {scheduler : (application set
 
 omit [Fintype Player] in
 /-- A key decides at most one publication event. -/
-theorem turnEvent_of_publicationTurn {key : LateKey setup timeouts leaks} {event : (graph
-  setup).EventId}
+theorem turnEvent_of_publicationTurn {key : LateKey setup timeouts leaks} {event :
+  setup.informationGraph.EventId}
     (turn : PublicationTurn (timeouts := timeouts) key event) : turnEvent (timeouts := timeouts)
       key =
       some event := by
@@ -238,7 +239,8 @@ omit [Fintype Player] in
 /-- **The image of a response while the event is pending.** It is the
 operational state after the response's emitted envelope. -/
 theorem pendingImage_respond {remaining : Nat} {who : Player}
-    {execution : (application setup timeouts leaks).Execution} {event : (graph setup).EventId}
+    {execution : (application setup timeouts leaks).Execution} {event :
+      setup.informationGraph.EventId}
     (pending : event ∉ execution.application.config.cut.completed)
     (action : (application setup timeouts leaks).Action) :
     pendingImage (timeouts := timeouts) event (some ⟨remaining, none, execution.respond (application
@@ -269,14 +271,15 @@ theorem opensBinding_image_congr {horizon : Nat} {scheduler : (application setup
     (secondCurrent : secondHistory.state = some ⟨remaining, some owner, second⟩)
     (same : operationalState setup timeouts leaks (some ⟨remaining, some owner, first⟩) =
       operationalState setup timeouts leaks (some ⟨remaining, some owner, second⟩))
-    {event : (graph setup).EventId} (ready : first.application.config.cut.Ready event)
+    {event : setup.informationGraph.EventId} (ready : first.application.config.cut.Ready event)
     {payload : L.Ty}
-    {binding : EventGraph.FieldRef (graph setup).layout (.binding owner payload)}
-    {checks : List (EventGraph.GuardCheck (graph setup).layout payload)}
-    {outputEq : (graph setup).outputLayout event = .publication payload}
-    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .resolve owner payload binding checks}
-    (view : nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq)
+    {binding : EventGraph.FieldRef setup.informationGraph.layout (.binding owner payload)}
+    {checks : List (EventGraph.GuardCheck setup.informationGraph.layout payload)}
+    {outputEq : setup.informationGraph.outputLayout event = .publication payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .resolve owner payload binding checks}
+    (view : nodeView setup.informationGraph event = .resolve owner payload binding checks outputEq
+      codeEq)
     (firstAction secondAction : (application setup timeouts leaks).Action)
     (firstMember : firstAction ∈ bounds.onePacketActions timeouts leaks owner
       (first.logs owner) (first.observe (application setup timeouts leaks) owner))
@@ -318,16 +321,17 @@ theorem opensBinding_image_congr {horizon : Nat} {scheduler : (application setup
 
 omit [Fintype Player] in
 /-- An opening of a publication event by its owner of the binding's value. -/
-def OpensTurn (event : (graph setup).EventId) (owner : Player)
+def OpensTurn (event : setup.informationGraph.EventId) (owner : Player)
     (execution : (application setup timeouts leaks).Execution) (action : (application setup timeouts
       leaks).Action) :
     Prop :=
-  ∃ (payload : L.Ty) (binding : EventGraph.FieldRef (graph setup).layout (.binding owner payload))
-    (checks : List (EventGraph.GuardCheck (graph setup).layout payload))
-    (outputEq : (graph setup).outputLayout event = .publication payload)
-    (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .resolve owner payload binding checks),
-    nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq ∧
+  ∃ (payload : L.Ty) (binding : EventGraph.FieldRef setup.informationGraph.layout (.binding owner
+    payload))
+    (checks : List (EventGraph.GuardCheck setup.informationGraph.layout payload))
+    (outputEq : setup.informationGraph.outputLayout event = .publication payload)
+    (codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .resolve owner payload binding checks),
+    nodeView setup.informationGraph event = .resolve owner payload binding checks outputEq codeEq ∧
       OpensBinding (timeouts := timeouts) execution event binding action
 
 variable (horizon : Nat) (scheduler : (application setup timeouts leaks).Scheduler)

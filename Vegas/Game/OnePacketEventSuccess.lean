@@ -32,20 +32,21 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
 
 section Invariant
 
-variable [Fintype Player] (bounds : MessageBounds (graph setup))
+variable [Fintype Player] (bounds : MessageBounds setup.informationGraph)
   (horizon : Nat) (scheduler : (application setup timeouts leaks).Scheduler)
 
 variable (setup timeouts leaks) in
 /-- A recorded canonical packet retains its actual action and typed result. -/
 def AcceptanceInvariant (who : Player) (entry : (application setup timeouts leaks).PlayerEntry)
-    (message : Message Player (WitnessedPacket (graph setup))) (event : (graph setup).EventId)
-    (sent : (graph setup).Config) (action : (graph setup).Action event)
-    (output : ((graph setup).outputLayout event).Value) :
+    (message : Message Player (WitnessedPacket setup.informationGraph)) (event :
+      setup.informationGraph.EventId)
+    (sent : setup.informationGraph.Config) (action : setup.informationGraph.Action event)
+    (output : (setup.informationGraph.outputLayout event).Value) :
     (application setup timeouts leaks).ProtocolState → Prop
   | none => False
   | some control =>
@@ -59,14 +60,15 @@ def AcceptanceInvariant (who : Player) (entry : (application setup timeouts leak
         control.execution.application.config = sent) ∧
       ((message.id, true) ∈ control.execution.receipts →
         control.execution.application.config.outputs event = some output ∧
-          ∃ defaultEvent, (⟨event, some action, defaultEvent⟩ : (graph setup).Completion) ∈
+          ∃ defaultEvent, (⟨event, some action, defaultEvent⟩ : setup.informationGraph.Completion) ∈
             control.execution.application.config.history)
 
 theorem acceptanceInvariant_transition (who : Player)
     (entry : (application setup timeouts leaks).PlayerEntry)
-    (message : Message Player (WitnessedPacket (graph setup))) (event : (graph setup).EventId)
-    (sent : (graph setup).Config) (action : (graph setup).Action event)
-    (output : ((graph setup).outputLayout event).Value)
+    (message : Message Player (WitnessedPacket setup.informationGraph)) (event :
+      setup.informationGraph.EventId)
+    (sent : setup.informationGraph.Config) (action : setup.informationGraph.Action event)
+    (output : (setup.informationGraph.outputLayout event).Value)
     (before after : (application setup timeouts leaks).ProtocolState)
     (joint : Player → Option (application setup timeouts leaks).Action)
     (legal : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
@@ -100,7 +102,8 @@ theorem acceptanceInvariant_transition (who : Player)
           have historyKept := EventGraph.Config.Step.path_history_prefix configPath
           have retained (old : (message.id, true) ∈ control.execution.receipts) :
               next.execution.application.config.outputs event = some output ∧
-                ∃ defaultEvent, (⟨event, some action, defaultEvent⟩ : (graph setup).Completion) ∈
+                ∃ defaultEvent, (⟨event, some action, defaultEvent⟩ :
+                  setup.informationGraph.Completion) ∈
                   next.execution.application.config.history := by
             obtain ⟨stored, defaultEvent, recorded⟩ := settled old
             exact ⟨keptStore (.inr event) output stored, defaultEvent,
@@ -113,7 +116,8 @@ theorem acceptanceInvariant_transition (who : Player)
             have beforeSent := stable beforePending
             have ready := beforeSent.symm ▸ sentReady
             exact (EventGraph.Config.Step.path_eq_of_ready_of_not_completed event
-              (fun _ otherReady => setup.eventGraph.sequentialize_ready_unique _ otherReady ready)
+              (fun _ otherReady => setup.informationGraph.sequentialize_ready_unique _ otherReady
+                ready)
               unfinished configPath).trans
               beforeSent
           · intro receipt
@@ -165,7 +169,7 @@ theorem acceptanceInvariant_transition (who : Player)
                         change (execution.includePending (application setup timeouts leaks)
                             id).application.config.outputs event = some output ∧
                           ∃ defaultEvent, (⟨event, some action, defaultEvent⟩ :
-                            (graph setup).Completion) ∈
+                            setup.informationGraph.Completion) ∈
                             (execution.includePending (application setup timeouts leaks)
                               id).application.config.history
                         unfold ReactiveApplication.Execution.includePending
@@ -211,11 +215,11 @@ theorem acceptanceInvariant_transition (who : Player)
                                   have eventEq : named' = event := by
                                     rcases witness with ⟨_, _, _, _, callEq, _⟩ |
                                       ⟨_, _, _, _, _, _, _, _, _, callEq, _⟩
-                                    · change envelope.payload.call.event? (graph setup) =
+                                    · change envelope.payload.call.event? setup.informationGraph =
                                         some named' at eventNamed
                                       rw [callEq] at eventNamed
                                       exact (Option.some.inj eventNamed).symm
-                                    · change envelope.payload.call.event? (graph setup) =
+                                    · change envelope.payload.call.event? setup.informationGraph =
                                         some named' at eventNamed
                                       rw [callEq] at eventNamed
                                       exact (Option.some.inj eventNamed).symm
@@ -232,9 +236,10 @@ theorem acceptanceInvariant_respond {remaining : Nat} {who : Player}
     {execution : (application setup timeouts leaks).Execution}
     (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some ⟨remaining, some who, execution⟩))
-    (event : (graph setup).EventId)
+    (event : setup.informationGraph.EventId)
     (turn : execution.application.publicView.ownTurn? who = some event)
-    (action : (graph setup).Action event) (material : (application setup timeouts leaks).Submission)
+    (action : setup.informationGraph.Action event) (material : (application setup timeouts
+      leaks).Submission)
     (submits : ((canonicalServiceDecision timeouts) leaks who (execution.logs who)
       (execution.observe (application setup timeouts leaks) who) event action).transmission =
         some material)

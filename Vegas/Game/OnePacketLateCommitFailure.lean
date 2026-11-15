@@ -23,9 +23,9 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- **A permitted commitment is the slot's envelope.** A transmitting response
@@ -37,7 +37,7 @@ theorem slotEnvelope_permitted_of_commitment {who : Player}
       leaks).Action}
     (member : response ∈ bounds.onePacketActions timeouts leaks who past view)
     {material : (application setup timeouts leaks).Submission}
-    (sends : response.transmission = some material) {event : (graph setup).EventId}
+    (sends : response.transmission = some material) {event : setup.informationGraph.EventId}
     {serial : Nat} (packet : material.call.packet = .commitment event (who, .prepared serial)) :
     countPermits ((application setup timeouts leaks).outputs past)
       (slotEnvelope setup timeouts leaks who past view event serial) = true := by
@@ -196,12 +196,13 @@ theorem certificate_lateCommit_siteDecisionFailure
     (debtFree : SiteDebtFree setup timeouts leaks bounds horizon scheduler site)
     {key : LateKey setup timeouts leaks} (siteKey : lateKey setup timeouts leaks who site.1 = some
       key)
-    {event : (graph setup).EventId} (pending : pendingEvent setup timeouts leaks who site.1 = some
+    {event : setup.informationGraph.EventId} (pending : pendingEvent setup timeouts leaks who
+      site.1 = some
       event)
-    {payload : L.Ty} {outputEq : (graph setup).outputLayout event = .binding who payload}
-    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .bind who payload}
-    (node : nodeView (graph setup) event = .bind who payload outputEq codeEq)
+    {payload : L.Ty} {outputEq : setup.informationGraph.outputLayout event = .binding who payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .bind who payload}
+    (node : nodeView setup.informationGraph event = .bind who payload outputEq codeEq)
     {past : List (application setup timeouts leaks).PlayerEntry}
     {view : (application setup timeouts leaks).PlayerView} (atSite : site.1 = some (past, view))
     {unforced : ℝ}
@@ -301,7 +302,7 @@ theorem certificate_lateCommit_siteDecisionFailure
         serial
       source action encoded (by simp [successful])
     have call : slotMaterial.call.packet = .commitment event (who, .prepared serial) :=
-      congrArg (fun message : Message Player (WitnessedPacket (graph setup)) =>
+      congrArg (fun message : Message Player (WitnessedPacket setup.informationGraph) =>
         message.payload.call) envelope
     have fresh' : execution.application.candidates.lookup (who, .prepared serial) = .fresh :=
       onePacket_permitted_fresh (timeouts := timeouts) (control := ⟨remaining, some who, execution⟩)

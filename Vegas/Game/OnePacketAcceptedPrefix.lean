@@ -23,9 +23,9 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- Completion makes the accepted handle immutable along an actual history,
@@ -34,7 +34,7 @@ theorem completed_accepted_of_tracePrefix
     {before after : (application setup timeouts leaks).Control}
     (prior : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some before))
     {trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some after)}
-    (isPrefix : TracePrefix prior trace) (event : (graph setup).EventId)
+    (isPrefix : TracePrefix prior trace) (event : setup.informationGraph.EventId)
     (completed : event ∈ before.execution.application.config.cut.completed) :
     event ∈ after.execution.application.config.cut.completed ∧
       after.execution.application.accepted (.inr event) =
@@ -88,8 +88,8 @@ theorem completedBinding_accepted_at_tracePrefix
     (isPrefix : TracePrefix prior trace) (record : PublicRecord setup timeouts who after)
     (debtFree : ∀ point, nativeDecodedState setup timeouts leaks (some after) = some point →
       ¬ ProtocolState.OwesFailure who setup.program point)
-    (event : (graph setup).EventId) (owner : Player) (payload : L.Ty)
-    (layoutEq : (graph setup).outputLayout event = .binding owner payload)
+    (event : setup.informationGraph.EventId) (owner : Player) (payload : L.Ty)
+    (layoutEq : setup.informationGraph.outputLayout event = .binding owner payload)
     (completed : event ∈ before.execution.application.config.cut.completed) :
     before.execution.application.accepted (.inr event) ≠ none := by
   obtain ⟨persists, sameTable⟩ := completed_accepted_of_tracePrefix (timeouts := timeouts) prior

@@ -23,8 +23,8 @@ open SourceProgram EventGraphRuntime Interaction GameTheory.Math.Probability
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
-  (timeouts : EventTimeouts (graph setup))
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+  (timeouts : EventTimeouts setup.informationGraph)
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
   (horizon : Nat) (scheduler : (application setup timeouts leaks).Scheduler)
   (players : Player → (application setup timeouts leaks).Policy)
   (wholeProfile : BehavioralProfile setup.program) (who : Player)
@@ -38,12 +38,12 @@ def SourceDeviationLaw {Γ : SourceCtx Player L} {names : Finset VarId}
     (embedding : OutputEmbedding (inputLayout setup.context) (outputLayout setup.program) program)
     (refsBefore : ContextRefsBefore refs embedding) (rank : Nat) : Prop :=
   ∀ {Seed : Type} (prior : PMF Seed) (source : Seed → Config Player L Γ)
-    (ghost : Seed → EventGraphRuntime.State (graph setup))
+    (ghost : Seed → EventGraphRuntime.State setup.informationGraph)
     (execution : Seed → (application setup timeouts leaks).Execution),
     (∀ seed, CompiledPolicySuffix setup.program wholeProfile program profile refs
       (source seed).revelations (source seed).registry embedding refsBefore rank) →
     (∀ seed, SourceCheckpoint setup (source seed) refs rank (ghost seed).config) →
-    (∀ seed, ∃ reached : EventGraphRuntime.State (graph setup),
+    (∀ seed, ∃ reached : EventGraphRuntime.State setup.informationGraph,
       Relation.ReflTransGen EventGraphRuntime.State.AutomaticStep (ghost seed) reached ∧
         reached.config = (execution seed).application.config) →
     (∀ seed ∈ prior.support, ∃ actualRank,
@@ -78,7 +78,7 @@ private theorem SourceDeviationLaw.terminal {Γ : SourceCtx Player L}
   intro Seed prior source ghost execution aligned checkpoint lag _boundary _bounded _effective
     _noise _factor
   refine ⟨PUnit.unit, ?_⟩
-  have full : rank = (graph setup).order.eventCount := by
+  have full : rank = setup.informationGraph.order.eventCount := by
     change rank = eventCount setup.program
     have counted := (aligned prior.support_nonempty.choose).graphSuffix.countEq
     simpa only [eventCount, Nat.add_zero] using counted
@@ -100,7 +100,7 @@ private theorem SourceDeviationLaw.terminal {Γ : SourceCtx Player L}
   apply bind_congr_on_support _
   intro seed _supported
   have terminal : (execution seed).application.config.cut.IsPrefix
-      (graph setup).order.eventCount := by
+      setup.informationGraph.order.eventCount := by
     rw [equal seed, ← full]
     exact (checkpoint seed).ordered
   have decoded (final : (application setup timeouts leaks).Execution)
@@ -125,8 +125,8 @@ private theorem SourceDeviationLaw.terminal {Γ : SourceCtx Player L}
   simp only [SourceProgram.runFrom, PMF.pure_map]
 
 private theorem automatic_stopped_boundary
-    (event : (graph setup).EventId)
-    (ghost caught : EventGraphRuntime.State (graph setup))
+    (event : setup.informationGraph.EventId)
+    (ghost caught : EventGraphRuntime.State setup.informationGraph)
     (before after : (application setup timeouts leaks).Execution)
     (ready : ghost.config.cut.Ready event)
     (lag : Relation.ReflTransGen EventGraphRuntime.State.AutomaticStep ghost caught)
@@ -147,13 +147,13 @@ private theorem automatic_stopped_boundary
     exact ⟨bounded, physical⟩
   · have same := EventGraph.Config.Step.path_eq_of_ready_of_not_completed event
       (fun query queryReady =>
-        setup.eventGraph.sequentialize_ready_unique _ queryReady ready)
+        setup.informationGraph.sequentialize_ready_unique _ queryReady ready)
       (ending ▸ already) (EventGraphRuntime.State.automatic_path_graph_steps lag)
     have equal : before.application.config = ghost.config := ending.symm.trans same
     have compiledPrefix : before.application.config.cut.IsPrefix event.val := by
       rw [equal]
       exact ⟨event.isLt.le, fun query =>
-        setup.eventGraph.sequentialize_mem_completed_iff_lt_of_ready _ ready⟩
+        setup.informationGraph.sequentialize_mem_completed_iff_lt_of_ready _ ready⟩
     obtain ⟨actualRank, boundary⟩ := physical
     have ranks : actualRank = event.val := boundary.ordered.unique compiledPrefix
     subst actualRank
@@ -177,14 +177,14 @@ private theorem SourceDeviationLaw.finish
     (execution : Seed → (application setup timeouts leaks).Execution)
     (staged : PMF (Seed × (application setup timeouts leaks).Execution))
     (nextSource : {point // point ∈ staged.support} → Config Player L Δ)
-    (nextGhost : {point // point ∈ staged.support} → EventGraphRuntime.State (graph setup))
+    (nextGhost : {point // point ∈ staged.support} → EventGraphRuntime.State setup.informationGraph)
     (nextAligned : ∀ point, CompiledPolicySuffix setup.program wholeProfile tail tailProfile
       tailRefs (nextSource point).revelations (nextSource point).registry tailEmbedding
       tailBefore nextRank)
     (nextCheckpoint : ∀ point, SourceCheckpoint setup (nextSource point) tailRefs nextRank
       (nextGhost point).config)
     (nextLag : ∀ point : {point // point ∈ staged.support},
-      ∃ reached : EventGraphRuntime.State (graph setup),
+      ∃ reached : EventGraphRuntime.State setup.informationGraph,
         Relation.ReflTransGen EventGraphRuntime.State.AutomaticStep (nextGhost point) reached ∧
           reached.config = point.val.2.application.config)
     (nextBoundary : ∀ point : {point // point ∈ staged.support}, ∃ actualRank,
@@ -306,9 +306,9 @@ private theorem SourceDeviationLaw.of_head
     (effective : ∀ seed final player, (tailProfile player).EffectiveDisclosures tail
       (advance seed final).registry (advance seed final).revelations)
     (endpoint : ∀ seed ∈ prior.support, ∀ final ∈ (phase seed).support,
-      ∃ native : EventGraphRuntime.State (graph setup),
+      ∃ native : EventGraphRuntime.State setup.informationGraph,
         SourceCheckpoint setup (advance seed final) tailRefs nextRank native.config ∧
-        (∃ caught : EventGraphRuntime.State (graph setup),
+        (∃ caught : EventGraphRuntime.State setup.informationGraph,
           Relation.ReflTransGen EventGraphRuntime.State.AutomaticStep native caught ∧
             caught.config = final.application.config) ∧
         (∃ actualRank, CompletionBoundary setup leaks scheduler players actualRank final) ∧
@@ -357,7 +357,7 @@ private theorem SourceDeviationLaw.of_head
     exact ⟨present, reached⟩
   have witnesses (point : Point) := endpoint point.val.1 (supported point).1
     point.val.2 (supported point).2
-  let nextGhost : Point → EventGraphRuntime.State (graph setup) :=
+  let nextGhost : Point → EventGraphRuntime.State setup.informationGraph :=
     fun point => (witnesses point).choose
   have nextJoint : nextPrior.map (fun point =>
       (nextSource point, (bindingTraffic timeouts) leaks who point.val.2)) =
@@ -405,11 +405,11 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
 private theorem SourceDeviationLaw.sample
     (setup : Setup (Player := Player) (L := L))
-    (timeouts : EventTimeouts (graph setup))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (timeouts : EventTimeouts setup.informationGraph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
     (horizon : Nat) (scheduler : (application setup timeouts leaks).Scheduler)
     (complete : CompletesPlay timeouts leaks (initialLaw setup) horizon scheduler)
-    (bound : (graph setup).EventId → Nat) (turns : Nat)
+    (bound : setup.informationGraph.EventId → Nat) (turns : Nat)
     (wholeProfile : BehavioralProfile setup.program) (who : Player)
     (deviation : (application setup timeouts leaks).Policy)
     {Γ : SourceCtx Player L} {openNames : Finset VarId}
@@ -428,7 +428,7 @@ private theorem SourceDeviationLaw.sample
     let tailBefore : ContextRefsBefore tailRefs tailEmbedding :=
       refsBefore.tail_cons next (by simp [eventCount]) (fun _ => rfl) _ rfl
     let players := Function.update
-      (serviceTurnPolicy setup .sequential timeouts.duration leaks bound turns
+      (serviceTurnPolicy setup setup.informationDependencies timeouts.duration leaks bound turns
         (firstTurnTiming setup turns) wholeProfile) who deviation
     SourceDeviationLaw setup timeouts leaks horizon scheduler players wholeProfile who
       next (afterSample profile) tailRefs tailEmbedding tailBefore (rank + 1) →
@@ -440,8 +440,8 @@ private theorem SourceDeviationLaw.sample
   have eventRank : event.val = rank := by
     simpa only [event, index, Fin.val_zero, Nat.add_zero] using
       (aligned prior.support_nonempty.choose).graphSuffix.rankEq index
-  have ownerless : (graph setup).actor? event = none := by
-    change (toEventGraph setup.program).actor? event = none
+  have ownerless : setup.informationGraph.actor? event = none := by
+    change (toInformationGraph setup.program).actor? event = none
     simpa [event, index, eventOwner?, eventCount] using
       (aligned prior.support_nonempty.choose).actorEq index
   have ready (seed : Seed) : (ghost seed).config.cut.Ready event := by
@@ -452,7 +452,7 @@ private theorem SourceDeviationLaw.sample
     obtain ⟨caught, path, ending⟩ := lag seed
     have quiescent : ∀ query, ¬ (ghost seed).AutomaticReady query := by
       intro query eligible
-      cases setup.eventGraph.sequentialize_ready_unique _ eligible.1 (ready seed)
+      cases setup.informationGraph.sequentialize_ready_unique _ eligible.1 (ready seed)
       obtain ⟨owner, acting, _⟩ := eligible.owned
       rw [ownerless] at acting
       cases acting
@@ -471,7 +471,7 @@ private theorem SourceDeviationLaw.sample
   obtain ⟨nextNoise, joint, endpoints⟩ := sourceService_chance_law timeouts leaks complete bound
     turns wholeProfile who deviation fresh distribution next profile refs embedding refsBefore
     rank prior source execution aligned actualCheckpoint actualBoundary bounded noise factor
-  let outputEq : (graph setup).outputLayout event = .publicData payload := by
+  let outputEq : setup.informationGraph.outputLayout event = .publicData payload := by
     change outputLayout setup.program (embedding.event index) = _
     simpa [index, outputLayout, eventCount] using embedding.layout_eq index
   let pick := fun final : (application setup timeouts leaks).Execution =>
@@ -530,11 +530,11 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
 private theorem SourceDeviationLaw.commit_owned
     (setup : Setup (Player := Player) (L := L))
-    (timeouts : EventTimeouts (graph setup))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (timeouts : EventTimeouts setup.informationGraph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
     (horizon : Nat) (scheduler : (application setup timeouts leaks).Scheduler)
     (complete : CompletesPlay timeouts leaks (initialLaw setup) horizon scheduler)
-    (bound : (graph setup).EventId → Nat) (turns : Nat)
+    (bound : setup.informationGraph.EventId → Nat) (turns : Nat)
     (wholeProfile : BehavioralProfile setup.program) (who : Player)
     (deviation : (application setup timeouts leaks).Policy)
     {Γ : SourceCtx Player L} {openNames : Finset VarId}
@@ -553,7 +553,7 @@ private theorem SourceDeviationLaw.commit_owned
     let tailBefore : ContextRefsBefore tailRefs tailEmbedding :=
       refsBefore.tail_cons next (by simp [eventCount]) (fun _ => rfl) _ rfl
     let players := Function.update
-      (serviceTurnPolicy setup .sequential timeouts.duration leaks bound turns
+      (serviceTurnPolicy setup setup.informationDependencies timeouts.duration leaks bound turns
         (firstTurnTiming setup turns) wholeProfile) who deviation
     SourceDeviationLaw setup timeouts leaks horizon scheduler players wholeProfile who
       next (afterCommit profile) tailRefs tailEmbedding tailBefore (rank + 1) →
@@ -569,12 +569,13 @@ private theorem SourceDeviationLaw.commit_owned
     have ordered := (checkpoint seed).ordered
     rw [← eventRank] at ordered
     exact ordered.ready event.isLt
-  have alone : ∀ (cut : (graph setup).order.Cut) other,
+  have alone : ∀ (cut : setup.informationGraph.order.Cut) other,
       cut.Ready event → cut.Ready other → other = event := by
     intro cut other first second
-    exact setup.eventGraph.sequentialize_ready_unique cut second first
+    exact setup.informationGraph.sequentialize_ready_unique cut second first
   obtain ⟨kernel, nextNoise, joint, endpoints⟩ := sourceService_deviator_commit_law
-    (setup := setup) (mode := .sequential) (duration := timeouts.duration) complete bound turns
+    (setup := setup) (deps := setup.informationDependencies) (duration := timeouts.duration)
+      complete bound turns
     wholeProfile who deviation fresh guard next profile refs embedding refsBefore rank alone
     prior source execution ghost aligned checkpoint (fun seed _ => lag seed) boundary bounded
     noise factor
@@ -642,11 +643,11 @@ private theorem SourceDeviationLaw.commit_owned
 
 private theorem SourceDeviationLaw.reveal_owned
     (setup : Setup (Player := Player) (L := L))
-    (timeouts : EventTimeouts (graph setup))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (timeouts : EventTimeouts setup.informationGraph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
     (horizon : Nat) (scheduler : (application setup timeouts leaks).Scheduler)
     (complete : CompletesPlay timeouts leaks (initialLaw setup) horizon scheduler)
-    (bound : (graph setup).EventId → Nat) (turns : Nat)
+    (bound : setup.informationGraph.EventId → Nat) (turns : Nat)
     (wholeProfile : BehavioralProfile setup.program) (who : Player)
     (deviation : (application setup timeouts leaks).Policy)
     {Γ : SourceCtx Player L} {openNames : Finset VarId}
@@ -665,7 +666,7 @@ private theorem SourceDeviationLaw.reveal_owned
     let tailBefore : ContextRefsBefore tailRefs tailEmbedding :=
       refsBefore.tail_cons next (by simp [eventCount]) (fun _ => rfl) _ rfl
     let players := Function.update
-      (serviceTurnPolicy setup .sequential timeouts.duration leaks bound turns
+      (serviceTurnPolicy setup setup.informationDependencies timeouts.duration leaks bound turns
         (firstTurnTiming setup turns) wholeProfile) who deviation
     SourceDeviationLaw setup timeouts leaks horizon scheduler players wholeProfile who
       next (afterReveal profile) tailRefs tailEmbedding tailBefore (rank + 1) →
@@ -682,12 +683,13 @@ private theorem SourceDeviationLaw.reveal_owned
     have ordered := (checkpoint seed).ordered
     rw [← eventRank] at ordered
     exact ordered.ready event.isLt
-  have alone : ∀ (cut : (graph setup).order.Cut) other,
+  have alone : ∀ (cut : setup.informationGraph.order.Cut) other,
       cut.Ready event → cut.Ready other → other = event := by
     intro cut other first second
-    exact setup.eventGraph.sequentialize_ready_unique cut second first
+    exact setup.informationGraph.sequentialize_ready_unique cut second first
   obtain ⟨kernel, nextNoise, joint, endpoints⟩ := sourceService_deviator_reveal_law
-    (setup := setup) (mode := .sequential) (duration := timeouts.duration) complete bound turns
+    (setup := setup) (deps := setup.informationDependencies) (duration := timeouts.duration)
+      complete bound turns
     wholeProfile who deviation fresh binding unresolved next profile refs embedding refsBefore rank
     alone
     prior source execution ghost aligned checkpoint (fun seed _ => lag seed) boundary bounded
@@ -829,10 +831,10 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
 private theorem SourceDeviationLaw.commit_foreign
     (setup : Setup (Player := Player) (L := L))
-    (timeouts : EventTimeouts (graph setup))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (timeouts : EventTimeouts setup.informationGraph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
     (horizon : Nat) (scheduler : (application setup timeouts leaks).Scheduler)
-    (delay bound : (graph setup).EventId → Nat) (turns : Nat)
+    (delay bound : setup.informationGraph.EventId → Nat) (turns : Nat)
     (contract : AsyncContract timeouts leaks (initialLaw setup) horizon scheduler delay bound)
     (timely : AsyncTimely timeouts delay bound)
     (wholeProfile : BehavioralProfile setup.program) (focal owner : Player)
@@ -853,7 +855,7 @@ private theorem SourceDeviationLaw.commit_foreign
     let tailBefore : ContextRefsBefore tailRefs tailEmbedding :=
       refsBefore.tail_cons next (by simp [eventCount]) (fun _ => rfl) _ rfl
     let players := Function.update
-      (serviceTurnPolicy setup .sequential timeouts.duration leaks bound turns
+      (serviceTurnPolicy setup setup.informationDependencies timeouts.duration leaks bound turns
         (firstTurnTiming setup turns) wholeProfile) focal deviation
     SourceDeviationLaw setup timeouts leaks horizon scheduler players wholeProfile focal
       next (afterCommit profile) tailRefs tailEmbedding tailBefore (rank + 1) →
@@ -929,10 +931,10 @@ private theorem SourceDeviationLaw.commit_foreign
 
 private theorem SourceDeviationLaw.reveal_foreign
     (setup : Setup (Player := Player) (L := L))
-    (timeouts : EventTimeouts (graph setup))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (timeouts : EventTimeouts setup.informationGraph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
     (horizon : Nat) (scheduler : (application setup timeouts leaks).Scheduler)
-    (delay bound : (graph setup).EventId → Nat) (turns : Nat)
+    (delay bound : setup.informationGraph.EventId → Nat) (turns : Nat)
     (contract : AsyncContract timeouts leaks (initialLaw setup) horizon scheduler delay bound)
     (timely : AsyncTimely timeouts delay bound)
     (wholeProfile : BehavioralProfile setup.program) (focal owner : Player)
@@ -953,7 +955,7 @@ private theorem SourceDeviationLaw.reveal_foreign
     let tailBefore : ContextRefsBefore tailRefs tailEmbedding :=
       refsBefore.tail_cons next (by simp [eventCount]) (fun _ => rfl) _ rfl
     let players := Function.update
-      (serviceTurnPolicy setup .sequential timeouts.duration leaks bound turns
+      (serviceTurnPolicy setup setup.informationDependencies timeouts.duration leaks bound turns
         (firstTurnTiming setup turns) wholeProfile) focal deviation
     SourceDeviationLaw setup timeouts leaks horizon scheduler players wholeProfile focal
       next (afterReveal profile) tailRefs tailEmbedding tailBefore (rank + 1) →
@@ -1040,8 +1042,8 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
 private theorem SourceDeviationLaw.initialized
     (setup : Setup (Player := Player) (L := L))
-    (timeouts : EventTimeouts (graph setup))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (timeouts : EventTimeouts setup.informationGraph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
     (horizon : Nat) (scheduler : (application setup timeouts leaks).Scheduler)
     (players : Player → (application setup timeouts leaks).Policy)
     (profile : BehavioralProfile setup.program) (who : Player)
@@ -1056,7 +1058,7 @@ private theorem SourceDeviationLaw.initialized
           ((application setup timeouts leaks).finished final)) =
         (setup.run (Function.update profile who policy)).map some := by
   let app := application setup timeouts leaks
-  let ghost := fun initial => EventGraphRuntime.State.initial (graph := graph setup)
+  let ghost := fun initial => EventGraphRuntime.State.initial (graph := setup.informationGraph)
     (setup.eventInputs initial)
   let execution := fun initial => ReactiveApplication.Execution.initial app (ghost initial)
   obtain ⟨noise, factor⟩ := source_initial_traffic_factorization setup
@@ -1083,7 +1085,8 @@ private theorem SourceDeviationLaw.initialized
     PMF.map_bind, ReactiveApplication.runToHorizon, ReactiveApplication.Execution.initial,
     List.length_nil, Nat.sub_zero, Setup.run, SourceProgram.run, execution, ghost, app,
     Config.initial, Function.comp_def, sourceReadout, ReactiveApplication.finished,
-    serviceSourceReadout_eq_decode setup .sequential timeouts.duration leaks, List.map_id]
+    serviceSourceReadout_eq_decode setup setup.informationDependencies timeouts.duration leaks,
+      List.map_id]
     using result
 
 end Vegas
@@ -1095,10 +1098,10 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
 private theorem sourceService_deviation_law
     (setup : Setup (Player := Player) (L := L))
-    (timeouts : EventTimeouts (graph setup))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (timeouts : EventTimeouts setup.informationGraph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
     (horizon : Nat) (scheduler : (application setup timeouts leaks).Scheduler)
-    (delay bound : (graph setup).EventId → Nat) (turns : Nat)
+    (delay bound : setup.informationGraph.EventId → Nat) (turns : Nat)
     (contract : AsyncContract timeouts leaks (initialLaw setup) horizon scheduler delay bound)
     (timely : AsyncTimely timeouts delay bound)
     (wholeProfile : BehavioralProfile setup.program) (who : Player)
@@ -1109,7 +1112,8 @@ private theorem sourceService_deviation_law
       (embedding : OutputEmbedding (inputLayout setup.context) (outputLayout setup.program) program)
       (refsBefore : ContextRefsBefore refs embedding) (rank : Nat),
       SourceDeviationLaw setup timeouts leaks horizon scheduler
-        (Function.update (serviceTurnPolicy setup .sequential timeouts.duration leaks bound turns
+        (Function.update (serviceTurnPolicy setup setup.informationDependencies timeouts.duration
+          leaks bound turns
           (firstTurnTiming setup turns) wholeProfile) who deviation)
         wholeProfile who program profile refs embedding refsBefore rank := by
   intro Γ names program
@@ -1158,10 +1162,10 @@ private theorem sourceService_deviation_law
 the terminal source-configuration law of one behavioral source deviation. -/
 theorem sourceService_deviation_readout_law
     (setup : Setup (Player := Player) (L := L))
-    (timeouts : EventTimeouts (graph setup))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (timeouts : EventTimeouts setup.informationGraph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
     (horizon : Nat) (scheduler : (application setup timeouts leaks).Scheduler)
-    (delay bound : (graph setup).EventId → Nat) (turns : Nat)
+    (delay bound : setup.informationGraph.EventId → Nat) (turns : Nat)
     (contract : AsyncContract timeouts leaks (initialLaw setup) horizon scheduler delay bound)
     (timely : AsyncTimely timeouts delay bound)
     (profile : BehavioralProfile setup.program)
@@ -1170,7 +1174,8 @@ theorem sourceService_deviation_readout_law
     (who : Player) (deviation : (application setup timeouts leaks).Policy) :
     ∃ policy : BehavioralPolicy who setup.program,
       ((application setup timeouts leaks).roundsFrom (initialLaw setup) scheduler
-        (Function.update (serviceTurnPolicy setup .sequential timeouts.duration leaks bound turns
+        (Function.update (serviceTurnPolicy setup setup.informationDependencies timeouts.duration
+          leaks bound turns
           (firstTurnTiming setup turns) profile) who deviation) horizon).map
           (fun final => sourceReadout setup timeouts leaks
             ((application setup timeouts leaks).finished final)) =

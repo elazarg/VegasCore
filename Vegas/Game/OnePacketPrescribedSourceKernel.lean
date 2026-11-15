@@ -31,11 +31,11 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
   GameTheory.Protocol.InformationModel GameTheory.Math.Probability Interaction EventGraphRuntime
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
-  {delay bound : (graph setup).EventId → Nat}
+  {delay bound : setup.informationGraph.EventId → Nat}
 local notation "menu" => bounds.onePacketMenu timeouts leaks
 local notation "N" => ReactiveApplication.ResponseMenu.information menu (initialLaw setup)
   horizon scheduler
@@ -43,7 +43,7 @@ local notation "E" => ReactiveApplication.ResponseMenu.protocol menu (initialLaw
   horizon scheduler
 local notation "Clear" => ReactiveApplication.stateInvariant
   (app := application setup timeouts leaks)
-    (fun native : EventGraphRuntime.State (graph setup) =>
+    (fun native : EventGraphRuntime.State setup.informationGraph =>
       EventGraph.Config.defaulted (EventGraphRuntime.State.config native) = ∅)
 
 /-- A canonical action followed by the compiled source continuation has the
@@ -67,10 +67,11 @@ theorem counted_canonical_source_continuation
     {remaining : Nat} {who : Player} {execution : (application setup timeouts leaks).Execution}
     (trace : (E).Trace (some ⟨remaining, some who, execution⟩))
     (clear : execution.application.config.defaulted = ∅)
-    (event : (graph setup).EventId)
+    (event : setup.informationGraph.EventId)
     (turn : execution.application.publicView.ownTurn? who = some event)
     (never : ∀ entry ∈ execution.logs who, ¬ ActivatedAt setup timeouts leaks who event entry)
-    (action : (graph setup).Action event) (material : (application setup timeouts leaks).Submission)
+    (action : setup.informationGraph.Action event) (material : (application setup timeouts
+      leaks).Submission)
     (submits : ((canonicalServiceDecision timeouts) leaks who (execution.logs who)
       (execution.observe (application setup timeouts leaks) who) event action).transmission =
         some material)
@@ -82,9 +83,10 @@ theorem counted_canonical_source_continuation
       execution.respond (application setup timeouts leaks) who
         ((canonicalServiceDecision timeouts) leaks who (execution.logs who)
           (execution.observe (application setup timeouts leaks) who) event action)⟩) :
-    let plan := (graph setup).policyPlan (compileEventProfile setup.program source)
-      (graph setup).canonicalScheduler
-    let read := fun final : (graph setup).Config => decodeConfig? setup.program setup.program
+    let plan := setup.informationGraph.policyPlan (compileEventProfile setup.program source)
+      setup.informationGraph.canonicalScheduler
+    let read := fun final : setup.informationGraph.Config => decodeConfig? setup.program
+      setup.program
       (ContextRefs.initial setup.context (outputLayout setup.program))
       (Revelations.initial setup.context) [] (outputEmbedding setup.program)
       final.store final.history
@@ -93,7 +95,8 @@ theorem counted_canonical_source_continuation
         event ∈ final.execution.application.config.cut.completed) ∨ ¬ Clear history.state)
       start).bind fun history => match history.state with
         | none => PMF.pure none
-        | some final => ((graph setup).runPlan plan final.execution.application.config.remaining
+        | some final => (setup.informationGraph.runPlan plan
+          final.execution.application.config.remaining
             final.execution.application.config).map read) =
       (ProtocolState.step setup.program point
         (fun _ => decodeEventAction setup.program event action)).bind fun target =>
@@ -180,10 +183,11 @@ theorem counted_canonical_intended_sourceLaw
     {remaining : Nat} {who : Player} {execution : (application setup timeouts leaks).Execution}
     (trace : (E).Trace (some ⟨remaining, some who, execution⟩))
     (clear : execution.application.config.defaulted = ∅)
-    (event : (graph setup).EventId)
+    (event : setup.informationGraph.EventId)
     (turn : execution.application.publicView.ownTurn? who = some event)
     (never : ∀ entry ∈ execution.logs who, ¬ ActivatedAt setup timeouts leaks who event entry)
-    (action : (graph setup).Action event) (material : (application setup timeouts leaks).Submission)
+    (action : setup.informationGraph.Action event) (material : (application setup timeouts
+      leaks).Submission)
     (submits : ((canonicalServiceDecision timeouts) leaks who (execution.logs who)
       (execution.observe (application setup timeouts leaks) who) event action).transmission =
         some material)
@@ -262,13 +266,13 @@ theorem counted_canonical_intended_sourceLaw
   exact afterDecoded
 
 omit [Fintype Player] in
-private theorem clear_step_effective {before after : (graph setup).Config}
-    {event : (graph setup).EventId} (ready : before.cut.Ready event)
-    (action : (graph setup).Action event)
+private theorem clear_step_effective {before after : setup.informationGraph.Config}
+    {event : setup.informationGraph.EventId} (ready : before.cut.Ready event)
+    (action : setup.informationGraph.Action event)
     (supported : after ∈ (before.step event ready action).support)
     (clear : after.defaulted = ∅) : EffectiveAction before event action := by
   unfold EffectiveAction
-  cases node : nodeView (graph setup) event with
+  cases node : nodeView setup.informationGraph event with
   | sample | bind => trivial
   | resolve owner payload binding checks outputEq codeEq =>
       intro _disclose
@@ -336,7 +340,7 @@ theorem counted_firstActivation_honest_sourceLaw
       (application setup timeouts leaks).terminal (some control) →
       control.execution.application.config.cut.Terminal)
     (covers : bounds.CoversOutputValues)
-    (capacity : ∀ player, bindingEventCount (graph setup) player < bounds.candidateCount)
+    (capacity : ∀ player, bindingEventCount setup.informationGraph player < bounds.candidateCount)
     (source : setup.intendedModel.BehavioralAssessment)
     (certificate : (E).WellFoundedHistories)
     (players : ∀ player, (N).BehavioralPolicy player)
@@ -344,7 +348,7 @@ theorem counted_firstActivation_honest_sourceLaw
     {remaining : Nat} {who : Player} {execution : (application setup timeouts leaks).Execution}
     (current : history.state = some ⟨remaining, some who, execution⟩)
     (clear : execution.application.config.defaulted = ∅)
-    (event : (graph setup).EventId)
+    (event : setup.informationGraph.EventId)
     (pending : pendingEvent setup timeouts leaks who (some (execution.logs who,
       execution.observe (application setup timeouts leaks) who)) = some event)
     (never : ∀ entry ∈ execution.logs who, ¬ ActivatedAt setup timeouts leaks who event entry)
@@ -469,14 +473,15 @@ theorem counted_firstActivation_honest_sourceLaw
       have success := asIfHonestProfile_success (timeouts := timeouts) source who execution rank
         ordered point decoded (execution.logs who) action supported
       have bindSuccess : ∀ owner payload outputEq codeEq,
-          nodeView (graph setup) event = .bind owner payload outputEq codeEq →
+          nodeView setup.informationGraph event = .bind owner payload outputEq codeEq →
             ∃ value, graphAction = cast (congrArg EventGraph.EventField.Action outputEq.symm)
               (some (PublicationResult.success value)) := by
         intro owner payload outputEq _codeEq _node
         exact encodeEventAction?_commitsValue setup.program event action success.1 graphAction
           encoded owner payload outputEq
-      have loud : ¬ SilentAction (setup := setup) (mode := .sequential) event graphAction := by
-        cases node : nodeView (serviceGraph setup .sequential) event with
+      have loud : ¬ SilentAction (setup := setup) (deps := setup.informationDependencies) event
+        graphAction := by
+        cases node : nodeView (setup.informationGraph) event with
         | sample => simp only [SilentAction, node, not_false_eq_true]
         | bind owner payload outputEq codeEq =>
             obtain ⟨value, same⟩ := bindSuccess owner payload outputEq codeEq node
@@ -492,7 +497,7 @@ theorem counted_firstActivation_honest_sourceLaw
         effective loud
       have bindingEffective : EffectiveDecision event graphAction := by
         unfold EffectiveDecision
-        cases node : nodeView (graph setup) event with
+        cases node : nodeView setup.informationGraph event with
         | bind owner payload outputEq codeEq =>
             obtain ⟨value, same⟩ := bindSuccess owner payload outputEq codeEq node
             exact ⟨value, same⟩

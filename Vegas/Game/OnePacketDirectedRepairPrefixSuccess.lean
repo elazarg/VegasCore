@@ -20,9 +20,9 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
   [DecidableEq (CellTy Player L)]
 
@@ -110,11 +110,11 @@ private theorem decode_binding_output {Field : Type} [DecidableEq Field]
 
 omit [Fintype Player] in
 /-- A stored binding is the corresponding commitment cell at the decoded point. -/
-theorem decodedPoint_binding_cell {config : (graph setup).Config}
+theorem decodedPoint_binding_cell {config : setup.informationGraph.Config}
     {point : ProtocolState setup.program}
     (decoded : decodedPoint setup config = some point)
     {owner : Player} {payload : L.Ty}
-    (binding : EventGraph.FieldRef (graph setup).layout (.binding owner payload))
+    (binding : EventGraph.FieldRef setup.informationGraph.layout (.binding owner payload))
     (value : PublicationResult (L.Val payload))
     (stored : binding.get? config.store = some value) :
     ProtocolState.cell? setup.program point (fieldCell setup binding.field).1
@@ -132,7 +132,7 @@ theorem decodedPoint_binding_cell {config : (graph setup).Config}
           subst kind
           have refEq : (ContextRefs.initial setup.context (outputLayout setup.program)).get
               source = (⟨.inl (inputId source), layoutEq⟩ : EventGraph.FieldRef
-                (graph setup).layout (.binding owner payload)) := rfl
+                setup.informationGraph.layout (.binding owner payload)) := rfl
           have found := decodeSourcePrefix?_context_cell ordered.choose setup.program _ _ _ _
             config.store _ config.defaults point setup.namesNodup decoded source value
             (refEq ▸ stored)
@@ -140,7 +140,7 @@ theorem decodedPoint_binding_cell {config : (graph setup).Config}
       | inr event =>
           have present : (config.outputs event).isSome := by
             exact available_of_binding_read (⟨.inr event, layoutEq⟩ : EventGraph.FieldRef
-              (graph setup).layout (.binding owner payload)) config.store value stored
+              setup.informationGraph.layout (.binding owner payload)) config.store value stored
           have completed := (config.output_available event).mp present
           have earlier : event.val < ordered.choose :=
             (ordered.choose_spec.2 event).mp completed
@@ -162,7 +162,8 @@ variable {p q : ProtocolState setup.program}
   (staticQ : ProtocolState.StaticAt setup.program [] (Revelations.initial setup.context) q)
   (readyOwn : ∀ event, final.execution.application.config.cut.Ready event →
     ∀ owner payload binding checks outputEq codeEq,
-      nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq →
+      nodeView setup.informationGraph event = .resolve owner payload binding checks outputEq codeEq
+        →
         owner = who)
   {before : (application setup timeouts leaks).Control}
   (prior : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some before))
@@ -172,26 +173,27 @@ include wellFormed secondState who sameView trace decodedP staticQ readyOwn prio
 
 omit [DecidableEq (CellTy Player L)] in
 /-- Every ready reveal along this history already reads a successful binding. -/
-theorem binding_success_of_tracePrefix {event : (graph setup).EventId}
+theorem binding_success_of_tracePrefix {event : setup.informationGraph.EventId}
     (ready : before.execution.application.config.cut.Ready event)
     {owner : Player} {payload : L.Ty}
-    (binding : EventGraph.FieldRef (graph setup).layout (.binding owner payload))
-    (checks : List (EventGraph.GuardCheck (graph setup).layout payload))
-    (outputEq : (graph setup).outputLayout event = .publication payload)
-    (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .resolve owner payload binding checks)
-    (view : nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq) :
+    (binding : EventGraph.FieldRef setup.informationGraph.layout (.binding owner payload))
+    (checks : List (EventGraph.GuardCheck setup.informationGraph.layout payload))
+    (outputEq : setup.informationGraph.outputLayout event = .publication payload)
+    (codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .resolve owner payload binding checks)
+    (view : nodeView setup.informationGraph event = .resolve owner payload binding checks outputEq
+      codeEq) :
     ∃ value, binding.get? before.execution.application.config.store = some (.success value) := by
   classical
-  have readsEq : ((graph setup).nodes event).readFields =
+  have readsEq : (setup.informationGraph.nodes event).readFields =
       insert binding.field (EventGraph.GuardCheck.listReadFields checks) := by
     calc
-      _ = (cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-          ((graph setup).nodes event)).readFields :=
-        (EventGraph.EventCode.readFields_cast outputEq ((graph setup).nodes event)).symm
+      _ = (cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+          (setup.informationGraph.nodes event)).readFields :=
+        (EventGraph.EventCode.readFields_cast outputEq (setup.informationGraph.nodes event)).symm
       _ = _ := by rw [codeEq]; rfl
   have available := before.execution.application.config.read_available ready
-    (show binding.field ∈ ((graph setup).nodes event).readFields by
+    (show binding.field ∈ (setup.informationGraph.nodes event).readFields by
       rw [readsEq]; exact Finset.mem_insert_self ..)
   obtain ⟨result, read⟩ := Option.isSome_iff_exists.mp
     (binding.get?_isSome before.execution.application.config.store available)

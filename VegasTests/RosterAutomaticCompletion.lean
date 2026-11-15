@@ -42,7 +42,7 @@ def consecutiveBindings : SourceProgram Bool simpleExpr [] ∅ :=
   .reveal 7 true 3 (by decide) (.there (.there (.there .here))) (by decide) <|
   .ret []
 
-abbrev compiled := toEventGraph consecutiveBindings
+abbrev compiled := toInformationGraph consecutiveBindings
 
 def rankedTimeouts : EventTimeouts compiled where
   duration event := event.val + 1
@@ -185,11 +185,11 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
 /-- A saved public block-entry view determines the clock decision. -/
 example (setup : Setup (Player := Player) (L := L))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-    (rosters : (graph setup).EventId → List Player)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
+    (rosters : setup.informationGraph.EventId → List Player)
     (past : List (application setup (Vegas.timeouts setup) leaks).EnvironmentEntry)
     (view : (application setup (Vegas.timeouts setup) leaks).EnvironmentView)
-    (event : (graph setup).EventId)
+    (event : setup.informationGraph.EventId)
     (entry : (application setup (Vegas.timeouts setup) leaks).EnvironmentEntry)
     (saved : past[(rosterPlanPrefix setup rosters event.val).length]? = some entry) :
     rosterBlockCompleted setup leaks rosters past view event ↔
@@ -198,12 +198,12 @@ example (setup : Setup (Player := Player) (L := L))
 
 /-- The calendar waits at a tick of a block already complete at entry. -/
 example (setup : Setup (Player := Player) (L := L))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-    (rosters : (graph setup).EventId → List Player)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
+    (rosters : setup.informationGraph.EventId → List Player)
     (network : (NetworkPolicy (timeouts setup)) leaks)
     (past : List (application setup (Vegas.timeouts setup) leaks).EnvironmentEntry)
     (view : (application setup (Vegas.timeouts setup) leaks).EnvironmentView)
-    (event : (graph setup).EventId)
+    (event : setup.informationGraph.EventId)
     (selected : (rosterPlan setup rosters)[past.length]? = some (event, .tick))
     (completed : rosterBlockCompleted setup leaks rosters past view event) :
     rosterScheduler setup leaks rosters network past view = PMF.pure .wait := by
@@ -211,12 +211,12 @@ example (setup : Setup (Player := Player) (L := L))
 
 /-- A block live at entry retains its tick after its event completes. -/
 example (setup : Setup (Player := Player) (L := L))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-    (rosters : (graph setup).EventId → List Player)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
+    (rosters : setup.informationGraph.EventId → List Player)
     (network : (NetworkPolicy (timeouts setup)) leaks)
     (past : List (application setup (Vegas.timeouts setup) leaks).EnvironmentEntry)
     (view : (application setup (Vegas.timeouts setup) leaks).EnvironmentView)
-    (event : (graph setup).EventId)
+    (event : setup.informationGraph.EventId)
     (selected : (rosterPlan setup rosters)[past.length]? = some (event, .tick))
     (live : ¬ rosterBlockCompleted setup leaks rosters past view event) :
     rosterScheduler setup leaks rosters network past view =

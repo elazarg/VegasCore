@@ -27,16 +27,17 @@ open GameTheory.Protocol.ExecutionProtocol GameTheory.Math.Probability EventGrap
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {Public : Type*} {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
+  {timeouts : EventTimeouts setup.informationGraph}
   (signal : State L setup.context → Public)
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 private theorem private_input_not_failed (wellFormed : setup.WellFormed)
     {draw : State L setup.context} (member : draw ∈ setup.initialLaw.support) (who : Player)
-    (input : (graph setup).InputId) (privateTo : PrivateTo who (setup := setup) (.inl input)) :
-    ¬ ((graph setup).layout (.inl input)).IsFailure (setup.eventInputs draw input) := by
+    (input : setup.informationGraph.InputId) (privateTo : PrivateTo who (setup := setup) (.inl
+      input)) :
+    ¬ (setup.informationGraph.layout (.inl input)).IsFailure (setup.eventInputs draw input) := by
   obtain ⟨name, kind, source, found⟩ :=
     (ContextRefs.initial_coversPrefix setup.program).1 input
   have same : inputId source = input := Sum.inl.inj found
@@ -46,7 +47,7 @@ private theorem private_input_not_failed (wellFormed : setup.WellFormed)
 
 /-- The shared prior set restricts both hidden inputs and the public fiber. -/
 def hiddenPublicFiberInputs (who : Player) (base : State L setup.context) :
-    Set (graph setup).Inputs :=
+    Set setup.informationGraph.Inputs :=
   {inputs | ∃ draw ∈ setup.initialLaw.support, inputs = setup.eventInputs draw ∧
     HiddenAgree who draw base ∧ signal draw = signal base}
 
@@ -85,7 +86,7 @@ theorem ownerSwap_priorScaled (wellFormed : setup.WellFormed)
   have spliced := ownerSwap_inputs_splice who allowedDraw other firstStore otherStore
     (private_input_not_failed wellFormed drawMember who)
     (private_input_not_failed wellFormed otherMember who)
-  have swappedInputs := congrArg (fun state : EventGraphRuntime.State (graph setup) =>
+  have swappedInputs := congrArg (fun state : EventGraphRuntime.State setup.informationGraph =>
     state.config.inputs) swappedEq
   change (ownerSwap who view₁.application view₂.application).inputs
     (setup.eventInputs allowedDraw) = setup.eventInputs swappedDraw at swappedInputs

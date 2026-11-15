@@ -26,8 +26,8 @@ open GameTheory GameTheory.Protocol Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
 
 omit [Fintype Player] in
 variable (setup timeouts leaks) in
@@ -36,7 +36,7 @@ every state of the supplied runtime. -/
 theorem acceptedOwned_invariant :
     (application setup timeouts leaks).Invariant (fun state => ∀ field handle,
       state.accepted field = some handle →
-        ∃ payload, (graph setup).layout field = .binding handle.1 payload) where
+        ∃ payload, setup.informationGraph.layout field = .binding handle.1 payload) where
   submit state who material held field handle accepted := by
     change (submitStep (material.call.register state who) who
       material.call.packet).accepted field = _ at accepted
@@ -75,13 +75,13 @@ theorem acceptedOwned_invariant :
 
 /-- **Every accepted handle belongs to the owner** of its field's binding, along
 every history of the one-packet game. -/
-theorem accepted_owner_of_trace {bounds : MessageBounds (graph setup)} {horizon : Nat}
+theorem accepted_owner_of_trace {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
     {scheduler : (application setup timeouts leaks).Scheduler} {control : (application setup
       timeouts leaks).Control}
     (trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some control))
-    {field : (graph setup).Field} {handle : Handle (graph setup)}
+    {field : setup.informationGraph.Field} {handle : Handle setup.informationGraph}
     (accepted : control.execution.application.accepted field = some handle) :
-    ∃ payload, (graph setup).layout field = .binding handle.1 payload := by
+    ∃ payload, setup.informationGraph.layout field = .binding handle.1 payload := by
   have rawTrace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
     scheduler).Trace
       (some control) :=

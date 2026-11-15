@@ -33,10 +33,11 @@ abbrev cashSetup (exit : Int) : Setup (Player := Player) (L := simpleExpr) :=
   { setup 5 with program := cashProgram, exitTransfers := fun _ => exit }
 
 abbrev cashLeaks (exit : Int) :
-    MessageNetwork.ObservationRule Player (WitnessedPacket (graph (cashSetup exit))) :=
+    MessageNetwork.ObservationRule Player
+      (WitnessedPacket (cashSetup exit).informationGraph) :=
   fun _ _ => PMF.pure ∅
 
-abbrev cashBounds (exit : Int) : MessageBounds (graph (cashSetup exit)) where
+abbrev cashBounds (exit : Int) : MessageBounds (cashSetup exit).informationGraph where
   candidateCount := 2
   values := Vegas.Examples.ProgramPaymentsRuntime.rawValues
 
@@ -50,7 +51,7 @@ abbrev cashRosterService (exit : Int) : SourceServiceSpec Player simpleExpr wher
   initialValues := by
     intro state supported
     change state ∈ ((cashSetup exit).initialLaw.map
-      (fun initial => EventGraphRuntime.State.initial (graph := graph (cashSetup exit))
+      (fun initial => EventGraphRuntime.State.initial (graph := (cashSetup exit).informationGraph)
         ((cashSetup exit).eventInputs initial))).support at supported
     obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ supported
     intro candidate raw opened
@@ -110,8 +111,9 @@ theorem permitted (binding : Option (PublicationResult Bool)) (disclose : Bool)
   · trivial
 
 def auditSample (exit : Int)
-    (_actual : List (SettledEvidence (cashSetup exit) .sequential)) :
-    PMF (List (SettledEvidence (cashSetup exit) .sequential)) := PMF.pure []
+    (_actual : List (SettledEvidence (cashSetup exit) (cashSetup exit).informationDependencies)) :
+    PMF (List (SettledEvidence (cashSetup exit) (cashSetup exit).informationDependencies)) :=
+      PMF.pure []
 
 private theorem authentic (exit : Int) :
     ∀ actual observed, observed ∈ (auditSample exit actual).support → observed ⊆ actual := by
@@ -161,11 +163,11 @@ example : (cashSetup 6).parameterPaymentUtility
 
 /-- Actual compiled graph receipts pay six on omission even though `ret` pays five. -/
 example :
-    (((cashSetup 6).eventGame (cashSetup 6).eventGraph.canonicalScheduler).play
+    (((cashSetup 6).eventGame (cashSetup 6).informationGraph.canonicalScheduler).play
         (compileEventProfile cashProgram (profile none false))).map
         (fun outcome => (cashSetup 6).eventTransfers outcome .alice) = PMF.pure 6 := by
   simp_rw [Setup.eventTransfers_eq_transfers]
-  change (((cashSetup 6).eventGraph.canonicalGame
+  change (((cashSetup 6).informationGraph.canonicalGame
       ((cashSetup 6).initialLaw.map (cashSetup 6).eventInputs)).play
         (compileEventProfile cashProgram (profile none false))).map
       ((fun terminal => (cashSetup 6).transfers (cashProgram.publicOutcome terminal) .alice) ∘
@@ -187,10 +189,12 @@ example : (cashSetup 0).transfers
 
 /-- The ordinary compiler realizes that exact exit receipt on the actual bounded ledger. -/
 example (exit : Int) :
-    ((((cashService exit).rawMenu.information (serviceInitialLaw (cashSetup exit) .sequential)
+    ((((cashService exit).rawMenu.information (serviceInitialLaw (cashSetup exit) (cashSetup
+      exit).informationDependencies)
         (cashService exit).horizon (cashService exit).scheduler).runBehavioral
       ((cashService exit).clientProfile admission (cashService exit).rawMenu
-        (firstTurnTiming (cashSetup exit) 1 .sequential) (omissionSource exit))
+        (firstTurnTiming (cashSetup exit) 1 (cashSetup exit).informationDependencies)
+          (omissionSource exit))
       (2 * (cashService exit).horizon + 1)).bind fun final =>
         ((cashService exit).paymentSettlement (auditSample exit) (fun _ => 0) final.state).map
           (fun receipts => receipts .alice)) = PMF.pure (exit : ℝ) := by

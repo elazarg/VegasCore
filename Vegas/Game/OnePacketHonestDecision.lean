@@ -28,8 +28,8 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
 
 section Effective
 
@@ -83,10 +83,11 @@ theorem encodeEventAction?_commitsValue :
 /-- Canonical realizations of successful binding choices and authentic disclosures
 transmit at the supplied event and physical view. -/
 def CanonicalTransmitsAt (setup : Setup (Player := Player) (L := L))
-    (timeouts : EventTimeouts (graph setup))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (timeouts : EventTimeouts setup.informationGraph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
     (who : Player) (past : List (application setup timeouts leaks).PlayerEntry)
-    (view : (application setup timeouts leaks).PlayerView) (event : (graph setup).EventId) : Prop :=
+    (view : (application setup timeouts leaks).PlayerView) (event : setup.informationGraph.EventId)
+      : Prop :=
   ∀ action graphAction, encodeEventAction? setup.program event action = some graphAction →
     action.CommitsValue → (∀ owner name, action ≠ .reveal owner name false) →
     ((canonicalServiceDecision timeouts) leaks who past view event graphAction).transmission ≠ none

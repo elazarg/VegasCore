@@ -35,9 +35,9 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  [Fintype Player] {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  [Fintype Player] {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- Laws pushed along maps agreeing on the support agree. -/
@@ -57,9 +57,9 @@ theorem onePacket_honest_discloses (assessment : setup.intendedModel.BehavioralA
     {control : (application setup timeouts leaks).Control}
     (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control))
-    (who : Player) (event : (graph setup).EventId)
+    (who : Player) (event : setup.informationGraph.EventId)
     (turn : control.execution.application.publicView.ownTurn? who = some event)
-    {payload : L.Ty} (outputEq : (graph setup).outputLayout event = .publication payload)
+    {payload : L.Ty} (outputEq : setup.informationGraph.outputLayout event = .publication payload)
     (choice : Option (OwnAction Player L))
     (supported : choice ∈ (asIfHonestProfile setup timeouts leaks assessment who
       (some (control.execution.logs who,
@@ -102,9 +102,9 @@ theorem onePacket_honestChoice_reveal (assessment : setup.intendedModel.Behavior
     {control : (application setup timeouts leaks).Control}
     (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control))
-    (who : Player) (event : (graph setup).EventId)
+    (who : Player) (event : setup.informationGraph.EventId)
     (turn : control.execution.application.publicView.ownTurn? who = some event)
-    {payload : L.Ty} (outputEq : (graph setup).outputLayout event = .publication payload) :
+    {payload : L.Ty} (outputEq : setup.informationGraph.outputLayout event = .publication payload) :
     honestChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler assessment who
         (some (control.execution.logs who,
           control.execution.observe (application setup timeouts leaks) who)) =
@@ -139,15 +139,16 @@ theorem onePacket_slotChoice_reveal (assessment : setup.intendedModel.Behavioral
     {control : (application setup timeouts leaks).Control}
     (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control))
-    (who : Player) (event : (graph setup).EventId)
+    (who : Player) (event : setup.informationGraph.EventId)
     (turn : control.execution.application.publicView.ownTurn? who = some event)
-    {owner : Player} {payload : L.Ty} {binding : EventGraph.FieldRef (graph setup).layout
+    {owner : Player} {payload : L.Ty} {binding : EventGraph.FieldRef setup.informationGraph.layout
       (.binding owner payload)}
-    {checks : List (EventGraph.GuardCheck (graph setup).layout payload)}
-    {outputEq : (graph setup).outputLayout event = .publication payload}
-    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .resolve owner payload binding checks}
-    (node : nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq) :
+    {checks : List (EventGraph.GuardCheck setup.informationGraph.layout payload)}
+    {outputEq : setup.informationGraph.outputLayout event = .publication payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .resolve owner payload binding checks}
+    (node : nodeView setup.informationGraph event = .resolve owner payload binding checks outputEq
+      codeEq) :
     slotChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler assessment who
         (some (control.execution.logs who,
           control.execution.observe (application setup timeouts leaks) who)) =
@@ -184,16 +185,17 @@ theorem onePacket_disclosure_offered (covers : bounds.CoversOutputValues)
     {control : (application setup timeouts leaks).Control}
     (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control))
-    (who : Player) (event : (graph setup).EventId)
+    (who : Player) (event : setup.informationGraph.EventId)
     (turn : control.execution.application.publicView.ownTurn? who = some event)
     (unsent : (eventRecorded timeouts) leaks (control.execution.logs who) event = false)
-    {owner : Player} {payload : L.Ty} {binding : EventGraph.FieldRef (graph setup).layout
+    {owner : Player} {payload : L.Ty} {binding : EventGraph.FieldRef setup.informationGraph.layout
       (.binding owner payload)}
-    {checks : List (EventGraph.GuardCheck (graph setup).layout payload)}
-    {outputEq : (graph setup).outputLayout event = .publication payload}
-    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .resolve owner payload binding checks}
-    (node : nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq)
+    {checks : List (EventGraph.GuardCheck setup.informationGraph.layout payload)}
+    {outputEq : setup.informationGraph.outputLayout event = .publication payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .resolve owner payload binding checks}
+    (node : nodeView setup.informationGraph event = .resolve owner payload binding checks outputEq
+      codeEq)
     (material : (application setup timeouts leaks).Submission)
     (sends : ((canonicalServiceDecision timeouts) leaks who (control.execution.logs who)
       (control.execution.observe (application setup timeouts leaks) who) event

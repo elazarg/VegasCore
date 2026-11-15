@@ -24,16 +24,16 @@ namespace Vegas
 open SourceProgram EventGraphRuntime EventGraph
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
-  {setup : Setup (Player := Player) (L := L)} {mode : EventGraph.ExecutionMode}
+  {setup : Setup (Player := Player) (L := L)} {deps : setup.dataflowGraph.Dependencies}
 
 /-- A step whose new record is recorded at a later configuration. -/
-theorem step_record_path {before after final : (serviceGraph setup mode).Config}
-    {event : (serviceGraph setup mode).EventId} {ready : before.cut.Ready event}
-    {action : (serviceGraph setup mode).Action event}
+theorem step_record_path {before after final : (serviceGraph setup deps).Config}
+    {event : (serviceGraph setup deps).EventId} {ready : before.cut.Ready event}
+    {action : (serviceGraph setup deps).Action event}
     (member : after ∈ (before.step event ready action).support)
     (path : Relation.ReflTransGen Config.Step after final) :
     ∃ value, after = before.complete event ready action value ∧
-      completionOf final event = some (EventGraph.completion (serviceGraph setup mode) event
+      completionOf final event = some (EventGraph.completion (serviceGraph setup deps) event
         (before.actualDecision event action) value) := by
   have stepped := member
   rw [Config.step, PMF.support_map] at stepped
@@ -46,35 +46,35 @@ On a path whose new records are classified as in a run of concurrent reveals,
 under a reference whose honest owners open a reveal exactly when its opening is
 accepted, each step completing a new event is the settling of that event, or
 records a decision at an event of the deviator. -/
-theorem run_step_settles (base : (serviceGraph setup mode).BehavioralProfile)
-    (decides : ∀ (config : (serviceGraph setup mode).Config)
-      (event : (serviceGraph setup mode).EventId) (owner : Player) (payload : L.Ty)
-      (binding : FieldRef (serviceGraph setup mode).layout (.binding owner payload))
-      (checks : List (GuardCheck (serviceGraph setup mode).layout payload))
-      (outputEq : (serviceGraph setup mode).outputLayout event = .publication payload)
-      (codeEq : cast (congrArg (EventCode (serviceGraph setup mode).layout) outputEq)
-        ((serviceGraph setup mode).nodes event) = .resolve owner payload binding checks),
-      nodeView (serviceGraph setup mode) event =
+theorem run_step_settles (base : (serviceGraph setup deps).BehavioralProfile)
+    (decides : ∀ (config : (serviceGraph setup deps).Config)
+      (event : (serviceGraph setup deps).EventId) (owner : Player) (payload : L.Ty)
+      (binding : FieldRef (serviceGraph setup deps).layout (.binding owner payload))
+      (checks : List (GuardCheck (serviceGraph setup deps).layout payload))
+      (outputEq : (serviceGraph setup deps).outputLayout event = .publication payload)
+      (codeEq : cast (congrArg (EventCode (serviceGraph setup deps).layout) outputEq)
+        ((serviceGraph setup deps).nodes event) = .resolve owner payload binding checks),
+      nodeView (serviceGraph setup deps) event =
         .resolve owner payload binding checks outputEq codeEq →
-      ∀ (actor : (serviceGraph setup mode).actor? event = some owner)
-        (active : owner ∉ ((serviceGraph setup mode).playerObserve owner config).defaulted),
-        (serviceGraph setup mode).normalizeProfile base owner event actor
-          ((serviceGraph setup mode).playerObserve owner config) active =
+      ∀ (actor : (serviceGraph setup deps).actor? event = some owner)
+        (active : owner ∉ ((serviceGraph setup deps).playerObserve owner config).defaulted),
+        (serviceGraph setup deps).normalizeProfile base owner event actor
+          ((serviceGraph setup deps).playerObserve owner config) active =
           PMF.pure (cast (congrArg EventField.Action outputEq.symm)
             (openingAccepted event config.store)))
     (who : Player) {start finish : Nat}
-    {origin before after final : (serviceGraph setup mode).Config}
-    {event : (serviceGraph setup mode).EventId} {ready : before.cut.Ready event}
-    {action : (serviceGraph setup mode).Action event}
+    {origin before after final : (serviceGraph setup deps).Config}
+    {event : (serviceGraph setup deps).EventId} {ready : before.cut.Ready event}
+    {action : (serviceGraph setup deps).Action event}
     (member : after ∈ (before.step event ready action).support)
     (path : Relation.ReflTransGen Config.Step after final)
     (sound : BlockRecordsSound who start finish origin final)
     (fresh : event ∉ origin.cut.completed) :
-    (∃ settles : Settles ((serviceGraph setup mode).normalizeProfile base) who before event,
+    (∃ settles : Settles ((serviceGraph setup deps).normalizeProfile base) who before event,
       after = settled before event settles) ∨
-    ((serviceGraph setup mode).actor? event = some who ∧
+    ((serviceGraph setup deps).actor? event = some who ∧
       before.actualDecision event action ≠ none) := by
-  let G := serviceGraph setup mode
+  let G := serviceGraph setup deps
   let R := G.normalizeProfile base
   obtain ⟨value, afterEq, recorded⟩ := step_record_path member path
   have done : event ∈ final.cut.completed :=
@@ -201,53 +201,53 @@ a decision at no event but `target`, the closure's key stays the starting one
 until `target` completes, and afterwards is the key of the closure after
 completing `target` from the starting closure with the recorded action and
 output. -/
-theorem run_path_closure (base : (serviceGraph setup mode).BehavioralProfile)
-    (decides : ∀ (config : (serviceGraph setup mode).Config)
-      (event : (serviceGraph setup mode).EventId) (owner : Player) (payload : L.Ty)
-      (binding : FieldRef (serviceGraph setup mode).layout (.binding owner payload))
-      (checks : List (GuardCheck (serviceGraph setup mode).layout payload))
-      (outputEq : (serviceGraph setup mode).outputLayout event = .publication payload)
-      (codeEq : cast (congrArg (EventCode (serviceGraph setup mode).layout) outputEq)
-        ((serviceGraph setup mode).nodes event) = .resolve owner payload binding checks),
-      nodeView (serviceGraph setup mode) event =
+theorem run_path_closure (base : (serviceGraph setup deps).BehavioralProfile)
+    (decides : ∀ (config : (serviceGraph setup deps).Config)
+      (event : (serviceGraph setup deps).EventId) (owner : Player) (payload : L.Ty)
+      (binding : FieldRef (serviceGraph setup deps).layout (.binding owner payload))
+      (checks : List (GuardCheck (serviceGraph setup deps).layout payload))
+      (outputEq : (serviceGraph setup deps).outputLayout event = .publication payload)
+      (codeEq : cast (congrArg (EventCode (serviceGraph setup deps).layout) outputEq)
+        ((serviceGraph setup deps).nodes event) = .resolve owner payload binding checks),
+      nodeView (serviceGraph setup deps) event =
         .resolve owner payload binding checks outputEq codeEq →
-      ∀ (actor : (serviceGraph setup mode).actor? event = some owner)
-        (active : owner ∉ ((serviceGraph setup mode).playerObserve owner config).defaulted),
-        (serviceGraph setup mode).normalizeProfile base owner event actor
-          ((serviceGraph setup mode).playerObserve owner config) active =
+      ∀ (actor : (serviceGraph setup deps).actor? event = some owner)
+        (active : owner ∉ ((serviceGraph setup deps).playerObserve owner config).defaulted),
+        (serviceGraph setup deps).normalizeProfile base owner event actor
+          ((serviceGraph setup deps).playerObserve owner config) active =
           PMF.pure (cast (congrArg EventField.Action outputEq.symm)
             (openingAccepted event config.store)))
-    (independent : ReadyIndependent ((serviceGraph setup mode).normalizeProfile base))
-    (who : Player) {start finish : Nat} {origin final : (serviceGraph setup mode).Config}
+    (independent : ReadyIndependent ((serviceGraph setup deps).normalizeProfile base))
+    (who : Player) {start finish : Nat} {origin final : (serviceGraph setup deps).Config}
     (sound : BlockRecordsSound who start finish origin final)
-    (target : (serviceGraph setup mode).EventId)
-    (targetOwned : (serviceGraph setup mode).actor? target = some who)
-    (once : ∀ event : (serviceGraph setup mode).EventId, event ≠ target →
-      event ∉ origin.cut.completed → (serviceGraph setup mode).actor? event = some who →
+    (target : (serviceGraph setup deps).EventId)
+    (targetOwned : (serviceGraph setup deps).actor? target = some who)
+    (once : ∀ event : (serviceGraph setup deps).EventId, event ≠ target →
+      event ∉ origin.cut.completed → (serviceGraph setup deps).actor? event = some who →
         ∀ record, completionOf final event = some record → record.decision = none)
     (active : who ∉ origin.defaulted) (pending : target ∉ origin.cut.completed) :
-    ∀ current : (serviceGraph setup mode).Config,
+    ∀ current : (serviceGraph setup deps).Config,
       Relation.ReflTransGen Config.Step origin current →
       Relation.ReflTransGen Config.Step current final →
       (target ∉ current.cut.completed → who ∉ current.defaulted ∧
-        runKey (closure ((serviceGraph setup mode).normalizeProfile base) who current) =
-          runKey (closure ((serviceGraph setup mode).normalizeProfile base) who origin)) ∧
+        runKey (closure ((serviceGraph setup deps).normalizeProfile base) who current) =
+          runKey (closure ((serviceGraph setup deps).normalizeProfile base) who origin)) ∧
       (target ∈ current.cut.completed →
-        ∃ (ready : (closure ((serviceGraph setup mode).normalizeProfile base) who
+        ∃ (ready : (closure ((serviceGraph setup deps).normalizeProfile base) who
             origin).cut.Ready target)
-          (action : (serviceGraph setup mode).Action target)
-          (value : ((serviceGraph setup mode).outputLayout target).Value),
-          (closure ((serviceGraph setup mode).normalizeProfile base) who origin).complete
+          (action : (serviceGraph setup deps).Action target)
+          (value : ((serviceGraph setup deps).outputLayout target).Value),
+          (closure ((serviceGraph setup deps).normalizeProfile base) who origin).complete
               target ready action value ∈
-            ((closure ((serviceGraph setup mode).normalizeProfile base) who origin).step
+            ((closure ((serviceGraph setup deps).normalizeProfile base) who origin).step
               target ready action).support ∧
-          completionOf current target = some (EventGraph.completion (serviceGraph setup mode)
+          completionOf current target = some (EventGraph.completion (serviceGraph setup deps)
             target (some action) value) ∧
-          runKey (closure ((serviceGraph setup mode).normalizeProfile base) who current) =
-            runKey (closure ((serviceGraph setup mode).normalizeProfile base) who
-              ((closure ((serviceGraph setup mode).normalizeProfile base) who origin).complete
+          runKey (closure ((serviceGraph setup deps).normalizeProfile base) who current) =
+            runKey (closure ((serviceGraph setup deps).normalizeProfile base) who
+              ((closure ((serviceGraph setup deps).normalizeProfile base) who origin).complete
                 target ready action value))) := by
-  let G := serviceGraph setup mode
+  let G := serviceGraph setup deps
   let R := G.normalizeProfile base
   have targetNode : (G.nodes target).actor = some who := targetOwned
   intro current walked

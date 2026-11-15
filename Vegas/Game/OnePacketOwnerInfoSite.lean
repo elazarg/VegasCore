@@ -37,9 +37,9 @@ open GameTheory GameTheory.Protocol Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 omit [Fintype Player] in
@@ -80,10 +80,10 @@ theorem ownerSwap_info_of_traces {first second : (application setup timeouts lea
       ¬ ProtocolState.OwesFailure who setup.program point)
     (firstPending : ∃ event, first.execution.application.config.cut.Ready event ∧
       ∀ message ∈ (application setup timeouts leaks).outputs (first.execution.logs who),
-        message.payload.call.event? (graph setup) ≠ some event)
+        message.payload.call.event? setup.informationGraph ≠ some event)
     (secondPending : ∃ event, second.execution.application.config.cut.Ready event ∧
       ∀ message ∈ (application setup timeouts leaks).outputs (second.execution.logs who),
-        message.payload.call.event? (graph setup) ≠ some event) :
+        message.payload.call.event? setup.informationGraph ≠ some event) :
     (ownerSwap who (first.execution.observe (application setup timeouts leaks) who).application
         (second.execution.observe (application setup timeouts leaks) who).application).info
           (timeouts := timeouts)
@@ -172,7 +172,7 @@ theorem pending_of_lateDelivery {control : (application setup timeouts leaks).Co
       control.execution.observe (application setup timeouts leaks) who))) :
     ∃ event, control.execution.application.config.cut.Ready event ∧
       ∀ message ∈ (application setup timeouts leaks).outputs (control.execution.logs who),
-        message.payload.call.event? (graph setup) ≠ some event := by
+        message.payload.call.event? setup.informationGraph ≠ some event := by
   obtain ⟨past, view, event, infoEq, pending, _⟩ := late
   obtain ⟨rfl, rfl⟩ := Prod.mk.inj (Option.some.inj infoEq)
   obtain ⟨_, ready, _, unrecorded⟩ := pendingEvent_spec (timeouts := timeouts) pending

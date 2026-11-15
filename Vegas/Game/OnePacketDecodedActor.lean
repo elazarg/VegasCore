@@ -31,17 +31,18 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
 /-- Any decoded ready point uses the graph's public default filter, including raw states. -/
 theorem decodedPoint_actor {setup : Setup (Player := Player) (L := L)} (who : Player)
-    {config : (graph setup).Config} {event : (graph setup).EventId}
+    {config : setup.informationGraph.Config} {event : setup.informationGraph.EventId}
     (ready : config.cut.Ready event) {point : ProtocolState setup.program}
     (decoded : decodedPoint setup config = some point) :
     ProtocolView.actor who setup.program (ProtocolState.observe who setup.program point) =
-      ((graph setup).actor? event).filter (fun owner => decide (owner ∉ config.defaulted)) := by
+      (setup.informationGraph.actor? event).filter (fun owner => decide (owner ∉ config.defaulted))
+        := by
   unfold decodedPoint at decoded
   split at decoded
   · rename_i ordered
     have current : config.cut.IsPrefix event.val :=
       ⟨event.isLt.le, fun query =>
-        setup.eventGraph.sequentialize_mem_completed_iff_lt_of_ready _ ready⟩
+        setup.informationGraph.sequentialize_mem_completed_iff_lt_of_ready _ ready⟩
     have rank : event.val = ordered.choose := current.unique ordered.choose_spec
     have inside : ordered.choose < eventCount setup.program := rank ▸ event.isLt
     have actor := decodeSourcePrefix?_actor who ordered.choose setup.program _ _ _ _ _ _ _ point
@@ -54,15 +55,15 @@ theorem decodedPoint_actor {setup : Setup (Player := Player) (L := L)} (who : Pl
 
 /-- Quiescence makes the static owner of a ready event the decoded source actor. -/
 theorem decodedPoint_actor_of_quiescent {setup : Setup (Player := Player) (L := L)}
-    (who : Player) {native : EventGraphRuntime.State (graph setup)}
+    (who : Player) {native : EventGraphRuntime.State setup.informationGraph}
     (quiescent : ∀ event, ¬ native.AutomaticReady event)
-    {event : (graph setup).EventId} (ready : native.config.cut.Ready event)
+    {event : setup.informationGraph.EventId} (ready : native.config.cut.Ready event)
     {point : ProtocolState setup.program}
     (decoded : decodedPoint setup native.config = some point) :
     ProtocolView.actor who setup.program (ProtocolState.observe who setup.program point) =
-      (graph setup).actor? event := by
+      setup.informationGraph.actor? event := by
   rw [decodedPoint_actor who ready decoded]
-  cases owned : (graph setup).actor? event with
+  cases owned : setup.informationGraph.actor? event with
   | none => rfl
   | some owner =>
       have active := native.active_of_ready_owned quiescent ready owned
@@ -70,27 +71,29 @@ theorem decodedPoint_actor_of_quiescent {setup : Setup (Player := Player) (L := 
 
 /-- Initialized raw histories supply the activity needed for the static actor equality. -/
 theorem decodedPoint_actor_of_history {setup : Setup (Player := Player) (L := L)}
-    {timeouts : EventTimeouts (graph setup)}
-    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+    {timeouts : EventTimeouts setup.informationGraph}
+    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
     (who : Player) {horizon : Nat} {scheduler : (application setup timeouts leaks).Scheduler}
     {control : (application setup timeouts leaks).Control}
     (trace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace
       (some control))
-    {event : (graph setup).EventId} (ready : control.execution.application.config.cut.Ready event)
+    {event : setup.informationGraph.EventId} (ready :
+      control.execution.application.config.cut.Ready event)
     {point : ProtocolState setup.program}
     (decoded : decodedPoint setup control.execution.application.config = some point) :
     ProtocolView.actor who setup.program (ProtocolState.observe who setup.program point) =
-      (graph setup).actor? event :=
+      setup.informationGraph.actor? event :=
   decodedPoint_actor_of_quiescent who
     (legalFacts setup leaks horizon scheduler control trace).quiescent ready decoded
 
 variable {setup : Setup (Player := Player) (L := L)}
 
 /-- A decoded acting joint gives the choice only to the still-active static owner. -/
-theorem actingJoint_of_decoded {config : (graph setup).Config} {event : (graph setup).EventId}
+theorem actingJoint_of_decoded {config : setup.informationGraph.Config} {event :
+  setup.informationGraph.EventId}
     (ready : config.cut.Ready event) {actor : Player}
-    (acts : (graph setup).actor? event = some actor) {point : ProtocolState setup.program}
+    (acts : setup.informationGraph.actor? event = some actor) {point : ProtocolState setup.program}
     (decoded : decodedPoint setup config = some point) (choice : Option (OwnAction Player L))
     (player : Player) :
     actingJoint setup (some point) choice player =
@@ -103,9 +106,9 @@ theorem actingJoint_of_decoded {config : (graph setup).Config} {event : (graph s
 
 /-- A legal intended choice either belongs to an already defaulted owner or is not failing. -/
 theorem defaulted_or_not_failing_of_legal {history : setup.intendedProtocol.History}
-    {config : (graph setup).Config} {event : (graph setup).EventId}
+    {config : setup.informationGraph.Config} {event : setup.informationGraph.EventId}
     (ready : config.cut.Ready event) {actor : Player}
-    (acts : (graph setup).actor? event = some actor) {point : ProtocolState setup.program}
+    (acts : setup.informationGraph.actor? event = some actor) {point : ProtocolState setup.program}
     (decoded : decodedPoint setup config = some point) (current : history.state = some point)
     {choice : Option (OwnAction Player L)}
     (legal : setup.intendedProtocol.Legal history.state (actingJoint setup history.state choice)) :
@@ -136,9 +139,10 @@ theorem defaulted_or_not_failing_of_legal {history : setup.intendedProtocol.Hist
 one for the owner and the owner's action mass for every other player. -/
 theorem opponentsStepProb_actingJoint [Finite Player]
     (assessment : setup.intendedModel.BehavioralAssessment)
-    (who : Player) (history : setup.intendedProtocol.History) {config : (graph setup).Config}
-    {event : (graph setup).EventId} (ready : config.cut.Ready event) {actor : Player}
-    (acts : (graph setup).actor? event = some actor) {point : ProtocolState setup.program}
+    (who : Player) (history : setup.intendedProtocol.History) {config :
+      setup.informationGraph.Config}
+    {event : setup.informationGraph.EventId} (ready : config.cut.Ready event) {actor : Player}
+    (acts : setup.informationGraph.actor? event = some actor) {point : ProtocolState setup.program}
     (decoded : decodedPoint setup config = some point) (current : history.state = some point)
     (choice : Option (OwnAction Player L))
     (legal : setup.intendedProtocol.Legal history.state (actingJoint setup history.state choice)) :

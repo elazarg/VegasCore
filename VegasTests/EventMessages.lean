@@ -21,7 +21,7 @@ open GameTheory.Math.Probability Interaction Vegas
 noncomputable section
 
 abbrev TestPlayer := VegasTests.SourceSemantics.Player
-abbrev graph := VegasTests.SourceSemantics.mixedSetup.eventGraph
+abbrev graph := VegasTests.SourceSemantics.mixedSetup.informationGraph
 abbrev inputs : graph.Inputs :=
   VegasTests.SourceSemantics.mixedSetup.eventInputs VegasTests.SourceSemantics.mixedState
 

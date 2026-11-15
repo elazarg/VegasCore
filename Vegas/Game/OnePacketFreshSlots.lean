@@ -118,14 +118,14 @@ end Generic
 section Runtime
 
 variable {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
 
 /-- A submission keeps freshness of prepared slots in step with the inputs. -/
-theorem preparedFresh_submit (state : EventGraphRuntime.State (graph setup))
-    (inputs : List (Message Player (WitnessedPacket (graph setup)))) (who : Player)
+theorem preparedFresh_submit (state : EventGraphRuntime.State setup.informationGraph)
+    (inputs : List (Message Player (WitnessedPacket setup.informationGraph))) (who : Player)
     (material : (application setup timeouts leaks).Submission)
-    (message : Message Player (WitnessedPacket (graph setup)))
+    (message : Message Player (WitnessedPacket setup.informationGraph))
     (sender : message.sender = who) (call : message.payload.call = material.call.packet)
     (fresh : PreparedFresh state inputs) :
     PreparedFresh ((application setup timeouts leaks).submit state who material) (inputs ++
@@ -143,7 +143,7 @@ theorem preparedFresh_submit (state : EventGraphRuntime.State (graph setup))
     | commitment event handle =>
         rcases handle with ⟨handleOwner, slot⟩
         by_cases target : handleOwner = owner ∧ (Slot.prepared serial :
-            CandidateSlot (graph setup)) = slot
+            CandidateSlot setup.informationGraph) = slot
         · obtain ⟨rfl, rfl⟩ := target
           have newCommitted : message.sender = handleOwner ∧ ∃ event',
               message.payload.call = .commitment event' (handleOwner, .prepared serial) :=
@@ -266,7 +266,8 @@ theorem environment_lookup_prepared (execution next : (application setup timeout
                   message accepted with
                 ⟨event, handle, packet, frozen, _accepted, handleOwner⟩ | ⟨_accepted, same⟩
               · rw [frozen]
-                by_cases same : (owner, (Slot.prepared serial : CandidateSlot (graph setup))) =
+                by_cases same : (owner, (Slot.prepared serial : CandidateSlot
+                  setup.informationGraph)) =
                     handle
                 · subst same
                   apply CommitmentCandidates.lookup_freeze_eq_of_not_fresh
@@ -295,7 +296,8 @@ theorem freshFacts_serviceInvariant (scheduler : (application setup timeouts lea
           execution.network.inputs who material _
           rfl rfl valid.2
   environment execution next command valid _ reached := by
-    refine ⟨settledFacts_environment execution next command valid.1 reached, ?_⟩
+    refine ⟨settledFacts_environment ((toInformationGraph_barrierOrdered
+      setup.program).revealRelaxedOrdered.actorSerial) execution next command valid.1 reached, ?_⟩
     intro owner serial
     rw [environment_lookup_prepared (timeouts := timeouts) execution next command reached valid.1
       valid.2 owner serial,
@@ -317,7 +319,7 @@ theorem preparedFresh_history (horizon : Nat) (scheduler : (application setup ti
     (fun state supported => by
       obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ supported
       refine ⟨settledFacts_initial _, fun owner serial => ?_⟩
-      change (EventGraphRuntime.State.initial (graph := graph setup) _).candidates.lookup
+      change (EventGraphRuntime.State.initial (graph := setup.informationGraph) _).candidates.lookup
         (owner, .prepared serial) = .fresh ↔ ¬ SlotCommitted [] owner serial
       rw [EventGraphRuntime.State.initial_candidate]
       simp [SlotCommitted])

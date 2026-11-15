@@ -19,29 +19,31 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
 
 /-- A reached chance completion has exactly the source one-step law on decoded prefixes. -/
 theorem SourceResidual.chance_step_sourceLaw
-    {profile : BehavioralProfile setup.program} {rank : Nat} {config : (graph setup).Config}
-    (residual : SourceResidual setup profile rank config) (event : (graph setup).EventId)
+    {profile : BehavioralProfile setup.program} {rank : Nat} {config :
+      setup.informationGraph.Config}
+    (residual : SourceResidual setup profile rank config) (event : setup.informationGraph.EventId)
     (atRank : event.val = rank) (ready : config.cut.Ready event)
-    (actorless : (graph setup).actor? event = none)
-    (action : (graph setup).Action event) {point : ProtocolState setup.program}
+    (actorless : setup.informationGraph.actor? event = none)
+    (action : setup.informationGraph.Action event) {point : ProtocolState setup.program}
     (decoded : sourceServicePrefix? setup rank config = some point) :
     (config.step event ready action).map (sourceServicePrefix? setup (rank + 1)) =
       (ProtocolState.behavioralStateStep setup.program profile point).map some := by
-  let native : EventGraphRuntime.State (graph setup) :=
-    { EventGraphRuntime.State.initial (graph := graph setup) config.inputs with config := config }
+  let native : EventGraphRuntime.State setup.informationGraph :=
+    { EventGraphRuntime.State.initial (graph := setup.informationGraph) config.inputs with config
+      := config }
   have pointEq := Option.some.inj (residual.decode.symm.trans decoded)
   rcases residual with ⟨Γ, names, program, residualProfile, source, refs, embedding, refsBefore,
     aligned, admitted, authentic, supports, disclosing, lift, commutes, steps, injective,
     transport, checkpoint⟩
   dsimp only at pointEq
   have counted := aligned.graphSuffix.countEq
-  change rank + eventCount program = (graph setup).order.eventCount at counted
-  have nextDecode (state : ProtocolState program) (next : (graph setup).Config)
+  change rank + eventCount program = setup.informationGraph.order.eventCount at counted
+  have nextDecode (state : ProtocolState program) (next : setup.informationGraph.Config)
       (read : decodeSourcePrefix? program refs source.registry source.revelations embedding.ref
         1 next.store (decodeHistory setup.program next.history) next.defaults = some state) :
       sourceServicePrefix? setup (rank + 1) next = some (lift state) := by
@@ -60,15 +62,15 @@ theorem SourceResidual.chance_step_sourceLaw
         simpa only [index, Nat.add_zero] using aligned.graphSuffix.rankEq index
       have same : event = embedding.event index := Fin.ext (atRank.trans headRank.symm)
       subst same
-      have outputEq : (graph setup).outputLayout (embedding.event index) =
+      have outputEq : setup.informationGraph.outputLayout (embedding.event index) =
           .publicData payload := by
         change outputLayout setup.program (embedding.event index) = _
         simpa [index, outputLayout, eventCount] using embedding.layout_eq index
-      have codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-          ((graph setup).nodes (embedding.event index)) =
+      have codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+          (setup.informationGraph.nodes (embedding.event index)) =
             .sample payload (compilePublicDist refs distribution) := by
         change cast (congrArg (EventGraph.EventCode (graphLayout setup.program)) outputEq)
-          ((toEventGraph setup.program).nodes (embedding.event index)) = _
+          ((toInformationGraph setup.program).nodes (embedding.event index)) = _
         simpa [index, compileRankedNodes] using aligned.graphSuffix.nodeEq index
       have decodedAction : decodeEventAction setup.program (embedding.event index)
           (cast (congrArg EventGraph.EventField.Action outputEq.symm) PUnit.unit) = none := by
@@ -102,8 +104,8 @@ theorem SourceResidual.chance_step_sourceLaw
       have headRank : (embedding.event index).val = rank := by
         simpa only [index, Nat.add_zero] using aligned.graphSuffix.rankEq index
       have same : event = embedding.event index := Fin.ext (atRank.trans headRank.symm)
-      have actor : (graph setup).actor? (embedding.event index) = some owner := by
-        change (toEventGraph setup.program).actor? (embedding.event index) = some owner
+      have actor : setup.informationGraph.actor? (embedding.event index) = some owner := by
+        change (toInformationGraph setup.program).actor? (embedding.event index) = some owner
         simpa [index, eventOwner?, eventCount] using aligned.actorEq index
       rw [same, actor] at actorless
       cases actorless
@@ -113,13 +115,13 @@ theorem SourceResidual.chance_step_sourceLaw
       have headRank : (embedding.event index).val = rank := by
         simpa only [index, Nat.add_zero] using aligned.graphSuffix.rankEq index
       have same : event = embedding.event index := Fin.ext (atRank.trans headRank.symm)
-      have actor : (graph setup).actor? (embedding.event index) = some owner := by
-        change (toEventGraph setup.program).actor? (embedding.event index) = some owner
+      have actor : setup.informationGraph.actor? (embedding.event index) = some owner := by
+        change (toInformationGraph setup.program).actor? (embedding.event index) = some owner
         simpa [index, eventOwner?, eventCount] using aligned.actorEq index
       rw [same, actor] at actorless
       cases actorless
 
-variable {bounds : MessageBounds (graph setup)} {horizon : Nat}
+variable {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 local notation "N" => onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
@@ -128,7 +130,7 @@ local notation "E" => ReactiveApplication.ResponseMenu.protocol
   (bounds.onePacketMenu timeouts leaks) (initialLaw setup) horizon scheduler
 local notation "Clear" => ReactiveApplication.stateInvariant
   (app := application setup timeouts leaks)
-    (fun native : EventGraphRuntime.State (graph setup) =>
+    (fun native : EventGraphRuntime.State setup.informationGraph =>
       EventGraph.Config.defaulted (EventGraphRuntime.State.config native) = ∅)
 
 /-- The actual finite native chance phase realizes every source chance successor
@@ -142,8 +144,8 @@ theorem counted_chance_stopped_sourceLaw
     (players : ∀ player, (N).BehavioralPolicy player)
     (start : (E).History) {control : (application setup timeouts leaks).Control}
     (current : start.state = some control) {rank : Nat}
-    (event : (graph setup).EventId) (atRank : event.val = rank)
-    (actorless : (graph setup).actor? event = none)
+    (event : setup.informationGraph.EventId) (atRank : event.val = rank)
+    (actorless : setup.informationGraph.actor? event = none)
     (profile : BehavioralProfile setup.program)
     (residual : SourceResidual setup profile rank control.execution.application.config)
     {point : ProtocolState setup.program}
@@ -157,11 +159,11 @@ theorem counted_chance_stopped_sourceLaw
   classical
   let config := control.execution.application.config
   let ready := (ready_iff_rank setup config rank residual.checkpoint.ordered event).mpr atRank
-  let action := ((graph setup).nodes event).actionOfActorNone actorless
+  let action := (setup.informationGraph.nodes event).actionOfActorNone actorless
   let phase := (N).runBehavioralUntil certificate players
     (fun stop => LateStopped setup timeouts leaks bounds horizon scheduler rank stop ∨
       ¬ Clear stop.state) start
-  let decode : Option (graph setup).Config → setup.ProtocolState :=
+  let decode : Option setup.informationGraph.Config → setup.ProtocolState :=
     fun next => next.bind (sourceServicePrefix? setup (rank + 1))
   have configLaw := counted_chance_stopped_configLaw (timeouts := timeouts) completes certificate
     players start current residual.checkpoint.ordered event ready actorless action decoded intended

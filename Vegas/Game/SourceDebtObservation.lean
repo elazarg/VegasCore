@@ -63,11 +63,12 @@ theorem decodeSourcePrefix?_staticAt {Field : Type} [DecidableEq Field]
       exact decodeSourcePrefix?_staticAt count next _ _ _ _ store history defaults rest read
 
 variable {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
+  {timeouts : EventTimeouts setup.informationGraph}
 
 /-- A decoded point is the source prefix decoding at the configuration's
 completed prefix. -/
-theorem decodedPoint_isPrefix {config : (graph setup).Config} {point : ProtocolState setup.program}
+theorem decodedPoint_isPrefix {config : setup.informationGraph.Config} {point : ProtocolState
+  setup.program}
     (decoded : decodedPoint setup config = some point) :
     ∃ rank, config.cut.IsPrefix rank ∧ sourceServicePrefix? setup rank config = some point := by
   unfold decodedPoint at decoded
@@ -77,13 +78,13 @@ theorem decodedPoint_isPrefix {config : (graph setup).Config} {point : ProtocolS
   · cases decoded
 
 /-- A decoded point carries the program's registry and publication status. -/
-theorem decodedPoint_staticAt {config : (graph setup).Config}
+theorem decodedPoint_staticAt {config : setup.informationGraph.Config}
     {point : ProtocolState setup.program} (decoded : decodedPoint setup config = some point) :
     ProtocolState.StaticAt setup.program [] (Revelations.initial setup.context) point := by
   obtain ⟨rank, _, read⟩ := decodedPoint_isPrefix decoded
   exact decodeSourcePrefix?_staticAt rank setup.program _ _ _ _ _ _ _ point read
 
-variable {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+variable {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
 
 /-- **Owing a failure is a function of the projected view.** Two native
 executions whose decoded points `who` sees through the same projected view agree

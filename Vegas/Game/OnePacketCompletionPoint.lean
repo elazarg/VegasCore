@@ -18,9 +18,9 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 local notation "NP" => ReactiveApplication.ResponseMenu.protocol
@@ -30,9 +30,9 @@ local notation "NP" => ReactiveApplication.ResponseMenu.protocol
 source obligation, independently of any future service guarantee. -/
 theorem decodedDebt_of_failed_event
     (history : (NP).History) (control : (application setup timeouts leaks).Control)
-    (current : history.state = some control) (event : (graph setup).EventId)
+    (current : history.state = some control) (event : setup.informationGraph.EventId)
     (completed : event ∈ control.execution.application.config.cut.completed)
-    (who : Player) (owned : (graph setup).actor? event = some who)
+    (who : Player) (owned : setup.informationGraph.actor? event = some who)
     (failed : StoreEventFailed control.execution.application.config.store event) :
     DecodedState setup timeouts leaks (failureProfile setup.program)
       (ProtocolState.OwesFailure who setup.program) history.state := by

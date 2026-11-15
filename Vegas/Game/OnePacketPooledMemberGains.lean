@@ -25,9 +25,9 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L] (setup : Setup (Player := Player) (L := L))
-  (timeouts : EventTimeouts (graph setup))
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-  (bounds : MessageBounds (graph setup)) (horizon : Nat)
+  (timeouts : EventTimeouts setup.informationGraph)
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
+  (bounds : MessageBounds setup.informationGraph) (horizon : Nat)
   (scheduler : (application setup timeouts leaks).Scheduler)
   [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
   [Finite setup.intendedProtocol.History]
@@ -57,7 +57,7 @@ theorem assembled_keyed_component_value_bounds
       (combinedFloor setup timeouts leaks bounds horizon scheduler (sequence n))
       (2 * horizon + 2) n)
     (covers : bounds.CoversOutputValues) (coversInputs : bounds.CoversInputValues)
-    (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
+    (capacity : ∀ who, bindingEventCount setup.informationGraph who < bounds.candidateCount)
     (slotsPositive : 0 < bounds.candidateCount)
     (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds Initial
       horizon scheduler bounds.candidateCount p))
@@ -67,7 +67,7 @@ theorem assembled_keyed_component_value_bounds
     (mixed : ∀ n, (targetSequence n).IsFullyMixed)
     (bayes : ∀ n, BehavioralAssessment.IsBayesConsistent (N) (targetSequence n)
       ((Menu).decisionRecall Initial horizon scheduler).decisionInformationAntichain)
-    {delay bound : (graph setup).EventId → Nat}
+    {delay bound : setup.informationGraph.EventId → Nat}
     (opportunity : Opportunity timeouts leaks Initial horizon scheduler delay)
     (inclusion : ProtectedInclusion timeouts leaks Initial horizon scheduler bound)
     (timely : (AsyncTimely timeouts) delay bound)
@@ -197,7 +197,7 @@ theorem assembled_pooled_member_gain_bounds
       (combinedFloor setup timeouts leaks bounds horizon scheduler (sequence n))
       (2 * horizon + 2) n)
     (covers : bounds.CoversOutputValues) (coversInputs : bounds.CoversInputValues)
-    (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
+    (capacity : ∀ who, bindingEventCount setup.informationGraph who < bounds.candidateCount)
     (slotsPositive : 0 < bounds.candidateCount)
     (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds Initial
       horizon scheduler bounds.candidateCount p))
@@ -207,7 +207,7 @@ theorem assembled_pooled_member_gain_bounds
     (mixed : ∀ n, (targetSequence n).IsFullyMixed)
     (bayes : ∀ n, BehavioralAssessment.IsBayesConsistent (N) (targetSequence n)
       ((Menu).decisionRecall Initial horizon scheduler).decisionInformationAntichain)
-    {delay bound : (graph setup).EventId → Nat}
+    {delay bound : setup.informationGraph.EventId → Nat}
     (opportunity : Opportunity timeouts leaks Initial horizon scheduler delay)
     (inclusion : ProtectedInclusion timeouts leaks Initial horizon scheduler bound)
     (timely : (AsyncTimely timeouts) delay bound)

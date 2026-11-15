@@ -56,12 +56,13 @@ with their full typed output and executable payout on the bounded raw interface.
 example (bonus : Int) (binding : Option (PublicationResult Bool)) (disclose : Bool) :
     let source := (setup bonus).encodeBehavioralProfile (fullAdmission bonus)
       (chosenProfile bonus binding disclose) (permitted bonus binding disclose)
-    ((service bonus).rawMenu.information (serviceInitialLaw (setup bonus) .sequential)
+    ((service bonus).rawMenu.information (serviceInitialLaw (setup bonus) (setup
+      bonus).informationDependencies)
       (service bonus).horizon (service bonus).scheduler).runBehavioral
       ((service bonus).clientProfile (fullAdmission bonus) (service bonus).rawMenu
-        (firstTurnTiming (setup bonus) 1 .sequential) source)
+        (firstTurnTiming (setup bonus) 1 (setup bonus).informationDependencies) source)
       (2 * (service bonus).horizon + 1) |>.map
-        (fun history => (serviceSourceReadout (setup bonus) .sequential
+        (fun history => (serviceSourceReadout (setup bonus) (setup bonus).informationDependencies
           (service bonus).duration (leaks bonus) history.state).map fun output =>
             ((output.state, output.defaults), (program bonus).evaluatePayoffs output.state)) =
       PMF.pure (some (terminal bonus binding disclose,

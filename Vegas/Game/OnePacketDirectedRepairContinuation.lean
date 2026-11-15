@@ -21,8 +21,8 @@ open SourceProgram Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
 
 namespace DirectedBindingFrame
 
@@ -50,12 +50,12 @@ agreement are exactly the candidate facts retained by the repair frame. -/
 theorem pending_binding_inclusion
     (frame : DirectedBindingFrame (timeouts := timeouts) memory owner original repaired)
     (clear : original.application.config.defaulted = ∅)
-    (event : (graph setup).EventId) (payload : L.Ty)
-    (outputEq : (graph setup).outputLayout event = .binding owner payload)
-    (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .bind owner payload)
-    (node : nodeView (graph setup) event = .bind owner payload outputEq codeEq)
-    (id : MessageId Player) (candidate : Handle (graph setup))
+    (event : setup.informationGraph.EventId) (payload : L.Ty)
+    (outputEq : setup.informationGraph.outputLayout event = .binding owner payload)
+    (codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .bind owner payload)
+    (node : nodeView setup.informationGraph event = .bind owner payload outputEq codeEq)
+    (id : MessageId Player) (candidate : Handle setup.informationGraph)
     (sender : id.1 = owner) (owned : candidate.1 = owner)
     (found : original.network.lookup id =
       some ⟨id, ⟨.commitment event candidate, none, some ⟨event⟩⟩⟩)

@@ -21,9 +21,9 @@ open SourceProgram Interaction EventGraphRuntime GameTheory.Protocol
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L] (setup : Setup (Player := Player) (L := L))
-  (timeouts : EventTimeouts (graph setup))
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-  (bounds : MessageBounds (graph setup)) (horizon : Nat)
+  (timeouts : EventTimeouts setup.informationGraph)
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
+  (bounds : MessageBounds setup.informationGraph) (horizon : Nat)
   (scheduler : (application setup timeouts leaks).Scheduler)
 
 local notation "E" => ReactiveApplication.ResponseMenu.protocol
@@ -35,7 +35,7 @@ and unfailed outcomes without a completion point. No readiness or prefix guard
 is needed for this probability identity. -/
 theorem completion_probability_split_of_completed [Finite (E).History]
     (law : PMF (E).History) (rank : Nat)
-    (key : LateKey setup timeouts leaks) (event : (graph setup).EventId)
+    (key : LateKey setup timeouts leaks) (event : setup.informationGraph.EventId)
     (decided : decidedEvent (timeouts := timeouts) key = some event)
     (fresh : (application setup timeouts leaks).Control → Prop)
     (freshSafe : ∀ next, fresh next →
@@ -104,9 +104,9 @@ open SourceProgram Interaction EventGraphRuntime GameTheory.Protocol
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L] (setup : Setup (Player := Player) (L := L))
-  (timeouts : EventTimeouts (graph setup))
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-  (bounds : MessageBounds (graph setup)) (horizon : Nat)
+  (timeouts : EventTimeouts setup.informationGraph)
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
+  (bounds : MessageBounds setup.informationGraph) (horizon : Nat)
   (scheduler : (application setup timeouts leaks).Scheduler)
 
 local notation "E" => ReactiveApplication.ResponseMenu.protocol
@@ -117,7 +117,7 @@ open Classical in
 Only actual completed support and its bad mass enter the error estimate. -/
 theorem completionValue_expect_affine_bound_of_completed [Finite (E).History]
     (law : PMF (E).History) (rank : Nat)
-    (key : LateKey setup timeouts leaks) (event : (graph setup).EventId)
+    (key : LateKey setup timeouts leaks) (event : setup.informationGraph.EventId)
     (decided : decidedEvent (timeouts := timeouts) key = some event)
     (fresh : (application setup timeouts leaks).Control → Prop)
     (freshSafe : ∀ next, fresh next →
@@ -246,9 +246,9 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- A genuine counted terminal at an intended unchanged source prefix has
@@ -259,11 +259,11 @@ theorem terminal_completed_of_decodedIntended
       control.execution.application.config.defaulted = ∅ →
       (application setup timeouts leaks).terminal (some control) →
       control.execution.application.config.cut.Terminal)
-    {rank : Nat} {sent : (graph setup).Config} (ordered : sent.cut.IsPrefix rank)
+    {rank : Nat} {sent : setup.informationGraph.Config} (ordered : sent.cut.IsPrefix rank)
     {point : ProtocolState setup.program}
     (decoded : sourceServicePrefix? setup rank sent = some point)
     (intended : ProtocolState.Intended setup.program point)
-    (event : (graph setup).EventId) (final : (application setup timeouts leaks).Control)
+    (event : setup.informationGraph.EventId) (final : (application setup timeouts leaks).Control)
     (trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some final))
     (ended : (application setup timeouts leaks).terminal (some final))
     (same : final.execution.application.config = sent) :
@@ -302,7 +302,8 @@ theorem pendingBinding_sourceKernel
     (debtFree : SiteDebtFree setup timeouts leaks bounds horizon scheduler site)
     {key : LateKey setup timeouts leaks} (siteKey : lateKey setup timeouts leaks who site.1 = some
       key)
-    {event : (graph setup).EventId} (pending : pendingEvent setup timeouts leaks who site.1 = some
+    {event : setup.informationGraph.EventId} (pending : pendingEvent setup timeouts leaks who
+      site.1 = some
       event)
     (law : PMF ((onePacketN).Choice who site.1))
     (history : (onePacketN).InformationHistory who site.1)
@@ -311,10 +312,10 @@ theorem pendingBinding_sourceKernel
     (atSite : site.1 = some (execution.logs who,
       execution.observe (application setup timeouts leaks) who))
     (forced : ForcedState setup timeouts leaks who history.1.state)
-    {payload : L.Ty} {outputEq : (graph setup).outputLayout event = .binding who payload}
-    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .bind who payload}
-    (node : nodeView (graph setup) event = .bind who payload outputEq codeEq)
+    {payload : L.Ty} {outputEq : setup.informationGraph.outputLayout event = .binding who payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .bind who payload}
+    (node : nodeView setup.informationGraph event = .bind who payload outputEq codeEq)
     (ordered : execution.application.config.cut.IsPrefix (siteRank (timeouts := timeouts) site.1))
     {point : ProtocolState setup.program}
     (decoded : sourceServicePrefix? setup (siteRank (timeouts := timeouts) site.1)
@@ -412,7 +413,8 @@ theorem pendingBinding_sourceValue
     (debtFree : SiteDebtFree setup timeouts leaks bounds horizon scheduler site)
     {key : LateKey setup timeouts leaks} (siteKey : lateKey setup timeouts leaks who site.1 = some
       key)
-    {event : (graph setup).EventId} (pending : pendingEvent setup timeouts leaks who site.1 = some
+    {event : setup.informationGraph.EventId} (pending : pendingEvent setup timeouts leaks who
+      site.1 = some
       event)
     (law : PMF ((onePacketN).Choice who site.1))
     (history : (onePacketN).InformationHistory who site.1)
@@ -421,10 +423,10 @@ theorem pendingBinding_sourceValue
     (atSite : site.1 = some (execution.logs who,
       execution.observe (application setup timeouts leaks) who))
     (forced : ForcedState setup timeouts leaks who history.1.state)
-    {payload : L.Ty} {outputEq : (graph setup).outputLayout event = .binding who payload}
-    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .bind who payload}
-    (node : nodeView (graph setup) event = .bind who payload outputEq codeEq)
+    {payload : L.Ty} {outputEq : setup.informationGraph.outputLayout event = .binding who payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .bind who payload}
+    (node : nodeView setup.informationGraph event = .bind who payload outputEq codeEq)
     (ordered : execution.application.config.cut.IsPrefix (siteRank (timeouts := timeouts) site.1))
     {point : ProtocolState setup.program}
     (decoded : sourceServicePrefix? setup (siteRank (timeouts := timeouts) site.1)
@@ -527,7 +529,8 @@ theorem committed_sourceKernel
     (site : (onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
       scheduler).InformationSite who)
     {key : LateKey setup timeouts leaks}
-    {event : (graph setup).EventId} (_decided : decidedEvent (timeouts := timeouts) key = some
+    {event : setup.informationGraph.EventId} (_decided : decidedEvent (timeouts := timeouts) key =
+      some
       event)
     (pending : pendingEvent setup timeouts leaks who site.1 = some event)
     (choice : (onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
@@ -546,9 +549,9 @@ theorem committed_sourceKernel
     (packet : material.call.packet = .commitment event (who, .prepared serial))
     (turn : execution.application.publicView.ownTurn? who = some event)
     (ordered : execution.application.config.cut.IsPrefix (siteRank (timeouts := timeouts) site.1))
-    {payload : L.Ty} (outputEq : (graph setup).outputLayout event = .binding who payload)
-    (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .bind who payload)
+    {payload : L.Ty} (outputEq : setup.informationGraph.outputLayout event = .binding who payload)
+    (codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .bind who payload)
     {value : L.Val payload}
     (after : material.call.candidateAfter who
       (execution.observe (application setup timeouts leaks) who).application.candidates
@@ -596,13 +599,13 @@ theorem committed_sourceKernel
   have traceHere : (menu.protocol (initialLaw setup) horizon scheduler).Trace
       (some ⟨remaining, some who, execution⟩) := current ▸ history.1.trace
   -- The committed action and the point it reaches.
-  let committed : (graph setup).Action event :=
+  let committed : setup.informationGraph.Action event :=
     cast (congrArg EventGraph.EventField.Action outputEq.symm)
       (some (PublicationResult.success value))
   have successful : (cast (congrArg EventGraph.EventField.Action outputEq) committed :
       Option (PublicationResult (L.Val payload))) = some (.success value) := by
     simp only [committed, cast_cast, cast_eq]
-  have owned : (graph setup).actor? event = some who := nodeView_bind_actor outputEq codeEq
+  have owned : setup.informationGraph.actor? event = some who := nodeView_bind_actor outputEq codeEq
   have pointDecoded : decodedPoint setup execution.application.config = some point :=
     (decodedPoint_eq_of_isPrefix ordered).trans decoded
   have clear := defaulted_eq_empty_of_decodedIntended pointDecoded pointIntended
@@ -733,7 +736,8 @@ theorem committed_sourceValue
     (site : (onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
       scheduler).InformationSite who)
     {key : LateKey setup timeouts leaks}
-    {event : (graph setup).EventId} (decided : decidedEvent (timeouts := timeouts) key = some event)
+    {event : setup.informationGraph.EventId} (decided : decidedEvent (timeouts := timeouts) key =
+      some event)
     (pending : pendingEvent setup timeouts leaks who site.1 = some event)
     (choice : (onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
       scheduler).Choice who site.1) (response : (application setup timeouts leaks).Action)
@@ -751,9 +755,9 @@ theorem committed_sourceValue
     (packet : material.call.packet = .commitment event (who, .prepared serial))
     (turn : execution.application.publicView.ownTurn? who = some event)
     (ordered : execution.application.config.cut.IsPrefix (siteRank (timeouts := timeouts) site.1))
-    {payload : L.Ty} (outputEq : (graph setup).outputLayout event = .binding who payload)
-    (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .bind who payload)
+    {payload : L.Ty} (outputEq : setup.informationGraph.outputLayout event = .binding who payload)
+    (codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .bind who payload)
     {value : L.Val payload}
     (after : material.call.candidateAfter who
       (execution.observe (application setup timeouts leaks) who).application.candidates

@@ -26,20 +26,21 @@ open GameTheory GameTheory.Protocol GameTheory.Math.Probability Interaction Even
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
 
 /-- A public field is visible to every player. -/
-theorem publicStore_playerStore (who : Player) (store : EventGraph.Store (graph setup).layout) :
-    (graph setup).publicStore ((graph setup).playerStore who store) =
-      (graph setup).publicStore store := by
+theorem publicStore_playerStore (who : Player) (store : EventGraph.Store
+  setup.informationGraph.layout) :
+    setup.informationGraph.publicStore (setup.informationGraph.playerStore who store) =
+      setup.informationGraph.publicStore store := by
   funext field
   unfold EventGraph.publicStore EventGraph.playerStore
-  by_cases isPublic : (graph setup).fieldPublic field
-  · have visible : (graph setup).fieldVisibleTo who field := by
+  by_cases isPublic : setup.informationGraph.fieldPublic field
+  · have visible : setup.informationGraph.fieldVisibleTo who field := by
       unfold EventGraph.fieldPublic at isPublic
       unfold EventGraph.fieldVisibleTo
-      generalize (graph setup).layout field = kind at isPublic ⊢
+      generalize setup.informationGraph.layout field = kind at isPublic ⊢
       cases kind <;> simp_all [EventGraph.EventField.IsPublic, EventGraph.EventField.VisibleTo]
     simp only [isPublic, visible, ↓reduceIte]
   · simp only [isPublic, ↓reduceIte]
@@ -50,36 +51,38 @@ owner's resolution packet of every action is the same. -/
 theorem reactiveResolutionPacket_congr {first second : (application setup timeouts leaks).Control}
     (same : operationalState setup timeouts leaks (some first) = operationalState setup timeouts
       leaks (some second))
-    {event : (graph setup).EventId} (ready : first.execution.application.config.cut.Ready event)
+    {event : setup.informationGraph.EventId} (ready : first.execution.application.config.cut.Ready
+      event)
     {owner : Player} {payload : L.Ty}
-    {binding : EventGraph.FieldRef (graph setup).layout (.binding owner payload)}
-    {checks : List (EventGraph.GuardCheck (graph setup).layout payload)}
-    {outputEq : (graph setup).outputLayout event = .publication payload}
-    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .resolve owner payload binding checks}
-    (view : nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq)
-    (action : (graph setup).Action event) :
+    {binding : EventGraph.FieldRef setup.informationGraph.layout (.binding owner payload)}
+    {checks : List (EventGraph.GuardCheck setup.informationGraph.layout payload)}
+    {outputEq : setup.informationGraph.outputLayout event = .publication payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .resolve owner payload binding checks}
+    (view : nodeView setup.informationGraph event = .resolve owner payload binding checks outputEq
+      codeEq)
+    (action : setup.informationGraph.Action event) :
     reactiveResolutionPacket owner event payload binding checks outputEq action
         (first.execution.observe (application setup timeouts leaks) owner).application =
       reactiveResolutionPacket owner event payload binding checks outputEq action
         (second.execution.observe (application setup timeouts leaks) owner).application := by
   have bindings := SameOperational.binding (timeouts := timeouts) same ready view
   have publics := SameOperational.publicView same
-  have own : ∀ store : EventGraph.Store (graph setup).layout,
-      binding.get? ((graph setup).playerStore owner store) = binding.get? store := by
+  have own : ∀ store : EventGraph.Store setup.informationGraph.layout,
+      binding.get? (setup.informationGraph.playerStore owner store) = binding.get? store := by
     intro store
     rcases binding with ⟨field, layoutEq⟩
     apply EventGraph.FieldRef.get?_congr
     apply EventGraph.playerStore_of_visible
-    change ((graph setup).layout field).VisibleTo owner
+    change (setup.informationGraph.layout field).VisibleTo owner
     rw [layoutEq]
     rfl
   have firstStore : (first.execution.observe (application setup timeouts leaks)
       owner).application.observation.store =
-      (graph setup).playerStore owner first.execution.application.config.store := rfl
+      setup.informationGraph.playerStore owner first.execution.application.config.store := rfl
   have secondStore : (second.execution.observe (application setup timeouts leaks)
       owner).application.observation.store =
-      (graph setup).playerStore owner second.execution.application.config.store := rfl
+      setup.informationGraph.playerStore owner second.execution.application.config.store := rfl
   have firstPublic : (first.execution.observe (application setup timeouts leaks)
       owner).application.publicView = first.execution.application.publicView := rfl
   have secondPublic : (second.execution.observe (application setup timeouts leaks)
@@ -92,15 +95,16 @@ theorem reactiveResolutionPacket_congr {first second : (application setup timeou
 exists. -/
 theorem disclosure_transmission_isSome (who : Player)
     (past : List (application setup timeouts leaks).PlayerEntry)
-    (view : (application setup timeouts leaks).PlayerView) {event : (graph setup).EventId}
+    (view : (application setup timeouts leaks).PlayerView) {event : setup.informationGraph.EventId}
     {owner : Player} {payload : L.Ty}
-    {binding : EventGraph.FieldRef (graph setup).layout (.binding owner payload)}
-    {checks : List (EventGraph.GuardCheck (graph setup).layout payload)}
-    {outputEq : (graph setup).outputLayout event = .publication payload}
-    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .resolve owner payload binding checks}
-    (node : nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq)
-    (action : (graph setup).Action event) :
+    {binding : EventGraph.FieldRef setup.informationGraph.layout (.binding owner payload)}
+    {checks : List (EventGraph.GuardCheck setup.informationGraph.layout payload)}
+    {outputEq : setup.informationGraph.outputLayout event = .publication payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .resolve owner payload binding checks}
+    (node : nodeView setup.informationGraph event = .resolve owner payload binding checks outputEq
+      codeEq)
+    (action : setup.informationGraph.Action event) :
     ((canonicalServiceDecision timeouts) leaks who past view event
         action).transmission.isSome =
       (reactiveResolutionPacket who event payload binding checks outputEq action
@@ -119,7 +123,7 @@ theorem disclosure_transmission_isSome (who : Player)
     rw [(canonicalServiceDecision_defaulted timeouts) leaks who past view event action inactive]
     simp only [reactiveResolutionPacket, ite_eq_left inactive, Option.isSome_none]
 
-variable [Fintype Player] {bounds : MessageBounds (graph setup)} {horizon : Nat}
+variable [Fintype Player] {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- **When the disclosure is silent.** Along every history of the one-packet
@@ -130,15 +134,16 @@ theorem disclosure_silent_iff (covers : bounds.CoversOutputValues)
     {control : (application setup timeouts leaks).Control}
     (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control))
-    (who : Player) (event : (graph setup).EventId)
+    (who : Player) (event : setup.informationGraph.EventId)
     (turn : control.execution.application.publicView.ownTurn? who = some event)
     {owner : Player} {payload : L.Ty}
-    {binding : EventGraph.FieldRef (graph setup).layout (.binding owner payload)}
-    {checks : List (EventGraph.GuardCheck (graph setup).layout payload)}
-    {outputEq : (graph setup).outputLayout event = .publication payload}
-    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .resolve owner payload binding checks}
-    (node : nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq) :
+    {binding : EventGraph.FieldRef setup.informationGraph.layout (.binding owner payload)}
+    {checks : List (EventGraph.GuardCheck setup.informationGraph.layout payload)}
+    {outputEq : setup.informationGraph.outputLayout event = .publication payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .resolve owner payload binding checks}
+    (node : nodeView setup.informationGraph event = .resolve owner payload binding checks outputEq
+      codeEq) :
     ((responseChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler who
         (some (control.execution.logs who,
           control.execution.observe (application setup timeouts leaks) who))
@@ -150,7 +155,7 @@ theorem disclosure_silent_iff (covers : bounds.CoversOutputValues)
           (cast (congrArg EventGraph.EventField.Action outputEq.symm) true)
           (control.execution.observe (application setup timeouts leaks) who).application).isSome ∧
         ¬ ∃ message ∈ (application setup timeouts leaks).outputs (control.execution.logs who),
-          message.payload.call.event? (graph setup) = some event) := by
+          message.payload.call.event? setup.informationGraph = some event) := by
   set disclosure := (canonicalServiceDecision timeouts) leaks who
     (control.execution.logs who) (control.execution.observe (application setup timeouts leaks)
       who) event
@@ -208,7 +213,7 @@ theorem disclosure_silent_iff (covers : bounds.CoversOutputValues)
           material sends
         rw [decodedMember _ member, sends]
         have noOutput : ¬ ∃ message ∈ (application setup timeouts leaks).outputs
-            (control.execution.logs who), message.payload.call.event? (graph setup) =
+            (control.execution.logs who), message.payload.call.event? setup.informationGraph =
               some event := by
           intro named
           have recorded := (history_eventRecorded_iff (timeouts := timeouts) rawTrace who event).mpr
@@ -275,13 +280,14 @@ with the accepted handle. -/
 theorem disclosure_opens {control : (application setup timeouts leaks).Control}
     (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control))
-    (who : Player) (event : (graph setup).EventId) {payload : L.Ty}
-    {binding : EventGraph.FieldRef (graph setup).layout (.binding who payload)}
-    {checks : List (EventGraph.GuardCheck (graph setup).layout payload)}
-    {outputEq : (graph setup).outputLayout event = .publication payload}
-    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .resolve who payload binding checks}
-    (node : nodeView (graph setup) event = .resolve who payload binding checks outputEq codeEq)
+    (who : Player) (event : setup.informationGraph.EventId) {payload : L.Ty}
+    {binding : EventGraph.FieldRef setup.informationGraph.layout (.binding who payload)}
+    {checks : List (EventGraph.GuardCheck setup.informationGraph.layout payload)}
+    {outputEq : setup.informationGraph.outputLayout event = .publication payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .resolve who payload binding checks}
+    (node : nodeView setup.informationGraph event = .resolve who payload binding checks outputEq
+      codeEq)
     (speaks : ((responseChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler who
         (some (control.execution.logs who,
           control.execution.observe (application setup timeouts leaks) who))
@@ -343,15 +349,16 @@ theorem lateChoice_reveal (assessment : setup.intendedModel.BehavioralAssessment
     {control : (application setup timeouts leaks).Control}
     (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control))
-    (who : Player) (event : (graph setup).EventId)
+    (who : Player) (event : setup.informationGraph.EventId)
     (turn : control.execution.application.publicView.ownTurn? who = some event)
     {owner : Player} {payload : L.Ty}
-    {binding : EventGraph.FieldRef (graph setup).layout (.binding owner payload)}
-    {checks : List (EventGraph.GuardCheck (graph setup).layout payload)}
-    {outputEq : (graph setup).outputLayout event = .publication payload}
-    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .resolve owner payload binding checks}
-    (node : nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq)
+    {binding : EventGraph.FieldRef setup.informationGraph.layout (.binding owner payload)}
+    {checks : List (EventGraph.GuardCheck setup.informationGraph.layout payload)}
+    {outputEq : setup.informationGraph.outputLayout event = .publication payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .resolve owner payload binding checks}
+    (node : nodeView setup.informationGraph event = .resolve owner payload binding checks outputEq
+      codeEq)
     {slots : Nat} (slot : Fin slots) :
     lateChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler assessment who
         (some (control.execution.logs who,
@@ -433,15 +440,16 @@ theorem lateCore_silence {control : (application setup timeouts leaks).Control}
     (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control))
     (assessment : setup.intendedModel.BehavioralAssessment) (who : Player)
-    (event : (graph setup).EventId)
+    (event : setup.informationGraph.EventId)
     (turn : control.execution.application.publicView.ownTurn? who = some event)
     {owner : Player} {payload : L.Ty}
-    {binding : EventGraph.FieldRef (graph setup).layout (.binding owner payload)}
-    {checks : List (EventGraph.GuardCheck (graph setup).layout payload)}
-    {outputEq : (graph setup).outputLayout event = .publication payload}
-    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .resolve owner payload binding checks}
-    (node : nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq)
+    {binding : EventGraph.FieldRef setup.informationGraph.layout (.binding owner payload)}
+    {checks : List (EventGraph.GuardCheck setup.informationGraph.layout payload)}
+    {outputEq : setup.informationGraph.outputLayout event = .publication payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .resolve owner payload binding checks}
+    (node : nodeView setup.informationGraph event = .resolve owner payload binding checks outputEq
+      codeEq)
     (scale : ℝ) (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1) {slots : Nat}
     (options : PMF (LateOption slots)) :
     (lateCore (timeouts := timeouts) (bounds := bounds) (horizon := horizon) (scheduler :=
@@ -513,13 +521,15 @@ theorem disclosureSilent_congr (covers : bounds.CoversOutputValues) {remaining :
     (secondCurrent : secondHistory.state = some ⟨remaining, some owner, second⟩)
     (same : operationalState setup timeouts leaks (some ⟨remaining, some owner, first⟩) =
       operationalState setup timeouts leaks (some ⟨remaining, some owner, second⟩))
-    {event : (graph setup).EventId} (ready : first.application.config.cut.Ready event)
-    {payload : L.Ty} {binding : EventGraph.FieldRef (graph setup).layout (.binding owner payload)}
-    {checks : List (EventGraph.GuardCheck (graph setup).layout payload)}
-    {outputEq : (graph setup).outputLayout event = .publication payload}
-    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .resolve owner payload binding checks}
-    (node : nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq) :
+    {event : setup.informationGraph.EventId} (ready : first.application.config.cut.Ready event)
+    {payload : L.Ty} {binding : EventGraph.FieldRef setup.informationGraph.layout (.binding owner
+      payload)}
+    {checks : List (EventGraph.GuardCheck setup.informationGraph.layout payload)}
+    {outputEq : setup.informationGraph.outputLayout event = .publication payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .resolve owner payload binding checks}
+    (node : nodeView setup.informationGraph event = .resolve owner payload binding checks outputEq
+      codeEq) :
     choiceSilent (timeouts := timeouts) (responseChoice setup timeouts leaks bounds (initialLaw
       setup) horizon scheduler owner
         (some (first.logs owner, first.observe (application setup timeouts leaks) owner))

@@ -26,7 +26,7 @@ open GameTheory GameTheory.Protocol GameTheory.Math.Probability
 open ProgramPayments
 
 def leaks (bonus : Int) :
-    MessageNetwork.ObservationRule Player (WitnessedPacket (graph (setup bonus))) :=
+    MessageNetwork.ObservationRule Player (WitnessedPacket ((setup bonus).informationGraph)) :=
   fun _ _ => PMF.pure ∅
 
 instance (bonus : Int) : (leaks bonus).FiniteSupport where
@@ -38,7 +38,7 @@ def rawValues : Finset (Raw simpleExpr) := by
   classical
   exact Finset.univ.image fun bit : Bool => (⟨.bool, bit⟩ : Raw simpleExpr)
 
-def bounds (bonus : Int) : MessageBounds (graph (setup bonus)) where
+def bounds (bonus : Int) : MessageBounds ((setup bonus).informationGraph) where
   candidateCount := 2
   values := rawValues
 
@@ -56,7 +56,7 @@ theorem initial_values_covered (bonus : Int) :
     ∀ state ∈ (initialLaw (setup bonus)).support, (bounds bonus).CandidateValues state := by
   intro state supported
   change state ∈ ((setup bonus).initialLaw.map
-    (fun initial => EventGraphRuntime.State.initial (graph := graph (setup bonus))
+    (fun initial => EventGraphRuntime.State.initial (graph := (setup bonus).informationGraph)
       ((setup bonus).eventInputs initial))).support
     at supported
   obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ supported
@@ -67,7 +67,7 @@ theorem initial_values_covered (bonus : Int) :
   | initial input => exact Fin.elim0 input
   | prepared serial => cases opened
 
-def rosters (bonus : Int) : (graph (setup bonus)).EventId → List Player :=
+def rosters (bonus : Int) : ((setup bonus).informationGraph).EventId → List Player :=
   fun _ => [.alice]
 
 theorem opportunities (bonus : Int) : ActorOpportunities (setup bonus) (rosters bonus) := by

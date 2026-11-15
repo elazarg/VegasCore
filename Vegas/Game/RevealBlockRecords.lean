@@ -26,21 +26,21 @@ open SourceProgram GameTheory.Math.Probability Interaction EventGraphRuntime Eve
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {mode : EventGraph.ExecutionMode} {duration : (serviceGraph setup mode).EventId → Nat}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode))}
+  {deps : setup.dataflowGraph.Dependencies} {duration : (serviceGraph setup deps).EventId → Nat}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup deps))}
 
 /-- An accepted opening with a stored footprint stays accepted while stored
 fields are kept. -/
-theorem openingAccepted_keep {before after : (serviceGraph setup mode).Config}
-    {event : (serviceGraph setup mode).EventId}
+theorem openingAccepted_keep {before after : (serviceGraph setup deps).Config}
+    {event : (serviceGraph setup deps).EventId}
     (kept : ∀ field value, before.store field = some value → after.store field = some value)
-    (available : ∀ field ∈ ((serviceGraph setup mode).nodes event).readFields,
+    (available : ∀ field ∈ ((serviceGraph setup deps).nodes event).readFields,
       (before.store field).isSome)
     (accepted : openingAccepted event before.store = true) :
-    (∀ field ∈ ((serviceGraph setup mode).nodes event).readFields,
+    (∀ field ∈ ((serviceGraph setup deps).nodes event).readFields,
       (after.store field).isSome) ∧ openingAccepted event after.store = true := by
   have agree : Store.AgreeOn after.store before.store
-      ((serviceGraph setup mode).nodes event).readFields := by
+      ((serviceGraph setup deps).nodes event).readFields := by
     intro field read
     obtain ⟨value, stored⟩ := Option.isSome_iff_exists.mp (available field read)
     rw [kept field value stored, stored]
@@ -52,21 +52,21 @@ theorem openingAccepted_keep {before after : (serviceGraph setup mode).Config}
 /-- Every submission of an honest owner for a block reveal names an accepted
 opening with a stored footprint. -/
 def HonestBlockSubmissions (who : Player) (start finish : Nat)
-    (execution : (serviceApplication setup mode duration leaks).Execution) : Prop :=
+    (execution : (serviceApplication setup deps duration leaks).Execution) : Prop :=
   ∀ owner, owner ≠ who → ∀ entry ∈ execution.logs owner,
-    ∀ event : (serviceGraph setup mode).EventId,
+    ∀ event : (serviceGraph setup deps).EventId,
     start ≤ event.val → event.val < finish →
-    (submittedEvent? (serviceTimeouts setup mode duration)) leaks entry.action = some event →
-    (∀ field ∈ ((serviceGraph setup mode).nodes event).readFields,
+    (submittedEvent? (serviceTimeouts setup deps duration)) leaks entry.action = some event →
+    (∀ field ∈ ((serviceGraph setup deps).nodes event).readFields,
       (execution.application.config.store field).isSome) ∧
       openingAccepted event execution.application.config.store = true
 
 /-- At the block start no response has submitted a block reveal, since none
 was seen ready. -/
 theorem honestBlockSubmissions_start (who : Player) (start finish : Nat)
-    (execution : (serviceApplication setup mode duration leaks).Execution)
+    (execution : (serviceApplication setup deps duration leaks).Execution)
     (atTurn : ∀ owner, owner ≠ who → OwnSubmissionsAtTurn setup leaks execution owner)
-    (untouched : ∀ event : (serviceGraph setup mode).EventId, start ≤ event.val →
+    (untouched : ∀ event : (serviceGraph setup deps).EventId, start ≤ event.val →
       event.val < finish → Untouched setup leaks event execution) :
     HonestBlockSubmissions who start finish execution := by
   intro owner different entry member event early late submitted
@@ -78,42 +78,42 @@ theorem honestBlockSubmissions_start (who : Player) (start finish : Nat)
 keeps every honest owner's block submissions accepted, when honest clients open
 a reveal exactly when its opening is accepted. -/
 theorem honestBlockSubmissions_round {horizon remaining : Nat}
-    (scheduler : (serviceApplication setup mode duration leaks).Scheduler)
-    (bound : (serviceGraph setup mode).EventId → Nat) (turns : Nat)
-    (reference : (serviceGraph setup mode).BehavioralProfile)
-    (decides : ∀ (config : (serviceGraph setup mode).Config)
-      (event : (serviceGraph setup mode).EventId) (owner : Player) (payload : L.Ty)
-      (binding : FieldRef (serviceGraph setup mode).layout (.binding owner payload))
-      (checks : List (GuardCheck (serviceGraph setup mode).layout payload))
-      (outputEq : (serviceGraph setup mode).outputLayout event = .publication payload)
-      (codeEq : cast (congrArg (EventCode (serviceGraph setup mode).layout) outputEq)
-        ((serviceGraph setup mode).nodes event) = .resolve owner payload binding checks),
-      nodeView (serviceGraph setup mode) event =
+    (scheduler : (serviceApplication setup deps duration leaks).Scheduler)
+    (bound : (serviceGraph setup deps).EventId → Nat) (turns : Nat)
+    (reference : (serviceGraph setup deps).BehavioralProfile)
+    (decides : ∀ (config : (serviceGraph setup deps).Config)
+      (event : (serviceGraph setup deps).EventId) (owner : Player) (payload : L.Ty)
+      (binding : FieldRef (serviceGraph setup deps).layout (.binding owner payload))
+      (checks : List (GuardCheck (serviceGraph setup deps).layout payload))
+      (outputEq : (serviceGraph setup deps).outputLayout event = .publication payload)
+      (codeEq : cast (congrArg (EventCode (serviceGraph setup deps).layout) outputEq)
+        ((serviceGraph setup deps).nodes event) = .resolve owner payload binding checks),
+      nodeView (serviceGraph setup deps) event =
         .resolve owner payload binding checks outputEq codeEq →
-      ∀ (actor : (serviceGraph setup mode).actor? event = some owner)
-        (active : owner ∉ ((serviceGraph setup mode).playerObserve owner config).defaulted),
-        reference owner event actor ((serviceGraph setup mode).playerObserve owner config)
+      ∀ (actor : (serviceGraph setup deps).actor? event = some owner)
+        (active : owner ∉ ((serviceGraph setup deps).playerObserve owner config).defaulted),
+        reference owner event actor ((serviceGraph setup deps).playerObserve owner config)
           active = PMF.pure (cast (congrArg EventField.Action outputEq.symm)
             (openingAccepted event config.store)))
-    (who : Player) (deviation : (serviceApplication setup mode duration leaks).Policy)
-    (start finish : Nat) (shaped : BlockShaped (graph := serviceGraph setup mode) start finish)
-    (publications : ∀ event : (serviceGraph setup mode).EventId, start ≤ event.val →
-      event.val < finish → ((serviceGraph setup mode).outputLayout event).IsPublication)
-    (current next : (serviceApplication setup mode duration leaks).Execution)
-    (trace : ((serviceApplication setup mode duration leaks).protocol
-      (serviceInitialLaw setup mode) horizon scheduler).Trace
+    (who : Player) (deviation : (serviceApplication setup deps duration leaks).Policy)
+    (start finish : Nat) (shaped : BlockShaped (graph := serviceGraph setup deps) start finish)
+    (publications : ∀ event : (serviceGraph setup deps).EventId, start ≤ event.val →
+      event.val < finish → ((serviceGraph setup deps).outputLayout event).IsPublication)
+    (current next : (serviceApplication setup deps duration leaks).Execution)
+    (trace : ((serviceApplication setup deps duration leaks).protocol
+      (serviceInitialLaw setup deps) horizon scheduler).Trace
         (some ⟨remaining + 1, none, current⟩))
     (inside : InBlock start finish current.application.config)
     (running : ¬ BlockDone finish current.application.config)
     (valid : HonestBlockSubmissions who start finish current)
-    (reached : next ∈ ((serviceApplication setup mode duration leaks).round scheduler
-      (Function.update (serviceReferenceTurnPolicy setup mode duration leaks bound turns
-        (firstTurnTiming setup turns mode) reference) who deviation) current).support) :
+    (reached : next ∈ ((serviceApplication setup deps duration leaks).round scheduler
+      (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+        (firstTurnTiming setup turns deps) reference) who deviation) current).support) :
     HonestBlockSubmissions who start finish next := by
-  let app := serviceApplication setup mode duration leaks
+  let app := serviceApplication setup deps duration leaks
   obtain ⟨command, selected, middle, moved, cases⟩ := round_cases setup leaks reached
   have recallEq := app.environmentStep_recall current middle command moved
-  have keptMiddle := (keepsStore_step (serviceTimeouts setup mode duration) leaks).environmentStep
+  have keptMiddle := (keepsStore_step (serviceTimeouts setup deps duration) leaks).environmentStep
     current middle command moved
   have middleValid : HonestBlockSubmissions who start finish middle := by
     intro owner different entry member event early late submitted
@@ -122,7 +122,7 @@ theorem honestBlockSubmissions_round {horizon remaining : Nat}
     exact openingAccepted_keep keptMiddle available accepted
   rcases cases with ⟨_, rfl⟩ | ⟨actor, active, response, chosen, rfl⟩
   · exact middleValid
-  have kept := (keepsStore_step (serviceTimeouts setup mode duration) leaks).respond middle actor
+  have kept := (keepsStore_step (serviceTimeouts setup deps duration) leaks).respond middle actor
     response
   intro owner different entry member event early late submitted
   by_cases same : owner = actor
@@ -138,17 +138,17 @@ theorem honestBlockSubmissions_round {horizon remaining : Nat}
       cases command <;> simp_all [ReactiveApplication.Command.actor?]
     subst commandEq
     have appEq := activation_application setup leaks current middle owner moved
-    obtain ⟨middleTrace⟩ := app.raw_trace_environment (serviceInitialLaw setup mode) horizon
+    obtain ⟨middleTrace⟩ := app.raw_trace_environment (serviceInitialLaw setup deps) horizon
       scheduler remaining current middle (.activate owner) trace selected moved
     rw [active] at middleTrace
     have facts := legalFacts setup leaks horizon scheduler _ middleTrace
-    have follows : Function.update (serviceReferenceTurnPolicy setup mode duration leaks bound
-        turns (firstTurnTiming setup turns mode) reference) who deviation owner =
-        serviceReferenceTurnPolicy setup mode duration leaks bound turns
-          (firstTurnTiming setup turns mode) reference owner := Function.update_of_ne different _ _
+    have follows : Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound
+        turns (firstTurnTiming setup turns deps) reference) who deviation owner =
+        serviceReferenceTurnPolicy setup deps duration leaks bound turns
+          (firstTurnTiming setup turns deps) reference owner := Function.update_of_ne different _ _
     rw [follows] at chosen
     have middlePublications : ∀ query, middle.application.config.cut.Ready query →
-        ((serviceGraph setup mode).outputLayout query).IsPublication := by
+        ((serviceGraph setup deps).outputLayout query).IsPublication := by
       intro query ready
       rw [appEq] at ready
       have bounded := shaped _ inside running query ready
@@ -163,17 +163,17 @@ theorem honestBlockSubmissions_round {horizon remaining : Nat}
     exact openingAccepted_keep kept available accepted
 
 /-- An honest block reveal completed by its owner's accepted opening. -/
-def HonestOpened (who : Player) (config : (serviceGraph setup mode).Config)
-    (event : (serviceGraph setup mode).EventId) : Prop :=
+def HonestOpened (who : Player) (config : (serviceGraph setup deps).Config)
+    (event : (serviceGraph setup deps).EventId) : Prop :=
   ∃ (owner : Player) (payload : L.Ty)
-    (binding : FieldRef (serviceGraph setup mode).layout (.binding owner payload))
-    (checks : List (GuardCheck (serviceGraph setup mode).layout payload))
-    (outputEq : (serviceGraph setup mode).outputLayout event = .publication payload)
-    (codeEq : cast (congrArg (EventCode (serviceGraph setup mode).layout) outputEq)
-      ((serviceGraph setup mode).nodes event) = .resolve owner payload binding checks),
-    owner ≠ who ∧ nodeView (serviceGraph setup mode) event =
+    (binding : FieldRef (serviceGraph setup deps).layout (.binding owner payload))
+    (checks : List (GuardCheck (serviceGraph setup deps).layout payload))
+    (outputEq : (serviceGraph setup deps).outputLayout event = .publication payload)
+    (codeEq : cast (congrArg (EventCode (serviceGraph setup deps).layout) outputEq)
+      ((serviceGraph setup deps).nodes event) = .resolve owner payload binding checks),
+    owner ≠ who ∧ nodeView (serviceGraph setup deps) event =
       .resolve owner payload binding checks outputEq codeEq ∧
-    (∀ field ∈ ((serviceGraph setup mode).nodes event).readFields,
+    (∀ field ∈ ((serviceGraph setup deps).nodes event).readFields,
       (config.store field).isSome) ∧
     openingAccepted event config.store = true ∧
     completionOf config event =
@@ -182,17 +182,17 @@ def HonestOpened (who : Player) (config : (serviceGraph setup mode).Config)
       (cast (congrArg EventField.Value outputEq.symm))
 
 /-- An honest block reveal whose rejected opening expired. -/
-def HonestExpired (who : Player) (config : (serviceGraph setup mode).Config)
-    (event : (serviceGraph setup mode).EventId) : Prop :=
+def HonestExpired (who : Player) (config : (serviceGraph setup deps).Config)
+    (event : (serviceGraph setup deps).EventId) : Prop :=
   ∃ (owner : Player) (payload : L.Ty)
-    (binding : FieldRef (serviceGraph setup mode).layout (.binding owner payload))
-    (checks : List (GuardCheck (serviceGraph setup mode).layout payload))
-    (outputEq : (serviceGraph setup mode).outputLayout event = .publication payload)
-    (codeEq : cast (congrArg (EventCode (serviceGraph setup mode).layout) outputEq)
-      ((serviceGraph setup mode).nodes event) = .resolve owner payload binding checks),
-    owner ≠ who ∧ nodeView (serviceGraph setup mode) event =
+    (binding : FieldRef (serviceGraph setup deps).layout (.binding owner payload))
+    (checks : List (GuardCheck (serviceGraph setup deps).layout payload))
+    (outputEq : (serviceGraph setup deps).outputLayout event = .publication payload)
+    (codeEq : cast (congrArg (EventCode (serviceGraph setup deps).layout) outputEq)
+      ((serviceGraph setup deps).nodes event) = .resolve owner payload binding checks),
+    owner ≠ who ∧ nodeView (serviceGraph setup deps) event =
       .resolve owner payload binding checks outputEq codeEq ∧
-    (∀ field ∈ ((serviceGraph setup mode).nodes event).readFields,
+    (∀ field ∈ ((serviceGraph setup deps).nodes event).readFields,
       (config.store field).isSome) ∧
     openingAccepted event config.store = false ∧
     completionOf config event =
@@ -204,21 +204,21 @@ def HonestExpired (who : Player) (config : (serviceGraph setup mode).Config)
 automatically for a defaulted owner, or is a block reveal of the deviator, an
 honest accepted opening, or an honest expired rejected opening. -/
 def BlockRecordsSound (who : Player) (start finish : Nat)
-    (origin current : (serviceGraph setup mode).Config) : Prop :=
-  ∀ event : (serviceGraph setup mode).EventId, event ∉ origin.cut.completed →
+    (origin current : (serviceGraph setup deps).Config) : Prop :=
+  ∀ event : (serviceGraph setup deps).EventId, event ∉ origin.cut.completed →
     event ∈ current.cut.completed →
     (completionOf current event = some ⟨event, none, none⟩ ∧
       current.outputs event = failureOutput event ∧
-      ∃ owner, (serviceGraph setup mode).actor? event = some owner ∧
+      ∃ owner, (serviceGraph setup deps).actor? event = some owner ∧
         owner ∈ current.defaulted) ∨
     (start ≤ event.val ∧ event.val < finish ∧
-      ((serviceGraph setup mode).actor? event = some who ∨ HonestOpened who current event ∨
+      ((serviceGraph setup deps).actor? event = some who ∨ HonestOpened who current event ∨
         HonestExpired who current event))
 
 /-- A completed event keeps its output along a graph path. -/
-theorem outputs_path {before after : (serviceGraph setup mode).Config}
+theorem outputs_path {before after : (serviceGraph setup deps).Config}
     (path : Relation.ReflTransGen Config.Step before after)
-    {event : (serviceGraph setup mode).EventId} (done : event ∈ before.cut.completed) :
+    {event : (serviceGraph setup deps).EventId} (done : event ∈ before.cut.completed) :
     after.outputs event = before.outputs event := by
   cases outputEq : before.outputs event with
   | none =>
@@ -227,23 +227,23 @@ theorem outputs_path {before after : (serviceGraph setup mode).Config}
   | some value => exact Config.Step.path_store_of_some path (.inr event) value outputEq
 
 /-- A resolution's output keeps its value once its footprint is stored. -/
-theorem resolveOutput_keep {before after : (serviceGraph setup mode).Config}
+theorem resolveOutput_keep {before after : (serviceGraph setup deps).Config}
     (kept : ∀ field value, before.store field = some value → after.store field = some value)
-    {event : (serviceGraph setup mode).EventId} {owner : Player} {payload : L.Ty}
-    {binding : FieldRef (serviceGraph setup mode).layout (.binding owner payload)}
-    {checks : List (GuardCheck (serviceGraph setup mode).layout payload)}
-    {outputEq : (serviceGraph setup mode).outputLayout event = .publication payload}
-    (codeEq : cast (congrArg (EventCode (serviceGraph setup mode).layout) outputEq)
-      ((serviceGraph setup mode).nodes event) = .resolve owner payload binding checks)
-    (available : ∀ field ∈ ((serviceGraph setup mode).nodes event).readFields,
+    {event : (serviceGraph setup deps).EventId} {owner : Player} {payload : L.Ty}
+    {binding : FieldRef (serviceGraph setup deps).layout (.binding owner payload)}
+    {checks : List (GuardCheck (serviceGraph setup deps).layout payload)}
+    {outputEq : (serviceGraph setup deps).outputLayout event = .publication payload}
+    (codeEq : cast (congrArg (EventCode (serviceGraph setup deps).layout) outputEq)
+      ((serviceGraph setup deps).nodes event) = .resolve owner payload binding checks)
+    (available : ∀ field ∈ ((serviceGraph setup deps).nodes event).readFields,
       (before.store field).isSome) (disclose : Bool) :
     EventCode.resolveOutput? binding checks disclose after.store =
       EventCode.resolveOutput? binding checks disclose before.store := by
-  have footprint := EventCode.readFields_cast outputEq ((serviceGraph setup mode).nodes event)
+  have footprint := EventCode.readFields_cast outputEq ((serviceGraph setup deps).nodes event)
   rw [codeEq] at footprint
   apply EventCode.resolveOutput?_congr
   intro field member
-  have read : field ∈ ((serviceGraph setup mode).nodes event).readFields := by
+  have read : field ∈ ((serviceGraph setup deps).nodes event).readFields := by
     rw [← footprint]
     exact member
   obtain ⟨value, stored⟩ := Option.isSome_iff_exists.mp (available field read)
@@ -251,16 +251,16 @@ theorem resolveOutput_keep {before after : (serviceGraph setup mode).Config}
 
 /-- Block records persist along graph paths. -/
 theorem BlockRecordsSound.path {who : Player} {start finish : Nat}
-    {origin before after : (serviceGraph setup mode).Config}
+    {origin before after : (serviceGraph setup deps).Config}
     (path : Relation.ReflTransGen Config.Step before after)
     (sound : BlockRecordsSound who start finish origin before) :
     ∀ event, event ∉ origin.cut.completed → event ∈ before.cut.completed →
       (completionOf after event = some ⟨event, none, none⟩ ∧
         after.outputs event = failureOutput event ∧
-        ∃ owner, (serviceGraph setup mode).actor? event = some owner ∧
+        ∃ owner, (serviceGraph setup deps).actor? event = some owner ∧
           owner ∈ after.defaulted) ∨
       (start ≤ event.val ∧ event.val < finish ∧
-        ((serviceGraph setup mode).actor? event = some who ∨ HonestOpened who after event ∨
+        ((serviceGraph setup deps).actor? event = some who ∨ HonestOpened who after event ∨
           HonestExpired who after event)) := by
   intro event fresh done
   have kept : ∀ field value, before.store field = some value → after.store field = some value :=
@@ -298,13 +298,13 @@ theorem BlockRecordsSound.path {who : Player} {start finish : Nat}
 
 /-- A record a drain appends is silent, for a newly completed event storing its
 failure. -/
-theorem drainRecord_of_not_mem (native : EventGraphRuntime.State (serviceGraph setup mode))
-    (record : (serviceGraph setup mode).Completion) (primary : record ∉ native.config.history)
+theorem drainRecord_of_not_mem (native : EventGraphRuntime.State (serviceGraph setup deps))
+    (record : (serviceGraph setup deps).Completion) (primary : record ∉ native.config.history)
     (present : record ∈ native.drain.config.history) :
     record.decision = none ∧ record.defaultEvent = none ∧
       record.event ∉ native.config.cut.completed ∧
       native.drain.config.outputs record.event = failureOutput record.event ∧
-      ∃ owner, (serviceGraph setup mode).actor? record.event = some owner ∧
+      ∃ owner, (serviceGraph setup deps).actor? record.event = some owner ∧
         owner ∈ native.drain.config.defaulted := by
   obtain ⟨silent, quiet, owner, acting, inactive⟩ :=
     native.drain_new_completion record primary present
@@ -327,19 +327,19 @@ theorem drainRecord_of_not_mem (native : EventGraphRuntime.State (serviceGraph s
 
 /-- A record new after one graph step and a drain is the step's completion, or
 an automatic completion of a newly completed event storing its failure. -/
-theorem newRecord_step_drain (config : (serviceGraph setup mode).Config)
-    (native : EventGraphRuntime.State (serviceGraph setup mode))
-    (event : (serviceGraph setup mode).EventId) (ready : config.cut.Ready event)
-    (action : (serviceGraph setup mode).Action event)
+theorem newRecord_step_drain (config : (serviceGraph setup deps).Config)
+    (native : EventGraphRuntime.State (serviceGraph setup deps))
+    (event : (serviceGraph setup deps).EventId) (ready : config.cut.Ready event)
+    (action : (serviceGraph setup deps).Action event)
     (member : native.config ∈ (config.step event ready action).support)
-    (record : (serviceGraph setup mode).Completion) (fresh : record ∉ config.history)
+    (record : (serviceGraph setup deps).Completion) (fresh : record ∉ config.history)
     (present : record ∈ native.drain.config.history) :
     (record ∈ native.config.history ∧ ∃ value, record = EventGraph.completion
-      (serviceGraph setup mode) event (config.actualDecision event action) value) ∨
+      (serviceGraph setup deps) event (config.actualDecision event action) value) ∨
     (record.decision = none ∧ record.defaultEvent = none ∧
       record.event ∉ native.config.cut.completed ∧
       native.drain.config.outputs record.event = failureOutput record.event ∧
-      ∃ owner, (serviceGraph setup mode).actor? record.event = some owner ∧
+      ∃ owner, (serviceGraph setup deps).actor? record.event = some owner ∧
         owner ∈ native.drain.config.defaulted) := by
   by_cases primary : record ∈ native.config.history
   · left
@@ -350,8 +350,8 @@ theorem newRecord_step_drain (config : (serviceGraph setup mode).Config)
   · exact Or.inr (drainRecord_of_not_mem native record primary present)
 
 /-- An automatic record of an event is its silent record. -/
-theorem completionOf_of_silent {config : (serviceGraph setup mode).Config}
-    {record : (serviceGraph setup mode).Completion} (present : record ∈ config.history)
+theorem completionOf_of_silent {config : (serviceGraph setup deps).Config}
+    {record : (serviceGraph setup deps).Completion} (present : record ∈ config.history)
     (silent : record.decision = none) (quiet : record.defaultEvent = none) :
     completionOf config record.event = some ⟨record.event, none, none⟩ := by
   rw [(completionOf_eq_some_iff config record.event record).mpr ⟨present, rfl⟩]
@@ -361,15 +361,15 @@ theorem completionOf_of_silent {config : (serviceGraph setup mode).Config}
   rfl
 
 /-- An accepted opening's resolution publishes a value. -/
-theorem resolveOutput_of_accepted {event : (serviceGraph setup mode).EventId} {owner : Player}
-    {payload : L.Ty} {binding : FieldRef (serviceGraph setup mode).layout (.binding owner payload)}
-    {checks : List (GuardCheck (serviceGraph setup mode).layout payload)}
-    {outputEq : (serviceGraph setup mode).outputLayout event = .publication payload}
-    {codeEq : cast (congrArg (EventCode (serviceGraph setup mode).layout) outputEq)
-      ((serviceGraph setup mode).nodes event) = .resolve owner payload binding checks}
-    (node : nodeView (serviceGraph setup mode) event =
+theorem resolveOutput_of_accepted {event : (serviceGraph setup deps).EventId} {owner : Player}
+    {payload : L.Ty} {binding : FieldRef (serviceGraph setup deps).layout (.binding owner payload)}
+    {checks : List (GuardCheck (serviceGraph setup deps).layout payload)}
+    {outputEq : (serviceGraph setup deps).outputLayout event = .publication payload}
+    {codeEq : cast (congrArg (EventCode (serviceGraph setup deps).layout) outputEq)
+      ((serviceGraph setup deps).nodes event) = .resolve owner payload binding checks}
+    (node : nodeView (serviceGraph setup deps) event =
       .resolve owner payload binding checks outputEq codeEq)
-    {store : EventGraph.Store (serviceGraph setup mode).layout}
+    {store : EventGraph.Store (serviceGraph setup deps).layout}
     (accepted : openingAccepted event store = true) :
     ∃ value, EventCode.resolveOutput? binding checks true store = some (.success value) := by
   unfold openingAccepted at accepted
@@ -383,13 +383,13 @@ theorem resolveOutput_of_accepted {event : (serviceGraph setup mode).EventId} {o
       | failure => rw [result] at accepted; cases accepted
 
 /-- An active owner's resolution step completes with its deterministic output. -/
-theorem resolve_step_eq {config : (serviceGraph setup mode).Config}
-    {event : (serviceGraph setup mode).EventId} (ready : config.cut.Ready event) {owner : Player}
-    {payload : L.Ty} {binding : FieldRef (serviceGraph setup mode).layout (.binding owner payload)}
-    {checks : List (GuardCheck (serviceGraph setup mode).layout payload)}
-    (outputEq : (serviceGraph setup mode).outputLayout event = .publication payload)
-    (codeEq : cast (congrArg (EventCode (serviceGraph setup mode).layout) outputEq)
-      ((serviceGraph setup mode).nodes event) = .resolve owner payload binding checks)
+theorem resolve_step_eq {config : (serviceGraph setup deps).Config}
+    {event : (serviceGraph setup deps).EventId} (ready : config.cut.Ready event) {owner : Player}
+    {payload : L.Ty} {binding : FieldRef (serviceGraph setup deps).layout (.binding owner payload)}
+    {checks : List (GuardCheck (serviceGraph setup deps).layout payload)}
+    (outputEq : (serviceGraph setup deps).outputLayout event = .publication payload)
+    (codeEq : cast (congrArg (EventCode (serviceGraph setup deps).layout) outputEq)
+      ((serviceGraph setup deps).nodes event) = .resolve owner payload binding checks)
     (active : owner ∉ config.defaulted)
     (disclose : Bool) (output : PublicationResult (L.Val payload))
     (resolved : EventCode.resolveOutput? binding checks disclose config.store = some output) :
@@ -405,16 +405,16 @@ theorem resolve_step_eq {config : (serviceGraph setup mode).Config}
 
 /-- An active owner's resolution record carries its disclosure, and names the
 owner as defaulting exactly when the output fails. -/
-theorem completion_resolve_eq (config : (serviceGraph setup mode).Config)
-    (event : (serviceGraph setup mode).EventId) {owner : Player} {payload : L.Ty}
-    {binding : FieldRef (serviceGraph setup mode).layout (.binding owner payload)}
-    {checks : List (GuardCheck (serviceGraph setup mode).layout payload)}
-    (outputEq : (serviceGraph setup mode).outputLayout event = .publication payload)
-    (codeEq : cast (congrArg (EventCode (serviceGraph setup mode).layout) outputEq)
-      ((serviceGraph setup mode).nodes event) = .resolve owner payload binding checks)
+theorem completion_resolve_eq (config : (serviceGraph setup deps).Config)
+    (event : (serviceGraph setup deps).EventId) {owner : Player} {payload : L.Ty}
+    {binding : FieldRef (serviceGraph setup deps).layout (.binding owner payload)}
+    {checks : List (GuardCheck (serviceGraph setup deps).layout payload)}
+    (outputEq : (serviceGraph setup deps).outputLayout event = .publication payload)
+    (codeEq : cast (congrArg (EventCode (serviceGraph setup deps).layout) outputEq)
+      ((serviceGraph setup deps).nodes event) = .resolve owner payload binding checks)
     (active : owner ∉ config.defaulted) (disclose : Bool)
     (output : PublicationResult (L.Val payload)) :
-    EventGraph.completion (serviceGraph setup mode) event
+    EventGraph.completion (serviceGraph setup deps) event
         (config.actualDecision event (cast (congrArg EventField.Action outputEq.symm) disclose))
         (cast (congrArg EventField.Value outputEq.symm) output) =
       ⟨event, some (cast (congrArg EventField.Action outputEq.symm) disclose),
@@ -432,57 +432,58 @@ theorem completion_resolve_eq (config : (serviceGraph setup mode).Config)
 /-- **The block's records persist.** A round inside an unfinished block keeps
 every record since `origin` classified, when honest clients open a reveal
 exactly when its opening is accepted. -/
-theorem blockRecordsSound_round {horizon : Nat}
-    {scheduler : (serviceApplication setup mode duration leaks).Scheduler}
-    {delay : (serviceGraph setup mode).EventId → Nat}
-    (bound : (serviceGraph setup mode).EventId → Nat) (turns : Nat)
-    (contract : AsyncContract (serviceTimeouts setup mode duration) leaks
-        (serviceInitialLaw setup mode) horizon scheduler delay bound)
-    (timely : AsyncTimely (serviceTimeouts setup mode duration) delay bound)
-    (reference : (serviceGraph setup mode).BehavioralProfile)
-    (decides : ∀ (config : (serviceGraph setup mode).Config)
-      (event : (serviceGraph setup mode).EventId) (owner : Player) (payload : L.Ty)
-      (binding : FieldRef (serviceGraph setup mode).layout (.binding owner payload))
-      (checks : List (GuardCheck (serviceGraph setup mode).layout payload))
-      (outputEq : (serviceGraph setup mode).outputLayout event = .publication payload)
-      (codeEq : cast (congrArg (EventCode (serviceGraph setup mode).layout) outputEq)
-        ((serviceGraph setup mode).nodes event) = .resolve owner payload binding checks),
-      nodeView (serviceGraph setup mode) event =
+theorem blockRecordsSound_round
+    (serial : (serviceGraph setup deps).ActorSerial) {horizon : Nat}
+    {scheduler : (serviceApplication setup deps duration leaks).Scheduler}
+    {delay : (serviceGraph setup deps).EventId → Nat}
+    (bound : (serviceGraph setup deps).EventId → Nat) (turns : Nat)
+    (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
+        (serviceInitialLaw setup deps) horizon scheduler delay bound)
+    (timely : AsyncTimely (serviceTimeouts setup deps duration) delay bound)
+    (reference : (serviceGraph setup deps).BehavioralProfile)
+    (decides : ∀ (config : (serviceGraph setup deps).Config)
+      (event : (serviceGraph setup deps).EventId) (owner : Player) (payload : L.Ty)
+      (binding : FieldRef (serviceGraph setup deps).layout (.binding owner payload))
+      (checks : List (GuardCheck (serviceGraph setup deps).layout payload))
+      (outputEq : (serviceGraph setup deps).outputLayout event = .publication payload)
+      (codeEq : cast (congrArg (EventCode (serviceGraph setup deps).layout) outputEq)
+        ((serviceGraph setup deps).nodes event) = .resolve owner payload binding checks),
+      nodeView (serviceGraph setup deps) event =
         .resolve owner payload binding checks outputEq codeEq →
-      ∀ (actor : (serviceGraph setup mode).actor? event = some owner)
-        (active : owner ∉ ((serviceGraph setup mode).playerObserve owner config).defaulted),
-        reference owner event actor ((serviceGraph setup mode).playerObserve owner config)
+      ∀ (actor : (serviceGraph setup deps).actor? event = some owner)
+        (active : owner ∉ ((serviceGraph setup deps).playerObserve owner config).defaulted),
+        reference owner event actor ((serviceGraph setup deps).playerObserve owner config)
           active = PMF.pure (cast (congrArg EventField.Action outputEq.symm)
             (openingAccepted event config.store)))
-    (who : Player) (deviation : (serviceApplication setup mode duration leaks).Policy)
-    (start finish : Nat) (shaped : BlockShaped (graph := serviceGraph setup mode) start finish)
-    (publications : ∀ event : (serviceGraph setup mode).EventId, start ≤ event.val →
-      event.val < finish → ((serviceGraph setup mode).outputLayout event).IsPublication)
-    (origin : (serviceGraph setup mode).Config)
-    (current next : (serviceApplication setup mode duration leaks).Execution)
-    (supported : current ∈ ((serviceApplication setup mode duration leaks).roundsFrom
-      (serviceInitialLaw setup mode) scheduler
-      (Function.update (serviceReferenceTurnPolicy setup mode duration leaks bound turns
-        (firstTurnTiming setup turns mode) reference) who deviation)
+    (who : Player) (deviation : (serviceApplication setup deps duration leaks).Policy)
+    (start finish : Nat) (shaped : BlockShaped (graph := serviceGraph setup deps) start finish)
+    (publications : ∀ event : (serviceGraph setup deps).EventId, start ≤ event.val →
+      event.val < finish → ((serviceGraph setup deps).outputLayout event).IsPublication)
+    (origin : (serviceGraph setup deps).Config)
+    (current next : (serviceApplication setup deps duration leaks).Execution)
+    (supported : current ∈ ((serviceApplication setup deps duration leaks).roundsFrom
+      (serviceInitialLaw setup deps) scheduler
+      (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+        (firstTurnTiming setup turns deps) reference) who deviation)
       current.environmentRecall.length).support)
     (bounded : current.environmentRecall.length ≤ horizon)
     (inside : InBlock start finish current.application.config)
     (running : ¬ BlockDone finish current.application.config)
     (submissions : HonestBlockSubmissions who start finish current)
     (sound : BlockRecordsSound who start finish origin current.application.config)
-    (reached : next ∈ ((serviceApplication setup mode duration leaks).round scheduler
-      (Function.update (serviceReferenceTurnPolicy setup mode duration leaks bound turns
-        (firstTurnTiming setup turns mode) reference) who deviation) current).support) :
+    (reached : next ∈ ((serviceApplication setup deps duration leaks).round scheduler
+      (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+        (firstTurnTiming setup turns deps) reference) who deviation) current).support) :
     BlockRecordsSound who start finish origin next.application.config := by
   classical
-  let app := serviceApplication setup mode duration leaks
-  let timeouts := serviceTimeouts setup mode duration
-  let players := Function.update (serviceReferenceTurnPolicy setup mode duration leaks bound
-    turns (firstTurnTiming setup turns mode) reference) who deviation
-  obtain ⟨trace⟩ := app.raw_trace_roundsFrom (serviceInitialLaw setup mode) horizon scheduler
+  let app := serviceApplication setup deps duration leaks
+  let timeouts := serviceTimeouts setup deps duration
+  let players := Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound
+    turns (firstTurnTiming setup turns deps) reference) who deviation
+  obtain ⟨trace⟩ := app.raw_trace_roundsFrom (serviceInitialLaw setup deps) horizon scheduler
     players current.environmentRecall.length bounded current supported
   have facts := legalFacts setup leaks horizon scheduler _ trace
-  have signed := signedCommitments_history timeouts leaks (serviceInitialLaw setup mode)
+  have signed := signedCommitments_history timeouts leaks (serviceInitialLaw setup deps)
     (fun state supported => by
       obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ supported
       exact ⟨_, rfl⟩) horizon scheduler trace
@@ -509,19 +510,19 @@ theorem blockRecordsSound_round {horizon : Nat}
     old ((current.application.config.history_exact event).mp
       (List.mem_map.mpr ⟨record, inside, recordEvent⟩))
   -- an automatic completion of the drain
-  have silentCase (native : EventGraphRuntime.State (serviceGraph setup mode))
+  have silentCase (native : EventGraphRuntime.State (serviceGraph setup deps))
       (drained : native.drain.config = middle.application.config)
       (silent : record.decision = none) (quiet : record.defaultEvent = none)
       (notDone : record.event ∉ native.config.cut.completed)
       (output : native.drain.config.outputs record.event = failureOutput record.event)
-      (drainOwner : ∃ owner, (serviceGraph setup mode).actor? record.event = some owner ∧
+      (drainOwner : ∃ owner, (serviceGraph setup deps).actor? record.event = some owner ∧
         owner ∈ native.drain.config.defaulted) :
       (completionOf middle.application.config event = some ⟨event, none, none⟩ ∧
         middle.application.config.outputs event = failureOutput event ∧
-        ∃ owner, (serviceGraph setup mode).actor? event = some owner ∧
+        ∃ owner, (serviceGraph setup deps).actor? event = some owner ∧
           owner ∈ middle.application.config.defaulted) ∨
       (start ≤ event.val ∧ event.val < finish ∧
-        ((serviceGraph setup mode).actor? event = some who ∨
+        ((serviceGraph setup deps).actor? event = some who ∨
           HonestOpened who middle.application.config event ∨
           HonestExpired who middle.application.config event)) := by
     left
@@ -535,8 +536,8 @@ theorem blockRecordsSound_round {horizon : Nat}
   have readyCase (ready : current.application.config.cut.Ready event) :
       start ≤ event.val ∧ event.val < finish := shaped _ inside running event ready
   have follows (owner : Player) (different : owner ≠ who) : players owner =
-      serviceReferenceTurnPolicy setup mode duration leaks bound turns
-        (firstTurnTiming setup turns mode) reference owner := Function.update_of_ne different _ _
+      serviceReferenceTurnPolicy setup deps duration leaks bound turns
+        (firstTurnTiming setup turns deps) reference owner := Function.update_of_ne different _ _
   cases command with
   | activate actor =>
       have same := activation_application setup leaks current middle actor moved
@@ -725,7 +726,7 @@ theorem blockRecordsSound_round {horizon : Nat}
           · exfalso
             have within := effectivePublication_withinDeadline contract timely players owner
               reference decides (follows owner isWho) current.environmentRecall.length bounded
-              current supported record.event owned readyStepped
+              current supported record.event (serial record.event) owned readyStepped
               (publications record.event bounds.1 bounds.2) acceptedEq
             unfold EventGraphRuntime.State.WithinDeadline at within
             rw [activated] at within

@@ -18,9 +18,9 @@ open SourceProgram GameTheory.Protocol Interaction EventGraphRuntime
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 local notation "menu" => bounds.onePacketMenu timeouts leaks
@@ -36,9 +36,10 @@ theorem pending_publicClear_of_acceptanceInvariant
     (certificate : (protocol).WellFoundedHistories)
     (profile : ∀ who, (model).BehavioralPolicy who) (stopped : (protocol).History → Prop)
     (who : Player) (entry : (application setup timeouts leaks).PlayerEntry)
-    (message : Message Player (WitnessedPacket (graph setup)))
-    (event : (graph setup).EventId) (sent : (graph setup).Config)
-    (action : (graph setup).Action event) (output : ((graph setup).outputLayout event).Value)
+    (message : Message Player (WitnessedPacket setup.informationGraph))
+    (event : setup.informationGraph.EventId) (sent : setup.informationGraph.Config)
+    (action : setup.informationGraph.Action event) (output : (setup.informationGraph.outputLayout
+      event).Value)
     (start : (protocol).History) (current : (application setup timeouts leaks).Control)
     (state : start.state = some current)
     (clear : current.execution.application.config.defaulted = ∅)

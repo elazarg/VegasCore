@@ -2,7 +2,7 @@
 
 This is the proof design for intended Nash preservation. The dependency and
 prescribed-policy scheduling lemmas are checked in
-[BindingConcurrency](../Vegas/EventGraph/BindingConcurrency.lean) and
+[DependencyRelaxation](../Vegas/EventGraph/DependencyRelaxation.lean) and
 [PrefixPolicy](../Vegas/EventGraph/PrefixPolicy.lean). The equilibrium and native
 runtime statements below remain proof obligations; they are not paper claims.
 

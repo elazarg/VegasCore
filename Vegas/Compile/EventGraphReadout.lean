@@ -141,7 +141,7 @@ theorem decodeState?_isSome_of_refs {Field : Type}
 state. Totality follows from terminal store availability, not from a default. -/
 def terminalState {Γ : SourceCtx Player L} {openNames : Finset VarId}
     (program : SourceProgram Player L Γ openNames)
-    (result : {config : (toEventGraph program).Config //
+    (result : {config : (toInformationGraph program).Config //
       config.cut.Terminal}) : State L program.terminalCtx :=
   (decodeState? (terminalRefs program) result.1.store).get
     (decodeState?_isSome_of_available _ result.1.store
@@ -153,12 +153,12 @@ the left side exposes this without introducing a payload default. -/
 theorem terminalOutcomes_map_decode
     {Γ : SourceCtx Player L} {openNames : Finset VarId}
     (program : SourceProgram Player L Γ openNames)
-    (scheduler : (toEventGraph program).PublicScheduler)
-    (profile : (toEventGraph program).BehavioralProfile)
-    (inputs : (toEventGraph program).Inputs) :
-    (((toEventGraph program).terminalOutcomes scheduler profile inputs).map
+    (scheduler : (toInformationGraph program).PublicScheduler)
+    (profile : (toInformationGraph program).BehavioralProfile)
+    (inputs : (toInformationGraph program).Inputs) :
+    (((toInformationGraph program).terminalOutcomes scheduler profile inputs).map
         (terminalState program)).map some =
-      (((toEventGraph program).runPolicies scheduler profile inputs).map
+      (((toInformationGraph program).runPolicies scheduler profile inputs).map
         Vegas.EventGraph.Config.store).map
           (decodeState? (terminalRefs program)) := by
   have decodeTerminal : (some ∘ terminalState program) =
@@ -167,14 +167,14 @@ theorem terminalOutcomes_map_decode
     funext result
     exact Option.some_get _
   rw [PMF.map_comp, decodeTerminal, ← PMF.map_comp,
-    (toEventGraph program).terminalOutcomes_map_val,
+    (toInformationGraph program).terminalOutcomes_map_val,
     PMF.map_comp]
 
 /-- Agreement identifies the no-default terminal decoder with the simulated
 source terminal state. -/
 theorem terminalState_eq {Γ : SourceCtx Player L} {openNames : Finset VarId}
     (program : SourceProgram Player L Γ openNames)
-    (result : {config : (toEventGraph program).Config //
+    (result : {config : (toInformationGraph program).Config //
       config.cut.Terminal})
     (state : State L program.terminalCtx)
     (refsAgree : (terminalRefs program).Agrees state result.1.store) :
@@ -187,7 +187,7 @@ theorem terminalState_eq {Γ : SourceCtx Player L} {openNames : Finset VarId}
 readout is exactly the source terminal expression evaluation. -/
 theorem terminalPayoffs_eq_source {Γ : SourceCtx Player L}
     {openNames : Finset VarId} (program : SourceProgram Player L Γ openNames)
-    (config : (toEventGraph program).Config)
+    (config : (toInformationGraph program).Config)
     (terminal : config.cut.Terminal)
     (state : State L program.terminalCtx)
     (agree : (terminalRefs program).Agrees state config.store) :
@@ -208,7 +208,7 @@ theorem terminalPayoffs_eq_source {Γ : SourceCtx Player L}
 /-- Integer payout readout of one completed compiled event execution. -/
 def terminalPayouts {Γ : SourceCtx Player L} {openNames : Finset VarId}
     (program : SourceProgram Player L Γ openNames)
-    (result : {config : (toEventGraph program).Config //
+    (result : {config : (toInformationGraph program).Config //
       config.cut.Terminal}) : List (Player × Int) :=
   (result.1.terminalPayoffs result.2).map fun payoff => (payoff.1, L.toInt payoff.2)
 
@@ -216,7 +216,7 @@ def terminalPayouts {Γ : SourceCtx Player L} {openNames : Finset VarId}
 source payout expressions on the decoded complete source state. -/
 theorem terminalPayouts_eq_source {Γ : SourceCtx Player L}
     {openNames : Finset VarId} (program : SourceProgram Player L Γ openNames)
-    (result : {config : (toEventGraph program).Config //
+    (result : {config : (toInformationGraph program).Config //
       config.cut.Terminal}) :
     terminalPayouts program result =
       program.evaluatePayoffs (terminalState program result) := by
@@ -251,7 +251,7 @@ def decodeConfig?
     (revelations : Revelations Γ) (registry : Registry Γ)
     (embedding : OutputEmbedding (inputLayout wholeΓ) (outputLayout whole) program)
     (store : Vegas.EventGraph.Store (graphLayout whole))
-    (history : List (toEventGraph whole).Completion) :
+    (history : List (toInformationGraph whole).Completion) :
     Option (SourceProgram.Config Player L program.terminalCtx) :=
   (decodeState? (terminalRefsWith program refs embedding.ref) store).map fun state =>
     ⟨state, finalRegistry program registry, finalRevelations program revelations,
@@ -261,7 +261,7 @@ def decodeConfig?
 values. Terminality supplies availability of every referenced typed field. -/
 def terminalConfig {Γ : SourceCtx Player L} {openNames : Finset VarId}
     (program : SourceProgram Player L Γ openNames)
-    (result : {config : (toEventGraph program).Config // config.cut.Terminal}) :
+    (result : {config : (toInformationGraph program).Config // config.cut.Terminal}) :
     SourceProgram.Config Player L program.terminalCtx :=
   ⟨terminalState program result, finalRegistry program [],
     finalRevelations program (Revelations.initial Γ),
@@ -271,7 +271,7 @@ def terminalConfig {Γ : SourceCtx Player L} {openNames : Finset VarId}
 exactly the total terminal readout. -/
 theorem decodeConfig?_terminal {Γ : SourceCtx Player L} {openNames : Finset VarId}
     (program : SourceProgram Player L Γ openNames)
-    (result : {config : (toEventGraph program).Config // config.cut.Terminal}) :
+    (result : {config : (toInformationGraph program).Config // config.cut.Terminal}) :
     decodeConfig? program program (ContextRefs.initial Γ (outputLayout program))
         (Revelations.initial Γ) [] (outputEmbedding program) result.1.store result.1.history =
       some (terminalConfig program result) := by
@@ -288,12 +288,12 @@ graph execution law; the terminality certificate adds no semantic information. -
 theorem terminalOutcomes_map_decodeConfig
     {Γ : SourceCtx Player L} {openNames : Finset VarId}
     (program : SourceProgram Player L Γ openNames)
-    (scheduler : (toEventGraph program).PublicScheduler)
-    (profile : (toEventGraph program).BehavioralProfile)
-    (inputs : (toEventGraph program).Inputs) :
-    (((toEventGraph program).terminalOutcomes scheduler profile inputs).map
+    (scheduler : (toInformationGraph program).PublicScheduler)
+    (profile : (toInformationGraph program).BehavioralProfile)
+    (inputs : (toInformationGraph program).Inputs) :
+    (((toInformationGraph program).terminalOutcomes scheduler profile inputs).map
         (terminalConfig program)).map some =
-      ((toEventGraph program).runPolicies scheduler profile inputs).map
+      ((toInformationGraph program).runPolicies scheduler profile inputs).map
         (fun final => decodeConfig? program program
           (ContextRefs.initial Γ (outputLayout program))
           (Revelations.initial Γ) [] (outputEmbedding program) final.store final.history) := by
@@ -305,6 +305,6 @@ theorem terminalOutcomes_map_decodeConfig
     funext result
     exact (decodeConfig?_terminal program result).symm
   rw [PMF.map_comp, decodeTerminal, ← PMF.map_comp,
-    (toEventGraph program).terminalOutcomes_map_val]
+    (toInformationGraph program).terminalOutcomes_map_val]
 
 end Vegas

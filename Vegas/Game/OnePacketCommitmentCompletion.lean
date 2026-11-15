@@ -32,9 +32,9 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- **One-packet commitments use fresh slots.** At a history of the one-packet
@@ -49,7 +49,7 @@ theorem onePacket_commitment_fresh {control : (application setup timeouts leaks)
       (control.execution.logs who) (control.execution.observe (application setup timeouts leaks)
         who))
     (material : (application setup timeouts leaks).Submission)
-    (sends : response.transmission = some material) {event : (graph setup).EventId}
+    (sends : response.transmission = some material) {event : setup.informationGraph.EventId}
     {serial : Nat} (packet : material.call.packet = .commitment event (who, .prepared serial)) :
     control.execution.application.candidates.lookup (who, .prepared serial) = .fresh ∧
       material.evidence = .none := by
@@ -129,9 +129,9 @@ theorem acceptanceInvariant_respond_commitment {remaining : Nat} {who : Player}
     {execution : (application setup timeouts leaks).Execution}
     (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some ⟨remaining, some who, execution⟩))
-    (event : (graph setup).EventId)
+    (event : setup.informationGraph.EventId)
     (turn : execution.application.publicView.ownTurn? who = some event)
-    {payload : L.Ty} (outputEq : (graph setup).outputLayout event = .binding who payload)
+    {payload : L.Ty} (outputEq : setup.informationGraph.outputLayout event = .binding who payload)
     (response : (application setup timeouts leaks).Action)
     (member : response ∈ bounds.onePacketActions timeouts leaks who
       (execution.logs who) (execution.observe (application setup timeouts leaks) who))
@@ -235,17 +235,17 @@ theorem acceptanceInvariant_respond_commitment {remaining : Nat} {who : Player}
 
 /-- A count-permitted commitment sent while its protected inclusion window fits
 is recorded as a fresh call. Only the actual window is needed. -/
-theorem onePacket_commitment_freshCall {bound : (graph setup).EventId → Nat}
+theorem onePacket_commitment_freshCall {bound : setup.informationGraph.EventId → Nat}
     {remaining : Nat} {who : Player} {execution : (application setup timeouts leaks).Execution}
     (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some ⟨remaining, some who, execution⟩))
-    (event : (graph setup).EventId)
+    (event : setup.informationGraph.EventId)
     (turn : execution.application.publicView.ownTurn? who = some event)
     (fits : execution.application.publicView.InclusionFitsDeadline timeouts bound event)
-    {payload : L.Ty} {outputEq : (graph setup).outputLayout event = .binding who payload}
-    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .bind who payload}
-    (node : nodeView (graph setup) event = .bind who payload outputEq codeEq)
+    {payload : L.Ty} {outputEq : setup.informationGraph.outputLayout event = .binding who payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .bind who payload}
+    (node : nodeView setup.informationGraph event = .bind who payload outputEq codeEq)
     (response : (application setup timeouts leaks).Action)
     (member : response ∈ bounds.onePacketActions timeouts leaks who
       (execution.logs who) (execution.observe (application setup timeouts leaks) who))

@@ -568,7 +568,7 @@ the corresponding completed graph prefix. -/
 private theorem store_isSome_of_before
     {wholeΓ : SourceCtx Player L} {wholeOpen : Finset VarId}
     (whole : SourceProgram Player L wholeΓ wholeOpen)
-    (config : (toEventGraph whole).Config) {offset : Nat}
+    (config : (toInformationGraph whole).Config) {offset : Nat}
     (ordered : config.cut.IsPrefix offset)
     (event : Fin (eventCount whole)) (rank : event.val = offset)
     (field : Vegas.EventGraph.FieldId wholeΓ.length (eventCount whole))
@@ -592,17 +592,17 @@ theorem exists_decodeObservation_of_prefix
     (embedding : OutputEmbedding (inputLayout wholeΓ) (outputLayout whole) program)
     (refsBefore : ContextRefsBefore refs embedding)
     (index : Fin (eventCount program)) (offset : Nat)
-    (config : (toEventGraph whole).Config)
+    (config : (toInformationGraph whole).Config)
     (ordered : config.cut.IsPrefix offset)
     (rank : (embedding.event index).val = offset) (who : Player) :
     ∃ observation, decodeObservation? who refs
-        ((toEventGraph whole).playerStore who config.store) = some observation := by
+        ((toInformationGraph whole).playerStore who config.store) = some observation := by
   apply exists_decodeObservation_of_available who refs
   intro name cell source visible
   let ref := refs.get source
   have visibleKind : (cellField cell).VisibleTo who := by
     cases cell <;> exact visible
-  rw [ref.get?_playerStore (graph := toEventGraph whole) who config.store
+  rw [ref.get?_playerStore (graph := toInformationGraph whole) who config.store
     visibleKind]
   exact ref.get?_isSome config.store
     (store_isSome_of_before whole config ordered (embedding.event index) rank
@@ -686,12 +686,12 @@ theorem ContextRefs.CoversPrefix.available_visible
     (whole : SourceProgram Player L wholeΓ wholeOpen)
     {Γ : SourceCtx Player L} (refs : ContextRefs (graphLayout whole) Γ)
     (offset : Nat) (covered : refs.CoversPrefix whole offset)
-    (config : (toEventGraph whole).Config)
+    (config : (toInformationGraph whole).Config)
     (ordered : config.cut.IsPrefix offset) (who : Player)
-    (field : (toEventGraph whole).Field)
+    (field : (toInformationGraph whole).Field)
     (absent : ¬ refs.CoversVisible who field) :
-    (toEventGraph whole).playerStore who config.store field = none := by
-  let graph := toEventGraph whole
+    (toInformationGraph whole).playerStore who config.store field = none := by
+  let graph := toInformationGraph whole
   by_cases visible : graph.fieldVisibleTo who field
   · rw [graph.playerStore_of_visible who config.store field visible]
     cases field with

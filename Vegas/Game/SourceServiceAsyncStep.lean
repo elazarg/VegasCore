@@ -33,19 +33,19 @@ open GameTheory.Math.Probability Interaction EventGraphRuntime
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
-  (timeouts : EventTimeouts (graph setup))
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+  (timeouts : EventTimeouts setup.informationGraph)
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
 
 section Generic
 
-variable (setup : Setup (Player := Player) (L := L)) {mode : EventGraph.ExecutionMode}
-  {duration : (serviceGraph setup mode).EventId → Nat}
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
+variable (setup : Setup (Player := Player) (L := L)) {deps : setup.dataflowGraph.Dependencies}
+  {duration : (serviceGraph setup deps).EventId → Nat}
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup deps)))
 
 variable {setup} {leaks}
 
-theorem deferral_nonneg {turns : Nat} (timing : TurnTiming setup turns mode)
-    (event : (serviceGraph setup mode).EventId) : 0 ≤ timing.deferral event := by
+theorem deferral_nonneg {turns : Nat} (timing : TurnTiming setup turns deps)
+    (event : (serviceGraph setup deps).EventId) : 0 ≤ timing.deferral event := by
   unfold TurnTiming.deferral
   split
   · exact le_rfl
@@ -56,15 +56,15 @@ theorem deferral_nonneg {turns : Nat} (timing : TurnTiming setup turns mode)
 
 /-- Rounds from a terminal configuration keep the configuration. -/
 theorem runRounds_config_terminal
-    (scheduler : (serviceApplication setup mode duration leaks).Scheduler)
-    (players : Player → (serviceApplication setup mode duration leaks).Policy) (count : Nat)
-    (execution next : (serviceApplication setup mode duration leaks).Execution)
+    (scheduler : (serviceApplication setup deps duration leaks).Scheduler)
+    (players : Player → (serviceApplication setup deps duration leaks).Policy) (count : Nat)
+    (execution next : (serviceApplication setup deps duration leaks).Execution)
     (terminal : execution.application.config.cut.IsPrefix
-      (serviceGraph setup mode).order.eventCount)
-    (reached : next ∈ ((serviceApplication setup mode duration leaks).runRounds scheduler players
+      (serviceGraph setup deps).order.eventCount)
+    (reached : next ∈ ((serviceApplication setup deps duration leaks).runRounds scheduler players
       count execution).support) :
     next.application.config = execution.application.config := by
-  let app := serviceApplication setup mode duration leaks
+  let app := serviceApplication setup deps duration leaks
   induction count generalizing execution with
   | zero =>
       cases (PMF.mem_support_pure_iff _ _).mp reached
@@ -76,7 +76,7 @@ theorem runRounds_config_terminal
         Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ dispatched)
       have stepConfig : stepped.application.config = execution.application.config :=
         EventGraph.Config.Step.path_eq_of_terminal
-          (((reactiveApplication_graphSteps (serviceTimeouts setup mode duration))
+          (((reactiveApplication_graphSteps (serviceTimeouts setup deps duration))
             leaks).environmentStep execution stepped command stepMember) terminal.terminal
       have middleConfig : middle.application.config = execution.application.config := by
         change middle ∈ (app.resume players (command.actor? app) stepped).support at resumed
@@ -91,11 +91,11 @@ theorem runRounds_config_terminal
             change middle ∈ (app.invoke players who stepped).support at resumed
             rw [ReactiveApplication.invoke, PMF.support_map] at resumed
             obtain ⟨response, _, rfl⟩ := resumed
-            rw [((reactive_respond_application (serviceTimeouts setup mode duration)) leaks
+            rw [((reactive_respond_application (serviceTimeouts setup deps duration)) leaks
               stepped who
               response).1, stepConfig]
       have terminalMiddle : middle.application.config.cut.IsPrefix
-          (serviceGraph setup mode).order.eventCount := by
+          (serviceGraph setup deps).order.eventCount := by
         rw [middleConfig]
         exact terminal
       rw [ih middle terminalMiddle rest, middleConfig]
@@ -134,7 +134,8 @@ variable {setup leaks}
 the event has completed is a later actual boundary, within the horizon. -/
 theorem CompletionBoundary.stopped {scheduler : (application setup timeouts leaks).Scheduler}
     {players : Player → (application setup timeouts leaks).Policy} {horizon : Nat}
-    (event : (graph setup).EventId) (execution : (application setup timeouts leaks).Execution)
+    (event : setup.informationGraph.EventId) (execution : (application setup timeouts
+      leaks).Execution)
     (boundary : CompletionBoundary setup leaks scheduler players event.val execution)
     (bounded : execution.environmentRecall.length ≤ horizon)
     (stopped : (application setup timeouts leaks).Execution)
@@ -168,40 +169,41 @@ variable (setup leaks)
 /-- Local completion laws determine every terminal native readout.
 Automatic completion may cross several source instructions before the next boundary. -/
 theorem CompletionBoundary.runToHorizon_law {Outcome : Type*}
-    (profile : (graph setup).BehavioralProfile) (read : (graph setup).Config → Outcome)
+    (profile : setup.informationGraph.BehavioralProfile) (read : setup.informationGraph.Config →
+      Outcome)
     {scheduler : (application setup timeouts leaks).Scheduler}
     {players : Player → (application setup timeouts leaks).Policy} {horizon : Nat}
     (completes : (CompletesPlay timeouts) leaks (initialLaw setup) horizon scheduler)
-    (completionLaw : ∀ (event : (graph setup).EventId)
+    (completionLaw : ∀ (event : setup.informationGraph.EventId)
       (execution : (application setup timeouts leaks).Execution),
       CompletionBoundary setup leaks scheduler players event.val execution →
       execution.environmentRecall.length ≤ horizon →
       ((application setup timeouts leaks).runUntilHorizon scheduler players
         (fun final => event ∈ final.application.config.cut.completed) horizon execution).bind
-          (fun final => ((graph setup).runPlan
-            ((graph setup).policyPlan profile (graph setup).canonicalScheduler)
+          (fun final => (setup.informationGraph.runPlan
+            (setup.informationGraph.policyPlan profile setup.informationGraph.canonicalScheduler)
             final.application.config.remaining final.application.config).map read) =
-        ((graph setup).runPlan
-          ((graph setup).policyPlan profile (graph setup).canonicalScheduler)
+        (setup.informationGraph.runPlan
+          (setup.informationGraph.policyPlan profile setup.informationGraph.canonicalScheduler)
           execution.application.config.remaining execution.application.config).map read)
     {rank : Nat} (execution : (application setup timeouts leaks).Execution)
     (boundary : CompletionBoundary setup leaks scheduler players rank execution)
     (bounded : execution.environmentRecall.length ≤ horizon) :
     ((application setup timeouts leaks).runToHorizon scheduler players horizon execution).map
         (fun final => read final.application.config) =
-      ((graph setup).runPlan
-        ((graph setup).policyPlan profile (graph setup).canonicalScheduler)
+      (setup.informationGraph.runPlan
+        (setup.informationGraph.policyPlan profile setup.informationGraph.canonicalScheduler)
         execution.application.config.remaining execution.application.config).map read := by
   classical
   let app := application setup timeouts leaks
-  let plan := (graph setup).policyPlan profile (graph setup).canonicalScheduler
+  let plan := setup.informationGraph.policyPlan profile setup.informationGraph.canonicalScheduler
   generalize remainingEq : execution.application.config.remaining = remaining
   induction remaining using Nat.strong_induction_on generalizing rank execution with
   | h remaining ih =>
       rw [← remainingEq]
-      by_cases finished : rank = (graph setup).order.eventCount
+      by_cases finished : rank = setup.informationGraph.order.eventCount
       · have terminal : execution.application.config.cut.IsPrefix
-            (graph setup).order.eventCount := finished ▸ boundary.ordered
+            setup.informationGraph.order.eventCount := finished ▸ boundary.ordered
         have zero : execution.application.config.remaining = 0 :=
           execution.application.config.terminal_iff_remaining_zero.mp terminal.terminal
         rw [zero, EventGraph.runPlan, PMF.pure_map]
@@ -211,17 +213,17 @@ theorem CompletionBoundary.runToHorizon_law {Outcome : Type*}
           (fun next reached => congrArg read (runRounds_config_terminal
             (setup := setup) (leaks := leaks) scheduler players _ execution next terminal reached)),
           pmf_map_fun_const]
-      · have active : rank < (graph setup).order.eventCount := by
-          have rankBound : rank ≤ (graph setup).order.eventCount := boundary.ordered.1
+      · have active : rank < setup.informationGraph.order.eventCount := by
+          have rankBound : rank ≤ setup.informationGraph.order.eventCount := boundary.ordered.1
           omega
-        let event : (graph setup).EventId := ⟨rank, active⟩
+        let event : setup.informationGraph.EventId := ⟨rank, active⟩
         rw [app.runToHorizon_eq_runUntilHorizon_bind scheduler players
           (fun final => event ∈ final.application.config.cut.completed), PMF.map_bind]
         calc
           _ = (app.runUntilHorizon scheduler players
               (fun final => event ∈ final.application.config.cut.completed) horizon
               execution).bind (fun final =>
-                ((graph setup).runPlan plan final.application.config.remaining
+                (setup.informationGraph.runPlan plan final.application.config.remaining
                   final.application.config).map read) := by
             apply bind_congr_on_support _
             intro stopped reached
@@ -251,7 +253,7 @@ theorem CompletionBoundary.runToHorizon_law {Outcome : Type*}
                 boundary.ordered.card
               have nextCard : stopped.application.config.cut.completed.card = actualRank :=
                 nextBoundary.ordered.card
-              have nextBound : actualRank ≤ (graph setup).order.eventCount :=
+              have nextBound : actualRank ≤ setup.informationGraph.order.eventCount :=
                 nextBoundary.ordered.1
               have laterRank : rank < actualRank := later
               unfold EventGraph.Config.remaining at remainingEq ⊢

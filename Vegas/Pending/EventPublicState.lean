@@ -122,13 +122,22 @@ theorem State.publicView_eventReady (state : State graph) (event : graph.EventId
     · intro predecessor member
       exact (state.config.history_exact predecessor).mpr (predecessors member)
 
-/-- Under reveal-relaxed ordering every ready event is its actor's turn. -/
-theorem State.ownTurn_of_ready (state : State graph) (ordered : graph.RevealRelaxedOrdered)
-    (who : Player) (event : graph.EventId) (ready : state.publicView.EventReady event)
+omit [DecidableEq Player] in
+/-- A ready event with no other ready move of its owner is that owner's turn. -/
+theorem State.ownTurn_of_ready (state : State graph) (who : Player) (event : graph.EventId)
+    (unique : graph.OwnerSolitary event) (ready : state.publicView.EventReady event)
     (actor : graph.actor? event = some who) : state.publicView.OwnTurn who event :=
   ⟨ready, actor, fun other otherReady otherActor =>
-    ordered.ready_actor_unique state.config.cut ((state.publicView_eventReady event).mp ready)
+    unique.ready_actor_unique state.config.cut ((state.publicView_eventReady event).mp ready)
       ((state.publicView_eventReady other).mp otherReady) actor otherActor⟩
+
+/-- Actor-local uniqueness identifies a ready event with the public turn selector. -/
+theorem State.ownTurn?_of_ready (state : State graph) {event : graph.EventId}
+    (unique : graph.OwnerSolitary event) (ready : state.config.cut.Ready event) {who : Player}
+    (actor : graph.actor? event = some who) : state.publicView.ownTurn? who = some event :=
+  state.publicView.ownTurn?_of_ownTurn who event
+    (state.ownTurn_of_ready who event unique ((state.publicView_eventReady event).mpr ready)
+      actor)
 
 omit [DecidableEq Player] in
 /-- A sender whose contract state has the event ready attaches its token. -/

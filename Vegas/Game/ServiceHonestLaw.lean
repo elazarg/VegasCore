@@ -24,15 +24,16 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 an asynchronous scheduler and its reaction and inclusion timing budget. -/
 theorem firstTurn_readout_law [Finite Player]
     (setup : Setup (Player := Player) (L := L))
-    {duration : (graph setup).EventId → Nat}
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    {duration : setup.informationGraph.EventId → Nat}
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
     {horizon : Nat} {scheduler : (application setup ⟨duration⟩ leaks).Scheduler}
-    {delay bound : (graph setup).EventId → Nat}
+    {delay bound : setup.informationGraph.EventId → Nat}
     (contract : AsyncContract ⟨duration⟩ leaks (initialLaw setup) horizon scheduler delay bound)
     (timely : AsyncTimely ⟨duration⟩ delay bound) (turns : Nat)
     (profile : BehavioralProfile setup.program)
     (authentic : ∀ who, (profile who).AuthenticDisclosures setup.program) :
-    FirstTurnSourceLaw setup .sequential duration leaks horizon scheduler bound turns profile :=
+    FirstTurnSourceLaw setup setup.informationDependencies duration leaks horizon scheduler bound
+      turns profile :=
   firstTurnSourceLaw_of_async ⟨duration⟩ leaks scheduler delay bound profile contract timely
     authentic
 

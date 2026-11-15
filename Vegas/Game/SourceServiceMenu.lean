@@ -24,8 +24,8 @@ variable {Player : Type} [Fintype Player] [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
 
 def sourceServiceMenu (setup : Setup (Player := Player) (L := L))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-    (bounds : MessageBounds (graph setup)) :
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
+    (bounds : MessageBounds setup.informationGraph) :
     (application setup (Vegas.timeouts setup) leaks).ResponseMenu where
   actions := bounds.compiledActions (timeouts setup) leaks
   nonempty := bounds.compiledActions_nonempty (timeouts setup) leaks

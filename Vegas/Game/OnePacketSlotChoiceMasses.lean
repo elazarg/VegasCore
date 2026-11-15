@@ -32,21 +32,22 @@ open GameTheory GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
-  (timeouts : EventTimeouts (graph setup))
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-  [Fintype Player] (bounds : MessageBounds (graph setup))
+  (timeouts : EventTimeouts setup.informationGraph)
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
+  [Fintype Player] (bounds : MessageBounds setup.informationGraph)
 
 omit [Fintype Player] in
 /-- At an active player's binding turn whose canonical slot is fresh, the
 as-if-honest response is the slot tier's response at the canonical slot. -/
 theorem honestResponse_eq_slotResponse (assessment : setup.intendedModel.BehavioralAssessment)
     (who : Player) (past : List (application setup timeouts leaks).PlayerEntry)
-    (view : (application setup timeouts leaks).PlayerView) (event : (graph setup).EventId)
+    (view : (application setup timeouts leaks).PlayerView) (event : setup.informationGraph.EventId)
     (turn : view.application.publicView.ownTurn? who = some event) {payload : L.Ty}
-    {outputEq : (graph setup).outputLayout event = .binding who payload}
-    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .bind who payload}
-    (node : nodeView (graph setup) event = .bind who payload outputEq codeEq) (serial : Nat)
+    {outputEq : setup.informationGraph.outputLayout event = .binding who payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .bind who payload}
+    (node : nodeView setup.informationGraph event = .bind who payload outputEq codeEq) (serial :
+      Nat)
     (active : who ∉ view.application.publicView.observation.defaulted)
     (selected : canonicalFreshSlot who view.application = some serial) :
     honestResponse setup timeouts leaks assessment who past view =
@@ -86,7 +87,8 @@ variable (initial : PMF (application setup timeouts leaks).State) (horizon : Nat
 /-- The one-packet choice of the slot tier's response at a slot to a source
 choice. -/
 abbrev slotChoiceOf (who : Player) (past : List (application setup timeouts leaks).PlayerEntry)
-    (view : (application setup timeouts leaks).PlayerView) (event : (graph setup).EventId) (slot :
+    (view : (application setup timeouts leaks).PlayerView) (event : setup.informationGraph.EventId)
+      (slot :
       Nat)
     (choice : Option (OwnAction Player L)) :
     (onePacketModel setup timeouts leaks bounds initial horizon scheduler).Choice who (some (past,
@@ -100,12 +102,12 @@ slot-tier choice of a covered source choice at a slot within capacity is the
 slot-tier choice of no other covered source choice or slot within capacity. -/
 theorem slotChoiceOf_injective (who : Player) (past : List (application setup timeouts
   leaks).PlayerEntry)
-    (view : (application setup timeouts leaks).PlayerView) (event : (graph setup).EventId)
+    (view : (application setup timeouts leaks).PlayerView) (event : setup.informationGraph.EventId)
     {owner : Player} {payload : L.Ty}
-    {outputEq : (graph setup).outputLayout event = .binding owner payload}
-    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .bind owner payload}
-    (node : nodeView (graph setup) event = .bind owner payload outputEq codeEq)
+    {outputEq : setup.informationGraph.outputLayout event = .binding owner payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .bind owner payload}
+    (node : nodeView setup.informationGraph event = .bind owner payload outputEq codeEq)
     (freshOfPermitted : ∀ slot, countPermits ((application setup timeouts leaks).outputs past)
       (slotEnvelope setup timeouts leaks who past view event slot) = true →
         view.application.candidates (.prepared slot) = .fresh)
@@ -172,13 +174,13 @@ to a covered value; the candidate capacity is at least one; and every prepared
 slot the count verdict permits is fresh. -/
 structure CoveredPendingBinding (assessment : setup.intendedModel.BehavioralAssessment)
     (who : Player) (past : List (application setup timeouts leaks).PlayerEntry)
-    (view : (application setup timeouts leaks).PlayerView) (event : (graph setup).EventId)
-    (payload : L.Ty) (outputEq : (graph setup).outputLayout event = .binding who payload)
-    (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .bind who payload) : Prop where
+    (view : (application setup timeouts leaks).PlayerView) (event : setup.informationGraph.EventId)
+    (payload : L.Ty) (outputEq : setup.informationGraph.outputLayout event = .binding who payload)
+    (codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .bind who payload) : Prop where
   turn : view.application.publicView.ownTurn? who = some event
   active : who ∉ view.application.publicView.observation.defaulted
-  node : nodeView (graph setup) event = .bind who payload outputEq codeEq
+  node : nodeView setup.informationGraph event = .bind who payload outputEq codeEq
   covered : ∀ choice ∈ (asIfHonestProfile setup timeouts leaks assessment who (some (past,
     view))).support,
     CoveredBinding setup bounds event choice
@@ -204,7 +206,7 @@ theorem offered_commitment_capacity (who : Player)
       leaks).Action)
     (member : response ∈ (bounds.menu timeouts leaks).actions who past view)
     (material : (application setup timeouts leaks).Submission)
-    (sends : response.transmission = some material) {event : (graph setup).EventId}
+    (sends : response.transmission = some material) {event : setup.informationGraph.EventId}
     {owner : Player} {slot : Nat}
     (packet : material.call.packet = .commitment event (owner, .prepared slot)) :
     slot < bounds.candidateCount := by
@@ -231,10 +233,10 @@ slot-tier choice of a supported source choice its as-if-honest mass at the
 canonical slot, and nothing at another slot. -/
 theorem honestChoice_slotChoiceOf_apply {assessment : setup.intendedModel.BehavioralAssessment}
     {who : Player} {past : List (application setup timeouts leaks).PlayerEntry}
-    {view : (application setup timeouts leaks).PlayerView} {event : (graph setup).EventId}
-    {payload : L.Ty} {outputEq : (graph setup).outputLayout event = .binding who payload}
-    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .bind who payload}
+    {view : (application setup timeouts leaks).PlayerView} {event : setup.informationGraph.EventId}
+    {payload : L.Ty} {outputEq : setup.informationGraph.outputLayout event = .binding who payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .bind who payload}
     (site : CoveredPendingBinding setup timeouts leaks bounds assessment who past view event payload
       outputEq codeEq) {serial : Nat}
     (selected : canonicalFreshSlot who view.application = some serial) {slot : Nat}
@@ -304,7 +306,7 @@ theorem honestChoice_slotChoiceOf_apply {assessment : setup.intendedModel.Behavi
         have effective := ((bounds.mem_onePacketActions timeouts leaks who past view
           _).mp otherOffered).1
         have packetEq : otherMaterial.call.packet = .commitment event (who, .prepared serial) :=
-          congrArg (fun message : Message Player (WitnessedPacket (graph setup)) =>
+          congrArg (fun message : Message Player (WitnessedPacket setup.informationGraph) =>
             message.payload.call) otherEnvelope
         exact serialCapacity (offered_commitment_capacity who past view _
           effective
@@ -322,7 +324,7 @@ theorem honestChoice_slotChoiceOf_apply {assessment : setup.intendedModel.Behavi
 slot-tier choice of a uniform slot and an independent as-if-honest choice. -/
 theorem slotChoice_eq_map {assessment : setup.intendedModel.BehavioralAssessment}
     {who : Player} {past : List (application setup timeouts leaks).PlayerEntry}
-    {view : (application setup timeouts leaks).PlayerView} {event : (graph setup).EventId}
+    {view : (application setup timeouts leaks).PlayerView} {event : setup.informationGraph.EventId}
     (turn : view.application.publicView.ownTurn? who = some event) :
     slotChoice setup timeouts leaks bounds initial horizon scheduler assessment who (some (past,
       view)) =
@@ -342,10 +344,10 @@ binding, the slot tier gives an offered slot-tier choice of a supported source
 choice at a tremble slot the uniform slot mass times its as-if-honest mass. -/
 theorem slotChoice_slotChoiceOf_apply {assessment : setup.intendedModel.BehavioralAssessment}
     {who : Player} {past : List (application setup timeouts leaks).PlayerEntry}
-    {view : (application setup timeouts leaks).PlayerView} {event : (graph setup).EventId}
-    {payload : L.Ty} {outputEq : (graph setup).outputLayout event = .binding who payload}
-    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .bind who payload}
+    {view : (application setup timeouts leaks).PlayerView} {event : setup.informationGraph.EventId}
+    {payload : L.Ty} {outputEq : setup.informationGraph.outputLayout event = .binding who payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .bind who payload}
     (site : CoveredPendingBinding setup timeouts leaks bounds assessment who past view event payload
       outputEq codeEq) {slot : Nat} {choice : Option (OwnAction Player L)}
     (supported : choice ∈ (asIfHonestProfile setup timeouts leaks assessment who
@@ -388,10 +390,10 @@ theorem slotChoice_slotChoiceOf_apply {assessment : setup.intendedModel.Behavior
 /-- An offered transmitting choice is not silence. -/
 theorem silence_slotChoiceOf_apply {assessment : setup.intendedModel.BehavioralAssessment}
     {who : Player} {past : List (application setup timeouts leaks).PlayerEntry}
-    {view : (application setup timeouts leaks).PlayerView} {event : (graph setup).EventId}
-    {payload : L.Ty} {outputEq : (graph setup).outputLayout event = .binding who payload}
-    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .bind who payload}
+    {view : (application setup timeouts leaks).PlayerView} {event : setup.informationGraph.EventId}
+    {payload : L.Ty} {outputEq : setup.informationGraph.outputLayout event = .binding who payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .bind who payload}
     (site : CoveredPendingBinding setup timeouts leaks bounds assessment who past view event payload
       outputEq codeEq) {slot : Nat} {choice : Option (OwnAction Player L)}
     (supported : choice ∈ (asIfHonestProfile setup timeouts leaks assessment who

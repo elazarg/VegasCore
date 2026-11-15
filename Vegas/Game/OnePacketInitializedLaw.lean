@@ -20,9 +20,9 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph}
   {horizon : Nat} {scheduler : (application setup timeouts leaks).Scheduler}
 
 local notation "menu" => bounds.onePacketMenu timeouts leaks
@@ -95,7 +95,7 @@ private theorem initial_native_boundary_of_step (wellFormed : setup.WellFormed)
   exact initial_native_boundary (timeouts := timeouts) wellFormed profile native member start
     same.symm
 
-variable {delay bound : (graph setup).EventId → Nat}
+variable {delay bound : setup.informationGraph.EventId → Nat}
   (opportunity : ∀ control : (application setup timeouts leaks).Control,
     ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control) →
@@ -125,7 +125,7 @@ include opportunity inclusion timely completes in
 entire intended terminal store law, with its private setup draw. -/
 theorem counted_honest_initialized_readout_law
     (wellFormed : setup.WellFormed) (covers : bounds.CoversOutputValues)
-    (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
+    (capacity : ∀ who, bindingEventCount setup.informationGraph who < bounds.candidateCount)
     (source : setup.intendedModel.BehavioralAssessment)
     (certificate : (NativeProtocol).WellFoundedHistories) :
     (((NativeModel).runBehavioralTerminalFrom certificate
@@ -175,7 +175,7 @@ include opportunity inclusion timely completes in
 already has its event packet recorded. -/
 theorem counted_honest_initialized_not_late
     (wellFormed : setup.WellFormed) (covers : bounds.CoversOutputValues)
-    (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
+    (capacity : ∀ who, bindingEventCount setup.informationGraph who < bounds.candidateCount)
     (source : setup.intendedModel.BehavioralAssessment)
     (certificate : (NativeProtocol).WellFoundedHistories) :
     ∀ fuel history, history ∈ ((NativeModel).runBehavioralFrom
@@ -211,7 +211,7 @@ include opportunity inclusion timely completes in
 point under the counted native service. -/
 theorem counted_honest_initialized_intended
     (wellFormed : setup.WellFormed) (covers : bounds.CoversOutputValues)
-    (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
+    (capacity : ∀ who, bindingEventCount setup.informationGraph who < bounds.candidateCount)
     (source : setup.intendedModel.BehavioralAssessment)
     (certificate : (NativeProtocol).WellFoundedHistories) :
     ∀ fuel history, history ∈ ((NativeModel).runBehavioralFrom

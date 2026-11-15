@@ -29,9 +29,9 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
   [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
   [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
@@ -70,7 +70,7 @@ structure OnePacketBaseInputs (sequence : ℕ → setup.intendedModel.Behavioral
   /-- Every value of an initial binding input is a bounded value. -/
   coversInputs : bounds.CoversInputValues
   /-- Every player's binding events fit in the prepared slots. -/
-  capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount
+  capacity : ∀ who, bindingEventCount setup.informationGraph who < bounds.candidateCount
   /-- The late options use bounded slots. -/
   slotsLe : slots ≤ bounds.candidateCount
   /-- **The honest counterparts** at every forced decision input at the player's
@@ -93,7 +93,7 @@ structure OnePacketBaseInputs (sequence : ℕ → setup.intendedModel.Behavioral
         horizon scheduler ((onePacketN).agentAt site) →
       ∀ {past : List (application setup timeouts leaks).PlayerEntry}
         {view : (application setup timeouts leaks).PlayerView}, site.1 = some (past, view) →
-      ∀ {event : (graph setup).EventId},
+      ∀ {event : setup.informationGraph.EventId},
       view.application.publicView.ownTurn? who = some event →
       OnePacketCounterpartInputs setup timeouts leaks bounds horizon scheduler sequence
         targetSequence site
@@ -119,7 +119,7 @@ structure OnePacketBaseInputs (sequence : ℕ → setup.intendedModel.Behavioral
         horizon scheduler ((onePacketN).agentAt site) →
       ∀ {past : List (application setup timeouts leaks).PlayerEntry}
         {view : (application setup timeouts leaks).PlayerView} (atSite : site.1 = some (past, view))
-        {event : (graph setup).EventId},
+        {event : setup.informationGraph.EventId},
       view.application.publicView.ownTurn? who = some event →
       ∀ decision : setup.intendedModel.IsDecisionInfo who (projectView setup timeouts leaks who
         site.1),
@@ -161,7 +161,8 @@ def OnePacketBaseInputs.beliefInputs {sequence : ℕ → setup.intendedModel.Beh
       site))
     {past : List (application setup timeouts leaks).PlayerEntry}
     {view : (application setup timeouts leaks).PlayerView} (atSite : site.1 = some (past, view))
-    {event : (graph setup).EventId} (turn : view.application.publicView.ownTurn? who = some event)
+    {event : setup.informationGraph.EventId} (turn : view.application.publicView.ownTurn? who =
+      some event)
     (decision : setup.intendedModel.IsDecisionInfo who (projectView setup timeouts leaks who
       site.1)) :
     OnePacketBeliefInputs setup timeouts leaks bounds horizon scheduler sequence targetSequence site
@@ -186,7 +187,7 @@ def OnePacketOwnInputs.ofAssembled (wellFormed : setup.WellFormed)
     (scaleEq : ∀ n, scale n = trembleScale
       (combinedFloor setup timeouts leaks bounds horizon scheduler (sequence n)) depth n)
     (covers : bounds.CoversOutputValues) (coversInputs : bounds.CoversInputValues)
-    (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
+    (capacity : ∀ who, bindingEventCount setup.informationGraph who < bounds.candidateCount)
     {slots : Nat}
     {weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
       horizon scheduler slots p)}
@@ -204,7 +205,7 @@ def OnePacketOwnInputs.ofAssembled (wellFormed : setup.WellFormed)
     {view : (application setup timeouts leaks).PlayerView}
     (atSite : site.1 = some (past, view))
     (projected : sourceSite.1 = projectView setup timeouts leaks who site.1)
-    {event : (graph setup).EventId}
+    {event : setup.informationGraph.EventId}
     (turn : view.application.publicView.ownTurn? who = some event) :
     OnePacketOwnInputs setup timeouts leaks bounds horizon scheduler sequence targetSequence site
       sourceSite atSite projected := by
@@ -254,7 +255,7 @@ def OnePacketBaseInputs.ofCounterparts (wellFormed : setup.WellFormed)
     (sourceMixed : ∀ n, (sequence n).IsFullyMixed)
     (depth : ℕ) (gapBound : ℝ) (gapBound_nonneg : 0 ≤ gapBound)
     (covers : bounds.CoversOutputValues) (coversInputs : bounds.CoversInputValues)
-    (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
+    (capacity : ∀ who, bindingEventCount setup.informationGraph who < bounds.candidateCount)
     (slots_pos : 0 < bounds.candidateCount)
     (counterparts : ∀
       (weights : ℕ → ∀ p,
@@ -281,7 +282,7 @@ def OnePacketBaseInputs.ofCounterparts (wellFormed : setup.WellFormed)
       ((onePacketN).agentAt site) →
         ∀ {past : List (application setup timeouts leaks).PlayerEntry}
           {view : (application setup timeouts leaks).PlayerView}, site.1 = some (past, view) →
-        ∀ {event : (graph setup).EventId},
+        ∀ {event : setup.informationGraph.EventId},
         view.application.publicView.ownTurn? who = some event →
         OnePacketCounterpartInputs setup timeouts leaks bounds horizon scheduler sequence
           targetSequence
@@ -441,7 +442,7 @@ def OnePacketBaseInputs.ofSetup
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (sourceMixed : ∀ n, (sequence n).IsFullyMixed)
     (covers : bounds.CoversOutputValues) (coversInputs : bounds.CoversInputValues)
-    (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
+    (capacity : ∀ who, bindingEventCount setup.informationGraph who < bounds.candidateCount)
     (slots_pos : 0 < bounds.candidateCount) :
     OnePacketBaseInputs setup timeouts leaks bounds horizon scheduler sequence
       bounds.candidateCount := by

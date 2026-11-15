@@ -35,9 +35,9 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol Intera
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
   [DecidableEq (CellTy Player L)]
 
@@ -71,7 +71,8 @@ theorem counterpart_of_witness (wellFormed : setup.WellFormed)
     {assessment : setup.intendedModel.BehavioralAssessment} (mixed : assessment.IsFullyMixed)
     {who : Player} {past : List (application setup timeouts leaks).PlayerEntry}
     {view : (application setup timeouts leaks).PlayerView}
-    {event : (graph setup).EventId} (turn : view.application.publicView.ownTurn? who = some event)
+    {event : setup.informationGraph.EventId} (turn : view.application.publicView.ownTurn? who =
+      some event)
     (history witness : (onePacketInformation setup timeouts leaks bounds horizon
       scheduler).InformationHistory who (some (past, view)))
     {current witnessControl : (application setup timeouts leaks).Control}

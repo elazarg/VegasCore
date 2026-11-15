@@ -23,21 +23,22 @@ open SourceProgram GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol Int
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
 
 /-- A settled canonical response writes exactly its certified action and typed result. -/
 theorem canonical_firstResponse_result_of_settles
-    (bounds : MessageBounds (graph setup)) (horizon : Nat)
+    (bounds : MessageBounds setup.informationGraph) (horizon : Nat)
     (scheduler : (application setup timeouts leaks).Scheduler)
-    (bound : (graph setup).EventId → Nat)
+    (bound : setup.informationGraph.EventId → Nat)
     {remaining : Nat} {who : Player} {execution : (application setup timeouts leaks).Execution}
     (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some ⟨remaining, some who, execution⟩))
-    (event : (graph setup).EventId)
+    (event : setup.informationGraph.EventId)
     (turn : execution.application.publicView.ownTurn? who = some event)
     (fits : execution.application.publicView.InclusionFitsDeadline timeouts bound event)
-    (action : (graph setup).Action event) (material : (application setup timeouts leaks).Submission)
+    (action : setup.informationGraph.Action event) (material : (application setup timeouts
+      leaks).Submission)
     (submits : ((canonicalServiceDecision timeouts) leaks who (execution.logs who)
       (execution.observe (application setup timeouts leaks) who) event action).transmission = some
         material)
@@ -55,7 +56,7 @@ theorem canonical_firstResponse_result_of_settles
       execution.application.config action output next.application ∧
       (event ∈ next.application.config.cut.completed →
         next.application.config.outputs event = some output ∧
-          ∃ defaultEvent, (⟨event, some action, defaultEvent⟩ : (graph setup).Completion) ∈
+          ∃ defaultEvent, (⟨event, some action, defaultEvent⟩ : setup.informationGraph.Completion) ∈
             next.application.config.history) := by
   obtain ⟨output, invariant⟩ := acceptanceInvariant_respond (timeouts := timeouts) bounds horizon
     scheduler trace event turn action material submits after

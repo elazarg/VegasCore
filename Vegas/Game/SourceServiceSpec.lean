@@ -34,16 +34,16 @@ with the compiler's side conditions on them. -/
 structure SourceServiceSpec (Player : Type) [DecidableEq Player] (L : IExpr)
     [IExpr.ResultTypes L] where
   setup : Setup (Player := Player) (L := L)
-  leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))
-  bounds : MessageBounds (graph setup)
-  rosters : (graph setup).EventId → List Player
+  leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)
+  bounds : MessageBounds setup.informationGraph
+  rosters : setup.informationGraph.EventId → List Player
   network : (NetworkPolicy (timeouts setup)) leaks
   /-- Every binding value the source can choose has a native message form. -/
   values : bounds.CoversBindingValues
   /-- Every supported initial binding table fits the candidate catalogue. -/
   initialValues : ∀ state ∈ (initialLaw setup).support, bounds.CandidateValues state
   /-- The candidate catalogue has a slot for every event. -/
-  capacity : (graph setup).order.eventCount ≤ bounds.candidateCount
+  capacity : setup.informationGraph.order.eventCount ≤ bounds.candidateCount
   /-- Every event actor has an activation at its own event. -/
   opportunities : ActorOpportunities setup rosters
   /-- The prior over initial states is finitely supported. -/
@@ -97,7 +97,7 @@ def toAsync : AsyncServiceSpec Player L where
   values := service.values
   initialValues := service.initialValues
   capacity := service.capacity
-  duration := rankDuration service.setup .sequential
+  duration := rankDuration service.setup service.setup.informationDependencies
   horizon := service.planLength
   scheduler := service.scheduler
   delay := fun event => event.val

@@ -37,42 +37,55 @@ theorem firstTurnClientProfile_outcome_law {Outcome : Type*}
     (observe : State L service.setup.program.terminalCtx × DefaultHistory Player → Outcome) :
     (service.run service.rawMenu
       (service.clientProfile admission service.rawMenu
-        (firstTurnTiming service.setup turns .sequential) source)).map
-        (fun final => (serviceSourceReadout service.setup .sequential service.duration
+        (firstTurnTiming service.setup turns service.setup.informationDependencies) source)).map
+        (fun final => (serviceSourceReadout service.setup service.setup.informationDependencies
+          service.duration
           service.leaks final.state).map fun terminal =>
             observe (terminal.state, terminal.defaults)) =
       (service.setup.run (service.setup.decodeBehavioralProfile admission source)).map
         (fun terminal => some (observe (terminal.state, terminal.defaults))) := by
-  let app := serviceApplication service.setup .sequential service.duration service.leaks
+  let app := serviceApplication service.setup service.setup.informationDependencies
+    service.duration service.leaks
   let original := service.setup.decodeBehavioralProfile admission source
-  let clients := serviceClientPolicy service.setup .sequential service.duration service.leaks
-    service.bound turns (firstTurnTiming service.setup turns .sequential)
+  let clients := serviceClientPolicy service.setup service.setup.informationDependencies
+    service.duration service.leaks
+    service.bound turns (firstTurnTiming service.setup turns service.setup.informationDependencies)
       (normalizeDisclosureProfile service.setup.program original)
   have physical := service.rawMenu.run_restrict_eq_finish
-    (serviceInitialLaw service.setup .sequential) service.horizon service.scheduler clients
-    (service.rawMenu_admits admission (firstTurnTiming service.setup turns .sequential) source)
+    (serviceInitialLaw service.setup service.setup.informationDependencies) service.horizon
+      service.scheduler clients
+    (service.rawMenu_admits admission (firstTurnTiming service.setup turns
+      service.setup.informationDependencies) source)
     (2 * service.horizon + 1)
-    (service.rawMenu.protocol (serviceInitialLaw service.setup .sequential)
+    (service.rawMenu.protocol (serviceInitialLaw service.setup
+      service.setup.informationDependencies)
       service.horizon service.scheduler).initHistory le_rfl
-  have initialized : (service.rawMenu.protocol (serviceInitialLaw service.setup .sequential)
+  have initialized : (service.rawMenu.protocol (serviceInitialLaw service.setup
+    service.setup.informationDependencies)
       service.horizon service.scheduler).initHistory.state = none := rfl
   rw [initialized] at physical
   have states : (service.run service.rawMenu
       (service.clientProfile admission service.rawMenu
-        (firstTurnTiming service.setup turns .sequential) source)).map (fun final => final.state) =
-      (app.roundsFrom (serviceInitialLaw service.setup .sequential) service.scheduler clients
+        (firstTurnTiming service.setup turns service.setup.informationDependencies) source)).map
+          (fun final => final.state) =
+      (app.roundsFrom (serviceInitialLaw service.setup service.setup.informationDependencies)
+        service.scheduler clients
         service.horizon).map app.finished := by
-    change ((service.rawMenu.information (serviceInitialLaw service.setup .sequential)
+    change ((service.rawMenu.information (serviceInitialLaw service.setup
+      service.setup.informationDependencies)
         service.horizon service.scheduler).runBehavioralFrom
-      (fun who => service.rawMenu.restrictPolicy (serviceInitialLaw service.setup .sequential)
+      (fun who => service.rawMenu.restrictPolicy (serviceInitialLaw service.setup
+        service.setup.informationDependencies)
         service.horizon service.scheduler who (clients who))
       (2 * service.horizon + 1)
-      (service.rawMenu.protocol (serviceInitialLaw service.setup .sequential)
+      (service.rawMenu.protocol (serviceInitialLaw service.setup
+        service.setup.informationDependencies)
         service.horizon service.scheduler).initHistory).map ExecutionProtocol.History.state = _
     simpa only [ReactiveApplication.finish, ReactiveApplication.roundsFrom, PMF.map_bind]
       using physical
   have projected := congrArg (PMF.map (fun final : app.ProtocolState =>
-    (serviceSourceReadout service.setup .sequential service.duration service.leaks final).map
+    (serviceSourceReadout service.setup service.setup.informationDependencies service.duration
+      service.leaks final).map
       fun terminal => observe (terminal.state, terminal.defaults))) states
   simp only [PMF.map_comp, Function.comp_def] at projected
   apply projected.trans
@@ -89,11 +102,12 @@ theorem firstTurnClientProfile_graph_law {Outcome : Type*}
     (observe : State L service.setup.program.terminalCtx × DefaultHistory Player → Outcome) :
     (service.run service.rawMenu
       (service.clientProfile admission service.rawMenu
-        (firstTurnTiming service.setup turns .sequential) source)).map
-        (fun final => (serviceSourceReadout service.setup .sequential service.duration
+        (firstTurnTiming service.setup turns service.setup.informationDependencies) source)).map
+        (fun final => (serviceSourceReadout service.setup service.setup.informationDependencies
+          service.duration
           service.leaks final.state).map fun terminal =>
             observe (terminal.state, terminal.defaults)) =
-      ((service.setup.eventGraph.canonicalGame
+      ((service.setup.informationGraph.canonicalGame
           (service.setup.initialLaw.map service.setup.eventInputs)).play
         (compileEventProfile service.setup.program
           (service.setup.decodeBehavioralProfile admission source))).map (fun terminal =>

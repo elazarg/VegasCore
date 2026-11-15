@@ -151,12 +151,12 @@ theorem publicFreshSlot_le_bindingEventCount
 end Generic
 
 variable {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
 
 section Allowed
 
-variable [Fintype Player] (bounds : MessageBounds (graph setup))
+variable [Fintype Player] (bounds : MessageBounds setup.informationGraph)
 
 /-- An offered response transmits a packet the bounds allow. -/
 theorem offered_packet_allowed (who : Player)
@@ -218,7 +218,7 @@ end Allowed
 
 section History
 
-variable [Fintype Player] (bounds : MessageBounds (graph setup)) {horizon : Nat}
+variable [Fintype Player] (bounds : MessageBounds setup.informationGraph) {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler} {control : (application setup timeouts
     leaks).Control}
 
@@ -231,7 +231,7 @@ theorem canonicalFreshSlot_le_bindingEvents
     (who : Player) {serial : Nat}
     (selected : canonicalFreshSlot who (control.execution.application.playerView who) =
       some serial) :
-    serial ≤ bindingEventCount (graph setup) who := by
+    serial ≤ bindingEventCount setup.informationGraph who := by
   have rawTrace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
     scheduler).Trace
       (some control) :=
@@ -254,7 +254,7 @@ a packet its owner emitted. -/
 theorem onePacket_accepted_allowed
     (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control))
-    (field : (graph setup).Field) (candidate : Handle (graph setup))
+    (field : setup.informationGraph.Field) (candidate : Handle setup.informationGraph)
     (accepted : control.execution.application.accepted field = some candidate) :
     bounds.AllowsHandle candidate := by
   have rawTrace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
@@ -285,11 +285,11 @@ for, while a fresh call still fits the deadline, every transmitting canonical
 decision of the effective opening is retained by the canonical menu. -/
 def RetainsCoveredCanonical (horizon : Nat) (scheduler : (application setup timeouts
   leaks).Scheduler)
-    (bound : (graph setup).EventId → Nat) : Prop :=
+    (bound : setup.informationGraph.EventId → Nat) : Prop :=
   ∀ {control : (application setup timeouts leaks).Control},
     ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control) →
-    ∀ who (event : (graph setup).EventId) (action : (graph setup).Action event),
+    ∀ who (event : setup.informationGraph.EventId) (action : setup.informationGraph.Action event),
     control.execution.application.publicView.ownTurn? who = some event →
     (eventRecorded timeouts) leaks (control.execution.logs who) event = false →
     control.execution.application.publicView.InclusionFitsDeadline timeouts bound event →
@@ -308,9 +308,9 @@ publication type is a bounded value and the candidate capacity exceeds every
 player's number of binding events, the canonical menu retains every first
 covered canonical packet, under every scheduler and inclusion bound. -/
 theorem retainsCoveredCanonical_of_adequate (covers : bounds.CoversOutputValues)
-    (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
+    (capacity : ∀ who, bindingEventCount setup.informationGraph who < bounds.candidateCount)
     (horizon : Nat) (scheduler : (application setup timeouts leaks).Scheduler)
-    (bound : (graph setup).EventId → Nat) :
+    (bound : setup.informationGraph.EventId → Nat) :
     RetainsCoveredCanonical setup timeouts leaks bounds horizon scheduler bound := by
   intro control trace who event action turn unsent fits effective transmits
   have ready := (PublicView.ownTurn?_spec _ who event turn).1
@@ -322,7 +322,7 @@ theorem retainsCoveredCanonical_of_adequate (covers : bounds.CoversOutputValues)
       (control.execution.observe (application setup timeouts leaks) who) event action inactive]
       at transmits
     exact transmits rfl
-  cases node : nodeView (graph setup) event with
+  cases node : nodeView setup.informationGraph event with
   | sample payload law outputEq codeEq =>
       have noActor := nodeView_sample_actor outputEq codeEq
       rw [owned] at noActor

@@ -22,8 +22,8 @@ open GameTheory
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
 
 namespace DirectedBindingFrame
 
@@ -85,7 +85,7 @@ theorem advanceClock_step (frame : DirectedBindingFrame (timeouts := timeouts) m
         (.application .advanceClock)).support ∧
       DirectedBindingFrame (timeouts := timeouts) memory owner nextOriginal nextRepaired := by
   have repairedClear : repaired.application.config.defaulted = ∅ :=
-    (congrArg (fun view : PublicView (graph setup) => view.observation.defaulted)
+    (congrArg (fun view : PublicView setup.informationGraph => view.observation.defaulted)
       frame.toFrame.publicView).symm.trans clear
   let next (execution : (application setup timeouts leaks).Execution) :
       (application setup timeouts leaks).Execution :=

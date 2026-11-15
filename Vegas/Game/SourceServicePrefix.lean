@@ -244,11 +244,12 @@ theorem decodeSourcePrefix?_defaults {Field : Type} [DecidableEq Field]
       exact decodeSourcePrefix?_defaults count next _ _ _ _ _ _ _ point read
 
 /-- The deterministic readout of a configuration of the service graph of any
-dependency mode into the original initialized source protocol. Each owner's
-completions keep source rank in every mode, so the chronological completions
+dependency choice into the original initialized source protocol. Each owner's
+completions keep source rank in every dependency choice, so the chronological completions
 decode to the source history. -/
 def serviceSourcePrefix? (setup : Setup (Player := Player) (L := L))
-    (mode : EventGraph.ExecutionMode) (rank : Nat) (config : (serviceGraph setup mode).Config) :
+    (deps : setup.dataflowGraph.Dependencies) (rank : Nat) (config : (serviceGraph setup
+      deps).Config) :
     setup.ProtocolState :=
   decodeSourcePrefix? setup.program
     (ContextRefs.initial setup.context (outputLayout setup.program)) []
@@ -257,20 +258,22 @@ def serviceSourcePrefix? (setup : Setup (Player := Player) (L := L))
 
 /-- The readout on the default sequential graph. -/
 abbrev sourceServicePrefix? (setup : Setup (Player := Player) (L := L)) :
-    Nat → (graph setup).Config → setup.ProtocolState :=
-  serviceSourcePrefix? setup .sequential
+    Nat → setup.informationGraph.Config → setup.ProtocolState :=
+  serviceSourcePrefix? setup setup.informationDependencies
 
 /-- Continue the sole source evaluator from the actual decoded native prefix. -/
 def sourceContinuation (setup : Setup (Player := Player) (L := L))
-    {mode : EventGraph.ExecutionMode} (profile : BehavioralProfile setup.program) (rank : Nat)
-    (config : (serviceGraph setup mode).Config) :
+    {deps : setup.dataflowGraph.Dependencies} (profile : BehavioralProfile setup.program) (rank :
+      Nat)
+    (config : (serviceGraph setup deps).Config) :
     PMF (Option (Config Player L setup.program.terminalCtx)) :=
-  (setup.continuationLaw profile (serviceSourcePrefix? setup mode rank config)).map some
+  (setup.continuationLaw profile (serviceSourcePrefix? setup deps rank config)).map some
 
 theorem serviceSourcePrefix?_initial (setup : Setup (Player := Player) (L := L))
-    {mode : EventGraph.ExecutionMode} (initial : State L setup.context) : serviceSourcePrefix? setup
-    mode 0
-    (EventGraphRuntime.State.initial (graph := serviceGraph setup mode)
+    {deps : setup.dataflowGraph.Dependencies} (initial : State L setup.context) :
+      serviceSourcePrefix? setup
+    deps 0
+    (EventGraphRuntime.State.initial (graph := serviceGraph setup deps)
         (setup.eventInputs initial)).config =
       some (ProtocolState.entry setup.program (Config.initial initial)) := by
   unfold serviceSourcePrefix?
@@ -281,14 +284,14 @@ theorem serviceSourcePrefix?_initial (setup : Setup (Player := Player) (L := L))
 /-- A semantic runtime checkpoint supplies the readout identity directly;
 there is no additional posterior or source-state equality premise. -/
 theorem SourceCheckpoint.decode
-    {setup : Setup (Player := Player) (L := L)} {mode : EventGraph.ExecutionMode}
+    {setup : Setup (Player := Player) (L := L)} {deps : setup.dataflowGraph.Dependencies}
     {Γ : SourceCtx Player L} {openNames : Finset VarId}
     (program : SourceProgram Player L Γ openNames)
-    {source : Config Player L Γ} {refs : ContextRefs (serviceGraph setup mode).layout Γ}
+    {source : Config Player L Γ} {refs : ContextRefs (serviceGraph setup deps).layout Γ}
     {rank : Nat}
-    {native : (serviceGraph setup mode).Config}
+    {native : (serviceGraph setup deps).Config}
     (checkpoint : SourceCheckpoint setup source refs rank native)
-    (outputs : ∀ event, EventGraph.FieldRef (serviceGraph setup mode).layout
+    (outputs : ∀ event, EventGraph.FieldRef (serviceGraph setup deps).layout
         (outputLayout program event)) :
     decodeSourcePrefix? program refs source.registry source.revelations outputs 0 native.store
       (decodeHistory setup.program (native.history)) native.defaults =
@@ -301,18 +304,19 @@ theorem SourceCheckpoint.decode
 sum of positions. This carries the deferred registry through the static
 prefix and imposes no strategy, posterior, or native-memory restriction. -/
 def SourcePrefixCheckpoint (setup : Setup (Player := Player) (L := L))
-    {mode : EventGraph.ExecutionMode} : {Γ : SourceCtx Player L} → {openNames : Finset VarId} →
-    (program : SourceProgram Player L Γ openNames) → ContextRefs (serviceGraph setup mode).layout
+    {deps : setup.dataflowGraph.Dependencies} : {Γ : SourceCtx Player L} → {openNames : Finset
+      VarId} →
+    (program : SourceProgram Player L Γ openNames) → ContextRefs (serviceGraph setup deps).layout
     Γ → Registry Γ → Revelations Γ →
-    (∀ event, EventGraph.FieldRef (serviceGraph setup mode).layout (outputLayout program event)) →
-    Nat → Nat → ProtocolState program → (serviceGraph setup mode).Config → Prop
+    (∀ event, EventGraph.FieldRef (serviceGraph setup deps).layout (outputLayout program event)) →
+    Nat → Nat → ProtocolState program → (serviceGraph setup deps).Config → Prop
   | _, _, program, refs, registry, revelations, _, offset, 0, state, native =>
       ∃ source, state = ProtocolState.entry program source ∧ source.registry = registry ∧
         @source.revelations = @revelations ∧ SourceCheckpoint setup source refs offset native
   | _, _, .ret _, _, _, _, _, _, _ + 1, _, _ => False
   | _, _, .sample (payload := payload) _ _ _ next,
       refs, registry, revelations, outputs, offset, count + 1, state, native =>
-      let headRef : EventGraph.FieldRef (serviceGraph setup mode).layout (.publicData payload) := by
+      let headRef : EventGraph.FieldRef (serviceGraph setup deps).layout (.publicData payload) := by
         simpa [outputLayout, eventCount] using outputs ⟨0, by simp [eventCount]⟩
       match state with
       | .inl _ => False
@@ -320,7 +324,7 @@ def SourcePrefixCheckpoint (setup : Setup (Player := Player) (L := L))
           revelations.weaken (fun tail => outputs tail.succ) (offset + 1) count rest native
   | _, _, .commit (payload := payload) name owner _ guard next,
       refs, registry, revelations, outputs, offset, count + 1, state, native =>
-      let headRef : EventGraph.FieldRef (serviceGraph setup mode).layout
+      let headRef : EventGraph.FieldRef (serviceGraph setup deps).layout
           (.binding owner payload) := by
         simpa [outputLayout, eventCount] using outputs ⟨0, by simp [eventCount]⟩
       let nextRegistry :=
@@ -332,7 +336,7 @@ def SourcePrefixCheckpoint (setup : Setup (Player := Player) (L := L))
           revelations.weaken (fun tail => outputs tail.succ) (offset + 1) count rest native
   | _, _, .reveal (payload := payload) _ _ _ _ selected _ next,
       refs, registry, revelations, outputs, offset, count + 1, state, native =>
-      let headRef : EventGraph.FieldRef (serviceGraph setup mode).layout
+      let headRef : EventGraph.FieldRef (serviceGraph setup deps).layout
           (.publication payload) := by
         simpa [outputLayout, eventCount] using outputs ⟨0, by simp [eventCount]⟩
       match state with
@@ -345,13 +349,14 @@ def SourcePrefixCheckpoint (setup : Setup (Player := Player) (L := L))
 protocol state. Missing-field and excessive-prefix fallbacks are unreachable
 on these concrete semantic checkpoints. -/
 theorem SourcePrefixCheckpoint.decode {setup : Setup (Player := Player) (L := L)}
-    {mode : EventGraph.ExecutionMode} : ∀ {Γ : SourceCtx Player L} {openNames : Finset VarId}
+    {deps : setup.dataflowGraph.Dependencies} : ∀ {Γ : SourceCtx Player L} {openNames : Finset
+      VarId}
     (program : SourceProgram Player L Γ openNames)
-    (refs : ContextRefs (serviceGraph setup mode).layout Γ) (registry : Registry Γ)
+    (refs : ContextRefs (serviceGraph setup deps).layout Γ) (registry : Registry Γ)
     (revelations : Revelations Γ)
-    (outputs : ∀ event, EventGraph.FieldRef (serviceGraph setup mode).layout
+    (outputs : ∀ event, EventGraph.FieldRef (serviceGraph setup deps).layout
         (outputLayout program event)) (offset count : Nat) (state : ProtocolState program)
-    (native : (serviceGraph setup mode).Config), SourcePrefixCheckpoint setup program refs registry
+    (native : (serviceGraph setup deps).Config), SourcePrefixCheckpoint setup program refs registry
     revelations outputs offset count state native → decodeSourcePrefix? program refs registry
     revelations outputs count native.store (decodeHistory setup.program native.history)
       native.defaults = some state := by
@@ -416,11 +421,11 @@ theorem decodeSourcePrefix?_terminal_readout
       exact ih _ _ _ _
 
 /-- A complete native prefix and terminal compilation use the same full source
-configuration decoder in every dependency mode. -/
+configuration decoder in every dependency choice. -/
 theorem serviceSourcePrefix?_terminal_readout
-    (setup : Setup (Player := Player) (L := L)) (mode : EventGraph.ExecutionMode)
-    (config : (serviceGraph setup mode).Config) :
-    setup.protocolReadout (serviceSourcePrefix? setup mode (eventCount setup.program) config) =
+    (setup : Setup (Player := Player) (L := L)) (deps : setup.dataflowGraph.Dependencies)
+    (config : (serviceGraph setup deps).Config) :
+    setup.protocolReadout (serviceSourcePrefix? setup deps (eventCount setup.program) config) =
       decodeConfig? setup.program setup.program
         (ContextRefs.initial setup.context (outputLayout setup.program))
         (Revelations.initial setup.context) [] (outputEmbedding setup.program) config.store
@@ -433,28 +438,28 @@ theorem serviceSourcePrefix?_terminal_readout
 /-- The sequential native prefix reader agrees with the full terminal compiler
 readout, retaining all source configuration fields. -/
 theorem sourceServicePrefix?_terminal_readout
-    (setup : Setup (Player := Player) (L := L)) (config : (graph setup).Config) :
+    (setup : Setup (Player := Player) (L := L)) (config : setup.informationGraph.Config) :
     setup.protocolReadout (sourceServicePrefix? setup (eventCount setup.program) config) =
       decodeConfig? setup.program setup.program
         (ContextRefs.initial setup.context (outputLayout setup.program))
         (Revelations.initial setup.context) [] (outputEmbedding setup.program) config.store
         (config.history) :=
-  serviceSourcePrefix?_terminal_readout setup .sequential config
+  serviceSourcePrefix?_terminal_readout setup setup.informationDependencies config
 
 /-- Every completed native cut decodes to a terminal source position. Field
 availability suffices; no execution provenance or service premise is needed. -/
 theorem serviceSourcePrefix?_terminal
-    (setup : Setup (Player := Player) (L := L)) (mode : EventGraph.ExecutionMode)
-    (config : (serviceGraph setup mode).Config) (terminal : config.cut.Terminal) :
-    ∃ point, serviceSourcePrefix? setup mode (eventCount setup.program) config = some point ∧
+    (setup : Setup (Player := Player) (L := L)) (deps : setup.dataflowGraph.Dependencies)
+    (config : (serviceGraph setup deps).Config) (terminal : config.cut.Terminal) :
+    ∃ point, serviceSourcePrefix? setup deps (eventCount setup.program) config = some point ∧
       ProtocolState.terminal setup.program point := by
   obtain ⟨source, decoded, _⟩ := exists_decodeState_agrees (terminalRefs setup.program)
     config.store (config.store_available_of_terminal terminal)
-  have readout := serviceSourcePrefix?_terminal_readout setup mode config
-  change setup.protocolReadout (serviceSourcePrefix? setup mode (eventCount setup.program)
+  have readout := serviceSourcePrefix?_terminal_readout setup deps config
+  change setup.protocolReadout (serviceSourcePrefix? setup deps (eventCount setup.program)
     config) = (decodeState? (terminalRefs setup.program) config.store).map _ at readout
   rw [decoded] at readout
-  cases decodedPoint : serviceSourcePrefix? setup mode (eventCount setup.program) config with
+  cases decodedPoint : serviceSourcePrefix? setup deps (eventCount setup.program) config with
   | none =>
       simp only [decodedPoint, Setup.protocolReadout, Option.bind_none, Option.map_some] at readout
       cases readout
@@ -465,13 +470,13 @@ theorem serviceSourcePrefix?_terminal
 /-- At a completed native cut, the source continuation is the pure full source
 readout of that cut, including private decisions and the public default record. -/
 theorem sourceContinuation_terminal
-    (setup : Setup (Player := Player) (L := L)) {mode : EventGraph.ExecutionMode}
-    (profile : BehavioralProfile setup.program) (config : (serviceGraph setup mode).Config)
+    (setup : Setup (Player := Player) (L := L)) {deps : setup.dataflowGraph.Dependencies}
+    (profile : BehavioralProfile setup.program) (config : (serviceGraph setup deps).Config)
     (terminal : config.cut.Terminal) :
     sourceContinuation setup profile (eventCount setup.program) config =
       PMF.pure (setup.protocolReadout
-        (serviceSourcePrefix? setup mode (eventCount setup.program) config)) := by
-  obtain ⟨point, decoded, stopped⟩ := serviceSourcePrefix?_terminal setup mode config terminal
+        (serviceSourcePrefix? setup deps (eventCount setup.program) config)) := by
+  obtain ⟨point, decoded, stopped⟩ := serviceSourcePrefix?_terminal setup deps config terminal
   exact setup.continuationLaw_terminal profile _ (by rw [decoded]; exact stopped)
 
 /-- The full terminal prefix is the return point of its retained configuration. -/

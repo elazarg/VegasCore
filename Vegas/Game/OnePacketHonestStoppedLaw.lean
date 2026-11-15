@@ -19,18 +19,18 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
 
 local notation "Clear" => ReactiveApplication.stateInvariant
   (app := application setup timeouts leaks)
-    (fun native : EventGraphRuntime.State (graph setup) =>
+    (fun native : EventGraphRuntime.State setup.informationGraph =>
       EventGraph.Config.defaulted (EventGraphRuntime.State.config native) = ∅)
 
 /-- An honest continuation with the intended source law cannot encounter a
 public exclusion or hidden own debt, so stopping there leaves its terminal law unchanged. -/
 theorem honest_debt_stopped_terminal_law_of_readout_law
-    (bounds : MessageBounds (graph setup)) (wellFormed : setup.WellFormed)
+    (bounds : MessageBounds setup.informationGraph) (wellFormed : setup.WellFormed)
     {horizon : Nat} {scheduler : (application setup timeouts leaks).Scheduler}
     (assessment : setup.intendedModel.BehavioralAssessment)
     (certificate : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup)

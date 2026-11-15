@@ -43,7 +43,7 @@ open GameTheory GameTheory.Protocol Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
+  {timeouts : EventTimeouts setup.informationGraph}
 
 section Candidates
 
@@ -57,8 +57,8 @@ variable (who : Player)
 
 /-- The owner swap sends an aligned meaning at a handle of `who` in the first
 view to the meaning in the second. -/
-theorem swapCandidate_ownerSwap (first second : PlayerView (graph setup))
-    (slot : CandidateSlot (graph setup))
+theorem swapCandidate_ownerSwap (first second : PlayerView setup.informationGraph)
+    (slot : CandidateSlot setup.informationGraph)
     (aligned : CandidatesAligned (first.candidates slot) (second.candidates slot)) :
     swapCandidate ((ownerSwap who first second).raw (who, slot)) (first.candidates slot) =
       second.candidates slot := by
@@ -113,13 +113,13 @@ variable (who : Player)
 
 /-- **The owner swap transposes the two values of a private field** when
 neither is a failure. -/
-theorem value_ownerSwap (first second : PlayerView (graph setup))
-    {field : (graph setup).Field} (privateTo : PrivateTo who field)
-    {left right : ((graph setup).layout field).Value}
+theorem value_ownerSwap (first second : PlayerView setup.informationGraph)
+    {field : setup.informationGraph.Field} (privateTo : PrivateTo who field)
+    {left right : (setup.informationGraph.layout field).Value}
     (firstStore : first.observation.store field = some left)
     (secondStore : second.observation.store field = some right)
-    (leftOk : ¬ ((graph setup).layout field).IsFailure left)
-    (rightOk : ¬ ((graph setup).layout field).IsFailure right) :
+    (leftOk : ¬ (setup.informationGraph.layout field).IsFailure left)
+    (rightOk : ¬ (setup.informationGraph.layout field).IsFailure right) :
     (ownerSwap who first second).values.value field left = right := by
   classical
   change EventGraph.pairSwap (ownerValuePair who first second field) left = right
@@ -139,7 +139,7 @@ section Settled
 variable (who : Player)
 
 /-- The prepared slots of `who` named by commitments among some packets. -/
-def NamedSlot (packets : List (Message Player (WitnessedPacket (graph setup))))
+def NamedSlot (packets : List (Message Player (WitnessedPacket setup.informationGraph)))
     (serial : Nat) : Prop :=
   ∃ message ∈ packets, ∃ event,
     message.payload.call = .commitment event (who, .prepared serial)
@@ -149,31 +149,34 @@ every completed binding stores the value its action binds, every completed
 reveal of `who` disclosed, a prepared handle of `who` is fresh exactly when its
 slot is unnamed and openable when named, and an initial handle of `who` carries
 its input. -/
-structure OwnerSettled (named : Nat → Prop) (state : EventGraphRuntime.State (graph setup)) :
+structure OwnerSettled (named : Nat → Prop) (state : EventGraphRuntime.State
+  setup.informationGraph) :
     Prop where
   noFailure : ∀ field, PrivateTo who field → ∀ value, state.config.store field = some value →
-    ¬ ((graph setup).layout field).IsFailure value
+    ¬ (setup.informationGraph.layout field).IsFailure value
   bindAction : ∀ completion ∈ state.config.history, ∀ owner payload
-    (outputEq : (graph setup).outputLayout completion.event = .binding owner payload),
-    cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-        ((graph setup).nodes completion.event) = .bind owner payload →
+    (outputEq : setup.informationGraph.outputLayout completion.event = .binding owner payload),
+    cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+        (setup.informationGraph.nodes completion.event) = .bind owner payload →
       state.config.outputs completion.event = some (cast (congrArg EventGraph.EventField.Value
         outputEq.symm) ((completion.decision.bind fun action =>
           cast (congrArg EventGraph.EventField.Action outputEq) action).getD .failure))
   disclosed : ∀ completion ∈ state.config.history,
-    (graph setup).actor? completion.event = some who → ∀ payload
-    (outputEq : (graph setup).outputLayout completion.event = .publication payload),
+    setup.informationGraph.actor? completion.event = some who → ∀ payload
+    (outputEq : setup.informationGraph.outputLayout completion.event = .publication payload),
       completion.decision.map (cast (congrArg EventGraph.EventField.Action outputEq)) = some true
   fresh : ∀ serial, state.candidates.lookup (who, .prepared serial) = .fresh ↔ ¬ named serial
   openable : ∀ serial, named serial →
     ∃ raw, state.candidates.lookup (who, .prepared serial) = .openable raw
   initial : ∀ input, state.candidates.lookup (who, .initial input) =
-    State.candidateOfValue who ((graph setup).inputLayout input) (state.config.inputs input)
+    State.candidateOfValue who (setup.informationGraph.inputLayout input) (state.config.inputs
+      input)
 
 /-- **A state earlier than another for `who`.** Its stored values and
 completions persist, a fixed meaning of `who` stays, its prepared handles are
 fresh exactly when unnamed, and its initial handles carry its inputs. -/
-structure OwnerEarlier (named : Nat → Prop) (before after : EventGraphRuntime.State (graph setup)) :
+structure OwnerEarlier (named : Nat → Prop) (before after : EventGraphRuntime.State
+  setup.informationGraph) :
     Prop where
   store : ∀ field value, before.config.store field = some value →
     after.config.store field = some value
@@ -182,10 +185,12 @@ structure OwnerEarlier (named : Nat → Prop) (before after : EventGraphRuntime.
     after.candidates.lookup (who, slot) = before.candidates.lookup (who, slot)
   fresh : ∀ serial, before.candidates.lookup (who, .prepared serial) = .fresh ↔ ¬ named serial
   initial : ∀ input, before.candidates.lookup (who, .initial input) =
-    State.candidateOfValue who ((graph setup).inputLayout input) (before.config.inputs input)
+    State.candidateOfValue who (setup.informationGraph.inputLayout input) (before.config.inputs
+      input)
 
 /-- A settled state is earlier than itself. -/
-theorem OwnerSettled.earlier {named : Nat → Prop} {state : EventGraphRuntime.State (graph setup)}
+theorem OwnerSettled.earlier {named : Nat → Prop} {state : EventGraphRuntime.State
+  setup.informationGraph}
     (settled : OwnerSettled who named state) : OwnerEarlier who named state state where
   store _ _ stored := stored
   history := List.prefix_refl _
@@ -200,11 +205,13 @@ section Views
 variable (who : Player)
 
 private theorem binding_decision_of_settled {named : Nat → Prop}
-    {state : EventGraphRuntime.State (graph setup)} (settled : OwnerSettled who named state)
-    (record : (graph setup).Completion) (member : record ∈ state.config.history)
-    (payload : L.Ty) (outputEq : (graph setup).outputLayout record.event = .binding who payload)
-    (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes record.event) = .bind who payload) :
+    {state : EventGraphRuntime.State setup.informationGraph} (settled : OwnerSettled who named
+      state)
+    (record : setup.informationGraph.Completion) (member : record ∈ state.config.history)
+    (payload : L.Ty) (outputEq : setup.informationGraph.outputLayout record.event = .binding who
+      payload)
+    (codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes record.event) = .bind who payload) :
     ∃ value, record.decision = some (cast (congrArg EventGraph.EventField.Action outputEq.symm)
       (some (.success value))) ∧ state.config.outputs record.event =
         some (cast (congrArg EventGraph.EventField.Value outputEq.symm) (.success value)) := by
@@ -237,10 +244,11 @@ private theorem binding_decision_of_settled {named : Nat → Prop}
           · simpa only [chosen, Option.getD_some] using output
 
 private theorem own_decision_of_settled {named : Nat → Prop}
-    {state : EventGraphRuntime.State (graph setup)} (settled : OwnerSettled who named state)
-    (record : (graph setup).Completion) (member : record ∈ state.config.history)
-    (owned : (graph setup).actor? record.event = some who) : record.decision.isSome := by
-  cases view : nodeView (graph setup) record.event with
+    {state : EventGraphRuntime.State setup.informationGraph} (settled : OwnerSettled who named
+      state)
+    (record : setup.informationGraph.Completion) (member : record ∈ state.config.history)
+    (owned : setup.informationGraph.actor? record.event = some who) : record.decision.isSome := by
+  cases view : nodeView setup.informationGraph record.event with
   | sample payload law outputEq codeEq =>
       rw [nodeView_sample_actor outputEq codeEq] at owned
       cases owned
@@ -258,12 +266,12 @@ private theorem own_decision_of_settled {named : Nat → Prop}
 
 /-- Equal public record keys and settled private values match actual own decisions. -/
 private theorem completion_ownerSwap_of_settled {named : Nat → Prop}
-    {first second : EventGraphRuntime.State (graph setup)}
+    {first second : EventGraphRuntime.State setup.informationGraph}
     (firstSettled : OwnerSettled who named first) (secondSettled : OwnerSettled who named second)
-    {left right : (graph setup).Completion} (leftMember : left ∈ first.config.history)
+    {left right : setup.informationGraph.Completion} (leftMember : left ∈ first.config.history)
     (rightMember : right ∈ second.config.history)
     (same : left.publicEvent = right.publicEvent)
-    (own : (graph setup).actor? left.event = some who) :
+    (own : setup.informationGraph.actor? left.event = some who) :
     (ownerSwap who (first.playerView who) (second.playerView who)).values.completion left =
       right := by
   rcases left with ⟨event, leftDecision, leftDefault⟩
@@ -274,12 +282,12 @@ private theorem completion_ownerSwap_of_settled {named : Nat → Prop}
   have defaults := congrArg Prod.snd same
   change leftDefault = rightDefault at defaults
   subst rightDefault
-  change (graph setup).actor? event = some who at own
+  change setup.informationGraph.actor? event = some who at own
   suffices actionEq : leftDecision.map ((ownerSwap who (first.playerView who)
       (second.playerView who)).values.action event) = rightDecision by
-    change (⟨event, _, leftDefault⟩ : (graph setup).Completion) = _
+    change (⟨event, _, leftDefault⟩ : setup.informationGraph.Completion) = _
     rw [actionEq]
-  cases view : nodeView (graph setup) event with
+  cases view : nodeView setup.informationGraph event with
   | bind owner payload outputEq codeEq =>
       obtain rfl : owner = who :=
         Option.some.inj ((nodeView_bind_actor outputEq codeEq).symm.trans own)
@@ -292,11 +300,11 @@ private theorem completion_ownerSwap_of_settled {named : Nat → Prop}
       have swapped := value_ownerSwap owner (first.playerView owner) (second.playerView owner)
         privateTo
         (by
-          change (graph setup).playerStore owner first.config.store (.inr event) = _
+          change setup.informationGraph.playerStore owner first.config.store (.inr event) = _
           rw [EventGraph.playerStore_of_visible _ _ _ _ privateTo.1]
           exact leftOut)
         (by
-          change (graph setup).playerStore owner second.config.store (.inr event) = _
+          change setup.informationGraph.playerStore owner second.config.store (.inr event) = _
           rw [EventGraph.playerStore_of_visible _ _ _ _ privateTo.1]
           exact rightOut)
         (firstSettled.noFailure _ privateTo _ leftOut)
@@ -343,19 +351,20 @@ private theorem map_filter_of_keys {α β : Type} (map : α → α) (test : α �
 
 /-- The owner swap matches actual own completions at equal public frontiers. -/
 theorem ownActions_ownerSwap_of_settled {named named' : Nat → Prop}
-    {first second before after : EventGraphRuntime.State (graph setup)}
+    {first second before after : EventGraphRuntime.State setup.informationGraph}
     (firstSettled : OwnerSettled who named first) (secondSettled : OwnerSettled who named second)
     (firstEarlier : OwnerEarlier who named' before first)
     (secondEarlier : OwnerEarlier who named' after second)
     (publicEq : before.publicView = after.publicView) :
-    ((graph setup).ownCompletions who before.config.history).map
+    (setup.informationGraph.ownCompletions who before.config.history).map
         (ownerSwap who (first.playerView who) (second.playerView who)).values.completion =
-      (graph setup).ownCompletions who after.config.history := by
-  have orders := congrArg (fun view : PublicView (graph setup) => view.observation.completionOrder)
+      setup.informationGraph.ownCompletions who after.config.history := by
+  have orders := congrArg (fun view : PublicView setup.informationGraph =>
+    view.observation.completionOrder)
     publicEq
   change before.config.history.map EventCompletion.event =
     after.config.history.map EventCompletion.event at orders
-  have defaults := congrArg (fun view : PublicView (graph setup) =>
+  have defaults := congrArg (fun view : PublicView setup.informationGraph =>
     view.observation.defaults.events.reverse) publicEq
   change (before.config.history.map EventCompletion.defaultEvent).reverse.reverse =
     (after.config.history.map EventCompletion.defaultEvent).reverse.reverse at defaults
@@ -370,7 +379,7 @@ theorem ownActions_ownerSwap_of_settled {named named' : Nat → Prop}
   · intro left leftMember right rightMember same
     have events := congrArg Prod.fst same
     change left.event = right.event at events
-    by_cases owned : (graph setup).actor? left.event = some who
+    by_cases owned : setup.informationGraph.actor? left.event = some who
     · have leftSome := own_decision_of_settled who firstSettled left
         (firstEarlier.history.subset leftMember) owned
       have rightSome := own_decision_of_settled who secondSettled right
@@ -386,26 +395,26 @@ theorem ownActions_ownerSwap_of_settled {named named' : Nat → Prop}
 the first settled state to the store it sees at the matching earlier state of
 the second. -/
 theorem store_ownerSwap_of_settled {named named' : Nat → Prop}
-    {first second before after : EventGraphRuntime.State (graph setup)}
+    {first second before after : EventGraphRuntime.State setup.informationGraph}
     (firstSettled : OwnerSettled who named first) (secondSettled : OwnerSettled who named second)
     (firstEarlier : OwnerEarlier who named' before first)
     (secondEarlier : OwnerEarlier who named' after second)
     (publicEq : before.publicView = after.publicView) :
     (ownerSwap who (first.playerView who) (second.playerView who)).values.store
-        ((graph setup).playerStore who before.config.store) =
-      (graph setup).playerStore who after.config.store := by
+        (setup.informationGraph.playerStore who before.config.store) =
+      setup.informationGraph.playerStore who after.config.store := by
   funext field
   simp only [EventGraph.ValueSwap.store]
-  by_cases visible : (graph setup).fieldVisibleTo who field
+  by_cases visible : setup.informationGraph.fieldVisibleTo who field
   · rw [EventGraph.playerStore_of_visible _ _ _ _ visible,
       EventGraph.playerStore_of_visible _ _ _ _ visible]
-    by_cases isPublic : (graph setup).fieldPublic field
+    by_cases isPublic : setup.informationGraph.fieldPublic field
     · rw [(ownerSwap who (first.playerView who) (second.playerView who)).values.value_public
         field isPublic, Option.map_id, id_eq]
       have stores := congrArg
-        (fun view : PublicView (graph setup) => view.observation.store field) publicEq
-      change (graph setup).publicStore before.config.store field =
-        (graph setup).publicStore after.config.store field at stores
+        (fun view : PublicView setup.informationGraph => view.observation.store field) publicEq
+      change setup.informationGraph.publicStore before.config.store field =
+        setup.informationGraph.publicStore after.config.store field at stores
       simpa only [EventGraph.publicStore, isPublic, ↓reduceIte] using stores
     · have privateTo : PrivateTo who field := ⟨visible, isPublic⟩
       have present : (before.config.store field).isSome = (after.config.store field).isSome := by
@@ -413,7 +422,8 @@ theorem store_ownerSwap_of_settled {named named' : Nat → Prop}
         | inl input => rfl
         | inr event =>
             have orders := congrArg
-              (fun view : PublicView (graph setup) => view.observation.completionOrder) publicEq
+              (fun view : PublicView setup.informationGraph => view.observation.completionOrder)
+                publicEq
             change before.config.history.map EventCompletion.event =
               after.config.history.map EventCompletion.event at orders
             change (before.config.outputs event).isSome = (after.config.outputs event).isSome
@@ -435,10 +445,10 @@ theorem store_ownerSwap_of_settled {named named' : Nat → Prop}
               refine congrArg some (value_ownerSwap who _ _ privateTo ?_ ?_
                 (firstSettled.noFailure field privateTo left leftStored)
                 (secondSettled.noFailure field privateTo right rightStored))
-              · change (graph setup).playerStore who first.config.store field = _
+              · change setup.informationGraph.playerStore who first.config.store field = _
                 rw [EventGraph.playerStore_of_visible _ _ _ _ visible]
                 exact leftStored
-              · change (graph setup).playerStore who second.config.store field = _
+              · change setup.informationGraph.playerStore who second.config.store field = _
                 rw [EventGraph.playerStore_of_visible _ _ _ _ visible]
                 exact rightStored
   · rw [EventGraph.playerStore_of_hidden _ _ _ _ visible,
@@ -449,11 +459,11 @@ theorem store_ownerSwap_of_settled {named named' : Nat → Prop}
 earlier state of the first settled state to its meaning at the matching earlier
 state of the second. -/
 theorem candidates_ownerSwap_of_settled {named named' : Nat → Prop}
-    {first second before after : EventGraphRuntime.State (graph setup)}
+    {first second before after : EventGraphRuntime.State setup.informationGraph}
     (firstSettled : OwnerSettled who named first) (secondSettled : OwnerSettled who named second)
     (firstEarlier : OwnerEarlier who named' before first)
     (secondEarlier : OwnerEarlier who named' after second)
-    (slot : CandidateSlot (graph setup)) :
+    (slot : CandidateSlot setup.informationGraph) :
     swapCandidate ((ownerSwap who (first.playerView who) (second.playerView who)).raw
         (who, slot)) (before.candidates.lookup (who, slot)) =
       after.candidates.lookup (who, slot) := by
@@ -499,31 +509,33 @@ theorem candidates_ownerSwap_of_settled {named named' : Nat → Prop}
 earlier state of the first to its view at the matching earlier state of the
 second.** -/
 theorem EventGraphRuntime.PlayerView.swap_ownerSwap_of_settled {named named' : Nat → Prop}
-    {first second before after : EventGraphRuntime.State (graph setup)}
+    {first second before after : EventGraphRuntime.State setup.informationGraph}
     (firstSettled : OwnerSettled who named first) (secondSettled : OwnerSettled who named second)
     (firstEarlier : OwnerEarlier who named' before first)
     (secondEarlier : OwnerEarlier who named' after second)
     (publicEq : before.publicView = after.publicView) :
     PlayerView.swap (ownerSwap who (first.playerView who) (second.playerView who))
         (before.playerView who) = after.playerView who := by
-  have orders := congrArg (fun view : PublicView (graph setup) => view.observation.completionOrder)
+  have orders := congrArg (fun view : PublicView setup.informationGraph =>
+    view.observation.completionOrder)
     publicEq
   change before.config.history.map EventCompletion.event =
     after.config.history.map EventCompletion.event at orders
   change (⟨who, before.publicView, ⟨before.config.history.map EventCompletion.event,
       (ownerSwap who (first.playerView who) (second.playerView who)).values.store
-        ((graph setup).playerStore who before.config.store),
-      ((graph setup).ownCompletions who before.config.history).map
+        (setup.informationGraph.playerStore who before.config.store),
+      (setup.informationGraph.ownCompletions who before.config.history).map
         (ownerSwap who (first.playerView who) (second.playerView who)).values.completion,
       before.config.defaults⟩,
       fun slot => swapCandidate ((ownerSwap who (first.playerView who)
         (second.playerView who)).raw (who, slot)) (before.candidates.lookup (who, slot))⟩ :
-      PlayerView (graph setup)) =
+      PlayerView setup.informationGraph) =
     ⟨who, after.publicView, ⟨after.config.history.map EventCompletion.event,
-      (graph setup).playerStore who after.config.store,
-      (graph setup).ownCompletions who after.config.history, after.config.defaults⟩,
+      setup.informationGraph.playerStore who after.config.store,
+      setup.informationGraph.ownCompletions who after.config.history, after.config.defaults⟩,
       fun slot => after.candidates.lookup (who, slot)⟩
-  have defaults := congrArg (fun view : PublicView (graph setup) => view.observation.defaults)
+  have defaults := congrArg (fun view : PublicView setup.informationGraph =>
+    view.observation.defaults)
     publicEq
   change before.config.defaults = after.config.defaults at defaults
   rw [publicEq, orders, defaults,
@@ -539,14 +551,14 @@ end Views
 
 section Responses
 
-variable {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+variable {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
 variable (who : Player)
 
 /-- **A recorded preparation.** A commitment names a prepared handle of `who`
 whose meaning is the supplied value, or unopenable without one; any other call
 supplies no value. -/
-def PreparationRecorded (state : EventGraphRuntime.State (graph setup))
-    (call : Submission (graph setup)) : Prop :=
+def PreparationRecorded (state : EventGraphRuntime.State setup.informationGraph)
+    (call : Submission setup.informationGraph) : Prop :=
   match call.packet with
   | .commitment _ handle => ∃ serial, handle = (who, .prepared serial) ∧
       state.candidates.lookup handle = call.opening.elim .unopenable .openable
@@ -555,8 +567,8 @@ def PreparationRecorded (state : EventGraphRuntime.State (graph setup))
 /-- **A recorded response.** Silence emits nothing; a transmission emits an
 envelope carrying its call, its evidence request is the canonical request of the
 emitted evidence among the known packets, and its preparation is recorded. -/
-def RecordedResponse (state : EventGraphRuntime.State (graph setup))
-    (known : List (Message Player (WitnessedPacket (graph setup))))
+def RecordedResponse (state : EventGraphRuntime.State setup.informationGraph)
+    (known : List (Message Player (WitnessedPacket setup.informationGraph)))
     (entry : (application setup timeouts leaks).PlayerEntry) : Prop :=
   match entry.action.transmission with
   | none => entry.emitted = none
@@ -569,9 +581,9 @@ def RecordedResponse (state : EventGraphRuntime.State (graph setup))
 the same envelope** at the second settled state, when the slots its commitment
 names are named. -/
 theorem EventGraphRuntime.HiddenSwap.action_ownerSwap {named : Nat → Prop}
-    {first second : EventGraphRuntime.State (graph setup)}
+    {first second : EventGraphRuntime.State setup.informationGraph}
     (firstSettled : OwnerSettled who named first) (secondSettled : OwnerSettled who named second)
-    {known : List (Message Player (WitnessedPacket (graph setup)))}
+    {known : List (Message Player (WitnessedPacket setup.informationGraph))}
     {left right : (application setup timeouts leaks).PlayerEntry}
     (leftRecorded : RecordedResponse (timeouts := timeouts) who first known left)
     (rightRecorded : RecordedResponse (timeouts := timeouts) who second known right)
@@ -662,7 +674,7 @@ theorem EventGraphRuntime.HiddenSwap.action_ownerSwap {named : Nat → Prop}
 settled state to the view with the same operational part at the matching
 earlier state of the second.** -/
 theorem EventGraphRuntime.HiddenSwap.view_ownerSwap_of_settled {named named' : Nat → Prop}
-    {first second before after : EventGraphRuntime.State (graph setup)}
+    {first second before after : EventGraphRuntime.State setup.informationGraph}
     (firstSettled : OwnerSettled who named first) (secondSettled : OwnerSettled who named second)
     (firstEarlier : OwnerEarlier who named' before first)
     (secondEarlier : OwnerEarlier who named' after second)

@@ -51,13 +51,13 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
 /-- The source cell of a field of the default graph. -/
 def fieldCell (setup : Setup (Player := Player) (L := L)) :
-    (graph setup).Field → VarId × CellTy Player L
+    setup.informationGraph.Field → VarId × CellTy Player L
   | .inl input => setup.context.get input
   | .inr event => eventCell setup.program event
 
 theorem layout_fieldCell (setup : Setup (Player := Player) (L := L))
-    (field : (graph setup).Field) :
-    (graph setup).layout field = cellField (fieldCell setup field).2 := by
+    (field : setup.informationGraph.Field) :
+    setup.informationGraph.layout field = cellField (fieldCell setup field).2 := by
   cases field with
   | inl input => exact inputLayout_get setup.context input
   | inr event => exact outputLayout_eventCell setup.program event
@@ -150,8 +150,9 @@ def cellPairAt {kind : EventGraph.EventField Player L} (cell : VarId × CellTy P
       (ProtocolState.cell? setup.program second cell.1 cell.2))
 
 /-- The pair at a field of the default graph between two source program points. -/
-def betweenPair (field : (graph setup).Field) :
-    Option (((graph setup).layout field).Value × ((graph setup).layout field).Value) :=
+def betweenPair (field : setup.informationGraph.Field) :
+    Option ((setup.informationGraph.layout field).Value × (setup.informationGraph.layout
+      field).Value) :=
   cellPairAt setup first second (fieldCell setup field) (layout_fieldCell setup field)
 
 /-- Two program points agree on every public cell found at both. -/
@@ -172,10 +173,10 @@ variable {setup first second}
 
 /-- Read on a reference to a field of a cell, the swap of the between pairs is
 the swap between the two points. -/
-theorem pairSwap_betweenPair {field : (graph setup).Field} {name : VarId}
+theorem pairSwap_betweenPair {field : setup.informationGraph.Field} {name : VarId}
     {kind : CellTy Player L} (cell : fieldCell setup field = (name, kind))
-    (layoutEq : (graph setup).layout field = cellField kind)
-    (value : ((graph setup).layout field).Value) :
+    (layoutEq : setup.informationGraph.layout field = cellField kind)
+    (value : (setup.informationGraph.layout field).Value) :
     cast (congrArg EventGraph.EventField.Value layoutEq)
         (EventGraph.pairSwap (betweenPair setup first second field) value) =
       (CellSwap.between setup.program first second).field name kind
@@ -183,7 +184,7 @@ theorem pairSwap_betweenPair {field : (graph setup).Field} {name : VarId}
   rw [field_between]
   unfold betweenPair
   have general : ∀ (found : VarId × CellTy Player L)
-      (fieldEq : (graph setup).layout field = cellField found.2), found = (name, kind) →
+      (fieldEq : setup.informationGraph.layout field = cellField found.2), found = (name, kind) →
       cast (congrArg EventGraph.EventField.Value layoutEq)
           (EventGraph.pairSwap (cellPairAt setup first second found fieldEq) value) =
         swapFoundField (ProtocolState.cell? setup.program first name kind)
@@ -201,7 +202,7 @@ theorem pairSwap_betweenPair {field : (graph setup).Field} {name : VarId}
 
 /-- **The pairs between two points.** -/
 def betweenPairs (publicAgree : PublicCellsAgree setup first second)
-    (succeed : CommitmentCellsSucceed setup first second) : (graph setup).SwapPairs where
+    (succeed : CommitmentCellsSucceed setup first second) : setup.informationGraph.SwapPairs where
   pair := betweenPair setup first second
   public_none field isPublic := by
     unfold betweenPair
@@ -289,7 +290,7 @@ private theorem cast_option_none {first second : EventGraph.EventField Player L}
 
 /-- **A reference to a field of a cell corresponds to the swap between the points.** -/
 theorem fieldCorr_betweenPairs {name : VarId} {kind : CellTy Player L}
-    (ref : EventGraph.FieldRef (graph setup).layout (cellField kind))
+    (ref : EventGraph.FieldRef setup.informationGraph.layout (cellField kind))
     (cell : fieldCell setup ref.field = (name, kind)) :
     (CellSwap.between setup.program first second).FieldCorr
       (EventGraph.ValueSwap.ofPairs (betweenPairs publicAgree succeed)).store
@@ -318,7 +319,8 @@ theorem refsCorr_initial_between :
 the swap between the points. -/
 theorem outputsCorr_of_cells : ∀ {Γ : SourceCtx Player L} {O : Finset VarId}
     (program : SourceProgram Player L Γ O)
-    (outputs : ∀ event, EventGraph.FieldRef (graph setup).layout (outputLayout program event)),
+    (outputs : ∀ event, EventGraph.FieldRef setup.informationGraph.layout (outputLayout program
+      event)),
     (∀ event, fieldCell setup (outputs event).field = eventCell program event) →
     (CellSwap.between setup.program first second).OutputsCorr
       (EventGraph.ValueSwap.ofPairs (betweenPairs publicAgree succeed)).store
@@ -435,14 +437,14 @@ variable {setup : Setup (Player := Player) (L := L)} [DecidableEq (CellTy Player
   {succeed : CommitmentCellsSucceed setup first second}
 
 /-- **A swapped event decodes to the swapped action.** -/
-theorem decodeEventAction_betweenPairs (event : (graph setup).EventId)
-    (action : (graph setup).Action event) :
+theorem decodeEventAction_betweenPairs (event : setup.informationGraph.EventId)
+    (action : setup.informationGraph.Action event) :
     decodeEventAction setup.program event
         ((EventGraph.ValueSwap.ofPairs (betweenPairs publicAgree succeed)).action event action) =
       (decodeEventAction setup.program event action).map
         (CellSwap.between setup.program first second).action := by
   rcases event with ⟨count, bound⟩
-  by_cases binding : ∃ owner payload, (graph setup).outputLayout ⟨count, bound⟩ =
+  by_cases binding : ∃ owner payload, setup.informationGraph.outputLayout ⟨count, bound⟩ =
       .binding owner payload
   · obtain ⟨owner, payload, outputEq⟩ := binding
     obtain ⟨choice, rfl⟩ : ∃ choice : Option (PublicationResult (L.Val payload)),
@@ -487,7 +489,7 @@ theorem decodeEventAction_betweenPairs (event : (graph setup).EventId)
     | none => rfl
     | some result => exact congrArg some (key result)
   · have notBinding : ∀ owner payload,
-        (graph setup).outputLayout ⟨count, bound⟩ ≠ .binding owner payload :=
+        setup.informationGraph.outputLayout ⟨count, bound⟩ ≠ .binding owner payload :=
       fun owner payload same => binding ⟨owner, payload, same⟩
     change decodeEventAction setup.program ⟨count, bound⟩
       ((betweenPairs publicAgree succeed).action ⟨count, bound⟩ action) = _
@@ -507,7 +509,7 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {succeed : CommitmentCellsSucceed setup first second}
 
 /-- **Swapped completions decode to swapped action lists.** -/
-theorem decodeHistory_betweenPairs (completions : List (graph setup).Completion) :
+theorem decodeHistory_betweenPairs (completions : List setup.informationGraph.Completion) :
     decodeHistory setup.program (completions.map
         (EventGraph.ValueSwap.ofPairs (betweenPairs publicAgree succeed)).completion) =
       (CellSwap.between setup.program first second).history
@@ -524,16 +526,16 @@ theorem decodeHistory_betweenPairs (completions : List (graph setup).Completion)
         | some action => exact decodeEventAction_betweenPairs event action
   · apply List.filter_congr
     intro completion _
-    change decide ((toEventGraph setup.program).actor? completion.event = some who ∧
+    change decide ((toInformationGraph setup.program).actor? completion.event = some who ∧
         (completion.decision.map
           ((EventGraph.ValueSwap.ofPairs (betweenPairs publicAgree succeed)).action
             completion.event)).isSome) =
-      decide ((toEventGraph setup.program).actor? completion.event = some who ∧
+      decide ((toInformationGraph setup.program).actor? completion.event = some who ∧
         completion.decision.isSome)
     simp only [Option.isSome_map]
 
 /-- **Reading a swapped configuration reads the swapped point.** -/
-theorem sourceServicePrefix?_betweenPairs (rank : Nat) (config : (graph setup).Config) :
+theorem sourceServicePrefix?_betweenPairs (rank : Nat) (config : setup.informationGraph.Config) :
     sourceServicePrefix? setup rank (config.swap (EventGraph.ValueSwap.ofPairs
         (betweenPairs publicAgree succeed))) =
       (sourceServicePrefix? setup rank config).map

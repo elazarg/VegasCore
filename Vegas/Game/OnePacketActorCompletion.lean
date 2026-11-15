@@ -32,18 +32,18 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)} {profile : BehavioralProfile setup.program}
+  {timeouts : EventTimeouts setup.informationGraph} {profile : BehavioralProfile setup.program}
 
 /-- **A completion with an actor is a deterministic source step.** At a
 configuration with a source residual, the source step of the decoded action of
 a completion of an event with an actor gives the decoded point of the reached
 configuration mass one. -/
-theorem SourceResidual.actorStepMass {rank : Nat} {before : (graph setup).Config}
+theorem SourceResidual.actorStepMass {rank : Nat} {before : setup.informationGraph.Config}
     (residual : SourceResidual setup profile rank before)
-    (event : (graph setup).EventId) (ready : before.cut.Ready event)
-    (action : (graph setup).Action event) (after : (graph setup).Config)
+    (event : setup.informationGraph.EventId) (ready : before.cut.Ready event)
+    (action : setup.informationGraph.Action event) (after : setup.informationGraph.Config)
     (member : after ∈ (before.step event ready action).support) {actor : Player}
-    (acts : (graph setup).actor? event = some actor) :
+    (acts : setup.informationGraph.actor? event = some actor) :
     ((ProtocolState.step setup.program
         (residual.lift (ProtocolState.entry residual.program residual.source))
         (fun _ => decodeEventAction setup.program event action)).map some)
@@ -55,11 +55,11 @@ theorem SourceResidual.actorStepMass {rank : Nat} {before : (graph setup).Config
   rw [(PMF.mem_support_pure_iff _ _).mp member, PMF.pure_apply_self]
 
 /-- The completion mass of a completion of an event with an actor is one. -/
-theorem completionMass_of_actor (before after : EventGraphRuntime.State (graph setup))
-    {event : (graph setup).EventId} (ready : before.config.cut.Ready event)
-    {action : (graph setup).Action event}
+theorem completionMass_of_actor (before after : EventGraphRuntime.State setup.informationGraph)
+    {event : setup.informationGraph.EventId} (ready : before.config.cut.Ready event)
+    {action : setup.informationGraph.Action event}
     (member : after.config ∈ (before.config.step event ready action).support) {actor : Player}
-    (acts : (graph setup).actor? event = some actor) :
+    (acts : setup.informationGraph.actor? event = some actor) :
     completionMass setup before after = 1 := by
   obtain ⟨value, _output, changed⟩ := before.config.step_completion event ready action _ member
   unfold completionMass
@@ -67,7 +67,7 @@ theorem completionMass_of_actor (before after : EventGraphRuntime.State (graph s
   simp [EventGraph.completion, acts]
 
 variable [Fintype Player]
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
 
 /-- An active owner's actual completion matches in the intended replay, from a
 replayed history at a configuration's source residual, when the other players'
@@ -79,14 +79,14 @@ theorem replayStepMatches_actor (assessment : setup.intendedModel.BehavioralAsse
     (residual : SourceResidual setup profile rank before.execution.application.config)
     (current : history.state =
       some (residual.lift (ProtocolState.entry residual.program residual.source)))
-    (completion : (graph setup).Completion)
+    (completion : setup.informationGraph.Completion)
     (ready : before.execution.application.config.cut.Ready completion.event)
-    {action : (graph setup).Action completion.event}
+    {action : setup.informationGraph.Action completion.event}
     (member : after.execution.application.config ∈
       (before.execution.application.config.step completion.event ready action).support)
     (dropped : after.execution.application.config.history.drop
       before.execution.application.config.history.length = [completion])
-    {actor : Player} (acts : (graph setup).actor? completion.event = some actor)
+    {actor : Player} (acts : setup.informationGraph.actor? completion.event = some actor)
     (active : actor ∉ before.execution.application.config.defaulted)
     (others : ∀ legal : setup.intendedProtocol.Legal history.state
         (actingJoint setup history.state
@@ -98,14 +98,15 @@ theorem replayStepMatches_actor (assessment : setup.intendedModel.BehavioralAsse
   have mass := residual.actorStepMass completion.event ready action _ member acts
   obtain ⟨value, _output, changed⟩ :=
     before.execution.application.config.step_completion completion.event ready action _ member
-  have recordEq : EventGraph.completion (graph setup) completion.event
+  have recordEq : EventGraph.completion setup.informationGraph completion.event
       (before.execution.application.config.actualDecision completion.event action) value =
         completion := by
     apply List.singleton_injective
     simpa only [changed, List.drop_left] using dropped
   have chosen : completion.decision = some action := by
-    have packed := congrArg (fun record : (graph setup).Completion =>
-      (⟨record.event, record.decision⟩ : Σ event, Option ((graph setup).Action event))) recordEq
+    have packed := congrArg (fun record : setup.informationGraph.Completion =>
+      (⟨record.event, record.decision⟩ : Σ event, Option (setup.informationGraph.Action event)))
+        recordEq
     have decisionEq := eq_of_heq (Sigma.mk.inj packed).2
     change before.execution.application.config.actualDecision completion.event action =
       completion.decision at decisionEq

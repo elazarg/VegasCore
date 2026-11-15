@@ -24,8 +24,8 @@ open SourceProgram GameTheory GameTheory.Enforcement GameTheory.Math.Probability
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
   {Parameter : Type} (parameter : State L setup.context → Parameter)
 
 /-- Valuation and cash add through the same public-default branch and zero fallback. -/
@@ -79,7 +79,8 @@ theorem exclusionBase_valuation_factors
       | some terminal =>
           apply exclusionTerminalUtility_of_not_defaulted
           change who ∉ terminal.defaults.defaulted
-          rw [serviceSourceReadout_defaults setup .sequential timeouts.duration leaks control
+          rw [serviceSourceReadout_defaults setup setup.informationDependencies timeouts.duration
+            leaks control
             terminal read]
           exact active
 

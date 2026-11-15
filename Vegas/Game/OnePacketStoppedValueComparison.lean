@@ -31,9 +31,9 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L] (setup : Setup (Player := Player) (L := L))
-  (timeouts : EventTimeouts (graph setup))
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-  (bounds : MessageBounds (graph setup)) (horizon : Nat)
+  (timeouts : EventTimeouts setup.informationGraph)
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
+  (bounds : MessageBounds setup.informationGraph) (horizon : Nat)
   (scheduler : (application setup timeouts leaks).Scheduler)
 
 local notation "Menu" => bounds.onePacketMenu timeouts leaks
@@ -43,7 +43,7 @@ local notation "E" => ReactiveApplication.ResponseMenu.protocol
   (bounds.onePacketMenu timeouts leaks) (initialLaw setup) horizon scheduler
 local notation "Clear" => ReactiveApplication.stateInvariant
   (app := application setup timeouts leaks)
-    (fun native : EventGraphRuntime.State (graph setup) =>
+    (fun native : EventGraphRuntime.State setup.informationGraph =>
       EventGraph.Config.defaulted (EventGraphRuntime.State.config native) = ∅)
 
 variable {Parameter : Type} (parameter : State L setup.context → Parameter)
@@ -173,7 +173,7 @@ theorem assembled_terminal_stopped_comparison_bounds
       (combinedFloor setup timeouts leaks bounds horizon scheduler (sequence n))
       (2 * horizon + 2) n)
     (covers : bounds.CoversOutputValues) (coversInputs : bounds.CoversInputValues)
-    (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
+    (capacity : ∀ who, bindingEventCount setup.informationGraph who < bounds.candidateCount)
     (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
       horizon scheduler bounds.candidateCount p))
     (targetSequence : ℕ → (N).BehavioralAssessment)
@@ -182,7 +182,7 @@ theorem assembled_terminal_stopped_comparison_bounds
     (mixed : ∀ n, (targetSequence n).IsFullyMixed)
     (bayes : ∀ n, BehavioralAssessment.IsBayesConsistent (N) (targetSequence n)
       ((Menu).decisionRecall (initialLaw setup) horizon scheduler).decisionInformationAntichain)
-    {delay bound : (graph setup).EventId → Nat}
+    {delay bound : setup.informationGraph.EventId → Nat}
     (opportunity : Opportunity timeouts leaks (initialLaw setup) horizon scheduler delay)
     (inclusion : ProtectedInclusion timeouts leaks (initialLaw setup) horizon scheduler bound)
     (timely : (AsyncTimely timeouts) delay bound)
@@ -200,7 +200,7 @@ theorem assembled_terminal_stopped_comparison_bounds
           ((N).agentAt site) →
         ∀ {past : List (application setup timeouts leaks).PlayerEntry}
           {view : (application setup timeouts leaks).PlayerView}, site.1 = some (past, view) →
-        ∀ {event : (graph setup).EventId},
+        ∀ {event : setup.informationGraph.EventId},
           view.application.publicView.ownTurn? who = some event →
         let common := (targetSequence n).strategy
         let certificate :=

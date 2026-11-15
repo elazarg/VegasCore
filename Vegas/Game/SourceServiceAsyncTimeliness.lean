@@ -31,35 +31,35 @@ namespace Vegas
 open SourceProgram GameTheory.Math.Probability Interaction EventGraphRuntime EventGraph
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
-  (setup : Setup (Player := Player) (L := L)) {mode : EventGraph.ExecutionMode}
-  {duration : (serviceGraph setup mode).EventId → Nat}
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
+  (setup : Setup (Player := Player) (L := L)) {deps : setup.dataflowGraph.Dependencies}
+  {duration : (serviceGraph setup deps).EventId → Nat}
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup deps)))
 
 /-- **A settled protected call keeps its event within the deadline.** While the
 event of a recorded settled fresh call is unfinished, protected inclusion has
 not yet run out, so the event has not passed its deadline. -/
 theorem FreshCall.withinDeadline
     {horizon : Nat}
-    {scheduler : (serviceApplication setup mode duration leaks).Scheduler}
-    {bound : (serviceGraph setup mode).EventId → Nat}
-    (owner : Player) (event : (serviceGraph setup mode).EventId)
-    (owned : (serviceGraph setup mode).actor? event = some owner)
-    {control : (serviceApplication setup mode duration leaks).Control}
-    (trace : ((serviceApplication setup mode duration leaks).protocol
-      (serviceInitialLaw setup mode) horizon scheduler).Trace (some control))
-    (inclusion : ProtectedInclusionAt (serviceTimeouts setup mode duration)
+    {scheduler : (serviceApplication setup deps duration leaks).Scheduler}
+    {bound : (serviceGraph setup deps).EventId → Nat}
+    (owner : Player) (event : (serviceGraph setup deps).EventId)
+    (owned : (serviceGraph setup deps).actor? event = some owner)
+    {control : (serviceApplication setup deps duration leaks).Control}
+    (trace : ((serviceApplication setup deps duration leaks).protocol
+      (serviceInitialLaw setup deps) horizon scheduler).Trace (some control))
+    (inclusion : ProtectedInclusionAt (serviceTimeouts setup deps duration)
       leaks control.execution bound)
-    (earlier : List (serviceApplication setup mode duration leaks).PlayerEntry)
-    (entry : (serviceApplication setup mode duration leaks).PlayerEntry)
-    (later : List (serviceApplication setup mode duration leaks).PlayerEntry)
-    (message : Message Player (WitnessedPacket (serviceGraph setup mode)))
+    (earlier : List (serviceApplication setup deps duration leaks).PlayerEntry)
+    (entry : (serviceApplication setup deps duration leaks).PlayerEntry)
+    (later : List (serviceApplication setup deps duration leaks).PlayerEntry)
+    (message : Message Player (WitnessedPacket (serviceGraph setup deps)))
     (split : control.execution.logs owner = earlier ++ entry :: later)
     (call : FreshCall setup leaks owner event bound entry message)
-    (sole : ∀ other ∈ earlier ++ later, ¬ EmitsOtherFor (serviceTimeouts setup mode duration) leaks
+    (sole : ∀ other ∈ earlier ++ later, ¬ EmitsOtherFor (serviceTimeouts setup deps duration) leaks
       other event message.id)
     (settled : Settled setup leaks event message.id control.execution)
     (unfinished : event ∉ control.execution.application.config.cut.completed) :
-    control.execution.application.WithinDeadline (serviceTimeouts setup mode duration) event := by
+    control.execution.application.WithinDeadline (serviceTimeouts setup deps duration) event := by
   have facts := legalFacts setup leaks horizon scheduler _ trace
   have member : entry ∈ control.execution.logs owner := by rw [split]; simp
   obtain ⟨entered, activated, early⟩ := call.fits.exists
@@ -83,25 +83,26 @@ theorem FreshCall.withinDeadline
 /-- A native command preserves protected fresh-call settlement. -/
 theorem SettlesFreshCalls.environment
     {horizon : Nat}
-    {scheduler : (serviceApplication setup mode duration leaks).Scheduler}
-    {bound : (serviceGraph setup mode).EventId → Nat}
-    (owner : Player) (event : (serviceGraph setup mode).EventId)
-    (owned : (serviceGraph setup mode).actor? event = some owner)
+    {scheduler : (serviceApplication setup deps duration leaks).Scheduler}
+    {bound : (serviceGraph setup deps).EventId → Nat}
+    (owner : Player) (event : (serviceGraph setup deps).EventId)
+    (ownerSolitary : (serviceGraph setup deps).OwnerSolitary event)
+    (owned : (serviceGraph setup deps).actor? event = some owner)
     (remaining : Nat)
-    (execution : (serviceApplication setup mode duration leaks).Execution)
-    (inclusion : ProtectedInclusionAt (serviceTimeouts setup mode duration)
+    (execution : (serviceApplication setup deps duration leaks).Execution)
+    (inclusion : ProtectedInclusionAt (serviceTimeouts setup deps duration)
       leaks execution bound)
-    (prior : ((serviceApplication setup mode duration leaks).protocol
-      (serviceInitialLaw setup mode) horizon scheduler).Trace
+    (prior : ((serviceApplication setup deps duration leaks).protocol
+      (serviceInitialLaw setup deps) horizon scheduler).Trace
         (some ⟨remaining + 1, none, execution⟩))
     (valid : SettlesFreshCalls setup leaks owner event bound execution)
-    (command : (serviceApplication setup mode duration leaks).Command)
-    (next : (serviceApplication setup mode duration leaks).Execution)
+    (command : (serviceApplication setup deps duration leaks).Command)
+    (next : (serviceApplication setup deps duration leaks).Execution)
     (reached : next ∈ (execution.environmentStep
-      (serviceApplication setup mode duration leaks) command).support) :
+      (serviceApplication setup deps duration leaks) command).support) :
     SettlesFreshCalls setup leaks owner event bound next := by
-  let timeouts := serviceTimeouts setup mode duration
-  let app := serviceApplication setup mode duration leaks
+  let timeouts := serviceTimeouts setup deps duration
+  let app := serviceApplication setup deps duration leaks
   have facts := legalFacts setup leaks horizon scheduler _ prior
   have recallEq := app.environmentStep_recall execution next command reached
   have mono := CompletionStep.completed_mono_path
@@ -142,7 +143,7 @@ theorem SettlesFreshCalls.environment
   · obtain ⟨extra, order, together, _, acceptedChanged⟩ := stableAt finished
     have readyNow := ready_of_eventReady_extends order call.ready finished
     have readyActive := execution.application.active_of_ready_owned facts.quiescent readyNow owned
-    have afterActive (native : EventGraphRuntime.State (serviceGraph setup mode))
+    have afterActive (native : EventGraphRuntime.State (serviceGraph setup deps))
         (unfinished : event ∉ native.config.cut.completed)
         (footprint : CompletionStep execution.application native) :
         owner ∉ native.config.defaulted := by
@@ -153,7 +154,7 @@ theorem SettlesFreshCalls.environment
       · have acting := EventGraph.Config.step_new_default_actor
           execution.application.config native.config named ready action moved owner readyActive
           excluded
-        have same := (serviceGraph_revealRelaxedOrdered setup mode).ready_actor_unique
+        have same := ownerSolitary.ready_actor_unique
           execution.application.config.cut readyNow ready owned acting
         subst named
         apply unfinished
@@ -194,9 +195,9 @@ theorem SettlesFreshCalls.environment
                   (envelopeId.trans sameId)
               subst envelopeEq
               obtain ⟨accepted, handled⟩ := freshServiceAcceptable_accepted_of_extends timeouts
-                (serviceGraph_revealRelaxedOrdered setup mode) execution.application
-                entry.beforeView.application.publicView envelope call.conforming event
-                call.addressed order together acceptedChanged finished (withinDeadline finished)
+                execution.application entry.beforeView.application.publicView envelope
+                call.conforming event ownerSolitary call.addressed order together acceptedChanged
+                finished (withinDeadline finished)
                 (fun fact inside => facts.evidence.pending envelope pending fact inside)
                 facts.quiescent facts.binding
               have reactiveHandled : app.handle execution.application envelope =
@@ -338,20 +339,21 @@ theorem SettlesFreshCalls.environment
 
 /-- The settlement invariant holds at every legal history. -/
 theorem settlesFreshCalls_history {horizon : Nat}
-    {scheduler : (serviceApplication setup mode duration leaks).Scheduler}
-    {bound : (serviceGraph setup mode).EventId → Nat}
-    (inclusion : ProtectedInclusion (serviceTimeouts setup mode duration) leaks
-        (serviceInitialLaw setup mode) horizon scheduler bound)
-    (owner : Player) (event : (serviceGraph setup mode).EventId)
-    (owned : (serviceGraph setup mode).actor? event = some owner) :
+    {scheduler : (serviceApplication setup deps duration leaks).Scheduler}
+    {bound : (serviceGraph setup deps).EventId → Nat}
+    (inclusion : ProtectedInclusion (serviceTimeouts setup deps duration) leaks
+        (serviceInitialLaw setup deps) horizon scheduler bound)
+    (owner : Player) (event : (serviceGraph setup deps).EventId)
+    (ownerSolitary : (serviceGraph setup deps).OwnerSolitary event)
+    (owned : (serviceGraph setup deps).actor? event = some owner) :
     ∀ {state}
         (_trace :
-            ((serviceApplication setup mode duration leaks).protocol (serviceInitialLaw setup mode)
+            ((serviceApplication setup deps duration leaks).protocol (serviceInitialLaw setup deps)
             horizon scheduler).Trace state), ReactiveApplication.serviceInvariant
         (SettlesFreshCalls setup leaks owner event bound) state
   | _, .start => trivial
   | _, .extend (source := before) prior joint _ reached => by
-      have valid := settlesFreshCalls_history inclusion owner event owned prior
+      have valid := settlesFreshCalls_history inclusion owner event ownerSolitary owned prior
       cases before with
       | none =>
           obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ reached
@@ -371,9 +373,10 @@ theorem settlesFreshCalls_history {horizon : Nat}
                   obtain ⟨command, _, moved⟩ :=
                     Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
                   obtain ⟨next, supported, rfl⟩ := PMF.support_map .. ▸ moved
-                  exact SettlesFreshCalls.environment setup leaks owner event owned remaining
-                    execution (inclusion ⟨remaining + 1, none, execution⟩ prior) prior valid command
-                    next supported
+                  exact SettlesFreshCalls.environment setup leaks owner event ownerSolitary owned
+                    remaining execution
+                    (inclusion ⟨remaining + 1, none, execution⟩ prior) prior valid command next
+                    supported
 
 /-- **Timeliness of an acceptable fresh call.** Under the contract's protected
 inclusion an owner's fresh call for its ready event, sent while an inclusion within
@@ -382,30 +385,31 @@ with no other identifier of its own emitted by the owner for the event, is accep
 bound has passed; and the event completes only through it, so it is neither
 rejected nor preceded by expiry. -/
 theorem prescribed_packet_settles {horizon : Nat}
-    {scheduler : (serviceApplication setup mode duration leaks).Scheduler}
-    {bound : (serviceGraph setup mode).EventId → Nat}
-    (inclusion : ProtectedInclusion (serviceTimeouts setup mode duration) leaks
-        (serviceInitialLaw setup mode) horizon scheduler bound)
-    {control : (serviceApplication setup mode duration leaks).Control}
+    {scheduler : (serviceApplication setup deps duration leaks).Scheduler}
+    {bound : (serviceGraph setup deps).EventId → Nat}
+    (inclusion : ProtectedInclusion (serviceTimeouts setup deps duration) leaks
+        (serviceInitialLaw setup deps) horizon scheduler bound)
+    {control : (serviceApplication setup deps duration leaks).Control}
     (trace :
-        ((serviceApplication setup mode duration leaks).protocol (serviceInitialLaw setup mode)
+        ((serviceApplication setup deps duration leaks).protocol (serviceInitialLaw setup deps)
         horizon scheduler).Trace (some control))
-    (event : (serviceGraph setup mode).EventId) (owner : Player)
-    (owned : (serviceGraph setup mode).actor? event = some owner)
-    (earlier later : List (serviceApplication setup mode duration leaks).PlayerEntry)
-    (entry : (serviceApplication setup mode duration leaks).PlayerEntry)
-    (message : Message Player (WitnessedPacket (serviceGraph setup mode)))
+    (event : (serviceGraph setup deps).EventId) (owner : Player)
+    (ownerSolitary : (serviceGraph setup deps).OwnerSolitary event)
+    (owned : (serviceGraph setup deps).actor? event = some owner)
+    (earlier later : List (serviceApplication setup deps duration leaks).PlayerEntry)
+    (entry : (serviceApplication setup deps duration leaks).PlayerEntry)
+    (message : Message Player (WitnessedPacket (serviceGraph setup deps)))
     (split : control.execution.logs owner = earlier ++ entry :: later)
     (call : FreshCall setup leaks owner event bound entry message)
     (sole : ∀ other ∈ earlier ++ later,
-      ¬ EmitsOtherFor (serviceTimeouts setup mode duration) leaks other event message.id) :
+      ¬ EmitsOtherFor (serviceTimeouts setup deps duration) leaks other event message.id) :
     (entry.beforeView.application.publicView.clock + bound event <
         control.execution.application.clock →
       (message.id, true) ∈ control.execution.receipts) ∧
       (event ∈ control.execution.application.config.cut.completed →
         (message.id, true) ∈ control.execution.receipts) := by
-  have settled := settlesFreshCalls_history setup leaks inclusion owner event owned
-    trace
+  have settled := settlesFreshCalls_history setup leaks inclusion owner event ownerSolitary
+    owned trace
     earlier entry later message split call sole
   refine ⟨fun late => ?_, settled.1⟩
   by_cases finished : event ∈ control.execution.application.config.cut.completed

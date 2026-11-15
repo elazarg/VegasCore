@@ -33,21 +33,21 @@ private theorem isFailure_cast {Player : Type} {L : IExpr}
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
 
 private theorem resolution_failure_of_intended_impossible
-    {bounds : MessageBounds (graph setup)} {horizon : Nat}
+    {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
     {scheduler : (application setup timeouts leaks).Scheduler}
     {control : (application setup timeouts leaks).Control}
     (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control))
-    {event : (graph setup).EventId} {owner : Player} {payload : L.Ty}
-    {binding : EventGraph.FieldRef (graph setup).layout (.binding owner payload)}
-    {checks : List (EventGraph.GuardCheck (graph setup).layout payload)}
-    (outputEq : (graph setup).outputLayout event = .publication payload)
-    (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .resolve owner payload binding checks)
+    {event : setup.informationGraph.EventId} {owner : Player} {payload : L.Ty}
+    {binding : EventGraph.FieldRef setup.informationGraph.layout (.binding owner payload)}
+    {checks : List (EventGraph.GuardCheck setup.informationGraph.layout payload)}
+    (outputEq : setup.informationGraph.outputLayout event = .publication payload)
+    (codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .resolve owner payload binding checks)
     (ready : control.execution.application.config.cut.Ready event)
     {point : ProtocolState setup.program}
     (decoded : decodedPoint setup control.execution.application.config = some point)
@@ -81,7 +81,7 @@ private theorem resolution_failure_of_intended_impossible
   rw [pointEq] at reached
   have atEvent : control.execution.application.config.cut.IsPrefix event.val :=
     ⟨event.isLt.le, fun query =>
-      setup.eventGraph.sequentialize_mem_completed_iff_lt_of_ready _ ready⟩
+      setup.informationGraph.sequentialize_mem_completed_iff_lt_of_ready _ ready⟩
   have rankEq := atEvent.unique residual.checkpoint.ordered
   subst rank
   have nextDecoded := successor.decode
@@ -103,12 +103,12 @@ private theorem resolution_failure_of_intended_impossible
 /-- A source-main response cannot precede a public failure when its actual native
 callback fits the original deadline and its recorded fresh calls settle. -/
 theorem firstResponse_not_main_of_publicFailure_of_settles
-    (bounds : MessageBounds (graph setup)) (wellFormed : setup.WellFormed)
+    (bounds : MessageBounds setup.informationGraph) (wellFormed : setup.WellFormed)
     (covers : bounds.CoversOutputValues)
-    (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
+    (capacity : ∀ who, bindingEventCount setup.informationGraph who < bounds.candidateCount)
     (source : setup.intendedModel.BehavioralAssessment) (focal : Player)
     (horizon : Nat) (scheduler : (application setup timeouts leaks).Scheduler)
-    (bound : (graph setup).EventId → Nat)
+    (bound : setup.informationGraph.EventId → Nat)
     {remaining : Nat} {who : Player} {execution : (application setup timeouts leaks).Execution}
     (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some ⟨remaining, some who, execution⟩))
@@ -116,7 +116,7 @@ theorem firstResponse_not_main_of_publicFailure_of_settles
     (regular : RegularTrace setup timeouts leaks bounds horizon scheduler source focal trace)
     (notOwed : ∀ point, decodedPoint setup execution.application.config = some point →
       ¬ ProtocolState.OwesFailure focal setup.program point)
-    (event : (graph setup).EventId)
+    (event : setup.informationGraph.EventId)
     (pending : pendingEvent setup timeouts leaks who (some (execution.logs who,
       execution.observe (application setup timeouts leaks) who)) = some event)
     (fits : execution.application.publicView.InclusionFitsDeadline timeouts bound event)
@@ -162,15 +162,15 @@ theorem firstResponse_not_main_of_publicFailure_of_settles
     timeouts)
     bounds horizon scheduler bound trace event turn fits action material submits after control
     target isPrefix next nextExecution settles
-  have good : ¬ ((graph setup).outputLayout event).IsFailure output := by
+  have good : ¬ (setup.informationGraph.outputLayout event).IsFailure output := by
     rcases witness with
       ⟨candidate, owner, payload, layoutEq, _call, _fixed, decision, outputValue⟩ |
       ⟨candidate, raw, owner, payload, binding, checks, outputEq, codeEq, result,
         _call, _node, resolved, _decision, outputValue⟩
-    · have codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) layoutEq)
-          ((graph setup).nodes event) = .bind owner payload := by
-        generalize cast (congrArg (EventGraph.EventCode (graph setup).layout) layoutEq)
-          ((graph setup).nodes event) = lowered
+    · have codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) layoutEq)
+          (setup.informationGraph.nodes event) = .bind owner payload := by
+        generalize cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) layoutEq)
+          (setup.informationGraph.nodes event) = lowered
         cases lowered
         rfl
       obtain ⟨value, succeeds⟩ := bindSuccess owner payload layoutEq codeEq

@@ -111,9 +111,9 @@ the compiled graph, a failed output at a reveal event of a player counts as a
 failed reveal of that player in the decoded public outcome. -/
 theorem failedReveals_pos_of_failed_output {Γ : SourceCtx Player L} {openNames : Finset VarId}
     (program : SourceProgram Player L Γ openNames)
-    (result : {config : (toEventGraph program).Config // config.cut.Terminal})
-    (event : (toEventGraph program).EventId) (who : Player)
-    (publication : ((toEventGraph program).outputLayout event).IsPublication)
+    (result : {config : (toInformationGraph program).Config // config.cut.Terminal})
+    (event : (toInformationGraph program).EventId) (who : Player)
+    (publication : ((toInformationGraph program).outputLayout event).IsPublication)
     (owned : eventOwner? program event = some who)
     (failed : ∃ value, result.1.outputs event = some value ∧
       EventGraph.EventField.FailedValue _ value) :

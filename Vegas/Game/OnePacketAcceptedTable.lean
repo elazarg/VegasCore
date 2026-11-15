@@ -30,17 +30,17 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol Intera
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
+  {timeouts : EventTimeouts setup.informationGraph}
 
 variable (setup timeouts) in
 /-- The accepted handle of every event output is kept, except at an event that
 was ready with none and has completed. -/
-def AcceptedKept (before after : EventGraphRuntime.State (graph setup)) : Prop :=
+def AcceptedKept (before after : EventGraphRuntime.State setup.informationGraph) : Prop :=
   ∀ event, after.accepted (.inr event) = before.accepted (.inr event) ∨
     (before.config.cut.Ready event ∧ before.accepted (.inr event) = none ∧
       event ∈ after.config.cut.completed)
 
-variable (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+variable (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
 
 /-- **Accepted handles change only at their own completion.** -/
 theorem acceptedKept_step :
@@ -90,7 +90,7 @@ theorem acceptedKept_transition (initial : PMF (application setup timeouts leaks
   (acceptedKept_step (timeouts := timeouts) leaks).transition initial horizon scheduler before after
     joint reached
 
-variable [Fintype Player] {bounds : MessageBounds (graph setup)} {horizon : Nat}
+variable [Fintype Player] {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 omit [Fintype Player] in
@@ -99,7 +99,7 @@ theorem completed_transition {before after : (application setup timeouts leaks).
     (joint : Player → Option (application setup timeouts leaks).Action)
     (reached : some after ∈ ((application setup timeouts leaks).transition (initialLaw setup)
       horizon
-      scheduler (some before) joint).support) {event : (graph setup).EventId}
+      scheduler (some before) joint).support) {event : setup.informationGraph.EventId}
     (completed : event ∈ before.execution.application.config.cut.completed) :
     event ∈ after.execution.application.config.cut.completed := by
   exact EventGraph.Config.Step.path_completed_mono
@@ -111,7 +111,7 @@ game. -/
 theorem accepted_completed {state}
     (trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace state)
     (control : (application setup timeouts leaks).Control) (current : state = some control)
-    (event : (graph setup).EventId)
+    (event : setup.informationGraph.EventId)
     (present : control.execution.application.accepted (.inr event) ≠ none) :
     event ∈ control.execution.application.config.cut.completed := by
   subst current

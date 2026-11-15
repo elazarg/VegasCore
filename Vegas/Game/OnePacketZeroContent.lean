@@ -32,9 +32,9 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol Intera
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  [Fintype Player] {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  [Fintype Player] {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- **A zero-content response at the player's turn commits at a binding.** Along
@@ -53,12 +53,12 @@ theorem zeroContent_binding_of_turn (assessment : setup.intendedModel.Behavioral
       (execution.respond (application setup timeouts leaks) who response) response = 0)
     (atTurn : ∀ named, (submittedEvent? timeouts) leaks response = some named →
       execution.application.publicView.ownTurn? who = some named) :
-    ∃ (event : (graph setup).EventId) (payload : L.Ty)
-      (outputEq : (graph setup).outputLayout event = .binding who payload)
-      (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-        ((graph setup).nodes event) = .bind who payload),
+    ∃ (event : setup.informationGraph.EventId) (payload : L.Ty)
+      (outputEq : setup.informationGraph.outputLayout event = .binding who payload)
+      (codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+        (setup.informationGraph.nodes event) = .bind who payload),
       execution.application.publicView.ownTurn? who = some event ∧
-      nodeView (graph setup) event = .bind who payload outputEq codeEq := by
+      nodeView setup.informationGraph event = .bind who payload outputEq codeEq := by
   obtain ⟨material, sends⟩ := Option.ne_none_iff_exists'.mp transmits
   obtain ⟨named, _, packetEvent, _, _⟩ := onePacket_sentSourceAction (timeouts := timeouts) who _ _
     response member
@@ -70,7 +70,7 @@ theorem zeroContent_binding_of_turn (assessment : setup.intendedModel.Behavioral
   have turn : execution.application.publicView.ownTurn? who = some named :=
     atTurn named submitted
   have owned := (PublicView.ownTurn?_spec _ who named turn).2
-  cases node : nodeView (graph setup) named with
+  cases node : nodeView setup.informationGraph named with
   | sample payload law outputEq codeEq =>
       rw [nodeView_sample_actor outputEq codeEq] at owned
       cases owned
@@ -147,12 +147,12 @@ theorem zeroContent_binding (assessment : setup.intendedModel.BehavioralAssessme
     (transmits : response.transmission ≠ none)
     (zero : contentFactor setup timeouts leaks assessment who execution
       (execution.respond (application setup timeouts leaks) who response) response = 0) :
-    ∃ (event : (graph setup).EventId) (payload : L.Ty)
-      (outputEq : (graph setup).outputLayout event = .binding who payload)
-      (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-        ((graph setup).nodes event) = .bind who payload),
+    ∃ (event : setup.informationGraph.EventId) (payload : L.Ty)
+      (outputEq : setup.informationGraph.outputLayout event = .binding who payload)
+      (codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+        (setup.informationGraph.nodes event) = .bind who payload),
       execution.application.publicView.ownTurn? who = some event ∧
-      nodeView (graph setup) event = .bind who payload outputEq codeEq := by
+      nodeView setup.informationGraph event = .bind who payload outputEq codeEq := by
   have rawTrace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
     scheduler).Trace
       (some ⟨remaining, some who, execution⟩) :=

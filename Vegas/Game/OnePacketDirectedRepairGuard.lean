@@ -22,9 +22,9 @@ open GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- The public record of a forced information set holds at every history in
@@ -64,7 +64,8 @@ theorem publicRecord_of_forced_information {who : Player}
     sameView
   have sameDefaulted : control.execution.application.config.defaulted =
       witnessControl.execution.application.config.defaulted :=
-    congrArg (fun publicView : PublicView (graph setup) => publicView.observation.defaulted)
+    congrArg (fun publicView : PublicView setup.informationGraph =>
+      publicView.observation.defaulted)
       samePublic
   intro other different excluded
   exact record other different (sameDefaulted ▸ excluded)

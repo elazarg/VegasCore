@@ -84,7 +84,7 @@ def Setup.parameterPaymentUtility {Parameter : Type}
 sum, before the setup's exit override. -/
 theorem canonical_transfer_law (program : SourceProgram Player L Γ O)
     (profile : BehavioralProfile program) (state : State L Γ) :
-    ((toEventGraph program).terminalOutcomes (toEventGraph program).canonicalScheduler
+    ((toInformationGraph program).terminalOutcomes (toInformationGraph program).canonicalScheduler
         (compileEventProfile program profile) (encodeInputs state)).map
         (fun terminal who => (transferAmount (terminalPayouts program terminal) who : ℝ)) =
       (program.run profile state).map

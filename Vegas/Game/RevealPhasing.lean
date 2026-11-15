@@ -32,6 +32,13 @@ def RelaxedOrder (graph : Vegas.EventGraph Player L) : Prop :=
     prior ∈ graph.order.predecessors event ↔
       prior.val < event.val ∧ ¬ graph.IndependentReveals prior event
 
+/-- Exact independent-reveal relaxation retains the weaker public-barrier discipline. -/
+theorem RelaxedOrder.revealRelaxedOrdered (relaxed : RelaxedOrder graph) :
+    graph.RevealRelaxedOrdered := by
+  intro event prior member dependent
+  exact (relaxed prior event).mpr
+    ⟨((mem_barrierOrder graph.outputLayout prior event).mp member).1, dependent⟩
+
 /-- Runs of consecutive reveals are pairwise independent: two reveals with only
 reveals between them are by distinct owners and do not read each other. -/
 def FlatRevealRuns (graph : Vegas.EventGraph Player L) : Prop :=

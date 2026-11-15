@@ -29,9 +29,9 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol Intera
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- **Debt-free states are forced** for every player. -/
@@ -108,7 +108,7 @@ theorem othersSourceWeight_pos_of_debtFree (wellFormed : setup.WellFormed)
     (trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some control))
     (free : ∀ point, decodedPoint setup control.execution.application.config = some point →
       ∀ player, ¬ ProtocolState.OwesFailure player setup.program point)
-    {event : (graph setup).EventId}
+    {event : setup.informationGraph.EventId}
     (turn : (control.execution.observe (application setup timeouts leaks)
       who).application.publicView.ownTurn? who = some event) :
     0 < othersSourceWeight setup timeouts leaks bounds horizon scheduler assessment who trace := by
@@ -135,7 +135,7 @@ theorem regularTrace_of_debtFree (wellFormed : setup.WellFormed)
     (trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some control))
     (free : ∀ point, decodedPoint setup control.execution.application.config = some point →
       ∀ player, ¬ ProtocolState.OwesFailure player setup.program point)
-    {event : (graph setup).EventId}
+    {event : setup.informationGraph.EventId}
     (turn : (control.execution.observe (application setup timeouts leaks)
       who).application.publicView.ownTurn? who = some event) :
     RegularTrace setup timeouts leaks bounds horizon scheduler assessment who trace :=

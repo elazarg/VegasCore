@@ -22,12 +22,12 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph}
   {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
-  {delay bound : (graph setup).EventId → Nat}
+  {delay bound : setup.informationGraph.EventId → Nat}
   (opportunity : ∀ control : (application setup timeouts leaks).Control,
     ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control) →
@@ -53,7 +53,7 @@ local notation "E" => ReactiveApplication.ResponseMenu.protocol menu (initialLaw
   scheduler
 local notation "Clear" => ReactiveApplication.stateInvariant
   (app := application setup timeouts leaks)
-    (fun native : EventGraphRuntime.State (graph setup) =>
+    (fun native : EventGraphRuntime.State setup.informationGraph =>
       EventGraph.Config.defaulted (EventGraphRuntime.State.config native) = ∅)
 
 include opportunity inclusion timely completes in
@@ -61,7 +61,7 @@ include opportunity inclusion timely completes in
 continuation law under counted native service and completion. -/
 theorem counted_honest_boundary_readout_law
     (covers : bounds.CoversOutputValues)
-    (capacity : ∀ player, bindingEventCount (graph setup) player < bounds.candidateCount)
+    (capacity : ∀ player, bindingEventCount setup.informationGraph player < bounds.candidateCount)
     (source : setup.intendedModel.BehavioralAssessment)
     (certificate : (E).WellFoundedHistories) :
     ∀ rank (start : (E).History) (execution : (application setup timeouts leaks).Execution),
@@ -83,7 +83,7 @@ theorem counted_honest_boundary_readout_law
     (setup.continuationLaw profile state).map some
   suffices remaining : ∀ gap rank (start : (E).History)
       (execution : (application setup timeouts leaks).Execution),
-      (graph setup).order.eventCount - rank = gap →
+      setup.informationGraph.order.eventCount - rank = gap →
       start.state = some ⟨horizon - execution.environmentRecall.length, none, execution⟩ →
       ReachedBoundary setup timeouts leaks horizon scheduler rank execution →
       ∀ point, sourceServicePrefix? setup rank execution.application.config = some point →
@@ -97,31 +97,31 @@ theorem counted_honest_boundary_readout_law
   induction gap with
   | zero =>
       intro rank start execution gapEq state boundary point decoded intended
-      have rankEq : rank = (graph setup).order.eventCount := by
+      have rankEq : rank = setup.informationGraph.order.eventCount := by
         have within := boundary.ordered.1
-        change rank ≤ (graph setup).order.eventCount at within
+        change rank ≤ setup.informationGraph.order.eventCount at within
         omega
       subst rank
       exact terminalPrefix_readout_law (timeouts := timeouts) (menu) (initialLaw setup) horizon
         scheduler certificate players start _ state boundary.ordered.terminal profile
   | succ gap ih =>
       intro rank start execution gapEq state boundary point decoded intended
-      have inside : rank < (graph setup).order.eventCount := by omega
-      let event : (graph setup).EventId := ⟨rank, inside⟩
+      have inside : rank < setup.informationGraph.order.eventCount := by omega
+      let event : setup.informationGraph.EventId := ⟨rank, inside⟩
       have ready := (ready_iff_rank setup _ rank boundary.ordered event).mpr rfl
       have trace : (E).Trace
           (some ⟨horizon - execution.environmentRecall.length, none, execution⟩) :=
         state ▸ start.trace
       have clear := defaulted_eq_empty_of_decodedIntended
         ((decodedPoint_eq_of_isPrefix boundary.ordered).trans decoded) intended
-      cases owned : (graph setup).actor? event with
+      cases owned : setup.informationGraph.actor? event with
       | none =>
           obtain ⟨found, ⟨residual⟩⟩ := protocol_sourceResidual (timeouts := timeouts) profile
             (menu) horizon scheduler
             start.trace _ state
           have rankEq := EventOrder.Cut.IsPrefix.unique residual.checkpoint.ordered boundary.ordered
           subst found
-          let action := ((graph setup).nodes event).actionOfActorNone owned
+          let action := (setup.informationGraph.nodes event).actionOfActorNone owned
           let stopping := fun history : (E).History =>
             LateStopped setup timeouts leaks bounds horizon scheduler rank history ∨
               ¬ Clear history.state

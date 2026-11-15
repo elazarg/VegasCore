@@ -38,8 +38,8 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
 
 variable (setup timeouts leaks) in
 /-- The configuration is a prefix of `rank` and the recorded views saw nothing
@@ -102,7 +102,7 @@ theorem pendingTransition {initial : PMF (application setup timeouts leaks).Stat
           have path := ((reactiveApplication_graphSteps timeouts) leaks).environmentStep
             execution next command stepped
           obtain ⟨actualRank, lower, advanced⟩ :=
-            EventGraph.Config.Step.path_isPrefix_sequential setup.eventGraph path ordered
+            EventGraph.Config.Step.path_isPrefix_sequential setup.informationGraph path ordered
           by_cases same : actualRank = rank
           · exact Or.inl ⟨same ▸ advanced, nextSeen⟩
           · right
@@ -145,7 +145,7 @@ theorem pendingAt_serviceInvariant (scheduler : (application setup timeouts leak
     have path := ((reactiveApplication_graphSteps timeouts) leaks).environmentStep
       execution next command stepped
     obtain ⟨actualRank, lower, orderedNext⟩ :=
-      EventGraph.Config.Step.path_isPrefix_sequential setup.eventGraph path ordered
+      EventGraph.Config.Step.path_isPrefix_sequential setup.informationGraph path ordered
     refine ⟨actualRank, orderedNext, fun observer entry member event readyView => ?_⟩
     rw [recallEq] at member
     exact (seen observer entry member event readyView).trans lower
@@ -179,7 +179,7 @@ def siteFresh (who : Player) (info : (application setup timeouts leaks).Info)
 
 section CompletionStops
 
-variable [Fintype Player] {bounds : MessageBounds (graph setup)} {horizon : Nat}
+variable [Fintype Player] {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- At the first completion stop, the ready event has one primary graph step
@@ -189,8 +189,8 @@ theorem lateStop_primary_drain
       horizon scheduler).WellFoundedHistories)
     (players : ∀ player, ((bounds.onePacketMenu timeouts leaks).information
       (initialLaw setup) horizon scheduler).BehavioralPolicy player)
-    {sent : (graph setup).Config} {rank : Nat} (ordered : sent.cut.IsPrefix rank)
-    {event : (graph setup).EventId} (ready : sent.cut.Ready event)
+    {sent : setup.informationGraph.Config} {rank : Nat} (ordered : sent.cut.IsPrefix rank)
+    {event : setup.informationGraph.EventId} (ready : sent.cut.Ready event)
     (terminalCompleted : ∀ (final : (application setup timeouts leaks).Control),
       ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
         scheduler).Trace (some final) →
@@ -205,7 +205,8 @@ theorem lateStop_primary_drain
         horizon scheduler).runBehavioralUntil certificate players
         (LateStopped setup timeouts leaks bounds horizon scheduler rank) start).support,
       ∃ final, stop.state = some final ∧
-        ∃ (action : (graph setup).Action event) (primary : EventGraphRuntime.State (graph setup)),
+        ∃ (action : setup.informationGraph.Action event) (primary : EventGraphRuntime.State
+          setup.informationGraph),
           primary.config ∈ (sent.step event ready action).support ∧
             final.execution.application.config = primary.drain.config := by
   intro stop member
@@ -215,7 +216,8 @@ theorem lateStop_primary_drain
   let held := fun reachedState : (application setup timeouts leaks).ProtocolState =>
     ∃ reachedControl, reachedState = some reachedControl ∧
       (reachedControl.execution.application.config = sent ∨
-        ∃ (action : (graph setup).Action event) (primary : EventGraphRuntime.State (graph setup)),
+        ∃ (action : setup.informationGraph.Action event) (primary : EventGraphRuntime.State
+          setup.informationGraph),
           primary.config ∈ (sent.step event ready action).support ∧
             reachedControl.execution.application.config = primary.drain.config)
   have closed := model.runBehavioralUntil_support_closed certificate players
@@ -237,7 +239,7 @@ theorem lateStop_primary_drain
           stays | ⟨completed, completedReady, found, primary, inStep, drained⟩
         · exact Or.inl (stays.trans same)
         · have sameEvent : completed = event :=
-            setup.eventGraph.sequentialize_ready_unique _ completedReady (same.symm ▸ ready)
+            setup.informationGraph.sequentialize_ready_unique _ completedReady (same.symm ▸ ready)
           subst completed
           exact Or.inr ⟨found, primary, by simpa only [same] using inStep, drained⟩
       · have primaryDone : event ∈ primary.config.cut.completed := by
@@ -270,7 +272,7 @@ end CompletionStops
 
 section Success
 
-variable [Fintype Player] (bounds : MessageBounds (graph setup)) (horizon : Nat)
+variable [Fintype Player] (bounds : MessageBounds setup.informationGraph) (horizon : Nat)
   (scheduler : (application setup timeouts leaks).Scheduler)
   {Parameter : Type} (parameter : State L setup.context → Parameter)
   (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
@@ -312,7 +314,7 @@ end Success
 
 section Transport
 
-variable [Fintype Player] (bounds : MessageBounds (graph setup)) {horizon : Nat}
+variable [Fintype Player] (bounds : MessageBounds setup.informationGraph) {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
   {Parameter : Type} (parameter : State L setup.context → Parameter)
   (utility : Parameter × PublicOutcome setup.program → Player → ℝ)

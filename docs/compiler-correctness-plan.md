@@ -20,12 +20,11 @@ not assume equilibrium.
 The owners are [graph compilation](../Vegas/Compile/EventGraphScheduling.lean),
 [operational refinement](../Vegas/Pending/GraphRefinement.lean) and
 [direct physical compiler correctness](../Vegas/Game/SourceServiceFirstTurnCompletion.lean).
-The mode-parametric bounded-menu interfaces in
-[CompilerCorrectness](../Vegas/Game/CompilerCorrectness.lean) require public-barrier
-ordering. On compiled service graphs, `serviceGraph_eq_sequential` identifies
-each such graph with the sequential graph; this gives no additional compiler
-mode. Generic nonordered graph results and their regression fixtures retain
-their separate scope. [Paper.lean](../Paper.lean) pins exactly the
+The bounded-menu interfaces in
+[CompilerCorrectness](../Vegas/Game/CompilerCorrectness.lean) use the source
+information graph. Generic dependency choices and nonordered graph results
+have their separate [scope](event-graph-dependencies.md).
+[Paper.lean](../Paper.lean) pins exactly the
 mathematical results stated in the maintained manuscript; normalization,
 packet, observation and induction helpers stay in their owning modules.
 

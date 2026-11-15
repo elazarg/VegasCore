@@ -3,11 +3,12 @@ module
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 public import Vegas.EventGraph.BarrierBlocks
+public import Vegas.EventGraph.ActorTurns
 public import Vegas.EventGraph.BarrierInformation
 public import Vegas.EventGraph.Barriers
 public import Vegas.EventGraph.Basic
 public import Vegas.EventGraph.BindingRefinement
-public import Vegas.EventGraph.BindingConcurrency
+public import Vegas.EventGraph.DependencyRelaxation
 public import Vegas.EventGraph.BindingSubmission
 public import Vegas.EventGraph.CanonicalStep
 public import Vegas.EventGraph.Code

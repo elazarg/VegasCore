@@ -31,53 +31,54 @@ open Interaction EventGraphRuntime
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
 
 section Generic
 
-variable (setup : Setup (Player := Player) (L := L)) {mode : EventGraph.ExecutionMode}
-  {duration : (serviceGraph setup mode).EventId → Nat}
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
+variable (setup : Setup (Player := Player) (L := L)) {deps : setup.dataflowGraph.Dependencies}
+  {duration : (serviceGraph setup deps).EventId → Nat}
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup deps)))
 
 variable {setup} {leaks}
 /-- Prescribed clients incur no protocol-audit charge under any turn timing.
 Source defaults are game actions and retain their declared payoff. -/
 theorem sourceServiceTurnPolicy_charge_zero
-    {scheduler : (serviceApplication setup mode duration leaks).Scheduler} {horizon turns : Nat}
-    {delay bound : (serviceGraph setup mode).EventId → Nat}
-    (contract : AsyncContract (serviceTimeouts setup mode duration) leaks
-        (serviceInitialLaw setup mode) horizon scheduler delay bound)
-    (timing : TurnTiming setup turns mode) (profile : BehavioralProfile setup.program)
-    (sample : List (SettledEvidence setup mode) → PMF (List (SettledEvidence setup mode)))
+    (serial : (serviceGraph setup deps).ActorSerial)
+    {scheduler : (serviceApplication setup deps duration leaks).Scheduler} {horizon turns : Nat}
+    {delay bound : (serviceGraph setup deps).EventId → Nat}
+    (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
+        (serviceInitialLaw setup deps) horizon scheduler delay bound)
+    (timing : TurnTiming setup turns deps) (profile : BehavioralProfile setup.program)
+    (sample : List (SettledEvidence setup deps) → PMF (List (SettledEvidence setup deps)))
     (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
     (count : Nat) (within : count ≤ horizon)
-    (execution : (serviceApplication setup mode duration leaks).Execution)
+    (execution : (serviceApplication setup deps duration leaks).Execution)
     (reached : execution ∈
-        ((serviceApplication setup mode duration leaks).roundsFrom (serviceInitialLaw setup mode)
+        ((serviceApplication setup deps duration leaks).roundsFrom (serviceInitialLaw setup deps)
         scheduler
-        (serviceTurnPolicy setup mode duration leaks bound turns timing profile) count).support)
+        (serviceTurnPolicy setup deps duration leaks bound turns timing profile) count).support)
     (who : Player) : TerminalAudit.charge
-    ((serviceAuditObservation (serviceTimeouts setup mode duration)) leaks)
-    (serviceSourceAudit setup mode duration leaks sample)
-        ((serviceApplication setup mode duration leaks).finished execution) who = 0 := by
+    ((serviceAuditObservation (serviceTimeouts setup deps duration)) leaks)
+    (serviceSourceAudit setup deps duration leaks sample)
+        ((serviceApplication setup deps duration leaks).finished execution) who = 0 := by
   change TerminalAudit.charge _ _
-    (some (⟨0, none, execution⟩ : (serviceApplication setup mode duration leaks).Control)) who = 0
+    (some (⟨0, none, execution⟩ : (serviceApplication setup deps duration leaks).Control)) who = 0
   unfold serviceSourceAudit
-  rw [(serviceAudit_charge (serviceTimeouts setup mode duration))]
-  apply (serviceApplication setup mode duration leaks).sampledTrafficAudit_sound
+  rw [(serviceAudit_charge (serviceTimeouts setup deps duration))]
+  apply (serviceApplication setup deps duration leaks).sampledTrafficAudit_sound
   · exact authentic _
   · intro record member owner
-    exact sourceServiceTurnPolicy_owner_settled contract
-      (serviceTurnPolicy setup mode duration leaks bound turns timing profile) who
+    exact sourceServiceTurnPolicy_owner_settled serial contract
+      (serviceTurnPolicy setup deps duration leaks bound turns timing profile) who
       timing profile rfl count within execution reached record member owner
 
 end Generic
 
 section Settlement
 
-variable {setup : Setup (Player := Player) (L := L)} {mode : EventGraph.ExecutionMode}
-  {duration : (serviceGraph setup mode).EventId → Nat}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode))}
+variable {setup : Setup (Player := Player) (L := L)} {deps : setup.dataflowGraph.Dependencies}
+  {duration : (serviceGraph setup deps).EventId → Nat}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup deps))}
 
 /-- **The first-turn limit's exact settlement law.** Under the asynchronous
 contract, for every source profile whose
@@ -86,35 +87,36 @@ executions after `horizon` rounds have the source joint law of typed outcome
 and realized payoffs, for every authentic partial audit and every deposit. The supplied reader
 replaces the service readout. -/
 theorem sourceServiceFirstTurn_settlement_law_readout
-    {scheduler : (serviceApplication setup mode duration leaks).Scheduler}
-    {horizon turns : Nat} {delay bound : (serviceGraph setup mode).EventId → Nat}
-    (reader : (serviceApplication setup mode duration leaks).ProtocolState →
+    (serial : (serviceGraph setup deps).ActorSerial)
+    {scheduler : (serviceApplication setup deps duration leaks).Scheduler}
+    {horizon turns : Nat} {delay bound : (serviceGraph setup deps).EventId → Nat}
+    (reader : (serviceApplication setup deps duration leaks).ProtocolState →
       Option (Config Player L setup.program.terminalCtx))
-    (contract : AsyncContract (serviceTimeouts setup mode duration) leaks
-      (serviceInitialLaw setup mode) horizon scheduler delay bound)
+    (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
+      (serviceInitialLaw setup deps) horizon scheduler delay bound)
     (profile : BehavioralProfile setup.program)
-    (terminal : FirstTurnReadoutLaw setup mode duration leaks reader horizon scheduler bound turns
+    (terminal : FirstTurnReadoutLaw setup deps duration leaks reader horizon scheduler bound turns
       profile)
-    (sample : List (SettledEvidence setup mode) → PMF (List (SettledEvidence setup mode)))
+    (sample : List (SettledEvidence setup deps) → PMF (List (SettledEvidence setup deps)))
     (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
     (utility : Config Player L setup.program.terminalCtx → Player → ℝ) (deposit : Player → ℝ) :
-    ((serviceApplication setup mode duration leaks).roundsFrom (serviceInitialLaw setup mode)
-        scheduler (serviceTurnPolicy setup mode duration leaks bound turns
-          (firstTurnTiming setup turns mode) profile) horizon).bind (fun execution =>
+    ((serviceApplication setup deps duration leaks).roundsFrom (serviceInitialLaw setup deps)
+        scheduler (serviceTurnPolicy setup deps duration leaks bound turns
+          (firstTurnTiming setup turns deps) profile) horizon).bind (fun execution =>
         (TerminalAudit.settlement (readoutBaseUtility reader utility)
-          ((serviceAuditObservation (serviceTimeouts setup mode duration)) leaks)
-          (serviceSourceAudit setup mode duration leaks sample) deposit
-            ((serviceApplication setup mode duration leaks).finished execution)).map
+          ((serviceAuditObservation (serviceTimeouts setup deps duration)) leaks)
+          (serviceSourceAudit setup deps duration leaks sample) deposit
+            ((serviceApplication setup deps duration leaks).finished execution)).map
           fun payoffs => (reader
-            ((serviceApplication setup mode duration leaks).finished execution), payoffs)) =
+            ((serviceApplication setup deps duration leaks).finished execution), payoffs)) =
       (setup.run profile).map (fun state => (some state, utility state)) := by
-  let app := serviceApplication setup mode duration leaks
-  have clean : ∀ execution ∈ (app.roundsFrom (serviceInitialLaw setup mode) scheduler
-      (serviceTurnPolicy setup mode duration leaks bound turns (firstTurnTiming setup turns mode)
+  let app := serviceApplication setup deps duration leaks
+  have clean : ∀ execution ∈ (app.roundsFrom (serviceInitialLaw setup deps) scheduler
+      (serviceTurnPolicy setup deps duration leaks bound turns (firstTurnTiming setup turns deps)
         profile) horizon).support,
       (TerminalAudit.settlement (readoutBaseUtility reader utility)
-          ((serviceAuditObservation (serviceTimeouts setup mode duration)) leaks)
-          (serviceSourceAudit setup mode duration leaks sample) deposit
+          ((serviceAuditObservation (serviceTimeouts setup deps duration)) leaks)
+          (serviceSourceAudit setup deps duration leaks sample) deposit
             (app.finished execution)).map (fun payoffs =>
           (reader (app.finished execution), payoffs)) =
         PMF.pure (reader (app.finished execution),
@@ -122,7 +124,8 @@ theorem sourceServiceFirstTurn_settlement_law_readout
     intro execution reached
     rw [TerminalAudit.settlement_clean (readoutBaseUtility reader utility) _ _
       deposit (app.finished execution)
-      (sourceServiceTurnPolicy_charge_zero contract (firstTurnTiming setup turns mode) profile
+      (sourceServiceTurnPolicy_charge_zero serial contract (firstTurnTiming setup turns deps)
+        profile
         sample authentic horizon le_rfl execution reached), PMF.pure_map]
   unfold FirstTurnReadoutLaw at terminal
   have joint := congrArg (PMF.map (fun state : Option (Config Player L setup.program.terminalCtx) =>
@@ -132,26 +135,28 @@ theorem sourceServiceFirstTurn_settlement_law_readout
 
 /-- The service-reader instance of `sourceServiceFirstTurn_settlement_law_readout`. -/
 theorem sourceServiceFirstTurn_settlement_law
-    {scheduler : (serviceApplication setup mode duration leaks).Scheduler}
-    {horizon turns : Nat} {delay bound : (serviceGraph setup mode).EventId → Nat}
-    (contract : AsyncContract (serviceTimeouts setup mode duration) leaks
-      (serviceInitialLaw setup mode) horizon scheduler delay bound)
+    (serial : (serviceGraph setup deps).ActorSerial)
+    {scheduler : (serviceApplication setup deps duration leaks).Scheduler}
+    {horizon turns : Nat} {delay bound : (serviceGraph setup deps).EventId → Nat}
+    (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
+      (serviceInitialLaw setup deps) horizon scheduler delay bound)
     (profile : BehavioralProfile setup.program)
-    (terminal : FirstTurnSourceLaw setup mode duration leaks horizon scheduler bound turns profile)
-    (sample : List (SettledEvidence setup mode) → PMF (List (SettledEvidence setup mode)))
+    (terminal : FirstTurnSourceLaw setup deps duration leaks horizon scheduler bound turns profile)
+    (sample : List (SettledEvidence setup deps) → PMF (List (SettledEvidence setup deps)))
     (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
     (utility : Config Player L setup.program.terminalCtx → Player → ℝ) (deposit : Player → ℝ) :
-    ((serviceApplication setup mode duration leaks).roundsFrom (serviceInitialLaw setup mode)
-        scheduler (serviceTurnPolicy setup mode duration leaks bound turns
-          (firstTurnTiming setup turns mode) profile) horizon).bind (fun execution =>
-        (TerminalAudit.settlement (serviceBaseUtility setup mode duration leaks utility)
-          ((serviceAuditObservation (serviceTimeouts setup mode duration)) leaks)
-          (serviceSourceAudit setup mode duration leaks sample) deposit
-            ((serviceApplication setup mode duration leaks).finished execution)).map
-          fun payoffs => (serviceSourceReadout setup mode duration leaks
-            ((serviceApplication setup mode duration leaks).finished execution), payoffs)) =
+    ((serviceApplication setup deps duration leaks).roundsFrom (serviceInitialLaw setup deps)
+        scheduler (serviceTurnPolicy setup deps duration leaks bound turns
+          (firstTurnTiming setup turns deps) profile) horizon).bind (fun execution =>
+        (TerminalAudit.settlement (serviceBaseUtility setup deps duration leaks utility)
+          ((serviceAuditObservation (serviceTimeouts setup deps duration)) leaks)
+          (serviceSourceAudit setup deps duration leaks sample) deposit
+            ((serviceApplication setup deps duration leaks).finished execution)).map
+          fun payoffs => (serviceSourceReadout setup deps duration leaks
+            ((serviceApplication setup deps duration leaks).finished execution), payoffs)) =
       (setup.run profile).map (fun state => (some state, utility state)) :=
-  sourceServiceFirstTurn_settlement_law_readout (serviceSourceReadout setup mode duration leaks)
+  sourceServiceFirstTurn_settlement_law_readout serial (serviceSourceReadout setup deps duration
+    leaks)
     contract profile terminal sample
     authentic utility deposit
 
@@ -165,60 +170,63 @@ rounds have the source joint law of typed outcome and realized payoffs within
 the product deferral error in total variation, for every authentic partial audit
 and every deposit. The supplied reader replaces the service readout. -/
 theorem sourceServiceTurnPolicy_execution_settlement_lawError_readout
-    {scheduler : (serviceApplication setup mode duration leaks).Scheduler} {horizon turns : Nat}
-    {delay bound : (serviceGraph setup mode).EventId → Nat}
-    (reader : (serviceApplication setup mode duration leaks).ProtocolState →
+    (serial : (serviceGraph setup deps).ActorSerial)
+    {scheduler : (serviceApplication setup deps duration leaks).Scheduler} {horizon turns : Nat}
+    {delay bound : (serviceGraph setup deps).EventId → Nat}
+    (reader : (serviceApplication setup deps duration leaks).ProtocolState →
       Option (Config Player L setup.program.terminalCtx))
-    (contract : AsyncContract (serviceTimeouts setup mode duration) leaks
-      (serviceInitialLaw setup mode) horizon scheduler delay bound)
-    (timing : TurnTiming setup turns mode) (profile : BehavioralProfile setup.program)
-    (terminal : FirstTurnReadoutLaw setup mode duration leaks reader horizon scheduler bound turns
+    (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
+      (serviceInitialLaw setup deps) horizon scheduler delay bound)
+    (timing : TurnTiming setup turns deps) (profile : BehavioralProfile setup.program)
+    (terminal : FirstTurnReadoutLaw setup deps duration leaks reader horizon scheduler bound turns
       profile)
-    (sample : List (SettledEvidence setup mode) → PMF (List (SettledEvidence setup mode)))
+    (sample : List (SettledEvidence setup deps) → PMF (List (SettledEvidence setup deps)))
     (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
     (utility : Config Player L setup.program.terminalCtx → Player → ℝ) (deposit : Player → ℝ) :
     PMF.WithinTV timing.deferralError
-      (((serviceApplication setup mode duration leaks).roundsFrom (serviceInitialLaw setup mode)
-        scheduler (serviceTurnPolicy setup mode duration leaks bound turns timing profile)
+      (((serviceApplication setup deps duration leaks).roundsFrom (serviceInitialLaw setup deps)
+        scheduler (serviceTurnPolicy setup deps duration leaks bound turns timing profile)
           horizon).bind
           (fun execution =>
             (TerminalAudit.settlement (readoutBaseUtility reader utility)
-              ((serviceAuditObservation (serviceTimeouts setup mode duration)) leaks)
-              (serviceSourceAudit setup mode duration leaks sample) deposit
-                ((serviceApplication setup mode duration leaks).finished execution)).map
+              ((serviceAuditObservation (serviceTimeouts setup deps duration)) leaks)
+              (serviceSourceAudit setup deps duration leaks sample) deposit
+                ((serviceApplication setup deps duration leaks).finished execution)).map
               fun payoffs => (reader
-                ((serviceApplication setup mode duration leaks).finished execution), payoffs)))
+                ((serviceApplication setup deps duration leaks).finished execution), payoffs)))
       ((setup.run profile).map (fun state => (some state, utility state))) := by
-  rw [← sourceServiceFirstTurn_settlement_law_readout reader contract profile terminal sample
+  rw [← sourceServiceFirstTurn_settlement_law_readout serial reader contract profile terminal sample
     authentic utility deposit]
-  exact serviceTurnPolicy_roundsFrom_bind_within (serviceInitialLaw setup mode) scheduler horizon
+  exact serviceTurnPolicy_roundsFrom_bind_within (serviceInitialLaw setup deps) scheduler horizon
     bound timing profile _
 
 /-- The service-reader instance of
 `sourceServiceTurnPolicy_execution_settlement_lawError_readout`. -/
 theorem sourceServiceTurnPolicy_execution_settlement_lawError
-    {scheduler : (serviceApplication setup mode duration leaks).Scheduler} {horizon turns : Nat}
-    {delay bound : (serviceGraph setup mode).EventId → Nat}
-    (contract : AsyncContract (serviceTimeouts setup mode duration) leaks
-      (serviceInitialLaw setup mode) horizon scheduler delay bound)
-    (timing : TurnTiming setup turns mode) (profile : BehavioralProfile setup.program)
-    (terminal : FirstTurnSourceLaw setup mode duration leaks horizon scheduler bound turns profile)
-    (sample : List (SettledEvidence setup mode) → PMF (List (SettledEvidence setup mode)))
+    (serial : (serviceGraph setup deps).ActorSerial)
+    {scheduler : (serviceApplication setup deps duration leaks).Scheduler} {horizon turns : Nat}
+    {delay bound : (serviceGraph setup deps).EventId → Nat}
+    (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
+      (serviceInitialLaw setup deps) horizon scheduler delay bound)
+    (timing : TurnTiming setup turns deps) (profile : BehavioralProfile setup.program)
+    (terminal : FirstTurnSourceLaw setup deps duration leaks horizon scheduler bound turns profile)
+    (sample : List (SettledEvidence setup deps) → PMF (List (SettledEvidence setup deps)))
     (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
     (utility : Config Player L setup.program.terminalCtx → Player → ℝ) (deposit : Player → ℝ) :
     PMF.WithinTV timing.deferralError
-      (((serviceApplication setup mode duration leaks).roundsFrom (serviceInitialLaw setup mode)
-        scheduler (serviceTurnPolicy setup mode duration leaks bound turns timing profile)
+      (((serviceApplication setup deps duration leaks).roundsFrom (serviceInitialLaw setup deps)
+        scheduler (serviceTurnPolicy setup deps duration leaks bound turns timing profile)
           horizon).bind
           (fun execution =>
-            (TerminalAudit.settlement (serviceBaseUtility setup mode duration leaks utility)
-              ((serviceAuditObservation (serviceTimeouts setup mode duration)) leaks)
-              (serviceSourceAudit setup mode duration leaks sample) deposit
-                ((serviceApplication setup mode duration leaks).finished execution)).map
-              fun payoffs => (serviceSourceReadout setup mode duration leaks
-                ((serviceApplication setup mode duration leaks).finished execution), payoffs)))
+            (TerminalAudit.settlement (serviceBaseUtility setup deps duration leaks utility)
+              ((serviceAuditObservation (serviceTimeouts setup deps duration)) leaks)
+              (serviceSourceAudit setup deps duration leaks sample) deposit
+                ((serviceApplication setup deps duration leaks).finished execution)).map
+              fun payoffs => (serviceSourceReadout setup deps duration leaks
+                ((serviceApplication setup deps duration leaks).finished execution), payoffs)))
       ((setup.run profile).map (fun state => (some state, utility state))) :=
-  sourceServiceTurnPolicy_execution_settlement_lawError_readout (serviceSourceReadout setup mode
+  sourceServiceTurnPolicy_execution_settlement_lawError_readout serial (serviceSourceReadout setup
+    deps
     duration leaks) contract timing
     profile terminal sample authentic utility deposit
 
@@ -232,34 +240,35 @@ menu that admits them, have the profile's source joint law of typed outcome and
 realized payoffs within the product deferral error in total variation, for every
 authentic partial audit and every deposit. The supplied reader replaces the service readout. -/
 theorem sourceServiceClients_clientPolicy_settlement_lawError_readout
-    {mode : EventGraph.ExecutionMode} {duration : (serviceGraph setup mode).EventId → Nat}
-    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode))}
-    {scheduler : (serviceApplication setup mode duration leaks).Scheduler} {horizon turns : Nat}
-    {delay bound : (serviceGraph setup mode).EventId → Nat}
-    (reader : (serviceApplication setup mode duration leaks).ProtocolState →
+    {deps : setup.dataflowGraph.Dependencies} {duration : (serviceGraph setup deps).EventId → Nat}
+    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup deps))}
+    {scheduler : (serviceApplication setup deps duration leaks).Scheduler} {horizon turns : Nat}
+    {delay bound : (serviceGraph setup deps).EventId → Nat}
+    (serial : (serviceGraph setup deps).ActorSerial)
+    (reader : (serviceApplication setup deps duration leaks).ProtocolState →
       Option (Config Player L setup.program.terminalCtx))
-    (contract : AsyncContract (serviceTimeouts setup mode duration) leaks
-      (serviceInitialLaw setup mode) horizon scheduler delay bound)
-    (timing : TurnTiming setup turns mode) (original : BehavioralProfile setup.program)
-    (terminal : FirstTurnReadoutLaw setup mode duration leaks reader horizon scheduler bound turns
+    (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
+      (serviceInitialLaw setup deps) horizon scheduler delay bound)
+    (timing : TurnTiming setup turns deps) (original : BehavioralProfile setup.program)
+    (terminal : FirstTurnReadoutLaw setup deps duration leaks reader horizon scheduler bound turns
       (normalizeDisclosureProfile setup.program original))
-    (menu : (serviceApplication setup mode duration leaks).ResponseMenu)
-    (covered : ∀ who, menu.Admissible (serviceInitialLaw setup mode) horizon scheduler who
-      (serviceClientPolicy setup mode duration leaks bound turns timing
+    (menu : (serviceApplication setup deps duration leaks).ResponseMenu)
+    (covered : ∀ who, menu.Admissible (serviceInitialLaw setup deps) horizon scheduler who
+      (serviceClientPolicy setup deps duration leaks bound turns timing
         (normalizeDisclosureProfile setup.program original) who))
-    (sample : List (SettledEvidence setup mode) → PMF (List (SettledEvidence setup mode)))
+    (sample : List (SettledEvidence setup deps) → PMF (List (SettledEvidence setup deps)))
     (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
     (utility : State L setup.program.terminalCtx × DefaultHistory Player → Player → ℝ)
     (deposit : Player → ℝ) :
     let settle := TerminalAudit.settlement
       (readoutBaseUtility reader
         (fun final => utility (final.state, final.defaults)))
-      ((serviceAuditObservation (serviceTimeouts setup mode duration)) leaks)
-      (serviceSourceAudit setup mode duration leaks sample) deposit
+      ((serviceAuditObservation (serviceTimeouts setup deps duration)) leaks)
+      (serviceSourceAudit setup deps duration leaks sample) deposit
     PMF.WithinTV timing.deferralError
-      (((menu.information (serviceInitialLaw setup mode) horizon scheduler).runBehavioral
-        (fun who => menu.restrictPolicy (serviceInitialLaw setup mode) horizon scheduler who
-          (serviceClientPolicy setup mode duration leaks bound turns timing
+      (((menu.information (serviceInitialLaw setup deps) horizon scheduler).runBehavioral
+        (fun who => menu.restrictPolicy (serviceInitialLaw setup deps) horizon scheduler who
+          (serviceClientPolicy setup deps duration leaks bound turns timing
             (normalizeDisclosureProfile setup.program original) who))
         (2 * horizon + 1)).bind (fun final =>
           (settle final.state).map fun payoffs =>
@@ -269,30 +278,30 @@ theorem sourceServiceClients_clientPolicy_settlement_lawError_readout
         (fun final =>
           (some (final.state, final.defaults), utility (final.state, final.defaults)))) := by
   intro settle
-  let app := serviceApplication setup mode duration leaks
+  let app := serviceApplication setup deps duration leaks
   let clients := normalizeDisclosureProfile setup.program original
-  have physical := menu.run_restrict_eq_finish (serviceInitialLaw setup mode) horizon scheduler
-    (serviceClientPolicy setup mode duration leaks bound turns timing clients) covered
-    (2 * horizon + 1) (menu.protocol (serviceInitialLaw setup mode) horizon scheduler).initHistory
+  have physical := menu.run_restrict_eq_finish (serviceInitialLaw setup deps) horizon scheduler
+    (serviceClientPolicy setup deps duration leaks bound turns timing clients) covered
+    (2 * horizon + 1) (menu.protocol (serviceInitialLaw setup deps) horizon scheduler).initHistory
     le_rfl
-  have states : ((menu.information (serviceInitialLaw setup mode) horizon scheduler).runBehavioral
-      (fun who => menu.restrictPolicy (serviceInitialLaw setup mode) horizon scheduler who
-        (serviceClientPolicy setup mode duration leaks bound turns timing clients who))
+  have states : ((menu.information (serviceInitialLaw setup deps) horizon scheduler).runBehavioral
+      (fun who => menu.restrictPolicy (serviceInitialLaw setup deps) horizon scheduler who
+        (serviceClientPolicy setup deps duration leaks bound turns timing clients who))
       (2 * horizon + 1)).map (fun final => final.state) =
-        (serviceInitialLaw setup mode).bind (fun state =>
+        (serviceInitialLaw setup deps).bind (fun state =>
           (app.runRounds scheduler
-            (serviceClientPolicy setup mode duration leaks bound turns timing clients) horizon
+            (serviceClientPolicy setup deps duration leaks bound turns timing clients) horizon
             (ReactiveApplication.Execution.initial app state)).map app.finished) := by
     rw [InformationModel.runBehavioral]
     exact physical
-  have native : ((menu.information (serviceInitialLaw setup mode) horizon scheduler).runBehavioral
-      (fun who => menu.restrictPolicy (serviceInitialLaw setup mode) horizon scheduler who
-        (serviceClientPolicy setup mode duration leaks bound turns timing clients who))
+  have native : ((menu.information (serviceInitialLaw setup deps) horizon scheduler).runBehavioral
+      (fun who => menu.restrictPolicy (serviceInitialLaw setup deps) horizon scheduler who
+        (serviceClientPolicy setup deps duration leaks bound turns timing clients who))
       (2 * horizon + 1)).bind (fun final =>
         (settle final.state).map fun payoffs =>
           (reader final.state, payoffs)) =
-      (app.roundsFrom (serviceInitialLaw setup mode) scheduler
-        (serviceClientPolicy setup mode duration leaks bound turns timing clients) horizon).bind
+      (app.roundsFrom (serviceInitialLaw setup deps) scheduler
+        (serviceClientPolicy setup deps duration leaks bound turns timing clients) horizon).bind
           (fun execution => (settle (app.finished execution)).map
             fun payoffs => (reader
               (app.finished execution), payoffs)) := by
@@ -306,7 +315,7 @@ theorem sourceServiceClients_clientPolicy_settlement_lawError_readout
     simp only [PMF.bind_bind, Function.comp_def]
     rfl
   have compared :=
-    (sourceServiceTurnPolicy_execution_settlement_lawError_readout reader contract timing
+    (sourceServiceTurnPolicy_execution_settlement_lawError_readout serial reader contract timing
       clients terminal sample authentic
       (fun final => utility (final.state, final.defaults)) deposit).map
         (fun outcome => (outcome.1.map (fun final => (final.state, final.defaults)), outcome.2))
@@ -326,41 +335,43 @@ theorem sourceServiceClients_clientPolicy_settlement_lawError_readout
 /-- The service-reader instance of
 `sourceServiceClients_clientPolicy_settlement_lawError_readout`. -/
 theorem sourceServiceClients_clientPolicy_settlement_lawError
-    {mode : EventGraph.ExecutionMode} {duration : (serviceGraph setup mode).EventId → Nat}
-    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode))}
-    {scheduler : (serviceApplication setup mode duration leaks).Scheduler} {horizon turns : Nat}
-    {delay bound : (serviceGraph setup mode).EventId → Nat}
-    (contract : AsyncContract (serviceTimeouts setup mode duration) leaks
-      (serviceInitialLaw setup mode) horizon scheduler delay bound)
-    (timing : TurnTiming setup turns mode) (original : BehavioralProfile setup.program)
-    (terminal : FirstTurnSourceLaw setup mode duration leaks horizon scheduler bound turns
+    {deps : setup.dataflowGraph.Dependencies} {duration : (serviceGraph setup deps).EventId → Nat}
+    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup deps))}
+    {scheduler : (serviceApplication setup deps duration leaks).Scheduler} {horizon turns : Nat}
+    {delay bound : (serviceGraph setup deps).EventId → Nat}
+    (serial : (serviceGraph setup deps).ActorSerial)
+    (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
+      (serviceInitialLaw setup deps) horizon scheduler delay bound)
+    (timing : TurnTiming setup turns deps) (original : BehavioralProfile setup.program)
+    (terminal : FirstTurnSourceLaw setup deps duration leaks horizon scheduler bound turns
       (normalizeDisclosureProfile setup.program original))
-    (menu : (serviceApplication setup mode duration leaks).ResponseMenu)
-    (covered : ∀ who, menu.Admissible (serviceInitialLaw setup mode) horizon scheduler who
-      (serviceClientPolicy setup mode duration leaks bound turns timing
+    (menu : (serviceApplication setup deps duration leaks).ResponseMenu)
+    (covered : ∀ who, menu.Admissible (serviceInitialLaw setup deps) horizon scheduler who
+      (serviceClientPolicy setup deps duration leaks bound turns timing
         (normalizeDisclosureProfile setup.program original) who))
-    (sample : List (SettledEvidence setup mode) → PMF (List (SettledEvidence setup mode)))
+    (sample : List (SettledEvidence setup deps) → PMF (List (SettledEvidence setup deps)))
     (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
     (utility : State L setup.program.terminalCtx × DefaultHistory Player → Player → ℝ)
     (deposit : Player → ℝ) :
     let settle := TerminalAudit.settlement
-      (serviceBaseUtility setup mode duration leaks
+      (serviceBaseUtility setup deps duration leaks
         (fun final => utility (final.state, final.defaults)))
-      ((serviceAuditObservation (serviceTimeouts setup mode duration)) leaks)
-      (serviceSourceAudit setup mode duration leaks sample) deposit
+      ((serviceAuditObservation (serviceTimeouts setup deps duration)) leaks)
+      (serviceSourceAudit setup deps duration leaks sample) deposit
     PMF.WithinTV timing.deferralError
-      (((menu.information (serviceInitialLaw setup mode) horizon scheduler).runBehavioral
-        (fun who => menu.restrictPolicy (serviceInitialLaw setup mode) horizon scheduler who
-          (serviceClientPolicy setup mode duration leaks bound turns timing
+      (((menu.information (serviceInitialLaw setup deps) horizon scheduler).runBehavioral
+        (fun who => menu.restrictPolicy (serviceInitialLaw setup deps) horizon scheduler who
+          (serviceClientPolicy setup deps duration leaks bound turns timing
             (normalizeDisclosureProfile setup.program original) who))
         (2 * horizon + 1)).bind (fun final =>
           (settle final.state).map fun payoffs =>
-            ((serviceSourceReadout setup mode duration leaks final.state).map
+            ((serviceSourceReadout setup deps duration leaks final.state).map
               (fun terminal => (terminal.state, terminal.defaults)), payoffs)))
       ((setup.run original).map
         (fun final =>
           (some (final.state, final.defaults), utility (final.state, final.defaults)))) :=
-  sourceServiceClients_clientPolicy_settlement_lawError_readout (serviceSourceReadout setup mode
+  sourceServiceClients_clientPolicy_settlement_lawError_readout serial (serviceSourceReadout setup
+    deps
     duration leaks) contract timing
     original terminal menu covered sample authentic utility deposit
 

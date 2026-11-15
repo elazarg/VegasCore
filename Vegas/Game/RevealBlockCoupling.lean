@@ -24,40 +24,40 @@ open SourceProgram GameTheory.Math.Probability Interaction EventGraphRuntime Eve
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {mode : EventGraph.ExecutionMode} {duration : (serviceGraph setup mode).EventId → Nat}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode))}
+  {deps : setup.dataflowGraph.Dependencies} {duration : (serviceGraph setup deps).EventId → Nat}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup deps))}
 
 /-- The window of the events of ranks in `[start, finish)`. -/
-def blockWindow (start finish : Nat) : (serviceGraph setup mode).EventId → Bool :=
+def blockWindow (start finish : Nat) : (serviceGraph setup deps).EventId → Bool :=
   fun event => decide (start ≤ event.val ∧ event.val < finish)
 
 /-- Two configurations agree on the block's reveals pending in the first: their
 footprints are stored, an honest one is accepted alike, and an accepted reveal,
 or one of the deviator, stores the same binding. -/
 def AcceptedAgree (who : Player) (start finish : Nat)
-    (left right : (serviceGraph setup mode).Config) : Prop :=
-  ∀ (event : (serviceGraph setup mode).EventId) (owner : Player) (payload : L.Ty)
-    (binding : FieldRef (serviceGraph setup mode).layout (.binding owner payload))
-    (checks : List (GuardCheck (serviceGraph setup mode).layout payload))
-    (outputEq : (serviceGraph setup mode).outputLayout event = .publication payload)
-    (codeEq : cast (congrArg (EventCode (serviceGraph setup mode).layout) outputEq)
-      ((serviceGraph setup mode).nodes event) = .resolve owner payload binding checks),
-    nodeView (serviceGraph setup mode) event =
+    (left right : (serviceGraph setup deps).Config) : Prop :=
+  ∀ (event : (serviceGraph setup deps).EventId) (owner : Player) (payload : L.Ty)
+    (binding : FieldRef (serviceGraph setup deps).layout (.binding owner payload))
+    (checks : List (GuardCheck (serviceGraph setup deps).layout payload))
+    (outputEq : (serviceGraph setup deps).outputLayout event = .publication payload)
+    (codeEq : cast (congrArg (EventCode (serviceGraph setup deps).layout) outputEq)
+      ((serviceGraph setup deps).nodes event) = .resolve owner payload binding checks),
+    nodeView (serviceGraph setup deps) event =
       .resolve owner payload binding checks outputEq codeEq →
     start ≤ event.val → event.val < finish → event ∉ left.cut.completed →
-    (∀ field ∈ ((serviceGraph setup mode).nodes event).readFields,
+    (∀ field ∈ ((serviceGraph setup deps).nodes event).readFields,
       (left.store field).isSome) ∧
-    (∀ field ∈ ((serviceGraph setup mode).nodes event).readFields,
+    (∀ field ∈ ((serviceGraph setup deps).nodes event).readFields,
       (right.store field).isSome) ∧
     (owner ≠ who → openingAccepted event left.store = openingAccepted event right.store) ∧
     (openingAccepted event left.store = true ∨ owner = who →
       binding.get? left.store = binding.get? right.store)
 
 /-- Acceptance with a stored footprint persists along graph paths. -/
-theorem openingAccepted_path_eq {before after : (serviceGraph setup mode).Config}
+theorem openingAccepted_path_eq {before after : (serviceGraph setup deps).Config}
     (path : Relation.ReflTransGen Config.Step before after)
-    {event : (serviceGraph setup mode).EventId}
-    (available : ∀ field ∈ ((serviceGraph setup mode).nodes event).readFields,
+    {event : (serviceGraph setup deps).EventId}
+    (available : ∀ field ∈ ((serviceGraph setup deps).nodes event).readFields,
       (before.store field).isSome) :
     openingAccepted event after.store = openingAccepted event before.store := by
   apply openingAccepted_congr event
@@ -67,7 +67,7 @@ theorem openingAccepted_path_eq {before after : (serviceGraph setup mode).Config
 
 /-- Agreement on the block's reveals persists along graph paths. -/
 theorem AcceptedAgree.path {who : Player} {start finish : Nat}
-    {left right left' right' : (serviceGraph setup mode).Config}
+    {left right left' right' : (serviceGraph setup deps).Config}
     (agree : AcceptedAgree who start finish left right)
     (leftPath : Relation.ReflTransGen Config.Step left left')
     (rightPath : Relation.ReflTransGen Config.Step right right') :
@@ -76,16 +76,16 @@ theorem AcceptedAgree.path {who : Player} {start finish : Nat}
   obtain ⟨leftAvailable, rightAvailable, accepted, stored⟩ :=
     agree event owner payload binding checks outputEq codeEq node early late
       (fun done => pending (Config.Step.path_completed_mono leftPath done))
-  have footprint := EventCode.readFields_cast outputEq ((serviceGraph setup mode).nodes event)
+  have footprint := EventCode.readFields_cast outputEq ((serviceGraph setup deps).nodes event)
   rw [codeEq] at footprint
-  have read : binding.field ∈ ((serviceGraph setup mode).nodes event).readFields := by
+  have read : binding.field ∈ ((serviceGraph setup deps).nodes event).readFields := by
     rw [← footprint]
     exact Finset.mem_insert_self _ _
-  have keep {small large : (serviceGraph setup mode).Config}
+  have keep {small large : (serviceGraph setup deps).Config}
       (path : Relation.ReflTransGen Config.Step small large)
-      (available : ∀ field ∈ ((serviceGraph setup mode).nodes event).readFields,
-        (small.store field).isSome) (field : (serviceGraph setup mode).Field)
-      (member : field ∈ ((serviceGraph setup mode).nodes event).readFields) :
+      (available : ∀ field ∈ ((serviceGraph setup deps).nodes event).readFields,
+        (small.store field).isSome) (field : (serviceGraph setup deps).Field)
+      (member : field ∈ ((serviceGraph setup deps).nodes event).readFields) :
       large.store field = small.store field := by
     obtain ⟨value, kept⟩ := Option.isSome_iff_exists.mp (available field member)
     rw [Config.Step.path_store_of_some path field value kept, kept]
@@ -110,34 +110,34 @@ equal deviator traffic and equal counters at the block's events give equal laws
 of that readout when run to the end of the block, when honest clients open a
 reveal exactly when its opening is accepted. -/
 theorem block_stopped_readoutOn_congr {horizon : Nat}
-    (scheduler : (serviceApplication setup mode duration leaks).Scheduler)
-    (bound : (serviceGraph setup mode).EventId → Nat) (turns : Nat)
-    (reference : (serviceGraph setup mode).BehavioralProfile)
-    (decides : ∀ (config : (serviceGraph setup mode).Config)
-      (event : (serviceGraph setup mode).EventId) (owner : Player) (payload : L.Ty)
-      (binding : FieldRef (serviceGraph setup mode).layout (.binding owner payload))
-      (checks : List (GuardCheck (serviceGraph setup mode).layout payload))
-      (outputEq : (serviceGraph setup mode).outputLayout event = .publication payload)
-      (codeEq : cast (congrArg (EventCode (serviceGraph setup mode).layout) outputEq)
-        ((serviceGraph setup mode).nodes event) = .resolve owner payload binding checks),
-      nodeView (serviceGraph setup mode) event =
+    (scheduler : (serviceApplication setup deps duration leaks).Scheduler)
+    (bound : (serviceGraph setup deps).EventId → Nat) (turns : Nat)
+    (reference : (serviceGraph setup deps).BehavioralProfile)
+    (decides : ∀ (config : (serviceGraph setup deps).Config)
+      (event : (serviceGraph setup deps).EventId) (owner : Player) (payload : L.Ty)
+      (binding : FieldRef (serviceGraph setup deps).layout (.binding owner payload))
+      (checks : List (GuardCheck (serviceGraph setup deps).layout payload))
+      (outputEq : (serviceGraph setup deps).outputLayout event = .publication payload)
+      (codeEq : cast (congrArg (EventCode (serviceGraph setup deps).layout) outputEq)
+        ((serviceGraph setup deps).nodes event) = .resolve owner payload binding checks),
+      nodeView (serviceGraph setup deps) event =
         .resolve owner payload binding checks outputEq codeEq →
-      ∀ (actor : (serviceGraph setup mode).actor? event = some owner)
-        (active : owner ∉ ((serviceGraph setup mode).playerObserve owner config).defaulted),
-        reference owner event actor ((serviceGraph setup mode).playerObserve owner config)
+      ∀ (actor : (serviceGraph setup deps).actor? event = some owner)
+        (active : owner ∉ ((serviceGraph setup deps).playerObserve owner config).defaulted),
+        reference owner event actor ((serviceGraph setup deps).playerObserve owner config)
           active = PMF.pure (cast (congrArg EventField.Action outputEq.symm)
             (openingAccepted event config.store))) (who : Player)
-    (deviation : (serviceApplication setup mode duration leaks).Policy)
-    (start finish : Nat) (shaped : BlockShaped (graph := serviceGraph setup mode) start finish)
-    (publications : ∀ event : (serviceGraph setup mode).EventId, start ≤ event.val →
-      event.val < finish → ((serviceGraph setup mode).outputLayout event).IsPublication) :
+    (deviation : (serviceApplication setup deps duration leaks).Policy)
+    (start finish : Nat) (shaped : BlockShaped (graph := serviceGraph setup deps) start finish)
+    (publications : ∀ event : (serviceGraph setup deps).EventId, start ≤ event.val →
+      event.val < finish → ((serviceGraph setup deps).outputLayout event).IsPublication) :
     ∀ (count leftRemaining rightRemaining : Nat)
-      (left right : (serviceApplication setup mode duration leaks).Execution),
-      ((serviceApplication setup mode duration leaks).protocol
-        (serviceInitialLaw setup mode) horizon scheduler).Trace
+      (left right : (serviceApplication setup deps duration leaks).Execution),
+      ((serviceApplication setup deps duration leaks).protocol
+        (serviceInitialLaw setup deps) horizon scheduler).Trace
           (some ⟨leftRemaining + count, none, left⟩) →
-      ((serviceApplication setup mode duration leaks).protocol
-        (serviceInitialLaw setup mode) horizon scheduler).Trace
+      ((serviceApplication setup deps duration leaks).protocol
+        (serviceInitialLaw setup deps) horizon scheduler).Trace
           (some ⟨rightRemaining + count, none, right⟩) →
       (¬ BlockDone finish left.application.config →
         InBlock start finish left.application.config) →
@@ -148,24 +148,24 @@ theorem block_stopped_readoutOn_congr {horizon : Nat}
       AcceptedAgree who start finish left.application.config right.application.config →
       blockReadoutOn who (blockWindow start finish) left =
         blockReadoutOn who (blockWindow start finish) right →
-      ((serviceApplication setup mode duration leaks).runUntil scheduler
-        (Function.update (serviceReferenceTurnPolicy setup mode duration leaks bound turns
-          (firstTurnTiming setup turns mode) reference) who deviation)
+      ((serviceApplication setup deps duration leaks).runUntil scheduler
+        (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+          (firstTurnTiming setup turns deps) reference) who deviation)
         (fun final => BlockDone finish final.application.config) count left).map
           (blockReadoutOn who (blockWindow start finish)) =
-      ((serviceApplication setup mode duration leaks).runUntil scheduler
-        (Function.update (serviceReferenceTurnPolicy setup mode duration leaks bound turns
-          (firstTurnTiming setup turns mode) reference) who deviation)
+      ((serviceApplication setup deps duration leaks).runUntil scheduler
+        (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+          (firstTurnTiming setup turns deps) reference) who deviation)
         (fun final => BlockDone finish final.application.config) count right).map
           (blockReadoutOn who (blockWindow start finish)) := by
   intro count leftRemaining rightRemaining left right leftTrace rightTrace leftInside
     rightInside leftValid rightValid agree same
-  let app := serviceApplication setup mode duration leaks
-  let players := Function.update (serviceReferenceTurnPolicy setup mode duration leaks bound
-    turns (firstTurnTiming setup turns mode) reference) who deviation
-  let window := blockWindow (setup := setup) (mode := mode) start finish
+  let app := serviceApplication setup deps duration leaks
+  let players := Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound
+    turns (firstTurnTiming setup turns deps) reference) who deviation
+  let window := blockWindow (setup := setup) (deps := deps) start finish
   let invariant := fun (origin : app.Execution) (count : Nat) (current : app.Execution) =>
-    (∃ remaining, Nonempty ((app.protocol (serviceInitialLaw setup mode) horizon scheduler).Trace
+    (∃ remaining, Nonempty ((app.protocol (serviceInitialLaw setup deps) horizon scheduler).Trace
       (some ⟨remaining + count, none, current⟩))) ∧
     (¬ BlockDone finish current.application.config →
       InBlock start finish current.application.config) ∧
@@ -177,12 +177,12 @@ theorem block_stopped_readoutOn_congr {horizon : Nat}
       (next : app.Execution) (reached : next ∈ (app.round scheduler players current).support) :
       invariant origin n next := by
     obtain ⟨⟨remaining, ⟨trace⟩⟩, inside, walked, submitted⟩ := valid
-    have before : (app.protocol (serviceInitialLaw setup mode) horizon scheduler).Trace
+    have before : (app.protocol (serviceInitialLaw setup deps) horizon scheduler).Trace
         (some ⟨(remaining + n) + 1, none, current⟩) := by
       simpa only [Nat.add_assoc] using trace
-    obtain ⟨nextTrace⟩ := app.raw_trace_round (serviceInitialLaw setup mode) horizon scheduler
+    obtain ⟨nextTrace⟩ := app.raw_trace_round (serviceInitialLaw setup deps) horizon scheduler
       players (remaining + n) current next before reached
-    have path := reactive_round_graph_steps (serviceTimeouts setup mode duration) leaks scheduler
+    have path := reactive_round_graph_steps (serviceTimeouts setup deps duration) leaks scheduler
       players current next reached
     exact ⟨⟨remaining, ⟨nextTrace⟩⟩, fun unfinished => (inside running).path shaped path
       unfinished, walked.trans path, honestBlockSubmissions_round scheduler bound turns reference
@@ -200,26 +200,26 @@ theorem block_stopped_readoutOn_congr {horizon : Nat}
     obtain ⟨⟨currentRest, ⟨currentTrace⟩⟩, currentInside, currentPath, currentSubmitted⟩ :=
       currentValid
     obtain ⟨⟨otherRest, ⟨otherTrace⟩⟩, _, otherPath, _⟩ := otherValid
-    have currentBefore : (app.protocol (serviceInitialLaw setup mode) horizon scheduler).Trace
+    have currentBefore : (app.protocol (serviceInitialLaw setup deps) horizon scheduler).Trace
         (some ⟨(currentRest + n) + 1, none, current⟩) := by
       simpa only [Nat.add_assoc] using currentTrace
-    have otherBefore : (app.protocol (serviceInitialLaw setup mode) horizon scheduler).Trace
+    have otherBefore : (app.protocol (serviceInitialLaw setup deps) horizon scheduler).Trace
         (some ⟨(otherRest + n) + 1, none, other⟩) := by
       simpa only [Nat.add_assoc] using otherTrace
     have inside := currentInside running
     have agreeNow := agree.path currentPath otherPath
     have currentFacts := legalFacts setup leaks horizon scheduler _ currentBefore
     have otherFacts := legalFacts setup leaks horizon scheduler _ otherBefore
-    have signed := signedCommitments_history (serviceTimeouts setup mode duration) leaks
-      (serviceInitialLaw setup mode) (fun state supported => by
+    have signed := signedCommitments_history (serviceTimeouts setup deps duration) leaks
+      (serviceInitialLaw setup deps) (fun state supported => by
         obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ supported
         exact ⟨_, rfl⟩) horizon scheduler currentBefore
-    have sameTraffic : (bindingTraffic (serviceTimeouts setup mode duration)) leaks who current =
-        (bindingTraffic (serviceTimeouts setup mode duration)) leaks who other :=
+    have sameTraffic : (bindingTraffic (serviceTimeouts setup deps duration)) leaks who current =
+        (bindingTraffic (serviceTimeouts setup deps duration)) leaks who other :=
       congrArg Prod.fst equal
     have views : current.application.playerView who = other.application.playerView who :=
       congrArg (fun value => value.1.2.2.2.2.1) equal
-    have inWindow (event : (serviceGraph setup mode).EventId)
+    have inWindow (event : (serviceGraph setup deps).EventId)
         (ready : current.application.config.cut.Ready event) :
         start ≤ event.val ∧ event.val < finish :=
       shaped _ inside running event ready
@@ -258,7 +258,7 @@ theorem block_stopped_readoutOn_congr {horizon : Nat}
         currentFacts.provenance.pending message pending
       obtain ⟨_, _, transmitted, packet⟩ :=
         signed.emissions message.sender entry entryMember message emitted
-      have submitted : (submittedEvent? (serviceTimeouts setup mode duration)) leaks entry.action =
+      have submitted : (submittedEvent? (serviceTimeouts setup deps duration)) leaks entry.action =
           some named := by
         simp only [EventGraphRuntime.submittedEvent?, transmitted]
         rw [← packet, called]

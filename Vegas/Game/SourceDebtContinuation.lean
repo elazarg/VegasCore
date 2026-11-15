@@ -24,8 +24,8 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Math.Probability
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
   {profile : BehavioralProfile setup.program}
 
 /-- Once a native history completes, latent source debt has the declared exit
@@ -43,7 +43,8 @@ theorem decoded_owesFailure_exclusionBase_of_complete {Parameter : Type}
     (complete : control.execution.application.config.cut.Terminal) :
     exclusionBase setup timeouts parameter utility excludedPayoff leaks history.state who =
       excludedPayoff who := by
-  obtain ⟨terminal, readout⟩ := serviceSourceReadout_exists_of_terminal setup .sequential
+  obtain ⟨terminal, readout⟩ := serviceSourceReadout_exists_of_terminal setup
+    setup.informationDependencies
     timeouts.duration leaks control complete
   exact decoded_owesFailure_exclusionBase_of_readout parameter utility excludedPayoff who history
     owed terminal (current ▸ readout)

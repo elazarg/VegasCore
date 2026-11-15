@@ -32,9 +32,9 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  [Fintype Player] {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  [Fintype Player] {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- **Permitted slots are fresh.** Along every history of the one-packet game, a
@@ -43,7 +43,7 @@ player's earlier packets is fresh. -/
 theorem onePacket_permitted_fresh {control : (application setup timeouts leaks).Control}
     (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control))
-    (who : Player) (event : (graph setup).EventId) (slot : Nat)
+    (who : Player) (event : setup.informationGraph.EventId) (slot : Nat)
     (permitted : countPermits ((application setup timeouts leaks).outputs (control.execution.logs
       who))
       (slotEnvelope setup timeouts leaks who (control.execution.logs who)
@@ -51,7 +51,8 @@ theorem onePacket_permitted_fresh {control : (application setup timeouts leaks).
     (control.execution.observe (application setup timeouts leaks) who).application.candidates
       (.prepared slot) = .fresh := by
   have inputTrace := trace
-  rw [initialLaw, serviceInitialLaw_eq_inputs setup] at inputTrace
+  rw [initialLaw, serviceInitialLaw_eq_inputs (deps := setup.informationDependencies) setup]
+    at inputTrace
   exact bounds.onePacket_permitted_binding_fresh timeouts leaks
     (setup.initialLaw.map setup.eventInputs) horizon scheduler inputTrace who event slot none
     permitted
@@ -67,7 +68,8 @@ theorem onePacket_canonicalFreshSlot_exists {control : (application setup timeou
         := by
   have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon
     scheduler trace
-  rw [initialLaw, serviceInitialLaw_eq_inputs setup] at rawTrace
+  rw [initialLaw, serviceInitialLaw_eq_inputs (deps := setup.informationDependencies) setup]
+    at rawTrace
   have recalled := (candidateRecall_history timeouts) leaks (setup.initialLaw.map setup.eventInputs)
     horizon scheduler rawTrace
   obtain ⟨serial, _bound, fresh⟩ := (reactiveFreshSlot_le_recall timeouts) leaks
@@ -82,7 +84,7 @@ theorem onePacket_honest_covered (assessment : setup.intendedModel.BehavioralAss
     (covers : bounds.CoversOutputValues) {control : (application setup timeouts leaks).Control}
     (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control))
-    (who : Player) (event : (graph setup).EventId)
+    (who : Player) (event : setup.informationGraph.EventId)
     (turn : control.execution.application.publicView.ownTurn? who = some event)
     (choice : Option (OwnAction Player L))
     (supported : choice ∈ (asIfHonestProfile setup timeouts leaks assessment who
@@ -124,12 +126,12 @@ theorem onePacket_coveredPendingBinding (assessment : setup.intendedModel.Behavi
     {control : (application setup timeouts leaks).Control}
     (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control))
-    (who : Player) (event : (graph setup).EventId)
+    (who : Player) (event : setup.informationGraph.EventId)
     (turn : control.execution.application.publicView.ownTurn? who = some event)
-    {payload : L.Ty} {outputEq : (graph setup).outputLayout event = .binding who payload}
-    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .bind who payload}
-    (node : nodeView (graph setup) event = .bind who payload outputEq codeEq) :
+    {payload : L.Ty} {outputEq : setup.informationGraph.outputLayout event = .binding who payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .bind who payload}
+    (node : nodeView setup.informationGraph event = .bind who payload outputEq codeEq) :
     CoveredPendingBinding setup timeouts leaks bounds assessment who (control.execution.logs who)
       (control.execution.observe (application setup timeouts leaks) who) event payload outputEq
       codeEq where

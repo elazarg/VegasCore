@@ -33,8 +33,8 @@ theorem clockAt_succ (rank : Nat) : clockAt (rank + 1) = clockAt rank + (rank + 
   simp only [clockAt, Finset.sum_range_succ]
 
 /-- The activation time is determined by the preceding public publication. -/
-def checkpointEntryTime (accepted : AcceptedHandles (graph setup))
-    (view : (graph setup).PublicObservation) : Nat :=
+def checkpointEntryTime (accepted : AcceptedHandles setup.informationGraph)
+    (view : setup.informationGraph.PublicObservation) : Nat :=
   match view.completionOrder.getLast? with
   | none => 0
   | some prior =>
@@ -43,24 +43,24 @@ def checkpointEntryTime (accepted : AcceptedHandles (graph setup))
 
 /-- Sequential dependencies leave only the current rank active. At settlement
 rank there is no event with that index, so the whole table is empty. -/
-def checkpointActivations (accepted : AcceptedHandles (graph setup))
-    (view : (graph setup).PublicObservation) (rank : Nat) :
-    (graph setup).EventId → Option Nat := fun event =>
+def checkpointActivations (accepted : AcceptedHandles setup.informationGraph)
+    (view : setup.informationGraph.PublicObservation) (rank : Nat) :
+    setup.informationGraph.EventId → Option Nat := fun event =>
   if event.val = rank then some (checkpointEntryTime setup accepted view) else none
 
-theorem ready_iff_rank (config : (graph setup).Config) (rank : Nat)
-    (ordered : config.cut.IsPrefix rank) (event : (graph setup).EventId) :
+theorem ready_iff_rank (config : setup.informationGraph.Config) (rank : Nat)
+    (ordered : config.cut.IsPrefix rank) (event : setup.informationGraph.EventId) :
     config.cut.Ready event ↔ event.val = rank := by
   constructor
   · intro ready
     have lower : rank ≤ event.val := by
       by_contra earlier
       exact ready.1 ((ordered.2 event).mpr (by omega))
-    have inside : rank < (graph setup).order.eventCount := by omega
-    exact congrArg Fin.val (setup.eventGraph.sequentialize_ready_unique config.cut ready
+    have inside : rank < setup.informationGraph.order.eventCount := by omega
+    exact congrArg Fin.val (setup.informationGraph.sequentialize_ready_unique config.cut ready
       (ordered.ready inside))
   · intro same
-    have inside : rank < (graph setup).order.eventCount := by omega
+    have inside : rank < setup.informationGraph.order.eventCount := by omega
     have equal : event = ⟨rank, inside⟩ := Fin.ext same
     subst event
     exact ordered.ready inside

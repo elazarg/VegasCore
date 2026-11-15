@@ -32,31 +32,31 @@ private theorem erase_eq_of_defaulted_empty {graph : Vegas.EventGraph Player L}
   rw [unchanged, List.map_id]
 
 private theorem concurrent_play_outcomeLaw (setup : Setup (Player := Player) (L := L))
-    (profile : setup.concurrentRevealGraph.BehavioralProfile) {Outcome : Type*}
-    (read : setup.concurrentRevealGraph.Config → Outcome) :
-    ((setup.concurrentRevealGraph.gameForm setup.concurrentInputs
-        setup.concurrentRevealGraph.canonicalScheduler).play profile).map
+    (profile : setup.revealRelaxedGraph.BehavioralProfile) {Outcome : Type*}
+    (read : setup.revealRelaxedGraph.Config → Outcome) :
+    ((setup.revealRelaxedGraph.gameForm setup.concurrentInputs
+        setup.revealRelaxedGraph.canonicalScheduler).play profile).map
         (fun outcome => read outcome.1) =
-      (serviceInitialLaw setup .concurrentReveals).bind fun state =>
+      (serviceInitialLaw setup setup.revealDependencies).bind fun state =>
         outcomeLaw profile read state.config := by
   change ((setup.initialLaw.map (fun initial => setup.eventInputs initial)).bind
-      (fun inputs => setup.concurrentRevealGraph.terminalOutcomes
-        setup.concurrentRevealGraph.canonicalScheduler profile inputs)).map _ = _
+      (fun inputs => setup.revealRelaxedGraph.terminalOutcomes
+        setup.revealRelaxedGraph.canonicalScheduler profile inputs)).map _ = _
   rw [PMF.map_bind, PMF.bind_map, serviceInitialLaw, PMF.bind_map]
   apply bind_congr_on_support _
   intro initial _
   simp only [Function.comp_apply]
-  change (setup.concurrentRevealGraph.terminalOutcomes _ profile
+  change (setup.revealRelaxedGraph.terminalOutcomes _ profile
     (setup.eventInputs initial)).map (read ∘ Subtype.val) = _
   rw [← PMF.map_comp, terminalOutcomes_map_val]
   have initialRemaining : (EventGraph.Config.initial (setup.eventInputs initial) :
-      setup.concurrentRevealGraph.Config).remaining =
-        setup.concurrentRevealGraph.order.eventCount := by
+      setup.revealRelaxedGraph.Config).remaining =
+        setup.revealRelaxedGraph.order.eventCount := by
     simp [EventGraph.Config.remaining, EventGraph.Config.initial, EventOrder.Cut.empty]
   unfold outcomeLaw EventGraph.runPolicies EventGraph.run
-  change _ = (setup.concurrentRevealGraph.runPlan _
+  change _ = (setup.revealRelaxedGraph.runPlan _
     (EventGraph.Config.initial (setup.eventInputs initial) :
-      setup.concurrentRevealGraph.Config).remaining _).map read
+      setup.revealRelaxedGraph.Config).remaining _).map read
   rw [initialRemaining]
   rfl
 
@@ -80,15 +80,15 @@ theorem concurrentReveal_intended_ledger (setup : Setup (Player := Player) (L :=
         (fun state => utility (setup.parameterOutcome parameter state) who)) ε intended)
     (disclosing : ∀ who, Disclosing setup.program (setup.decodeBehavioralProfile
       (CommitmentInterface.forfeiture setup.program) target who))
-    (duration : (serviceGraph setup .concurrentReveals).EventId → Nat)
+    (duration : setup.revealRelaxedGraph.EventId → Nat)
     (leaks : MessageNetwork.ObservationRule Player
-      (WitnessedPacket (serviceGraph setup .concurrentReveals)))
+      (WitnessedPacket setup.revealRelaxedGraph))
     {horizon turns : Nat}
-    {scheduler : (serviceApplication setup .concurrentReveals duration leaks).Scheduler}
-    {delay bound : (serviceGraph setup .concurrentReveals).EventId → Nat}
-    (contract : AsyncContract (serviceTimeouts setup .concurrentReveals duration) leaks
-      (serviceInitialLaw setup .concurrentReveals) horizon scheduler delay bound)
-    (timely : AsyncTimely (serviceTimeouts setup .concurrentReveals duration) delay bound) :
+    {scheduler : (serviceApplication setup setup.revealDependencies duration leaks).Scheduler}
+    {delay bound : setup.revealRelaxedGraph.EventId → Nat}
+    (contract : AsyncContract (serviceTimeouts setup setup.revealDependencies duration) leaks
+      (serviceInitialLaw setup setup.revealDependencies) horizon scheduler delay bound)
+    (timely : AsyncTimely (serviceTimeouts setup setup.revealDependencies duration) delay bound) :
     IsεNash (concurrentLedgerGame setup duration leaks scheduler horizon)
         (concurrentConfigPayoff setup parameter utility forfeit) ε
         (concurrentLedgerClients setup duration leaks bound turns
@@ -111,7 +111,7 @@ theorem concurrentReveal_intended_ledger (setup : Setup (Player := Player) (L :=
             (setup.protocolReadout final.state).elim 0
               (fun state => utility (setup.parameterOutcome parameter state) who))) := by
   classical
-  let G := setup.concurrentRevealGraph
+  let G := setup.revealRelaxedGraph
   let source := setup.decodeBehavioralProfile (CommitmentInterface.forfeiture setup.program) target
   let reference := concurrentReference setup source
   let graphPlay := (G.gameForm setup.concurrentInputs G.canonicalScheduler).play reference
@@ -129,9 +129,9 @@ theorem concurrentReveal_intended_ledger (setup : Setup (Player := Player) (L :=
     simp only [observe, EventGraph.Config.erase_erase, concurrentConfigPayoff_erase]
   have physical := effective_roundsFrom_outcomeLaw (duration := duration) (leaks := leaks)
     (turns := turns) contract timely
-    (setup.eventGraph.withMode_concurrentReveals_revealsOnlyConcurrent setup.eventGraph_total)
-    (fun _ notPublication => setup.eventGraph.withMode_concurrentReveals_leading
-      setup.eventGraph_total notPublication)
+    (setup.informationGraph.relaxReveals_revealsOnlyConcurrent setup.informationGraph_total)
+    (fun _ notPublication => setup.informationGraph.relaxReveals_leading
+      setup.informationGraph_total notPublication)
     (concurrentEffectiveReference setup source)
     (concurrentEffectiveReference_readyIndependent setup source)
     (concurrentEffectiveReference_decides setup source)
@@ -141,8 +141,8 @@ theorem concurrentReveal_intended_ledger (setup : Setup (Player := Player) (L :=
     (concurrentEffectiveReference_outcomeLaw setup source disclosing observe invariant)
   have physicalLaw : ledgerPlay.map observe =
       graphPlay.map (fun outcome => observe outcome.1) := by
-    change (((serviceApplication setup .concurrentReveals duration leaks).roundsFrom
-      (serviceInitialLaw setup .concurrentReveals) scheduler
+    change (((serviceApplication setup setup.revealDependencies duration leaks).roundsFrom
+      (serviceInitialLaw setup setup.revealDependencies) scheduler
       (concurrentLedgerClients setup duration leaks bound turns source) horizon).map
         (fun final => final.application.config)).map observe = _
     rw [PMF.map_comp]
@@ -153,7 +153,8 @@ theorem concurrentReveal_intended_ledger (setup : Setup (Player := Player) (L :=
   have graphDefaults : ∀ outcome ∈ graphPlay.support, outcome.1.defaulted = ∅ := by
     intro outcome supported
     have clean := (graphClean outcome supported).1
-    change (rankedConfig outcome.1 outcome.2).defaulted = ∅ at clean
+    change (rankedConfig (graph := setup.revealRelaxedGraph) outcome.1 outcome.2).defaulted = ∅
+        at clean
     rwa [defaulted_rankedConfig] at clean
   have graphObserve : ∀ outcome ∈ graphPlay.support,
       observe outcome.1 = (some (setup.concurrentReadout outcome),
@@ -187,7 +188,7 @@ theorem concurrentReveal_intended_ledger (setup : Setup (Player := Player) (L :=
     rw [concurrentRankedRead_terminal setup config.erase terminal] at read
     have defaults := congrArg (fun final : Config Player L setup.program.terminalCtx =>
       final.defaulted) (Option.some.inj read)
-    change (rankedConfig config.erase terminal).defaulted =
+    change (rankedConfig (graph := setup.revealRelaxedGraph) config.erase terminal).defaulted =
       (setup.concurrentReadout outcome).defaulted at defaults
     rw [defaulted_rankedConfig, EventGraph.Config.erase_defaulted,
       (graphClean outcome present).1] at defaults

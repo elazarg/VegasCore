@@ -27,11 +27,11 @@ open GameTheory GameTheory.Protocol GameTheory.Math.Probability Interaction Even
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
 
 /-- A response is silent or names the event. -/
-def SilentOrNames (event : (graph setup).EventId) (response : (application setup timeouts
+def SilentOrNames (event : setup.informationGraph.EventId) (response : (application setup timeouts
   leaks).Action) :
     Prop :=
   response.transmission = none ∨ (submittedEvent? timeouts) leaks response = some event
@@ -39,8 +39,8 @@ def SilentOrNames (event : (graph setup).EventId) (response : (application setup
 /-- Canonical decisions are silent or name their event. -/
 theorem canonical_silentOrNames (who : Player) (past : List (application setup timeouts
   leaks).PlayerEntry)
-    (view : (application setup timeouts leaks).PlayerView) (event : (graph setup).EventId)
-    (action : (graph setup).Action event) :
+    (view : (application setup timeouts leaks).PlayerView) (event : setup.informationGraph.EventId)
+    (action : setup.informationGraph.Action event) :
     SilentOrNames (timeouts := timeouts) event
       ((canonicalServiceDecision timeouts) leaks who past view event action) := by
   rcases (canonicalServiceDecision_cases timeouts) leaks who past view event action with
@@ -52,7 +52,8 @@ theorem canonical_silentOrNames (who : Player) (past : List (application setup t
 /-- Slot-tier responses are silent or name their event. -/
 theorem slotResponse_silentOrNames (who : Player)
     (past : List (application setup timeouts leaks).PlayerEntry)
-    (view : (application setup timeouts leaks).PlayerView) (event : (graph setup).EventId) (slot :
+    (view : (application setup timeouts leaks).PlayerView) (event : setup.informationGraph.EventId)
+      (slot :
       Nat)
     (choice : Option (OwnAction Player L)) :
     SilentOrNames (timeouts := timeouts) event (slotResponse setup timeouts leaks who past view
@@ -84,7 +85,7 @@ theorem unsentFor_iff_unrecorded {who : Player}
       (some control))
     (recallEq : control.execution.logs who = past) {key : LateKey setup timeouts leaks}
     (siteKey : lateKey setup timeouts leaks who (some (past, view)) = some key)
-    (event : (graph setup).EventId) :
+    (event : setup.informationGraph.EventId) :
     UnsentFor (timeouts := timeouts) key event ↔ (eventRecorded timeouts) leaks past event = false
       := by
   simp only [lateKey, Option.some.injEq] at siteKey
@@ -113,7 +114,7 @@ with pending event `event`, along a history whose recall of `who` is the
 input's, the late-delivery key decides `event`. -/
 theorem decidedEvent_eq_of_pending {who : Player}
     {past : List (application setup timeouts leaks).PlayerEntry}
-    {view : (application setup timeouts leaks).PlayerView} {event : (graph setup).EventId}
+    {view : (application setup timeouts leaks).PlayerView} {event : setup.informationGraph.EventId}
     (pending : pendingEvent setup timeouts leaks who (some (past, view)) = some event)
     {control : (application setup timeouts leaks).Control}
     (trace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
@@ -125,7 +126,7 @@ theorem decidedEvent_eq_of_pending {who : Player}
   obtain ⟨turn, _, owned, unrecorded⟩ := pendingEvent_spec (timeouts := timeouts) pending
   simp only [lateKey, Option.some.injEq] at siteKey
   subst siteKey
-  cases node : nodeView (graph setup) event with
+  cases node : nodeView setup.informationGraph event with
   | sample payload law outputEq codeEq =>
       have none := nodeView_sample_actor outputEq codeEq
       rw [owned] at none
@@ -196,7 +197,7 @@ theorem decidedEvent_eq_of_pending {who : Player}
 
 end Recall
 
-variable [Fintype Player] {bounds : MessageBounds (graph setup)} {horizon : Nat}
+variable [Fintype Player] {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- **Recorded events are silent.** Along every history of the one-packet game,
@@ -205,7 +206,7 @@ response that is silent or names the event keeps silence. -/
 theorem decoded_silent_of_recorded {control : (application setup timeouts leaks).Control}
     (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control))
-    (who : Player) (event : (graph setup).EventId)
+    (who : Player) (event : setup.informationGraph.EventId)
     (recorded : (eventRecorded timeouts) leaks (control.execution.logs who) event = true)
     (response : (application setup timeouts leaks).Action) (named : SilentOrNames (timeouts :=
       timeouts) event response) :
@@ -231,7 +232,7 @@ silence once the event is recorded. -/
 theorem map_responseChoice_silent {control : (application setup timeouts leaks).Control}
     (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control))
-    (who : Player) (event : (graph setup).EventId)
+    (who : Player) (event : setup.informationGraph.EventId)
     (recorded : (eventRecorded timeouts) leaks (control.execution.logs who) event = true)
     (law : PMF (application setup timeouts leaks).Action)
     (named : ∀ response ∈ law.support, SilentOrNames (timeouts := timeouts) event response) :
@@ -252,7 +253,7 @@ theorem parts_silent_of_recorded (assessment : setup.intendedModel.BehavioralAss
     {control : (application setup timeouts leaks).Control}
     (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control))
-    (who : Player) (event : (graph setup).EventId)
+    (who : Player) (event : setup.informationGraph.EventId)
     (turn : control.execution.application.publicView.ownTurn? who = some event)
     (recorded : (eventRecorded timeouts) leaks (control.execution.logs who) event = true) :
     (∀ choice ∈ (honestChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler

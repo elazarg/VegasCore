@@ -21,8 +21,8 @@ noncomputable section
 namespace Vegas.Examples.ConcurrentRevealOrderLaw
 open SourceProgram EventGraph
 open CommitRevealAuction
-abbrev graph := (toEventGraph program).withMode .concurrentReveals
-instance : NeZero (toEventGraph program).order.eventCount := ⟨by decide⟩
+abbrev graph := (toInformationGraph program).relaxReveals
+instance : NeZero (toInformationGraph program).order.eventCount := ⟨by decide⟩
 instance : NeZero graph.order.eventCount := ⟨by decide⟩
 abbrev initial : graph.Config := Config.initial (encodeInputs (Env.empty (CellVal simpleExpr)))
 theorem first_ready : initial.cut.Ready 0 := by decide
@@ -37,7 +37,7 @@ theorem second_ready : first.cut.Ready 1 := by
     subst prior
     decide
 abbrev bound : graph.Config := first.complete 1 second_ready (some (.success 4)) (.success 4)
-theorem reveals_independent : (toEventGraph program).IndependentReveals 2 3 := by
+theorem reveals_independent : (toInformationGraph program).IndependentReveals 2 3 := by
   constructor
   · trivial
   constructor
@@ -55,8 +55,8 @@ theorem alice_ready : bound.cut.Ready 2 := by
     fin_cases prior
     · decide
     · decide
-    · norm_num [graph, toEventGraph, program, eventCount, EventOrder.sequential] at earlier
-    · norm_num [graph, toEventGraph, program, eventCount, EventOrder.sequential] at earlier
+    · norm_num [graph, toInformationGraph, program, eventCount, EventOrder.sequential] at earlier
+    · norm_num [graph, toInformationGraph, program, eventCount, EventOrder.sequential] at earlier
 
 theorem bob_ready : bound.cut.Ready 3 := by
   constructor
@@ -67,9 +67,9 @@ theorem bob_ready : bound.cut.Ready 3 := by
     fin_cases prior
     · decide
     · decide
-    · exact False.elim ((((toEventGraph program).mem_revealRelaxedPredecessors 2 3).mp
+    · exact False.elim ((((toInformationGraph program).relaxReveals_predecessors 2 3).mp
         member).2 reveals_independent)
-    · norm_num [graph, toEventGraph, program, eventCount, EventOrder.sequential] at earlier
+    · norm_num [graph, toInformationGraph, program, eventCount, EventOrder.sequential] at earlier
 abbrev disclosed : graph.Config := bound.complete 2 alice_ready true (.success 6)
 abbrev compiled := id
   (compileEventProfile program (fun who => (profile 6 who).1))
@@ -147,36 +147,39 @@ def bobFirstScheduler : graph.PublicScheduler := fun observation enabled nonempt
   if member : (3 : graph.EventId) ∈ enabled then PMF.pure ⟨3, member⟩
   else graph.canonicalScheduler observation enabled nonempty
 
+private theorem bound_bobFirst_plan (notTerminal : ¬ bound.cut.Terminal) :
+    graph.policyPlan compiled bobFirstScheduler bound notTerminal =
+      PMF.pure ⟨⟨3, bob_ready⟩, true⟩ := by
+  have readyMem : (3 : graph.EventId) ∈ bound.cut.enabled :=
+    (EventOrder.Cut.mem_enabled _ _).2 bob_ready
+  unfold policyPlan bobFirstScheduler
+  dsimp only
+  rw [dite_eq_left readyMem, PMF.pure_bind]
+  change (compiled Player.bob 3 bob_actor (graph.playerObserve Player.bob bound)
+    (by decide)).map _ = _
+  rw [bob_before_alice, PMF.pure_map]
+
+private theorem bobFirst_plan_eq_canonical (notTerminal : ¬ bobFirst.cut.Terminal) :
+    graph.policyPlan compiled bobFirstScheduler bobFirst notTerminal =
+      graph.policyPlan compiled graph.canonicalScheduler bobFirst notTerminal := by
+  unfold policyPlan bobFirstScheduler
+  dsimp only
+  have unavailable : (3 : graph.EventId) ∉ bobFirst.cut.enabled := by
+    intro enabled
+    exact ((EventOrder.Cut.mem_enabled _ _).1 enabled).1 (by decide)
+  rw [dite_eq_right unavailable]
+
 /-- Serving Bob first executes the actual two raw policy callbacks. -/
 theorem bob_first_policy_law :
     graph.runPlan (graph.policyPlan compiled bobFirstScheduler) 2 bound =
       PMF.pure bobFirst_terminal := by
   have notTerminal : ¬ bound.cut.Terminal := by decide
-  have readyMem : (3 : graph.EventId) ∈ bound.cut.enabled :=
-    (EventOrder.Cut.mem_enabled _ _).2 bob_ready
-  have plan : graph.policyPlan compiled bobFirstScheduler bound notTerminal =
-      PMF.pure ⟨⟨3, bob_ready⟩, true⟩ := by
-    unfold policyPlan bobFirstScheduler
-    dsimp only
-    rw [dite_eq_left readyMem, PMF.pure_bind]
-    change (compiled Player.bob 3 bob_actor (graph.playerObserve Player.bob bound)
-      (by decide)).map _ = _
-    rw [bob_before_alice, PMF.pure_map]
-  have afterPlan : ∀ terminal,
-      graph.policyPlan compiled bobFirstScheduler bobFirst terminal =
-        graph.policyPlan compiled graph.canonicalScheduler bobFirst terminal := by
-    intro terminal
-    unfold policyPlan bobFirstScheduler
-    dsimp only
-    have unavailable : (3 : graph.EventId) ∉ bobFirst.cut.enabled := by
-      intro enabled
-      exact ((EventOrder.Cut.mem_enabled _ _).1 enabled).1 (by decide)
-    rw [dite_eq_right unavailable]
-  rw [runPlan, dite_eq_right notTerminal, plan, PMF.pure_bind,
+  rw [runPlan, dite_eq_right notTerminal, bound_bobFirst_plan, PMF.pure_bind,
     bob_first_step, PMF.pure_bind]
   have sameRun : graph.runPlan (graph.policyPlan compiled bobFirstScheduler) 1 bobFirst =
       graph.runPlan (graph.policyPlan compiled graph.canonicalScheduler) 1 bobFirst := by
-    rw [runPlan, runPlan, dite_eq_right (by decide), dite_eq_right (by decide), afterPlan]
+    rw [runPlan, runPlan, dite_eq_right (by decide), dite_eq_right (by decide),
+      bobFirst_plan_eq_canonical]
     simp only [runPlan]
   rw [sameRun, graph.runPlan_canonical_actor compiled 0 bobFirst 2 bobFirst_alice_ready
     (by decide) Player.alice alice_actor (by decide), alice_after_bob, PMF.pure_bind,

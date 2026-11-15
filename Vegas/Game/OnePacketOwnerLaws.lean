@@ -36,9 +36,9 @@ open GameTheory GameTheory.Protocol GameTheory.Math.Probability Interaction Even
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  [Fintype Player] {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  [Fintype Player] {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- **A permitted envelope is first for its event.** Along every history of
@@ -47,7 +47,7 @@ for an event, the player has no pending commitment to it. -/
 theorem commitStatuses_nil_of_permitted {control : (application setup timeouts leaks).Control}
     (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control))
-    (who : Player) (event : (graph setup).EventId) (slot : Nat)
+    (who : Player) (event : setup.informationGraph.EventId) (slot : Nat)
     (permitted : countPermits ((application setup timeouts leaks).outputs (control.execution.logs
       who))
       (slotEnvelope setup timeouts leaks who (control.execution.logs who)
@@ -61,7 +61,8 @@ theorem commitStatuses_nil_of_permitted {control : (application setup timeouts l
     (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon scheduler
       trace
   have recalled := (countRecall_history timeouts) leaks rawTrace
-  have facts := settledFacts_history (initialLaw setup) horizon scheduler rawTrace
+  have facts := settledFacts_history ((toInformationGraph_barrierOrdered
+    setup.program).revealRelaxedOrdered.actorSerial) (initialLaw setup) horizon scheduler rawTrace
   have first := ((countPermits_eq_true_iff _ _).mp permitted).2.2
   unfold commitStatuses
   rw [List.filterMap_eq_nil_iff]
@@ -96,10 +97,12 @@ theorem commitStatuses_nil_of_permitted {control : (application setup timeouts l
 omit [Fintype Player] in
 /-- A commitment to the binding at a handle whose candidate succeeds, made with
 no pending commitment of the owner to it, moves to that handle. -/
-theorem commitMove_eq_some {event : (graph setup).EventId} {owner : Player} {payload : L.Ty}
+theorem commitMove_eq_some {event : setup.informationGraph.EventId} {owner : Player} {payload :
+  L.Ty}
     {execution : (application setup timeouts leaks).Execution} {action : (application setup timeouts
       leaks).Action}
-    {submission : (application setup timeouts leaks).Submission} {candidate : Handle (graph setup)}
+    {submission : (application setup timeouts leaks).Submission} {candidate : Handle
+      setup.informationGraph}
     (sent : action.transmission = some submission)
     (call : submission.call.packet = .commitment event candidate)
     (succeeds : candidateSucceeds ((application setup timeouts leaks).submit execution.application
@@ -110,7 +113,7 @@ theorem commitMove_eq_some {event : (graph setup).EventId} {owner : Player} {pay
     commitMove (timeouts := timeouts) event owner payload execution action = some (some candidate)
       := by
   have committed : ∃ (submission : (application setup timeouts leaks).Submission)
-      (candidate : Handle (graph setup)), action.transmission = some submission ∧
+      (candidate : Handle setup.informationGraph), action.transmission = some submission ∧
       submission.call.packet = .commitment event candidate ∧
       candidateSucceeds ((application setup timeouts leaks).submit execution.application owner
         submission) candidate payload = true ∧
@@ -132,7 +135,7 @@ theorem commitMove_eq_some {event : (graph setup).EventId} {owner : Player} {pay
 
 omit [Fintype Player] in
 /-- Silence moves to silence. -/
-theorem commitMove_silent {event : (graph setup).EventId} {owner : Player} {payload : L.Ty}
+theorem commitMove_silent {event : setup.informationGraph.EventId} {owner : Player} {payload : L.Ty}
     (execution : (application setup timeouts leaks).Execution) :
     commitMove (timeouts := timeouts) event owner payload execution ⟨none⟩ = some none := by
   unfold commitMove
@@ -141,7 +144,8 @@ theorem commitMove_silent {event : (graph setup).EventId} {owner : Player} {payl
 /-- The move of committing at a slot: to the slot's handle when the count
 verdict permits its envelope, and silence otherwise. -/
 def slotMove (execution : (application setup timeouts leaks).Execution) (who : Player)
-    (event : (graph setup).EventId) (slot : Nat) : Option (Handle (graph setup)) :=
+    (event : setup.informationGraph.EventId) (slot : Nat) : Option (Handle setup.informationGraph)
+      :=
   if countPermits ((application setup timeouts leaks).outputs (execution.logs who))
       (slotEnvelope setup timeouts leaks who (execution.logs who)
         (execution.observe (application setup timeouts leaks) who) event slot) = true then
@@ -155,10 +159,10 @@ theorem commitMove_slotChoiceOf {control : (application setup timeouts leaks).Co
     (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control))
     (assessment : setup.intendedModel.BehavioralAssessment) (who : Player)
-    (event : (graph setup).EventId) {payload : L.Ty}
-    {outputEq : (graph setup).outputLayout event = .binding who payload}
-    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .bind who payload}
+    (event : setup.informationGraph.EventId) {payload : L.Ty}
+    {outputEq : setup.informationGraph.outputLayout event = .binding who payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .bind who payload}
     (site : CoveredPendingBinding setup timeouts leaks bounds assessment who
       (control.execution.logs who)
       (control.execution.observe (application setup timeouts leaks) who) event payload outputEq
@@ -201,7 +205,7 @@ theorem commitMove_slotChoiceOf {control : (application setup timeouts leaks).Co
         who)
       event site.node slot choice action encoded (by rw [successful]; rfl)
     have call : material.call.packet = .commitment event (who, .prepared slot) :=
-      congrArg (fun message : Message Player (WitnessedPacket (graph setup)) =>
+      congrArg (fun message : Message Player (WitnessedPacket setup.informationGraph) =>
         message.payload.call) envelope
     have fresh : control.execution.application.candidates.lookup (who, .prepared slot) = .fresh :=
       site.freshOfPermitted slot permitted
@@ -278,8 +282,10 @@ theorem silenceChoice_val (who : Player) (info : (application setup timeouts lea
 uniform tier: the slot tier's moves with weight the square of the scale, then
 silence with weight the scale, then the moves of the late options. -/
 def lateMoves (execution : (application setup timeouts leaks).Execution) (who : Player)
-    (event : (graph setup).EventId) (scale : ℝ) (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1)
-    {slots : Nat} (options : PMF (LateOption slots)) : PMF (Option (Handle (graph setup))) :=
+    (event : setup.informationGraph.EventId) (scale : ℝ) (nonnegative : 0 ≤ scale) (le_one : scale
+      ≤ 1)
+    {slots : Nat} (options : PMF (LateOption slots)) : PMF (Option (Handle setup.informationGraph))
+      :=
   mix (scale ^ 2) (sq_nonneg _) (pow_le_one₀ nonnegative le_one)
     ((uniformOn (trembleSlots setup bounds) (trembleSlots_nonempty setup bounds)).map
       (slotMove (timeouts := timeouts) execution who event))
@@ -296,10 +302,10 @@ theorem lateComponent_moves_close {control : (application setup timeouts leaks).
     (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control))
     (assessment : setup.intendedModel.BehavioralAssessment) (who : Player)
-    (event : (graph setup).EventId) {payload : L.Ty}
-    {outputEq : (graph setup).outputLayout event = .binding who payload}
-    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .bind who payload}
+    (event : setup.informationGraph.EventId) {payload : L.Ty}
+    {outputEq : setup.informationGraph.outputLayout event = .binding who payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .bind who payload}
     (site : CoveredPendingBinding setup timeouts leaks bounds assessment who
       (control.execution.logs who)
       (control.execution.observe (application setup timeouts leaks) who) event payload outputEq
@@ -330,7 +336,7 @@ theorem lateComponent_moves_close {control : (application setup timeouts leaks).
   set view := control.execution.observe (application setup timeouts leaks) who
   set sort : (onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
     scheduler).Choice who
-      (some (past, view)) → Option (Option (Handle (graph setup))) :=
+      (some (past, view)) → Option (Option (Handle setup.informationGraph)) :=
     fun choice => commitMove (timeouts := timeouts) event who payload control.execution
       (choice.1.getD ⟨none⟩)
     with sortEq
@@ -455,7 +461,7 @@ theorem slotMove_congr {remaining : Nat} {actor : Option Player}
     (secondCurrent : secondHistory.state = some ⟨remaining, actor, second⟩)
     (same : operationalState setup timeouts leaks (some ⟨remaining, actor, first⟩) =
       operationalState setup timeouts leaks (some ⟨remaining, actor, second⟩))
-    (who : Player) (event : (graph setup).EventId) :
+    (who : Player) (event : setup.informationGraph.EventId) :
     slotMove (timeouts := timeouts) first who event = slotMove (timeouts := timeouts) second who
       event
       := by
@@ -502,11 +508,12 @@ theorem slotMove_congr {remaining : Nat} {actor : Option Player}
 
 omit [Fintype Player] in
 /-- A key decides at most one binding event, with one payload type. -/
-theorem bindingTurn_of_bindingTurn {key : LateKey setup timeouts leaks} {event : (graph
-  setup).EventId}
+theorem bindingTurn_of_bindingTurn {key : LateKey setup timeouts leaks} {event :
+  setup.informationGraph.EventId}
     {payload : L.Ty} (turn : BindingTurn (timeouts := timeouts) key event payload) :
     bindingTurn (timeouts := timeouts) key = some (event, payload) := by
-  have exists_ : ∃ decided : (graph setup).EventId × L.Ty, BindingTurn (timeouts := timeouts) key
+  have exists_ : ∃ decided : setup.informationGraph.EventId × L.Ty, BindingTurn (timeouts :=
+    timeouts) key
     decided.1 decided.2 :=
     ⟨(event, payload), turn⟩
   unfold bindingTurn
@@ -534,7 +541,7 @@ def lateBindingMoves {slots : Nat} (scale : ℝ) (nonnegative : 0 ≤ scale) (le
     (options : LateKey setup timeouts leaks → PMF (LateOption slots)) (key : LateKey setup timeouts
       leaks)
     (image : Option (OperationalState setup timeouts leaks) × List (MessageId Player × Bool)) :
-    PMF (Option (Handle (graph setup))) :=
+    PMF (Option (Handle setup.informationGraph)) :=
   match bindingTurn (timeouts := timeouts) key with
   | none => PMF.pure none
   | some decided =>

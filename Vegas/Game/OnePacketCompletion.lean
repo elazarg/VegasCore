@@ -21,23 +21,23 @@ open GameTheory GameTheory.Protocol Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
-  (timeouts : EventTimeouts (graph setup))
+  (timeouts : EventTimeouts setup.informationGraph)
 
 /-- **The content of a call** at a contract state: at a binding event, the
 commitment of the value its handle binds there; at a resolve event, the
 disclosure; nothing otherwise. -/
-def callContent (state : EventGraphRuntime.State (graph setup))
-    (call : Payload (graph setup)) : Option (OwnAction Player L) :=
+def callContent (state : EventGraphRuntime.State setup.informationGraph)
+    (call : Payload setup.informationGraph) : Option (OwnAction Player L) :=
   match call with
   | .commitment event handle =>
-      match nodeView (graph setup) event with
+      match nodeView setup.informationGraph event with
       | .bind _ payload outputEq _ =>
           decodeEventAction setup.program event
             (cast (congrArg EventGraph.EventField.Action outputEq.symm)
               (some (state.bindingResult handle payload)))
       | _ => none
   | .opening event _ _ =>
-      match nodeView (graph setup) event with
+      match nodeView setup.informationGraph event with
       | .resolve _ _ _ _ outputEq _ =>
           decodeEventAction setup.program event
             (cast (congrArg EventGraph.EventField.Action outputEq.symm) true)
@@ -47,7 +47,7 @@ def callContent (state : EventGraphRuntime.State (graph setup))
 /-- Decode the source content of the material actually transmitted, using its
 binding meaning after submission. -/
 def sentSourceAction
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
     (after : (application setup timeouts leaks).Execution)
     (action : (application setup timeouts leaks).Action) : Option (OwnAction Player L) :=
   action.transmission.bind fun material => callContent setup after.application material.call.packet
@@ -57,7 +57,7 @@ variable {setup timeouts}
 /-- The source action a transmission decodes to is the content of its call at
 the state after the submission. -/
 theorem sentSourceAction_eq_callContent
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
     (after : (application setup timeouts leaks).Execution)
     (material : (application setup timeouts leaks).Submission) :
     sentSourceAction setup timeouts leaks after ⟨some material⟩ =
@@ -68,8 +68,8 @@ theorem sentSourceAction_eq_callContent
 /-- **Content stays while meanings stay.** If a later state keeps every fixed
 meaning, and a commitment's handle has a fixed meaning, the content of the
 call is the same at both states. -/
-theorem callContent_keep {before after : EventGraphRuntime.State (graph setup)}
-    (kept : KeepsFixedCandidates before after) (call : Payload (graph setup))
+theorem callContent_keep {before after : EventGraphRuntime.State setup.informationGraph}
+    (kept : KeepsFixedCandidates before after) (call : Payload setup.informationGraph)
     (fixed : ∀ event handle, call = .commitment event handle →
       before.candidates.lookup handle ≠ .fresh) :
     callContent setup after call = callContent setup before call := by
@@ -85,14 +85,16 @@ theorem callContent_keep {before after : EventGraphRuntime.State (graph setup)}
 
 /-- An accepted commitment completes its event with the binding result of its
 handle at the state it is included at, and its handle belongs to its sender. -/
-theorem handle_commitment_action (state next : EventGraphRuntime.State (graph setup))
-    (id : MessageId Player) (event : (graph setup).EventId) (candidate : Handle (graph setup))
+theorem handle_commitment_action (state next : EventGraphRuntime.State setup.informationGraph)
+    (id : MessageId Player) (event : setup.informationGraph.EventId) (candidate : Handle
+      setup.informationGraph)
     (accepted : handle timeouts state ⟨id, .commitment event candidate⟩ = some next) :
     candidate.1 = id.1 ∧ ∃ (ready : state.config.cut.Ready event) (owner : Player)
-      (payload : L.Ty) (outputEq : (graph setup).outputLayout event = .binding owner payload)
-      (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-        ((graph setup).nodes event) = .bind owner payload),
-      nodeView (graph setup) event = .bind owner payload outputEq codeEq ∧
+      (payload : L.Ty) (outputEq : setup.informationGraph.outputLayout event = .binding owner
+        payload)
+      (codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+        (setup.informationGraph.nodes event) = .bind owner payload),
+      nodeView setup.informationGraph event = .bind owner payload outputEq codeEq ∧
       next.config = state.config.complete event ready
         (cast (congrArg EventGraph.EventField.Action outputEq.symm)
           (some (state.bindingResult candidate payload)))
@@ -106,8 +108,8 @@ theorem handle_commitment_action (state next : EventGraphRuntime.State (graph se
   rfl
 
 /-- An expired owned completion has a failing source action. -/
-theorem expiredAction_failing {event : (graph setup).EventId}
-    {action : (graph setup).Action event} (expired : ExpiredAction event action) :
+theorem expiredAction_failing {event : setup.informationGraph.EventId}
+    {action : setup.informationGraph.Action event} (expired : ExpiredAction event action) :
     Failing (decodeEventAction setup.program event action) := by
   cases expired with
   | binding owner payload outputEq =>
@@ -116,13 +118,13 @@ theorem expiredAction_failing {event : (graph setup).EventId}
       exact decodeEventAction_failing_publication setup.program event.val event.isLt outputEq
 
 /-- Suppressing an expired action contributes no successful binding or disclosure. -/
-theorem expired_record_failing (config : (graph setup).Config)
-    {event : (graph setup).EventId} {action : (graph setup).Action event}
+theorem expired_record_failing (config : setup.informationGraph.Config)
+    {event : setup.informationGraph.EventId} {action : setup.informationGraph.Action event}
     (expired : ExpiredAction event action) :
     Failing ((config.actualDecision event action).bind
       (decodeEventAction setup.program event)) := by
   unfold EventGraph.Config.actualDecision EventGraph.EventCode.actualDecision
-  cases ((graph setup).nodes event).actor with
+  cases (setup.informationGraph.nodes event).actor with
   | none => simp [Failing, OwnAction.disclosure]
   | some owner =>
       by_cases inactive : owner ∈ config.defaulted
@@ -132,16 +134,16 @@ theorem expired_record_failing (config : (graph setup).Config)
 /-- One actual packet certifies the source content of a newly recorded
 completion, through its raw native result and the following automatic drain. -/
 structure AcceptedSourceCompletion
-    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
     (execution next : (application setup timeouts leaks).Execution)
-    (record : (graph setup).Completion) (actor : Player) where
-  message : Message Player (WitnessedPacket (graph setup))
+    (record : setup.informationGraph.Completion) (actor : Player) where
+  message : Message Player (WitnessedPacket setup.informationGraph)
   pending : message ∈ execution.network.pending
   ledger : message ∈ next.network.ledger
   receipt : (message.id, true) ∈ next.receipts
-  named : message.payload.call.event? (graph setup) = some record.event
+  named : message.payload.call.event? setup.informationGraph = some record.event
   sender : message.sender = actor
-  native : EventGraphRuntime.State (graph setup)
+  native : EventGraphRuntime.State setup.informationGraph
   handled : handle timeouts execution.application ⟨message.id, message.payload.call⟩ = some native
   drained : native.drain = next.application
   recorded : record ∈ native.config.history
@@ -150,29 +152,30 @@ structure AcceptedSourceCompletion
   candidateOwner : ∀ named candidate, message.payload.call = .commitment named candidate →
     candidate.1 = actor
   bindingAccepted : ∀ owner payload,
-    (graph setup).outputLayout record.event = .binding owner payload →
+    setup.informationGraph.outputLayout record.event = .binding owner payload →
       next.application.accepted (.inr record.event) ≠ none
 
 private theorem record_eq_of_complete
-    (state native : EventGraphRuntime.State (graph setup))
-    (record : (graph setup).Completion) (fresh : record ∉ state.config.history)
+    (state native : EventGraphRuntime.State setup.informationGraph)
+    (record : setup.informationGraph.Completion) (fresh : record ∉ state.config.history)
     (present : record ∈ native.config.history) (ready : state.config.cut.Ready record.event)
-    (action : (graph setup).Action record.event)
-    (value : ((graph setup).outputLayout record.event).Value)
+    (action : setup.informationGraph.Action record.event)
+    (value : (setup.informationGraph.outputLayout record.event).Value)
     (complete : native.config = state.config.complete record.event ready action value) :
-    record = EventGraph.completion (graph setup) record.event
+    record = EventGraph.completion setup.informationGraph record.event
       (state.config.actualDecision record.event action) value := by
   rw [complete, EventGraph.Config.complete_history] at present
   exact List.mem_singleton.mp ((List.mem_append.mp present).resolve_left fresh)
 
 private theorem accepted_record_content
-    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
     (execution next : (application setup timeouts leaks).Execution)
-    (message : Message Player (WitnessedPacket (graph setup)))
-    (native : EventGraphRuntime.State (graph setup))
-    (record : (graph setup).Completion) (fresh : record ∉ execution.application.config.history)
+    (message : Message Player (WitnessedPacket setup.informationGraph))
+    (native : EventGraphRuntime.State setup.informationGraph)
+    (record : setup.informationGraph.Completion) (fresh : record ∉
+      execution.application.config.history)
     (present : record ∈ native.config.history)
-    (named : message.payload.call.event? (graph setup) = some record.event)
+    (named : message.payload.call.event? setup.informationGraph = some record.event)
     (handled : handle timeouts execution.application ⟨message.id, message.payload.call⟩ =
       some native)
     (drained : native.drain = next.application) :
@@ -180,7 +183,7 @@ private theorem accepted_record_content
         callContent setup execution.application message.payload.call ∧
       (∀ named candidate, message.payload.call = .commitment named candidate →
         candidate.1 = message.sender) ∧
-      ∀ owner payload, (graph setup).outputLayout record.event = .binding owner payload →
+      ∀ owner payload, setup.informationGraph.outputLayout record.event = .binding owner payload →
         next.application.accepted (.inr record.event) ≠ none := by
   cases packet : message.payload.call with
   | malformed raw => rw [packet] at handled; simp [handle] at handled
@@ -248,21 +251,22 @@ private theorem accepted_record_content
 /-- An owned newly recorded completion has an accepted packet certificate,
 an exact due-expiry record, or an actual automatic origin at an inherited default. -/
 theorem owned_completion_cases
-    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
     (execution next : (application setup timeouts leaks).Execution)
     (command : (application setup timeouts leaks).Command)
     (reached : next ∈ (execution.environmentStep (application setup timeouts leaks)
       command).support)
-    (record : (graph setup).Completion) (fresh : record ∉ execution.application.config.history)
+    (record : setup.informationGraph.Completion) (fresh : record ∉
+      execution.application.config.history)
     (present : record ∈ next.application.config.history)
-    {actor : Player} (acts : (graph setup).actor? record.event = some actor) :
+    {actor : Player} (acts : setup.informationGraph.actor? record.event = some actor) :
     Nonempty (AcceptedSourceCompletion (timeouts := timeouts) execution next record actor) ∨
     (command = .application (.expire record.event) ∧
       ∃ entered, execution.application.activatedAt record.event = some entered ∧
         timeouts.duration record.event ≤ execution.application.clock - entered ∧
-        ∃ (action : (graph setup).Action record.event)
-          (value : ((graph setup).outputLayout record.event).Value),
-          ExpiredAction record.event action ∧ record = EventGraph.completion (graph setup)
+        ∃ (action : setup.informationGraph.Action record.event)
+          (value : (setup.informationGraph.outputLayout record.event).Value),
+          ExpiredAction record.event action ∧ record = EventGraph.completion setup.informationGraph
             record.event (execution.application.config.actualDecision record.event action) value) ∨
     (∃ native, native.drain = next.application ∧ record ∉ native.config.history ∧
       ((∃ message ∈ execution.network.pending, command = .include message.id ∧
@@ -304,8 +308,8 @@ theorem owned_completion_cases
 section Stopping
 
 variable [Fintype Player] (setup timeouts)
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-  (bounds : MessageBounds (graph setup)) (horizon : Nat)
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
+  (bounds : MessageBounds setup.informationGraph) (horizon : Nat)
   (scheduler : (application setup timeouts leaks).Scheduler)
 
 /-- The event of the requested source rank has completed, possibly together

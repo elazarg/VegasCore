@@ -34,55 +34,55 @@ open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
-  (setup : Setup (Player := Player) (L := L)) {mode : EventGraph.ExecutionMode}
-  {duration : (serviceGraph setup mode).EventId → Nat}
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
+  (setup : Setup (Player := Player) (L := L)) {deps : setup.dataflowGraph.Dependencies}
+  {duration : (serviceGraph setup deps).EventId → Nat}
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup deps)))
 
 /-- The owner's response with its source action fixed: the canonical compiled
 decision when it transmits and a fresh call still fits the deadline within the
 inclusion bound, and silence when the decision is silent, too late, or the event is
 already recorded in the owner's own recall. -/
-def decidedOpportunity (bound : (serviceGraph setup mode).EventId → Nat) (owner : Player)
-    (event : (serviceGraph setup mode).EventId) (action : (serviceGraph setup mode).Action event) :
-    (serviceApplication setup mode duration leaks).Policy := fun past view =>
-  if (eventRecorded (serviceTimeouts setup mode duration)) leaks past event then
-    (serviceApplication setup mode duration leaks).silentPolicy past view
-  else if view.application.publicView.InclusionFitsDeadline (serviceTimeouts setup mode duration)
+def decidedOpportunity (bound : (serviceGraph setup deps).EventId → Nat) (owner : Player)
+    (event : (serviceGraph setup deps).EventId) (action : (serviceGraph setup deps).Action event) :
+    (serviceApplication setup deps duration leaks).Policy := fun past view =>
+  if (eventRecorded (serviceTimeouts setup deps duration)) leaks past event then
+    (serviceApplication setup deps duration leaks).silentPolicy past view
+  else if view.application.publicView.InclusionFitsDeadline (serviceTimeouts setup deps duration)
       bound event then if
-      ((canonicalServiceDecision (serviceTimeouts setup mode duration)) leaks owner past view event
+      ((canonicalServiceDecision (serviceTimeouts setup deps duration)) leaks owner past view event
           action).transmission = none then
-      (serviceApplication setup mode duration leaks).silentPolicy past view else PMF.pure
-      ((canonicalServiceDecision (serviceTimeouts setup mode duration)) leaks owner past view
+      (serviceApplication setup deps duration leaks).silentPolicy past view else PMF.pure
+      ((canonicalServiceDecision (serviceTimeouts setup deps duration)) leaks owner past view
           event action)
-  else (serviceApplication setup mode duration leaks).silentPolicy past view
+  else (serviceApplication setup deps duration leaks).silentPolicy past view
 
 /-- Decide `action` at the first turn at `event`, and stay silent at every other
 input. -/
-def decidedTurnPolicy (bound : (serviceGraph setup mode).EventId → Nat) (owner : Player)
-    (event : (serviceGraph setup mode).EventId) (action : (serviceGraph setup mode).Action event) :
-    (serviceApplication setup mode duration leaks).Policy :=
-  (serviceApplication setup mode duration leaks).turnScheduledPolicy
-  (serviceTurn setup mode duration leaks owner event) (some (0 : Fin 1))
+def decidedTurnPolicy (bound : (serviceGraph setup deps).EventId → Nat) (owner : Player)
+    (event : (serviceGraph setup deps).EventId) (action : (serviceGraph setup deps).Action event) :
+    (serviceApplication setup deps duration leaks).Policy :=
+  (serviceApplication setup deps duration leaks).turnScheduledPolicy
+  (serviceTurn setup deps duration leaks owner event) (some (0 : Fin 1))
   (decidedOpportunity setup leaks bound owner event action)
-  (serviceApplication setup mode duration leaks).silentPolicy
+  (serviceApplication setup deps duration leaks).silentPolicy
 
 variable {setup}
 
 /-- A requested opening is realizable precisely when the immutable binding
 contains a value. Deferred guard rejection does not prevent the attempt. -/
-def EffectiveAction (config : (serviceGraph setup mode).Config)
-    (event : (serviceGraph setup mode).EventId)
-    (action : (serviceGraph setup mode).Action event) : Prop :=
-  match nodeView (serviceGraph setup mode) event with
+def EffectiveAction (config : (serviceGraph setup deps).Config)
+    (event : (serviceGraph setup deps).EventId)
+    (action : (serviceGraph setup deps).Action event) : Prop :=
+  match nodeView (serviceGraph setup deps) event with
   | .resolve _ _ binding _ outputEq _ =>
       (cast (congrArg EventGraph.EventField.Action outputEq) action : Bool) = true →
         ∃ value, binding.get? config.store = some (.success value)
   | _ => True
 
 /-- Silence realizes public binding omission or a disclosure of `false`. -/
-def SilentAction (event : (serviceGraph setup mode).EventId)
-    (action : (serviceGraph setup mode).Action event) : Prop :=
-  match nodeView (serviceGraph setup mode) event with
+def SilentAction (event : (serviceGraph setup deps).EventId)
+    (action : (serviceGraph setup deps).Action event) : Prop :=
+  match nodeView (serviceGraph setup deps) event with
   | .bind _ _ outputEq _ =>
       (cast (congrArg EventGraph.EventField.Action outputEq) action) = none
   | .resolve _ _ _ _ outputEq _ =>
@@ -94,13 +94,13 @@ variable {leaks}
 
 /-- Public binding omission and false disclosure compile to silence at every view. -/
 theorem canonicalServiceDecision_silent (who : Player)
-    (past : List (serviceApplication setup mode duration leaks).PlayerEntry)
-    (view : (serviceApplication setup mode duration leaks).PlayerView)
-    (event : (serviceGraph setup mode).EventId)
-    (action : (serviceGraph setup mode).Action event) (silent : SilentAction event action) :
-    ((canonicalServiceDecision (serviceTimeouts setup mode duration)) leaks who past view event
+    (past : List (serviceApplication setup deps duration leaks).PlayerEntry)
+    (view : (serviceApplication setup deps duration leaks).PlayerView)
+    (event : (serviceGraph setup deps).EventId)
+    (action : (serviceGraph setup deps).Action event) (silent : SilentAction event action) :
+    ((canonicalServiceDecision (serviceTimeouts setup deps duration)) leaks who past view event
         action).transmission = none := by
-  cases node : nodeView (serviceGraph setup mode) event with
+  cases node : nodeView (serviceGraph setup deps) event with
   | sample payload law outputEq codeEq =>
       simp only [SilentAction, node] at silent
   | bind owner payload outputEq codeEq =>
@@ -111,7 +111,7 @@ theorem canonicalServiceDecision_silent (who : Player)
       simp only [cast_cast, cast_eq] at castBack
       rw [castBack]
       exact congrArg ReactiveApplication.Action.transmission
-        ((canonicalServiceDecision_binding_none (serviceTimeouts setup mode duration)) leaks who
+        ((canonicalServiceDecision_binding_none (serviceTimeouts setup deps duration)) leaks who
           past view event owner payload outputEq codeEq node)
   | resolve owner payload binding checks outputEq codeEq =>
       have withheld : cast (congrArg EventGraph.EventField.Action outputEq) action = false := by
@@ -121,16 +121,16 @@ theorem canonicalServiceDecision_silent (who : Player)
       simp only [cast_cast, cast_eq] at castBack
       rw [castBack]
       exact congrArg ReactiveApplication.Action.transmission
-        ((canonicalServiceDecision_resolution_false (serviceTimeouts setup mode duration)) leaks who
+        ((canonicalServiceDecision_resolution_false (serviceTimeouts setup deps duration)) leaks who
           past view event owner payload binding checks outputEq codeEq node)
 
 /-- An opportunity whose canonical response is silent is silent at the same input. -/
-theorem decidedOpportunity_silent {bound : (serviceGraph setup mode).EventId → Nat}
-    {owner : Player} {event : (serviceGraph setup mode).EventId}
-    (action : (serviceGraph setup mode).Action event)
-    (past : List (serviceApplication setup mode duration leaks).PlayerEntry)
-    (view : (serviceApplication setup mode duration leaks).PlayerView)
-    (quiet : ((canonicalServiceDecision (serviceTimeouts setup mode duration)) leaks owner past
+theorem decidedOpportunity_silent {bound : (serviceGraph setup deps).EventId → Nat}
+    {owner : Player} {event : (serviceGraph setup deps).EventId}
+    (action : (serviceGraph setup deps).Action event)
+    (past : List (serviceApplication setup deps duration leaks).PlayerEntry)
+    (view : (serviceApplication setup deps duration leaks).PlayerView)
+    (quiet : ((canonicalServiceDecision (serviceTimeouts setup deps duration)) leaks owner past
       view event action).transmission = none) :
     decidedOpportunity setup leaks bound owner event action past view = PMF.pure ⟨none⟩ := by
   unfold decidedOpportunity
@@ -138,11 +138,11 @@ theorem decidedOpportunity_silent {bound : (serviceGraph setup mode).EventId →
   split_ifs <;> rfl
 
 /-- A fixed silent source action stays silent at every input of its turn policy. -/
-theorem decidedTurnPolicy_silent {bound : (serviceGraph setup mode).EventId → Nat}
-    {owner : Player} {event : (serviceGraph setup mode).EventId}
-    (action : (serviceGraph setup mode).Action event) (silent : SilentAction event action)
-    (past : List (serviceApplication setup mode duration leaks).PlayerEntry)
-    (view : (serviceApplication setup mode duration leaks).PlayerView) :
+theorem decidedTurnPolicy_silent {bound : (serviceGraph setup deps).EventId → Nat}
+    {owner : Player} {event : (serviceGraph setup deps).EventId}
+    (action : (serviceGraph setup deps).Action event) (silent : SilentAction event action)
+    (past : List (serviceApplication setup deps duration leaks).PlayerEntry)
+    (view : (serviceApplication setup deps duration leaks).PlayerView) :
     decidedTurnPolicy setup leaks bound owner event action past view = PMF.pure ⟨none⟩ := by
   unfold decidedTurnPolicy ReactiveApplication.turnScheduledPolicy
   dsimp only
@@ -153,9 +153,9 @@ theorem decidedTurnPolicy_silent {bound : (serviceGraph setup mode).EventId → 
 
 section Transmission
 
-variable {setup : Setup (Player := Player) (L := L)} {mode : EventGraph.ExecutionMode}
-  (timeouts : EventTimeouts (serviceGraph setup mode))
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode))}
+variable {setup : Setup (Player := Player) (L := L)} {deps : setup.dataflowGraph.Dependencies}
+  (timeouts : EventTimeouts (serviceGraph setup deps))
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup deps))}
 
 /-- An effective non-silent source action produces a concrete transmission at
 an actual initialized turn, including an authentic opening whose guards reject. -/
@@ -163,11 +163,11 @@ theorem canonicalServiceDecision_transmits_of_effective {horizon : Nat}
     {scheduler : ((reactiveApplication timeouts) leaks).Scheduler}
     (control : ((reactiveApplication timeouts) leaks).Control)
     (trace : (((reactiveApplication timeouts) leaks).protocol
-      (serviceInitialLaw setup mode) horizon scheduler).Trace
+      (serviceInitialLaw setup deps) horizon scheduler).Trace
       (some control))
-    (owner : Player) (event : (serviceGraph setup mode).EventId)
+    (owner : Player) (event : (serviceGraph setup deps).EventId)
     (turn : control.execution.application.publicView.ownTurn? owner = some event)
-    (action : (serviceGraph setup mode).Action event)
+    (action : (serviceGraph setup deps).Action event)
     (effective : EffectiveAction control.execution.application.config event action)
     (loud : ¬ SilentAction event action) :
     ∃ material, ((canonicalServiceDecision timeouts) leaks owner (control.execution.logs owner)
@@ -180,7 +180,7 @@ theorem canonicalServiceDecision_transmits_of_effective {horizon : Nat}
     control.execution.application.publicView.ownTurn?_spec owner event turn
   have ready := (control.execution.application.publicView_eventReady event).mp readyView
   have active := control.execution.application.active_of_ready_owned facts.quiescent ready owned
-  cases node : nodeView (serviceGraph setup mode) event with
+  cases node : nodeView (serviceGraph setup deps) event with
   | sample payload law outputEq codeEq =>
       have actorNone := nodeView_sample_actor outputEq codeEq
       rw [owned] at actorNone
@@ -201,9 +201,9 @@ theorem canonicalServiceDecision_transmits_of_effective {horizon : Nat}
               (cast (congrArg EventGraph.EventField.Action outputEq.symm)) choice
             simpa only [cast_cast, cast_eq] using back
       have nativeTrace := trace
-      have initialEq : serviceInitialLaw setup mode = (setup.initialLaw.map setup.eventInputs).map
-          (EventGraphRuntime.State.initial (graph := serviceGraph setup mode)) :=
-        serviceInitialLaw_eq_inputs (mode := mode) setup
+      have initialEq : serviceInitialLaw setup deps = (setup.initialLaw.map setup.eventInputs).map
+          (EventGraphRuntime.State.initial (graph := serviceGraph setup deps)) :=
+        serviceInitialLaw_eq_inputs (deps := deps) setup
       rw [initialEq] at nativeTrace
       have candidates := (candidateRecall_history timeouts) leaks
         (setup.initialLaw.map setup.eventInputs) horizon scheduler nativeTrace
@@ -237,7 +237,7 @@ theorem canonicalServiceDecision_transmits_of_effective {horizon : Nat}
       have observedStored : binding.get?
           (control.execution.observe app owner).application.observation.store =
             some (.success value) := by
-        change binding.get? ((serviceGraph setup mode).playerStore owner
+        change binding.get? ((serviceGraph setup deps).playerStore owner
           control.execution.application.config.store) = _
         rw [binding.get?_playerStore owner _ rfl, stored]
       have transmits := (canonicalServiceDecision_openable timeouts) leaks owner
@@ -258,8 +258,8 @@ end Transmission
 section Sequential
 
 variable {setup : Setup (Player := Player) (L := L)}
-  (timeouts : EventTimeouts (graph setup))
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+  (timeouts : EventTimeouts setup.informationGraph)
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
 
 section Head
 
@@ -271,14 +271,14 @@ from the configuration completed with it. At an owned event that action law
 is the source decision, compiled to native responses by the source policy,
 and under authentic disclosures every supported action is realized by the
 compiled decision, including openings whose deferred guards reject. -/
-theorem SourceResidual.head_law {rank : Nat} {config : (graph setup).Config}
-    (residual : SourceResidual setup profile rank config) (event : (graph setup).EventId)
+theorem SourceResidual.head_law {rank : Nat} {config : setup.informationGraph.Config}
+    (residual : SourceResidual setup profile rank config) (event : setup.informationGraph.EventId)
     (atRank : event.val = rank) (ready : config.cut.Ready event) :
-    ∃ law : PMF ((graph setup).Action event),
+    ∃ law : PMF (setup.informationGraph.Action event),
       sourceContinuation setup profile rank config =
         law.bind (fun action => (config.step event ready action).bind
           fun next => sourceContinuation setup profile (rank + 1) next) ∧
-      (∀ owner, (graph setup).actor? event = some owner →
+      (∀ owner, setup.informationGraph.actor? event = some owner →
         ∀ current : (application setup timeouts leaks).Execution, current.application.config =
           config →
           sourceServiceCanonicalPolicy setup timeouts leaks profile owner (current.logs owner)
@@ -289,8 +289,9 @@ theorem SourceResidual.head_law {rank : Nat} {config : (graph setup).Config}
       ((∀ who, (profile who).AuthenticDisclosures setup.program) →
         ∀ action ∈ law.support, EffectiveAction config event action) := by
   let := Fintype.ofFinite Player
-  let native : EventGraphRuntime.State (graph setup) :=
-    { EventGraphRuntime.State.initial (graph := graph setup) config.inputs with config := config }
+  let native : EventGraphRuntime.State setup.informationGraph :=
+    { EventGraphRuntime.State.initial (graph := setup.informationGraph) config.inputs with
+      config := config }
   have decoded := residual.decode
   rcases residual with ⟨Γ, names, program, residualProfile, source, refs, embedding, refsBefore,
     aligned, admitted, authentic, supports, disclosing, lift, commutes, steps, injective,
@@ -298,7 +299,7 @@ theorem SourceResidual.head_law {rank : Nat} {config : (graph setup).Config}
     checkpoint⟩
   dsimp only at decoded
   have counted := aligned.graphSuffix.countEq
-  change rank + eventCount program = (graph setup).order.eventCount at counted
+  change rank + eventCount program = setup.informationGraph.order.eventCount at counted
   have sourceEq : sourceContinuation setup profile rank config =
       (ProtocolState.behavioralStateStep program residualProfile
         (ProtocolState.entry program source)).bind
@@ -311,7 +312,7 @@ theorem SourceResidual.head_law {rank : Nat} {config : (graph setup).Config}
     rw [← ProtocolState.behavioralStateStep_continuation setup.program profile, commutes,
       PMF.bind_map, PMF.map_bind]
     rfl
-  have nextDecode (state : ProtocolState program) (next : (graph setup).Config)
+  have nextDecode (state : ProtocolState program) (next : setup.informationGraph.Config)
       (read : decodeSourcePrefix? program refs source.registry source.revelations embedding.ref
         1 next.store (decodeHistory setup.program
           next.history) next.defaults =
@@ -333,18 +334,18 @@ theorem SourceResidual.head_law {rank : Nat} {config : (graph setup).Config}
         simpa only [index, Nat.add_zero] using aligned.graphSuffix.rankEq index
       have same : event = embedding.event index := Fin.ext (atRank.trans headRank.symm)
       subst same
-      have outputEq : (graph setup).outputLayout (embedding.event index) =
+      have outputEq : setup.informationGraph.outputLayout (embedding.event index) =
           .publicData payload := by
         change outputLayout setup.program (embedding.event index) = _
         simpa [index, outputLayout, eventCount] using embedding.layout_eq index
-      have codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-          ((graph setup).nodes (embedding.event index)) =
+      have codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+          (setup.informationGraph.nodes (embedding.event index)) =
             .sample payload (compilePublicDist refs distribution) := by
         change cast (congrArg (EventGraph.EventCode (graphLayout setup.program)) outputEq)
-          ((toEventGraph setup.program).nodes (embedding.event index)) = _
+          ((toInformationGraph setup.program).nodes (embedding.event index)) = _
         simpa [index, compileRankedNodes] using aligned.graphSuffix.nodeEq index
-      have chance : (graph setup).actor? (embedding.event index) = none := by
-        change (toEventGraph setup.program).actor? (embedding.event index) = none
+      have chance : setup.informationGraph.actor? (embedding.event index) = none := by
+        change (toInformationGraph setup.program).actor? (embedding.event index) = none
         simpa [index, eventOwner?, eventCount] using aligned.actorEq index
       have decodedAction : decodeEventAction setup.program (embedding.event index)
           (cast (congrArg EventGraph.EventField.Action outputEq.symm) PUnit.unit) = none := by
@@ -383,17 +384,17 @@ theorem SourceResidual.head_law {rank : Nat} {config : (graph setup).Config}
         simpa only [index, Nat.add_zero] using aligned.graphSuffix.rankEq index
       have same : event = embedding.event index := Fin.ext (atRank.trans headRank.symm)
       subst same
-      have outputEq : (graph setup).outputLayout (embedding.event index) =
+      have outputEq : setup.informationGraph.outputLayout (embedding.event index) =
           .binding owner payload := by
         change outputLayout setup.program (embedding.event index) = _
         simpa [index, outputLayout, eventCount] using embedding.layout_eq index
-      have codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-          ((graph setup).nodes (embedding.event index)) = .bind owner payload := by
+      have codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+          (setup.informationGraph.nodes (embedding.event index)) = .bind owner payload := by
         change cast (congrArg (EventGraph.EventCode (graphLayout setup.program)) outputEq)
-          ((toEventGraph setup.program).nodes (embedding.event index)) = _
+          ((toInformationGraph setup.program).nodes (embedding.event index)) = _
         simpa [index, compileRankedNodes] using aligned.graphSuffix.nodeEq index
-      have actor : (graph setup).actor? (embedding.event index) = some owner := by
-        change (toEventGraph setup.program).actor? (embedding.event index) = some owner
+      have actor : setup.informationGraph.actor? (embedding.event index) = some owner := by
+        change (toInformationGraph setup.program).actor? (embedding.event index) = some owner
         simpa [index, eventOwner?, eventCount] using aligned.actorEq index
       have decodedAction (choice : Option (PublicationResult (L.Val payload))) :
           decodeEventAction setup.program (embedding.event index)
@@ -443,7 +444,8 @@ theorem SourceResidual.head_law {rank : Nat} {config : (graph setup).Config}
           residualProfile refs source embedding refsBefore rank aligned current
           (by rw [sameConfig]; exact checkpoint.agrees)
           (by rw [sameConfig]; exact checkpoint.history)
-          (by rw [sameConfig]; exact checkpoint.defaults) (by rw [sameConfig]; exact ready)
+          (by rw [sameConfig]; exact checkpoint.defaults)
+          (ownTurn?_of_ready setup current.application (by rw [sameConfig]; exact ready) actor)
         simpa only [choiceLaw, PMF.map_comp, Function.comp_def] using law
       · intro _ action _
         unfold EffectiveAction
@@ -457,20 +459,20 @@ theorem SourceResidual.head_law {rank : Nat} {config : (graph setup).Config}
         simpa only [index, Nat.add_zero] using aligned.graphSuffix.rankEq index
       have same : event = embedding.event index := Fin.ext (atRank.trans headRank.symm)
       subst same
-      have outputEq : (graph setup).outputLayout (embedding.event index) =
+      have outputEq : setup.informationGraph.outputLayout (embedding.event index) =
           .publication payload := by
         change outputLayout setup.program (embedding.event index) = _
         simpa [index, outputLayout, eventCount] using embedding.layout_eq index
       let checks := compileChecks (published := published) refs
         source.registry source.revelations selected
-      have codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-          ((graph setup).nodes (embedding.event index)) =
+      have codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+          (setup.informationGraph.nodes (embedding.event index)) =
             .resolve owner payload (refs.get selected) checks := by
         change cast (congrArg (EventGraph.EventCode (graphLayout setup.program)) outputEq)
-          ((toEventGraph setup.program).nodes (embedding.event index)) = _
+          ((toInformationGraph setup.program).nodes (embedding.event index)) = _
         simpa [index, compileRankedNodes, checks] using aligned.graphSuffix.nodeEq index
-      have actor : (graph setup).actor? (embedding.event index) = some owner := by
-        change (toEventGraph setup.program).actor? (embedding.event index) = some owner
+      have actor : setup.informationGraph.actor? (embedding.event index) = some owner := by
+        change (toInformationGraph setup.program).actor? (embedding.event index) = some owner
         simpa [index, eventOwner?, eventCount] using aligned.actorEq index
       have decodedAction (disclose : Bool) : decodeEventAction setup.program
           (embedding.event index)
@@ -522,7 +524,8 @@ theorem SourceResidual.head_law {rank : Nat} {config : (graph setup).Config}
           profile residualProfile refs source embedding refsBefore rank aligned current
           (by rw [sameConfig]; exact checkpoint.agrees)
           (by rw [sameConfig]; exact checkpoint.history)
-          (by rw [sameConfig]; exact checkpoint.defaults) (by rw [sameConfig]; exact ready)
+          (by rw [sameConfig]; exact checkpoint.defaults)
+          (ownTurn?_of_ready setup current.application (by rw [sameConfig]; exact ready) actor)
         simpa only [choiceLaw, PMF.map_comp, Function.comp_def] using law
       · intro authenticWhole action member
         unfold EffectiveAction

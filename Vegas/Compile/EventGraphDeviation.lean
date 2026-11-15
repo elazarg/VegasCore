@@ -8,10 +8,10 @@ public import Vegas.EventGraph.PolicyCongruence
 
 @[expose] public section
 
-/-! # Exact deviation backtranslation for compiled graphs
+/-! # Exact deviation backtranslation for source information graphs
 
 Each graph replacement is one source policy chosen before private setup.
-Generated sequential dependencies make the complete law independent of public
+The source information dependencies make the complete law independent of public
 scheduling; no scheduler mixture or finite-alphabet premise is required.
 -/
 
@@ -28,16 +28,16 @@ including every typed cell, original choice and public default record. -/
 theorem canonical_deviation_terminalConfig_law
     {Γ : SourceCtx Player L} {openNames : Finset VarId}
     (program : SourceProgram Player L Γ openNames) (profile : BehavioralProfile program)
-    (who : Player) (replacement : (toEventGraph program).BehavioralPolicy who)
+    (who : Player) (replacement : (toInformationGraph program).BehavioralPolicy who)
     (state : State L Γ) :
-    ((toEventGraph program).terminalOutcomes (toEventGraph program).canonicalScheduler
-      (Profile.update (sig := (toEventGraph program).gameSignature)
+    ((toInformationGraph program).terminalOutcomes (toInformationGraph program).canonicalScheduler
+      (Profile.update (sig := (toInformationGraph program).gameSignature)
         (compileEventProfile program profile) who replacement) (encodeInputs state)).map
           (terminalConfig program) =
       SourceProgram.run program
         (Profile.update (sig := SourceProgram.gameSignature program) profile who
           (backtranslateEventPolicy program who replacement)) state := by
-  let graph := toEventGraph program
+  let graph := toInformationGraph program
   let translated := Profile.update (sig := SourceProgram.gameSignature program) profile who
     (backtranslateEventPolicy program who replacement)
   have kernels : graph.runPolicies graph.canonicalScheduler
@@ -71,28 +71,28 @@ theorem canonical_deviation_terminalConfig_law
 theorem scheduled_deviation_terminalConfig_law
     {Γ : SourceCtx Player L} {openNames : Finset VarId}
     (program : SourceProgram Player L Γ openNames)
-    (scheduler : (toEventGraph program).PublicScheduler) (profile : BehavioralProfile program)
-    (who : Player) (replacement : (toEventGraph program).BehavioralPolicy who)
+    (scheduler : (toInformationGraph program).PublicScheduler) (profile : BehavioralProfile program)
+    (who : Player) (replacement : (toInformationGraph program).BehavioralPolicy who)
     (state : State L Γ) :
-    ((toEventGraph program).terminalOutcomes scheduler
-      (Profile.update (sig := (toEventGraph program).gameSignature)
+    ((toInformationGraph program).terminalOutcomes scheduler
+      (Profile.update (sig := (toInformationGraph program).gameSignature)
         (compileEventProfile program profile) who replacement) (encodeInputs state)).map
           (terminalConfig program) =
       SourceProgram.run program
         (Profile.update (sig := SourceProgram.gameSignature program) profile who
           (backtranslateEventPolicy program who replacement)) state := by
-  rw [toEventGraph_terminalOutcomes_eq program _ scheduler
-    (toEventGraph program).canonicalScheduler]
+  rw [toInformationGraph_terminalOutcomes_eq program _ scheduler
+    (toInformationGraph program).canonicalScheduler]
   exact canonical_deviation_terminalConfig_law program profile who replacement state
 
 /-- Typed terminal-state deviation correspondence is a projection of the full law. -/
 theorem canonical_deviation_terminalState_law
     {Γ : SourceCtx Player L} {openNames : Finset VarId}
     (program : SourceProgram Player L Γ openNames) (profile : BehavioralProfile program)
-    (who : Player) (replacement : (toEventGraph program).BehavioralPolicy who)
+    (who : Player) (replacement : (toInformationGraph program).BehavioralPolicy who)
     (state : State L Γ) :
-    ((toEventGraph program).terminalOutcomes (toEventGraph program).canonicalScheduler
-      (Profile.update (sig := (toEventGraph program).gameSignature)
+    ((toInformationGraph program).terminalOutcomes (toInformationGraph program).canonicalScheduler
+      (Profile.update (sig := (toInformationGraph program).gameSignature)
         (compileEventProfile program profile) who replacement) (encodeInputs state)).map
           (terminalState program) =
       (SourceProgram.run program
@@ -106,10 +106,10 @@ theorem canonical_deviation_terminalState_law
 correlated private/public initial states, with opponents unchanged. -/
 theorem canonical_setup_deviation_law (setup : Setup (Player := Player) (L := L))
     (profile : BehavioralProfile setup.program) (who : Player)
-    (replacement : setup.eventGraph.BehavioralPolicy who) :
-    ((setup.eventGraph.canonicalGame
+    (replacement : setup.informationGraph.BehavioralPolicy who) :
+    ((setup.informationGraph.canonicalGame
       (setup.initialLaw.map fun initial => setup.eventInputs initial)).play
-      (Profile.update (sig := setup.eventGraph.gameSignature)
+      (Profile.update (sig := setup.informationGraph.gameSignature)
         (compileEventProfile setup.program profile) who replacement)).map
           (terminalConfig setup.program) =
       setup.run (Profile.update (sig := SourceProgram.gameSignature setup.program) profile who
@@ -124,11 +124,11 @@ theorem canonical_setup_deviation_law (setup : Setup (Player := Player) (L := L)
 The source policy is independent of the sampled initial state; no mixture,
 finite-history, finite-payload or finite-initial-law premise occurs. -/
 theorem scheduled_setup_deviation_law (setup : Setup (Player := Player) (L := L))
-    (scheduler : setup.eventGraph.PublicScheduler) (profile : BehavioralProfile setup.program)
-    (who : Player) (replacement : setup.eventGraph.BehavioralPolicy who) :
+    (scheduler : setup.informationGraph.PublicScheduler) (profile : BehavioralProfile setup.program)
+    (who : Player) (replacement : setup.informationGraph.BehavioralPolicy who) :
     (setup.initialLaw.bind fun initial =>
-      (setup.eventGraph.terminalOutcomes scheduler
-        (Profile.update (sig := setup.eventGraph.gameSignature)
+      (setup.informationGraph.terminalOutcomes scheduler
+        (Profile.update (sig := setup.informationGraph.gameSignature)
           (compileEventProfile setup.program profile) who replacement)
         (setup.eventInputs initial)).map (terminalConfig setup.program)) =
       setup.run (Profile.update (sig := SourceProgram.gameSignature setup.program) profile who
@@ -140,9 +140,9 @@ theorem scheduled_setup_deviation_law (setup : Setup (Player := Player) (L := L)
     initial
 
 /-- Finite source binding alphabets give finite graph action types. -/
-theorem toEventGraph_finiteActions {Γ : SourceCtx Player L} {openNames : Finset VarId}
+theorem toInformationGraph_finiteActions {Γ : SourceCtx Player L} {openNames : Finset VarId}
     (program : SourceProgram Player L Γ openNames) (finite : program.FiniteBindingTypes) :
-    (toEventGraph program).FiniteActions := fun event =>
+    (toInformationGraph program).FiniteActions := fun event =>
   outputLayout_action_finite program finite event
 
 end Vegas

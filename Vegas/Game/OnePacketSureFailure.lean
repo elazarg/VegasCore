@@ -30,12 +30,12 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
 
 section OnePacketCommitment
 
-variable [Fintype Player] (bounds : MessageBounds (graph setup)) (horizon : Nat)
+variable [Fintype Player] (bounds : MessageBounds setup.informationGraph) (horizon : Nat)
   (scheduler : (application setup timeouts leaks).Scheduler)
 
 /-- **Only the owner's one packet can fill a vacant binding.** At a history of
@@ -47,12 +47,12 @@ theorem onePacket_accepted_new {control next : (application setup timeouts leaks
     (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control))
     {who : Player} {entry : (application setup timeouts leaks).PlayerEntry}
-    {message : Message Player (WitnessedPacket (graph setup))}
+    {message : Message Player (WitnessedPacket setup.informationGraph)}
     (records : RecordsEntry setup timeouts leaks who entry (some control))
     (emitted : entry.emitted = some message) (sender : message.sender = who)
-    {event : (graph setup).EventId} {candidate : Handle (graph setup)}
+    {event : setup.informationGraph.EventId} {candidate : Handle setup.informationGraph}
     (call : message.payload.call = .commitment event candidate)
-    (owned : (graph setup).actor? event = some who)
+    (owned : setup.informationGraph.actor? event = some who)
     (vacant : control.execution.application.accepted (.inr event) = none)
     (joint : Player → Option (application setup timeouts leaks).Action)
     (reached : some next ∈ ((application setup timeouts leaks).transition (initialLaw setup) horizon
@@ -143,7 +143,8 @@ theorem onePacket_accepted_new {control next : (application setup timeouts leaks
                               (execution.logs who) := by
                             rw [split]
                             exact List.mem_filterMap.mpr ⟨entry, by simp, emitted⟩
-                          have named' : message.payload.call.event? (graph setup) = some named := by
+                          have named' : message.payload.call.event? setup.informationGraph = some
+                            named := by
                             rw [call]
                             rfl
                           have sameId : envelope.id = message.id := by

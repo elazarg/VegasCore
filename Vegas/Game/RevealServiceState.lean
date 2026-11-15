@@ -29,19 +29,20 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
 /-- Arbitrarily correlated initialized source states are encoded exactly in
 the actual sequential runtime's initial store. -/
-theorem initial_agrees (setup : Setup (Player := Player) (L := L)) {mode : EventGraph.ExecutionMode}
+theorem initial_agrees (setup : Setup (Player := Player) (L := L))
+    {deps : setup.dataflowGraph.Dependencies}
     (initial : State L setup.context) :
     (ContextRefs.initial setup.context (outputLayout setup.program)).Agrees initial
-      (EventGraphRuntime.State.initial (graph := serviceGraph setup mode)
+      (EventGraphRuntime.State.initial (graph := serviceGraph setup deps)
         (setup.eventInputs initial)).config.store := by
   apply ContextRefs.initial_agrees
   intro input
   rfl
 
 theorem initial_history (setup : Setup (Player := Player) (L := L))
-    {mode : EventGraph.ExecutionMode} (initial : State L setup.context) : decodeHistory
+    {deps : setup.dataflowGraph.Dependencies} (initial : State L setup.context) : decodeHistory
     setup.program
-    ((EventGraphRuntime.State.initial (graph := serviceGraph setup mode)
+    ((EventGraphRuntime.State.initial (graph := serviceGraph setup deps)
         (setup.eventInputs initial)).config.history) = fun _ => [] := rfl
 
 end Vegas

@@ -54,9 +54,9 @@ theorem decodeEventAction_isSome : ∀ {Γ : SourceCtx Player L} {O : Finset Var
       | succ tail => exact decodeEventAction_isSome next tail action notData
 
 variable {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  [Fintype Player] {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  [Fintype Player] {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- **Offered packets decode.** A transmission the one-packet menu offers names
@@ -70,7 +70,7 @@ theorem onePacket_sentSourceAction (who : Player)
     (material : (application setup timeouts leaks).Submission)
     (sends : response.transmission = some material)
     (after : (application setup timeouts leaks).Execution) :
-    ∃ event action, material.call.packet.event? (graph setup) = some event ∧
+    ∃ event action, material.call.packet.event? setup.informationGraph = some event ∧
       sentSourceAction setup timeouts leaks after response = some action ∧
       (encodeEventAction? setup.program event action).isSome := by
   obtain ⟨_, permitted⟩ := (bounds.mem_onePacketActions timeouts leaks who past view
@@ -100,7 +100,7 @@ theorem onePacket_sentSourceAction (who : Player)
   | commitment event candidate =>
       obtain ⟨owned, _⟩ := correct
       unfold bindingOwnedBy at owned
-      cases node : nodeView (graph setup) event with
+      cases node : nodeView setup.informationGraph event with
       | sample payload law outputEq codeEq =>
           rw [outputEq] at owned
           cases owned
@@ -111,7 +111,7 @@ theorem onePacket_sentSourceAction (who : Player)
           have defined := decodeEventAction_isSome setup.program event
             (cast (congrArg EventGraph.EventField.Action outputEq.symm)
               (some (after.application.bindingResult candidate payload))) fun payload same => by
-              rw [show outputLayout setup.program event = (graph setup).outputLayout event
+              rw [show outputLayout setup.program event = setup.informationGraph.outputLayout event
                 from rfl, outputEq] at same
               cases same
           obtain ⟨action, decoded⟩ := Option.isSome_iff_exists.mp defined
@@ -120,7 +120,7 @@ theorem onePacket_sentSourceAction (who : Player)
             rfl⟩
   | opening event candidate raw =>
       obtain ⟨_, resolves⟩ := correct
-      cases node : nodeView (graph setup) event with
+      cases node : nodeView setup.informationGraph event with
       | sample payload law outputEq codeEq =>
           rw [node] at resolves
           exact resolves.elim
@@ -131,7 +131,7 @@ theorem onePacket_sentSourceAction (who : Player)
           have defined := decodeEventAction_isSome setup.program event
             (cast (congrArg EventGraph.EventField.Action outputEq.symm) true)
             fun payload same => by
-              rw [show outputLayout setup.program event = (graph setup).outputLayout event
+              rw [show outputLayout setup.program event = setup.informationGraph.outputLayout event
                 from rfl, outputEq] at same
               cases same
           obtain ⟨action, decoded⟩ := Option.isSome_iff_exists.mp defined
@@ -169,7 +169,7 @@ theorem onePacket_content_pos (assessment : setup.intendedModel.BehavioralAssess
       response) :
     ∃ event, control.execution.application.publicView.ownTurn? who = some event ∧
       (eventRecorded timeouts) leaks (control.execution.logs who) event = false ∧
-      material.call.packet.event? (graph setup) = some event := by
+      material.call.packet.event? setup.informationGraph = some event := by
   obtain ⟨named, action, packetEvent, sent, encoded⟩ :=
     onePacket_sentSourceAction (timeouts := timeouts) who _ _ response member material sends after
   have weighted : some action ∈ ((assessment.strategy who (sourceViewOf setup timeouts leaks who

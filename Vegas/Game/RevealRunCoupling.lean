@@ -25,71 +25,73 @@ open SourceProgram GameTheory.Math.Probability Interaction EventGraphRuntime Eve
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {mode : EventGraph.ExecutionMode} {duration : (serviceGraph setup mode).EventId → Nat}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode))}
+  {deps : setup.dataflowGraph.Dependencies} {duration : (serviceGraph setup deps).EventId → Nat}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup deps))}
 
 /-- The recall facts kept by every round: responses and activations answer each
 other, and every honest owner submits at its turns with canonical slots. -/
 def RunTurnFacts (who : Player)
-    (execution : (serviceApplication setup mode duration leaks).Execution) : Prop :=
+    (execution : (serviceApplication setup deps duration leaks).Execution) : Prop :=
   ActivationsAnswered setup leaks execution ∧ ResponsesActivated setup leaks execution ∧
     ∀ owner, owner ≠ who → OwnSubmissionsAtTurn setup leaks execution owner ∧
       CanonicalSlotsUsed setup leaks execution owner
 
 /-- The recall facts hold on the support of rounds from initialization. -/
 theorem runTurnFacts_roundsFrom
-    (scheduler : (serviceApplication setup mode duration leaks).Scheduler)
-    (bound : (serviceGraph setup mode).EventId → Nat) (turns : Nat)
-    (reference : (serviceGraph setup mode).BehavioralProfile) (who : Player)
-    (deviation : (serviceApplication setup mode duration leaks).Policy) (count : Nat)
-    (execution : (serviceApplication setup mode duration leaks).Execution)
-    (supported : execution ∈ ((serviceApplication setup mode duration leaks).roundsFrom
-      (serviceInitialLaw setup mode) scheduler (Function.update (serviceReferenceTurnPolicy
-        setup mode duration leaks bound turns (firstTurnTiming setup turns mode) reference)
+    (serial : (serviceGraph setup deps).ActorSerial)
+    (scheduler : (serviceApplication setup deps duration leaks).Scheduler)
+    (bound : (serviceGraph setup deps).EventId → Nat) (turns : Nat)
+    (reference : (serviceGraph setup deps).BehavioralProfile) (who : Player)
+    (deviation : (serviceApplication setup deps duration leaks).Policy) (count : Nat)
+    (execution : (serviceApplication setup deps duration leaks).Execution)
+    (supported : execution ∈ ((serviceApplication setup deps duration leaks).roundsFrom
+      (serviceInitialLaw setup deps) scheduler (Function.update (serviceReferenceTurnPolicy
+        setup deps duration leaks bound turns (firstTurnTiming setup turns deps) reference)
         who deviation) count).support) :
     RunTurnFacts who execution :=
   ⟨roundsFrom_activationsAnswered count execution supported,
     roundsFrom_responsesActivated count execution supported,
-    fun owner different => canonicalSlots_roundsFrom_reference scheduler _ owner
-      (firstTurnTiming setup turns mode) reference (Function.update_of_ne different _ _) count
+    fun owner different => canonicalSlots_roundsFrom_reference serial scheduler _ owner
+      (firstTurnTiming setup turns deps) reference (Function.update_of_ne different _ _) count
       execution supported⟩
 
 /-- Every round keeps the recall facts. -/
-theorem RunTurnFacts.round {horizon remaining : Nat}
-    {scheduler : (serviceApplication setup mode duration leaks).Scheduler}
-    (bound : (serviceGraph setup mode).EventId → Nat) (turns : Nat)
-    (reference : (serviceGraph setup mode).BehavioralProfile) (who : Player)
-    (deviation : (serviceApplication setup mode duration leaks).Policy)
-    {execution next : (serviceApplication setup mode duration leaks).Execution}
-    (trace : ((serviceApplication setup mode duration leaks).protocol
-      (serviceInitialLaw setup mode) horizon scheduler).Trace
+theorem RunTurnFacts.round
+    (serial : (serviceGraph setup deps).ActorSerial) {horizon remaining : Nat}
+    {scheduler : (serviceApplication setup deps duration leaks).Scheduler}
+    (bound : (serviceGraph setup deps).EventId → Nat) (turns : Nat)
+    (reference : (serviceGraph setup deps).BehavioralProfile) (who : Player)
+    (deviation : (serviceApplication setup deps duration leaks).Policy)
+    {execution next : (serviceApplication setup deps duration leaks).Execution}
+    (trace : ((serviceApplication setup deps duration leaks).protocol
+      (serviceInitialLaw setup deps) horizon scheduler).Trace
         (some ⟨remaining + 1, none, execution⟩))
     (facts : RunTurnFacts who execution)
-    (reached : next ∈ ((serviceApplication setup mode duration leaks).round scheduler
-      (Function.update (serviceReferenceTurnPolicy setup mode duration leaks bound turns
-        (firstTurnTiming setup turns mode) reference) who deviation) execution).support) :
+    (reached : next ∈ ((serviceApplication setup deps duration leaks).round scheduler
+      (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+        (firstTurnTiming setup turns deps) reference) who deviation) execution).support) :
     RunTurnFacts who next := by
   obtain ⟨answered, activated, honest⟩ := facts
   refine ⟨round_activationsAnswered setup leaks answered reached,
     round_responsesActivated setup leaks activated reached, fun owner different => ?_⟩
-  have follows : Function.update (serviceReferenceTurnPolicy setup mode duration leaks bound
-      turns (firstTurnTiming setup turns mode) reference) who deviation owner =
-      serviceReferenceTurnPolicy setup mode duration leaks bound turns
-        (firstTurnTiming setup turns mode) reference owner := Function.update_of_ne different _ _
+  have follows : Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound
+      turns (firstTurnTiming setup turns deps) reference) who deviation owner =
+      serviceReferenceTurnPolicy setup deps duration leaks bound turns
+        (firstTurnTiming setup turns deps) reference owner := Function.update_of_ne different _ _
   obtain ⟨atTurn, valid⟩ := honest owner different
-  exact canonicalSlots_round
+  exact canonicalSlots_round serial
     (follows ▸ serviceTurnPolicy_submitsCanonically_reference bound turns
-      (firstTurnTiming setup turns mode) reference owner)
+      (firstTurnTiming setup turns deps) reference owner)
     (follows ▸ sourceServiceTurnPolicy_submitsAtTurn_reference setup leaks bound turns
-      (firstTurnTiming setup turns mode) reference owner) trace atTurn valid reached
+      (firstTurnTiming setup turns deps) reference owner) trace atTurn valid reached
 
 /-- An owner that submits only at its turns has not submitted for an event at
 which it has had no turn. -/
 theorem eventRecorded_eq_false_of_ownerTurns
-    {execution : (serviceApplication setup mode duration leaks).Execution} {owner : Player}
+    {execution : (serviceApplication setup deps duration leaks).Execution} {owner : Player}
     (atTurn : OwnSubmissionsAtTurn setup leaks execution owner)
-    {event : (serviceGraph setup mode).EventId} (none : ownerTurns owner event execution = 0) :
-    (eventRecorded (serviceTimeouts setup mode duration)) leaks (execution.logs owner) event =
+    {event : (serviceGraph setup deps).EventId} (none : ownerTurns owner event execution = 0) :
+    (eventRecorded (serviceTimeouts setup deps duration)) leaks (execution.logs owner) event =
       false := by
   unfold EventGraphRuntime.eventRecorded
   rw [List.any_eq_false]
@@ -107,50 +109,51 @@ given invariants, and with equal deviator traffic, give equal
 laws of that traffic when run until a condition on the cut that holds once the
 run is done, when honest clients open a reveal exactly when its opening is
 accepted. -/
-theorem run_stopped_traffic_congr {horizon : Nat}
-    (scheduler : (serviceApplication setup mode duration leaks).Scheduler)
-    (bound : (serviceGraph setup mode).EventId → Nat) (turns : Nat)
-    (reference : (serviceGraph setup mode).BehavioralProfile)
-    (decides : ∀ (config : (serviceGraph setup mode).Config)
-      (event : (serviceGraph setup mode).EventId) (owner : Player) (payload : L.Ty)
-      (binding : FieldRef (serviceGraph setup mode).layout (.binding owner payload))
-      (checks : List (GuardCheck (serviceGraph setup mode).layout payload))
-      (outputEq : (serviceGraph setup mode).outputLayout event = .publication payload)
-      (codeEq : cast (congrArg (EventCode (serviceGraph setup mode).layout) outputEq)
-        ((serviceGraph setup mode).nodes event) = .resolve owner payload binding checks),
-      nodeView (serviceGraph setup mode) event =
+theorem run_stopped_traffic_congr
+    (serial : (serviceGraph setup deps).ActorSerial) {horizon : Nat}
+    (scheduler : (serviceApplication setup deps duration leaks).Scheduler)
+    (bound : (serviceGraph setup deps).EventId → Nat) (turns : Nat)
+    (reference : (serviceGraph setup deps).BehavioralProfile)
+    (decides : ∀ (config : (serviceGraph setup deps).Config)
+      (event : (serviceGraph setup deps).EventId) (owner : Player) (payload : L.Ty)
+      (binding : FieldRef (serviceGraph setup deps).layout (.binding owner payload))
+      (checks : List (GuardCheck (serviceGraph setup deps).layout payload))
+      (outputEq : (serviceGraph setup deps).outputLayout event = .publication payload)
+      (codeEq : cast (congrArg (EventCode (serviceGraph setup deps).layout) outputEq)
+        ((serviceGraph setup deps).nodes event) = .resolve owner payload binding checks),
+      nodeView (serviceGraph setup deps) event =
         .resolve owner payload binding checks outputEq codeEq →
-      ∀ (actor : (serviceGraph setup mode).actor? event = some owner)
-        (active : owner ∉ ((serviceGraph setup mode).playerObserve owner config).defaulted),
-        reference owner event actor ((serviceGraph setup mode).playerObserve owner config)
+      ∀ (actor : (serviceGraph setup deps).actor? event = some owner)
+        (active : owner ∉ ((serviceGraph setup deps).playerObserve owner config).defaulted),
+        reference owner event actor ((serviceGraph setup deps).playerObserve owner config)
           active = PMF.pure (cast (congrArg EventField.Action outputEq.symm)
             (openingAccepted event config.store))) (who : Player)
-    (deviation : (serviceApplication setup mode duration leaks).Policy)
-    (start finish : Nat) (shaped : BlockShaped (graph := serviceGraph setup mode) start finish)
-    (publications : ∀ event : (serviceGraph setup mode).EventId, start ≤ event.val →
-      event.val < finish → ((serviceGraph setup mode).outputLayout event).IsPublication)
-    (stop : (serviceGraph setup mode).order.Cut → Prop) [DecidablePred stop]
-    (stopDone : ∀ cut : (serviceGraph setup mode).order.Cut,
-      (∀ event : (serviceGraph setup mode).EventId, event.val < finish →
+    (deviation : (serviceApplication setup deps duration leaks).Policy)
+    (start finish : Nat) (shaped : BlockShaped (graph := serviceGraph setup deps) start finish)
+    (publications : ∀ event : (serviceGraph setup deps).EventId, start ≤ event.val →
+      event.val < finish → ((serviceGraph setup deps).outputLayout event).IsPublication)
+    (stop : (serviceGraph setup deps).order.Cut → Prop) [DecidablePred stop]
+    (stopDone : ∀ cut : (serviceGraph setup deps).order.Cut,
+      (∀ event : (serviceGraph setup deps).EventId, event.val < finish →
         event ∈ cut.completed) → stop cut)
-    (leftGood rightGood : Nat → (serviceApplication setup mode duration leaks).Execution → Prop)
+    (leftGood rightGood : Nat → (serviceApplication setup deps duration leaks).Execution → Prop)
     (leftRound : ∀ n current, leftGood (n + 1) current → ¬ stop current.application.config.cut →
-      ∀ next ∈ ((serviceApplication setup mode duration leaks).round scheduler
-        (Function.update (serviceReferenceTurnPolicy setup mode duration leaks bound turns
-          (firstTurnTiming setup turns mode) reference) who deviation) current).support,
+      ∀ next ∈ ((serviceApplication setup deps duration leaks).round scheduler
+        (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+          (firstTurnTiming setup turns deps) reference) who deviation) current).support,
         leftGood n next)
     (rightRound : ∀ n current, rightGood (n + 1) current → ¬ stop current.application.config.cut →
-      ∀ next ∈ ((serviceApplication setup mode duration leaks).round scheduler
-        (Function.update (serviceReferenceTurnPolicy setup mode duration leaks bound turns
-          (firstTurnTiming setup turns mode) reference) who deviation) current).support,
+      ∀ next ∈ ((serviceApplication setup deps duration leaks).round scheduler
+        (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+          (firstTurnTiming setup turns deps) reference) who deviation) current).support,
         rightGood n next) :
     ∀ (count leftRemaining rightRemaining : Nat)
-      (left right : (serviceApplication setup mode duration leaks).Execution),
-      ((serviceApplication setup mode duration leaks).protocol
-        (serviceInitialLaw setup mode) horizon scheduler).Trace
+      (left right : (serviceApplication setup deps duration leaks).Execution),
+      ((serviceApplication setup deps duration leaks).protocol
+        (serviceInitialLaw setup deps) horizon scheduler).Trace
           (some ⟨leftRemaining + count, none, left⟩) →
-      ((serviceApplication setup mode duration leaks).protocol
-        (serviceInitialLaw setup mode) horizon scheduler).Trace
+      ((serviceApplication setup deps duration leaks).protocol
+        (serviceInitialLaw setup deps) horizon scheduler).Trace
           (some ⟨rightRemaining + count, none, right⟩) →
       (¬ BlockDone finish left.application.config →
         InBlock start finish left.application.config) →
@@ -160,51 +163,51 @@ theorem run_stopped_traffic_congr {horizon : Nat}
       HonestBlockSubmissions who start finish right →
       RunTurnFacts who left → RunTurnFacts who right →
       leftGood count left → rightGood count right →
-      (∀ (n : Nat) (currentRun otherRun : (serviceApplication setup mode duration leaks).Execution),
+      (∀ (n : Nat) (currentRun otherRun : (serviceApplication setup deps duration leaks).Execution),
         leftGood (n + 1) currentRun → rightGood (n + 1) otherRun →
         currentRun.application.config.cut = otherRun.application.config.cut →
         ¬ stop currentRun.application.config.cut →
         let current := currentRun.application.config
         let other := otherRun.application.config
-        ∀ (event : (serviceGraph setup mode).EventId) (owner : Player) (payload : L.Ty)
-          (binding : FieldRef (serviceGraph setup mode).layout (.binding owner payload))
-          (checks : List (GuardCheck (serviceGraph setup mode).layout payload))
-          (outputEq : (serviceGraph setup mode).outputLayout event = .publication payload)
-          (codeEq : cast (congrArg (EventCode (serviceGraph setup mode).layout) outputEq)
-            ((serviceGraph setup mode).nodes event) = .resolve owner payload binding checks),
-        nodeView (serviceGraph setup mode) event =
+        ∀ (event : (serviceGraph setup deps).EventId) (owner : Player) (payload : L.Ty)
+          (binding : FieldRef (serviceGraph setup deps).layout (.binding owner payload))
+          (checks : List (GuardCheck (serviceGraph setup deps).layout payload))
+          (outputEq : (serviceGraph setup deps).outputLayout event = .publication payload)
+          (codeEq : cast (congrArg (EventCode (serviceGraph setup deps).layout) outputEq)
+            ((serviceGraph setup deps).nodes event) = .resolve owner payload binding checks),
+        nodeView (serviceGraph setup deps) event =
           .resolve owner payload binding checks outputEq codeEq →
         current.cut.Ready event → owner ∉ current.defaulted → owner ∉ other.defaulted →
         (owner ≠ who → openingAccepted event current.store = openingAccepted event other.store) ∧
         (openingAccepted event current.store = true ∨ owner = who →
           binding.get? current.store = binding.get? other.store)) →
-      (bindingTraffic (serviceTimeouts setup mode duration)) leaks who left =
-        (bindingTraffic (serviceTimeouts setup mode duration)) leaks who right →
-      ((serviceApplication setup mode duration leaks).runUntil scheduler
-        (Function.update (serviceReferenceTurnPolicy setup mode duration leaks bound turns
-          (firstTurnTiming setup turns mode) reference) who deviation)
+      (bindingTraffic (serviceTimeouts setup deps duration)) leaks who left =
+        (bindingTraffic (serviceTimeouts setup deps duration)) leaks who right →
+      ((serviceApplication setup deps duration leaks).runUntil scheduler
+        (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+          (firstTurnTiming setup turns deps) reference) who deviation)
         (fun final => stop final.application.config.cut) count left).map
-          ((bindingTraffic (serviceTimeouts setup mode duration)) leaks who) =
-      ((serviceApplication setup mode duration leaks).runUntil scheduler
-        (Function.update (serviceReferenceTurnPolicy setup mode duration leaks bound turns
-          (firstTurnTiming setup turns mode) reference) who deviation)
+          ((bindingTraffic (serviceTimeouts setup deps duration)) leaks who) =
+      ((serviceApplication setup deps duration leaks).runUntil scheduler
+        (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+          (firstTurnTiming setup turns deps) reference) who deviation)
         (fun final => stop final.application.config.cut) count right).map
-          ((bindingTraffic (serviceTimeouts setup mode duration)) leaks who) := by
+          ((bindingTraffic (serviceTimeouts setup deps duration)) leaks who) := by
   intro count leftRemaining rightRemaining left right leftTrace rightTrace leftInside
     rightInside leftValid rightValid leftFacts rightFacts leftStart rightStart agreeAt same
-  let app := serviceApplication setup mode duration leaks
-  let players := Function.update (serviceReferenceTurnPolicy setup mode duration leaks bound
-    turns (firstTurnTiming setup turns mode) reference) who deviation
-  let window : (serviceGraph setup mode).EventId → Bool := fun _ => false
+  let app := serviceApplication setup deps duration leaks
+  let players := Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound
+    turns (firstTurnTiming setup turns deps) reference) who deviation
+  let window : (serviceGraph setup deps).EventId → Bool := fun _ => false
   have readoutOf (execution : app.Execution) : blockReadoutOn who window execution =
-      ((bindingTraffic (serviceTimeouts setup mode duration)) leaks who execution,
+      ((bindingTraffic (serviceTimeouts setup deps duration)) leaks who execution,
         fun _ _ => (0, false)) := rfl
-  have notDone (cut : (serviceGraph setup mode).order.Cut) (running : ¬ stop cut) :
-      ¬ ∀ event : (serviceGraph setup mode).EventId, event.val < finish →
+  have notDone (cut : (serviceGraph setup deps).order.Cut) (running : ¬ stop cut) :
+      ¬ ∀ event : (serviceGraph setup deps).EventId, event.val < finish →
         event ∈ cut.completed := fun done => running (stopDone cut done)
   let invariant := fun (good : Nat → app.Execution → Prop) (count : Nat)
       (current : app.Execution) =>
-    (∃ remaining, Nonempty ((app.protocol (serviceInitialLaw setup mode) horizon scheduler).Trace
+    (∃ remaining, Nonempty ((app.protocol (serviceInitialLaw setup deps) horizon scheduler).Trace
       (some ⟨remaining + count, none, current⟩))) ∧
     (¬ BlockDone finish current.application.config →
       InBlock start finish current.application.config) ∧
@@ -219,12 +222,12 @@ theorem run_stopped_traffic_congr {horizon : Nat}
       (next : app.Execution) (reached : next ∈ (app.round scheduler players current).support) :
       invariant good n next := by
     obtain ⟨⟨remaining, ⟨trace⟩⟩, inside, goodNow, submitted, facts⟩ := valid
-    have before : (app.protocol (serviceInitialLaw setup mode) horizon scheduler).Trace
+    have before : (app.protocol (serviceInitialLaw setup deps) horizon scheduler).Trace
         (some ⟨(remaining + n) + 1, none, current⟩) := by
       simpa only [Nat.add_assoc] using trace
-    obtain ⟨nextTrace⟩ := app.raw_trace_round (serviceInitialLaw setup mode) horizon scheduler
+    obtain ⟨nextTrace⟩ := app.raw_trace_round (serviceInitialLaw setup deps) horizon scheduler
       players (remaining + n) current next before reached
-    have path := reactive_round_graph_steps (serviceTimeouts setup mode duration) leaks scheduler
+    have path := reactive_round_graph_steps (serviceTimeouts setup deps duration) leaks scheduler
       players current next reached
     have unfinished : ¬ BlockDone finish current.application.config :=
       notDone _ running
@@ -233,7 +236,7 @@ theorem run_stopped_traffic_congr {horizon : Nat}
       honestBlockSubmissions_round scheduler bound turns reference
       decides who deviation start finish shaped publications current next before
       (inside unfinished) unfinished submitted reached,
-      RunTurnFacts.round bound turns reference who deviation before facts reached⟩
+      RunTurnFacts.round serial bound turns reference who deviation before facts reached⟩
   have coupled := ReactiveApplication.runUntil_map_congr_of_rounds app scheduler players players
     (fun final => stop final.application.config.cut) (blockReadoutOn who window)
     (invariant leftGood) (invariant rightGood)
@@ -248,22 +251,22 @@ theorem run_stopped_traffic_congr {horizon : Nat}
       obtain ⟨⟨currentRest, ⟨currentTrace⟩⟩, currentInside, currentGood, currentSubmitted,
         currentFacts⟩ := currentValid
       obtain ⟨⟨otherRest, ⟨otherTrace⟩⟩, _, otherGood, _, otherFacts⟩ := otherValid
-      have currentBefore : (app.protocol (serviceInitialLaw setup mode) horizon scheduler).Trace
+      have currentBefore : (app.protocol (serviceInitialLaw setup deps) horizon scheduler).Trace
           (some ⟨(currentRest + n) + 1, none, current⟩) := by
         simpa only [Nat.add_assoc] using currentTrace
-      have otherBefore : (app.protocol (serviceInitialLaw setup mode) horizon scheduler).Trace
+      have otherBefore : (app.protocol (serviceInitialLaw setup deps) horizon scheduler).Trace
           (some ⟨(otherRest + n) + 1, none, other⟩) := by
         simpa only [Nat.add_assoc] using otherTrace
       have unfinished : ¬ BlockDone finish current.application.config := notDone _ running
       have inside := currentInside unfinished
       have currentLegal := legalFacts setup leaks horizon scheduler _ currentBefore
       have otherLegal := legalFacts setup leaks horizon scheduler _ otherBefore
-      have signed := signedCommitments_history (serviceTimeouts setup mode duration) leaks
-        (serviceInitialLaw setup mode) (fun state supported => by
+      have signed := signedCommitments_history (serviceTimeouts setup deps duration) leaks
+        (serviceInitialLaw setup deps) (fun state supported => by
           obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ supported
           exact ⟨_, rfl⟩) horizon scheduler currentBefore
-      have sameTraffic : (bindingTraffic (serviceTimeouts setup mode duration)) leaks who current =
-          (bindingTraffic (serviceTimeouts setup mode duration)) leaks who other :=
+      have sameTraffic : (bindingTraffic (serviceTimeouts setup deps duration)) leaks who current =
+          (bindingTraffic (serviceTimeouts setup deps duration)) leaks who other :=
         congrArg Prod.fst equal
       have publics : current.application.publicView = other.application.publicView :=
         congrArg (fun value => value.2.2.2.2.2) sameTraffic
@@ -272,19 +275,19 @@ theorem run_stopped_traffic_congr {horizon : Nat}
         congrArg (fun value => value.2.2.1) sameTraffic
       have views : current.application.playerView who = other.application.playerView who :=
         congrArg (fun value => value.2.2.2.2.1) sameTraffic
-      have inWindow (event : (serviceGraph setup mode).EventId)
+      have inWindow (event : (serviceGraph setup deps).EventId)
           (ready : current.application.config.cut.Ready event) :
           start ≤ event.val ∧ event.val < finish :=
         shaped _ inside unfinished event ready
       have agreeAtNow := agreeAt n current other currentGood otherGood cuts running
-      have agreeNow : ∀ (event : (serviceGraph setup mode).EventId) (owner : Player)
+      have agreeNow : ∀ (event : (serviceGraph setup deps).EventId) (owner : Player)
           (payload : L.Ty)
-          (binding : FieldRef (serviceGraph setup mode).layout (.binding owner payload))
-          (checks : List (GuardCheck (serviceGraph setup mode).layout payload))
-          (outputEq : (serviceGraph setup mode).outputLayout event = .publication payload)
-          (codeEq : cast (congrArg (EventCode (serviceGraph setup mode).layout) outputEq)
-            ((serviceGraph setup mode).nodes event) = .resolve owner payload binding checks),
-          nodeView (serviceGraph setup mode) event =
+          (binding : FieldRef (serviceGraph setup deps).layout (.binding owner payload))
+          (checks : List (GuardCheck (serviceGraph setup deps).layout payload))
+          (outputEq : (serviceGraph setup deps).outputLayout event = .publication payload)
+          (codeEq : cast (congrArg (EventCode (serviceGraph setup deps).layout) outputEq)
+            ((serviceGraph setup deps).nodes event) = .resolve owner payload binding checks),
+          nodeView (serviceGraph setup deps) event =
             .resolve owner payload binding checks outputEq codeEq →
           current.application.config.cut.Ready event →
           (owner ≠ who → openingAccepted event current.application.config.store =
@@ -337,7 +340,7 @@ theorem run_stopped_traffic_congr {horizon : Nat}
           currentLegal.provenance.pending message pending
         obtain ⟨_, _, transmitted, packet⟩ :=
           signed.emissions message.sender entry entryMember message emitted
-        have submitted : (submittedEvent? (serviceTimeouts setup mode duration)) leaks
+        have submitted : (submittedEvent? (serviceTimeouts setup deps duration)) leaks
             entry.action = some named := by
           simp only [EventGraphRuntime.submittedEvent?, transmitted]
           rw [← packet, called]

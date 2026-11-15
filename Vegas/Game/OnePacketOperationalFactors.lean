@@ -38,8 +38,8 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
 
 variable (setup timeouts leaks) in
 /-- The late-delivery key of a player at a player view. -/
@@ -70,17 +70,18 @@ def lastEmitted (key : LateKey setup timeouts leaks) :
   key.recalled.getLast?.bind Prod.snd
 
 /-- The owner's turn in the key's public view. -/
-def turn (key : LateKey setup timeouts leaks) : Option (graph setup).EventId :=
+def turn (key : LateKey setup timeouts leaks) : Option setup.informationGraph.EventId :=
   key.current.1.ownTurn? key.owner
 
 /-- An emitted envelope of the key's owner names the event. -/
-def Recorded (key : LateKey setup timeouts leaks) (event : (graph setup).EventId) : Prop :=
-  ∃ message ∈ key.outputs, message.payload.call.event? (graph setup) = some
+def Recorded (key : LateKey setup timeouts leaks) (event : setup.informationGraph.EventId) : Prop :=
+  ∃ message ∈ key.outputs, message.payload.call.event? setup.informationGraph = some
     event
 
 /-- The count verdict on the owner's commitment at a prepared slot for an event,
 as its next envelope. -/
-def slotPermitted (key : LateKey setup timeouts leaks) (event : (graph setup).EventId) (slot :
+def slotPermitted (key : LateKey setup timeouts leaks) (event : setup.informationGraph.EventId)
+  (slot :
   Nat) :
     Bool :=
   countPermits key.outputs ⟨(key.owner, (key.outputs (timeouts := timeouts)).length),
@@ -101,18 +102,18 @@ def silenceFactor (after : LateKey setup timeouts leaks) : ℝ :=
 /-- At a pending binding, the as-if-honest law commits at the canonical slot. -/
 def pendingBindingHonestFactor (before after : LateKey setup timeouts leaks) : ℝ :=
   match (after.lastEmitted.map fun message => message.payload.call :
-      Option (Payload (graph setup))) with
+      Option (Payload setup.informationGraph)) with
   | some (.commitment _ (_, .prepared slot)) => if before.canonicalSlot =
     some slot then 1 else 0
   | _ => 0
 
-variable [Fintype Player] (bounds : MessageBounds (graph setup))
+variable [Fintype Player] (bounds : MessageBounds setup.informationGraph)
 
 open Classical in
 /-- At a pending binding, the slot tier draws a uniform tremble slot: a
 commitment has the uniform slot mass, and silence the share of rejected slots. -/
 def pendingBindingSlotFactor (before after : LateKey setup timeouts leaks)
-    (event : (graph setup).EventId) : ℝ :=
+    (event : setup.informationGraph.EventId) : ℝ :=
   match after.lastEmitted with
   | none => ((trembleSlots setup bounds).filter fun slot =>
       before.slotPermitted event slot = false).card / (trembleSlots setup
@@ -130,8 +131,8 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
 
 section Reads
 
@@ -168,7 +169,7 @@ theorem LateKey.ofView_recorded
     (trace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace
       (some control))
-    (who : Player) (event : (graph setup).EventId) :
+    (who : Player) (event : setup.informationGraph.EventId) :
     (LateKey.ofView setup timeouts leaks who (control.execution.logs who)
       (control.execution.observe (application setup timeouts leaks) who)).Recorded (timeouts :=
         timeouts) event ↔
@@ -183,7 +184,7 @@ theorem LateKey.ofView_slotPermitted
     (trace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace
       (some control))
-    (who : Player) (event : (graph setup).EventId) (slot : Nat) :
+    (who : Player) (event : setup.informationGraph.EventId) (slot : Nat) :
     (LateKey.ofView setup timeouts leaks who (control.execution.logs who)
       (control.execution.observe (application setup timeouts leaks) who)).slotPermitted (timeouts :=
         timeouts) event slot =
@@ -215,7 +216,7 @@ end Reads
 
 section Masses
 
-variable [Fintype Player] {bounds : MessageBounds (graph setup)} {horizon : Nat}
+variable [Fintype Player] {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- The one-packet choice sending silence is the silence choice. -/
@@ -306,17 +307,17 @@ player's keys before and after the response. -/
 theorem onePacket_pendingBinding_operational_masses
     (assessment : setup.intendedModel.BehavioralAssessment)
     (covers : bounds.CoversOutputValues)
-    (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
+    (capacity : ∀ who, bindingEventCount setup.informationGraph who < bounds.candidateCount)
     {control : (application setup timeouts leaks).Control}
     (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control))
-    (who : Player) (event : (graph setup).EventId)
+    (who : Player) (event : setup.informationGraph.EventId)
     (turn : control.execution.application.publicView.ownTurn? who = some event)
     (unsent : (eventRecorded timeouts) leaks (control.execution.logs who) event = false)
-    {payload : L.Ty} {outputEq : (graph setup).outputLayout event = .binding who payload}
-    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .bind who payload}
-    (node : nodeView (graph setup) event = .bind who payload outputEq codeEq)
+    {payload : L.Ty} {outputEq : setup.informationGraph.outputLayout event = .binding who payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .bind who payload}
+    (node : nodeView setup.informationGraph event = .bind who payload outputEq codeEq)
     (response : (application setup timeouts leaks).Action)
     (member : response ∈ bounds.onePacketActions timeouts leaks who
       (control.execution.logs who) (control.execution.observe (application setup timeouts leaks)
@@ -416,7 +417,7 @@ theorem onePacket_pendingBinding_operational_masses
       rw [← responseEq, sends] at transmits
       cases Option.some.inj transmits
       have packetEq : material.call.packet = .commitment event (who, .prepared serial) :=
-        congrArg (fun message : Message Player (WitnessedPacket (graph setup)) =>
+        congrArg (fun message : Message Player (WitnessedPacket setup.informationGraph) =>
           message.payload.call) envelope
       have lastSome : (LateKey.ofView setup timeouts leaks who
           ((control.execution.respond (application setup timeouts leaks) who response).logs who)
@@ -429,7 +430,8 @@ theorem onePacket_pendingBinding_operational_masses
           ((control.execution.respond (application setup timeouts leaks) who response).observe
             (application setup timeouts leaks) who)).lastEmitted.map fun
               message => message.payload.call :
-            Option (Payload (graph setup))) = some (.commitment event (who, .prepared serial)) := by
+            Option (Payload setup.informationGraph)) = some (.commitment event (who, .prepared
+              serial)) := by
         rw [LateKey.respond_lastEmitted, sends]
         exact congrArg some packetEq
       have canonicalEq := (LateKey.ofView_canonicalSlot rawTrace who).trans

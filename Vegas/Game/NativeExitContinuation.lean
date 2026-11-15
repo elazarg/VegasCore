@@ -25,8 +25,8 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Math.Probability
 variable {Player : Type} [DecidableEq Player] [Finite Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
 
 /-- After actual public default, every supported terminal continuation has the
 same exit utility, without a service or source-completion premise. -/

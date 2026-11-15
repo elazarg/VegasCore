@@ -32,12 +32,12 @@ open Vegas.EventGraph
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
 /-- The compiled graph of a setup with independent reveals concurrent. -/
-abbrev concurrentRevealGraph (setup : Setup (Player := Player) (L := L)) :
+abbrev revealRelaxedGraph (setup : Setup (Player := Player) (L := L)) :
     Vegas.EventGraph Player L :=
-  setup.eventGraph.withMode .concurrentReveals
+  setup.informationGraph.relaxReveals
 
-theorem concurrentRevealGraph_sequentialize (setup : Setup (Player := Player) (L := L)) :
-    setup.concurrentRevealGraph.sequentialize = setup.eventGraph := rfl
+theorem revealRelaxedGraph_sequentialize (setup : Setup (Player := Player) (L := L)) :
+    setup.revealRelaxedGraph.sequentialize = setup.informationGraph := rfl
 
 /-- A law on booleans that never yields `false` is the point mass at `true`. -/
 theorem pmf_bool_eq_pure_true (law : PMF Bool) (never : false ∉ law.support) :
@@ -111,10 +111,10 @@ at every active publication of its owner. -/
 theorem compileEventPolicy_publication {Γ : SourceCtx Player L} {openNames : Finset VarId}
     (program : SourceProgram Player L Γ openNames) (who : Player)
     (policy : BehavioralPolicy who program) (disclosing : Disclosing program policy)
-    (event : (toEventGraph program).EventId)
-    (actor : (toEventGraph program).actor? event = some who)
-    (publication : ((toEventGraph program).outputLayout event).IsPublication)
-    (observation : (toEventGraph program).PlayerObservation who)
+    (event : (toInformationGraph program).EventId)
+    (actor : (toInformationGraph program).actor? event = some who)
+    (publication : ((toInformationGraph program).outputLayout event).IsPublication)
+    (observation : (toInformationGraph program).PlayerObservation who)
     (active : who ∉ observation.defaulted) :
     compileEventPolicy program who policy event actor observation active =
       PMF.pure (EventField.openAction _ publication) :=
@@ -122,17 +122,3 @@ theorem compileEventPolicy_publication {Γ : SourceCtx Player L} {openNames : Fi
     ((eventOwner?_eq_actor program event).trans actor) _ _ _ active
 
 end Vegas
-
-namespace Vegas.SourceProgram.Setup
-
-open Vegas.EventGraph
-
-variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
-
-/-- The compiled graph is totally ordered. -/
-theorem eventGraph_total (setup : Setup (Player := Player) (L := L))
-    (prior event : setup.eventGraph.EventId) (earlier : prior.val < event.val) :
-    prior ∈ setup.eventGraph.order.predecessors event :=
-  (EventOrder.sequential.mem_predecessors prior event).mpr earlier
-
-end Vegas.SourceProgram.Setup

@@ -122,7 +122,7 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
+  {timeouts : EventTimeouts setup.informationGraph}
 
 /-- **Intended points are forced** for every player. -/
 theorem forcedPoint_of_intended (who : Player) {point : ProtocolState setup.program}
@@ -133,10 +133,10 @@ theorem forcedPoint_of_intended (who : Player) {point : ProtocolState setup.prog
       ProtocolState.Intended.not_owesFailure other setup.program point intended⟩⟩
 
 /-- A binding event's graph actor is its owner. -/
-theorem actor_of_binding {event : (graph setup).EventId} {owner : Player} {payload : L.Ty}
-    (layout : (graph setup).outputLayout event = .binding owner payload) :
-    (graph setup).actor? event = some owner := by
-  cases view : nodeView (graph setup) event with
+theorem actor_of_binding {event : setup.informationGraph.EventId} {owner : Player} {payload : L.Ty}
+    (layout : setup.informationGraph.outputLayout event = .binding owner payload) :
+    setup.informationGraph.actor? event = some owner := by
+  cases view : nodeView setup.informationGraph event with
   | bind owner' payload' outputEq codeEq =>
       rw [nodeView_bind_actor outputEq codeEq]
       rw [outputEq] at layout
@@ -151,13 +151,14 @@ theorem actor_of_binding {event : (graph setup).EventId} {owner : Player} {paylo
 
 variable (setup timeouts) in
 /-- Every foreign owner's authoritative public default status is clear. -/
-def PublicRecord {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+def PublicRecord {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket
+  setup.informationGraph)}
     (who : Player) (control : (application setup timeouts leaks).Control) : Prop :=
   ∀ other, other ≠ who → other ∉ control.execution.application.config.defaulted
 
 variable [Fintype Player]
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 omit [Fintype Player] in
@@ -192,17 +193,17 @@ theorem PublicRecord.bindingAccepted {who : Player}
     {control : (application setup timeouts leaks).Control}
     (record : PublicRecord setup timeouts who control)
     (trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some control))
-    (event : (graph setup).EventId) (owner : Player) (payload : L.Ty)
-    (layout : (graph setup).outputLayout event = .binding owner payload)
+    (event : setup.informationGraph.EventId) (owner : Player) (payload : L.Ty)
+    (layout : setup.informationGraph.outputLayout event = .binding owner payload)
     (different : owner ≠ who) (completed : event ∈
       control.execution.application.config.cut.completed) :
     control.execution.application.accepted (.inr event) ≠ none := by
   intro missing
   have raw := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup)
     horizon scheduler trace
-  change (((reactiveApplication timeouts) leaks).protocol (serviceInitialLaw setup .sequential)
+  change (((reactiveApplication timeouts) leaks).protocol (initialLaw setup)
     horizon scheduler).Trace (some control) at raw
-  rw [serviceInitialLaw_eq_inputs setup] at raw
+  rw [initialLaw, serviceInitialLaw_eq_inputs (deps := setup.informationDependencies) setup] at raw
   have valid := ExclusionEvidence.history timeouts leaks
     (setup.initialLaw.map setup.eventInputs) horizon scheduler raw
   apply record owner different
@@ -345,7 +346,7 @@ theorem intended_of_regular (wellFormed : setup.WellFormed)
                 exact Finset.notMem_empty _
               obtain ⟨value, _output, recorded⟩ :=
                 current.execution.application.config.step_completion event ready action _ member
-              let completion := EventGraph.completion (graph setup) event
+              let completion := EventGraph.completion setup.informationGraph event
                 (current.execution.application.config.actualDecision event action) value
               have fresh : completion ∉ current.execution.application.config.history := by
                 intro present
@@ -406,7 +407,7 @@ theorem intended_of_regular (wellFormed : setup.WellFormed)
                 exfalso
                 have owned : eventOwner? setup.program ⟨event.val, event.isLt⟩ = some player :=
                   (eventOwner?_eq_actor setup.program event).trans acts
-                cases view : nodeView (graph setup) event with
+                cases view : nodeView setup.informationGraph event with
                 | bind owner payload outputEq codeEq =>
                     have sameOwner : owner = player :=
                       Option.some.inj ((nodeView_bind_actor outputEq codeEq).symm.trans acts)
@@ -486,7 +487,8 @@ theorem forcedState_of_regular (wellFormed : setup.WellFormed)
       observed.application.publicView) sameView
   have sameDefaulted : control.execution.application.config.defaulted =
       witnessControl.execution.application.config.defaulted :=
-    congrArg (fun publicView : PublicView (graph setup) => publicView.observation.defaulted)
+    congrArg (fun publicView : PublicView setup.informationGraph =>
+      publicView.observation.defaulted)
       samePublic
   have record : PublicRecord setup timeouts who control := by
     intro player different excluded
@@ -526,7 +528,7 @@ def ForcedBeliefInputs.ofRegularHistories
     (forced : forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks) (initialLaw
       setup) horizon
       scheduler who site.1)
-    (decision : site.1 = some (past, view)) {event : (graph setup).EventId}
+    (decision : site.1 = some (past, view)) {event : setup.informationGraph.EventId}
     (turn : view.application.publicView.ownTurn? who = some event)
     (projected : sourceSite.1 = projectView setup timeouts leaks who site.1)
     (mixed : (sequence n).IsFullyMixed)

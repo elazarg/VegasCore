@@ -22,8 +22,8 @@ open SourceProgram Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
 
 /-- Equal operational recalls retain precisely the same authored envelopes. -/
 theorem outputs_eq_of_operationalRecall
@@ -48,7 +48,7 @@ theorem localEnvelope_rawBinding
     (frame : Frame timeouts leaks memory owner original repaired)
     (originalCount : (CountRecall timeouts) leaks original)
     (repairedCount : (CountRecall timeouts) leaks repaired)
-    (event : (graph setup).EventId) (serial : Nat) (first second : Option (Raw L)) :
+    (event : setup.informationGraph.EventId) (serial : Nat) (first second : Option (Raw L)) :
     (localEnvelope timeouts) leaks owner (original.logs owner)
         (original.observe (application setup timeouts leaks) owner)
         ⟨⟨.commitment event (owner, .prepared serial), first⟩, .none⟩ =
@@ -59,13 +59,13 @@ theorem localEnvelope_rawBinding
     owner))
       (⟨.commitment event (owner, .prepared serial), none,
         original.application.publicView.tokenFor (.commitment event (owner, .prepared serial))⟩ :
-        WitnessedPacket (graph setup)) =
+        WitnessedPacket setup.informationGraph) =
     Message.mk (owner, (application setup timeouts leaks).submissionCount (repaired.logs owner))
       ⟨.commitment event (owner, .prepared serial), none,
         repaired.application.publicView.tokenFor (.commitment event (owner, .prepared serial))⟩
   rw [← originalCount.2.1 owner, ← repairedCount.2.1 owner, frame.network, frame.publicView]
 
-variable [Fintype Player] (bounds : MessageBounds (graph setup))
+variable [Fintype Player] (bounds : MessageBounds setup.informationGraph)
 
 /-- Every admitted raw binding remains admitted after replacement of its
 private opening by any bounded opening at the same fresh prepared slot. -/
@@ -76,7 +76,7 @@ theorem onePacket_rawBinding
           owner))
     (originalCount : (CountRecall timeouts) leaks original)
     (repairedCount : (CountRecall timeouts) leaks repaired)
-    (event : (graph setup).EventId) (serial : Nat) (first second : Option (Raw L))
+    (event : setup.informationGraph.EventId) (serial : Nat) (first second : Option (Raw L))
     (fresh : repaired.application.candidates.lookup (owner, .prepared serial) = .fresh)
     (bounded : bounds.AllowsOpening second)
     (member : (⟨some ⟨⟨.commitment event (owner, .prepared serial), first⟩, .none⟩⟩ :
@@ -120,11 +120,11 @@ theorem repairResponse_onePacket
           owner))
     (originalCount : (CountRecall timeouts) leaks original)
     (repairedCount : (CountRecall timeouts) leaks repaired)
-    (event : (graph setup).EventId) (payload : L.Ty)
-    (outputEq : (graph setup).outputLayout event = .binding owner payload)
-    (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .bind owner payload)
-    (node : nodeView (graph setup) event = .bind owner payload outputEq codeEq)
+    (event : setup.informationGraph.EventId) (payload : L.Ty)
+    (outputEq : setup.informationGraph.outputLayout event = .binding owner payload)
+    (codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .bind owner payload)
+    (node : nodeView setup.informationGraph event = .bind owner payload outputEq codeEq)
     (serial : Nat) (opening : Option (Raw L))
     (fresh : original.application.candidates.lookup (owner, .prepared serial) = .fresh)
     (covered : bounds.CoversOutputValues)

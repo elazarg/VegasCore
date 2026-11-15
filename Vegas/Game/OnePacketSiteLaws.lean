@@ -27,8 +27,8 @@ open GameTheory GameTheory.Protocol GameTheory.Math.Probability Interaction Even
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
 
 omit [DecidableEq Player] [IExpr.ResultTypes L] in
 /-- A point of a mixture lies in the support of one of its parts. -/
@@ -40,7 +40,7 @@ theorem mem_support_mix_cases {α : Type} {t : ℝ} {h0 : 0 ≤ t} {h1 : t ≤ 1
   rw [neither.1, neither.2, mul_zero, mul_zero, add_zero] at member
   exact member rfl
 
-variable [Fintype Player] {bounds : MessageBounds (graph setup)} {horizon : Nat}
+variable [Fintype Player] {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- **The owner's components at a late site.** At every allowed forced state of a
@@ -113,7 +113,8 @@ def SiteComponentShape (assessment : setup.intendedModel.BehavioralAssessment) (
 
 omit [Fintype Player] in
 /-- A key decides one event: the owner's turn. -/
-theorem turn_unique {key : LateKey setup timeouts leaks} {first second : (graph setup).EventId}
+theorem turn_unique {key : LateKey setup timeouts leaks} {first second :
+  setup.informationGraph.EventId}
     (firstTurn : PublicationTurn (timeouts := timeouts) key first ∨ ∃ payload, BindingTurn (timeouts
       := timeouts) key first payload)
     (secondTurn : PublicationTurn (timeouts := timeouts) key second ∨ ∃ payload, BindingTurn
@@ -162,7 +163,7 @@ it, so every slot moves to silence. -/
 theorem slotMove_of_recorded {control : (application setup timeouts leaks).Control}
     (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control))
-    (who : Player) (event : (graph setup).EventId)
+    (who : Player) (event : setup.informationGraph.EventId)
     (recorded : (eventRecorded timeouts) leaks (control.execution.logs who) event = true)
     (slot : Nat) :
     slotMove (timeouts := timeouts) control.execution who event slot = none := by
@@ -196,7 +197,8 @@ omit [Fintype Player] in
 /-- The keyed law of moves when every slot moves to silence. -/
 theorem lateMoves_of_silent (execution : (application setup timeouts leaks).Execution) (who :
   Player)
-    (event : (graph setup).EventId) (scale : ℝ) (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1)
+    (event : setup.informationGraph.EventId) (scale : ℝ) (nonnegative : 0 ≤ scale) (le_one : scale
+      ≤ 1)
     {slots : Nat} (options : PMF (LateOption slots))
     (silent : ∀ slot, slotMove (timeouts := timeouts) execution who event slot = none) :
     lateMoves (timeouts := timeouts) (bounds := bounds) execution who event scale nonnegative le_one
@@ -218,7 +220,7 @@ theorem core_silent (assessment : setup.intendedModel.BehavioralAssessment)
     {control : (application setup timeouts leaks).Control}
     (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control))
-    (who : Player) (event : (graph setup).EventId)
+    (who : Player) (event : setup.informationGraph.EventId)
     (turn : control.execution.application.publicView.ownTurn? who = some event)
     (recorded : (eventRecorded timeouts) leaks (control.execution.logs who) event = true)
     (scale : ℝ) (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1) {slots : Nat}
@@ -265,7 +267,7 @@ theorem lateCore_silent (assessment : setup.intendedModel.BehavioralAssessment)
     {control : (application setup timeouts leaks).Control}
     (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control))
-    (who : Player) (event : (graph setup).EventId)
+    (who : Player) (event : setup.informationGraph.EventId)
     (turn : control.execution.application.publicView.ownTurn? who = some event)
     (recorded : (eventRecorded timeouts) leaks (control.execution.logs who) event = true)
     (scale : ℝ) (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1) {slots : Nat}
@@ -298,7 +300,7 @@ theorem recorded_congr {remaining : Nat} {actor : Option Player}
     (secondCurrent : secondHistory.state = some ⟨remaining, actor, second⟩)
     (same : operationalState setup timeouts leaks (some ⟨remaining, actor, first⟩) =
       operationalState setup timeouts leaks (some ⟨remaining, actor, second⟩))
-    (who : Player) (event : (graph setup).EventId) :
+    (who : Player) (event : setup.informationGraph.EventId) :
     (eventRecorded timeouts) leaks (first.logs who) event =
       (eventRecorded timeouts) leaks (second.logs who) event := by
   have firstRaw : ((application setup timeouts leaks).protocol (initialLaw setup) horizon

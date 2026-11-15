@@ -34,9 +34,9 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol Intera
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)} [Fintype Player]
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {timeouts : EventTimeouts setup.informationGraph} [Fintype Player]
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- **Alone, every history is regular**: regularity constrains only the
@@ -132,7 +132,7 @@ theorem ownerSwap_baseLawAgrees
     exact div_pos
       (ENNReal.toReal_pos ((PMF.mem_support_iff _ _).mp spliceMember) (PMF.apply_ne_top _ _))
       (ENNReal.toReal_pos ((PMF.mem_support_iff _ _).mp baseMember) (PMF.apply_ne_top _ _))
-  let shared : Set (graph setup).Inputs := hiddenPublicFiberInputs signal who base
+  let shared : Set setup.informationGraph.Inputs := hiddenPublicFiberInputs signal who base
   have sharedClosed : ∀ state ∈ (initialLaw setup).support,
       state.config.inputs ∈ swapAllowed swap ∩ shared →
         state.swap swap ∈ (initialLaw setup).support :=

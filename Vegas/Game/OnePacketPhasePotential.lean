@@ -17,9 +17,9 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L] (setup : Setup (Player := Player) (L := L))
-  (timeouts : EventTimeouts (graph setup))
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-  (bounds : MessageBounds (graph setup)) (horizon : Nat)
+  (timeouts : EventTimeouts setup.informationGraph)
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
+  (bounds : MessageBounds setup.informationGraph) (horizon : Nat)
   (scheduler : (application setup timeouts leaks).Scheduler)
 
 local notation "E" => ReactiveApplication.ResponseMenu.protocol
@@ -31,7 +31,7 @@ open Classical in
 potential when its successful outcomes share one source continuation point. -/
 theorem completionValue_expect_affine_of_completed [Finite (E).History]
     (law : PMF (E).History) (rank : Nat)
-    (key : LateKey setup timeouts leaks) (event : (graph setup).EventId)
+    (key : LateKey setup timeouts leaks) (event : setup.informationGraph.EventId)
     (decided : decidedEvent (timeouts := timeouts) key = some event)
     (fresh : (application setup timeouts leaks).Control → Prop)
     (freshIff : ∀ next, fresh next ↔
@@ -116,7 +116,7 @@ theorem disclosure_sourceValue
       scheduler).BehavioralAssessment) {who : Player}
     (site : (onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
       scheduler).InformationSite who)
-    {event : (graph setup).EventId}
+    {event : setup.informationGraph.EventId}
     (pending : pendingEvent setup timeouts leaks who site.1 = some event)
     (law : PMF ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
       scheduler).Choice who site.1))
@@ -127,11 +127,11 @@ theorem disclosure_sourceValue
     (turn : execution.application.publicView.ownTurn? who = some event)
     (ordered : execution.application.config.cut.IsPrefix (siteRank (timeouts := timeouts) site.1))
     {payload : L.Ty}
-    {binding : EventGraph.FieldRef (graph setup).layout (.binding who payload)}
-    {checks : List (EventGraph.GuardCheck (graph setup).layout payload)}
-    (outputEq : (graph setup).outputLayout event = .publication payload)
-    (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .resolve who payload binding checks)
+    {binding : EventGraph.FieldRef setup.informationGraph.layout (.binding who payload)}
+    {checks : List (EventGraph.GuardCheck setup.informationGraph.layout payload)}
+    (outputEq : setup.informationGraph.outputLayout event = .publication payload)
+    (codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .resolve who payload binding checks)
     {point : ProtocolState setup.program}
     (decoded : sourceServicePrefix? setup (siteRank (timeouts := timeouts) site.1)
       execution.application.config =

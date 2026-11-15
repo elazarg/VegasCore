@@ -27,12 +27,12 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph}
   {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
-  {delay bound : (graph setup).EventId → Nat}
+  {delay bound : setup.informationGraph.EventId → Nat}
   (opportunity : ∀ control : (application setup timeouts leaks).Control,
     ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control) →
@@ -47,14 +47,14 @@ local notation "E" => ReactiveApplication.ResponseMenu.protocol menu (initialLaw
   scheduler
 
 def ReadyTurnsRecorded (execution : (application setup timeouts leaks).Execution) : Prop :=
-  ∀ event : (graph setup).EventId, event ∉ execution.application.config.cut.completed →
+  ∀ event : setup.informationGraph.EventId, event ∉ execution.application.config.cut.completed →
     ∀ who entry, entry ∈ execution.logs who → ActivatedAt setup timeouts leaks who event entry →
       (eventRecorded timeouts) leaks (execution.logs who) event = true
 
 include opportunity timely in
 private theorem readyTurnsRecorded_transition
     (wellFormed : setup.WellFormed) (covers : bounds.CoversOutputValues)
-    (capacity : ∀ player, bindingEventCount (graph setup) player < bounds.candidateCount)
+    (capacity : ∀ player, bindingEventCount setup.informationGraph player < bounds.candidateCount)
     (source : setup.intendedModel.BehavioralAssessment)
     (history : (E).History) (control : (application setup timeouts leaks).Control)
     (state : history.state = some control)
@@ -236,7 +236,7 @@ include opportunity timely inclusion completes in
 ready callback at any information state it reaches. -/
 theorem counted_honest_reached_not_late
     (wellFormed : setup.WellFormed) (covers : bounds.CoversOutputValues)
-    (capacity : ∀ player, bindingEventCount (graph setup) player < bounds.candidateCount)
+    (capacity : ∀ player, bindingEventCount setup.informationGraph player < bounds.candidateCount)
     (source : setup.intendedModel.BehavioralAssessment)
     (certificate : (E).WellFoundedHistories)
     (rank : Nat) (start : (E).History) (anchor : (application setup timeouts leaks).Execution)

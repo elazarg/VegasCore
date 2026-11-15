@@ -26,15 +26,15 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- A settled packet's first completion preserves the full remaining graph law.
 Additional stops may retain the unchanged sending configuration while the event is pending. -/
 theorem accepted_until_continuation
-    (reference : (graph setup).BehavioralProfile)
+    (reference : setup.informationGraph.BehavioralProfile)
     (certificate : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup)
       horizon scheduler).WellFoundedHistories)
     (players : ∀ player, ((bounds.onePacketMenu timeouts leaks).information
@@ -42,9 +42,10 @@ theorem accepted_until_continuation
     (extraStop : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup)
       horizon scheduler).History → Prop)
     {who : Player} {entry : (application setup timeouts leaks).PlayerEntry}
-    {message : Message Player (WitnessedPacket (graph setup))} {event : (graph setup).EventId}
-    {sent : (graph setup).Config} {action : (graph setup).Action event}
-    {output : ((graph setup).outputLayout event).Value}
+    {message : Message Player (WitnessedPacket setup.informationGraph)} {event :
+      setup.informationGraph.EventId}
+    {sent : setup.informationGraph.Config} {action : setup.informationGraph.Action event}
+    {output : (setup.informationGraph.outputLayout event).Value}
     (start : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).History) {control : (application setup timeouts leaks).Control}
     (current : start.state = some control)
@@ -72,11 +73,13 @@ theorem accepted_until_continuation
             ((sent.complete event ready action output).defaulted = ∅ ∨
                 final.execution.application.config.defaulted = ∅ →
               final.execution.application.config = sent.complete event ready action output) ∧
-            (graph setup).runPlan
-                ((graph setup).policyPlan reference (graph setup).canonicalScheduler)
+            setup.informationGraph.runPlan
+                (setup.informationGraph.policyPlan reference
+                  setup.informationGraph.canonicalScheduler)
                 final.execution.application.config.remaining final.execution.application.config =
-              (graph setup).runPlan
-                ((graph setup).policyPlan reference (graph setup).canonicalScheduler)
+              setup.informationGraph.runPlan
+                (setup.informationGraph.policyPlan reference
+                  setup.informationGraph.canonicalScheduler)
                 (sent.complete event ready action output).remaining
                 (sent.complete event ready action output)) := by
   let menu := bounds.onePacketMenu timeouts leaks
@@ -198,6 +201,6 @@ theorem accepted_until_continuation
                 rw [← drained, native.drain_eq_of_empty nativeEmpty, completed]
               · rw [← drained]
                 simpa only [completed] using
-                  (State.drain_runPlan_canonical setup.eventGraph reference native).symm
+                  (State.drain_runPlan_canonical setup.dataflowGraph reference native).symm
 
 end Vegas

@@ -27,9 +27,9 @@ open GameTheory GameTheory.Protocol Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  (bounds : MessageBounds (graph setup))
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  (bounds : MessageBounds setup.informationGraph)
 
 /-- **Accepted handles are injective.** Along every history of the one-packet
 game, the table of accepted handles never accepts one handle at two fields. -/
@@ -46,7 +46,7 @@ theorem acceptedInjective_of_trace {horizon : Nat}
       trace
   have signed := signedCommitments_history timeouts leaks (initialLaw setup)
     (serviceInitialLaw_initialized setup) horizon scheduler rawTrace
-  have prepared (event : (graph setup).EventId) (handle : Handle (graph setup))
+  have prepared (event : setup.informationGraph.EventId) (handle : Handle setup.informationGraph)
       (accepted : control.execution.application.accepted (.inr event) = some handle) :
       ∃ committed ∈ control.execution.network.inputs,
         committed.payload.call = .commitment event handle ∧

@@ -61,7 +61,7 @@ theorem initialConfig_agrees {Γ : SourceCtx Player L} {openNames : Finset VarId
     (program : SourceProgram Player L Γ openNames)
     (state : State L Γ) :
     (ContextRefs.initial Γ (outputLayout program)).Agrees state
-      (Vegas.EventGraph.Config.initial (graph := toEventGraph program)
+      (Vegas.EventGraph.Config.initial (graph := toInformationGraph program)
         (encodeInputs state)).store :=
   ContextRefs.initial_agrees (outputLayout program) state _ fun _ => rfl
 

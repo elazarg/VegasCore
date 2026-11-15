@@ -31,9 +31,9 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L] (setup : Setup (Player := Player) (L := L))
-  (timeouts : EventTimeouts (graph setup))
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-  (bounds : MessageBounds (graph setup)) (horizon : Nat)
+  (timeouts : EventTimeouts setup.informationGraph)
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
+  (bounds : MessageBounds setup.informationGraph) (horizon : Nat)
   (scheduler : (application setup timeouts leaks).Scheduler)
 
 local notation "NativeScheduler" => scheduler
@@ -41,7 +41,7 @@ local notation "N" => onePacketModel setup timeouts leaks bounds (initialLaw set
   scheduler
 local notation "Clear" => ReactiveApplication.stateInvariant
   (app := application setup timeouts leaks)
-    (fun native : EventGraphRuntime.State (graph setup) =>
+    (fun native : EventGraphRuntime.State setup.informationGraph =>
       EventGraph.Config.defaulted (EventGraphRuntime.State.config native) = ∅)
 
 /-- At a represented forced nonlate input, the globally assembled comparison
@@ -304,7 +304,7 @@ theorem assembled_marker_mass_le_rank
     [(application setup timeouts leaks).FiniteNature (initialLaw setup) (NativeScheduler)]
     [∀ who, DecidableEq ((N).InfoState who)]
     (wellFormed : setup.WellFormed) (covers : bounds.CoversOutputValues)
-    (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
+    (capacity : ∀ who, bindingEventCount setup.informationGraph who < bounds.candidateCount)
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (scale : ℕ → ℝ) (positive : ∀ n, 0 < scale n) (le_one : ∀ n, scale n ≤ 1)
     {slots : Nat}
@@ -315,7 +315,7 @@ theorem assembled_marker_mass_le_rank
       positive
       le_one weights targetSequence) (n : ℕ)
     (focal : Player) (focalPolicy : (N).BehavioralPolicy focal)
-    {delay bound : (graph setup).EventId → Nat}
+    {delay bound : setup.informationGraph.EventId → Nat}
     (opportunity : ∀ control : (application setup timeouts leaks).Control,
       (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some control) →
       control.execution.application.config.defaulted = ∅ →
@@ -329,7 +329,7 @@ theorem assembled_marker_mass_le_rank
     (start : (application setup timeouts leaks).Control)
     (startTrace :
       (onePacketProtocol setup timeouts leaks bounds horizon (NativeScheduler)).Trace (some start))
-    (current : (graph setup).EventId)
+    (current : setup.informationGraph.EventId)
     (turn : start.execution.application.publicView.ownTurn? focal = some current)
     (regular : RegularTrace setup timeouts leaks bounds horizon (NativeScheduler) (sequence n) focal
       startTrace) :
@@ -516,9 +516,9 @@ activation outside main support. The environment boundary and all prefix
 regularity facts come from the actual stopped continuation. -/
 theorem stopped_foreignFailure_marked
     (wellFormed : setup.WellFormed) (covers : bounds.CoversOutputValues)
-    (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
+    (capacity : ∀ who, bindingEventCount setup.informationGraph who < bounds.candidateCount)
     (source : setup.intendedModel.BehavioralAssessment) (focal : Player)
-    {delay bound : (graph setup).EventId → Nat}
+    {delay bound : setup.informationGraph.EventId → Nat}
     (opportunity : ∀ control : (application setup timeouts leaks).Control,
       (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some control) →
       control.execution.application.config.defaulted = ∅ →
@@ -536,7 +536,7 @@ theorem stopped_foreignFailure_marked
     (start : (application setup timeouts leaks).Control)
     (startTrace :
       (onePacketProtocol setup timeouts leaks bounds horizon (NativeScheduler)).Trace (some start))
-    (current : (graph setup).EventId)
+    (current : setup.informationGraph.EventId)
     (turn : start.execution.application.publicView.ownTurn? focal = some current)
     (clear : start.execution.application.config.defaulted = ∅)
     (regular : RegularTrace setup timeouts leaks bounds horizon (NativeScheduler) source focal
@@ -549,8 +549,8 @@ theorem stopped_foreignFailure_marked
       ⟨some start, startTrace⟩).support)
     (finalControl : (application setup timeouts leaks).Control) (state : final.state = some
       finalControl)
-    (owner : Player) (different : owner ≠ focal) (event : (graph setup).EventId)
-    (owned : (graph setup).actor? event = some owner)
+    (owner : Player) (different : owner ≠ focal) (event : setup.informationGraph.EventId)
+    (owned : setup.informationGraph.actor? event = some owner)
     (failed : finalControl.execution.application.PublicFailure event) :
     ¬ MainActivationTraceAfter setup timeouts leaks bounds horizon (NativeScheduler) source focal
       startTrace.length final.trace := by
@@ -574,8 +574,8 @@ theorem stopped_foreignFailure_marked
   · have rawTarget := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup)
       horizon scheduler target
     have initialEq : initialLaw setup = (setup.initialLaw.map setup.eventInputs).map
-        (EventGraphRuntime.State.initial (graph := graph setup)) :=
-      serviceInitialLaw_eq_inputs (mode := .sequential) setup
+        (EventGraphRuntime.State.initial (graph := setup.informationGraph)) :=
+      serviceInitialLaw_eq_inputs (deps := setup.informationDependencies) setup
     rw [initialEq] at rawTarget
     have evidence : ExclusionEvidence 0 ∅ finalControl.execution.application :=
       ExclusionEvidence.history timeouts leaks (setup.initialLaw.map setup.eventInputs) horizon
@@ -608,7 +608,7 @@ theorem assembled_foreign_failure_mass_le_rank
     [(application setup timeouts leaks).FiniteNature (initialLaw setup) (NativeScheduler)]
     [∀ who, DecidableEq ((N).InfoState who)]
     (wellFormed : setup.WellFormed) (covers : bounds.CoversOutputValues)
-    (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
+    (capacity : ∀ who, bindingEventCount setup.informationGraph who < bounds.candidateCount)
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (scale : ℕ → ℝ) (positive : ∀ n, 0 < scale n) (le_one : ∀ n, scale n ≤ 1)
     {slots : Nat}
@@ -619,7 +619,7 @@ theorem assembled_foreign_failure_mass_le_rank
       positive
       le_one weights targetSequence) (n : ℕ)
     (focal : Player) (focalPolicy : (N).BehavioralPolicy focal)
-    {delay bound : (graph setup).EventId → Nat}
+    {delay bound : setup.informationGraph.EventId → Nat}
     (opportunity : ∀ control : (application setup timeouts leaks).Control,
       (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some control) →
       control.execution.application.config.defaulted = ∅ →
@@ -637,7 +637,7 @@ theorem assembled_foreign_failure_mass_le_rank
     (start : (application setup timeouts leaks).Control)
     (startTrace :
       (onePacketProtocol setup timeouts leaks bounds horizon (NativeScheduler)).Trace (some start))
-    (current : (graph setup).EventId)
+    (current : setup.informationGraph.EventId)
     (turn : start.execution.application.publicView.ownTurn? focal = some current)
     (clear : start.execution.application.config.defaulted = ∅)
     (regular : RegularTrace setup timeouts leaks bounds horizon (NativeScheduler) (sequence n) focal
@@ -649,8 +649,8 @@ theorem assembled_foreign_failure_mass_le_rank
           (ProtocolState.OwesFailure focal setup.program) history.state ∨ extraStop history)
       ⟨some start, startTrace⟩).toOuterMeasure
       {final | ∃ (control : (application setup timeouts leaks).Control) (owner : Player)
-        (event : (graph setup).EventId), final.state = some control ∧ owner ≠ focal ∧
-        (graph setup).actor? event = some owner ∧
+        (event : setup.informationGraph.EventId), final.state = some control ∧ owner ≠ focal ∧
+        setup.informationGraph.actor? event = some owner ∧
           control.execution.application.PublicFailure event}).toReal ≤
       ((scale n) ^ 2 + scale n) * (application setup timeouts leaks).rank horizon (some start) := by
   classical
@@ -664,8 +664,9 @@ theorem assembled_foreign_failure_mass_le_rank
   let failures := {final :
       (onePacketProtocol setup timeouts leaks bounds horizon (NativeScheduler)).History |
     ∃ (control : (application setup timeouts leaks).Control) (owner : Player)
-      (event : (graph setup).EventId), final.state = some control ∧ owner ≠ focal ∧
-      (graph setup).actor? event = some owner ∧ control.execution.application.PublicFailure event}
+      (event : setup.informationGraph.EventId), final.state = some control ∧ owner ≠ focal ∧
+      setup.informationGraph.actor? event = some owner ∧
+        control.execution.application.PublicFailure event}
   let marked := {final :
       (onePacketProtocol setup timeouts leaks bounds horizon (NativeScheduler)).History |
     ¬ MainActivationTraceAfter setup timeouts leaks bounds horizon (NativeScheduler) (sequence n)
@@ -698,8 +699,8 @@ private theorem foreign_failure_of_unclear_survival (focal : Player)
     (survives : ∀ control : (application setup timeouts leaks).Control,
       history.state = some control → focal ∉ control.execution.application.config.defaulted) :
     ∃ (control : (application setup timeouts leaks).Control) (owner : Player)
-      (event : (graph setup).EventId), history.state = some control ∧ owner ≠ focal ∧
-      (graph setup).actor? event = some owner ∧
+      (event : setup.informationGraph.EventId), history.state = some control ∧ owner ≠ focal ∧
+      setup.informationGraph.actor? event = some owner ∧
         control.execution.application.PublicFailure event := by
   classical
   rcases history with ⟨state, trace⟩
@@ -709,8 +710,8 @@ private theorem foreign_failure_of_unclear_survival (focal : Player)
     have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon
       scheduler trace
     have initialEq : initialLaw setup = (setup.initialLaw.map setup.eventInputs).map
-        (EventGraphRuntime.State.initial (graph := graph setup)) :=
-      serviceInitialLaw_eq_inputs (mode := .sequential) setup
+        (EventGraphRuntime.State.initial (graph := setup.informationGraph)) :=
+      serviceInitialLaw_eq_inputs (deps := setup.informationDependencies) setup
     rw [initialEq] at rawTrace
     have evidence : ExclusionEvidence 0 ∅ control.execution.application :=
       ExclusionEvidence.history timeouts leaks (setup.initialLaw.map setup.eventInputs) horizon
@@ -729,7 +730,7 @@ theorem assembled_foreign_exit_mass_le_rank
     [(application setup timeouts leaks).FiniteNature (initialLaw setup) (NativeScheduler)]
     [∀ who, DecidableEq ((N).InfoState who)]
     (wellFormed : setup.WellFormed) (covers : bounds.CoversOutputValues)
-    (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
+    (capacity : ∀ who, bindingEventCount setup.informationGraph who < bounds.candidateCount)
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (scale : ℕ → ℝ) (positive : ∀ n, 0 < scale n) (le_one : ∀ n, scale n ≤ 1)
     {slots : Nat}
@@ -740,7 +741,7 @@ theorem assembled_foreign_exit_mass_le_rank
       positive
       le_one weights targetSequence) (n : ℕ)
     (focal : Player) (focalPolicy : (N).BehavioralPolicy focal)
-    {delay bound : (graph setup).EventId → Nat}
+    {delay bound : setup.informationGraph.EventId → Nat}
     (opportunity : ∀ control : (application setup timeouts leaks).Control,
       (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some control) →
       control.execution.application.config.defaulted = ∅ →
@@ -758,7 +759,7 @@ theorem assembled_foreign_exit_mass_le_rank
     (start : (application setup timeouts leaks).Control)
     (startTrace :
       (onePacketProtocol setup timeouts leaks bounds horizon (NativeScheduler)).Trace (some start))
-    (current : (graph setup).EventId)
+    (current : setup.informationGraph.EventId)
     (turn : start.execution.application.publicView.ownTurn? focal = some current)
     (clear : start.execution.application.config.defaulted = ∅)
     (regular : RegularTrace setup timeouts leaks bounds horizon (NativeScheduler) (sequence n) focal
@@ -789,8 +790,9 @@ theorem assembled_foreign_exit_mass_le_rank
   let failures := {final :
       (onePacketProtocol setup timeouts leaks bounds horizon (NativeScheduler)).History |
     ∃ (control : (application setup timeouts leaks).Control) (owner : Player)
-      (event : (graph setup).EventId), final.state = some control ∧ owner ≠ focal ∧
-      (graph setup).actor? event = some owner ∧ control.execution.application.PublicFailure event}
+      (event : setup.informationGraph.EventId), final.state = some control ∧ owner ≠ focal ∧
+      setup.informationGraph.actor? event = some owner ∧
+        control.execution.application.PublicFailure event}
   have subset : exits ⊆ failures := by
     intro final eligible
     exact foreign_failure_of_unclear_survival setup timeouts leaks bounds horizon scheduler focal

@@ -67,12 +67,12 @@ theorem bind_map_pair_apply {α β : Type} (first : PMF α) (second : PMF β) (a
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
-  (timeouts : EventTimeouts (graph setup))
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+  (timeouts : EventTimeouts setup.informationGraph)
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
 
 section SlotTier
 
-variable (bounds : MessageBounds (graph setup))
+variable (bounds : MessageBounds setup.informationGraph)
 
 /-- The prepared slots the slot tier draws from: the first
 `max 1 candidateCount` slots. -/
@@ -86,13 +86,14 @@ binding, commit an admitted encoded value at the drawn slot, normalized as a
 canonical decision is; at any other event, use the canonical decision of the
 encoded action. Omission and unencodable actions give silence. -/
 def slotResponse (who : Player) (past : List (application setup timeouts leaks).PlayerEntry)
-    (view : (application setup timeouts leaks).PlayerView) (event : (graph setup).EventId) (slot :
+    (view : (application setup timeouts leaks).PlayerView) (event : setup.informationGraph.EventId)
+      (slot :
       Nat)
     (choice : Option (OwnAction Player L)) : (application setup timeouts leaks).Action :=
   match choice.bind (encodeEventAction? setup.program event) with
   | none => ⟨none⟩
   | some action =>
-      match nodeView (graph setup) event with
+      match nodeView setup.informationGraph event with
       | .bind _ payload outputEq _ =>
           match cast (congrArg EventGraph.EventField.Action outputEq) action with
           | none => ⟨none⟩
@@ -150,7 +151,7 @@ end SlotTier
 
 section Components
 
-variable [Fintype Player] (bounds : MessageBounds (graph setup))
+variable [Fintype Player] (bounds : MessageBounds setup.informationGraph)
   (initial : PMF (application setup timeouts leaks).State) (horizon : Nat)
   (scheduler : (application setup timeouts leaks).Scheduler)
 

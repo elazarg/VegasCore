@@ -81,7 +81,7 @@ def setup : Setup (Player := Player) (L := simpleExpr) where
   accounts := rfl
   exitTransfers := fun _ => 0
 
-abbrev nativeGraph := graph setup
+abbrev nativeGraph := setup.informationGraph
 abbrev aliceEvent : nativeGraph.EventId := ⟨0, by decide⟩
 abbrev bobBindEvent : nativeGraph.EventId := ⟨1, by decide⟩
 abbrev bobRevealEvent : nativeGraph.EventId := ⟨2, by decide⟩

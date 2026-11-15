@@ -349,8 +349,8 @@ private theorem eq_pure_of_support_subset {α : Type} (law : PMF α) (a : α)
       exact same)]
 
 variable {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
 
 /-- The view of a decoded point is the view decoded at its rank. -/
 private theorem decodeViewPrefix?_rank (who : Player)
@@ -359,12 +359,13 @@ private theorem decodeViewPrefix?_rank (who : Player)
     (decoded : sourceServicePrefix? setup rank execution.application.config = some point) :
     decodeViewPrefix? who setup.program
       (ContextRefs.initial setup.context (outputLayout setup.program)) (outputRef setup.program)
-      rank ((graph setup).playerStore who execution.application.config.store)
+      rank (setup.informationGraph.playerStore who execution.application.config.store)
       (decodeCompletions setup.program
-        (((graph setup).ownCompletions who execution.application.config.history)))
+        ((setup.informationGraph.ownCompletions who execution.application.config.history)))
       execution.application.config.defaults =
       some (ProtocolState.observe who setup.program point) := by
-  refine (decodeViewPrefix?_playerStore (graph := graph setup) who rank setup.program _ _ _
+  refine (decodeViewPrefix?_playerStore (graph := setup.informationGraph) who rank setup.program _
+    _ _
     _ _).trans ?_
   exact decodeViewPrefix?_eq_observe who rank setup.program _ [] _ _ _ _ _ point decoded
 
@@ -398,7 +399,8 @@ theorem asIfHonestProfile_encodes (assessment : setup.intendedModel.BehavioralAs
     (ordered : execution.application.config.cut.IsPrefix rank)
     (point : ProtocolState setup.program)
     (decoded : sourceServicePrefix? setup rank execution.application.config = some point)
-    (past : List (application setup timeouts leaks).PlayerEntry) (event : (graph setup).EventId)
+    (past : List (application setup timeouts leaks).PlayerEntry) (event :
+      setup.informationGraph.EventId)
     (turn : execution.application.publicView.ownTurn? who = some event)
     (active : who ∉ execution.application.config.defaulted)
     (choice : Option (OwnAction Player L))
@@ -460,11 +462,11 @@ theorem asIfHonestProfile_eq_pure_none (assessment : setup.intendedModel.Behavio
   · obtain ⟨event, atRank, ownerEq⟩ := owned isTurn
     have ready : execution.application.publicView.EventReady event :=
       (execution.application.publicView_eventReady event).mpr (by
-        have inside : rank < (graph setup).order.eventCount := atRank ▸ event.isLt
+        have inside : rank < setup.informationGraph.order.eventCount := atRank ▸ event.isLt
         have same : event = ⟨rank, inside⟩ := Fin.ext atRank
         rw [same]
         exact ordered.ready inside)
-    have actorEq : (graph setup).actor? event = some who :=
+    have actorEq : setup.informationGraph.actor? event = some who :=
       (eventOwner?_eq_actor setup.program event).symm.trans ownerEq
     unfold PublicView.ownTurn? at noTurn
     exact absurd (decide_eq_true ⟨ready, actorEq⟩)
@@ -504,7 +506,8 @@ theorem asIfHonest_bind_step_eq_behavioralStateStep [Fintype Player]
     (ordered : execution.application.config.cut.IsPrefix rank)
     {point : ProtocolState setup.program}
     (decoded : sourceServicePrefix? setup rank execution.application.config = some point)
-    (intendedPoint : ProtocolState.Intended setup.program point) {event : (graph setup).EventId}
+    (intendedPoint : ProtocolState.Intended setup.program point) {event :
+      setup.informationGraph.EventId}
     (turn : execution.application.publicView.ownTurn? who = some event)
     (active : who ∉ execution.application.config.defaulted)
     (past : List (application setup timeouts leaks).PlayerEntry) :

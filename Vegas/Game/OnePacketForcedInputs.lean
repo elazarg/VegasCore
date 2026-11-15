@@ -29,9 +29,9 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- **Nothing is unsettled at the observer's own turn.** At a native history of
@@ -41,7 +41,8 @@ theorem unsettledContent_eq_one_of_ownTurn
     (assessment : setup.intendedModel.BehavioralAssessment) (who : Player)
     {control : (application setup timeouts leaks).Control}
     (trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some control))
-    (forced : ForcedState setup timeouts leaks who (some control)) {event : (graph setup).EventId}
+    (forced : ForcedState setup timeouts leaks who (some control)) {event :
+      setup.informationGraph.EventId}
     (turn : (control.execution.observe (application setup timeouts leaks)
       who).application.publicView.ownTurn? who = some event) :
     unsettledContent setup timeouts leaks bounds horizon scheduler assessment who trace = 1 := by
@@ -50,7 +51,7 @@ theorem unsettledContent_eq_one_of_ownTurn
     (State.publicView_eventReady _ event).mp publicReady
   refine (periodInvariant (timeouts := timeouts) assessment who trace control rfl forced).quiet
     fun other otherReady sender acts => ?_
-  have sameEvent := setup.eventGraph.sequentialize_ready_unique _ otherReady ready
+  have sameEvent := setup.informationGraph.sequentialize_ready_unique _ otherReady ready
   subst sameEvent
   exact Option.some.inj (acts.symm.trans owned)
 
@@ -102,7 +103,7 @@ def ForcedBeliefInputs.ofForcedReplay
     (forced : forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks) (initialLaw
       setup) horizon
       scheduler who site.1)
-    (decision : site.1 = some (past, view)) {event : (graph setup).EventId}
+    (decision : site.1 = some (past, view)) {event : setup.informationGraph.EventId}
     (turn : view.application.publicView.ownTurn? who = some event)
     (projected : sourceSite.1 = projectView setup timeouts leaks who site.1)
     (mixed : (sequence n).IsFullyMixed)

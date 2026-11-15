@@ -30,8 +30,8 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
 
 omit [DecidableEq Player] in
 /-- A product law has its first factor as its first marginal. -/
@@ -49,14 +49,15 @@ canonical decision of an encoded source choice is the slot tier's response at
 the canonical slot. -/
 private theorem canonical_eq_slotResponse (who : Player)
     (past : List (application setup timeouts leaks).PlayerEntry)
-    (view : (application setup timeouts leaks).PlayerView) (event : (graph setup).EventId)
-    {payload : L.Ty} {outputEq : (graph setup).outputLayout event = .binding who payload}
-    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .bind who payload}
-    (node : nodeView (graph setup) event = .bind who payload outputEq codeEq) (serial : Nat)
+    (view : (application setup timeouts leaks).PlayerView) (event : setup.informationGraph.EventId)
+    {payload : L.Ty} {outputEq : setup.informationGraph.outputLayout event = .binding who payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .bind who payload}
+    (node : nodeView setup.informationGraph event = .bind who payload outputEq codeEq) (serial :
+      Nat)
     (active : who ∉ view.application.publicView.observation.defaulted)
     (selected : canonicalFreshSlot who view.application = some serial)
-    (choice : Option (OwnAction Player L)) (action : (graph setup).Action event)
+    (choice : Option (OwnAction Player L)) (action : setup.informationGraph.Action event)
     (encoded : choice.bind (encodeEventAction? setup.program event) = some action) :
     (canonicalServiceDecision timeouts) leaks who past view event action =
       slotResponse setup timeouts leaks who past view event serial choice := by
@@ -77,7 +78,7 @@ private theorem canonical_eq_slotResponse (who : Player)
       exact (canonicalServiceDecision_binding timeouts) leaks who past view event payload
         outputEq codeEq node active serial selected value
 
-variable [Fintype Player] {bounds : MessageBounds (graph setup)} {horizon : Nat}
+variable [Fintype Player] {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- **The canonical slot is permitted.** Along every history of the one-packet
@@ -87,13 +88,14 @@ theorem onePacket_canonical_permitted (assessment : setup.intendedModel.Behavior
     (covers : bounds.CoversOutputValues) {control : (application setup timeouts leaks).Control}
     (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control))
-    (who : Player) (event : (graph setup).EventId)
+    (who : Player) (event : setup.informationGraph.EventId)
     (turn : control.execution.application.publicView.ownTurn? who = some event)
     (unsent : (eventRecorded timeouts) leaks (control.execution.logs who) event = false)
-    {payload : L.Ty} {outputEq : (graph setup).outputLayout event = .binding who payload}
-    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .bind who payload}
-    (node : nodeView (graph setup) event = .bind who payload outputEq codeEq) (serial : Nat)
+    {payload : L.Ty} {outputEq : setup.informationGraph.outputLayout event = .binding who payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .bind who payload}
+    (node : nodeView setup.informationGraph event = .bind who payload outputEq codeEq) (serial :
+      Nat)
     (selected : canonicalFreshSlot who
       (control.execution.observe (application setup timeouts leaks) who).application = some
         serial) :
@@ -136,17 +138,17 @@ game, at a binding of the player's turn its recall has not submitted for, the
 as-if-honest choice gives silence no mass. -/
 theorem honestChoice_silence_of_pending (assessment : setup.intendedModel.BehavioralAssessment)
     (covers : bounds.CoversOutputValues)
-    (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
+    (capacity : ∀ who, bindingEventCount setup.informationGraph who < bounds.candidateCount)
     {control : (application setup timeouts leaks).Control}
     (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control))
-    (who : Player) (event : (graph setup).EventId)
+    (who : Player) (event : setup.informationGraph.EventId)
     (turn : control.execution.application.publicView.ownTurn? who = some event)
     (unsent : (eventRecorded timeouts) leaks (control.execution.logs who) event = false)
-    {payload : L.Ty} {outputEq : (graph setup).outputLayout event = .binding who payload}
-    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .bind who payload}
-    (node : nodeView (graph setup) event = .bind who payload outputEq codeEq) :
+    {payload : L.Ty} {outputEq : setup.informationGraph.outputLayout event = .binding who payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .bind who payload}
+    (node : nodeView setup.informationGraph event = .bind who payload outputEq codeEq) :
     honestChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler assessment who
         (some (control.execution.logs who,
           control.execution.observe (application setup timeouts leaks) who))
@@ -196,16 +198,16 @@ the one-packet game, at a binding of the player's turn, the slot tier gives
 silence the share of tremble slots whose commitment the count verdict rejects. -/
 theorem slotChoice_silence_of_pending (assessment : setup.intendedModel.BehavioralAssessment)
     (covers : bounds.CoversOutputValues)
-    (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
+    (capacity : ∀ who, bindingEventCount setup.informationGraph who < bounds.candidateCount)
     {control : (application setup timeouts leaks).Control}
     (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control))
-    (who : Player) (event : (graph setup).EventId)
+    (who : Player) (event : setup.informationGraph.EventId)
     (turn : control.execution.application.publicView.ownTurn? who = some event)
-    {payload : L.Ty} {outputEq : (graph setup).outputLayout event = .binding who payload}
-    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .bind who payload}
-    (node : nodeView (graph setup) event = .bind who payload outputEq codeEq) :
+    {payload : L.Ty} {outputEq : setup.informationGraph.outputLayout event = .binding who payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .bind who payload}
+    (node : nodeView setup.informationGraph event = .bind who payload outputEq codeEq) :
     slotChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler assessment who
         (some (control.execution.logs who,
           control.execution.observe (application setup timeouts leaks) who))

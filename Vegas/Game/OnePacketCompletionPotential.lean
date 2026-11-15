@@ -20,9 +20,9 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 local notation "E" => ReactiveApplication.ResponseMenu.protocol
@@ -33,7 +33,7 @@ open Classical in
 points without failure have exactly the mass of the physical bad-stop observable. -/
 theorem completionPoint_badMass_eq_lateBadStop
     (law : PMF (E).History) (rank : Nat) (key : LateKey setup timeouts leaks)
-    (event : (graph setup).EventId)
+    (event : setup.informationGraph.EventId)
     (decided : decidedEvent (timeouts := timeouts) key = some event)
     (fresh : (application setup timeouts leaks).Control → Prop)
     (completed : ∀ final ∈ law.support,

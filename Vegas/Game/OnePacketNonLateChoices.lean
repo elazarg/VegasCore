@@ -22,9 +22,9 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
   [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
   [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
@@ -94,7 +94,7 @@ theorem owes_of_not_commitsAtTurn (wellFormed : setup.WellFormed)
     (site : (N).InformationSite who) (choice : (N).Choice who site.1)
     (offTurn : ¬ CommitsAtTurn setup timeouts leaks bounds horizon scheduler who site choice)
     {response : (application setup timeouts leaks).Action} (chosen : choice.1 = some response)
-    {event : (graph setup).EventId}
+    {event : setup.informationGraph.EventId}
     (submitted : (submittedEvent? timeouts) leaks response = some event)
     (history : (N).InformationHistory who site.1) :
     DecodedState setup timeouts leaks profile (ProtocolState.OwesFailure who setup.program)
@@ -154,7 +154,7 @@ theorem commitsAtTurn_of_notOwing (wellFormed : setup.WellFormed)
     (notOwing : ¬ OwingAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler
       ((N).agentAt site))
     (choice : (N).Choice who site.1) {response : (application setup timeouts leaks).Action}
-    (chosen : choice.1 = some response) {event : (graph setup).EventId}
+    (chosen : choice.1 = some response) {event : setup.informationGraph.EventId}
     (submitted : (submittedEvent? timeouts) leaks response = some event) :
     CommitsAtTurn setup timeouts leaks bounds horizon scheduler who site choice := by
   classical

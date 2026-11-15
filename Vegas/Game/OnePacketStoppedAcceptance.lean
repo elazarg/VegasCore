@@ -20,12 +20,12 @@ open SourceProgram GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol Int
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph}
   {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
-  {bound : (graph setup).EventId → Nat}
+  {bound : setup.informationGraph.EventId → Nat}
   (inclusion : ∀ control : (application setup timeouts leaks).Control,
     ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon scheduler).Trace
       (some control) → control.execution.application.config.defaulted = ∅ →
@@ -38,28 +38,29 @@ local notation "model" => ReactiveApplication.ResponseMenu.information menu (ini
   horizon scheduler
 local notation "Clear" => ReactiveApplication.stateInvariant
   (app := application setup timeouts leaks)
-    (fun state : EventGraphRuntime.State (graph setup) =>
+    (fun state : EventGraphRuntime.State setup.informationGraph =>
       EventGraph.Config.defaulted (EventGraphRuntime.State.config state) = ∅)
 
 include inclusion in
 /-- A supported counted stop either retains the sent configuration, or has the
 same full graph continuation as the typed accepted event completion. -/
 theorem counted_accepted_until_continuation
-    (reference : (graph setup).BehavioralProfile)
+    (reference : setup.informationGraph.BehavioralProfile)
     (certificate : (protocol).WellFoundedHistories)
     (players : ∀ player, (model).BehavioralPolicy player)
     (extraStop : (protocol).History → Prop)
     {who : Player} {entry : (application setup timeouts leaks).PlayerEntry}
-    {message : Message Player (WitnessedPacket (graph setup))} {event : (graph setup).EventId}
-    {sent : (graph setup).Config} {action : (graph setup).Action event}
-    {output : ((graph setup).outputLayout event).Value}
+    {message : Message Player (WitnessedPacket setup.informationGraph)} {event :
+      setup.informationGraph.EventId}
+    {sent : setup.informationGraph.Config} {action : setup.informationGraph.Action event}
+    {output : (setup.informationGraph.outputLayout event).Value}
     (start : (protocol).History) {control : (application setup timeouts leaks).Control}
     (current : start.state = some control)
     (clear : control.execution.application.config.defaulted = ∅)
     (invariant : AcceptanceInvariant setup timeouts leaks bounds horizon scheduler who entry
       message event sent action output (some control))
     (atSent : control.execution.application.config = sent)
-    (owned : (graph setup).actor? event = some who)
+    (owned : setup.informationGraph.actor? event = some who)
     (fresh : FreshCall setup leaks who event bound entry message) :
     ∀ stop ∈ ((model).runBehavioralUntil certificate players
       (fun history => (∃ final, history.state = some final ∧
@@ -73,11 +74,13 @@ theorem counted_accepted_until_continuation
             ((sent.complete event ready action output).defaulted = ∅ ∨
                 final.execution.application.config.defaulted = ∅ →
               final.execution.application.config = sent.complete event ready action output) ∧
-            (graph setup).runPlan
-                ((graph setup).policyPlan reference (graph setup).canonicalScheduler)
+            setup.informationGraph.runPlan
+                (setup.informationGraph.policyPlan reference
+                  setup.informationGraph.canonicalScheduler)
                 final.execution.application.config.remaining final.execution.application.config =
-              (graph setup).runPlan
-                ((graph setup).policyPlan reference (graph setup).canonicalScheduler)
+              setup.informationGraph.runPlan
+                (setup.informationGraph.policyPlan reference
+                  setup.informationGraph.canonicalScheduler)
                 (sent.complete event ready action output).remaining
                 (sent.complete event ready action output)) := by
   let completed := fun history : (protocol).History => ∃ final, history.state = some final ∧
@@ -107,20 +110,21 @@ theorem counted_accepted_stop_continuation
       (protocol).Trace (some control) → control.execution.application.config.defaulted = ∅ →
       (application setup timeouts leaks).terminal (some control) →
       control.execution.application.config.cut.Terminal)
-    (reference : (graph setup).BehavioralProfile)
+    (reference : setup.informationGraph.BehavioralProfile)
     (certificate : (protocol).WellFoundedHistories)
     (players : ∀ player, (model).BehavioralPolicy player)
     {who : Player} {entry : (application setup timeouts leaks).PlayerEntry}
-    {message : Message Player (WitnessedPacket (graph setup))} {event : (graph setup).EventId}
-    {sent : (graph setup).Config} {action : (graph setup).Action event}
-    {output : ((graph setup).outputLayout event).Value}
+    {message : Message Player (WitnessedPacket setup.informationGraph)} {event :
+      setup.informationGraph.EventId}
+    {sent : setup.informationGraph.Config} {action : setup.informationGraph.Action event}
+    {output : (setup.informationGraph.outputLayout event).Value}
     (start : (protocol).History) {control : (application setup timeouts leaks).Control}
     (current : start.state = some control)
     (clear : control.execution.application.config.defaulted = ∅)
     (invariant : AcceptanceInvariant setup timeouts leaks bounds horizon scheduler who entry
       message event sent action output (some control))
     (atSent : control.execution.application.config = sent)
-    (owned : (graph setup).actor? event = some who)
+    (owned : setup.informationGraph.actor? event = some who)
     (fresh : FreshCall setup leaks who event bound entry message) :
     ∀ stop ∈ ((model).runBehavioralUntil certificate players
       (fun history => (∃ final, history.state = some final ∧
@@ -132,11 +136,11 @@ theorem counted_accepted_stop_continuation
         ((sent.complete event ready action output).defaulted = ∅ ∨
             final.execution.application.config.defaulted = ∅ →
           final.execution.application.config = sent.complete event ready action output) ∧
-        (graph setup).runPlan
-            ((graph setup).policyPlan reference (graph setup).canonicalScheduler)
+        setup.informationGraph.runPlan
+            (setup.informationGraph.policyPlan reference setup.informationGraph.canonicalScheduler)
             final.execution.application.config.remaining final.execution.application.config =
-          (graph setup).runPlan
-            ((graph setup).policyPlan reference (graph setup).canonicalScheduler)
+          setup.informationGraph.runPlan
+            (setup.informationGraph.policyPlan reference setup.informationGraph.canonicalScheduler)
             (sent.complete event ready action output).remaining
             (sent.complete event ready action output) := by
   intro stopped supported

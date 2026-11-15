@@ -33,9 +33,9 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
-  {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 omit [Fintype Player] in
@@ -46,15 +46,16 @@ theorem canonicalTransmitsAt_of_disclosureResolves {who : Player}
     {past : List (application setup timeouts leaks).PlayerEntry}
     {view : (application setup timeouts leaks).PlayerView} (resolves : DisclosureResolves setup
       timeouts leaks who
-      past view) {event : (graph setup).EventId}
+      past view) {event : setup.informationGraph.EventId}
     (pending : pendingEvent setup timeouts leaks who (some (past, view)) = some event) {payload :
       L.Ty}
-    {binding : EventGraph.FieldRef (graph setup).layout (.binding who payload)}
-    {checks : List (EventGraph.GuardCheck (graph setup).layout payload)}
-    {outputEq : (graph setup).outputLayout event = .publication payload}
-    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .resolve who payload binding checks}
-    (node : nodeView (graph setup) event = .resolve who payload binding checks outputEq codeEq) :
+    {binding : EventGraph.FieldRef setup.informationGraph.layout (.binding who payload)}
+    {checks : List (EventGraph.GuardCheck setup.informationGraph.layout payload)}
+    {outputEq : setup.informationGraph.outputLayout event = .publication payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+      (setup.informationGraph.nodes event) = .resolve who payload binding checks}
+    (node : nodeView setup.informationGraph event = .resolve who payload binding checks outputEq
+      codeEq) :
     CanonicalTransmitsAt setup timeouts leaks who past view event := by
   intro action graphAction encoded _ discloses
   have disclose := encodeEventAction?_discloses setup.program event action discloses
@@ -100,7 +101,8 @@ theorem disclosureResolves_of_debtFree (wellFormed : setup.WellFormed)
     apply EventGraph.EventCode.resolveOutput?_isSome
     intro field member
     apply control.execution.application.config.read_available ready
-    rw [← EventGraph.EventCode.readFields_cast outputEq ((graph setup).nodes event), codeEq]
+    rw [← EventGraph.EventCode.readFields_cast outputEq (setup.informationGraph.nodes event),
+      codeEq]
     exact member
   obtain ⟨result, resolved⟩ := Option.isSome_iff_exists.mp available
   have discloses : (cast (congrArg EventGraph.EventField.Action outputEq)
@@ -198,15 +200,17 @@ theorem onePacket_opening_node {who : Player}
       leaks).Action}
     (member : response ∈ bounds.onePacketActions timeouts leaks who past view)
     {material : (application setup timeouts leaks).Submission}
-    (sends : response.transmission = some material) {event : (graph setup).EventId}
-    {handle : Handle (graph setup)} {raw : Raw L}
+    (sends : response.transmission = some material) {event : setup.informationGraph.EventId}
+    {handle : Handle setup.informationGraph} {raw : Raw L}
     (packet : material.call.packet = .opening event handle raw) :
-    ∃ (payload : L.Ty) (binding : EventGraph.FieldRef (graph setup).layout (.binding who payload))
-      (checks : List (EventGraph.GuardCheck (graph setup).layout payload))
-      (outputEq : (graph setup).outputLayout event = .publication payload)
-      (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-        ((graph setup).nodes event) = .resolve who payload binding checks),
-      nodeView (graph setup) event = .resolve who payload binding checks outputEq codeEq := by
+    ∃ (payload : L.Ty) (binding : EventGraph.FieldRef setup.informationGraph.layout (.binding who
+      payload))
+      (checks : List (EventGraph.GuardCheck setup.informationGraph.layout payload))
+      (outputEq : setup.informationGraph.outputLayout event = .publication payload)
+      (codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
+        (setup.informationGraph.nodes event) = .resolve who payload binding checks),
+      nodeView setup.informationGraph event = .resolve who payload binding checks outputEq codeEq
+        := by
   obtain ⟨_, either⟩ := (bounds.mem_onePacketActions timeouts leaks who past view
     response).mp member
   rcases either with silent | ⟨material', transmits, permitted⟩
@@ -220,7 +224,7 @@ theorem onePacket_opening_node {who : Player}
       .opening event handle raw := packet
   rw [callEq] at correct
   obtain ⟨_, opens⟩ := correct
-  cases node : nodeView (graph setup) event with
+  cases node : nodeView setup.informationGraph event with
   | bind owner payload outputEq codeEq =>
       rw [node] at opens
       exact opens.elim

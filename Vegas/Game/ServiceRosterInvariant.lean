@@ -33,9 +33,9 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 /-- A proof certificate for a position of the public roster calendar. The
 entry clock and obsolete flag describe recorded public data, not runtime state. -/
 structure RosterCalendarPhase (setup : Setup (Player := Player) (L := L))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-    (rosters : (graph setup).EventId → List Player)
-    (event : (graph setup).EventId) (offset entryClock : Nat) (obsolete : Bool)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
+    (rosters : setup.informationGraph.EventId → List Player)
+    (event : setup.informationGraph.EventId) (offset entryClock : Nat) (obsolete : Bool)
     (control : (application setup (Vegas.timeouts setup) leaks).Control) : Prop where
   position : control.execution.environmentRecall.length =
     (rosterPlanPrefix setup rosters event.val).length + offset
@@ -45,30 +45,30 @@ structure RosterCalendarPhase (setup : Setup (Player := Player) (L := L))
   classified : rosterBlockCompleted setup leaks rosters control.execution.environmentRecall
       (control.execution.observeEnvironment (application setup (Vegas.timeouts setup) leaks))
       event ↔ obsolete = true
-  prior : ∀ query : (graph setup).EventId, query.val < event.val →
+  prior : ∀ query : setup.informationGraph.EventId, query.val < event.val →
     query ∈ control.execution.application.config.cut.completed
   obsolete_done : obsolete = true → event ∈ control.execution.application.config.cut.completed
   live_prefix : obsolete = false → offset ≤ (rosters event).length →
     control.execution.application.config.cut.IsPrefix event.val
-  sampled : (graph setup).actor? event = none → (rosters event).length < offset →
+  sampled : setup.informationGraph.actor? event = none → (rosters event).length < offset →
     event ∈ control.execution.application.config.cut.completed
   clock : control.execution.application.clock =
     entryClock + (if obsolete then 0 else offset - ((rosters event).length + 1))
   entered : ∀ entered, control.execution.application.activatedAt event = some entered →
     entered ≤ entryClock ∧ entryClock ≤ entered + event.val
-  future : ∀ query : (graph setup).EventId, event.val < query.val → ∀ entered,
+  future : ∀ query : setup.informationGraph.EventId, event.val < query.val → ∀ entered,
     control.execution.application.activatedAt query = some entered →
     control.execution.application.clock ≤ entered + query.val
-  future_started : obsolete = false → ∀ query : (graph setup).EventId,
+  future_started : obsolete = false → ∀ query : setup.informationGraph.EventId,
     event.val < query.val → ∀ entered,
       control.execution.application.activatedAt query = some entered → entryClock ≤ entered
-  opportunity : ∀ owner, (graph setup).actor? event = some owner →
+  opportunity : ∀ owner, setup.informationGraph.actor? event = some owner →
     owner ∈ (rosters event).take offset → ∀ entered,
       control.execution.application.config.cut.Ready event →
       control.execution.application.activatedAt event = some entered →
       OwnerActivatedSince (timeouts setup) leaks control.execution.environmentRecall event
         owner entered
-  responses : ∀ who, ∀ entry ∈ control.execution.logs who, ∀ query : (graph setup).EventId,
+  responses : ∀ who, ∀ entry ∈ control.execution.logs who, ∀ query : setup.informationGraph.EventId,
     entry.beforeView.application.publicView.EventReady query →
     query ∉ control.execution.application.config.cut.completed →
     entry.beforeView.application.publicView.clock = entryClock ∧
@@ -76,20 +76,20 @@ structure RosterCalendarPhase (setup : Setup (Player := Player) (L := L))
   activation : ∀ who, control.actor = some who → 0 < offset ∧ offset ≤ (rosters event).length
   inclusion : (rosters event).length < offset →
     event ∉ control.execution.application.config.cut.completed → ∀ owner,
-      (graph setup).actor? event = some owner →
+      setup.informationGraph.actor? event = some owner →
       ∀ (earlier later : List (application setup (Vegas.timeouts setup) leaks).PlayerEntry)
         entry message,
         control.execution.logs owner = earlier ++ entry :: later →
         entry.emitted = some message → message.sender = owner →
-        message.payload.call.event? (graph setup) = some event →
+        message.payload.call.event? setup.informationGraph = some event →
         (∀ other ∈ earlier ++ later,
           ¬ EmitsOtherFor (timeouts setup) leaks other event message.id) →
         ∃ accepted, (message.id, accepted) ∈ control.execution.receipts
 
 /-- A public calendar position, or a completed graph at the exhausted horizon. -/
 def RosterCalendarInvariant (setup : Setup (Player := Player) (L := L))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-    (rosters : (graph setup).EventId → List Player) :
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
+    (rosters : setup.informationGraph.EventId → List Player) :
     (application setup (Vegas.timeouts setup) leaks).ProtocolState → Prop
   | none => True
   | some control => (∃ event offset entryClock obsolete,
@@ -99,19 +99,21 @@ def RosterCalendarInvariant (setup : Setup (Player := Player) (L := L))
 
 /-- The initialized native service starts at the first live block or at a terminal graph. -/
 theorem RosterCalendarInvariant.initial (setup : Setup (Player := Player) (L := L))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-    (rosters : (graph setup).EventId → List Player)
-    (state : EventGraphRuntime.State (graph setup))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
+    (rosters : setup.informationGraph.EventId → List Player)
+    (state : EventGraphRuntime.State setup.informationGraph)
     (supported : state ∈ (initialLaw setup).support) :
     RosterCalendarInvariant setup leaks rosters
       (some ⟨(rosterPlan setup rosters).length, none,
         ReactiveApplication.Execution.initial (application setup (Vegas.timeouts setup) leaks)
           state⟩) := by
   obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ supported
-  have invariant := State.initial_invariant (setup.eventInputs initial)
-  have empty : (State.initial (setup.eventInputs initial)).config.cut.IsPrefix 0 :=
+  have invariant := State.initial_invariant (graph := setup.informationGraph)
+    (setup.eventInputs initial)
+  have empty : (State.initial (graph := setup.informationGraph)
+      (setup.eventInputs initial)).config.cut.IsPrefix 0 :=
     EventOrder.Cut.empty_isPrefix _
-  by_cases nonempty : 0 < (graph setup).order.eventCount
+  by_cases nonempty : 0 < setup.informationGraph.order.eventCount
   · left
     refine ⟨⟨0, nonempty⟩, 0, 0, false, ?_⟩
     exact {
@@ -122,7 +124,7 @@ theorem RosterCalendarInvariant.initial (setup : Setup (Player := Player) (L := 
       inside := by rw [rosterBlock_length]; omega
       remaining := by simp [ReactiveApplication.Execution.initial]
       classified := by
-        change (⟨0, nonempty⟩ ∈ ([] : List (graph setup).EventId)) ↔ false = true
+        change (⟨0, nonempty⟩ ∈ ([] : List setup.informationGraph.EventId)) ↔ false = true
         constructor
         · intro member; cases member
         · intro impossible; cases impossible
@@ -152,23 +154,24 @@ theorem RosterCalendarInvariant.initial (setup : Setup (Player := Player) (L := 
       activation := by intro who active; cases active
       inclusion := fun late => absurd late (Nat.not_lt_zero _) }
   · right
-    have zero : (graph setup).order.eventCount = 0 := by omega
+    have zero : setup.informationGraph.order.eventCount = 0 := by omega
     refine ⟨?_, rfl, ?_⟩
     · change (rosterPlan setup rosters).length = 0
-      have absent : List.finRange (graph setup).order.eventCount = [] :=
+      have absent : List.finRange setup.informationGraph.order.eventCount = [] :=
         List.eq_nil_of_length_eq_zero (by rw [List.length_finRange, zero])
       rw [rosterPlan, absent]
       rfl
     · unfold EventOrder.Cut.Terminal
       apply Finset.eq_univ_of_forall
       intro event
-      have inside : event.val < (graph setup).order.eventCount := event.isLt
+      have inside : event.val < setup.informationGraph.order.eventCount := event.isLt
       omega
 
 /-- A response retains the public calendar and records the current entry clock. -/
 theorem RosterCalendarPhase.respond {setup : Setup (Player := Player) (L := L)}
-    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-    {rosters : (graph setup).EventId → List Player} {event : (graph setup).EventId}
+    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+    {rosters : setup.informationGraph.EventId → List Player} {event :
+      setup.informationGraph.EventId}
     {offset entryClock : Nat} {obsolete : Bool}
     {control : (application setup (Vegas.timeouts setup) leaks).Control}
     (phase : RosterCalendarPhase setup leaks rosters event offset entryClock obsolete control)
@@ -275,7 +278,7 @@ theorem RosterCalendarPhase.respond {setup : Setup (Player := Player) (L := L)}
         | false =>
             have ordered := phase.live_prefix same early
             have readyNow := (State.publicView_eventReady _ query).mp ready
-            exact Or.inl (setup.eventGraph.sequentialize_ready_unique _ readyNow
+            exact Or.inl (setup.informationGraph.sequentialize_ready_unique _ readyNow
               (ordered.ready event.isLt))
     activation := by intro who noneActive; cases noneActive
     inclusion := fun late => absurd late (by omega) }
@@ -283,8 +286,9 @@ theorem RosterCalendarPhase.respond {setup : Setup (Player := Player) (L := L)}
 /-- A roster activation records a ready owner's opportunity without advancing the clock. -/
 theorem RosterCalendarPhase.activate_step
     {setup : Setup (Player := Player) (L := L)}
-    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-    {rosters : (graph setup).EventId → List Player} {event : (graph setup).EventId}
+    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+    {rosters : setup.informationGraph.EventId → List Player} {event :
+      setup.informationGraph.EventId}
     {offset entryClock : Nat} {obsolete : Bool}
     {control : (application setup (Vegas.timeouts setup) leaks).Control}
     (phase : RosterCalendarPhase setup leaks rosters event offset entryClock obsolete control)
@@ -390,13 +394,14 @@ theorem RosterCalendarPhase.activate_step
 /-- A zero-time operation after the roster retains the public calendar certificate. -/
 theorem RosterCalendarPhase.ending_step
     {setup : Setup (Player := Player) (L := L)}
-    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-    {rosters : (graph setup).EventId → List Player} {event : (graph setup).EventId}
+    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+    {rosters : setup.informationGraph.EventId → List Player} {event :
+      setup.informationGraph.EventId}
     {offset entryClock : Nat} {obsolete : Bool}
     {control : (application setup (Vegas.timeouts setup) leaks).Control}
     (phase : RosterCalendarPhase setup leaks rosters event offset entryClock obsolete control)
     (atEnding : offset = (rosters event).length)
-    {inputs : (graph setup).Inputs}
+    {inputs : setup.informationGraph.Inputs}
     (invariant : control.execution.application.Invariant inputs)
     (command : (application setup (Vegas.timeouts setup) leaks).Command)
     (actorNone : command.actor? (application setup (Vegas.timeouts setup) leaks) = none)
@@ -406,14 +411,14 @@ theorem RosterCalendarPhase.ending_step
       setup) leaks) command).support)
     (progress : State.ServiceProgress inputs 0 control.execution.application next.application)
     (origin : State.ActivationOrigin control.execution.application next.application)
-    (sampled : (graph setup).actor? event = none →
+    (sampled : setup.informationGraph.actor? event = none →
       event ∈ next.application.config.cut.completed)
-    (receipts : ∀ owner, (graph setup).actor? event = some owner →
+    (receipts : ∀ owner, setup.informationGraph.actor? event = some owner →
       ∀ (earlier later : List (application setup (Vegas.timeouts setup) leaks).PlayerEntry)
         entry message,
         next.logs owner = earlier ++ entry :: later →
         entry.emitted = some message → message.sender = owner →
-        message.payload.call.event? (graph setup) = some event →
+        message.payload.call.event? setup.informationGraph = some event →
         (∀ other ∈ earlier ++ later,
           ¬ EmitsOtherFor (timeouts setup) leaks other event message.id) →
         ∃ accepted, (message.id, accepted) ∈ next.receipts) :
@@ -441,7 +446,7 @@ theorem RosterCalendarPhase.ending_step
     simp only [ite_self, Nat.add_zero]
   have nextClock : next.application.clock = entryClock := by
     rw [progress.clock, Nat.add_zero, startClock]
-  have runningAfter (query : (graph setup).EventId) (entered : Nat)
+  have runningAfter (query : setup.informationGraph.EventId) (entered : Nat)
       (activated : next.application.activatedAt query = some entered) :
       next.application.config.cut.Ready query :=
     ((progress.invariant.activated_iff query).mp (by rw [activated]; rfl)).1
@@ -499,7 +504,7 @@ theorem RosterCalendarPhase.ending_step
       rcases origin query entered activated ready.1 with kept | created
       · have oldReady := ((invariant.activated_iff query).mp (by rw [kept]; rfl)).1
         have ordered := phase.live_prefix live atEnding.le
-        have same := setup.eventGraph.sequentialize_ready_unique _ oldReady
+        have same := setup.informationGraph.sequentialize_ready_unique _ oldReady
           (ordered.ready event.isLt)
         have sameRank := congrArg Fin.val same
         change query.val = event.val at sameRank
@@ -512,7 +517,7 @@ theorem RosterCalendarPhase.ending_step
       change next.application.activatedAt event = some entered at activated
       have oldReady : control.execution.application.config.cut.Ready event :=
         ⟨fun done => ready.1 (progress.completed done), fun prior dependency =>
-          phase.prior prior ((graph setup).order.predecessor_lt dependency)⟩
+          phase.prior prior (setup.informationGraph.order.predecessor_lt dependency)⟩
       obtain ⟨oldEntered, oldStamp⟩ := invariant.activatedAt_eq_some_of_ready_actor event
         oldReady (by rw [owned]; rfl)
       have kept := progress.activated event oldEntered oldStamp ready.1
@@ -545,14 +550,15 @@ theorem RosterCalendarPhase.ending_step
 /-- Native sampling completes the actorless target and retains the roster calendar. -/
 theorem RosterCalendarPhase.sample_step
     {setup : Setup (Player := Player) (L := L)}
-    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-    {rosters : (graph setup).EventId → List Player} {event : (graph setup).EventId}
+    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+    {rosters : setup.informationGraph.EventId → List Player} {event :
+      setup.informationGraph.EventId}
     {offset entryClock : Nat} {obsolete : Bool}
     {control : (application setup (Vegas.timeouts setup) leaks).Control}
     (phase : RosterCalendarPhase setup leaks rosters event offset entryClock obsolete control)
     (atEnding : offset = (rosters event).length)
-    (actorless : (graph setup).actor? event = none)
-    {inputs : (graph setup).Inputs}
+    (actorless : setup.informationGraph.actor? event = none)
+    {inputs : setup.informationGraph.Inputs}
     (invariant : control.execution.application.Invariant inputs)
     (remaining : Nat) (counted : control.remaining = remaining + 1)
     (next : (application setup (Vegas.timeouts setup) leaks).Execution)
@@ -570,7 +576,7 @@ theorem RosterCalendarPhase.sample_step
     · exact progress.completed already
     · have ready : control.execution.application.config.cut.Ready event :=
         ⟨already, fun prior dependency =>
-          phase.prior prior ((graph setup).order.predecessor_lt dependency)⟩
+          phase.prior prior (setup.informationGraph.order.predecessor_lt dependency)⟩
       obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
       obtain ⟨state, changed, rfl⟩ := PMF.support_map .. ▸ supported
       change state ∈ ((environmentStep (timeouts setup) control.execution.application
@@ -588,14 +594,16 @@ theorem RosterCalendarPhase.sample_step
 /-- Native inclusion preserves the calendar and receipts for a sole owner response. -/
 theorem RosterCalendarPhase.include_step
     {setup : Setup (Player := Player) (L := L)}
-    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-    {rosters : (graph setup).EventId → List Player} {event : (graph setup).EventId}
+    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+    {rosters : setup.informationGraph.EventId → List Player} {event :
+      setup.informationGraph.EventId}
     {offset entryClock : Nat} {obsolete : Bool}
     {control : (application setup (Vegas.timeouts setup) leaks).Control}
     (phase : RosterCalendarPhase setup leaks rosters event offset entryClock obsolete control)
     (atEnding : offset = (rosters event).length) (owner : Player)
-    (owned : (graph setup).actor? event = some owner)
-    {inputs : (graph setup).Inputs} (invariant : control.execution.application.Invariant inputs)
+    (owned : setup.informationGraph.actor? event = some owner)
+    {inputs : setup.informationGraph.Inputs} (invariant : control.execution.application.Invariant
+      inputs)
     (origins : control.execution.Provenance (application setup (Vegas.timeouts setup) leaks))
     (recalled : control.execution.InputRecall (application setup (Vegas.timeouts setup) leaks))
     (retained : control.execution.network.PendingOrPublished)
@@ -634,7 +642,7 @@ theorem RosterCalendarPhase.include_step
       control.execution next command invariant reachedCommand
   have origin := (reactive_environmentStep_activationOrigin (timeouts setup)) leaks
     control.execution next command reachedCommand
-  have sampled : (graph setup).actor? event = none →
+  have sampled : setup.informationGraph.actor? event = none →
       event ∈ next.application.config.cut.completed := by
     intro actorless
     rw [owned] at actorless
@@ -642,11 +650,11 @@ theorem RosterCalendarPhase.include_step
   have recallEq := app.environmentStep_recall control.execution next command reachedCommand
   have receiptsPrefix := app.environmentStep_receipts_prefix control.execution next command
     reachedCommand
-  have receipts : ∀ responder, (graph setup).actor? event = some responder →
+  have receipts : ∀ responder, setup.informationGraph.actor? event = some responder →
       ∀ (earlier later : List app.PlayerEntry) entry message,
       next.logs responder = earlier ++ entry :: later →
       entry.emitted = some message → message.sender = responder →
-      message.payload.call.event? (graph setup) = some event →
+      message.payload.call.event? setup.informationGraph = some event →
       (∀ other ∈ earlier ++ later,
         ¬ EmitsOtherFor (timeouts setup) leaks other event message.id) →
       ∃ accepted, (message.id, accepted) ∈ next.receipts := by
@@ -675,8 +683,9 @@ theorem RosterCalendarPhase.include_step
 /-- A completed expiry target enters the next calendar block or exhausts the plan. -/
 theorem RosterCalendarPhase.expire_boundary
     {setup : Setup (Player := Player) (L := L)}
-    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-    {rosters : (graph setup).EventId → List Player} {event : (graph setup).EventId}
+    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+    {rosters : setup.informationGraph.EventId → List Player} {event :
+      setup.informationGraph.EventId}
     {offset entryClock : Nat} {obsolete : Bool}
     {control : (application setup (Vegas.timeouts setup) leaks).Control}
     (phase : RosterCalendarPhase setup leaks rosters event offset entryClock obsolete control)
@@ -685,7 +694,7 @@ theorem RosterCalendarPhase.expire_boundary
     (next : (application setup (Vegas.timeouts setup) leaks).Execution)
     (reached : next ∈ (control.execution.environmentStep
       (application setup (Vegas.timeouts setup) leaks) (.application (.expire event))).support)
-    {inputs : (graph setup).Inputs}
+    {inputs : setup.informationGraph.Inputs}
     (progress : State.ServiceProgress inputs 0 control.execution.application next.application)
     (origin : State.ActivationOrigin control.execution.application next.application)
     (stable : EntryEventStable (timeouts setup) leaks control.execution)
@@ -709,27 +718,27 @@ theorem RosterCalendarPhase.expire_boundary
     have before := phase.remaining
     rw [counted] at before
     omega
-  have prior : ∀ query : (graph setup).EventId, query.val < event.val + 1 →
+  have prior : ∀ query : setup.informationGraph.EventId, query.val < event.val + 1 →
       query ∈ next.application.config.cut.completed := by
     intro query earlier
     by_cases strict : query.val < event.val
     · exact progress.completed (phase.prior query strict)
     · have same : query = event := Fin.ext (by omega)
       simpa only [same] using done
-  by_cases more : event.val + 1 < (graph setup).order.eventCount
-  · let following : (graph setup).EventId := ⟨event.val + 1, more⟩
+  by_cases more : event.val + 1 < setup.informationGraph.order.eventCount
+  · let following : setup.informationGraph.EventId := ⟨event.val + 1, more⟩
     let stale : Bool := decide (following ∈ next.application.config.cut.completed)
     have livePrefix : following ∉ next.application.config.cut.completed →
         next.application.config.cut.IsPrefix following.val := by
       intro unfinished
       have ready : next.application.config.cut.Ready following :=
         ⟨unfinished, fun query member => prior query
-          ((graph setup).order.predecessor_lt member)⟩
+          (setup.informationGraph.order.predecessor_lt member)⟩
       exact ⟨following.isLt.le, fun query =>
-        setup.eventGraph.sequentialize_mem_completed_iff_lt_of_ready _ ready⟩
+        setup.informationGraph.sequentialize_mem_completed_iff_lt_of_ready _ ready⟩
     have starting : next.environmentRecall.length =
         (rosterPlanPrefix setup rosters following.val).length := position
-    have bound : ∀ query : (graph setup).EventId, event.val < query.val → ∀ entered,
+    have bound : ∀ query : setup.informationGraph.EventId, event.val < query.val → ∀ entered,
         next.application.activatedAt query = some entered →
         next.application.clock ≤ entered + query.val := by
       intro query later entered activated
@@ -772,7 +781,7 @@ theorem RosterCalendarPhase.expire_boundary
           (livePrefix (of_decide_eq_false live)).ready following.isLt
         have queryReady : next.application.config.cut.Ready query :=
           ((progress.invariant.activated_iff query).mp (by rw [activated]; rfl)).1
-        have same := setup.eventGraph.sequentialize_ready_unique _ queryReady readyNext
+        have same := setup.informationGraph.sequentialize_ready_unique _ queryReady readyNext
         have rank : query.val = following.val := congrArg Fin.val same
         omega
       opportunity := by
@@ -805,11 +814,11 @@ theorem RosterCalendarPhase.expire_boundary
           obtain ⟨extra, history, _⟩ := stable who entry member query ready unfinishedBefore
           have readyBefore := ready_of_eventReady_extends history ready unfinishedBefore
           have readyAfter := (progress.ready_or_completed query readyBefore).resolve_left unfinished
-          exact same (setup.eventGraph.sequentialize_ready_unique _ readyAfter readyNext)
+          exact same (setup.informationGraph.sequentialize_ready_unique _ readyAfter readyNext)
       activation := by intro who active; cases active
       inclusion := fun late => absurd late (Nat.not_lt_zero _) }
   · right
-    have last : event.val + 1 = (graph setup).order.eventCount := by
+    have last : event.val + 1 = setup.informationGraph.order.eventCount := by
       have inside := event.isLt
       omega
     refine ⟨?_, rfl, ?_⟩
@@ -830,13 +839,15 @@ theorem RosterCalendarPhase.expire_boundary
 calendar boundary under the unchanged rank deadline. -/
 theorem RosterCalendarPhase.expire_step
     {setup : Setup (Player := Player) (L := L)}
-    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-    {rosters : (graph setup).EventId → List Player} {event : (graph setup).EventId}
+    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+    {rosters : setup.informationGraph.EventId → List Player} {event :
+      setup.informationGraph.EventId}
     {offset entryClock : Nat} {obsolete : Bool}
     {control : (application setup (Vegas.timeouts setup) leaks).Control}
     (phase : RosterCalendarPhase setup leaks rosters event offset entryClock obsolete control)
     (atExpiry : offset = (rosters event).length + event.val + 2)
-    {inputs : (graph setup).Inputs} (invariant : control.execution.application.Invariant inputs)
+    {inputs : setup.informationGraph.Inputs} (invariant : control.execution.application.Invariant
+      inputs)
     (stable : EntryEventStable (timeouts setup) leaks control.execution)
     (remaining : Nat) (counted : control.remaining = remaining + 1)
     (next : (application setup (Vegas.timeouts setup) leaks).Execution)
@@ -857,11 +868,11 @@ theorem RosterCalendarPhase.expire_step
       | true => exact (finished (phase.obsolete_done rfl)).elim
     have ready : control.execution.application.config.cut.Ready event :=
       ⟨finished, fun query member => phase.prior query
-        ((graph setup).order.predecessor_lt member)⟩
-    cases owned : (graph setup).actor? event with
+        (setup.informationGraph.order.predecessor_lt member)⟩
+    cases owned : setup.informationGraph.actor? event with
     | none => exact (finished (phase.sampled owned (by omega))).elim
     | some owner =>
-        have strategic : ((graph setup).actor? event).isSome = true := by rw [owned]; rfl
+        have strategic : (setup.informationGraph.actor? event).isSome = true := by rw [owned]; rfl
         obtain ⟨entered, activated⟩ :=
           invariant.activatedAt_eq_some_of_ready_actor event ready strategic
         have bounds := phase.entered entered activated
@@ -886,8 +897,8 @@ theorem RosterCalendarPhase.expire_step
 /-- Live blocks advance the clock; blocks completed at entry preserve it. -/
 theorem RosterCalendarPhase.tick_step
     {setup : Setup (Player := Player) (L := L)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {rosters : (graph setup).EventId → List Player} {event : (graph setup).EventId}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {rosters : setup.informationGraph.EventId → List Player} {event : setup.informationGraph.EventId}
   {offset entryClock : Nat} {obsolete : Bool}
   {control : (application setup (Vegas.timeouts setup) leaks).Control}
     (phase : RosterCalendarPhase setup leaks rosters event offset entryClock obsolete control)

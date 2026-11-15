@@ -19,9 +19,9 @@ open SourceProgram Interaction EventGraphRuntime GameTheory GameTheory.Protocol
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
-  {setup : Setup (Player := Player) (L := L)} {timeouts : EventTimeouts (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {setup : Setup (Player := Player) (L := L)} {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
   {Parameter : Type} {parameter : State L setup.context → Parameter}
   {utility : Parameter × PublicOutcome setup.program → Player → ℝ}
@@ -261,7 +261,8 @@ theorem ClientAssessmentRefinement.continuation_source_clean
       have readAt : sourceReadout setup timeouts leaks (some control) = some terminal := by
         rw [← current]
         exact read
-      have defaults := serviceSourceReadout_defaults setup .sequential timeouts.duration leaks
+      have defaults := serviceSourceReadout_defaults setup setup.informationDependencies
+        timeouts.duration leaks
         control terminal readAt
       exact ⟨control, terminal, rfl, readAt,
         (congrArg DefaultHistory.defaulted defaults).symm.trans sourceClean.1, sourceClean.2⟩
