@@ -444,7 +444,6 @@ public import Vegas.Game.RevealPhasing
 public import Vegas.Game.RevealPhaseBoundary
 public import Vegas.Game.RevealDeviationSimulation
 public import Vegas.Game.RevealDeviationLaw
-public import Vegas.Game.RevealConcurrentNash
 public import Vegas.Game.RevealTurnRecall
 public import Vegas.Game.RevealRunCoupling
 public import Vegas.Game.RevealRunClosure
@@ -460,7 +459,6 @@ public import Vegas.Game.DeviationSplit
 public import Vegas.Game.RevealRunPoint
 public import Vegas.Game.RevealClosureSolitary
 public import Vegas.Game.RevealClosureSimulation
-public import Vegas.Game.ConcurrentRevealPreservation
 
 public import Vegas.Game.SourceReplayDebt
 public import Vegas.Game.BindingSourceObservation
