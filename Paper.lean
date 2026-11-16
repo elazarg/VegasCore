@@ -589,23 +589,31 @@ source-prefix clients of a submitting, disclosing source profile preserve the co
 source-configuration and fixed-exit payoff law under every public scheduler. No
 equilibrium, finiteness or independence premise is required. -/
 theorem Vegas.Paper.compilePrescribedProfile_law (setup : Setup (Player := Player) (L := L))
-    (deps : setup.dataflowGraph.Dependencies)
-    (relaxed : (setup.dataflowGraph.withDependencies deps).RevealRelaxedOrdered)
-    {Parameter : Type} (parameter : State L setup.context → Parameter)
+    (deps : setup.dataflowGraph.Dependencies) {Parameter : Type}
+    (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
-    (excluded : Player → ℝ) (source : BehavioralProfile setup.program)
-    (submits : ∀ who, SourceProgram.SubmitsBindings setup.program (source who))
-    (disclosing : ∀ who, Disclosing setup.program (source who))
-    (scheduler : (setup.dataflowGraph.withDependencies deps).PublicScheduler) :
-    (((setup.dataflowGraph.withDependencies deps).gameForm (setup.graphInputs deps) scheduler).play
-        (compilePrescribedProfile setup.program deps source)).map
-        (fun outcome => (some (setup.graphReadout deps outcome), fun who =>
-          setup.graphPayoff deps parameter utility excluded who outcome.1)) =
-      (setup.run source).map fun terminal =>
-        (some terminal, fun who => exclusionUtility setup.program excluded utility
-          (setup.parameterOutcome parameter terminal) who) :=
-  setup.compilePrescribedProfile_law deps relaxed parameter utility excluded source submits
-    disclosing scheduler
+    (excluded : Player → ℝ) (source : BehavioralProfile setup.program) :
+    let graph := setup.dataflowGraph.withDependencies deps
+    let payoff := fun terminal =>
+      exclusionUtility setup.program excluded utility (setup.parameterOutcome parameter terminal)
+    let withPayoff := fun terminal => (some terminal, payoff terminal)
+    graph.RevealRelaxedOrdered →
+    (∀ who, SourceProgram.SubmitsBindings setup.program (source who)) →
+    (∀ who, Disclosing setup.program (source who)) →
+    ∀ scheduler : graph.PublicScheduler,
+      let graphRun := (graph.gameForm (setup.graphInputs deps) scheduler).play
+        (compilePrescribedProfile setup.program deps source)
+      (graphRun.map (setup.graphReadout deps)).map withPayoff =
+        (setup.run source).map withPayoff := by
+  intro graph payoff withPayoff relaxed submits disclosing scheduler graphRun
+  rw [PMF.map_comp]
+  refine Eq.trans ?_ (setup.compilePrescribedProfile_law deps relaxed parameter utility excluded
+    source submits disclosing scheduler)
+  congr 1
+  funext outcome
+  simp only [Function.comp_apply, withPayoff, payoff, SourceProgram.Setup.graphPayoff,
+    dite_eq_left outcome.2]
+  rfl
 
 /-- info: 'Vegas.Paper.compilePrescribedProfile_law' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
