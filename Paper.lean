@@ -540,20 +540,28 @@ Compiled profiles retain the complete source configuration law. Approximate Nash
 equilibrium is preserved and reflected with the same error for every utility of
 the public source outcome. -/
 
+theorem Vegas.Paper.toInformationGraph_policyPlan_eq
+    (program : SourceProgram Player L Γ openNames) :
+    let infoGraph := toInformationGraph program
+    ∀ graphProfile : infoGraph.BehavioralProfile,
+      let planUnder := infoGraph.policyPlan graphProfile
+      ∀ first second : infoGraph.PublicScheduler, planUnder first = planUnder second :=
+  fun graphProfile first second =>
+    Vegas.toInformationGraph_policyPlan_eq program graphProfile first second
+
+/-- info: 'Vegas.Paper.toInformationGraph_policyPlan_eq' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.toInformationGraph_policyPlan_eq
+
 theorem Vegas.Paper.scheduled_terminalConfig_law (program : SourceProgram Player L Γ openNames) :
     let infoGraph := toInformationGraph program
-    (∀ graphProfile : infoGraph.BehavioralProfile,
-      let planUnder := infoGraph.policyPlan graphProfile
-      ∀ first second : infoGraph.PublicScheduler, planUnder first = planUnder second) ∧
     ∀ (scheduler : infoGraph.PublicScheduler) (profile : BehavioralProfile program)
       (state : State L Γ),
       let graphRun := infoGraph.terminalOutcomes scheduler (compileEventProfile program profile)
         (encodeInputs state)
       graphRun.map (terminalConfig program) = program.run profile state :=
-  ⟨fun graphProfile first second => toInformationGraph_policyPlan_eq program graphProfile first
-    second,
-    fun scheduler profile state => Vegas.scheduled_terminalConfig_law program scheduler profile
-      state⟩
+  fun scheduler profile state => Vegas.scheduled_terminalConfig_law program scheduler profile state
 
 /-- info: 'Vegas.Paper.scheduled_terminalConfig_law' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
