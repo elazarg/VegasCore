@@ -97,4 +97,52 @@ theorem compileEventPolicy_publication {Γ : SourceCtx Player L} {openNames : Fi
   compilePolicyTable_publication program _ _ who policy disclosing event publication
     ((eventOwner?_eq_actor program event).trans actor) _ _ _ active
 
+/-- Forcing source disclosure leaves every compiled nonpublication kernel unchanged. -/
+theorem compilePolicyTable_forceDisclose_of_not_publication {Field : Type}
+    {layout : Field → EventField Player L} :
+    ∀ {Γ : SourceCtx Player L} {names : Finset VarId}
+      (program : SourceProgram Player L Γ names) (refs : ContextRefs layout Γ)
+      (outputs : ∀ event, FieldRef layout (outputLayout program event)) (who : Player)
+      (policy : BehavioralPolicy who program) (event : Fin (eventCount program))
+      (_plain : ¬ (outputLayout program event).IsPublication) (store : Store layout)
+      (defaults : DefaultHistory Player) (history : List (OwnAction Player L)),
+      compilePolicyTable program refs outputs who (policy.forceDisclose program) event store
+        defaults history = compilePolicyTable program refs outputs who policy event store defaults
+          history
+  | _, _, .ret _, _, _, _, _, event, _, _, _, _ => nomatch event
+  | _, _, .sample _ _ _ next, refs, outputs, who, policy, event, plain, store, defaults,
+      history => by
+      cases event using Fin.cases with
+      | zero => rfl
+      | succ tail =>
+          exact compilePolicyTable_forceDisclose_of_not_publication next _ _ who policy tail plain
+            store defaults history
+  | _, _, .commit _ _ _ _ next, refs, outputs, who, policy, event, plain, store, defaults,
+      history => by
+      cases event using Fin.cases with
+      | zero => rfl
+      | succ tail =>
+          exact compilePolicyTable_forceDisclose_of_not_publication next _ _ who policy.2 tail plain
+            store defaults history
+  | _, _, .reveal _ _ _ _ _ _ next, refs, outputs, who, policy, event, plain, store, defaults,
+      history => by
+      cases event using Fin.cases with
+      | zero => exact (plain trivial).elim
+      | succ tail =>
+          exact compilePolicyTable_forceDisclose_of_not_publication next _ _ who policy.2 tail plain
+            store defaults history
+
+/-- Forcing source disclosure does not change an owned nonpublication callback. -/
+theorem compileEventPolicy_forceDisclose_of_not_publication
+    {Γ : SourceCtx Player L} {names : Finset VarId}
+    (program : SourceProgram Player L Γ names) (who : Player)
+    (policy : BehavioralPolicy who program) (event : (toInformationGraph program).EventId)
+    (actor : (toInformationGraph program).actor? event = some who)
+    (plain : ¬ ((toInformationGraph program).outputLayout event).IsPublication)
+    (observation : (toInformationGraph program).PlayerObservation who)
+    (active : who ∉ observation.defaulted) :
+    compileEventPolicy program who (policy.forceDisclose program) event actor observation active =
+      compileEventPolicy program who policy event actor observation active :=
+  compilePolicyTable_forceDisclose_of_not_publication program _ _ who policy event plain _ _ _
+
 end Vegas

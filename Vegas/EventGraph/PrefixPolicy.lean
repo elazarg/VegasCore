@@ -133,6 +133,25 @@ private theorem policy_congr {who : Player} (policy : graph.BehavioralPolicy who
   subst same
   rfl
 
+/-- Source-prefix action laws depend only on the graph key. -/
+theorem prefixProfile_actionLaw_runKey_congr (profile : graph.BehavioralProfile)
+    {left right : graph.Config} (same : runKey left = runKey right) (event : graph.EventId) :
+    actionLaw (graph.prefixProfile profile) left event =
+      actionLaw (graph.prefixProfile profile) right event := by
+  have records : completionOf left = completionOf right := congrArg (fun key => key.2.2) same
+  have defaulted := defaulted_eq_of_completionOf_eq records
+  cases ownerEq : (graph.nodes event).actor with
+  | none => rw [actionLaw_of_ownerless _ _ ownerEq, actionLaw_of_ownerless _ _ ownerEq]
+  | some owner =>
+      rw [actionLaw_of_actor _ _ ownerEq, actionLaw_of_actor _ _ ownerEq]
+      by_cases inactive : owner ∈ left.defaulted
+      · rw [dite_eq_left inactive, dite_eq_left (defaulted ▸ inactive)]
+      · rw [dite_eq_right inactive, dite_eq_right (defaulted ▸ inactive)]
+        change profile owner event ownerEq _ _ = profile owner event ownerEq _ _
+        have observation := prefixObservation_playerObserve_congr owner event
+          (congrArg Prod.snd same)
+        exact policy_congr _ event ownerEq observation _ _
+
 theorem RevealRelaxedOrdered.readyIndependent_prefixProfile
     (relaxed : graph.RevealRelaxedOrdered) (profile : graph.BehavioralProfile)
     (oblivious : graph.ObliviousAtPublications profile) :
@@ -174,19 +193,8 @@ theorem RevealRelaxedOrdered.readyIndependent_prefixProfile
         exact policy_congr _ event actor
           (prefixObservation_playerObserve_complete_of_hidden owner config event other
             otherReady action value hidden notOwned privateOutput) _ _
-  congr {left right} same event := by
-    have records : completionOf left = completionOf right := congrArg (fun key => key.2.2) same
-    have defaulted := defaulted_eq_of_completionOf_eq records
-    cases ownerEq : (graph.nodes event).actor with
-    | none => rw [actionLaw_of_ownerless _ _ ownerEq, actionLaw_of_ownerless _ _ ownerEq]
-    | some owner =>
-        rw [actionLaw_of_actor _ _ ownerEq, actionLaw_of_actor _ _ ownerEq]
-        by_cases inactive : owner ∈ left.defaulted
-        · rw [dite_eq_left inactive, dite_eq_left (defaulted ▸ inactive)]
-        · rw [dite_eq_right inactive, dite_eq_right (defaulted ▸ inactive)]
-          change profile owner event ownerEq _ _ = profile owner event ownerEq _ _
-          exact policy_congr _ event ownerEq
-            (prefixObservation_playerObserve_congr owner event (congrArg Prod.snd same)) _ _
+  congr {left right} same event :=
+    prefixProfile_actionLaw_runKey_congr profile same event
 
 theorem RevealRelaxedOrdered.runPolicies_prefixProfile_map_runKey
     (relaxed : graph.RevealRelaxedOrdered) (profile : graph.BehavioralProfile)

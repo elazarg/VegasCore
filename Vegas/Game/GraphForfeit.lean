@@ -195,4 +195,63 @@ theorem graph_play_reachable (setup : Setup (Player := Player) (L := L))
   exact ⟨initial,
     (setup.dataflowGraph.withDependencies deps).run_reachable initial _ outcome.1 inRun⟩
 
+
+/-- Every fixed-exit graph continuation is bounded below by the declared floor. -/
+theorem leastUtility_le_graphPayoff (setup : Setup (Player := Player) (L := L))
+    (deps : setup.dataflowGraph.Dependencies) {Parameter : Type}
+    (parameter : State L setup.context → Parameter)
+    (utility : Parameter × PublicOutcome setup.program → Player → ℝ) {forfeit : ℝ}
+    (range : ∀ high low who, utility high who - utility low who ≤ forfeit)
+    (who : Player) (config : (setup.dataflowGraph.withDependencies deps).Config) :
+    leastUtility utility who ≤
+      setup.graphPayoff deps parameter utility (leastUtility utility) who config :=
+  setup.le_graphPayoff deps parameter utility (leastUtility utility) who
+    (fun outcome => leastUtility_le utility range who outcome) config
+
+/-- One charged failed reveal bounds native forfeit by the fixed exit floor. -/
+theorem graphForfeitPayoff_le_leastUtility_of_failed
+    (setup : Setup (Player := Player) (L := L))
+    (deps : setup.dataflowGraph.Dependencies) {Parameter : Type}
+    (parameter : State L setup.context → Parameter)
+    (utility : Parameter × PublicOutcome setup.program → Player → ℝ) {forfeit : ℝ}
+    (range : ∀ high low who, utility high who - utility low who ≤ forfeit)
+    (outcome : (setup.dataflowGraph.withDependencies deps).gameSignature.Outcome)
+    (who : Player)
+    (failed : 1 ≤ failedReveals setup.program who
+      (publicOutcome setup.program (setup.graphReadout deps outcome))) :
+    setup.graphForfeitPayoff deps parameter utility forfeit outcome who ≤
+      leastUtility utility who := by
+  let final : setup.informationGraph.gameSignature.Outcome :=
+    ⟨rankedConfig (graph := setup.dataflowGraph.withDependencies deps)
+      outcome.1 outcome.2,
+    rankedConfig_terminal (graph := setup.dataflowGraph.withDependencies deps)
+      outcome.1 outcome.2⟩
+  let observed := setup.eventParameterOutcome parameter final
+  have nonnegative : 0 ≤ forfeit := by
+    have spread := range observed observed who
+    linarith
+  have oneCharge := sub_forfeit_le_leastUtility utility range who observed
+  have count : (1 : ℝ) ≤ (failedReveals setup.program who observed.2 : ℝ) := by
+    exact_mod_cast failed
+  change utility observed who - forfeit * (failedReveals setup.program who observed.2 : ℝ) ≤ _
+  nlinarith
+
+/-- After a native charge, comparison needs no restriction on the source tail. -/
+theorem graphForfeitPayoff_le_any_graphPayoff_of_failed
+    (setup : Setup (Player := Player) (L := L))
+    (nativeDeps sourceDeps : setup.dataflowGraph.Dependencies) {Parameter : Type}
+    (parameter : State L setup.context → Parameter)
+    (utility : Parameter × PublicOutcome setup.program → Player → ℝ) {forfeit : ℝ}
+    (range : ∀ high low who, utility high who - utility low who ≤ forfeit)
+    (outcome : (setup.dataflowGraph.withDependencies nativeDeps).gameSignature.Outcome)
+    (who : Player)
+    (failed : 1 ≤ failedReveals setup.program who
+      (publicOutcome setup.program (setup.graphReadout nativeDeps outcome)))
+    (source : (setup.dataflowGraph.withDependencies sourceDeps).Config) :
+    setup.graphForfeitPayoff nativeDeps parameter utility forfeit outcome who ≤
+      setup.graphPayoff sourceDeps parameter utility (leastUtility utility) who source :=
+  (setup.graphForfeitPayoff_le_leastUtility_of_failed nativeDeps parameter utility range outcome
+    who failed).trans (setup.leastUtility_le_graphPayoff sourceDeps parameter utility range who
+      source)
+
 end Vegas.SourceProgram.Setup

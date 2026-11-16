@@ -29,7 +29,7 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 /-- A finished block start and the end of a run of an unfinished one give the
 deviator different normalized views. -/
 theorem blockStart_mixed_absurd {who : Player} {start finish : Nat}
-    (concurrent : (serviceGraph setup deps).RevealsOnlyConcurrent)
+    (serial : (serviceGraph setup deps).ActorSerial)
     (flat : BlockFlat (graph := serviceGraph setup deps) start finish)
     (publications : ∀ event : (serviceGraph setup deps).EventId, start ≤ event.val →
       event.val < finish → ((serviceGraph setup deps).outputLayout event).IsPublication)
@@ -62,7 +62,7 @@ theorem blockStart_mixed_absurd {who : Player} {start finish : Nat}
     cases present
   by_cases isWho : owner = who
   · subst isWho
-    obtain ⟨record, found, decided⟩ := decided_of_pending concurrent flat begin path sound owners
+    obtain ⟨record, found, decided⟩ := decided_of_pending serial flat begin path sound owners
       early late pending currentDone owned
     have own := normalize_own_completionOf_congr owner views event owned
     rw [quiet, found] at own
@@ -71,7 +71,7 @@ theorem blockStart_mixed_absurd {who : Player} {start finish : Nat}
     cases decided
   rcases sound event pending currentDone with ⟨silent, _, other, otherOwned, inactive⟩ |
     ⟨_, _, whoOwned | opened | expired⟩
-  · exact pending_not_silent concurrent flat begin path sound owners early late pending
+  · exact pending_not_silent serial flat begin path sound owners early late pending
       otherOwned silent inactive
   · exact isWho (Option.some.inj (owned.symm.trans whoOwned))
   · obtain ⟨_, _, _, _, _, _, _, openedNode, _, accepted, _, stored⟩ := opened
@@ -110,7 +110,7 @@ theorem blockHidden_of_done {who : Player} {start finish : Nat}
 /-- **The start of a block is read from a later configuration**, also when a
 start is already done and its run stays there. -/
 theorem blockStart_reflect_general {who : Player} {start finish : Nat}
-    (concurrent : (serviceGraph setup deps).RevealsOnlyConcurrent)
+    (serial : (serviceGraph setup deps).ActorSerial)
     (flat : BlockFlat (graph := serviceGraph setup deps) start finish)
     (publications : ∀ event : (serviceGraph setup deps).EventId, start ≤ event.val →
       event.val < finish → ((serviceGraph setup deps).outputLayout event).IsPublication)
@@ -145,13 +145,13 @@ theorem blockStart_reflect_general {who : Player} {start finish : Nat}
     · rw [stayLeft doneLeft, stayRight doneRight] at views
       exact ⟨views, by rw [blockHidden_of_done doneLeft, blockHidden_of_done doneRight]⟩
     · rw [stayLeft doneLeft] at views
-      exact (blockStart_mixed_absurd concurrent flat publications beginLeft beginRight doneLeft
+      exact (blockStart_mixed_absurd serial flat publications beginLeft beginRight doneLeft
         doneRight pathRight soundRight ownersRight views).elim
   · by_cases doneRight : BlockDone finish startRight
     · rw [stayRight doneRight] at views
-      exact (blockStart_mixed_absurd concurrent flat publications beginRight beginLeft doneRight
+      exact (blockStart_mixed_absurd serial flat publications beginRight beginLeft doneRight
         doneLeft pathLeft soundLeft ownersLeft views.symm).elim
-    · exact blockStart_reflect_of_honestDone concurrent flat publications beginLeft beginRight
+    · exact blockStart_reflect_of_honestDone serial flat publications beginLeft beginRight
         doneLeft doneRight pathLeft pathRight soundLeft soundRight ownersLeft ownersRight
         honestLeft honestRight views
 

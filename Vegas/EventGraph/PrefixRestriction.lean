@@ -5,6 +5,7 @@ module
 public import Vegas.EventGraph.NormalizedRestriction
 public import Vegas.EventGraph.SchedulerErasure
 public import Vegas.EventGraph.CanonicalStep
+public import Vegas.EventGraph.ResolutionProvenance
 
 @[expose] public section
 
@@ -266,5 +267,261 @@ theorem normalize_defaulted_congr (who : Player) {left right : graph.Config}
       | none => rw [recorded] at found; cases found
       | some _ => rfl
     exact ⟨event, (normalize_defaultEvent_congr who same.symm event present).symm.trans found⟩
+
+
+/-- A newly completed event has an actual ready transition along the path. -/
+theorem Config.Step.path_at_completion
+    {before after : graph.Config}
+    (path : Relation.ReflTransGen Config.Step before after) (event : graph.EventId)
+    (pending : event ∉ before.cut.completed) (completed : event ∈ after.cut.completed) :
+    ∃ (current next : graph.Config) (ready : current.cut.Ready event)
+      (action : graph.Action event) (value : (graph.outputLayout event).Value),
+      Relation.ReflTransGen Config.Step before current ∧
+      next ∈ (current.step event ready action).support ∧
+      Relation.ReflTransGen Config.Step next after ∧
+      completionOf after event = some
+        (EventGraph.completion graph event (current.actualDecision event action) value) ∧
+      after.outputs event = some value := by
+  revert pending
+  induction path using Relation.ReflTransGen.head_induction_on with
+  | refl => intro pending; exact (pending completed).elim
+  | @head before middle moved rest ih =>
+      intro pending
+      obtain ⟨other, ready, action, supported⟩ := moved
+      by_cases same : other = event
+      · subst other
+        have actual := supported
+        rw [Config.step, PMF.mem_support_map_iff] at supported
+        obtain ⟨value, _chosen, rfl⟩ := supported
+        refine ⟨before, _, ready, action, value, .refl, actual, rest, ?_, ?_⟩
+        · apply Config.Step.path_completionOf_of_some rest event _
+          rw [completionOf_complete, Function.update_self]
+        · exact Config.Step.path_store_of_some rest (.inr event) value
+            (before.complete_output_same event ready action value)
+      · have middlePending : event ∉ middle.cut.completed := by
+          rw [before.step_cut other ready action middle supported,
+            EventOrder.Cut.mem_complete]
+          intro member
+          rcases member with equal | old
+          · exact same equal.symm
+          · exact pending old
+        obtain ⟨current, next, ready', action', value, prefixPath, chosen, suffixPath, record,
+          output⟩ := ih middlePending
+        refine ⟨current, next, ready', action', value,
+          (Relation.ReflTransGen.single ⟨other, ready, action, supported⟩).trans prefixPath,
+          chosen, suffixPath, record, output⟩
+
+
+open GameTheory.Math.Probability
+
+/-- **A configuration is the restriction of its successors to its completed
+events.** -/
+theorem Config.restrictionOf_completed_path {before after : graph.Config}
+    (path : Relation.ReflTransGen Config.Step before after) :
+    before.RestrictionOf (fun event => event ∈ before.cut.completed) after where
+  records event := by
+    by_cases done : event ∈ before.cut.completed
+    · rw [ite_eq_left done]
+      obtain ⟨completion, found⟩ :=
+        Option.isSome_iff_exists.mp ((completionOf_isSome_iff before event).mpr done)
+      rw [found, Config.Step.path_completionOf_of_some path event completion found]
+    · rw [ite_eq_right done]
+      exact (completionOf_eq_none_iff before event).mpr done
+  store field := by
+    cases field with
+    | inl input =>
+        rw [ite_eq_left (show FieldWithin (fun event : graph.EventId =>
+          event ∈ before.cut.completed) (.inl input) from trivial)]
+        change some (before.inputs input) = some (after.inputs input)
+        rw [Config.Step.path_inputs_eq path]
+    | inr event =>
+        by_cases done : event ∈ before.cut.completed
+        · rw [ite_eq_left (show FieldWithin (fun event : graph.EventId =>
+            event ∈ before.cut.completed) (.inr event) from done)]
+          obtain ⟨value, stored⟩ := Option.isSome_iff_exists.mp
+            ((before.output_available event).mpr done)
+          change before.outputs event = after.store (.inr event)
+          rw [stored]
+          exact (Config.Step.path_store_of_some path (.inr event) value stored).symm
+        · rw [ite_eq_right (show ¬ FieldWithin (fun event : graph.EventId =>
+            event ∈ before.cut.completed) (.inr event) from done)]
+          change before.outputs event = none
+          exact Option.not_isSome_iff_eq_none.mp fun available =>
+            done ((before.output_available event).mp available)
+
+/-- Equal full-key continuation laws retain identical past records and stores.
+Only containment of the completed cuts is needed; the two policies may differ. -/
+theorem Config.restrictionOf_of_canonicalLaw_eq
+    (leftProfile rightProfile : graph.BehavioralProfile) (small large : graph.Config)
+    (within : small.cut.completed ⊆ large.cut.completed)
+    (same : canonicalLaw leftProfile small = canonicalLaw rightProfile large) :
+    small.RestrictionOf (fun event => event ∈ small.cut.completed) large := by
+  obtain ⟨key, member⟩ := (canonicalLaw leftProfile small).support_nonempty
+  obtain ⟨left, leftMember, leftKey⟩ := (PMF.mem_support_map_iff _ _ _).mp member
+  have other : key ∈ (canonicalLaw rightProfile large).support := by rwa [← same]
+  obtain ⟨right, rightMember, rightKey⟩ := (PMF.mem_support_map_iff _ _ _).mp other
+  have keys : runKey left = runKey right := leftKey.trans rightKey.symm
+  have leftRestricted := Config.restrictionOf_completed_path
+    (runPlan_graph_steps (graph.policyPlan leftProfile graph.canonicalScheduler)
+      small.remaining small left leftMember)
+  have rightRestricted := Config.restrictionOf_completed_path
+    (runPlan_graph_steps (graph.policyPlan rightProfile graph.canonicalScheduler)
+      large.remaining large right rightMember)
+  refine ⟨fun event => ?_, fun field => ?_⟩
+  · by_cases done : event ∈ small.cut.completed
+    · simp only [leftRestricted.records, rightRestricted.records, ite_eq_left done,
+        ite_eq_left (within done)]
+      exact congrArg (fun image => image.2.2 event) keys
+    · simp only [leftRestricted.records, ite_eq_right done]
+  · cases field with
+    | inl input =>
+      simp only [leftRestricted.store, rightRestricted.store, FieldWithin, ite_true]
+      exact congrArg (fun image => image.2.1 (.inl input)) keys
+    | inr event =>
+      by_cases done : event ∈ small.cut.completed
+      · simp only [leftRestricted.store, rightRestricted.store, FieldWithin,
+          ite_eq_left done, ite_eq_left (within done)]
+        exact congrArg (fun image => image.2.1 (.inr event)) keys
+      · simp only [leftRestricted.store, FieldWithin, ite_eq_right done]
+
+/-- At the same cut, equal full-key continuation laws determine the current key. -/
+theorem Config.runKey_eq_of_canonicalLaw_eq
+    (leftProfile rightProfile : graph.BehavioralProfile) (left right : graph.Config)
+    (cuts : left.cut = right.cut)
+    (same : canonicalLaw leftProfile left = canonicalLaw rightProfile right) :
+    runKey left = runKey right := by
+  have restricted := Config.restrictionOf_of_canonicalLaw_eq leftProfile rightProfile left right
+    (by rw [cuts]) same
+  refine Prod.ext cuts (Prod.ext ?_ ?_)
+  · funext field
+    change left.store field = right.store field
+    rw [restricted.store]
+    cases field with
+    | inl input => rfl
+    | inr event =>
+      change (if event ∈ left.cut.completed then right.store (.inr event) else none) = _
+      by_cases done : event ∈ left.cut.completed
+      · rw [ite_eq_left done]
+      · rw [ite_eq_right done]
+        exact (Option.not_isSome_iff_eq_none.mp fun available =>
+          done (by rw [cuts]; exact (right.output_available event).mp available)).symm
+  · funext event
+    change completionOf left event = completionOf right event
+    rw [restricted.records]
+    by_cases done : event ∈ left.cut.completed
+    · rw [ite_eq_left done]
+    · rw [ite_eq_right done]
+      exact (completionOf_eq_none_iff right event).mpr (by rwa [← cuts]) |>.symm
+
+/-- A ready publication sees the successful binding and guard verdict recorded
+by a donor with the same full canonical continuation law. -/
+theorem Config.Reachable.ready_publication_of_canonicalLaw_eq
+    {inputs : graph.Inputs} {current : graph.Config} (reachable : current.Reachable inputs)
+    (currentProfile donorProfile : graph.BehavioralProfile) (donor : graph.Config)
+    (same : canonicalLaw currentProfile current = canonicalLaw donorProfile donor)
+    (event : graph.EventId) (ready : current.cut.Ready event)
+    (owner : Player) (payload : L.Ty)
+    (binding : FieldRef graph.layout (.binding owner payload))
+    (checks : List (GuardCheck graph.layout payload))
+    (outputEq : graph.outputLayout event = .publication payload)
+    (codeEq : cast (congrArg (EventCode graph.layout) outputEq) (graph.nodes event) =
+      .resolve owner payload binding checks)
+    (value : L.Val payload)
+    (published : (⟨.inr event, outputEq⟩ : FieldRef graph.layout (.publication payload)).get?
+      donor.store = some (.success value)) :
+    binding.get? current.store = some (.success value) ∧
+      GuardCheck.allAccepted? checks current.store (.success value) = some true := by
+  obtain ⟨key, member⟩ := (canonicalLaw currentProfile current).support_nonempty
+  obtain ⟨left, leftMember, leftKey⟩ := (PMF.mem_support_map_iff _ _ _).mp member
+  have other : key ∈ (canonicalLaw donorProfile donor).support := by rwa [← same]
+  obtain ⟨right, rightMember, rightKey⟩ := (PMF.mem_support_map_iff _ _ _).mp other
+  have keys : runKey left = runKey right := leftKey.trans rightKey.symm
+  have leftPath := runPlan_graph_steps (graph.policyPlan currentProfile graph.canonicalScheduler)
+    current.remaining current left leftMember
+  have rightPath := runPlan_graph_steps (graph.policyPlan donorProfile graph.canonicalScheduler)
+    donor.remaining donor right rightMember
+  let field : FieldRef graph.layout (.publication payload) := ⟨.inr event, outputEq⟩
+  have publishedRight : field.get? right.store = some (.success value) :=
+    field.get?_preserved donor.store right.store
+      (fun selected stored present => Config.Step.path_store_of_some rightPath selected stored
+        present) (.success value) published
+  have publishedLeft : field.get? left.store = some (.success value) :=
+    (field.get?_congr left.store right.store
+      (congrArg (fun image => image.2.1 (.inr event)) keys)).trans publishedRight
+  have leftReach := Config.Step.path_reachable leftPath reachable
+  have stored := leftReach.publication_binding event owner payload binding checks outputEq codeEq
+    value publishedLeft
+  have passed := leftReach.publication_guards event owner payload binding checks outputEq codeEq
+    value publishedLeft
+  have read : binding.field ∈ (graph.nodes event).readFields := by
+    rw [← EventCode.readFields_cast outputEq (graph.nodes event), codeEq]
+    exact Finset.mem_insert_self _ _
+  obtain ⟨storedValue, found⟩ := Option.isSome_iff_exists.mp (current.read_available ready read)
+  have bindingEq : binding.get? current.store = binding.get? left.store := by
+    apply FieldRef.get?_congr
+    rw [found, Config.Step.path_store_of_some leftPath binding.field storedValue found]
+  refine ⟨bindingEq.trans stored, ?_⟩
+  rw [Config.publication_guards_retained event owner payload binding checks outputEq codeEq
+    current left (fun _ member => ready.2 member)
+    (fun selected stored present => Config.Step.path_store_of_some leftPath selected stored
+      present) (.success value)]
+  exact passed
+
+/-- A completed binding of a still-active owner retains its submitted action and value. -/
+theorem Config.Step.path_active_binding_record
+    {origin final : graph.Config} (path : Relation.ReflTransGen Config.Step origin final)
+    (event : graph.EventId) (pending : event ∉ origin.cut.completed)
+    (completed : event ∈ final.cut.completed) (owner : Player) (payload : L.Ty)
+    (binding : graph.outputLayout event = .binding owner payload)
+    (active : owner ∉ final.defaulted) :
+    ∃ result : PublicationResult (L.Val payload),
+      completionOf final event = some (EventGraph.completion graph event
+        (some (cast (congrArg EventField.Action binding.symm) (some result)))
+        (cast (congrArg EventField.Value binding.symm) result)) ∧
+      final.outputs event = some (cast (congrArg EventField.Value binding.symm) result) := by
+  obtain ⟨current, next, ready, action, _value, _prefix, moved, suffix, _record, _stored⟩ :=
+    Config.Step.path_at_completion path event pending completed
+  have codeEq : cast (congrArg (EventCode graph.layout) binding) (graph.nodes event) =
+      .bind owner payload := by
+    generalize cast (congrArg (EventCode graph.layout) binding) (graph.nodes event) = code
+    cases code
+    rfl
+  have owned : (graph.nodes event).actor = some owner :=
+    (EventCode.actor_cast binding (graph.nodes event)).symm.trans (by rw [codeEq]; rfl)
+  have beforeActive : owner ∉ current.defaulted := fun bad => active
+    (Config.Step.path_defaulted_mono
+      ((Relation.ReflTransGen.single ⟨event, ready, action, moved⟩).trans suffix) bad)
+  let choice := cast (congrArg EventField.Action binding) action
+  have actionEq : action = cast (congrArg EventField.Action binding.symm) choice := by
+    simp only [choice, cast_cast, cast_eq]
+  have law := current.step_eq_map_of_code event ready binding (.bind owner payload) codeEq
+    choice (PMF.pure (choice.getD .failure)) (by
+      simp only [EventCode.effectiveAction, EventCode.actor, ite_eq_right beforeActive,
+        EventCode.eval?])
+  rw [actionEq, law, PMF.pure_map, PMF.mem_support_pure_iff] at moved
+  subst next
+  cases chosen : choice with
+  | none =>
+      exfalso
+      apply active
+      apply Config.Step.path_defaulted_mono suffix
+      change owner ∈ (current.complete event ready
+        (cast (congrArg EventField.Action binding.symm) choice)
+        (cast (congrArg EventField.Value binding.symm) (choice.getD .failure))).defaults.defaulted
+      rw [chosen, Config.complete_defaults,
+        current.completion_bind_none_defaultEvent event owner payload binding codeEq,
+        ite_eq_right beforeActive, DefaultHistory.defaulted_record_some]
+      exact Finset.mem_insert_self _ _
+  | some result =>
+      refine ⟨result, ?_, ?_⟩
+      · apply Config.Step.path_completionOf_of_some suffix event _
+        rw [completionOf_complete, Function.update_self,
+          current.actualDecision_of_active event owner owned beforeActive]
+        simp only [chosen, Option.getD_some]
+      · apply Config.Step.path_store_of_some suffix (.inr event) _
+        simpa only [Config.store_output, chosen, Option.getD_some] using
+          current.complete_output_same event ready
+            (cast (congrArg EventField.Action binding.symm) choice)
+            (cast (congrArg EventField.Value binding.symm) (choice.getD .failure))
 
 end Vegas.EventGraph

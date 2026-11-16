@@ -413,6 +413,26 @@ def runPlan (graph : Vegas.EventGraph Player L) (plan : graph.EventPlan) :
           (config.step choice.1.1 choice.1.2 choice.2).bind
             (graph.runPlan plan fuel)
 
+/-- Consecutive execution budgets compose through the same causal plan. -/
+theorem runPlan_add (graph : Vegas.EventGraph Player L)
+    (plan : graph.EventPlan) : ∀ first second (config : graph.Config),
+    graph.runPlan plan (first + second) config =
+      (graph.runPlan plan first config).bind (graph.runPlan plan second) := by
+  intro first
+  induction first with
+  | zero => intro second config; simp only [Nat.zero_add, runPlan, PMF.pure_bind]
+  | succ first ih =>
+      intro second config
+      by_cases terminal : config.cut.Terminal
+      · cases second <;>
+          simp only [runPlan, dite_eq_left terminal, PMF.pure_bind]
+      · simp only [Nat.succ_add, runPlan, dite_eq_right terminal, PMF.bind_bind]
+        apply bind_congr_on_support _
+        intro choice _
+        apply bind_congr_on_support _
+        intro next _
+        exact ih second next
+
 /-- A runner branches finitely when every plan choice law does; node chance is
 finite by construction. -/
 theorem runPlan_support_finite (graph : Vegas.EventGraph Player L) (plan : graph.EventPlan)

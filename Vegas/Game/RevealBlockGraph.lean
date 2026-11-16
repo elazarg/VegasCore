@@ -344,7 +344,7 @@ theorem resolve_record_of_path {origin current : (serviceGraph setup deps).Confi
 active at the start and owns no other block event, and only block events record
 new defaults. -/
 theorem pending_not_silent {who : Player} {start finish : Nat}
-    (concurrent : (serviceGraph setup deps).RevealsOnlyConcurrent)
+    (serial : (serviceGraph setup deps).ActorSerial)
     (flat : BlockFlat (graph := serviceGraph setup deps) start finish)
     {origin current : (serviceGraph setup deps).Config}
     (begin : BlockStart start finish origin)
@@ -376,10 +376,7 @@ theorem pending_not_silent {who : Player} {start finish : Nat}
       cases defaulted
     · have eventReady := flat.ready_of_earlier begin.earlier early late pending
       have otherReady := flat.ready_of_earlier begin.earlier otherEarly otherLate old
-      rcases concurrent origin.cut eventReady otherReady (Ne.symm same) with
-        independent | independent
-      · exact independent.2.2.2 (owned.trans otherOwned.symm)
-      · exact independent.2.2.2 (otherOwned.trans owned.symm)
+      exact same (serial.ready_actor_unique origin.cut eventReady otherReady owned otherOwned)
   by_cases old : other ∈ origin.cut.completed
   · obtain ⟨earlier, earlierFound⟩ :=
       Option.isSome_iff_exists.mp ((completionOf_isSome_iff origin other).mpr old)
@@ -403,7 +400,7 @@ theorem pending_not_silent {who : Player} {start finish : Nat}
 
 /-- Distinct events of a flat block of concurrent reveals have distinct owners. -/
 theorem block_actor_unique {start finish : Nat}
-    (concurrent : (serviceGraph setup deps).RevealsOnlyConcurrent)
+    (serial : (serviceGraph setup deps).ActorSerial)
     (flat : BlockFlat (graph := serviceGraph setup deps) start finish)
     {left right : (serviceGraph setup deps).EventId} (leftEarly : start ≤ left.val)
     (leftLate : left.val < finish) (rightEarly : start ≤ right.val) (rightLate : right.val < finish)
@@ -422,14 +419,12 @@ theorem block_actor_unique {start finish : Nat}
       omega
     · simp only [prefixCut, Finset.mem_filter, Finset.mem_univ, true_and]
       exact flat event prior early late priorMember
-  rcases concurrent prefixCut (readyOf leftEarly leftLate) (readyOf rightEarly rightLate)
-      different with independent | independent
-  · exact independent.2.2.2 (leftOwned.trans rightOwned.symm)
-  · exact independent.2.2.2 (rightOwned.trans leftOwned.symm)
+  exact different (serial.ready_actor_unique prefixCut (readyOf leftEarly leftLate)
+    (readyOf rightEarly rightLate) leftOwned rightOwned).symm
 
 /-- A block reveal pending at the start completes with a decision. -/
 theorem decided_of_pending {who : Player} {start finish : Nat}
-    (concurrent : (serviceGraph setup deps).RevealsOnlyConcurrent)
+    (serial : (serviceGraph setup deps).ActorSerial)
     (flat : BlockFlat (graph := serviceGraph setup deps) start finish)
     {origin current : (serviceGraph setup deps).Config}
     (begin : BlockStart start finish origin)
@@ -458,7 +453,7 @@ theorem decided_of_pending {who : Player} {start finish : Nat}
     have laterInactive : owner ∈ current.defaulted :=
       Config.Step.path_defaulted_mono (Relation.ReflTransGen.head ⟨event, ready, action, member⟩
         after) inactive
-    exact pending_not_silent concurrent flat begin path sound owners early late pending owned
+    exact pending_not_silent serial flat begin path sound owners early late pending owned
       silent laterInactive
   · change (middle.actualDecision event action).isSome = true
     rw [middle.actualDecision_of_active event owner owned inactive action]

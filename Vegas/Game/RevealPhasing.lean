@@ -3,17 +3,16 @@ module
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 public import Vegas.Game.RevealBlockReflection
+public import Vegas.EventGraph.Dependencies
 
 @[expose] public section
 
-/-! # Phases of a graph with concurrent independent reveals
+/-! # Public runs and their boundaries
 
-In a graph whose dependencies are the rank order relaxed exactly between
-independent reveals, and whose runs of consecutive reveals are pairwise
-independent, the events split into phases: a solitary event that is not a
-reveal, or a maximal run of reveals. A run of reveals is a flat block, and only
-its events are ready while it is unfinished; a later event completes only after
-the whole run.
+Reveal-relaxed public barriers keep every ready event inside an unfinished
+public run and make every later completed event follow the entire earlier
+prefix. Runs may contain several reveals by the same owner. Under exact reveal
+relaxation, a pairwise independent run is additionally a flat block.
 -/
 
 noncomputable section
@@ -122,32 +121,69 @@ theorem RevealRun.flat {start finish : Nat} (relaxed : RelaxedOrder graph)
   exact ((relaxed prior event).mp member).2 (runs prior event priorBefore
     (fun between betweenEarly betweenLate => run.publications between (by omega) (by omega)))
 
-omit [DecidableEq Player] in
-/-- A completed event of rank at least `finish` follows the whole run. -/
-theorem RevealRun.done_of_later {start finish : Nat} (relaxed : RelaxedOrder graph)
-    (run : RevealRun graph start finish) {cut : graph.order.Cut} {event : graph.EventId}
-    (late : finish ≤ event.val) (done : event ∈ cut.completed) :
-    ∀ query : graph.EventId, query.val < finish → query ∈ cut.completed := by
-  intro query smaller
-  have closing : finish < graph.order.eventCount := by
-    have := event.isLt
-    omega
-  let closer : graph.EventId := ⟨finish, closing⟩
-  have closerDone : closer ∈ cut.completed := by
-    rcases Nat.eq_or_lt_of_le late with same | later
-    · have equal : event = closer := Fin.ext same.symm
-      rw [← equal]
-      exact done
-    · exact cut.predecessor_closed done
-        (relaxed.predecessor_of_not_publication (run.closed closer rfl) later)
-  exact cut.predecessor_closed closerDone
-    (relaxed.predecessor_of_later_not_publication (run.closed closer rfl) smaller)
+private theorem public_predecessor (relaxed : graph.RevealRelaxedOrdered)
+    {prior event : graph.EventId} (earlier : prior.val < event.val)
+    (visible : (graph.outputLayout prior).IsPublic ∨ (graph.outputLayout event).IsPublic)
+    (dependent : ¬ graph.IndependentReveals prior event) :
+    prior ∈ graph.order.predecessors event :=
+  relaxed event prior ((mem_barrierOrder graph.outputLayout prior event).mpr
+    ⟨earlier, visible.elim Or.inl (fun last => Or.inr (Or.inl last))⟩) dependent
 
-omit [DecidableEq Player] in
+private theorem publication_dependsOn_later (relaxed : graph.RevealRelaxedOrdered)
+    {start finish : Nat} (run : RevealRun graph start finish)
+    {prior event : graph.EventId} (publication : (graph.outputLayout prior).IsPublication)
+    (before : prior.val < finish) (after : finish ≤ event.val) :
+    DependsOn graph prior event := by
+  by_cases lastPublication : (graph.outputLayout event).IsPublication
+  · have later : finish < event.val := by
+      by_contra equal
+      have same : event.val = finish := by omega
+      exact run.closed event same lastPublication
+    let closer : graph.EventId := ⟨finish, lt_trans later event.isLt⟩
+    have first : prior ∈ graph.order.predecessors closer :=
+      public_predecessor relaxed before (Or.inl publication.isPublic)
+        (IndependentReveals.not_of_not_publication_right (run.closed closer rfl))
+    have second : closer ∈ graph.order.predecessors event :=
+      public_predecessor relaxed later (Or.inr lastPublication.isPublic)
+        (IndependentReveals.not_of_not_publication_left (run.closed closer rfl))
+    exact (Relation.ReflTransGen.single first).tail second
+  · exact .single (public_predecessor relaxed (lt_of_lt_of_le before after)
+      (Or.inl publication.isPublic)
+      (IndependentReveals.not_of_not_publication_right lastPublication))
+
+/-- Every event before the end of a nonempty public run is a dependency of every
+later event, including when the closing event is a private binding. -/
+theorem RevealRun.dependsOn_crossing (relaxed : graph.RevealRelaxedOrdered)
+    {start finish : Nat} (run : RevealRun graph start finish)
+    {prior event : graph.EventId} (before : prior.val < finish) (after : finish ≤ event.val) :
+    DependsOn graph prior event := by
+  by_cases publication : (graph.outputLayout prior).IsPublication
+  · exact publication_dependsOn_later relaxed run publication before after
+  have early : prior.val < start := by
+    by_contra late
+    exact publication (run.publications prior (by omega) before)
+  let first : graph.EventId := ⟨start, lt_of_lt_of_le run.nonempty run.bounded⟩
+  have firstPublication := run.publications first le_rfl run.nonempty
+  have toFirst : prior ∈ graph.order.predecessors first :=
+    public_predecessor relaxed early (Or.inr firstPublication.isPublic)
+      (IndependentReveals.not_of_not_publication_left publication)
+  exact (Relation.ReflTransGen.single toFirst).trans
+    (publication_dependsOn_later relaxed run firstPublication run.nonempty after)
+
+
+/-- A completed event of rank at least `finish` follows the whole run. -/
+theorem RevealRun.done_of_later (relaxed : graph.RevealRelaxedOrdered)
+    {start finish : Nat} (run : RevealRun graph start finish) {cut : graph.order.Cut}
+    {event : graph.EventId} (late : finish ≤ event.val) (done : event ∈ cut.completed) :
+    ∀ query : graph.EventId, query.val < finish → query ∈ cut.completed :=
+  fun _ before => (run.dependsOn_crossing relaxed before late).completed done
+
+
 /-- **A run of reveals is shaped.** While it is unfinished, only its events are
 ready. -/
-theorem RevealRun.shaped {start finish : Nat} (relaxed : RelaxedOrder graph)
-    (run : RevealRun graph start finish) : BlockShaped (graph := graph) start finish := by
+theorem RevealRun.shaped (relaxed : graph.RevealRelaxedOrdered)
+    {start finish : Nat} (run : RevealRun graph start finish) :
+    BlockShaped (graph := graph) start finish := by
   intro config inside running event ready
   refine ⟨?_, ?_⟩
   · by_contra smaller
@@ -155,21 +191,14 @@ theorem RevealRun.shaped {start finish : Nat} (relaxed : RelaxedOrder graph)
     exact ready.1 (inside.1 event smaller)
   · by_contra late
     push Not at late
-    have closing : finish < graph.order.eventCount := by
-      have := event.isLt
-      omega
-    let closer : graph.EventId := ⟨finish, closing⟩
-    rcases Nat.eq_or_lt_of_le late with same | later
-    · obtain ⟨blocked, blockedLate, blockedPending⟩ : ∃ blocked : graph.EventId,
-          blocked.val < finish ∧ blocked ∉ config.cut.completed := by
-        by_contra all
-        push Not at all
-        exact running all
-      have equal : event = closer := Fin.ext same.symm
-      rw [equal] at ready
-      exact blockedPending (ready.2
-        (relaxed.predecessor_of_later_not_publication (run.closed closer rfl) blockedLate))
-    · exact inside.2 closer le_rfl
-        (ready.2 (relaxed.predecessor_of_not_publication (run.closed closer rfl) later))
+    obtain ⟨blocked, before, pending⟩ : ∃ blocked : graph.EventId,
+        blocked.val < finish ∧ blocked ∉ config.cut.completed := by
+      by_contra all
+      push Not at all
+      exact running all
+    exact pending (EventGraph.DependsOn.completed_of_ready
+      (run.dependsOn_crossing relaxed before late)
+      (fun same => by subst same; omega) ready)
+
 
 end Vegas

@@ -3,6 +3,7 @@ module
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 public import Vegas.EventGraph.CanonicalStep
+public import Vegas.EventGraph.SchedulerErasure
 
 @[expose] public section
 
@@ -92,5 +93,46 @@ theorem runPolicies_canonical_eq_of_reachable
                 exact tails action
   exact continuation graph.order.eventCount (Config.initial inputs) .initial 0
     (EventOrder.Cut.empty_isPrefix graph.order)
+
+
+/-- Keyed action laws preserve key equality through any canonical partial run. -/
+theorem runPlan_canonical_map_runKey_congr (profile : graph.BehavioralProfile)
+    (keyed : ∀ {left right : graph.Config}, runKey left = runKey right →
+      ∀ event, actionLaw profile left event = actionLaw profile right event) :
+    ∀ count (left right : graph.Config), runKey left = runKey right →
+      (graph.runPlan (graph.policyPlan profile graph.canonicalScheduler) count left).map
+        runKey =
+      (graph.runPlan (graph.policyPlan profile graph.canonicalScheduler) count right).map
+        runKey := by
+  intro count
+  induction count with
+  | zero => intro left right same; simpa only [runPlan, PMF.pure_map] using congrArg PMF.pure same
+  | succ count ih =>
+      intro left right same
+      have cut : left.cut = right.cut := congrArg Prod.fst same
+      by_cases terminal : left.cut.Terminal
+      · have rightTerminal : right.cut.Terminal := by rw [← cut]; exact terminal
+        simp only [runPlan, dite_eq_left terminal, dite_eq_left rightTerminal, PMF.pure_map,
+          same]
+      · have rightNotTerminal : ¬ right.cut.Terminal := by rw [← cut]; exact terminal
+        obtain ⟨event, ready, least⟩ := exists_least_ready left terminal
+        have rightReady : right.cut.Ready event := by rw [← cut]; exact ready
+        have rightLeast : ∀ other, right.cut.Ready other → event ≤ other := by
+          rw [← cut]
+          exact least
+        rw [runPlan_canonical_succ profile count left terminal event ready least,
+          runPlan_canonical_succ profile count right rightNotTerminal event rightReady rightLeast,
+          PMF.map_bind, PMF.map_bind]
+        have sameStep : (eventStep profile left event ready).map runKey =
+            (eventStep profile right event rightReady).map runKey := by
+          simp only [eventStep, PMF.map_bind]
+          rw [keyed same event]
+          apply bind_congr_on_support _
+          intro action _
+          exact step_map_runKey_congr same event ready rightReady action
+        exact bind_eq_of_map_key_eq runKey Set.univ _ _ (fun _ _ => Set.mem_univ _)
+          (fun _ _ => Set.mem_univ _) sameStep
+          (fun next => (graph.runPlan (graph.policyPlan profile graph.canonicalScheduler)
+            count next).map runKey) (fun a _ b _ eq => ih a b eq)
 
 end Vegas.EventGraph

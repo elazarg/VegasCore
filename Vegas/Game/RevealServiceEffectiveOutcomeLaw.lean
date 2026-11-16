@@ -76,10 +76,24 @@ to erasure of the always-open reference. -/
 theorem concurrentEffectiveReference_twins (setup : Setup (Player := Player) (L := L))
     (source : BehavioralProfile setup.program)
     (disclosing : ∀ who, Disclosing setup.program (source who)) :
-    ErasureTwins (concurrentEffectiveReference setup source) (concurrentReference setup source) :=
-  erasureTwins_effectiveOpening_honest _ fun who event actor publication observation active =>
-    compileEventPolicy_publication setup.program who (source who) (disclosing who) event actor
-      publication observation active
+    ErasureTwins (concurrentEffectiveReference setup source)
+      (concurrentReference setup source) := by
+  let G := setup.revealRelaxedGraph
+  let base : G.BehavioralProfile := compileEventProfile setup.program source
+  have commute : G.normalizeProfile (effectiveOpening base) =
+      effectiveOpening (G.normalizeProfile base) := by
+    funext who event actor observation active
+    unfold normalizeProfile normalizePolicy effectiveOpening
+    cases node : nodeView G event <;> rfl
+  change ErasureTwins (G.normalizeProfile (effectiveOpening base)) (G.normalizeProfile base)
+  rw [commute]
+  apply erasureTwins_effectiveOpening_honest
+  intro who event actor publication observation active
+  have normalizedActive : who ∉ (G.normalizeObservation who observation).defaulted :=
+    fun member => active (G.normalizeObservation_defaulted_subset who observation member)
+  change base who event actor (G.normalizeObservation who observation) normalizedActive = _
+  exact compileEventPolicy_publication setup.program who (source who) (disclosing who) event
+    actor publication (G.normalizeObservation who observation) normalizedActive
 
 /-- The effective-opening reference has the always-open reference's outcome law
 for every readout that ignores the decisions of defaulted players. -/

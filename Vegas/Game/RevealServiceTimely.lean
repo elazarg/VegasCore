@@ -145,50 +145,6 @@ private theorem first_of_never
   intro entry member
   simpa only [Bool.not_eq_true, decide_eq_false_iff_not] using never entry member
 
-/-- A recorded fresh call is the owner's only identifier for its event when the
-owner calls once per event. -/
-theorem FreshCall.sole {horizon : Nat}
-    {scheduler : (serviceApplication setup deps duration leaks).Scheduler}
-    {bound : (serviceGraph setup deps).EventId → Nat}
-    {control : (serviceApplication setup deps duration leaks).Control}
-    (trace : ((serviceApplication setup deps duration leaks).protocol
-      (serviceInitialLaw setup deps) horizon scheduler).Trace (some control))
-    (owner : Player) (event : (serviceGraph setup deps).EventId)
-    (once : OneCallPerEvent setup leaks control.execution owner)
-    (earlier : List (serviceApplication setup deps duration leaks).PlayerEntry)
-    (entry : (serviceApplication setup deps duration leaks).PlayerEntry)
-    (later : List (serviceApplication setup deps duration leaks).PlayerEntry)
-    (message : Message Player (WitnessedPacket (serviceGraph setup deps)))
-    (split : control.execution.logs owner = earlier ++ entry :: later)
-    (call : FreshCall setup leaks owner event bound entry message) :
-    ∀ other ∈ earlier ++ later, ¬ EmitsOtherFor (serviceTimeouts setup deps duration) leaks
-      other event message.id := by
-  have signed := signedCommitments_history (serviceTimeouts setup deps duration) leaks
-    (serviceInitialLaw setup deps) (fun state supported => by
-      obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ supported
-      exact ⟨_, rfl⟩) horizon scheduler trace
-  have submitted (current : (serviceApplication setup deps duration leaks).PlayerEntry)
-      (recorded : current ∈ control.execution.logs owner)
-      (sent : Message Player (WitnessedPacket (serviceGraph setup deps)))
-      (emitted : current.emitted = some sent)
-      (named : sent.payload.call.event? (serviceGraph setup deps) = some event) :
-      (submittedEvent? (serviceTimeouts setup deps duration)) leaks current.action = some event
-        := by
-    obtain ⟨_sender, material, transmitted, packet⟩ :=
-      signed.emissions owner current recorded sent emitted
-    simp only [EventGraphRuntime.submittedEvent?, transmitted]
-    rw [← packet]
-    exact named
-  have entryMember : entry ∈ control.execution.logs owner := by rw [split]; simp
-  intro other otherMember ⟨second, emittedOther, _, secondAddressed, differentId⟩
-  have otherRecall : other ∈ control.execution.logs owner := by
-    rw [split]
-    rcases List.mem_append.mp otherMember with inside | inside
-    · exact List.mem_append_left _ inside
-    · exact List.mem_append_right _ (List.mem_cons_of_mem _ inside)
-  exact differentId (once other otherRecall entry entryMember event second message
-    (submitted other otherRecall second emittedOther secondAddressed)
-    (submitted entry entryMember message call.emitted call.addressed) emittedOther call.emitted)
 
 private theorem publicationSettled_round {event : (serviceGraph setup deps).EventId}
     (unique : (serviceGraph setup deps).OwnerSolitary event) {horizon : Nat}

@@ -136,6 +136,34 @@ def withDependencies (graph : Vegas.EventGraph Player L) (dependencies : graph.D
     (first second : graph.Dependencies) :
     (graph.withDependencies first).withDependencies second = graph.withDependencies second := rfl
 
+/-- An event depends on another through a chain of predecessor edges. -/
+def DependsOn (graph : Vegas.EventGraph Player L) (prior later : graph.EventId) : Prop :=
+  Relation.ReflTransGen (fun before after => before ∈ graph.order.predecessors after) prior later
+
+/-- A completed event's dependencies have completed. -/
+theorem DependsOn.completed {graph : Vegas.EventGraph Player L} {prior later : graph.EventId}
+    (depends : graph.DependsOn prior later) {cut : graph.order.Cut}
+    (done : later ∈ cut.completed) : prior ∈ cut.completed := by
+  induction depends using Relation.ReflTransGen.head_induction_on with
+  | refl => exact done
+  | head member _ ih => exact cut.predecessor_closed ih member
+
+/-- A dependency is no later than the event depending on it. -/
+theorem DependsOn.le {graph : Vegas.EventGraph Player L} {prior later : graph.EventId}
+    (depends : graph.DependsOn prior later) : prior.val ≤ later.val := by
+  induction depends with
+  | refl => exact le_rfl
+  | tail _ member ih => exact ih.trans (graph.order.predecessor_lt member).le
+
+/-- Every distinct dependency of a ready event has completed. -/
+theorem DependsOn.completed_of_ready {graph : Vegas.EventGraph Player L}
+    {cut : graph.order.Cut} {prior event : graph.EventId}
+    (depends : graph.DependsOn prior event) (different : prior ≠ event)
+    (ready : cut.Ready event) : prior ∈ cut.completed := by
+  cases depends with
+  | refl => exact (different rfl).elim
+  | tail earlier member => exact DependsOn.completed earlier (ready.2 member)
+
 end EventGraph
 
 end Vegas

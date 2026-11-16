@@ -255,4 +255,135 @@ theorem reactive_round_canonicalLaw_of_publications {profile : graph.BehavioralP
       rw [(reactive_respond_application timeouts leaks middle who response).1]
       exact middleLaw
 
+/-- The existing canonical runner is deterministic throughout a public-only
+source interval; its endpoint is a genuine rank prefix with the same full
+continuation potential. No flatness or payload-finiteness premise is needed. -/
+theorem exists_publication_prefix
+    {profile : graph.BehavioralProfile} (independent : ReadyIndependent profile)
+    (opens : OpensPublications profile) :
+    ∀ count start (origin : graph.Config), origin.cut.IsPrefix start →
+      start + count ≤ graph.order.eventCount →
+      (∀ event : graph.EventId, start ≤ event.val → event.val < start + count →
+        (graph.outputLayout event).IsPublication) →
+      ∃ donor, graph.runPlan (graph.policyPlan profile graph.canonicalScheduler) count origin =
+          PMF.pure donor ∧ donor.cut.IsPrefix (start + count) ∧
+        Relation.ReflTransGen Config.Step origin donor ∧
+        canonicalLaw profile donor = canonicalLaw profile origin := by
+  intro count
+  induction count with
+  | zero =>
+    intro start origin ordered _ _
+    exact ⟨origin, rfl, by simpa only [Nat.add_zero] using ordered, .refl, rfl⟩
+  | succ count ih =>
+    intro start origin ordered bounded publications
+    have inside : start < graph.order.eventCount := by omega
+    let event : graph.EventId := ⟨start, inside⟩
+    have ready : origin.cut.Ready event := ordered.ready inside
+    have least (other : graph.EventId) (pending : origin.cut.Ready other) : event ≤ other := by
+      apply Fin.le_iff_val_le_val.mpr
+      change start ≤ other.val
+      by_contra earlier
+      exact pending.1 ((ordered.2 other).mpr (by omega))
+    have publication := publications event le_rfl (by dsimp only [event]; omega)
+    obtain ⟨owner, owned⟩ := actor_of_publication publication
+    obtain ⟨action, acting⟩ : ∃ action, actionLaw profile origin event = PMF.pure action := by
+      by_cases inactive : owner ∈ origin.defaulted
+      · exact ⟨(graph.nodes event).failureAction owner owned, by
+          rw [actionLaw_of_actor profile origin owned, dite_eq_left inactive]⟩
+      · exact ⟨EventField.openAction _ publication, by
+          rw [actionLaw_of_actor profile origin owned, dite_eq_right inactive]
+          exact opens origin event owner owned publication inactive⟩
+    obtain ⟨next, stepLaw⟩ := origin.step_eq_pure_of_actor event ready action owner owned
+    have moved : next ∈ (origin.step event ready action).support := by
+      rw [stepLaw]
+      exact (PMF.mem_support_pure_iff _ _).mpr rfl
+    have first : eventStep profile origin event ready = PMF.pure next := by
+      rw [eventStep, acting, PMF.pure_bind, stepLaw]
+    have nextOrdered : next.cut.IsPrefix (start + 1) := by
+      rw [origin.step_cut event ready action next moved]
+      exact ordered.complete inside
+    obtain ⟨donor, law, donorOrdered, path, potential⟩ := ih (start + 1) next nextOrdered (by omega)
+      (fun other lower upper => publications other (by omega) (by omega))
+    have firstPotential := State.canonicalLaw_of_mem_step_of_actionLaw independent origin next
+      event ready owner owned action acting moved
+    refine ⟨donor, ?_, ?_, (Relation.ReflTransGen.single ⟨event, ready, action, moved⟩).trans
+      path, potential.trans firstPotential⟩
+    · rw [runPlan_canonical_succ profile count origin ready.not_terminal event ready least,
+        first, PMF.pure_bind]
+      exact law
+    · simpa only [Nat.add_assoc, Nat.add_comm 1 count] using donorOrdered
+
 end Vegas.EventGraphRuntime
+
+namespace Vegas.EventGraph
+
+open GameTheory.Math.Probability
+
+variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
+  {graph : Vegas.EventGraph Player L}
+
+/-- A publication step that keeps all owners active executes the unique opening
+prescribed by an ordinary opening profile, even when the actor is arbitrary. -/
+theorem canonicalLaw_eq_of_clear_publication_step
+    {profile : graph.BehavioralProfile} (independent : ReadyIndependent profile)
+    (opens : EventGraphRuntime.OpensPublications profile)
+    (before after : graph.Config) (event : graph.EventId) (ready : before.cut.Ready event)
+    (publication : (graph.outputLayout event).IsPublication) (action : graph.Action event)
+    (moved : after ∈ (before.step event ready action).support)
+    (clear : after.defaulted = ∅) :
+    canonicalLaw profile after = canonicalLaw profile before := by
+  obtain ⟨owner, owned⟩ := EventGraphRuntime.actor_of_publication publication
+  have active : owner ∉ before.defaulted := by
+    intro inactive
+    have persists := before.defaulted_step event ready action after moved inactive
+    rw [clear] at persists
+    simp at persists
+  obtain ⟨opened, prescribed, defaults⟩ :=
+    opensDecisively_of_opens owner (profile owner)
+      (fun config selected actor kind live => opens config selected owner actor kind live)
+      before event ready owned publication active
+  have actionEq : action = opened := by
+    by_contra different
+    have inactive := defaults action different after moved
+    rw [clear] at inactive
+    simp at inactive
+  apply EventGraphRuntime.State.canonicalLaw_of_mem_step_of_actionLaw independent
+    before after event ready owner owned action _ moved
+  rw [actionLaw_of_actor profile before owned, dite_eq_right active, actionEq]
+  exact prescribed
+
+/-- On a clear public-only graph path, ordinary-opening continuation law is
+unchanged by every actual action along the path. -/
+theorem canonicalLaw_eq_of_clear_publication_path
+    {profile : graph.BehavioralProfile} (independent : ReadyIndependent profile)
+    (opens : EventGraphRuntime.OpensPublications profile)
+    {before after : graph.Config} (path : Relation.ReflTransGen Config.Step before after)
+    (clear : after.defaulted = ∅)
+    (publications : ∀ event : graph.EventId, event ∉ before.cut.completed →
+      event ∈ after.cut.completed → (graph.outputLayout event).IsPublication) :
+    canonicalLaw profile after = canonicalLaw profile before := by
+  revert clear publications
+  induction path with
+  | refl => intro _ _; rfl
+  | @tail current next walked moved ih =>
+    intro clear publications
+    obtain ⟨event, ready, action, member⟩ := moved
+    have currentClear : current.defaulted = ∅ := by
+      apply Finset.eq_empty_iff_forall_notMem.mpr
+      intro owner inactive
+      have persists := current.defaulted_step event ready action next member inactive
+      rw [clear] at persists
+      simp at persists
+    have publication := publications event
+      (fun old => ready.1 (Config.Step.path_completed_mono walked old))
+      (by rw [current.step_cut event ready action next member];
+          simp only [EventOrder.Cut.mem_complete]; exact Or.inl trivial)
+    have stepLaw := canonicalLaw_eq_of_clear_publication_step independent opens current next
+      event ready publication action member clear
+    apply stepLaw.trans (ih currentClear _)
+    intro prior fresh done
+    exact publications prior fresh
+      (Config.Step.completed_mono ⟨event, ready, action, member⟩ done)
+
+
+end Vegas.EventGraph

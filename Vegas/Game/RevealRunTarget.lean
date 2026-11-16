@@ -29,7 +29,8 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 events and whose deviator reveals before `target` have completed, every ready
 event of the deviator at a later configuration with `target` pending is
 `target`. -/
-theorem ready_owned_eq_target (who : Player) (relaxed : RelaxedOrder (serviceGraph setup deps))
+theorem ready_owned_eq_target (who : Player)
+    (relaxed : (serviceGraph setup deps).RevealRelaxedOrdered)
     {start finish : Nat} (run : RevealRun (serviceGraph setup deps) start finish)
     {origin : (serviceGraph setup deps).Config}
     (earlier : ∀ event : (serviceGraph setup deps).EventId, event.val < start →
@@ -45,31 +46,25 @@ theorem ready_owned_eq_target (who : Player) (relaxed : RelaxedOrder (serviceGra
     (pending : target ∉ config.cut.completed) {event : (serviceGraph setup deps).EventId}
     (ready : config.cut.Ready event) (owned : (serviceGraph setup deps).actor? event = some who) :
     event = target := by
-  let G := serviceGraph setup deps
   have mono := Config.Step.path_completed_mono path
   by_cases early : event.val < start
   · exact (ready.1 (mono (earlier event early))).elim
   push Not at early
   by_cases late : finish ≤ event.val
-  · exfalso
-    have closing : finish < G.order.eventCount := lt_of_le_of_lt late event.isLt
-    let closer : G.EventId := ⟨finish, closing⟩
-    have targetBefore : target ∈ G.order.predecessors closer :=
-      relaxed.predecessor_of_later_not_publication (run.closed closer rfl)
-        (show target.val < closer.val from targetLate)
-    rcases Nat.eq_or_lt_of_le late with same | later
-    · have equal : event = closer := Fin.ext same.symm
-      subst equal
-      exact pending (ready.2 targetBefore)
-    · have closerDone : closer ∈ config.cut.completed :=
-        ready.2 (relaxed.predecessor_of_not_publication (run.closed closer rfl) later)
-      exact pending (config.cut.predecessor_closed closerDone targetBefore)
+  · exact (pending (EventGraph.DependsOn.completed_of_ready
+      (run.dependsOn_crossing relaxed targetLate late)
+      (fun same => by subst same; omega) ready)).elim
   push Not at late
   rcases Nat.lt_trichotomy event.val target.val with smaller | same | larger
   · exact (ready.1 (mono (before event early smaller owned))).elim
   · exact Fin.ext same
-  · exact (pending (ready.2 ((relaxed target event).mpr ⟨larger, fun independent =>
-      independent.2.2.2 (targetOwned.trans owned.symm)⟩))).elim
+  · exact (pending (ready.2
+      (relaxed.same_owner_predecessor target event who larger targetOwned owned))).elim
+
+
+
+
+
 
 /-- **The target is alone at the closure.** While the deviator is active at a
 point of a run whose earlier events and whose deviator reveals before a pending
@@ -91,8 +86,7 @@ theorem closure_target_alone (base : (serviceGraph setup deps).BehavioralProfile
           ((serviceGraph setup deps).playerObserve owner config) active =
           PMF.pure (cast (congrArg EventField.Action outputEq.symm)
             (openingAccepted event config.store)))
-    (who : Player) (relaxed : RelaxedOrder (serviceGraph setup deps))
-    (concurrent : (serviceGraph setup deps).RevealsOnlyConcurrent)
+    (who : Player) (relaxed : (serviceGraph setup deps).RevealRelaxedOrdered)
     {start finish : Nat} (run : RevealRun (serviceGraph setup deps) start finish)
     {config : (serviceGraph setup deps).Config}
     (earlier : ∀ event : (serviceGraph setup deps).EventId, event.val < start →
@@ -122,26 +116,30 @@ theorem closure_target_alone (base : (serviceGraph setup deps).BehavioralProfile
       G.actor? event = some who → event ∈ (closure R who config).cut.completed :=
     fun event early smaller owned => Config.Step.path_completed_mono path
       (before event early smaller owned)
-  refine ⟨⟨targetPending, fun prior member => ?_⟩, fun event ready => ?_⟩
-  · have smaller := G.order.predecessor_lt member
+  have targetReady : (closure R who config).cut.Ready target := by
+    refine ⟨targetPending, fun prior member => ?_⟩
+    have smaller := G.order.predecessor_lt member
     refine (completedIff prior).mpr ⟨lt_trans smaller targetLate, fun depends => ?_⟩
     have cycle := depends.le
     omega
-  · by_contra different
-    by_cases owned : G.actor? event = some who
-    · exact different (ready_owned_eq_target who relaxed run closureEarlier target targetOwned
-        targetLate closureBefore .refl targetPending ready owned)
-    · have publication : (G.outputLayout event).IsPublication := by
-        rcases concurrent (closure R who config).cut ready
-            ⟨targetPending, fun prior member => (completedIff prior).mpr
-              ⟨lt_trans (G.order.predecessor_lt member) targetLate, fun depends => by
-                have := depends.le
-                have := G.order.predecessor_lt member
-                omega⟩⟩ different with independent | independent
-        · exact independent.1
-        · exact independent.2.1
-      exact closure_quiet R who config event
-        (honest_settles base decides who ready publication owned)
+  have targetPublication : (G.outputLayout target).IsPublication := by
+    apply run.publications target _ targetLate
+    by_contra early
+    exact pending (earlier target (by omega))
+  refine ⟨targetReady, fun event ready => ?_⟩
+  by_contra different
+  by_cases owned : G.actor? event = some who
+  · exact different (ready_owned_eq_target who relaxed run closureEarlier target targetOwned
+      targetLate closureBefore .refl targetPending ready owned)
+  · have publication : (G.outputLayout event).IsPublication :=
+      (relaxed.ready_public_pair_publications (closure R who config).cut ready targetReady
+        different (Or.inr targetPublication.isPublic)).1
+    exact closure_quiet R who config event
+      (honest_settles base decides who ready publication owned)
+
+
+open GameTheory.Math.Probability Interaction
+
 
 section Advance
 
@@ -434,7 +432,7 @@ theorem targetStep_reflect (base : (serviceGraph setup deps).BehavioralProfile)
           PMF.pure (cast (congrArg EventField.Action outputEq.symm)
             (openingAccepted event config.store)))
     (independent : ReadyIndependent ((serviceGraph setup deps).normalizeProfile base))
-    (who : Player) (relaxed : RelaxedOrder (serviceGraph setup deps))
+    (who : Player) (relaxed : (serviceGraph setup deps).RevealRelaxedOrdered)
     {start finish : Nat} (run : RevealRun (serviceGraph setup deps) start finish)
     (target : (serviceGraph setup deps).EventId)
     (targetOwned : (serviceGraph setup deps).actor? target = some who)
@@ -574,5 +572,7 @@ theorem targetStep_reflect (base : (serviceGraph setup deps).BehavioralProfile)
       ← inactiveKey rightPath rightSound rightDecided rightEarlier rightBefore rightPending
         rightDone rightActive]
     exact views
+
+
 
 end Vegas

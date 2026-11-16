@@ -82,7 +82,7 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 /-- Two ends of a block from starts with equal keys record and store alike
 every honest reveal pending at the start. -/
 theorem honest_end_congr_of_keys {who : Player} {start finish : Nat}
-    (concurrent : (serviceGraph setup deps).RevealsOnlyConcurrent)
+    (serial : (serviceGraph setup deps).ActorSerial)
     (flat : BlockFlat (graph := serviceGraph setup deps) start finish)
     {leftOrigin rightOrigin left right : (serviceGraph setup deps).Config}
     (keys : runKey leftOrigin = runKey rightOrigin)
@@ -109,10 +109,10 @@ theorem honest_end_congr_of_keys {who : Player} {start finish : Nat}
   have rightAvailable : ∀ field ∈ ((serviceGraph setup deps).nodes event).readFields,
       (rightOrigin.store field).isSome :=
     fun field read => rightOrigin.read_available rightReady read
-  refine ⟨?_, (acceptedOutput_eq_end concurrent flat leftBegin leftPath leftSound leftOwners
+  refine ⟨?_, (acceptedOutput_eq_end serial flat leftBegin leftPath leftSound leftOwners
     leftDone early late pending honest).symm.trans (by
       rw [stores]
-      exact acceptedOutput_eq_end concurrent flat rightBegin rightPath rightSound rightOwners
+      exact acceptedOutput_eq_end serial flat rightBegin rightPath rightSound rightOwners
         rightDone early late rightPending honest)⟩
   have silentFalse {origin current : (serviceGraph setup deps).Config}
       (begin : BlockStart start finish origin) (originPending : event ∉ origin.cut.completed)
@@ -121,7 +121,7 @@ theorem honest_end_congr_of_keys {who : Player} {start finish : Nat}
       {owner : Player} (owned : (serviceGraph setup deps).actor? event = some owner)
       (quiet : completionOf current event = some ⟨event, none, none⟩)
       (inactive : owner ∈ current.defaulted) : False :=
-    honest_pending_not_silent concurrent flat begin path sound owners early late originPending
+    honest_pending_not_silent serial flat begin path sound owners early late originPending
       owned (fun same => honest (same ▸ owned)) quiet inactive
   have leftAccepted := openingAccepted_path_eq leftPath leftAvailable
   have rightAccepted := openingAccepted_path_eq rightPath rightAvailable
@@ -170,7 +170,7 @@ theorem honest_end_congr_of_keys {who : Player} {start finish : Nat}
 /-- Two ends of a block from one start record and store alike every honest
 reveal pending at the start. -/
 theorem honest_end_congr {who : Player} {start finish : Nat}
-    (concurrent : (serviceGraph setup deps).RevealsOnlyConcurrent)
+    (serial : (serviceGraph setup deps).ActorSerial)
     (flat : BlockFlat (graph := serviceGraph setup deps) start finish)
     {origin left right : (serviceGraph setup deps).Config}
     (begin : BlockStart start finish origin)
@@ -185,7 +185,7 @@ theorem honest_end_congr {who : Player} {start finish : Nat}
     (honest : (serviceGraph setup deps).actor? event ≠ some who) :
     completionOf left event = completionOf right event ∧
       left.outputs event = right.outputs event :=
-  honest_end_congr_of_keys concurrent flat rfl begin begin leftPath rightPath leftSound
+  honest_end_congr_of_keys serial flat rfl begin begin leftPath rightPath leftSound
     rightSound leftOwners rightOwners leftDone rightDone early late pending honest
 
 /-- A default of one block end is a default of another that records the block
@@ -230,7 +230,7 @@ block of concurrent reveals run by graph steps from starts with equal keys have
 the same order-free key when they agree on the records and outputs of the
 deviator's block reveals pending at the start. -/
 theorem blockEnd_runKey_eq_of_owned_of_keys {who : Player} {start finish : Nat}
-    (concurrent : (serviceGraph setup deps).RevealsOnlyConcurrent)
+    (serial : (serviceGraph setup deps).ActorSerial)
     (flat : BlockFlat (graph := serviceGraph setup deps) start finish)
     {leftOrigin rightOrigin left right : (serviceGraph setup deps).Config}
     (keys : runKey leftOrigin = runKey rightOrigin)
@@ -259,7 +259,7 @@ theorem blockEnd_runKey_eq_of_owned_of_keys {who : Player} {start finish : Nat}
         left.outputs event = right.outputs event := by
     by_cases mine : (serviceGraph setup deps).actor? event = some who
     · exact owned event early late pending mine
-    · exact honest_end_congr_of_keys concurrent flat keys leftBegin rightBegin leftPath
+    · exact honest_end_congr_of_keys serial flat keys leftBegin rightBegin leftPath
         rightPath leftSound rightSound leftOwners rightOwners leftDone rightDone early late
         pending mine
   have defaults : left.defaulted = right.defaulted := by
@@ -343,7 +343,7 @@ block of concurrent reveals run from one start by graph steps have the same
 order-free key when they agree on the records and outputs of the deviator's
 block reveals pending at the start. -/
 theorem blockEnd_runKey_eq_of_owned {who : Player} {start finish : Nat}
-    (concurrent : (serviceGraph setup deps).RevealsOnlyConcurrent)
+    (serial : (serviceGraph setup deps).ActorSerial)
     (flat : BlockFlat (graph := serviceGraph setup deps) start finish)
     {origin left right : (serviceGraph setup deps).Config}
     (begin : BlockStart start finish origin)
@@ -360,7 +360,7 @@ theorem blockEnd_runKey_eq_of_owned {who : Player} {start finish : Nat}
         completionOf left event = completionOf right event ∧
           left.outputs event = right.outputs event) :
     runKey left = runKey right :=
-  blockEnd_runKey_eq_of_owned_of_keys concurrent flat rfl begin begin leftPath rightPath
+  blockEnd_runKey_eq_of_owned_of_keys serial flat rfl begin begin leftPath rightPath
     leftSound rightSound leftOwners rightOwners leftDone rightDone leftQuiet rightQuiet owned
 
 end Vegas

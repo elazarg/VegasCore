@@ -308,6 +308,21 @@ def Config.NoBindingDefaults (config : graph.Config) : Prop :=
   ∀ completion ∈ config.history, ∀ owner payload,
     graph.outputLayout completion.event = .binding owner payload → completion.defaultEvent = none
 
+/-- An empty public default set excludes binding defaults. -/
+theorem Config.NoBindingDefaults.of_clear {config : graph.Config}
+    (clear : config.defaulted = ∅) : config.NoBindingDefaults := by
+  intro record member _owner _payload _binding
+  cases recorded : record.defaultEvent with
+  | none => rfl
+  | some owner =>
+      have inactive : owner ∈ config.defaulted :=
+        (mem_defaulted_iff_completionOf config owner).mpr
+          ⟨record.event, by
+            rw [(completionOf_eq_some_iff config record.event record).mpr ⟨member, rfl⟩]
+            exact recorded⟩
+      rw [clear] at inactive
+      simp at inactive
+
 namespace EventCode
 
 variable {Field : Type} [DecidableEq Field] {layout : Field → EventField Player L}

@@ -14,7 +14,7 @@ turn exactly when the opening is accepted. Whether an owner has had its turn at
 an event is read from the environment's recall, which is part of the deviator's
 traffic. So two executions inside the run with equal deviator traffic, whose
 ready reveals keep being accepted alike, give equal laws of the traffic when run
-until any stopping condition on the cut that holds once the run is done.
+until any stop determined by focal traffic that holds once the run is done.
 -/
 
 noncomputable section
@@ -101,14 +101,7 @@ theorem eventRecorded_eq_false_of_ownerTurns
   exact none entry member (decide_eq_true
     (atTurn entry member event (of_decide_eq_true submitted)))
 
-/-- **The traffic of a run.** Two executions inside a run of concurrent reveals,
-with the recall facts, whose honest submissions are accepted, whose ready
-reveals of active owners are accepted alike, with equal stored bindings when
-accepted or the deviator's, at every pair of executions the run reaches keeping
-given invariants, and with equal deviator traffic, give equal
-laws of that traffic when run until a condition on the cut that holds once the
-run is done, when honest clients open a reveal exactly when its opening is
-accepted. -/
+/-- The existing public-round opacity proof permits any stop read from focal traffic. -/
 theorem run_stopped_traffic_congr
     (serial : (serviceGraph setup deps).ActorSerial) {horizon : Nat}
     (scheduler : (serviceApplication setup deps duration leaks).Scheduler)
@@ -132,17 +125,20 @@ theorem run_stopped_traffic_congr
     (start finish : Nat) (shaped : BlockShaped (graph := serviceGraph setup deps) start finish)
     (publications : ∀ event : (serviceGraph setup deps).EventId, start ≤ event.val →
       event.val < finish → ((serviceGraph setup deps).outputLayout event).IsPublication)
-    (stop : (serviceGraph setup deps).order.Cut → Prop) [DecidablePred stop]
-    (stopDone : ∀ cut : (serviceGraph setup deps).order.Cut,
-      (∀ event : (serviceGraph setup deps).EventId, event.val < finish →
-        event ∈ cut.completed) → stop cut)
+    (stop : (serviceApplication setup deps duration leaks).Execution → Prop) [DecidablePred stop]
+    (stopDone : ∀ execution : (serviceApplication setup deps duration leaks).Execution,
+      BlockDone finish execution.application.config → stop execution)
+    (observedStop : ∀ left right : (serviceApplication setup deps duration leaks).Execution,
+      (bindingTraffic (serviceTimeouts setup deps duration)) leaks who left =
+        (bindingTraffic (serviceTimeouts setup deps duration)) leaks who right →
+      (stop left ↔ stop right))
     (leftGood rightGood : Nat → (serviceApplication setup deps duration leaks).Execution → Prop)
-    (leftRound : ∀ n current, leftGood (n + 1) current → ¬ stop current.application.config.cut →
+    (leftRound : ∀ n current, leftGood (n + 1) current → ¬ stop current →
       ∀ next ∈ ((serviceApplication setup deps duration leaks).round scheduler
         (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
           (firstTurnTiming setup turns deps) reference) who deviation) current).support,
         leftGood n next)
-    (rightRound : ∀ n current, rightGood (n + 1) current → ¬ stop current.application.config.cut →
+    (rightRound : ∀ n current, rightGood (n + 1) current → ¬ stop current →
       ∀ next ∈ ((serviceApplication setup deps duration leaks).round scheduler
         (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
           (firstTurnTiming setup turns deps) reference) who deviation) current).support,
@@ -166,7 +162,7 @@ theorem run_stopped_traffic_congr
       (∀ (n : Nat) (currentRun otherRun : (serviceApplication setup deps duration leaks).Execution),
         leftGood (n + 1) currentRun → rightGood (n + 1) otherRun →
         currentRun.application.config.cut = otherRun.application.config.cut →
-        ¬ stop currentRun.application.config.cut →
+        ¬ stop currentRun → ¬ stop otherRun →
         let current := currentRun.application.config
         let other := otherRun.application.config
         ∀ (event : (serviceGraph setup deps).EventId) (owner : Player) (payload : L.Ty)
@@ -186,12 +182,12 @@ theorem run_stopped_traffic_congr
       ((serviceApplication setup deps duration leaks).runUntil scheduler
         (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
           (firstTurnTiming setup turns deps) reference) who deviation)
-        (fun final => stop final.application.config.cut) count left).map
+        stop count left).map
           ((bindingTraffic (serviceTimeouts setup deps duration)) leaks who) =
       ((serviceApplication setup deps duration leaks).runUntil scheduler
         (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
           (firstTurnTiming setup turns deps) reference) who deviation)
-        (fun final => stop final.application.config.cut) count right).map
+        stop count right).map
           ((bindingTraffic (serviceTimeouts setup deps duration)) leaks who) := by
   intro count leftRemaining rightRemaining left right leftTrace rightTrace leftInside
     rightInside leftValid rightValid leftFacts rightFacts leftStart rightStart agreeAt same
@@ -202,9 +198,9 @@ theorem run_stopped_traffic_congr
   have readoutOf (execution : app.Execution) : blockReadoutOn who window execution =
       ((bindingTraffic (serviceTimeouts setup deps duration)) leaks who execution,
         fun _ _ => (0, false)) := rfl
-  have notDone (cut : (serviceGraph setup deps).order.Cut) (running : ¬ stop cut) :
-      ¬ ∀ event : (serviceGraph setup deps).EventId, event.val < finish →
-        event ∈ cut.completed := fun done => running (stopDone cut done)
+  have notDone (execution : app.Execution) (running : ¬ stop execution) :
+      ¬ BlockDone finish execution.application.config :=
+    fun done => running (stopDone execution done)
   let invariant := fun (good : Nat → app.Execution → Prop) (count : Nat)
       (current : app.Execution) =>
     (∃ remaining, Nonempty ((app.protocol (serviceInitialLaw setup deps) horizon scheduler).Trace
@@ -214,11 +210,11 @@ theorem run_stopped_traffic_congr
     good count current ∧
     HonestBlockSubmissions who start finish current ∧ RunTurnFacts who current
   have advance (good : Nat → app.Execution → Prop)
-      (goodRound : ∀ n current, good (n + 1) current → ¬ stop current.application.config.cut →
+      (goodRound : ∀ n current, good (n + 1) current → ¬ stop current →
         ∀ next ∈ (app.round scheduler players current).support, good n next)
       (n : Nat) (current : app.Execution)
       (valid : invariant good (n + 1) current)
-      (running : ¬ stop current.application.config.cut)
+      (running : ¬ stop current)
       (next : app.Execution) (reached : next ∈ (app.round scheduler players current).support) :
       invariant good n next := by
     obtain ⟨⟨remaining, ⟨trace⟩⟩, inside, goodNow, submitted, facts⟩ := valid
@@ -238,14 +234,11 @@ theorem run_stopped_traffic_congr
       (inside unfinished) unfinished submitted reached,
       RunTurnFacts.round serial bound turns reference who deviation before facts reached⟩
   have coupled := ReactiveApplication.runUntil_map_congr_of_rounds app scheduler players players
-    (fun final => stop final.application.config.cut) (blockReadoutOn who window)
+    stop (blockReadoutOn who window)
     (invariant leftGood) (invariant rightGood)
     (by
-      intro n current other _ _ equal
-      have publics : current.application.publicView = other.application.publicView :=
-        congrArg (fun value => value.1.2.2.2.2.2) equal
-      have cuts := cut_eq_of_publicView_eq publics
-      simp only [cuts])
+      intro _ current other _ _ equal
+      exact observedStop current other (congrArg Prod.fst equal))
     (by
       intro n current other currentValid otherValid equal running
       obtain ⟨⟨currentRest, ⟨currentTrace⟩⟩, currentInside, currentGood, currentSubmitted,
@@ -279,7 +272,9 @@ theorem run_stopped_traffic_congr
           (ready : current.application.config.cut.Ready event) :
           start ≤ event.val ∧ event.val < finish :=
         shaped _ inside unfinished event ready
-      have agreeAtNow := agreeAt n current other currentGood otherGood cuts running
+      have otherRunning : ¬ stop other := fun stopped =>
+        running ((observedStop current other sameTraffic).mpr stopped)
+      have agreeAtNow := agreeAt n current other currentGood otherGood cuts running otherRunning
       have agreeNow : ∀ (event : (serviceGraph setup deps).EventId) (owner : Player)
           (payload : L.Ty)
           (binding : FieldRef (serviceGraph setup deps).layout (.binding owner payload))
@@ -354,5 +349,6 @@ theorem run_stopped_traffic_congr
     (by rw [readoutOf, readoutOf, same])
   have projected := congrArg (PMF.map Prod.fst) coupled
   simpa only [PMF.map_comp, Function.comp_def, readoutOf] using projected
+
 
 end Vegas

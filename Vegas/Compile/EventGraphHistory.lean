@@ -4,6 +4,8 @@ module
 
 public import Vegas.Compile.EventGraphPolicy
 public import Vegas.EventGraph.NormalizedPolicy
+public import Vegas.EventGraph.PrefixRestriction
+public import Vegas.Source.Protocol
 
 @[expose] public section
 
@@ -49,6 +51,46 @@ theorem decodeActionAt_ownCompletions {Γ : SourceCtx Player L} {openNames : Fin
         simpa only [decide_eq_true_eq] using List.find?_some found
       have actor : (toInformationGraph program).actor? record.event = some who := tagged ▸ owned
       cases decision : record.decision <;> simp [Option.filter, actor, decision]
+
+open EventGraph in
+/-- Decoding an active completed binding recovers the same submitted value and record. -/
+theorem completed_binding_source_record
+    {Γ : SourceCtx Player L} {names : Finset VarId}
+    (program : SourceProgram Player L Γ names)
+    {deps : (toEventGraph program).Dependencies}
+    {origin final : ((toEventGraph program).withDependencies deps).Config}
+    (path : Relation.ReflTransGen EventGraph.Config.Step origin final)
+    (event : ((toEventGraph program).withDependencies deps).EventId)
+    (pending : event ∉ origin.cut.completed)
+    (completed : event ∈ final.cut.completed) (owner : Player) (name : VarId) (payload : L.Ty)
+    (binding : ((toEventGraph program).withDependencies deps).outputLayout event =
+      .binding owner payload)
+    (active : owner ∉ final.defaulted)
+    (decode : ∀ choice : Option (PublicationResult (L.Val payload)),
+      decodeEventAction program event
+        (cast (congrArg EventField.Action binding.symm) choice) =
+          some (.commit owner name payload choice)) :
+    ∃ result : PublicationResult (L.Val payload),
+      OwnAction.binding owner name payload
+        (decodeActionAt program event final.history) = some result ∧
+      completionOf final event = some (EventGraph.completion
+        ((toEventGraph program).withDependencies deps) event
+        (some (cast (congrArg EventField.Action binding.symm) (some result)))
+        (cast (congrArg EventField.Value binding.symm) result)) ∧
+      final.outputs event = some (cast (congrArg EventField.Value binding.symm) result) := by
+  obtain ⟨result, record, stored⟩ := Config.Step.path_active_binding_record path event pending
+    completed owner payload binding active
+  refine ⟨result, ?_, record, stored⟩
+  have decoded : decodeActionAt program event final.history =
+      some (.commit owner name payload (some result)) := by
+    unfold decodeActionAt
+    change (completionOf final event).bind _ = _
+    rw [record]
+    change decodeEventAction program event
+      (cast (congrArg EventField.Action binding.symm) (some result)) = _
+    exact decode (some result)
+  rw [decoded, OwnAction.binding_commit]
+
 
 /-- Source own history retains precisely the player's actual choices. -/
 def decodeHistory {Γ : SourceCtx Player L} {openNames : Finset VarId}

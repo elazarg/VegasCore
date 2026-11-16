@@ -143,8 +143,8 @@ theorem runPoint_simulation {horizon : Nat}
     (who : Player) (deviation : (serviceApplication setup deps duration leaks).Policy)
     (independent : ∀ policy, LastIndependent
       ((serviceGraph setup deps).lastDeviationProfile base who policy) who)
-    (relaxed : RelaxedOrder (serviceGraph setup deps))
-    (concurrent : (serviceGraph setup deps).RevealsOnlyConcurrent) {start finish : Nat}
+    (relaxed : (serviceGraph setup deps).RevealRelaxedOrdered)
+    {start finish : Nat}
     (run : RevealRun (serviceGraph setup deps) start finish)
     (tail : DeviationSimulation scheduler
       (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
@@ -221,7 +221,7 @@ theorem runPoint_simulation {horizon : Nat}
         final reached) ?_
     intro Seed prior execution goods noise factor
     exact targetStep_phase bound turns contract timely base decides referenceIndependent who
-      deviation independent relaxed concurrent run target targetOwned targetLate prior execution
+      deviation independent relaxed run target targetOwned targetLate prior execution
       (fun seed member => (goods seed member).supported)
       (fun seed member => (goods seed member).bounded)
       (fun seed member =>

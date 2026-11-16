@@ -3,6 +3,10 @@ module
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 public import Vegas.Game.ServiceInformation
+public import Vegas.Game.SourceServiceCheckpoint
+public import Vegas.EventGraph.PrefixRestriction
+public import Vegas.EventGraph.SequentialNormalization
+public import Vegas.EventGraph.LastKeyTarget
 public import Vegas.Compile.EventGraphPolicyBacktranslation
 
 @[expose] public section
@@ -209,3 +213,125 @@ theorem checkpoint_playerObservation_eq_of_order {Γ : SourceCtx Player L}
   · exact leftDefaults.trans ((congrArg DecisionView.defaults same).trans rightDefaults.symm)
 
 end Vegas
+
+namespace Vegas.SourceCheckpoint
+
+open SourceProgram EventGraph EventGraphRuntime
+
+variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
+  {setup : Setup (Player := Player) (L := L)}
+
+/-- A semantic graph observation at a source checkpoint determines its source view. -/
+theorem sourceView_eq_of_playerObserve
+    {Γ : SourceCtx Player L} (refs : ContextRefs (graphLayout setup.program) Γ)
+    (rank : Nat) (who : Player) (left right : Config Player L Γ)
+    (nativeLeft nativeRight : setup.informationGraph.Config)
+    (leftCheck : SourceCheckpoint setup left refs rank nativeLeft)
+    (rightCheck : SourceCheckpoint setup right refs rank nativeRight)
+    (same : setup.informationGraph.playerObserve who nativeLeft =
+      setup.informationGraph.playerObserve who nativeRight) :
+    left.view who = right.view who := by
+  have leftDecoded := decodeObservation?_playerStore_eq_some (graph := setup.informationGraph)
+    refs who left.state nativeLeft.store leftCheck.agrees
+  have rightDecoded := decodeObservation?_playerStore_eq_some (graph := setup.informationGraph)
+    refs who right.state nativeRight.store rightCheck.agrees
+  have stores := congrArg EventPlayerObservation.store same
+  change setup.informationGraph.playerStore who nativeLeft.store =
+    setup.informationGraph.playerStore who nativeRight.store at stores
+  rw [stores] at leftDecoded
+  have observations := Option.some.inj (leftDecoded.symm.trans rightDecoded)
+  have histories := congrArg (decodeCompletions setup.program)
+    (congrArg EventPlayerObservation.ownActions same)
+  have sourceHistory : left.history who = right.history who := by
+    rw [← leftCheck.history, ← rightCheck.history]
+    exact histories
+  have defaults : left.defaults = right.defaults :=
+    leftCheck.defaults.symm.trans ((congrArg EventPlayerObservation.defaults same).trans
+      rightCheck.defaults)
+  change DecisionView.mk _ _ _ = DecisionView.mk _ _ _
+  rw [observations, defaults, sourceHistory]
+
+/-- Source information prefixes with the same covered source view have the same
+complete graph observation, including event order, at terminal ranks as well. -/
+theorem playerObserve_eq_of_sourceView
+    {Γ : SourceCtx Player L} (refs : ContextRefs (graphLayout setup.program) Γ)
+    (rank : Nat) (covered : refs.CoversPrefix setup.program rank) (who : Player)
+    (left right : Config Player L Γ) (nativeLeft nativeRight : setup.informationGraph.Config)
+    {leftInputs rightInputs : setup.informationGraph.Inputs}
+    (leftReach : nativeLeft.Reachable leftInputs) (rightReach : nativeRight.Reachable rightInputs)
+    (leftActive : who ∉ nativeLeft.defaulted) (rightActive : who ∉ nativeRight.defaulted)
+    (leftCheck : SourceCheckpoint setup left refs rank nativeLeft)
+    (rightCheck : SourceCheckpoint setup right refs rank nativeRight)
+    (same : left.view who = right.view who) :
+    setup.informationGraph.playerObserve who nativeLeft =
+      setup.informationGraph.playerObserve who nativeRight := by
+  have order : nativeLeft.history.map EventCompletion.event =
+      nativeRight.history.map EventCompletion.event := by
+    apply List.map_injective_iff.mpr Fin.val_injective
+    simp only [List.map_map, Function.comp_def]
+    rw [history_map_val_of_reachable setup.informationGraph_total leftReach,
+      history_map_val_of_reachable setup.informationGraph_total rightReach,
+      Config.history_length_of_isPrefix nativeLeft leftCheck.ordered,
+      Config.history_length_of_isPrefix nativeRight rightCheck.ordered]
+  exact checkpoint_playerObservation_eq_of_order setup refs rank covered who left right
+    nativeLeft nativeRight leftReach rightReach leftActive rightActive order leftCheck.ordered
+    rightCheck.ordered leftCheck.agrees rightCheck.agrees leftCheck.history rightCheck.history
+    leftCheck.defaults rightCheck.defaults same
+
+/-- The complete covered source successor view recovers the earlier source view
+along genuine source information-graph paths. No native intermediate cut is used. -/
+theorem sourceView_reflects_at_path_end
+    {Γ Δ : SourceCtx Player L}
+    (beforeRefs : ContextRefs (graphLayout setup.program) Γ)
+    (afterRefs : ContextRefs (graphLayout setup.program) Δ)
+    (start finish : Nat) (covered : afterRefs.CoversPrefix setup.program finish) (who : Player)
+    (left right : Config Player L Γ) (leftAfter rightAfter : Config Player L Δ)
+    (leftStart rightStart leftEnd rightEnd : setup.informationGraph.Config)
+    {leftInputs rightInputs : setup.informationGraph.Inputs}
+    (leftReach : leftStart.Reachable leftInputs) (rightReach : rightStart.Reachable rightInputs)
+    (leftPath : Relation.ReflTransGen Config.Step leftStart leftEnd)
+    (rightPath : Relation.ReflTransGen Config.Step rightStart rightEnd)
+    (leftActive : who ∉ leftEnd.defaulted) (rightActive : who ∉ rightEnd.defaulted)
+    (leftCheck : SourceCheckpoint setup left beforeRefs start leftStart)
+    (rightCheck : SourceCheckpoint setup right beforeRefs start rightStart)
+    (leftEndCheck : SourceCheckpoint setup leftAfter afterRefs finish leftEnd)
+    (rightEndCheck : SourceCheckpoint setup rightAfter afterRefs finish rightEnd)
+    (same : leftAfter.view who = rightAfter.view who) : left.view who = right.view who := by
+  have finalViews := playerObserve_eq_of_sourceView afterRefs finish covered who
+    leftAfter rightAfter leftEnd rightEnd
+    (Config.Step.path_reachable leftPath leftReach)
+    (Config.Step.path_reachable rightPath rightReach) leftActive rightActive
+    leftEndCheck rightEndCheck same
+  have normalViews := congrArg (setup.informationGraph.normalizeObservation who) finalViews
+  have previous := normalizeObservation_playerObserve_of_paths who leftCheck.ordered
+    rightCheck.ordered leftPath rightPath normalViews
+  rw [normalizeObservation_playerObserve_of_rankOrdered who leftStart
+      (rankSort_history_of_reachable setup.informationGraph_total leftReach),
+    normalizeObservation_playerObserve_of_rankOrdered who rightStart
+      (rankSort_history_of_reachable setup.informationGraph_total rightReach)] at previous
+  exact sourceView_eq_of_playerObserve beforeRefs start who left right leftStart rightStart
+    leftCheck rightCheck previous
+
+/-- A genuine covered source post-view determines the complete graph key view
+of its donor under any dependency choice. -/
+theorem keyView_eq_of_sourceView
+    {deps : setup.dataflowGraph.Dependencies} {Γ : SourceCtx Player L}
+    (refs : ContextRefs (graphLayout setup.program) Γ)
+    (rank : Nat) (covered : refs.CoversPrefix setup.program rank) (who : Player)
+    (left right : Config Player L Γ) (nativeLeft nativeRight : setup.informationGraph.Config)
+    {leftInputs rightInputs : setup.informationGraph.Inputs}
+    (leftReach : nativeLeft.Reachable leftInputs) (rightReach : nativeRight.Reachable rightInputs)
+    (leftActive : who ∉ nativeLeft.defaulted) (rightActive : who ∉ nativeRight.defaulted)
+    (leftCheck : SourceCheckpoint setup left refs rank nativeLeft)
+    (rightCheck : SourceCheckpoint setup right refs rank nativeRight)
+    (same : left.view who = right.view who) :
+    keyView who (runKey ((serviceGraph setup deps).fromSequentialConfig nativeLeft)) =
+      keyView who (runKey ((serviceGraph setup deps).fromSequentialConfig nativeRight)) := by
+  rw [keyView_fromSequentialConfig, keyView_fromSequentialConfig,
+    keyView_runKey, keyView_runKey]
+  exact congrArg (fun observation => some (setup.informationGraph.normalizeObservation who
+    observation)) (playerObserve_eq_of_sourceView refs rank covered who left right nativeLeft
+      nativeRight leftReach rightReach leftActive rightActive leftCheck rightCheck same)
+
+
+end Vegas.SourceCheckpoint

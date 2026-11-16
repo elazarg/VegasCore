@@ -153,4 +153,65 @@ theorem expect_le_of_dominated_readout {Source Target : Type*}
     _ = expect reference better := by
       rw [← expect_bind_tower law kernel better integrable, kernelLaw]
 
+/-- A present optional readout has no more mass than its retained source
+coordinate. This is the atomwise bound needed by dominated-readout comparison. -/
+theorem map_optional_source_le_marginal {Source Traffic : Type}
+    (law : PMF (Source × Option Traffic)) (source : Source) :
+    (law.map (fun pair => pair.2.map fun _ => pair.1)) (some source) ≤
+      (law.map Prod.fst) source := by
+  classical
+  rw [PMF.map_apply, PMF.map_apply]
+  apply ENNReal.tsum_le_tsum
+  intro pair
+  cases present : pair.2 with
+  | none => simp
+  | some traffic => simp
+
+/-- An exact observation-local surviving channel supplies atomwise domination
+by the full counterfactual source law, including zero-survival fibers. -/
+theorem optional_readout_le_of_channel {Source Traffic View Native : Type}
+    (native : PMF Native) (reference : PMF Source) (read : Native → Option (Source × Traffic))
+    (view : Source → View) (noise : View → PMF (Option Traffic))
+    (joint : native.map read = reference.bind fun source =>
+      (noise (view source)).map fun extra => extra.map fun traffic => (source, traffic))
+    (source : Source) :
+    (native.map (fun point => (read point).map Prod.fst)) (some source) ≤ reference source := by
+  let pairs := reference.bind fun source =>
+    (noise (view source)).map fun extra => (source, extra)
+  have marginal : pairs.map Prod.fst = reference := by
+    simp only [pairs, PMF.map_bind, PMF.map_comp, Function.comp_def, pmf_map_fun_const,
+      PMF.bind_pure]
+  have optional : pairs.map (fun pair => pair.2.map fun _ => pair.1) =
+      native.map (fun point => (read point).map Prod.fst) := by
+    have projected := congrArg (PMF.map (Option.map Prod.fst)) joint
+    simp only [PMF.map_bind, PMF.map_comp, Function.comp_def] at projected
+    rw [projected]
+    simp only [pairs, PMF.map_bind, PMF.map_comp, Option.map_map, Function.comp_def]
+  rw [← optional, ← marginal]
+  exact map_optional_source_le_marginal pairs source
+
+/-- The full source law dominates native payoff after a public phase when
+surviving traffic is observation-local and every discarded continuation is at
+most the source floor. Integrability is retained explicitly. -/
+theorem expect_le_of_optional_channel {Source Traffic View Native : Type}
+    (native : PMF Native) (reference : PMF Source) (read : Native → Option (Source × Traffic))
+    (view : Source → View) (noise : View → PMF (Option Traffic))
+    (joint : native.map read = reference.bind fun source =>
+      (noise (view source)).map fun extra => extra.map fun traffic => (source, traffic))
+    (value : Native → ℝ) (better : Source → ℝ) (floor : ℝ)
+    (nativeIntegrable : PayoffIntegrable native value)
+    (sourceIntegrable : PayoffIntegrable reference better)
+    (success : ∀ point ∈ native.support, ∀ source,
+      (read point).map Prod.fst = some source → value point ≤ better source)
+    (failed : ∀ point ∈ native.support,
+      (read point).map Prod.fst = none → value point ≤ floor)
+    (sourceFloor : ∀ source ∈ reference.support, floor ≤ better source) :
+    expect native value ≤ expect reference better := by
+  apply expect_le_of_dominated_readout native reference
+    (fun point => (read point).map Prod.fst)
+    (optional_readout_le_of_channel native reference read view noise joint)
+    value better nativeIntegrable sourceIntegrable success
+  intro point member absent source supported
+  exact (failed point member absent).trans (sourceFloor source supported)
+
 end GameTheory.Math.Probability

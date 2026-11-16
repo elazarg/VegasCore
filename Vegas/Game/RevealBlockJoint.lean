@@ -107,7 +107,7 @@ theorem ledgerBlock_joint {horizon : Nat}
     (start finish : Nat) (shaped : BlockShaped (graph := serviceGraph setup deps) start finish)
     (publications : ∀ event : (serviceGraph setup deps).EventId, start ≤ event.val →
       event.val < finish → ((serviceGraph setup deps).outputLayout event).IsPublication)
-    (concurrent : (serviceGraph setup deps).RevealsOnlyConcurrent)
+    (serial : (serviceGraph setup deps).ActorSerial)
     (flat : BlockFlat (graph := serviceGraph setup deps) start finish)
     {Seed : Type} (prior : PMF Seed)
     (execution : Seed → (serviceApplication setup deps duration leaks).Execution)
@@ -170,12 +170,6 @@ theorem ledgerBlock_joint {horizon : Nat}
           (execution seed)).support,
         runKey final.application.config = endKey (runKey (execution seed).application.config)
           ((bindingTraffic (serviceTimeouts setup deps duration)) leaks who final) := by
-  have serial : (serviceGraph setup deps).ActorSerial := by
-    intro event cut other who ready otherReady actor otherActor
-    by_contra different
-    rcases concurrent cut ready otherReady (Ne.symm different) with independent | independent
-    · exact independent.2.2.2 (actor.trans otherActor.symm)
-    · exact independent.2.2.2 (otherActor.trans actor.symm)
   classical
   let G := serviceGraph setup deps
   let app := serviceApplication setup deps duration leaks
@@ -396,7 +390,7 @@ theorem ledgerBlock_joint {horizon : Nat}
     have ends := Option.some.inj same
     obtain ⟨leftPath, leftSound⟩ := facts leftSeed leftMember leftFinal leftReached
     obtain ⟨rightPath, rightSound⟩ := facts rightSeed rightMember rightFinal rightReached
-    obtain ⟨startViews, hiddens⟩ := blockStart_reflect_general concurrent flat publications
+    obtain ⟨startViews, hiddens⟩ := blockStart_reflect_general serial flat publications
       (begin leftSeed leftMember) (begin rightSeed rightMember) leftPath rightPath leftSound
       rightSound (DefaultOwners.path leftPath (owners leftSeed leftMember))
       (DefaultOwners.path rightPath (owners rightSeed rightMember))

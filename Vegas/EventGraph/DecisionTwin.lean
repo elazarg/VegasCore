@@ -459,3 +459,19 @@ theorem completionOf_erase (config : graph.Config) (event : graph.EventId) :
       · simp [same, ih]
 
 end Vegas.EventGraph
+
+namespace Vegas.EventGraph.Config
+
+variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
+
+/-- Erasure is the identity when no player has defaulted. -/
+theorem erase_eq_of_defaulted_empty {graph : Vegas.EventGraph Player L}
+    (config : graph.Config) (clean : config.defaulted = ∅) : config.erase = config := by
+  apply Config.ext_fields (left := config.erase) (right := config) rfl rfl rfl
+  rw [Config.erase_history]
+  have unchanged : graph.eraseCompletion config.defaulted = id := by
+    funext completion
+    simp [eraseCompletion, clean]
+  rw [unchanged, List.map_id]
+
+end Vegas.EventGraph.Config

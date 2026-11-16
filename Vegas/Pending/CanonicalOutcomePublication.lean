@@ -4,6 +4,7 @@ module
 
 public import Vegas.Pending.CanonicalKeyPublication
 public import Vegas.EventGraph.DecisionTwin
+public import Vegas.Pending.EffectiveOpening
 
 @[expose] public section
 
@@ -377,5 +378,303 @@ theorem reactive_round_outcomeLaw_of_publications {Outcome : Type*}
       obtain ⟨response, _, rfl⟩ := resumed
       rw [(reactive_respond_application timeouts leaks middle who response).1]
       exact middleLaw
+
+/-- An initial segment of the canonical executor preserves its terminal continuation law. -/
+theorem runPlan_bind_outcomeLaw {Outcome : Type*} (profile : graph.BehavioralProfile)
+    (read : graph.Config → Outcome) :
+    ∀ count config,
+      (graph.runPlan (graph.policyPlan profile graph.canonicalScheduler) count config).bind
+        (outcomeLaw profile read) = outcomeLaw profile read config := by
+  let plan := graph.policyPlan profile graph.canonicalScheduler
+  have head (config : graph.Config) (pending : ¬ config.cut.Terminal) :
+      (plan config pending).bind (fun choice =>
+        (config.step choice.1.1 choice.1.2 choice.2).bind (outcomeLaw profile read)) =
+          outcomeLaw profile read config := by
+    obtain ⟨remaining, fuel⟩ : ∃ remaining, config.remaining = remaining + 1 := by
+      have nonzero : config.remaining ≠ 0 := by
+        intro zero
+        exact pending (config.terminal_iff_remaining_zero.mpr zero)
+      exact Nat.exists_eq_succ_of_ne_zero nonzero
+    unfold outcomeLaw
+    conv_rhs => rw [fuel, EventGraph.runPlan, dite_eq_right pending, PMF.map_bind]
+    apply bind_congr_on_support _
+    intro choice _
+    rw [PMF.map_bind]
+    apply bind_congr_on_support _
+    intro next reached
+    have progress := config.remaining_step choice.1.1 choice.1.2 choice.2 next reached
+    rw [show next.remaining = remaining by omega]
+  intro count
+  induction count with
+  | zero => intro config; exact PMF.pure_bind _ _
+  | succ count ih =>
+      intro config
+      by_cases terminal : config.cut.Terminal
+      · rw [EventGraph.runPlan, dite_eq_left terminal, PMF.pure_bind]
+      · rw [EventGraph.runPlan, dite_eq_right terminal, PMF.bind_bind]
+        calc
+          _ = (plan config terminal).bind (fun choice =>
+              (config.step choice.1.1 choice.1.2 choice.2).bind (outcomeLaw profile read)) := by
+            apply bind_congr_on_support _
+            intro choice _
+            rw [PMF.bind_bind]
+            exact bind_congr_on_support _ (fun next _ => ih next)
+          _ = _ := head config terminal
+
+/-- A continuation supported on empty public defaults has no current default.
+This uses only the absorbing graph semantics. -/
+theorem defaulted_eq_empty_of_outcomeLaw
+    (profile : graph.BehavioralProfile) (config : graph.Config)
+    (clean : outcomeLaw profile Config.defaulted config = PMF.pure ∅) :
+    config.defaulted = ∅ := by
+  obtain ⟨final, selected⟩ := (graph.runPlan (graph.policyPlan profile graph.canonicalScheduler)
+    config.remaining config).support_nonempty
+  have observed : final.defaulted ∈ (outcomeLaw profile Config.defaulted config).support :=
+    (PMF.mem_support_map_iff _ _ _).mpr ⟨final, selected, rfl⟩
+  rw [clean, PMF.mem_support_pure_iff] at observed
+  have growing := Config.Step.path_defaulted_mono
+    (runPlan_graph_steps (graph.policyPlan profile graph.canonicalScheduler)
+      config.remaining config final selected)
+  apply Finset.eq_empty_iff_forall_notMem.mpr
+  intro who member
+  have later := growing member
+  simp only [observed, Finset.notMem_empty] at later
+
+private theorem defaultLaw_eq_of_canonicalLaw_eq {profile : graph.BehavioralProfile}
+    {left right : graph.Config}
+    (same : canonicalLaw profile left = canonicalLaw profile right) :
+    outcomeLaw profile Config.defaulted left = outcomeLaw profile Config.defaulted right :=
+  outcomeLaw_eq_of_canonicalLaw_eq Config.defaulted
+    (fun _ _ equal => defaulted_eq_of_completionOf_eq (congrArg (fun key => key.2.2) equal)) same
+
+/-- If an ordinary-opening continuation never defaults, every ready publication
+has an accepted opening. This is a property of the semantic continuation law. -/
+theorem openingAccepted_of_defaultLaw
+    {profile : graph.BehavioralProfile} (independent : ReadyIndependent profile)
+    (opens : OpensPublications profile) (config : graph.Config)
+    (law : outcomeLaw profile Config.defaulted config = PMF.pure ∅)
+    (event : graph.EventId) (ready : config.cut.Ready event)
+    (publication : (graph.outputLayout event).IsPublication) :
+    openingAccepted event config.store = true := by
+  have clear := defaulted_eq_empty_of_outcomeLaw profile config law
+  obtain ⟨owner, payload, binding, checks, outputEq, codeEq, node⟩ :=
+    exists_resolve_of_publication publication
+  have owned := nodeView_resolve_actor outputEq codeEq
+  have active : owner ∉ config.defaulted := by rw [clear]; simp
+  by_contra different
+  have rejected : openingAccepted event config.store = false := Bool.eq_false_iff.mpr different
+  let action := cast (congrArg EventField.Action outputEq.symm) true
+  let failed := config.complete event ready action
+    (cast (congrArg EventField.Value outputEq.symm) .failure)
+  have member : failed ∈ (config.step event ready action).support := by
+    rw [step_of_opening_rejected config event ready node rejected action]
+    exact (PMF.mem_support_pure_iff _ _).mpr rfl
+  have prescribed : actionLaw profile config event = PMF.pure action := by
+    rw [actionLaw_of_actor profile config owned, dite_eq_right active,
+      opens config event owner owned publication active,
+      openAction_eq_cast_true outputEq publication]
+  have same := State.canonicalLaw_of_mem_step_of_actionLaw independent config failed event ready
+    owner owned action prescribed member
+  have failedClear := defaulted_eq_empty_of_outcomeLaw profile failed
+    ((defaultLaw_eq_of_canonicalLaw_eq same).trans law)
+  have inactive : owner ∈ failed.defaulted := by
+    change owner ∈ (config.complete event ready action _).defaults.defaulted
+    rw [EventGraph.Config.complete_defaults, config.completion_resolve_defaultEvent event owner
+      payload binding checks outputEq codeEq true .failure, ite_eq_right active]
+    simp only [PublicationResult.isFailure, ite_true, DefaultHistory.defaulted_record_some,
+      Finset.mem_insert, true_or]
+  rw [failedClear] at inactive
+  simp at inactive
+
+/-- With only publications ready, an environment operation either defaults the
+focal owner or retains a clear ordinary-opening continuation potential. Only
+foreign accepted publications require deadline protection. -/
+theorem environment_publication_clear_or_focal_default
+    {profile : graph.BehavioralProfile} (independent : ReadyIndependent profile)
+    (opens : OpensPublications profile) (timeouts : EventTimeouts graph)
+    (state next : State graph) (command : EnvironmentCommand graph) (focal : Player)
+    (law : outcomeLaw profile Config.defaulted state.config = PMF.pure ∅)
+    (publications : ∀ event, state.config.cut.Ready event →
+      (graph.outputLayout event).IsPublication)
+    (deadlines : ∀ event owner, state.config.cut.Ready event → graph.actor? event = some owner →
+      owner ≠ focal → state.WithinDeadline timeouts event)
+    (moved : next ∈ (environmentStep timeouts state command).support) :
+    focal ∈ next.config.defaulted ∨
+      (next.config.defaulted = ∅ ∧ canonicalLaw profile next.config =
+        canonicalLaw profile state.config) := by
+  classical
+  by_cases failed : focal ∈ next.config.defaulted
+  · exact Or.inl failed
+  right
+  have clear := defaulted_eq_empty_of_outcomeLaw profile state.config law
+  have same : canonicalLaw profile next.config = canonicalLaw profile state.config := by
+    cases command with
+    | advanceClock =>
+      cases (PMF.mem_support_pure_iff _ _).mp moved
+      rfl
+    | executeSample event =>
+      by_cases ready : state.config.cut.Ready event
+      · cases view : nodeView graph event with
+        | sample payload chance outputEq codeEq =>
+          have kind := publications event ready
+          rw [outputEq] at kind
+          exact kind.elim
+        | bind owner payload outputEq codeEq =>
+          rw [environmentStep_executeSample_of_nonsample timeouts state event ready
+            (fun _ _ _ _ impossible => by rw [view] at impossible; cases impossible),
+            PMF.mem_support_pure_iff] at moved
+          cases moved
+          rfl
+        | resolve owner payload binding checks outputEq codeEq =>
+          rw [environmentStep_executeSample_of_nonsample timeouts state event ready
+            (fun _ _ _ _ impossible => by rw [view] at impossible; cases impossible),
+            PMF.mem_support_pure_iff] at moved
+          cases moved
+          rfl
+      · rw [environmentStep_executeSample_of_not_ready timeouts state event ready,
+          PMF.mem_support_pure_iff] at moved
+        cases moved
+        rfl
+    | expire event =>
+      rcases environmentStep_expire_config_eq_or_mem_step timeouts state next event moved with
+        unchanged | ⟨ready, action, stepped⟩
+      · rw [unchanged]
+      obtain ⟨owner, owned⟩ := actor_of_publication (publications event ready)
+      by_cases sameOwner : owner = focal
+      · have nextClear : next.config.defaulted = ∅ := by
+          apply Finset.eq_empty_iff_forall_notMem.mpr
+          intro other inactive
+          have otherActive : other ∉ state.config.defaulted := by rw [clear]; simp
+          have otherOwned := state.config.step_new_default_actor next.config event ready action
+            stepped other otherActive inactive
+          have equal : other = owner := Option.some.inj (otherOwned.symm.trans owned)
+          exact failed (sameOwner ▸ equal ▸ inactive)
+        exact canonicalLaw_eq_of_clear_publication_step independent opens state.config next.config
+          event ready (publications event ready) action stepped nextClear
+      · have within := deadlines event owner ready owned sameOwner
+        unfold State.WithinDeadline at within
+        cases activated : state.activatedAt event with
+        | none => rw [activated] at within; exact within.elim
+        | some entered =>
+          rw [activated] at within
+          rw [environmentStep_expire_of_not_due timeouts state event ready entered activated
+            (by omega), PMF.mem_support_pure_iff] at moved
+          cases moved
+          rfl
+  exact ⟨defaulted_eq_empty_of_outcomeLaw profile next.config
+    ((defaultLaw_eq_of_canonicalLaw_eq same).trans law), same⟩
+
+/-- Before a focal default, a native public operation preserves the ordinary
+opening potential and cannot default any honest owner with a protected deadline. -/
+theorem reactive_environment_publication_clear_or_focal_default
+    {profile : graph.BehavioralProfile} (independent : ReadyIndependent profile)
+    (opens : OpensPublications profile) (timeouts : EventTimeouts graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (execution next : ((reactiveApplication timeouts) leaks).Execution)
+    (command : ((reactiveApplication timeouts) leaks).Command) (focal : Player)
+    (law : outcomeLaw profile Config.defaulted execution.application.config = PMF.pure ∅)
+    (publications : ∀ event, execution.application.config.cut.Ready event →
+      (graph.outputLayout event).IsPublication)
+    (deadlines : ∀ event owner, execution.application.config.cut.Ready event →
+      graph.actor? event = some owner → owner ≠ focal →
+      execution.application.WithinDeadline timeouts event)
+    (moved : next ∈
+      (execution.environmentStep ((reactiveApplication timeouts) leaks) command).support) :
+    focal ∈ next.application.config.defaulted ∨
+      (next.application.config.defaulted = ∅ ∧ canonicalLaw profile next.application.config =
+        canonicalLaw profile execution.application.config) := by
+  classical
+  by_cases failed : focal ∈ next.application.config.defaulted
+  · exact Or.inl failed
+  right
+  have same : canonicalLaw profile next.application.config =
+      canonicalLaw profile execution.application.config := by
+    unfold ReactiveApplication.Execution.environmentStep at moved
+    rw [PMF.support_map] at moved
+    obtain ⟨updated, supported, rfl⟩ := moved
+    cases command with
+    | activate who =>
+        rw [PMF.support_map] at supported
+        obtain ⟨_, _, rfl⟩ := supported
+        rfl
+    | wait =>
+        cases (PMF.mem_support_pure_iff _ _).mp supported
+        rfl
+    | «include» id =>
+        cases (PMF.mem_support_pure_iff _ _).mp supported
+        cases found : execution.network.lookup id with
+        | none =>
+            simp only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
+              found]
+        | some message =>
+            cases result : ((reactiveApplication timeouts) leaks).handle execution.application
+                message with
+            | none =>
+                simp only [ReactiveApplication.Execution.includePending,
+                  MessageNetwork.includePending, found, result, Option.getD_none]
+            | some after =>
+                simp only [ReactiveApplication.Execution.includePending,
+                  MessageNetwork.includePending, found, result, Option.getD_some]
+                obtain ⟨native, handled, drained⟩ := reactiveHandle_call result
+                rw [← drained, State.drain_canonicalLaw independent]
+                exact handle_canonicalLaw_of_publications independent opens timeouts _ _ _
+                  publications handled
+    | application operation =>
+        rw [PMF.support_map] at supported
+        obtain ⟨state, changed, rfl⟩ := supported
+        change state ∈ ((environmentStep timeouts execution.application operation).map
+          State.drain).support at changed
+        obtain ⟨native, nativeMoved, rfl⟩ := PMF.support_map .. ▸ changed
+        rcases environment_publication_clear_or_focal_default independent opens timeouts
+            execution.application native operation focal law publications deadlines nativeMoved with
+          bad | ⟨_clear, same⟩
+        · exfalso
+          apply failed
+          change focal ∈ native.drain.config.defaulted
+          rw [native.drain_defaulted]
+          exact bad
+        · exact (State.drain_canonicalLaw independent native).trans same
+  exact ⟨defaulted_eq_empty_of_outcomeLaw profile next.application.config
+    ((defaultLaw_eq_of_canonicalLaw_eq same).trans law), same⟩
+
+/-- A whole native public round either defaults the focal player or preserves
+the clear ordinary-opening potential, with arbitrary client responses. -/
+theorem reactive_round_publication_clear_or_focal_default
+    {profile : graph.BehavioralProfile} (independent : ReadyIndependent profile)
+    (opens : OpensPublications profile) (timeouts : EventTimeouts graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (scheduler : ((reactiveApplication timeouts) leaks).Scheduler)
+    (players : Player → ((reactiveApplication timeouts) leaks).Policy)
+    (execution next : ((reactiveApplication timeouts) leaks).Execution) (focal : Player)
+    (law : outcomeLaw profile Config.defaulted execution.application.config = PMF.pure ∅)
+    (publications : ∀ event, execution.application.config.cut.Ready event →
+      (graph.outputLayout event).IsPublication)
+    (deadlines : ∀ event owner, execution.application.config.cut.Ready event →
+      graph.actor? event = some owner → owner ≠ focal →
+      execution.application.WithinDeadline timeouts event)
+    (reached : next ∈
+      (((reactiveApplication timeouts) leaks).round scheduler players execution).support) :
+    focal ∈ next.application.config.defaulted ∨
+      (next.application.config.defaulted = ∅ ∧ canonicalLaw profile next.application.config =
+        canonicalLaw profile execution.application.config) := by
+  let app := (reactiveApplication timeouts) leaks
+  obtain ⟨command, _, dispatched⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+  obtain ⟨middle, moved, resumed⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ dispatched)
+  have middleLaw := reactive_environment_publication_clear_or_focal_default independent opens
+    timeouts leaks execution middle command focal law publications deadlines moved
+  change next ∈ (app.resume players (command.actor? app) middle).support at resumed
+  cases actor : command.actor? app with
+  | none =>
+    rw [actor] at resumed
+    simp only [ReactiveApplication.resume, PMF.mem_support_pure_iff] at resumed
+    subst next
+    exact middleLaw
+  | some who =>
+    rw [actor] at resumed
+    change next ∈ (app.invoke players who middle).support at resumed
+    rw [ReactiveApplication.invoke, PMF.support_map] at resumed
+    obtain ⟨response, _, rfl⟩ := resumed
+    rw [(reactive_respond_application timeouts leaks middle who response).1]
+    exact middleLaw
 
 end Vegas.EventGraphRuntime

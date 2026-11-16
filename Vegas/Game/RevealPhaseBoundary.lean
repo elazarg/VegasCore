@@ -3,6 +3,7 @@ module
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 public import Vegas.Game.RevealBlockPhase
+public import Vegas.Game.SourceServiceCompletion
 public import Vegas.Game.RevealPhasing
 public import Vegas.Game.LastForeignPhase
 public import Vegas.Game.LastChancePhase
@@ -30,120 +31,6 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)} {deps : setup.dataflowGraph.Dependencies}
   {duration : (serviceGraph setup deps).EventId → Nat}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup deps))}
-
-/-- Every event a recorded response saw ready satisfies `allowed`. -/
-def SeenOnly (allowed : (serviceGraph setup deps).EventId → Prop)
-    (execution : (serviceApplication setup deps duration leaks).Execution) : Prop :=
-  ∀ who, ∀ entry ∈ execution.logs who, ∀ event,
-    entry.beforeView.application.publicView.EventReady event → allowed event
-
-/-- An event outside the allowed ones is untouched. -/
-theorem SeenOnly.untouched {allowed : (serviceGraph setup deps).EventId → Prop}
-    {execution : (serviceApplication setup deps duration leaks).Execution}
-    (seen : SeenOnly allowed execution) {event : (serviceGraph setup deps).EventId}
-    (disallowed : ¬ allowed event) : Untouched setup leaks event execution :=
-  fun who entry member readyView => disallowed (seen who entry member event readyView)
-
-/-- A larger allowed set keeps the bound. -/
-theorem SeenOnly.mono {allowed wider : (serviceGraph setup deps).EventId → Prop}
-    {execution : (serviceApplication setup deps duration leaks).Execution}
-    (seen : SeenOnly allowed execution) (widen : ∀ event, allowed event → wider event) :
-    SeenOnly wider execution :=
-  fun who entry member event readyView => widen event (seen who entry member event readyView)
-
-/-- A round keeps the bound when every event ready before it is allowed. -/
-theorem round_seenOnly {allowed : (serviceGraph setup deps).EventId → Prop}
-    {scheduler : (serviceApplication setup deps duration leaks).Scheduler}
-    {players : Player → (serviceApplication setup deps duration leaks).Policy}
-    {execution next : (serviceApplication setup deps duration leaks).Execution}
-    (seen : SeenOnly allowed execution)
-    (readyAllowed : ∀ event, execution.application.config.cut.Ready event → allowed event)
-    (reached : next ∈
-      ((serviceApplication setup deps duration leaks).round scheduler players execution).support) :
-    SeenOnly allowed next := by
-  let app := serviceApplication setup deps duration leaks
-  obtain ⟨command, _, middle, moved, cases⟩ := round_cases (setup := setup) leaks reached
-  have recallEq := app.environmentStep_recall execution middle command moved
-  intro who entry member event readyView
-  rcases cases with ⟨_, rfl⟩ | ⟨actor, active, response, _, rfl⟩
-  · rw [recallEq] at member
-    exact seen who entry member event readyView
-  · rcases app.respond_entry_origin middle actor who response entry member with
-      prior | ⟨_, fresh⟩
-    · rw [recallEq] at prior
-      exact seen who entry prior event readyView
-    · have commandEq : command = .activate actor := by
-        cases command <;> simp_all [ReactiveApplication.Command.actor?]
-      subst command
-      have sameApp := activation_application (setup := setup) leaks execution middle actor moved
-      rw [fresh] at readyView
-      change middle.application.publicView.EventReady event at readyView
-      have readyNow := (EventGraphRuntime.State.publicView_eventReady _ event).mp readyView
-      rw [sameApp] at readyNow
-      exact readyAllowed event readyNow
-
-/-- A stopped run keeps the bound when, along an invariant kept by every round
-taken, every event ready before a round is allowed. -/
-theorem runUntil_seenOnly {allowed : (serviceGraph setup deps).EventId → Prop}
-    (scheduler : (serviceApplication setup deps duration leaks).Scheduler)
-    (players : Player → (serviceApplication setup deps duration leaks).Policy)
-    (stop : (serviceApplication setup deps duration leaks).Execution → Prop) [DecidablePred stop]
-    (invariant : (serviceApplication setup deps duration leaks).Execution → Prop)
-    (preserved : ∀ execution, invariant execution → ¬ stop execution →
-      ∀ next ∈ ((serviceApplication setup deps duration leaks).round scheduler players
-        execution).support, invariant next)
-    (readyAllowed : ∀ execution, invariant execution → ¬ stop execution →
-      ∀ event, execution.application.config.cut.Ready event → allowed event)
-    (count : Nat) (execution : (serviceApplication setup deps duration leaks).Execution)
-    (valid : invariant execution) (seen : SeenOnly allowed execution)
-    (final : (serviceApplication setup deps duration leaks).Execution)
-    (reached : final ∈ ((serviceApplication setup deps duration leaks).runUntil scheduler
-      players stop count execution).support) :
-    SeenOnly allowed final := by
-  obtain ⟨_, _, finalSeen⟩ := (serviceApplication setup deps duration leaks).runUntil_support_holds
-    scheduler players stop (fun _ current => invariant current ∧ SeenOnly allowed current)
-    (fun _ current holds running next moved =>
-      ⟨preserved current holds.1 running next moved,
-        round_seenOnly holds.2 (readyAllowed current holds.1 running) moved⟩)
-    count execution ⟨valid, seen⟩ final reached
-  exact finalSeen
-
-/-- **Runs end by the horizon.** Every final of a run stopped at `stop` satisfies
-`stop` when every terminal configuration does, since the contract completes
-every event by the horizon. -/
-theorem runUntilHorizon_stop {horizon : Nat}
-    {scheduler : (serviceApplication setup deps duration leaks).Scheduler}
-    {delay bound : (serviceGraph setup deps).EventId → Nat}
-    (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
-        (serviceInitialLaw setup deps) horizon scheduler delay bound)
-    (players : Player → (serviceApplication setup deps duration leaks).Policy)
-    (stop : (serviceApplication setup deps duration leaks).Execution → Prop) [DecidablePred stop]
-    (terminalStops : ∀ execution : (serviceApplication setup deps duration leaks).Execution,
-      execution.application.config.cut.Terminal → stop execution)
-    (execution : (serviceApplication setup deps duration leaks).Execution)
-    (supported : execution ∈ ((serviceApplication setup deps duration leaks).roundsFrom
-      (serviceInitialLaw setup deps) scheduler players execution.environmentRecall.length).support)
-    (bounded : execution.environmentRecall.length ≤ horizon) :
-    ∀ final ∈ ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler players
-      stop horizon execution).support, stop final := by
-  let app := serviceApplication setup deps duration leaks
-  intro final reached
-  let remaining := horizon - execution.environmentRecall.length
-  change final ∈ (app.runUntil scheduler players stop remaining execution).support at reached
-  rcases app.runUntil_stopped scheduler players stop remaining execution final reached
-      with done | _
-  · exact done
-  obtain ⟨used, enough, rounds, _⟩ := app.runUntil_runRounds scheduler players stop remaining
-    execution final reached
-  obtain ⟨trace⟩ := app.raw_trace_roundsFrom (serviceInitialLaw setup deps) horizon scheduler
-    players execution.environmentRecall.length bounded execution supported
-  obtain ⟨finalTrace⟩ := app.raw_trace_runRounds (serviceInitialLaw setup deps) horizon scheduler
-    players (remaining - used) used execution final
-    (by simpa only [Nat.sub_add_cancel enough] using trace) rounds
-  apply terminalStops
-  exact contract.completes _ finalTrace (by
-    change remaining - used = 0 ∧ _
-    exact ⟨by dsimp only [remaining] at *; omega, rfl⟩)
 
 /-- **A phase boundary at a rank.** -/
 structure PhaseBoundary (scheduler : (serviceApplication setup deps duration leaks).Scheduler)
@@ -188,7 +75,7 @@ theorem PhaseBoundary.blockStart
     (run : RevealRun (serviceGraph setup deps) start finish) :
     BlockStart start finish execution.application.config where
   earlier := boundary.earlier
-  later := fun event late done => run.done_of_later relaxed late done
+  later := fun event late done => run.done_of_later relaxed.revealRelaxedOrdered late done
   beyond := fun event late done => (boundary.later event (by have := run.nonempty; omega)
     done).1
   failed := fun event early _ done => (boundary.later event early done).2.1
@@ -335,7 +222,7 @@ theorem blockPhase_endpoint {horizon : Nat}
   let app := serviceApplication setup deps duration leaks
   let players := Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
     (firstTurnTiming setup turns deps) reference) who deviation
-  have shaped := run.shaped relaxed
+  have shaped := run.shaped relaxed.revealRelaxedOrdered
   have begin := boundary.blockStart relaxed runs run
   have done := runUntilHorizon_stop contract players
     (fun current => BlockDone finish current.application.config)

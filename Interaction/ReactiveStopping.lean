@@ -3,6 +3,7 @@ module
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 public import Interaction.ReactiveRoundTrace
+public import GameTheoryExtensions.Math.Probability.Support
 
 @[expose] public section
 
@@ -274,5 +275,86 @@ theorem runUntil_map_congr_of_rounds (scheduler : app.Scheduler)
 
 
 end RoundCongruence
+
+variable {app}
+
+/-- A count-indexed invariant preserved by every round that is taken holds at
+every execution a stopped run reaches. -/
+theorem runUntil_support_holds (scheduler : app.Scheduler)
+    (players : Principal → app.Policy) (stop : app.Execution → Prop) [DecidablePred stop]
+    (holds : Nat → app.Execution → Prop)
+    (preserved : ∀ n execution, holds (n + 1) execution → ¬ stop execution →
+      ∀ next ∈ (app.round scheduler players execution).support, holds n next) :
+    ∀ (count : Nat) (execution : app.Execution), holds count execution →
+      ∀ final ∈ (app.runUntil scheduler players stop count execution).support,
+        ∃ n, holds n final := by
+  intro count
+  induction count with
+  | zero =>
+      intro execution valid final reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
+      exact ⟨0, valid⟩
+  | succ count ih =>
+      intro execution valid final reached
+      by_cases stopped : stop execution
+      · rw [app.runUntil_of_stop scheduler players stop _ execution stopped,
+          PMF.mem_support_pure_iff] at reached
+        subst reached
+        exact ⟨count + 1, valid⟩
+      · simp only [ReactiveApplication.runUntil, stopped, ↓reduceIte] at reached
+        obtain ⟨next, nextReached, finalReached⟩ :=
+          Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+        exact ih next (preserved count execution valid stopped next nextReached) final
+          finalReached
+
+private theorem runUntil_map_eq_none_of_absorbing {Traffic : Type}
+    (scheduler : app.Scheduler) (players : Principal → app.Policy)
+    (stop bad : app.Execution → Prop) [DecidablePred stop]
+    (read : app.Execution → Option Traffic)
+    (absorbs : ∀ current, bad current → ∀ next ∈ (app.round scheduler players current).support,
+      bad next)
+    (erase : ∀ current, bad current → read current = none)
+    (count : Nat) (current : app.Execution) (failed : bad current) :
+    (app.runUntil scheduler players stop count current).map read = PMF.pure none := by
+  have finalBad (final : app.Execution)
+      (member : final ∈ (app.runUntil scheduler players stop count current).support) : bad final :=
+    (app.runUntil_support_holds scheduler players stop (fun _ execution => bad execution)
+      (fun _ execution holds _ next moved => absorbs execution holds next moved)
+      count current failed final member).choose_spec
+  calc
+    _ = (app.runUntil scheduler players stop count current).map (fun _ => none) :=
+      map_congr_on_support _ fun final member => erase final (finalBad final member)
+    _ = _ := pmf_map_fun_const _ _
+
+/-- Adding an absorbing failure stop does not change a readout that discards
+all failed continuations. The evaluator and round budget remain the same. -/
+theorem runUntil_map_stop_or_absorbing {Traffic : Type}
+    (scheduler : app.Scheduler) (players : Principal → app.Policy)
+    (stop bad : app.Execution → Prop) [DecidablePred stop] [DecidablePred bad]
+    (read : app.Execution → Option Traffic)
+    (absorbs : ∀ current, bad current → ∀ next ∈ (app.round scheduler players current).support,
+      bad next)
+    (erase : ∀ current, bad current → read current = none) :
+    ∀ count current,
+      (app.runUntil scheduler players stop count current).map read =
+        (app.runUntil scheduler players (fun final => stop final ∨ bad final) count current).map
+          read := by
+  intro count
+  induction count with
+  | zero => intro current; rfl
+  | succ count ih =>
+    intro current
+    by_cases failed : bad current
+    · rw [runUntil_map_eq_none_of_absorbing scheduler players stop bad read absorbs erase
+        (count + 1) current failed,
+        app.runUntil_of_stop scheduler players (fun final => stop final ∨ bad final)
+          (count + 1) current (Or.inr failed), PMF.pure_map, erase current failed]
+    by_cases halted : stop current
+    · rw [app.runUntil_of_stop scheduler players stop (count + 1) current halted,
+        app.runUntil_of_stop scheduler players (fun final => stop final ∨ bad final)
+          (count + 1) current (Or.inl halted)]
+    · have running : ¬ (stop current ∨ bad current) := not_or.mpr ⟨halted, failed⟩
+      simp only [runUntil, ite_eq_right halted, ite_eq_right running, PMF.map_bind]
+      exact bind_congr_on_support _ fun next _ => ih next
 
 end Interaction.ReactiveApplication

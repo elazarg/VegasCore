@@ -27,25 +27,6 @@ open SourceProgram EventGraphRuntime EventGraph
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
-section Generic
-
-variable {graph : Vegas.EventGraph Player L}
-
-variable (graph) in
-/-- An event depends on another through a chain of predecessors. -/
-def DependsOn (prior later : graph.EventId) : Prop :=
-  Relation.ReflTransGen (fun before after => before ∈ graph.order.predecessors after) prior later
-
-omit [DecidableEq Player] in
-/-- A completed event's dependencies have completed. -/
-theorem DependsOn.completed {prior later : graph.EventId} (depends : DependsOn graph prior later)
-    {cut : graph.order.Cut} (done : later ∈ cut.completed) : prior ∈ cut.completed := by
-  induction depends using Relation.ReflTransGen.head_induction_on with
-  | refl => exact done
-  | head member _ ih => exact cut.predecessor_closed ih member
-
-end Generic
-
 variable {setup : Setup (Player := Player) (L := L)} {deps : setup.dataflowGraph.Dependencies}
 
 /-- **Honest reveals settle.** Under a reference whose honest owners open a
@@ -145,28 +126,10 @@ theorem closure_completes_run (base : (serviceGraph setup deps).BehavioralProfil
         (Config.Step.path_defaulted_mono path defaulted))
   · exact closure_quiet R who config event (honest_settles base decides who ready publication mine)
 
-omit [DecidableEq Player] in
-/-- A dependency is no later than the event depending on it. -/
-theorem DependsOn.le {graph : Vegas.EventGraph Player L} {prior later : graph.EventId}
-    (depends : DependsOn graph prior later) : prior.val ≤ later.val := by
-  induction depends with
-  | refl => exact le_rfl
-  | tail _ member ih => exact ih.trans (graph.order.predecessor_lt member).le
-
-omit [DecidableEq Player] in
-/-- Two reveals of one owner in a graph relaxing the rank order only between
-independent reveals are ordered by rank. -/
-theorem RelaxedOrder.dependsOn_of_same_owner {graph : Vegas.EventGraph Player L}
-    (relaxed : RelaxedOrder graph) {prior later : graph.EventId} {owner : Player}
-    (priorOwned : graph.actor? prior = some owner) (laterOwned : graph.actor? later = some owner)
-    (earlier : prior.val < later.val) : DependsOn graph prior later :=
-  .single ((relaxed prior later).mpr ⟨earlier, fun independent =>
-    independent.2.2.2 (priorOwned.trans laterOwned.symm)⟩)
-
 /-- The closure completes nothing from the end of a run on while the closure
 leaves the run unfinished. -/
 theorem closure_before_finish (base : (serviceGraph setup deps).BehavioralProfile) (who : Player)
-    (relaxed : RelaxedOrder (serviceGraph setup deps)) {start finish : Nat}
+    (relaxed : (serviceGraph setup deps).RevealRelaxedOrdered) {start finish : Nat}
     (run : RevealRun (serviceGraph setup deps) start finish)
     {config : (serviceGraph setup deps).Config}
     {blocked : (serviceGraph setup deps).EventId} (blockedLate : blocked.val < finish)
@@ -175,21 +138,10 @@ theorem closure_before_finish (base : (serviceGraph setup deps).BehavioralProfil
     {event : (serviceGraph setup deps).EventId}
     (done : event ∈ (closure ((serviceGraph setup deps).normalizeProfile base) who
       config).cut.completed) : event.val < finish := by
-  let G := serviceGraph setup deps
-  let R := G.normalizeProfile base
   by_contra late
   push Not at late
-  have closing : finish < G.order.eventCount := lt_of_le_of_lt late event.isLt
-  let closer : G.EventId := ⟨finish, closing⟩
-  have closerDone : closer ∈ (closure R who config).cut.completed := by
-    rcases Nat.eq_or_lt_of_le late with same | later
-    · have equal : event = closer := Fin.ext same.symm
-      rw [← equal]
-      exact done
-    · exact (closure R who config).cut.predecessor_closed done
-        (relaxed.predecessor_of_not_publication (run.closed closer rfl) later)
-  exact blockedPending ((closure R who config).cut.predecessor_closed closerDone
-    (relaxed.predecessor_of_later_not_publication (run.closed closer rfl) blockedLate))
+  exact blockedPending (run.done_of_later relaxed late done blocked blockedLate)
+
 
 /-- **The closure at a point of a run.** When the deviator is active and
 `target` is its earliest pending reveal of an unfinished run whose earlier
@@ -211,7 +163,7 @@ theorem closure_completed_iff_target (base : (serviceGraph setup deps).Behaviora
           ((serviceGraph setup deps).playerObserve owner config) active =
           PMF.pure (cast (congrArg EventField.Action outputEq.symm)
             (openingAccepted event config.store)))
-    (who : Player) (relaxed : RelaxedOrder (serviceGraph setup deps)) {start finish : Nat}
+    (who : Player) (relaxed : (serviceGraph setup deps).RevealRelaxedOrdered) {start finish : Nat}
     (run : RevealRun (serviceGraph setup deps) start finish)
     {config : (serviceGraph setup deps).Config}
     (earlier : ∀ event : (serviceGraph setup deps).EventId, event.val < start →
@@ -248,8 +200,11 @@ theorem closure_completed_iff_target (base : (serviceGraph setup deps).Behaviora
     · have equal : owned = target := Fin.ext same
       subst equal
       exact (independent depends).elim
-    · exact (independent ((relaxed.dependsOn_of_same_owner targetOwned ownedWho larger).trans
-        depends)).elim
+    · exact (independent ((Relation.ReflTransGen.single
+        (relaxed.same_owner_predecessor target owned who larger targetOwned ownedWho)).trans
+          depends)).elim
+
+
 
 /-- **The closure at the end of the deviator's part of a run.** When every
 reveal of the deviator in a run whose earlier events have completed has

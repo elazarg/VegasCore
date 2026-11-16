@@ -189,4 +189,39 @@ theorem exists_observed_choice_factorization
       _ = _ := by
         simp only [PMF.bind_bind, PMF.bind_map, Function.comp_def]
 
+
+/-- Sampling a latent state conditionally on the source preserves its view-noise factor. -/
+theorem factor_extend_hidden_kernel {Seed Source View Traffic Latent : Type}
+    (prior : PMF Seed) (source : Seed → Source) (read : Seed → Traffic)
+    (view : Source → View) (noise : View → PMF Traffic)
+    (factor : prior.map (fun seed => (source seed, read seed)) =
+      (prior.map source).bind fun hidden =>
+        (noise (view hidden)).map (fun extra => (hidden, extra)))
+    (draw : Source → PMF Latent) :
+    (prior.bind fun seed => (draw (source seed)).map fun latent =>
+      ((source seed, latent), read seed)) =
+    ((prior.map source).bind fun hidden => (draw hidden).map (fun latent => (hidden, latent))).bind
+      (fun hidden => (noise (view hidden.1)).map (fun extra => (hidden, extra))) := by
+  calc
+    _ = (prior.map (fun seed => (source seed, read seed))).bind fun observed =>
+        (draw observed.1).map (fun latent => ((observed.1, latent), observed.2)) := by
+      rw [PMF.bind_map]
+      rfl
+    _ = (prior.map source).bind fun hidden =>
+        (noise (view hidden)).bind fun extra =>
+          (draw hidden).map (fun latent => ((hidden, latent), extra)) := by
+      rw [factor, PMF.bind_bind]
+      apply bind_congr_on_support _
+      intro hidden _
+      rw [PMF.bind_map]
+      rfl
+    _ = _ := by
+      rw [PMF.bind_bind]
+      apply bind_congr_on_support _
+      intro hidden _
+      rw [PMF.bind_map]
+      simp only [PMF.map]
+      rw [PMF.bind_comm]
+      rfl
+
 end GameTheory.Math.Probability

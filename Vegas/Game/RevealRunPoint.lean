@@ -85,7 +85,7 @@ theorem PhaseBoundary.runPoint
     (bound : (serviceGraph setup deps).EventId → Nat) (turns : Nat)
     (reference : (serviceGraph setup deps).BehavioralProfile) (who : Player)
     (deviation : (serviceApplication setup deps duration leaks).Policy) {horizon : Nat}
-    (relaxed : RelaxedOrder (serviceGraph setup deps)) {start finish : Nat}
+    (relaxed : (serviceGraph setup deps).RevealRelaxedOrdered) {start finish : Nat}
     (run : RevealRun (serviceGraph setup deps) start finish)
     {execution : (serviceApplication setup deps duration leaks).Execution}
     (boundary : PhaseBoundary scheduler (Function.update (serviceReferenceTurnPolicy setup deps
@@ -101,7 +101,7 @@ theorem PhaseBoundary.runPoint
     running (run.done_of_later relaxed late done)⟩
   submissions := honestBlockSubmissions_start who start finish execution
     (fun owner different => (canonicalSlots_roundsFrom_reference
-        (relaxed.revealRelaxedOrdered.actorSerial) scheduler _ owner
+        (relaxed.actorSerial) scheduler _ owner
       (firstTurnTiming setup turns deps) reference (Function.update_of_ne different _ _)
       execution.environmentRecall.length execution boundary.supported).1)
     (fun event early _ => boundary.seen.untouched (by omega))
@@ -166,7 +166,7 @@ theorem RunPoint.target_endpoint {horizon : Nat}
           active = PMF.pure (cast (congrArg EventField.Action outputEq.symm)
             (openingAccepted event config.store)))
     (who : Player) (deviation : (serviceApplication setup deps duration leaks).Policy)
-    (relaxed : RelaxedOrder (serviceGraph setup deps)) {start finish bar : Nat}
+    (relaxed : (serviceGraph setup deps).RevealRelaxedOrdered) {start finish bar : Nat}
     (run : RevealRun (serviceGraph setup deps) start finish)
     (target : (serviceGraph setup deps).EventId)
     (targetOwned : (serviceGraph setup deps).actor? target = some who)
@@ -197,7 +197,7 @@ theorem RunPoint.target_endpoint {horizon : Nat}
     · exact point.owned event early low owned
     · exact (least event (by omega) smaller owned).elim
   obtain ⟨path, sound, decided, submissions, inside⟩ := runStep_facts
-      (relaxed.revealRelaxedOrdered.actorSerial) bound turns contract
+      (relaxed.actorSerial) bound turns contract
     timely reference decides who deviation start finish (run.shaped relaxed) run.publications
     (fun cut => target ∈ cut.completed) (fun cut done => done target targetLate) execution
     (· = target) (fun config path running event ready owned => ready_owned_eq_target who relaxed
@@ -280,7 +280,7 @@ theorem RunPoint.final_endpoint {horizon : Nat}
           active = PMF.pure (cast (congrArg EventField.Action outputEq.symm)
             (openingAccepted event config.store)))
     (who : Player) (deviation : (serviceApplication setup deps duration leaks).Policy)
-    (relaxed : RelaxedOrder (serviceGraph setup deps)) {start finish bar : Nat}
+    (relaxed : (serviceGraph setup deps).RevealRelaxedOrdered) {start finish bar : Nat}
     (run : RevealRun (serviceGraph setup deps) start finish)
     {execution : (serviceApplication setup deps duration leaks).Execution}
     (point : RunPoint scheduler (Function.update (serviceReferenceTurnPolicy setup deps duration
@@ -303,7 +303,7 @@ theorem RunPoint.final_endpoint {horizon : Nat}
     (fun current => BlockDone finish current.application.config)
     (fun current terminal event _ => by rw [terminal]; exact Finset.mem_univ _)
     execution point.supported point.bounded final reached
-  obtain ⟨path, sound, _, _, _⟩ := runStep_facts (relaxed.revealRelaxedOrdered.actorSerial)
+  obtain ⟨path, sound, _, _, _⟩ := runStep_facts (relaxed.actorSerial)
       bound turns contract timely reference decides
     who deviation start finish shaped run.publications
     (fun cut => ∀ event : G.EventId, event.val < finish → event ∈ cut.completed)

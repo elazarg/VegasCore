@@ -70,8 +70,11 @@ actual observations. The checked graph Nash result covers both independent
 bindings and independent reveals, uniformly over dependency choices satisfying
 `RevealRelaxedOrdered`. Source-prefix clients always submit bindings and open
 active reveals; the same Nash error, full source-configuration/payoff law and
-absence of defaults and failed reveals are preserved. The native ledger result
-permits concurrent reveals. Its extension to concurrent bindings remains open.
+absence of defaults and failed reveals are preserved. The
+[native honest-execution law](../Vegas/Game/PrefixClientOutcomeLaw.lean) covers
+both relaxations for every intended extension, without a source disclosure or
+equilibrium premise. Native Nash preservation is checked for concurrent reveals;
+its extension to concurrent bindings remains open.
 
 ## Runtime and proof interfaces
 

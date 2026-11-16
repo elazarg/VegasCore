@@ -670,4 +670,30 @@ theorem ReadyIndependent.actionLaw_path_of_unfinished
       obtain ⟨value, _, rfl⟩ := supported
       exact independent.stable before ready otherReady different action value
 
+
+/-- A supported step, and hence a finite path, lifts across equal graph keys. -/
+theorem Config.Step.exists_of_runKey_eq {before after other : graph.Config}
+    (step : Config.Step before after) (same : runKey before = runKey other) :
+    ∃ next : graph.Config, Config.Step other next ∧ runKey after = runKey next := by
+  obtain ⟨event, ready, action, supported⟩ := step
+  have cut : before.cut = other.cut := congrArg Prod.fst same
+  have otherReady : other.cut.Ready event := by rw [← cut]; exact ready
+  have mapped : runKey after ∈ ((before.step event ready action).map runKey).support :=
+    (PMF.mem_support_map_iff _ _ _).mpr ⟨after, supported, rfl⟩
+  rw [step_map_runKey_congr same event ready otherReady action] at mapped
+  obtain ⟨next, reached, key⟩ := (PMF.mem_support_map_iff _ _ _).mp mapped
+  exact ⟨next, ⟨event, otherReady, action, reached⟩, key.symm⟩
+
+theorem Config.Step.path_exists_of_runKey_eq {before after other : graph.Config}
+    (path : Relation.ReflTransGen Config.Step before after)
+    (same : runKey before = runKey other) :
+    ∃ next : graph.Config, Relation.ReflTransGen Config.Step other next ∧
+      runKey after = runKey next := by
+  induction path generalizing other with
+  | refl => exact ⟨other, .refl, same⟩
+  | tail path step ih =>
+      obtain ⟨current, currentPath, currentKey⟩ := ih same
+      obtain ⟨next, nextStep, nextKey⟩ := step.exists_of_runKey_eq currentKey
+      exact ⟨next, currentPath.tail nextStep, nextKey⟩
+
 end Vegas.EventGraph

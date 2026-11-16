@@ -297,6 +297,7 @@ theorem fromSequentialConfig_prefixObservation (who : Player) (event : graph.Eve
   · rfl
   · rfl
 
+
 end Vegas.EventGraph
 
 namespace Vegas.EventGraph
@@ -418,5 +419,84 @@ theorem store_eq_of_binding_paths
           exact Option.not_isSome_iff_eq_none.mp fun present =>
             earlier ((ordered.2 event).mp ((config.output_available event).mp present))
         rw [absent left leftOrdered, absent right rightOrdered]
+
+/-- A reachable binding record fixes its stored result from the requested action. -/
+theorem binding_frame_of_typed_action
+    {inputs : graph.Inputs} (filled : graph.Config) (reachable : filled.Reachable inputs)
+    (table : (event : graph.EventId) → graph.Action event)
+    (event : graph.EventId) (owner : Player) (payload : L.Ty)
+    (binding : graph.outputLayout event = .binding owner payload)
+    (result : PublicationResult (L.Val payload))
+    (actionEq : table event = cast (congrArg EventField.Action binding.symm) (some result))
+    (frame : ∃ value : (graph.outputLayout event).Value,
+      completionOf filled event =
+          some (EventGraph.completion graph event (some (table event)) value) ∧
+        filled.outputs event = some value) :
+    completionOf filled event = some (EventGraph.completion graph event
+        (some (cast (congrArg EventField.Action binding.symm) (some result)))
+        (cast (congrArg EventField.Value binding.symm) result)) ∧
+      filled.outputs event = some (cast (congrArg EventField.Value binding.symm) result) := by
+  obtain ⟨value, record, stored⟩ := frame
+  have member := ((completionOf_eq_some_iff filled event _).mp record).1
+  have codeEq : cast (congrArg (EventCode graph.layout) binding) (graph.nodes event) =
+      .bind owner payload := by
+    generalize cast (congrArg (EventCode graph.layout) binding) (graph.nodes event) = code
+    cases code
+    rfl
+  have physical := reachable.binding_output _ member owner payload binding codeEq
+  change filled.outputs event = some (cast (congrArg EventField.Value binding.symm)
+    (((some (table event)).bind fun chosen =>
+      cast (congrArg EventField.Action binding) chosen).getD .failure)) at physical
+  simp only [actionEq, Option.bind_some, cast_cast, cast_eq, Option.getD_some] at physical
+  have valueEq := Option.some.inj (stored.symm.trans physical)
+  rw [valueEq, actionEq] at record
+  exact ⟨record, physical⟩
+
+/-- Replacing only focal binding records preserves every honest prefix kernel. -/
+theorem prefixProfile_actionLaw_of_cropped_binding_fill
+    (relaxed : graph.RevealRelaxedOrdered) (profile : graph.BehavioralProfile)
+    (focal : Player) {inputs : graph.Inputs}
+    (origin donor filled : graph.Config) (start rank : Nat)
+    (originReach : origin.Reachable inputs) (before : origin.cut.IsPrefix start)
+    (donorPath : Relation.ReflTransGen Config.Step origin donor)
+    (filledPath : Relation.ReflTransGen Config.Step origin filled)
+    (donorOrdered : donor.cut.IsPrefix rank) (filledOrdered : filled.cut.IsPrefix rank)
+    (donorClear : donor.defaulted = ∅) (filledClear : filled.defaulted = ∅)
+    (bindings : ∀ event : graph.EventId, start ≤ event.val → event.val < rank →
+      ∃ owner payload, graph.outputLayout event = .binding owner payload)
+    (focalRecords : graph.EventId → Option graph.Completion)
+    (records : ∀ event : graph.EventId, start ≤ event.val → event.val < rank →
+      completionOf filled event = if graph.actor? event = some focal then focalRecords event
+        else completionOf donor event)
+    (owner : Player) (honest : owner ≠ focal) (event : graph.EventId)
+    (eventRank : event.val = rank) (owned : graph.actor? event = some owner)
+    (notPublication : ¬ (graph.outputLayout event).IsPublication) :
+    actionLaw (graph.prefixProfile profile) filled event =
+      actionLaw (graph.prefixProfile profile) donor event := by
+  have inside : rank < graph.order.eventCount := by rw [← eventRank]; exact event.isLt
+  have readyDonor : donor.cut.Ready event := by
+    have ready := donorOrdered.ready inside
+    have same : (⟨rank, inside⟩ : graph.EventId) = event := Fin.ext eventRank.symm
+    exact same ▸ ready
+  have readyFilled : filled.cut.Ready event := by
+    have ready := filledOrdered.ready inside
+    have same : (⟨rank, inside⟩ : graph.EventId) = event := Fin.ext eventRank.symm
+    exact same ▸ ready
+  apply prefixProfile_actionLaw_of_binding_paths relaxed profile origin filled donor start
+    originReach before filledPath donorPath owner event owned notPublication readyFilled readyDonor
+      (by rw [filledClear]; simp) (by rw [donorClear]; simp)
+  · intro prior lower upper
+    exact bindings prior lower (by omega)
+  · intro prior earlier actor
+    by_cases old : prior.val < start
+    · have completed : prior ∈ origin.cut.completed := (before.2 prior).mpr old
+      obtain ⟨record, found⟩ := Option.isSome_iff_exists.mp
+        ((completionOf_isSome_iff origin prior).mpr completed)
+      rw [Config.Step.path_completionOf_of_some filledPath prior record found,
+        Config.Step.path_completionOf_of_some donorPath prior record found]
+    · have different : graph.actor? prior ≠ some focal := by
+        intro focalActor
+        exact honest (Option.some.inj (actor.symm.trans focalActor))
+      rw [records prior (by omega) (by omega), ite_eq_right different]
 
 end Vegas.EventGraph

@@ -26,7 +26,8 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {duration : (serviceGraph setup deps).EventId → Nat}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup deps))}
 
-/-- Private-binding interval opacity through any target, including a target not yet ready. -/
+/-- Private-binding opacity holds until any traffic-visible stop at or before
+target completion. -/
 theorem bindingBlock_stopped_traffic_congr
     (relaxed : (serviceGraph setup deps).RevealRelaxedOrdered)
     {horizon count leftRemaining rightRemaining turns : Nat}
@@ -40,10 +41,18 @@ theorem bindingBlock_stopped_traffic_congr
       ((serviceGraph setup deps).outputLayout event).IsPublic)
     (target : (serviceGraph setup deps).EventId)
     (targetLate : target.val < finish)
+    (focal : Player) (deviation : (serviceApplication setup deps duration leaks).Policy)
+    (stop : (serviceApplication setup deps duration leaks).Execution → Prop)
+    [DecidablePred stop]
+    (completedStops : ∀ current : (serviceApplication setup deps duration leaks).Execution,
+      target ∈ current.application.config.cut.completed → stop current)
+    (determinedStop : ∀ left right : (serviceApplication setup deps duration leaks).Execution,
+      (bindingTraffic (serviceTimeouts setup deps duration)) leaks focal left =
+        (bindingTraffic (serviceTimeouts setup deps duration)) leaks focal right →
+      (stop left ↔ stop right))
     (leftReference rightReference : (serviceGraph setup deps).BehavioralProfile)
     (leftSubmits : (serviceGraph setup deps).SubmitsBindings leftReference)
     (rightSubmits : (serviceGraph setup deps).SubmitsBindings rightReference)
-    (focal : Player) (deviation : (serviceApplication setup deps duration leaks).Policy)
     (leftStart rightStart : (serviceApplication setup deps duration leaks).Execution)
     (same : (bindingTraffic (serviceTimeouts setup deps duration)) leaks focal leftStart =
       (bindingTraffic (serviceTimeouts setup deps duration)) leaks focal rightStart)
@@ -66,10 +75,10 @@ theorem bindingBlock_stopped_traffic_congr
       (serviceReferenceTurnPolicy setup deps duration leaks bound turns
         (firstTurnTiming setup turns deps) reference) focal deviation
     (app.runUntil scheduler (players leftReference)
-        (fun final => target ∈ final.application.config.cut.completed) count leftStart).map
+        stop count leftStart).map
         ((bindingTraffic (serviceTimeouts setup deps duration)) leaks focal) =
       (app.runUntil scheduler (players rightReference)
-        (fun final => target ∈ final.application.config.cut.completed) count rightStart).map
+        stop count rightStart).map
         ((bindingTraffic (serviceTimeouts setup deps duration)) leaks focal) := by
   classical
   intro app players
@@ -108,13 +117,13 @@ theorem bindingBlock_stopped_traffic_congr
           (sourceServiceTurnPolicy_submitsAtTurn_reference setup leaks bound turns
             (firstTurnTiming setup turns deps) reference actor)) before own slots reached
   apply ReactiveApplication.runUntil_map_congr_of_rounds app scheduler (players leftReference)
-    (players rightReference) (fun final => target ∈ final.application.config.cut.completed)
+    (players rightReference) stop
     ((bindingTraffic (serviceTimeouts setup deps duration)) leaks focal) invariant invariant
   · intro n left right _leftValid _rightValid equal
-    have publics : left.application.publicView = right.application.publicView :=
-      congrArg (fun value => value.2.2.2.2.2) equal
-    rw [cut_eq_of_publicView_eq publics]
-  · intro n left right leftValid rightValid equal running
+    exact determinedStop left right equal
+  · intro n left right leftValid rightValid equal notStopped
+    have running : target ∉ left.application.config.cut.completed :=
+      fun completed => notStopped (completedStops left completed)
     obtain ⟨⟨leftRest, ⟨leftCurrentTrace⟩⟩, currentLeftInside, currentLeftCanonical⟩ := leftValid
     obtain ⟨⟨rightRest, ⟨rightCurrentTrace⟩⟩, currentRightInside, currentRightCanonical⟩ :=
       rightValid
@@ -140,8 +149,12 @@ theorem bindingBlock_stopped_traffic_congr
     exact bindingWindow_round_opacity (turns := turns) relaxed scheduler bound outputEq
       leftReference rightReference leftSubmits rightSubmits focal deviation equal leftBefore
       rightBefore anchorReady rightReady currentLeftCanonical currentRightCanonical
-  · exact advance leftReference
-  · exact advance rightReference
+  · intro n current valid notStopped next reached
+    exact advance leftReference n current valid
+      (fun completed => notStopped (completedStops current completed)) next reached
+  · intro n current valid notStopped next reached
+    exact advance rightReference n current valid
+      (fun completed => notStopped (completedStops current completed)) next reached
   · exact ⟨⟨leftRemaining, ⟨leftTrace⟩⟩, fun _ => leftInside, leftCanonical⟩
   · exact ⟨⟨rightRemaining, ⟨rightTrace⟩⟩, fun _ => rightInside, rightCanonical⟩
   · exact same

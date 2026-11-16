@@ -2,7 +2,9 @@
 
 The graph result is checked in
 [SourcePrefixForfeit](../Vegas/Game/SourcePrefixForfeit.lean) and pinned in
-[Paper.lean](../Paper.lean). Native concurrent-binding preservation remains open.
+[Paper.lean](../Paper.lean). The full native honest-execution law is checked in
+[PrefixClientOutcomeLaw](../Vegas/Game/PrefixClientOutcomeLaw.lean). Native
+concurrent-binding Nash preservation remains open.
 
 ## Checked graph result
 
@@ -22,8 +24,8 @@ forfeit at least as large as the utility spread. The theorem is uniform over
 valid dependencies satisfying `Vegas.EventGraph.RevealRelaxedOrdered`, including
 the source information order with both independent-edge relaxations applied.
 The fixed-exit theorem is in [SourcePrefixNash](../Vegas/Game/SourcePrefixNash.lean).
-Native transport must still be proved under the existing service and timeliness
-contracts.
+Native deviation comparison must still be proved under the existing service
+and timeliness contracts.
 
 The target concerns intended equilibrium preservation. Arbitrary source profiles
 can condition on an earlier commitment's public omission, which an early
@@ -81,6 +83,13 @@ This transfers the deviation bound without an additional economic assumption.
 
 ## Native transport
 
+For every intended extension, the effective-opening source-prefix clients retain
+the joint law of the full source configuration and payoff vector under the existing
+service and timeliness contracts. Their supported runs terminate with no defaults
+or failed reveals. This honest-execution result is uniform over
+`RevealRelaxedOrdered` dependencies. It requires no equilibrium, source disclosure,
+finite binding catalogue, finite initial support or utility-bound premise.
+
 The native application already has hidden-binding inclusion and prepared-handle
 opacity lemmas. Canonical commitment packets do not expose the chosen value;
 same-owner order fixes the prepared serial at each binding. The checked
@@ -90,9 +99,18 @@ binding completions. Its comparison uses the focal player's native traffic and
 turn/submission counters; honest private inputs and kernels may vary jointly.
 It is an operational component, not an end-to-end preservation theorem.
 
-The remaining native obligations are to factor these stopped native laws through
-the source-visible decision, remove intermediate counter premises using actual
-traffic, and compose decisions across partially completed private-binding runs.
+The checked [table sampler](../Vegas/Game/NativeBindingTableSampling.lean) retains
+full stopped native executions for an arbitrary selected family of honest owners,
+with every other client still active. Its unilateral specialization transports the
+same law to a genuine source-origin table. The
+[traffic-opacity theorem](../Vegas/Game/BindingBlockOpacity.lean) uses actual
+traffic at traffic-determined stops no later than target completion, including
+early default.
+
+The remaining Nash obligation is to compose the stopped laws into one deviation
+of the existing source information-graph game, with at least the native payoff.
+The recursion must preserve source histories, earlier own binding records and
+the conditional law of the sampled honest suffix.
 Intermediate configurations need not be source prefixes. Treating each binding
 as the sole ready event would restore serialization and would not establish the
 target. The accepted-opening discipline from native reveal preservation must

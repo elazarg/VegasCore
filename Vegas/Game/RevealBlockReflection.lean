@@ -27,41 +27,6 @@ section Generic
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {graph : Vegas.EventGraph Player L}
 
-/-- **A configuration is the restriction of its successors to its completed
-events.** -/
-theorem Config.restrictionOf_completed_path {before after : graph.Config}
-    (path : Relation.ReflTransGen Config.Step before after) :
-    before.RestrictionOf (fun event => event ∈ before.cut.completed) after where
-  records event := by
-    by_cases done : event ∈ before.cut.completed
-    · rw [ite_eq_left done]
-      obtain ⟨completion, found⟩ :=
-        Option.isSome_iff_exists.mp ((completionOf_isSome_iff before event).mpr done)
-      rw [found, Config.Step.path_completionOf_of_some path event completion found]
-    · rw [ite_eq_right done]
-      exact (completionOf_eq_none_iff before event).mpr done
-  store field := by
-    cases field with
-    | inl input =>
-        rw [ite_eq_left (show FieldWithin (fun event : graph.EventId =>
-          event ∈ before.cut.completed) (.inl input) from trivial)]
-        change some (before.inputs input) = some (after.inputs input)
-        rw [Config.Step.path_inputs_eq path]
-    | inr event =>
-        by_cases done : event ∈ before.cut.completed
-        · rw [ite_eq_left (show FieldWithin (fun event : graph.EventId =>
-            event ∈ before.cut.completed) (.inr event) from done)]
-          obtain ⟨value, stored⟩ := Option.isSome_iff_exists.mp
-            ((before.output_available event).mpr done)
-          change before.outputs event = after.store (.inr event)
-          rw [stored]
-          exact (Config.Step.path_store_of_some path (.inr event) value stored).symm
-        · rw [ite_eq_right (show ¬ FieldWithin (fun event : graph.EventId =>
-            event ∈ before.cut.completed) (.inr event) from done)]
-          change before.outputs event = none
-          exact Option.not_isSome_iff_eq_none.mp fun available =>
-            done ((before.output_available event).mp available)
-
 /-- A block is flat: every predecessor of a block event precedes the block. -/
 def BlockFlat (start finish : Nat) : Prop :=
   ∀ event prior : graph.EventId, start ≤ event.val → event.val < finish →
@@ -169,7 +134,7 @@ theorem resolveOutput_of_rejected {event : (serviceGraph setup deps).EventId} {o
 owner is active at the start and owns no other block event, and only block
 events record new defaults. -/
 theorem honest_pending_not_silent {who : Player} {start finish : Nat}
-    (concurrent : (serviceGraph setup deps).RevealsOnlyConcurrent)
+    (serial : (serviceGraph setup deps).ActorSerial)
     (flat : BlockFlat (graph := serviceGraph setup deps) start finish)
     {origin current : (serviceGraph setup deps).Config}
     (begin : BlockStart start finish origin)
@@ -221,15 +186,12 @@ theorem honest_pending_not_silent {who : Player} {start finish : Nat}
       cases defaulted
     · have eventReady := flat.ready_of_earlier begin.earlier early late pending
       have otherReady := flat.ready_of_earlier begin.earlier otherEarly otherLate old
-      rcases concurrent origin.cut eventReady otherReady (Ne.symm same) with
-        independent | independent
-      · exact independent.2.2.2 (owned.trans otherOwned.symm)
-      · exact independent.2.2.2 (otherOwned.trans owned.symm)
+      exact same (serial.ready_actor_unique origin.cut eventReady otherReady owned otherOwned)
 
 /-- Once every honest block reveal pending at the start has completed, each
 stores the output it would have published if opened at the start. -/
 theorem acceptedOutput_eq_of_honestDone {who : Player} {start finish : Nat}
-    (concurrent : (serviceGraph setup deps).RevealsOnlyConcurrent)
+    (serial : (serviceGraph setup deps).ActorSerial)
     (flat : BlockFlat (graph := serviceGraph setup deps) start finish)
     {origin current : (serviceGraph setup deps).Config}
     (begin : BlockStart start finish origin)
@@ -252,7 +214,7 @@ theorem acceptedOutput_eq_of_honestDone {who : Player} {start finish : Nat}
     fun field value stored => Config.Step.path_store_of_some path field value stored
   rcases sound event pending (honestDone event early late pending honest) with
     ⟨quiet, _, owner, owned, inactive⟩ | ⟨_, _, whoOwned | opened | expired⟩
-  · exact (honest_pending_not_silent concurrent flat begin path sound owners early late pending
+  · exact (honest_pending_not_silent serial flat begin path sound owners early late pending
       owned (fun same => honest (same ▸ owned)) quiet inactive).elim
   · exact (honest whoOwned).elim
   · obtain ⟨owner, payload, binding, checks, outputEq, codeEq, _, node, _, _, _, stored⟩ :=
@@ -269,7 +231,7 @@ theorem acceptedOutput_eq_of_honestDone {who : Player} {start finish : Nat}
 /-- At the end of a block, an honest block reveal pending at the start stores
 the output it would have published if opened at the start. -/
 theorem acceptedOutput_eq_end {who : Player} {start finish : Nat}
-    (concurrent : (serviceGraph setup deps).RevealsOnlyConcurrent)
+    (serial : (serviceGraph setup deps).ActorSerial)
     (flat : BlockFlat (graph := serviceGraph setup deps) start finish)
     {origin current : (serviceGraph setup deps).Config}
     (begin : BlockStart start finish origin)
@@ -283,7 +245,7 @@ theorem acceptedOutput_eq_end {who : Player} {start finish : Nat}
     (late : event.val < finish) (pending : event ∉ origin.cut.completed)
     (honest : (serviceGraph setup deps).actor? event ≠ some who) :
     acceptedOutput event origin.store = current.outputs event :=
-  acceptedOutput_eq_of_honestDone concurrent flat begin path sound owners
+  acceptedOutput_eq_of_honestDone serial flat begin path sound owners
     (fun event _ late _ _ => finished event late) early late pending honest
 
 /-- A default recorded before a block is read from the end of the block. -/
@@ -329,7 +291,7 @@ block whose honest reveals pending at the start have completed and whose
 configurations give the deviator equal normalized views started from equal
 views of the deviator and equal hidden outputs of the honest reveals. -/
 theorem blockStart_reflect_of_honestDone {who : Player} {start finish : Nat}
-    (concurrent : (serviceGraph setup deps).RevealsOnlyConcurrent)
+    (serial : (serviceGraph setup deps).ActorSerial)
     (flat : BlockFlat (graph := serviceGraph setup deps) start finish)
     (publications : ∀ event : (serviceGraph setup deps).EventId, start ≤ event.val →
       event.val < finish → ((serviceGraph setup deps).outputLayout event).IsPublication)
@@ -430,9 +392,9 @@ theorem blockStart_reflect_of_honestDone {who : Player} {start finish : Nat}
       fun done => pending ((completedIff event).mpr done)
     rw [ite_eq_left ⟨early, late, pending, honest⟩,
       ite_eq_left ⟨early, late, pendingRight, honest⟩,
-      acceptedOutput_eq_of_honestDone concurrent flat beginLeft pathLeft soundLeft ownersLeft
+      acceptedOutput_eq_of_honestDone serial flat beginLeft pathLeft soundLeft ownersLeft
         honestLeft early late pending honest,
-      acceptedOutput_eq_of_honestDone concurrent flat beginRight pathRight soundRight ownersRight
+      acceptedOutput_eq_of_honestDone serial flat beginRight pathRight soundRight ownersRight
         honestRight early late pendingRight honest]
     have visible := congrFun stores (.inr event)
     rwa [playerStore_of_visible (visible := fieldVisibleTo_of_publication who
@@ -449,7 +411,7 @@ theorem blockStart_reflect_of_honestDone {who : Player} {start finish : Nat}
 give the deviator equal normalized views started from equal views of the
 deviator and equal hidden outputs of the honest reveals. -/
 theorem blockStart_reflect {who : Player} {start finish : Nat}
-    (concurrent : (serviceGraph setup deps).RevealsOnlyConcurrent)
+    (serial : (serviceGraph setup deps).ActorSerial)
     (flat : BlockFlat (graph := serviceGraph setup deps) start finish)
     (publications : ∀ event : (serviceGraph setup deps).EventId, start ≤ event.val →
       event.val < finish → ((serviceGraph setup deps).outputLayout event).IsPublication)
@@ -478,7 +440,7 @@ theorem blockStart_reflect {who : Player} {start finish : Nat}
         ((serviceGraph setup deps).playerObserve who startRight) ∧
     blockHidden who start finish (runKey startLeft) =
       blockHidden who start finish (runKey startRight) :=
-  blockStart_reflect_of_honestDone concurrent flat publications beginLeft beginRight runningLeft
+  blockStart_reflect_of_honestDone serial flat publications beginLeft beginRight runningLeft
     runningRight pathLeft pathRight soundLeft soundRight ownersLeft ownersRight
     (fun event _ late _ _ => finishedLeft event late)
     (fun event _ late _ _ => finishedRight event late) views

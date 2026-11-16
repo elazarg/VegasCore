@@ -94,19 +94,13 @@ variable {setup : Setup (Player := Player) (L := L)} {deps : setup.dataflowGraph
   {duration : (serviceGraph setup deps).EventId → Nat}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup deps))}
 
-/-- **A visible chance event.** From a coupled prior whose deviator traffic is
-noise read from its normalized view of the order-free key, the phase that
-completes a chance event ready alone, whose output the deviator sees, has a
-successor key and final traffic of the same factored form, and leaves the
-last-served erased-key law of every normalized deviation unchanged. -/
-theorem lastChance_phase
+/-- A visible solitary chance event preserves the joint key and traffic factorization. -/
+theorem chance_phase_joint
     (scheduler : (serviceApplication setup deps duration leaks).Scheduler) (horizon : Nat)
     (bound : (serviceGraph setup deps).EventId → Nat) (turns : Nat)
     (timing : TurnTiming setup turns deps)
-    (reference base : (serviceGraph setup deps).BehavioralProfile) (who : Player)
+    (reference : (serviceGraph setup deps).BehavioralProfile) (who : Player)
     (deviation : (serviceApplication setup deps duration leaks).Policy)
-    (independent : ∀ policy, LastIndependent
-      ((serviceGraph setup deps).lastDeviationProfile base who policy) who)
     (event : (serviceGraph setup deps).EventId)
     (ownerless : (serviceGraph setup deps).actor? event = none)
     (visible : (serviceGraph setup deps).fieldVisibleTo who (.inr event))
@@ -147,19 +141,7 @@ theorem lastChance_phase
               who deviation)
             (fun current => event ∈ current.application.config.cut.completed) horizon
             (execution seed)).map fun final => runKey final.application.config).bind
-          (fun current => (nextNoise (keyView who current)).map fun extra => (current, extra)) ∧
-      ∀ policy, (prior.bind fun seed =>
-        ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
-          (Function.update
-            (serviceReferenceTurnPolicy setup deps duration leaks bound turns timing reference)
-            who deviation)
-          (fun current => event ∈ current.application.config.cut.completed) horizon
-          (execution seed)).bind fun final =>
-            keyTarget ((serviceGraph setup deps).lastDeviationProfile base who policy) who
-              (runKey final.application.config)) =
-        prior.bind fun seed =>
-          keyTarget ((serviceGraph setup deps).lastDeviationProfile base who policy) who
-            (runKey (execution seed).application.config) := by
+          (fun current => (nextNoise (keyView who current)).map fun extra => (current, extra)) := by
   classical
   let G := serviceGraph setup deps
   let app := serviceApplication setup deps duration leaks
@@ -318,41 +300,122 @@ theorem lastChance_phase
     simp only [PMF.map_bind, PMF.map_comp, Function.comp_def, pmf_map_fun_const,
       PMF.bind_pure] at projected
     exact projected
-  refine ⟨nextNoise, ?_, ?_⟩
-  · change (prior.bind fun seed => (phase seed).map fun final =>
-      (runKey final.application.config, traffic final)) =
-      (prior.bind fun seed => (phase seed).map fun final =>
-        runKey final.application.config).bind _
-    rw [pairs, advancedLaw, marginal]
-  · intro policy
-    let P := G.lastDeviationProfile base who policy
-    have independentP : LastIndependent P who := independent policy
-    let continuation := fun config : G.Config => keyTarget P who (runKey config)
-    have drained (state : EventGraphRuntime.State G) :
-        continuation state.drain.config = continuation state.config := by
-      simp only [continuation, keyTarget_runKey independentP]
-      exact State.drain_lastErasedLaw independentP state
-    have headStep (config : G.Config) (ready : config.cut.Ready event)
-        (action : G.Action event) :
-        (config.step event ready action).bind continuation = continuation config := by
-      simp only [continuation, keyTarget_runKey independentP]
-      have stepped := lastRun_step P who config (fun terminal => ready.1 (by
-          rw [terminal]; exact Finset.mem_univ _)) event ready
-        (lastPick_eq_of_alone who config (fun other otherReady => alone _ other ready otherReady)
-          _)
-      have mapped := congrArg (PMF.map erasedKey) stepped
-      rw [PMF.map_bind] at mapped
-      change lastErasedLaw P who config = _ at mapped
-      rw [mapped]
-      unfold eventStep
-      rw [actionLaw_of_ownerless _ _ ownerlessNode, PMF.pure_bind,
-        (G.nodes event).action_eq_of_actor_none ownerlessNode action
-          (EventCode.actionOfActorNone (G.nodes event) ownerlessNode)]
-      rfl
-    apply bind_congr_on_support _
-    intro seed supported
-    exact chance_runUntil_bind_continuation timeouts leaks continuation drained scheduler players
-      event (fun _ _ otherReady ready => alone _ _ ready otherReady) headStep ownerless _
-      (execution seed) (readyAt seed supported)
+  refine ⟨nextNoise, ?_⟩
+  change (prior.bind fun seed => (phase seed).map fun final =>
+    (runKey final.application.config, traffic final)) =
+    (prior.bind fun seed => (phase seed).map fun final =>
+      runKey final.application.config).bind _
+  rw [pairs, advancedLaw, marginal]
+
+/-- **A visible chance event.** From a coupled prior whose deviator traffic is
+noise read from its normalized view of the order-free key, the phase that
+completes a chance event ready alone, whose output the deviator sees, has a
+successor key and final traffic of the same factored form, and leaves the
+last-served erased-key law of every normalized deviation unchanged. -/
+theorem lastChance_phase
+    (scheduler : (serviceApplication setup deps duration leaks).Scheduler) (horizon : Nat)
+    (bound : (serviceGraph setup deps).EventId → Nat) (turns : Nat)
+    (timing : TurnTiming setup turns deps)
+    (reference base : (serviceGraph setup deps).BehavioralProfile) (who : Player)
+    (deviation : (serviceApplication setup deps duration leaks).Policy)
+    (independent : ∀ policy, LastIndependent
+      ((serviceGraph setup deps).lastDeviationProfile base who policy) who)
+    (event : (serviceGraph setup deps).EventId)
+    (ownerless : (serviceGraph setup deps).actor? event = none)
+    (visible : (serviceGraph setup deps).fieldVisibleTo who (.inr event))
+    (alone : ∀ (cut : (serviceGraph setup deps).order.Cut) other, cut.Ready event →
+      cut.Ready other → other = event)
+    {Seed : Type} (prior : PMF Seed)
+    (execution : Seed → (serviceApplication setup deps duration leaks).Execution)
+    (quiescent : ∀ seed ∈ prior.support, ∀ query,
+      ¬ (execution seed).application.AutomaticReady query)
+    (ordered : ∀ seed ∈ prior.support,
+      (execution seed).application.config.cut.IsPrefix event.val)
+    (completes : ∀ seed ∈ prior.support, ∀ final ∈
+      ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
+        (Function.update
+          (serviceReferenceTurnPolicy setup deps duration leaks bound turns timing reference) who
+          deviation)
+        (fun current => event ∈ current.application.config.cut.completed) horizon
+        (execution seed)).support,
+      event ∈ final.application.config.cut.completed)
+    (noise : Option ((serviceGraph setup deps).PlayerObservation who) → PMF _)
+    (factor : prior.map (fun seed => (runKey (execution seed).application.config,
+        (bindingTraffic (serviceTimeouts setup deps duration)) leaks who (execution seed))) =
+      (prior.map fun seed => runKey (execution seed).application.config).bind fun current =>
+        (noise (keyView who current)).map fun extra => (current, extra)) :
+    ∃ nextNoise : Option ((serviceGraph setup deps).PlayerObservation who) → PMF _,
+      (prior.bind fun seed =>
+        ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
+          (Function.update
+            (serviceReferenceTurnPolicy setup deps duration leaks bound turns timing reference)
+            who deviation)
+          (fun current => event ∈ current.application.config.cut.completed) horizon
+          (execution seed)).map fun final => (runKey final.application.config,
+            (bindingTraffic (serviceTimeouts setup deps duration)) leaks who final)) =
+        (prior.bind fun seed =>
+          ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
+            (Function.update
+              (serviceReferenceTurnPolicy setup deps duration leaks bound turns timing reference)
+              who deviation)
+            (fun current => event ∈ current.application.config.cut.completed) horizon
+            (execution seed)).map fun final => runKey final.application.config).bind
+          (fun current => (nextNoise (keyView who current)).map fun extra => (current, extra)) ∧
+      ∀ policy, (prior.bind fun seed =>
+        ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
+          (Function.update
+            (serviceReferenceTurnPolicy setup deps duration leaks bound turns timing reference)
+            who deviation)
+          (fun current => event ∈ current.application.config.cut.completed) horizon
+          (execution seed)).bind fun final =>
+            keyTarget ((serviceGraph setup deps).lastDeviationProfile base who policy) who
+              (runKey final.application.config)) =
+        prior.bind fun seed =>
+          keyTarget ((serviceGraph setup deps).lastDeviationProfile base who policy) who
+            (runKey (execution seed).application.config) := by
+  classical
+  let G := serviceGraph setup deps
+  let timeouts := serviceTimeouts setup deps duration
+  let players := Function.update
+    (serviceReferenceTurnPolicy setup deps duration leaks bound turns timing reference) who
+    deviation
+  have ownerlessNode : (G.nodes event).actor = none := ownerless
+  have readyAt (seed : Seed) (supported : seed ∈ prior.support) :
+      (execution seed).application.config.cut.Ready event := by
+    simpa only [Fin.eta] using (ordered seed supported).ready event.isLt
+  obtain ⟨nextNoise, joint⟩ := chance_phase_joint scheduler horizon bound turns timing reference
+    who deviation event ownerless visible alone prior execution quiescent ordered completes
+    noise factor
+  refine ⟨nextNoise, joint, ?_⟩
+  intro policy
+  let P := G.lastDeviationProfile base who policy
+  have independentP : LastIndependent P who := independent policy
+  let continuation := fun config : G.Config => keyTarget P who (runKey config)
+  have drained (state : EventGraphRuntime.State G) :
+      continuation state.drain.config = continuation state.config := by
+    simp only [continuation, keyTarget_runKey independentP]
+    exact State.drain_lastErasedLaw independentP state
+  have headStep (config : G.Config) (ready : config.cut.Ready event)
+      (action : G.Action event) :
+      (config.step event ready action).bind continuation = continuation config := by
+    simp only [continuation, keyTarget_runKey independentP]
+    have stepped := lastRun_step P who config (fun terminal => ready.1 (by
+        rw [terminal]; exact Finset.mem_univ _)) event ready
+      (lastPick_eq_of_alone who config (fun other otherReady => alone _ other ready otherReady)
+        _)
+    have mapped := congrArg (PMF.map erasedKey) stepped
+    rw [PMF.map_bind] at mapped
+    change lastErasedLaw P who config = _ at mapped
+    rw [mapped]
+    unfold eventStep
+    rw [actionLaw_of_ownerless _ _ ownerlessNode, PMF.pure_bind,
+      (G.nodes event).action_eq_of_actor_none ownerlessNode action
+        (EventCode.actionOfActorNone (G.nodes event) ownerlessNode)]
+    rfl
+  apply bind_congr_on_support _
+  intro seed supported
+  exact chance_runUntil_bind_continuation timeouts leaks continuation drained scheduler players
+    event (fun _ _ otherReady ready => alone _ _ ready otherReady) headStep ownerless _
+    (execution seed) (readyAt seed supported)
 
 end Vegas

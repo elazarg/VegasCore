@@ -3,6 +3,7 @@ module
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 public import Vegas.Game.RevealPhaseBoundary
+public import Vegas.Game.SourceServiceCompletion
 public import Vegas.Game.DeviationSimulation
 
 @[expose] public section
@@ -47,42 +48,6 @@ theorem readErased_runKey (config : graph.Config) :
   exact erasedKey_congr found.choose_spec
 
 end Read
-
-/-- A round from a terminal configuration keeps it. -/
-theorem round_config_eq_of_terminal
-    {scheduler : (serviceApplication setup deps duration leaks).Scheduler}
-    {players : Player → (serviceApplication setup deps duration leaks).Policy}
-    {execution next : (serviceApplication setup deps duration leaks).Execution}
-    (terminal : execution.application.config.cut.Terminal)
-    (reached : next ∈
-      ((serviceApplication setup deps duration leaks).round scheduler players execution).support) :
-    next.application.config = execution.application.config := by
-  rcases Relation.ReflTransGen.cases_head (round_config_path reached) with same | ⟨_, moved, _⟩
-  · exact same.symm
-  · obtain ⟨event, ready, _, _⟩ := moved
-    exact (ready.1 (terminal ▸ Finset.mem_univ event)).elim
-
-/-- Rounds from a terminal configuration keep it. -/
-theorem runRounds_config_eq_of_terminal
-    (scheduler : (serviceApplication setup deps duration leaks).Scheduler)
-    (players : Player → (serviceApplication setup deps duration leaks).Policy) :
-    ∀ (count : Nat) (execution final : (serviceApplication setup deps duration leaks).Execution),
-      execution.application.config.cut.Terminal →
-      final ∈ ((serviceApplication setup deps duration leaks).runRounds scheduler players count
-        execution).support →
-      final.application.config = execution.application.config := by
-  intro count
-  induction count with
-  | zero =>
-      intro execution final _ reached
-      cases (PMF.mem_support_pure_iff _ _).mp reached
-      rfl
-  | succ count ih =>
-      intro execution final terminal reached
-      simp only [ReactiveApplication.runRounds] at reached
-      obtain ⟨next, moved, rest⟩ := (PMF.mem_support_bind_iff _ _ _).mp reached
-      have same := round_config_eq_of_terminal terminal moved
-      rw [ih next final (same ▸ terminal) rest, same]
 
 /-- **The deviation simulation with concurrent reveals.** From every phase
 boundary of a ledger run in which honest clients open a reveal exactly when its
@@ -206,7 +171,7 @@ theorem concurrentDeviationSimulation {horizon : Nat}
         deviation relaxed runs run execution boundary final reached
     · intro Seed prior execution goods noise factor
       obtain ⟨build, nextNoise, joint, averaged⟩ := lastBlock_phase bound turns contract timely
-        base decides who deviation independent rank finish (run.shaped relaxed)
+        base decides who deviation independent rank finish (run.shaped relaxed.revealRelaxedOrdered)
         run.publications concurrent (run.flat relaxed runs) prior execution
         (fun seed member => (goods seed member).supported)
         (fun seed member => (goods seed member).bounded)

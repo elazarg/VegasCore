@@ -7,6 +7,7 @@ public import Interaction.ReactiveEnvironmentStep
 public import Interaction.ReactiveStopping
 public import Vegas.Pending.ReactiveRuntime
 public import Vegas.EventGraph.OwnedStep
+public import Vegas.EventGraph.BarrierBlocks
 
 @[expose] public section
 
@@ -655,5 +656,254 @@ theorem reactive_protocol_primary_or_stutter (timeouts : EventTimeouts graph)
           exact environment_primary_or_stutter timeouts leaks execution next command
             quiescent reached
 
+private theorem handle_binding_clear
+    {graph : Vegas.EventGraph Player L} (timeouts : EventTimeouts graph)
+    (state next : EventGraphRuntime.State graph) (message : Message Player (Payload graph))
+    (clear : state.config.defaulted = ∅)
+    (bindings : ∀ event, state.config.cut.Ready event →
+      ∃ owner payload, graph.outputLayout event = .binding owner payload)
+    (accepted : handle timeouts state message = some next) :
+    next.config.defaulted = ∅ ∧ ∃ (event : graph.EventId) (ready : state.config.cut.Ready event),
+      next.config.cut = state.config.cut.complete event ready := by
+  rcases message with ⟨id, packet⟩
+  cases packet with
+  | malformed raw => simp [handle] at accepted
+  | commitment event candidate =>
+      obtain ⟨_active, ready, _timely, owner, payload, outputEq, codeEq, _view, _sender,
+        _handleOwner, _vacant, _unused, nextEq⟩ :=
+        (handle_commitment_iff timeouts state next id event candidate).mp accepted
+      rw [nextEq]
+      refine ⟨?_, event, ready, rfl⟩
+      change (state.config.complete event ready
+        (cast (congrArg EventField.Action outputEq.symm)
+          (some (state.bindingResult candidate payload)))
+        (cast (congrArg EventField.Value outputEq.symm)
+          (state.bindingResult candidate payload))).defaults.defaulted = ∅
+      rw [EventGraph.Config.complete_defaults, state.config.completion_bind_some_defaultEvent
+        event owner payload outputEq codeEq, DefaultHistory.defaulted_record_none]
+      exact clear
+  | opening event candidate raw =>
+      obtain ⟨_active, ready, _timely, owner, payload, binding, checks, outputEq, _codeEq,
+        _value, _result, _view, _sender, _handleOwner, _associated, _rawEq, _verified,
+        _stored, _resolved, _nextEq⟩ :=
+        (handle_opening_iff timeouts state next id event candidate raw).mp accepted
+      obtain ⟨other, ty, kind⟩ := bindings event ready
+      cases kind.symm.trans outputEq
+
+private theorem environment_binding_stutters
+    {graph : Vegas.EventGraph Player L} (timeouts : EventTimeouts graph)
+    (state next : EventGraphRuntime.State graph) (command : EnvironmentCommand graph)
+    (bindings : ∀ event, state.config.cut.Ready event →
+      ∃ owner payload, graph.outputLayout event = .binding owner payload)
+    (timely : ∀ event, state.config.cut.Ready event → state.WithinDeadline timeouts event)
+    (reached : next ∈ (environmentStep timeouts state command).support) :
+    next.config = state.config := by
+  cases command with
+  | advanceClock =>
+      cases (PMF.mem_support_pure_iff _ _).mp reached
+      rfl
+  | executeSample event =>
+      by_cases ready : state.config.cut.Ready event
+      · obtain ⟨owner, payload, outputEq⟩ := bindings event ready
+        rw [environmentStep_executeSample_of_nonsample timeouts state event ready] at reached
+        · cases (PMF.mem_support_pure_iff _ _).mp reached
+          rfl
+        · intro ty law kind _code _node
+          cases outputEq.symm.trans kind
+      · rw [environmentStep_executeSample_of_not_ready timeouts state event ready] at reached
+        cases (PMF.mem_support_pure_iff _ _).mp reached
+        rfl
+  | expire event =>
+      by_cases ready : state.config.cut.Ready event
+      · have within := timely event ready
+        have unchanged : expire timeouts state event = state := by
+          unfold expire
+          rw [dite_eq_left ready]
+          cases activated : state.activatedAt event with
+          | none => rfl
+          | some entered =>
+              have early : state.clock - entered < timeouts.duration event := by
+                simpa only [State.WithinDeadline, activated] using within
+              simp only [Nat.not_le.mpr early, ↓reduceDIte]
+        change next ∈ (PMF.pure (expire timeouts state event)).support at reached
+        rw [unchanged, PMF.mem_support_pure_iff] at reached
+        subst next
+        rfl
+      · rw [environmentStep_expire_of_not_ready timeouts state event ready] at reached
+        cases (PMF.mem_support_pure_iff _ _).mp reached
+        rfl
+
+private theorem reactive_environment_bindings_clear
+    {graph : Vegas.EventGraph Player L} (timeouts : EventTimeouts graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (execution next : ((reactiveApplication timeouts) leaks).Execution)
+    (command : ((reactiveApplication timeouts) leaks).Command)
+    (clear : execution.application.config.defaulted = ∅)
+    (bindings : ∀ event, execution.application.config.cut.Ready event →
+      ∃ owner payload, graph.outputLayout event = .binding owner payload)
+    (timely : ∀ event, execution.application.config.cut.Ready event →
+      execution.application.WithinDeadline timeouts event)
+    (reached : next ∈ (execution.environmentStep ((reactiveApplication timeouts) leaks)
+      command).support) : next.application.config.defaulted = ∅ := by
+  let app := (reactiveApplication timeouts) leaks
+  apply app.environmentStep_cases execution next command reached
+    (predicate := fun _ next => next.application.config.defaulted = ∅)
+  · exact clear
+  · exact fun _ _ _ => clear
+  · intro id
+    change (execution.includePending app id).application.config.defaulted = ∅
+    unfold ReactiveApplication.Execution.includePending MessageNetwork.includePending
+    cases found : execution.network.lookup id with
+    | none => exact clear
+    | some message =>
+        change (Option.getD (app.handle execution.application message)
+          execution.application).config.defaulted = ∅
+        cases accepted : app.handle execution.application message with
+        | none => exact clear
+        | some state =>
+            obtain ⟨native, handled, drained⟩ := reactiveHandle_call accepted
+            have nativeClear := (handle_binding_clear timeouts execution.application native
+              ⟨message.id, message.payload.call⟩ clear bindings handled).1
+            rw [← drained, native.drain_eq_of_empty nativeClear]
+            exact nativeClear
+  · intro operation state changed
+    change state ∈ ((environmentStep timeouts execution.application operation).map
+      EventGraphRuntime.State.drain).support at changed
+    obtain ⟨native, moved, rfl⟩ := PMF.support_map .. ▸ changed
+    have same := environment_binding_stutters timeouts execution.application native operation
+      bindings timely moved
+    have nativeClear : native.config.defaulted = ∅ := by rw [same]; exact clear
+    rw [native.drain_eq_of_empty nativeClear]
+    exact nativeClear
+
+/-- If every currently ready event is a binding within its deadline, one native round
+creates no public default and performs at most one graph completion. -/
+theorem reactive_round_bindings_clear
+    {graph : Vegas.EventGraph Player L} (timeouts : EventTimeouts graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (scheduler : ((reactiveApplication timeouts) leaks).Scheduler)
+    (players : Player → ((reactiveApplication timeouts) leaks).Policy)
+    (execution next : ((reactiveApplication timeouts) leaks).Execution)
+    (clear : execution.application.config.defaulted = ∅)
+    (bindings : ∀ event, execution.application.config.cut.Ready event →
+      ∃ owner payload, graph.outputLayout event = .binding owner payload)
+    (timely : ∀ event, execution.application.config.cut.Ready event →
+      execution.application.WithinDeadline timeouts event)
+    (reached : next ∈ (((reactiveApplication timeouts) leaks).round scheduler players
+      execution).support) :
+    next.application.config.defaulted = ∅ ∧
+      (next.application.config = execution.application.config ∨
+        ∃ (event : graph.EventId) (ready : execution.application.config.cut.Ready event)
+          (action : graph.Action event), next.application.config ∈
+            (execution.application.config.step event ready action).support) := by
+  let app := (reactiveApplication timeouts) leaks
+  obtain ⟨command, _, dispatched⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+  obtain ⟨middle, moved, resumed⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ dispatched)
+  have middleClear := reactive_environment_bindings_clear timeouts leaks execution middle command
+    clear bindings timely moved
+  have primary := reactive_environmentStep_config_eq_or_step timeouts leaks execution middle
+    command moved middleClear
+  cases actor : command.actor? app with
+  | none =>
+      rw [show app.resume players (command.actor? app) middle = PMF.pure middle by
+        rw [actor]; rfl, PMF.mem_support_pure_iff] at resumed
+      subst next
+      exact ⟨middleClear, primary⟩
+  | some owner =>
+      change next ∈ (app.resume players (command.actor? app) middle).support at resumed
+      rw [actor] at resumed
+      obtain ⟨response, _, rfl⟩ := PMF.support_map .. ▸ resumed
+      have same := (reactive_respond_application timeouts leaks middle owner response).1
+      rw [same]
+      exact ⟨middleClear, primary⟩
+
+
+/-- A round ending clear has no automatic tail and changes at most one graph event. -/
+theorem reactive_round_config_eq_or_step_of_clear
+    (timeouts : EventTimeouts graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (scheduler : ((reactiveApplication timeouts) leaks).Scheduler)
+    (players : Player → ((reactiveApplication timeouts) leaks).Policy)
+    (before after : ((reactiveApplication timeouts) leaks).Execution)
+    (reached : after ∈ (((reactiveApplication timeouts) leaks).round scheduler players
+      before).support) (clear : after.application.config.defaulted = ∅) :
+    after.application.config = before.application.config ∨
+      ∃ (event : graph.EventId) (ready : before.application.config.cut.Ready event)
+        (action : graph.Action event), after.application.config ∈
+          (before.application.config.step event ready action).support := by
+  let app := (reactiveApplication timeouts) leaks
+  obtain ⟨command, _, dispatched⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+  obtain ⟨middle, moved, resumed⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ dispatched)
+  have same : after.application.config = middle.application.config := by
+    cases actor : command.actor? app with
+    | none =>
+        rw [show app.resume players (command.actor? app) middle = PMF.pure middle by
+          rw [actor]; rfl, PMF.mem_support_pure_iff] at resumed
+        subst after
+        rfl
+    | some who =>
+        change after ∈ (app.resume players (command.actor? app) middle).support at resumed
+        rw [actor] at resumed
+        obtain ⟨response, _, rfl⟩ := PMF.support_map .. ▸ resumed
+        exact (reactive_respond_application timeouts leaks middle who response).1
+  have middleClear : middle.application.config.defaulted = ∅ := by rw [← same]; exact clear
+  have primary := reactive_environmentStep_config_eq_or_step timeouts leaks before middle command
+    moved middleClear
+  rwa [← same] at primary
+
+/-- A stopped block run ending clear remains within its source interval.
+No restriction is placed on the raw native policies. -/
+theorem blockRun_within_of_clear
+    (timeouts : EventTimeouts graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (scheduler : ((reactiveApplication timeouts) leaks).Scheduler)
+    (players : Player → ((reactiveApplication timeouts) leaks).Policy)
+    {start finish : Nat} (shaped : BlockShaped (graph := graph) start finish) :
+    ∀ count (origin final : ((reactiveApplication timeouts) leaks).Execution),
+      origin.application.config.cut.Within start finish →
+      final ∈ (((reactiveApplication timeouts) leaks).runUntil scheduler players
+        (fun current => BlockDone finish current.application.config) count origin).support →
+      final.application.config.defaulted = ∅ →
+      final.application.config.cut.Within start finish := by
+  classical
+  let app := (reactiveApplication timeouts) leaks
+  let stop := fun current : app.Execution => BlockDone finish current.application.config
+  intro count
+  induction count with
+  | zero =>
+      intro origin final within reached _
+      cases (PMF.mem_support_pure_iff _ _).mp reached
+      exact within
+  | succ count ih =>
+      intro origin final within reached clear
+      by_cases halted : stop origin
+      · rw [app.runUntil_of_stop scheduler players stop _ origin halted,
+          PMF.mem_support_pure_iff] at reached
+        subst final
+        exact within
+      · change final ∈ (if stop origin then PMF.pure origin else
+          (app.round scheduler players origin).bind
+            (app.runUntil scheduler players stop count)).support at reached
+        rw [ite_eq_right halted] at reached
+        obtain ⟨middle, moved, rest⟩ := (PMF.mem_support_bind_iff _ _ _).mp reached
+        have tailPath := reactive_runUntil_graph_steps timeouts leaks scheduler players stop
+          count middle final rest
+        have middleClear : middle.application.config.defaulted = ∅ := by
+          apply Finset.eq_empty_iff_forall_notMem.mpr
+          intro owner member
+          have later := Config.Step.path_defaulted_mono tailPath member
+          simp only [clear, Finset.notMem_empty] at later
+        have inside : InBlock start finish origin.application.config :=
+          ⟨within.1, fun event late completed => Nat.not_lt.mpr late (within.2 event completed)⟩
+        have primary := reactive_round_config_eq_or_step_of_clear timeouts leaks scheduler players
+          origin middle moved middleClear
+        have nextWithin : middle.application.config.cut.Within start finish := by
+          rcases primary with same | ⟨event, ready, action, selected⟩
+          · rw [same]
+            exact within
+          · rw [origin.application.config.step_cut event ready action middle.application.config
+              selected]
+            exact within.complete event ready (shaped _ inside halted event ready).2
+        exact ih middle final nextWithin rest clear
 
 end Vegas.EventGraphRuntime

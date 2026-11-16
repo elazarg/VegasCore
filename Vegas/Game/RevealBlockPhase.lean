@@ -215,7 +215,7 @@ theorem lastBlock_phase {horizon : Nat}
   let P := fun policy : G.BehavioralPolicy who => G.lastDeviationProfile base who policy
   obtain ⟨channel, nextNoise, endKey, joint, factored, ends⟩ := ledgerBlock_joint bound turns
     contract timely (G.normalizeProfile base) decides who deviation start finish shaped
-    publications concurrent flat prior execution supported bounded begin owners untouched
+    publications serial flat prior execution supported bounded begin owners untouched
     completes noise factor
   have honestLaw : ∀ (policy : G.BehavioralPolicy who) (current : G.Config)
       (event : G.EventId) (owner : Player) (payload : L.Ty)
@@ -327,7 +327,7 @@ theorem lastBlock_phase {horizon : Nat}
       finalFacts other otherMember last reached
     have drainPath : Relation.ReflTransGen Config.Step final (State.drainConfig final) :=
       State.drain_graph_steps (State.ofConfig final)
-    exact blockEnd_runKey_eq_of_owned_of_keys concurrent flat keys (begin other otherMember)
+    exact blockEnd_runKey_eq_of_owned_of_keys serial flat keys (begin other otherMember)
       (begin seed member) lastPath (path.trans drainPath) lastSound sound.drainConfig
       lastOwners (DefaultOwners.path (path.trans drainPath) (owners seed member)) lastDone
       (BlockDone.path drainPath done) lastQuiet (drainConfig_quiescent final)
@@ -385,7 +385,7 @@ theorem lastBlock_phase {horizon : Nat}
   subst wOwner
   have unique : ∀ event : G.EventId, start ≤ event.val → event.val < finish →
       G.actor? event = some who → event = w :=
-    fun event early late owned => block_actor_unique concurrent flat early late wEarly wLate
+    fun event early late owned => block_actor_unique serial flat early late wEarly wLate
       owned wOwned
   let HonestClosure := fun (seed : Seed) (final : G.Config) =>
     Relation.ReflTransGen Config.Step (config seed) final ∧
@@ -455,7 +455,7 @@ theorem lastBlock_phase {horizon : Nat}
       view (key found.choose) else view (key anchor)) = _
     rw [dite_eq_left found]
     obtain ⟨otherMember, otherFinal, otherClosure, otherViews⟩ := found.choose_spec
-    obtain ⟨startViews, hiddens⟩ := blockStart_reflect_general concurrent flat
+    obtain ⟨startViews, hiddens⟩ := blockStart_reflect_general serial flat
       publications (begin _ otherMember) (begin seed member) otherClosure.1 pathY
       otherClosure.2.1 soundY otherClosure.2.2.1 closureSeed.2.2.1 otherClosure.2.2.2.1
       closureSeed.2.2.2.1 otherClosure.2.2.2.2 closureSeed.2.2.2.2 otherViews
@@ -484,7 +484,7 @@ theorem lastBlock_phase {horizon : Nat}
   have wPendingOther : w ∉ (config other).cut.completed := by rw [cuts]; exact wDone
   have availableOther : ∀ field ∈ (G.nodes w).readFields, ((config other).store field).isSome :=
     by rw [stores]; exact available
-  obtain ⟨record, recordFound, decided⟩ := decided_of_pending concurrent flat
+  obtain ⟨record, recordFound, decided⟩ := decided_of_pending serial flat
     (begin other otherMember) finalPath finalSound finalOwners wEarly wLate wPendingOther
     (finalDone w wLate) wOwned
   obtain ⟨disclose, output, resolved, recorded, stored⟩ := resolve_record_of_path finalPath
@@ -541,7 +541,7 @@ theorem lastBlock_phase {horizon : Nat}
   have steppedDoneW : w ∈ stepped.cut.completed := steppedDone w wLate
   congr 1
   symm
-  refine blockEnd_runKey_eq_of_owned_of_keys concurrent flat keys (begin other otherMember)
+  refine blockEnd_runKey_eq_of_owned_of_keys serial flat keys (begin other otherMember)
     (begin seed member) finalPath graphPath finalSound steppedSound.drainConfig finalOwners
     (DefaultOwners.path graphPath (owners seed member)) finalDone
     (BlockDone.path drainPath steppedDone) finalQuiet (drainConfig_quiescent stepped) ?_

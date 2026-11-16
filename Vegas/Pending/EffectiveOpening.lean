@@ -9,6 +9,8 @@ public import Vegas.EventGraph.LastSchedulerErasure
 public import Vegas.EventGraph.FootprintIndependence
 public import Vegas.EventGraph.ErasureTwin
 public import Vegas.Pending.CanonicalKeyPublication
+public import Vegas.EventGraph.PrefixPolicy
+public import Vegas.EventGraph.BindingSubmission
 
 @[expose] public section
 
@@ -22,9 +24,8 @@ withholds it otherwise; elsewhere it follows the profile.
 
 Its kernel at a publication reads only the publication's own read footprint.
 That footprint has completed when the publication is ready, so completing a
-concurrently ready event leaves the kernel unchanged, and the normalized
-effective opening is ready independent on a graph whose only concurrency is
-between independent reveals.
+concurrently ready event leaves the kernel unchanged. Effective opening preserves
+ready independence and binding submission, and commutes with source-prefix observation.
 -/
 
 noncomputable section
@@ -309,15 +310,15 @@ theorem erasureTwins_effectiveOpening (base : graph.BehavioralProfile)
         simp only [normalizeProfile, normalizePolicy, GameTheory.Profile.update_of_ne _ _ same]
         rw [effectiveOpening_of_not_publication base publication ownerEq]
 
-/-- **The normalized effective opening and the always-open base are twins.** -/
+/-- Effective opening and an always-open base have the same erased event laws,
+without changing either profile's nonpublication kernels. -/
 theorem erasureTwins_effectiveOpening_honest (base : graph.BehavioralProfile)
     (opens : ∀ owner event (actor : (graph.nodes event).actor = some owner)
       (publication : (graph.outputLayout event).IsPublication)
       (observation : graph.PlayerObservation owner) (active : owner ∉ observation.defaulted),
       base owner event actor observation active =
         PMF.pure (EventField.openAction _ publication)) :
-    ErasureTwins (graph.normalizeProfile (effectiveOpening base))
-      (graph.normalizeProfile base) := by
+    ErasureTwins (effectiveOpening base) base := by
   apply erasureTwins_of_pointwise
   intro config event ready
   cases ownerEq : (graph.nodes event).actor with
@@ -335,15 +336,17 @@ theorem erasureTwins_effectiveOpening_honest (base : graph.BehavioralProfile)
         have actorSame : actorName = owner :=
           Option.some.inj ((nodeView_resolve_actor outputEq codeEq).symm.trans ownerEq)
         subst actorName
-        have effective : actionLaw (graph.normalizeProfile (effectiveOpening base)) config event =
+        have effective : actionLaw (effectiveOpening base) config event =
             PMF.pure (cast (congrArg EventField.Action outputEq.symm)
               (openingAccepted event config.store)) := by
           rw [actionLaw_of_actor _ _ ownerEq, dite_eq_right inactive]
-          exact normalize_effectiveOpening_publication base config node ownerEq _
-        have always : actionLaw (graph.normalizeProfile base) config event =
+          rw [effectiveOpening_of_resolve base node ownerEq]
+          change PMF.pure (cast _ (openingAccepted event
+            (graph.playerStore owner config.store))) = _
+          rw [openingAccepted_playerStore event ownerEq]
+        have always : actionLaw base config event =
             PMF.pure (cast (congrArg EventField.Action outputEq.symm) true) := by
           rw [actionLaw_of_actor _ _ ownerEq, dite_eq_right inactive]
-          simp only [normalizeProfile, normalizePolicy]
           rw [opens owner event ownerEq publication, openAction_eq_cast_true outputEq publication]
         cases accepted : openingAccepted event config.store
         · right
@@ -360,7 +363,84 @@ theorem erasureTwins_effectiveOpening_honest (base : graph.BehavioralProfile)
       · left
         rw [actionLaw_of_actor _ _ ownerEq, actionLaw_of_actor _ _ ownerEq,
           dite_eq_right inactive, dite_eq_right inactive]
-        simp only [normalizeProfile, normalizePolicy]
         rw [effectiveOpening_of_not_publication base publication ownerEq]
+
+
+private theorem actionLaw_effectiveOpening_of_not_publication
+    (base : graph.BehavioralProfile) (config : graph.Config) (event : graph.EventId)
+    (plain : ¬ (graph.outputLayout event).IsPublication) :
+    actionLaw (effectiveOpening base) config event = actionLaw base config event := by
+  cases actor : (graph.nodes event).actor with
+  | none => rw [actionLaw_of_ownerless _ _ actor, actionLaw_of_ownerless _ _ actor]
+  | some owner =>
+      rw [actionLaw_of_actor _ _ actor, actionLaw_of_actor _ _ actor]
+      by_cases inactive : owner ∈ config.defaulted
+      · rw [dite_eq_left inactive, dite_eq_left inactive]
+      · rw [dite_eq_right inactive, dite_eq_right inactive]
+        exact effectiveOpening_of_not_publication base plain actor _ _
+
+/-- Effective openings preserve ready independence of every base profile. -/
+theorem _root_.Vegas.EventGraph.ReadyIndependent.effectiveOpening
+    {base : graph.BehavioralProfile} (independent : ReadyIndependent base) :
+    ReadyIndependent (EventGraphRuntime.effectiveOpening base) where
+  actorsDiffer := independent.actorsDiffer
+  stable config event other ready otherReady different action value := by
+    by_cases publication : (graph.outputLayout event).IsPublication
+    swap
+    · rw [actionLaw_effectiveOpening_of_not_publication base _ _ publication,
+        actionLaw_effectiveOpening_of_not_publication base _ _ publication]
+      exact independent.stable config ready otherReady different action value
+    cases actor : (graph.nodes event).actor with
+    | none => rw [actionLaw_of_ownerless _ _ actor, actionLaw_of_ownerless _ _ actor]
+    | some owner =>
+        rw [actionLaw_of_actor _ _ actor, actionLaw_of_actor _ _ actor]
+        have foreign : graph.actor? other ≠ some owner :=
+          fun same => independent.actorsDiffer config ready otherReady different.symm owner actor
+            same
+        have member := mem_defaulted_complete_of_actor_ne config other otherReady action value
+          owner foreign
+        by_cases inactive : owner ∈ config.defaulted
+        · rw [dite_eq_left (member.mpr inactive), dite_eq_left inactive]
+        · rw [dite_eq_right (fun present => inactive (member.mp present)), dite_eq_right inactive]
+          exact effectiveOpening_footprint base owner trivial event actor publication _ _ _ _
+            (playerStore_complete_agreeOn owner config ready otherReady action value)
+  congr {left right} same event := by
+    by_cases publication : (graph.outputLayout event).IsPublication
+    swap
+    · rw [actionLaw_effectiveOpening_of_not_publication base _ _ publication,
+        actionLaw_effectiveOpening_of_not_publication base _ _ publication]
+      exact independent.congr same event
+    have stores : left.store = right.store := congrArg (fun key => key.2.1) same
+    have records : completionOf left = completionOf right := congrArg (fun key => key.2.2) same
+    have defaults := defaulted_eq_of_completionOf_eq records
+    cases actor : (graph.nodes event).actor with
+    | none => rw [actionLaw_of_ownerless _ _ actor, actionLaw_of_ownerless _ _ actor]
+    | some owner =>
+        rw [actionLaw_of_actor _ _ actor, actionLaw_of_actor _ _ actor]
+        by_cases inactive : owner ∈ left.defaulted
+        · rw [dite_eq_left inactive, dite_eq_left (defaults ▸ inactive)]
+        · rw [dite_eq_right inactive, dite_eq_right (defaults ▸ inactive)]
+          apply effectiveOpening_footprint base owner trivial event actor publication
+          intro field _read
+          change graph.playerStore owner left.store field =
+            graph.playerStore owner right.store field
+          rw [stores]
+
+/-- Source-prefix observation and effective opening commute: neither changes the store. -/
+theorem prefixProfile_effectiveOpening (base : graph.BehavioralProfile) :
+    graph.prefixProfile (effectiveOpening base) = effectiveOpening (graph.prefixProfile base) := by
+  funext who event actor observation active
+  unfold prefixProfile prefixPolicy effectiveOpening
+  cases node : nodeView graph event <;> rfl
+
+/-- Effective opening does not change any binding submission. -/
+theorem _root_.Vegas.EventGraph.SubmitsBindings.effectiveOpening
+    {base : graph.BehavioralProfile} (submits : graph.SubmitsBindings base) :
+    graph.SubmitsBindings (EventGraphRuntime.effectiveOpening base) := by
+  intro who event actor observation active action selected
+  by_cases publication : (graph.outputLayout event).IsPublication
+  · exact EventField.submitted_of_publication _ publication _
+  · rw [effectiveOpening_of_not_publication base publication actor] at selected
+    exact submits who event actor observation active action selected
 
 end Vegas.EventGraphRuntime

@@ -287,9 +287,9 @@ theorem closureDeviationSimulation {horizon : Nat}
         (fun policy => keyTarget (G.lastDeviationProfile base who policy) who)
         (RunPoint scheduler players horizon who rank finish rank) :=
       runPoint_simulation bound turns contract timely base decides referenceIndependent who
-        deviation independent relaxed concurrent run (@tail) rank runStart.le
+        deviation independent relaxed.revealRelaxedOrdered run (@tail) rank runStart.le
     exact DeviationSimulation.mono (@points) fun execution boundary =>
-      boundary.runPoint bound turns R who deviation relaxed run
+      boundary.runPoint bound turns R who deviation relaxed.revealRelaxedOrdered run
   · have tail : DeviationSimulation scheduler players horizon readErased point
         ((bindingTraffic (serviceTimeouts setup deps duration)) leaks who) (keyView who)
         (fun policy => keyTarget (G.lastDeviationProfile base who policy) who)

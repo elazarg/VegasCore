@@ -62,12 +62,18 @@ in [SourcePrefixForfeit](../Vegas/Game/SourcePrefixForfeit.lean) covers both
 independent bindings and independent reveals, uniformly over dependency choices
 retaining the required public barriers. It uses source-prefix clients that
 always submit bindings and disclose active reveals; deviations retain their
-actual observations. Native concurrent-binding and concurrent SE preservation
-remain open. Private-binding adapters retain the existing graph configurations
+actual observations. The full honest native law in
+[PrefixClientOutcomeLaw](../Vegas/Game/PrefixClientOutcomeLaw.lean) covers the same
+dependency condition, including concurrent bindings and reveals. Every intended
+extension has the intended full source-configuration/payoff law and clean terminal
+paths, without a disclosure, equilibrium, finite binding-catalogue, finite
+initial-support or utility-bound premise. Native concurrent-binding Nash
+preservation and concurrent SE preservation remain open. Private-binding
+adapters retain the existing graph configurations
 and source checkpoints. [Joint traffic opacity](../Vegas/Game/BindingBlockOpacity.lean),
 [later-prefix sampling](../Vegas/Game/BindingPrefixSampling.lean) and
 [checkpoint restoration](../Vegas/Game/BindingSourceCheckpoint.lean) provide
-local components for that extension; they are not a complete native preservation result.
+local components for the remaining native deviation comparison.
 The [physical deviation law](../Vegas/Game/AsyncDeviationReadout.lean)
 backtranslates every raw unilateral policy against first-turn clients to one
 behavioral source policy with the same typed-state/public-default law. Its

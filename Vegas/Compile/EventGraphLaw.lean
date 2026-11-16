@@ -45,7 +45,7 @@ private theorem canonical_ready_least
   omega
 
 
-private theorem commit_head_policy_eq
+theorem commit_head_policy_eq
     {wholeΓ : SourceCtx Player L} {wholeOpen : Finset VarId}
     (whole : SourceProgram Player L wholeΓ wholeOpen)
     (wholeProfile : BehavioralProfile whole)

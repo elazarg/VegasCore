@@ -20,40 +20,6 @@ namespace Vegas
 
 open SourceProgram GameTheory.Math.Probability Interaction EventGraphRuntime EventGraph
 
-section Generic
-
-variable {Principal : Type} [DecidableEq Principal] {app : ReactiveApplication Principal}
-
-/-- A count-indexed invariant preserved by every round that is taken holds at
-every execution a stopped run reaches. -/
-theorem _root_.Interaction.ReactiveApplication.runUntil_support_holds (scheduler : app.Scheduler)
-    (players : Principal → app.Policy) (stop : app.Execution → Prop) [DecidablePred stop]
-    (holds : Nat → app.Execution → Prop)
-    (preserved : ∀ n execution, holds (n + 1) execution → ¬ stop execution →
-      ∀ next ∈ (app.round scheduler players execution).support, holds n next) :
-    ∀ (count : Nat) (execution : app.Execution), holds count execution →
-      ∀ final ∈ (app.runUntil scheduler players stop count execution).support,
-        ∃ n, holds n final := by
-  intro count
-  induction count with
-  | zero =>
-      intro execution valid final reached
-      cases (PMF.mem_support_pure_iff _ _).mp reached
-      exact ⟨0, valid⟩
-  | succ count ih =>
-      intro execution valid final reached
-      by_cases stopped : stop execution
-      · rw [app.runUntil_of_stop scheduler players stop _ execution stopped,
-          PMF.mem_support_pure_iff] at reached
-        subst reached
-        exact ⟨count + 1, valid⟩
-      · simp only [ReactiveApplication.runUntil, stopped, ↓reduceIte] at reached
-        obtain ⟨next, nextReached, finalReached⟩ :=
-          Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
-        exact ih next (preserved count execution valid stopped next nextReached) final
-          finalReached
-
-end Generic
 
 section Owners
 

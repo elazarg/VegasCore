@@ -22,44 +22,6 @@ open SourceProgram GameTheory GameTheory.Math.Probability Interaction EventGraph
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
-private theorem erase_eq_of_defaulted_empty {graph : Vegas.EventGraph Player L}
-    (config : graph.Config) (clean : config.defaulted = ∅) : config.erase = config := by
-  apply EventGraph.Config.ext_fields (left := config.erase) (right := config) rfl rfl rfl
-  rw [EventGraph.Config.erase_history]
-  have unchanged : graph.eraseCompletion config.defaulted = id := by
-    funext completion
-    simp [eraseCompletion, clean]
-  rw [unchanged, List.map_id]
-
-private theorem concurrent_play_outcomeLaw (setup : Setup (Player := Player) (L := L))
-    (profile : setup.revealRelaxedGraph.BehavioralProfile) {Outcome : Type*}
-    (read : setup.revealRelaxedGraph.Config → Outcome) :
-    ((setup.revealRelaxedGraph.gameForm (setup.graphInputs setup.revealDependencies)
-        setup.revealRelaxedGraph.canonicalScheduler).play profile).map
-        (fun outcome => read outcome.1) =
-      (serviceInitialLaw setup setup.revealDependencies).bind fun state =>
-        outcomeLaw profile read state.config := by
-  change ((setup.initialLaw.map (fun initial => setup.eventInputs initial)).bind
-      (fun inputs => setup.revealRelaxedGraph.terminalOutcomes
-        setup.revealRelaxedGraph.canonicalScheduler profile inputs)).map _ = _
-  rw [PMF.map_bind, PMF.bind_map, serviceInitialLaw, PMF.bind_map]
-  apply bind_congr_on_support _
-  intro initial _
-  simp only [Function.comp_apply]
-  change (setup.revealRelaxedGraph.terminalOutcomes _ profile
-    (setup.eventInputs initial)).map (read ∘ Subtype.val) = _
-  rw [← PMF.map_comp, terminalOutcomes_map_val]
-  have initialRemaining : (EventGraph.Config.initial (setup.eventInputs initial) :
-      setup.revealRelaxedGraph.Config).remaining =
-        setup.revealRelaxedGraph.order.eventCount := by
-    simp [EventGraph.Config.remaining, EventGraph.Config.initial, EventOrder.Cut.empty]
-  unfold outcomeLaw EventGraph.runPolicies EventGraph.run
-  change _ = (setup.revealRelaxedGraph.runPlan _
-    (EventGraph.Config.initial (setup.eventInputs initial) :
-      setup.revealRelaxedGraph.Config).remaining _).map read
-  rw [initialRemaining]
-  rfl
-
 /-- Intended approximate Nash equilibria have effective-opening ledger clients
 with the same complete source-configuration/payoff law and no public default
 or failed reveal, under every timely asynchronous service scheduler. -/
@@ -147,7 +109,8 @@ theorem concurrentReveal_intended_ledger (setup : Setup (Player := Player) (L :=
       (concurrentLedgerClients setup duration leaks bound turns source) horizon).map
         (fun final => final.application.config)).map observe = _
     rw [PMF.map_comp]
-    exact physical.trans (concurrent_play_outcomeLaw setup reference observe).symm
+    exact physical.trans
+      (service_play_outcomeLaw setup setup.revealDependencies reference observe).symm
   obtain ⟨_, graphClean, graphLaw⟩ := setup.concurrentReveal_intended_forfeit finite wellFormed
     parameter utility forfeit range intended target agrees ε equilibrium disclosing
     G.canonicalScheduler
@@ -161,7 +124,7 @@ theorem concurrentReveal_intended_ledger (setup : Setup (Player := Player) (L :=
       observe outcome.1 = (some (setup.graphReadout setup.revealDependencies outcome),
         setup.graphForfeitPayoff setup.revealDependencies parameter utility forfeit outcome) := by
     intro outcome supported
-    simp only [observe, erase_eq_of_defaulted_empty outcome.1 (graphDefaults outcome supported),
+    simp only [observe, outcome.1.erase_eq_of_defaulted_empty (graphDefaults outcome supported),
       concurrentRankedRead_terminal setup outcome.1 outcome.2,
       concurrentConfigPayoff_terminal setup parameter utility forfeit outcome.1 outcome.2]
     rfl
@@ -203,7 +166,7 @@ theorem concurrentReveal_intended_ledger (setup : Setup (Player := Player) (L :=
     change concurrentRankedRead setup config.erase = some (setup.graphReadout
         setup.revealDependencies outcome)
       at reads
-    rw [erase_eq_of_defaulted_empty config (ledgerDefaults config supported)] at reads
+    rw [config.erase_eq_of_defaulted_empty (ledgerDefaults config supported)] at reads
     refine ⟨?_, ledgerDefaults config supported, setup.graphReadout setup.revealDependencies
         outcome, reads,
       (graphClean outcome present).2⟩
@@ -212,7 +175,7 @@ theorem concurrentReveal_intended_ledger (setup : Setup (Player := Player) (L :=
     cases reads
   · calc
       _ = ledgerPlay.map observe := map_congr_on_support _ fun config supported => by
-        simp only [observe, erase_eq_of_defaulted_empty config (ledgerDefaults config supported)]
+        simp only [observe, config.erase_eq_of_defaulted_empty (ledgerDefaults config supported)]
       _ = graphPlay.map (fun outcome => observe outcome.1) := physicalLaw
       _ = _ := (map_congr_on_support _ graphObserve).trans graphLaw
 

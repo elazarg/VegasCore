@@ -92,7 +92,7 @@ theorem targetStep_joint {horizon : Nat}
             (openingAccepted event config.store)))
     (referenceIndependent : ReadyIndependent ((serviceGraph setup deps).normalizeProfile base))
     (who : Player) (deviation : (serviceApplication setup deps duration leaks).Policy)
-    (relaxed : RelaxedOrder (serviceGraph setup deps)) {start finish : Nat}
+    (relaxed : (serviceGraph setup deps).RevealRelaxedOrdered) {start finish : Nat}
     (run : RevealRun (serviceGraph setup deps) start finish)
     (target : (serviceGraph setup deps).EventId)
     (targetOwned : (serviceGraph setup deps).actor? target = some who)
@@ -202,7 +202,7 @@ theorem targetStep_joint {horizon : Nat}
       running ready owned
   have facts (seed : Seed) (member : seed ∈ prior.support) (final : app.Execution)
       (reached : final ∈ (stepRun seed).support) :=
-    runStep_facts (relaxed.revealRelaxedOrdered.actorSerial) bound turns contract timely R
+    runStep_facts (relaxed.actorSerial) bound turns contract timely R
         decides who deviation start finish
       (run.shaped relaxed) run.publications stop stopDone (execution seed) (· = target)
       (readyAllowed seed member) (supported seed member) (bounded seed member)
@@ -229,7 +229,7 @@ theorem targetStep_joint {horizon : Nat}
   have goodRound (seed : Seed) (member : seed ∈ prior.support) :
       ∀ n current, good seed (n + 1) current → ¬ stop current.application.config.cut →
         ∀ next ∈ (app.round scheduler players current).support, good seed n next :=
-    runStep_round (relaxed.revealRelaxedOrdered.actorSerial) bound turns contract timely R
+    runStep_round (relaxed.actorSerial) bound turns contract timely R
         decides who deviation start finish
       (run.shaped relaxed) run.publications stop stopDone (execution seed).application.config
       (· = target) (readyAllowed seed member)
@@ -289,23 +289,34 @@ theorem targetStep_joint {horizon : Nat}
       exact run_agree_of_closure base decides referenceIndependent who views currentPath
         otherPath currentSound otherSound (quietOf currentDecided running)
         (quietOf otherDecided otherRunning) cuts
-    have coupledRun := run_stopped_traffic_congr (relaxed.revealRelaxedOrdered.actorSerial)
+    have observedStop (current other : app.Execution)
+        (equal : traffic current = traffic other) :
+        stop current.application.config.cut ↔ stop other.application.config.cut := by
+      have publics : current.application.publicView = other.application.publicView :=
+        congrArg (fun value => value.2.2.2.2.2) equal
+      have cuts := cut_eq_of_publicView_eq publics
+      simp only [cuts]
+    have coupledRun := run_stopped_traffic_congr (relaxed.actorSerial)
         scheduler bound turns R decides who deviation
-      start finish (run.shaped relaxed) run.publications stop stopDone (good left) (good right)
+      start finish (run.shaped relaxed) run.publications
+      (fun current => stop current.application.config.cut)
+      (fun current done => stopDone current.application.config.cut done) observedStop
+      (good left) (good right)
       (goodRound left leftMember) (goodRound right rightMember)
       (horizon - (execution left).environmentRecall.length) 0 0 (execution left)
       (execution right) (by simpa only [Nat.zero_add] using leftTrace)
       (by rw [lengths]; simpa only [Nat.zero_add] using rightTrace)
       (begin left leftMember).inside (begin right rightMember).inside
       (submissions left leftMember) (submissions right rightMember)
-      (runTurnFacts_roundsFrom (relaxed.revealRelaxedOrdered.actorSerial) scheduler bound turns
+      (runTurnFacts_roundsFrom (relaxed.actorSerial) scheduler bound turns
           R who deviation _ _
         (supported left leftMember))
-      (runTurnFacts_roundsFrom (relaxed.revealRelaxedOrdered.actorSerial) scheduler bound turns
+      (runTurnFacts_roundsFrom (relaxed.actorSerial) scheduler bound turns
           R who deviation _ _
         (supported right rightMember))
-      (goodStart left leftMember) (by rw [lengths]; exact goodStart right rightMember) agreeAt
-      same
+      (goodStart left leftMember) (by rw [lengths]; exact goodStart right rightMember)
+      (fun n current other leftGood rightGood cuts running _ =>
+        agreeAt n current other leftGood rightGood cuts running) same
     change (app.runUntil scheduler players (fun current => stop current.application.config.cut)
         (horizon - (execution left).environmentRecall.length) (execution left)).map traffic =
       (app.runUntil scheduler players (fun current => stop current.application.config.cut)
@@ -407,6 +418,7 @@ theorem targetStep_joint {horizon : Nat}
     rw [nextLaw]
     exact (bind_congr_on_support _ keyed).trans factored
 
+
 /-- A normalized deviation acts like the normalized base at settling events. -/
 theorem actionLaw_lastDeviation_of_settles {graph : Vegas.EventGraph Player L}
     (base : graph.BehavioralProfile) (who : Player) (policy : graph.BehavioralPolicy who)
@@ -480,8 +492,8 @@ theorem targetStep_phase {horizon : Nat}
     (who : Player) (deviation : (serviceApplication setup deps duration leaks).Policy)
     (independent : ∀ policy, LastIndependent
       ((serviceGraph setup deps).lastDeviationProfile base who policy) who)
-    (relaxed : RelaxedOrder (serviceGraph setup deps))
-    (concurrent : (serviceGraph setup deps).RevealsOnlyConcurrent) {start finish : Nat}
+    (relaxed : (serviceGraph setup deps).RevealRelaxedOrdered)
+    {start finish : Nat}
     (run : RevealRun (serviceGraph setup deps) start finish)
     (target : (serviceGraph setup deps).EventId)
     (targetOwned : (serviceGraph setup deps).actor? target = some who)
@@ -600,7 +612,7 @@ theorem targetStep_phase {horizon : Nat}
   have keyEq : key seed = runKey closed := rfl
   by_cases active : who ∉ origin.defaulted
   · have pending := (begin seed member).pending active
-    obtain ⟨ready, alone⟩ := closure_target_alone base decides who relaxed concurrent run
+    obtain ⟨ready, alone⟩ := closure_target_alone base decides who relaxed run
       (begin seed member).earlier target targetOwned targetLate (begin seed member).before active
       pending
     have closedActive : who ∉ closed.defaulted := (closure_shape R who _ origin rfl).2 active
@@ -628,7 +640,7 @@ theorem targetStep_phase {horizon : Nat}
         rw [← defaulted_eq_of_completionOf_eq otherRecords]
         exact Config.Step.path_defaulted_mono (closure_path R who _) inactive)
     obtain ⟨otherPath, otherSound, otherDecided, _, _⟩ := runStep_facts
-        (relaxed.revealRelaxedOrdered.actorSerial) bound turns contract
+        (relaxed.actorSerial) bound turns contract
       timely R decides who deviation start finish (run.shaped relaxed) run.publications
       (fun cut => target ∈ cut.completed) (fun cut done => done target targetLate)
       (execution other) (· = target)
@@ -674,6 +686,7 @@ theorem targetStep_phase {horizon : Nat}
         target targetOwned targetLate]
     rw [bind_congr_on_support _ constant, PMF.bind_const]
 
+
 /-- **The last step of a run as a phase.** From a coupled prior of last-step
 starts whose deviator traffic is noise read from the deviator's view of the
 closure key, the step to the run's end keeps the closure key, so it has a
@@ -705,7 +718,7 @@ theorem finalStep_phase {horizon : Nat}
             (openingAccepted event config.store)))
     (referenceIndependent : ReadyIndependent ((serviceGraph setup deps).normalizeProfile base))
     (who : Player) (deviation : (serviceApplication setup deps duration leaks).Policy)
-    (relaxed : RelaxedOrder (serviceGraph setup deps)) {start finish : Nat}
+    (relaxed : (serviceGraph setup deps).RevealRelaxedOrdered) {start finish : Nat}
     (run : RevealRun (serviceGraph setup deps) start finish)
     {Seed : Type} (prior : PMF Seed)
     (execution : Seed → (serviceApplication setup deps duration leaks).Execution)
@@ -796,20 +809,12 @@ theorem finalStep_phase {horizon : Nat}
       by_contra all
       push Not at all
       exact running all
-    have closing : finish < G.order.eventCount := lt_of_le_of_lt late event.isLt
-    let closer : G.EventId := ⟨finish, closing⟩
-    have closerDone : closer ∈ config.cut.completed := by
-      rcases Nat.eq_or_lt_of_le late with same | later
-      · have equal : event = closer := Fin.ext same.symm
-        subst equal
-        exact (blockedPending (ready.2 (relaxed.predecessor_of_later_not_publication
-          (run.closed _ rfl) blockedLate))).elim
-      · exact ready.2 (relaxed.predecessor_of_not_publication (run.closed closer rfl) later)
-    exact blockedPending (config.cut.predecessor_closed closerDone
-      (relaxed.predecessor_of_later_not_publication (run.closed closer rfl) blockedLate))
+    exact blockedPending (EventGraph.DependsOn.completed_of_ready
+      (run.dependsOn_crossing relaxed blockedLate late)
+      (fun same => by subst same; omega) ready)
   have facts (seed : Seed) (member : seed ∈ prior.support) (final : app.Execution)
       (reached : final ∈ (stepRun seed).support) :=
-    runStep_facts (relaxed.revealRelaxedOrdered.actorSerial) bound turns contract timely R
+    runStep_facts (relaxed.actorSerial) bound turns contract timely R
         decides who deviation start finish
       (run.shaped relaxed) run.publications stop stopDone (execution seed) (fun _ => False)
       (fun config path running event ready owned =>
@@ -831,7 +836,7 @@ theorem finalStep_phase {horizon : Nat}
   have goodRound (seed : Seed) (member : seed ∈ prior.support) :
       ∀ n current, good seed (n + 1) current → ¬ stop current.application.config.cut →
         ∀ next ∈ (app.round scheduler players current).support, good seed n next :=
-    runStep_round (relaxed.revealRelaxedOrdered.actorSerial) bound turns contract timely R
+    runStep_round (relaxed.actorSerial) bound turns contract timely R
         decides who deviation start finish
       (run.shaped relaxed) run.publications stop stopDone (execution seed).application.config
       (fun _ => False) (fun config path running event ready owned =>
@@ -854,23 +859,33 @@ theorem finalStep_phase {horizon : Nat}
       scheduler players _ (bounded left leftMember) _ (supported left leftMember)
     obtain ⟨rightTrace⟩ := app.raw_trace_roundsFrom (serviceInitialLaw setup deps) horizon
       scheduler players _ (bounded right rightMember) _ (supported right rightMember)
-    have coupledRun := run_stopped_traffic_congr (relaxed.revealRelaxedOrdered.actorSerial)
+    have observedStop (current other : app.Execution)
+        (equal : traffic current = traffic other) :
+        stop current.application.config.cut ↔ stop other.application.config.cut := by
+      have publics : current.application.publicView = other.application.publicView :=
+        congrArg (fun value => value.2.2.2.2.2) equal
+      have cuts := cut_eq_of_publicView_eq publics
+      simp only [cuts]
+    have coupledRun := run_stopped_traffic_congr (relaxed.actorSerial)
         scheduler bound turns R decides who deviation
-      start finish (run.shaped relaxed) run.publications stop stopDone (good left) (good right)
+      start finish (run.shaped relaxed) run.publications
+      (fun current => stop current.application.config.cut)
+      (fun current done => stopDone current.application.config.cut done) observedStop
+      (good left) (good right)
       (goodRound left leftMember) (goodRound right rightMember)
       (horizon - (execution left).environmentRecall.length) 0 0 (execution left)
       (execution right) (by simpa only [Nat.zero_add] using leftTrace)
       (by rw [lengths]; simpa only [Nat.zero_add] using rightTrace)
       (begin left leftMember).inside (begin right rightMember).inside
       (submissions left leftMember) (submissions right rightMember)
-      (runTurnFacts_roundsFrom (relaxed.revealRelaxedOrdered.actorSerial) scheduler bound turns
+      (runTurnFacts_roundsFrom (relaxed.actorSerial) scheduler bound turns
           R who deviation _ _
         (supported left leftMember))
-      (runTurnFacts_roundsFrom (relaxed.revealRelaxedOrdered.actorSerial) scheduler bound turns
+      (runTurnFacts_roundsFrom (relaxed.actorSerial) scheduler bound turns
           R who deviation _ _
         (supported right rightMember))
       (goodStart left leftMember) (by rw [lengths]; exact goodStart right rightMember)
-      (fun n currentRun otherRun currentGood otherGood cuts _ => by
+      (fun n currentRun otherRun currentGood otherGood cuts _ _ => by
         obtain ⟨_, _, _, _, currentPath, currentSound, currentDecided⟩ := currentGood
         obtain ⟨_, _, _, _, otherPath, otherSound, otherDecided⟩ := otherGood
         exact run_agree_of_closure base decides referenceIndependent who views currentPath
@@ -926,5 +941,8 @@ theorem finalStep_phase {horizon : Nat}
           keyTarget (G.lastDeviationProfile base who policy) who (key seed) :=
       fun final reached => by rw [fixed seed member final reached]
     exact (bind_congr_on_support _ constant).trans (PMF.bind_const _ _)
+
+
+
 
 end Vegas

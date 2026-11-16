@@ -4,6 +4,7 @@ module
 
 public import Vegas.EventGraph.LastErasedLaw
 public import Vegas.EventGraph.NormalizedRestriction
+public import Vegas.EventGraph.SequentialLaw
 
 @[expose] public section
 
@@ -139,5 +140,19 @@ theorem lastPick_eq_of_alone (who : Player) (config : graph.Config) {event : gra
     (nonempty : config.cut.enabled.Nonempty) :
     event = graph.lastPick who config.cut.enabled nonempty :=
   (alone _ ((EventOrder.Cut.mem_enabled _ _).mp (graph.lastPick_mem who _ nonempty))).symm
+
+/-- Forgetting only the additional source-order prerequisites preserves the
+normalized semantic view of a source information prefix. -/
+theorem keyView_fromSequentialConfig (graph : Vegas.EventGraph Player L) (who : Player)
+    (config : graph.sequentialize.Config) :
+    keyView who (runKey (graph.fromSequentialConfig config)) = keyView who (runKey config) := by
+  rw [keyView_runKey, keyView_runKey]
+  congr 1
+  apply EventPlayerObservation.ext
+  · rfl
+  · funext field
+    cases field <;> rfl
+  · rfl
+  · rfl
 
 end Vegas.EventGraph

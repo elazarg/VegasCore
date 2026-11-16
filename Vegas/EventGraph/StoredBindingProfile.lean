@@ -165,4 +165,13 @@ theorem freezeBindingsBefore_step_patch
     · exact (freezeBindingsBefore_step_other profile start before after event ready action
         supported who current actor observation active sameEvent).symm
 
+
+/-- Freezing reads only the stored binding outputs. -/
+theorem freezeBindingsBefore_eq_of_outputs_eq (profile : graph.BehavioralProfile)
+    (start rank : Nat) {left right : graph.Config} (same : left.outputs = right.outputs) :
+    graph.freezeBindingsBefore profile start rank left =
+      graph.freezeBindingsBefore profile start rank right := by
+  funext who event actor observation active
+  simp only [freezeBindingsBefore, same]
+
 end Vegas.EventGraph

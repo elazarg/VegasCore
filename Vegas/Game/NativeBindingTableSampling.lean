@@ -19,33 +19,7 @@ graph run, while other clients and the stopping predicate stay unchanged.
 
 noncomputable section
 
-namespace Vegas.EventGraph
 
-open GameTheory.Math.Probability
-
-variable {Player : Type} [DecidableEq Player]
-  {L : IExpr} [IExpr.ResultTypes L]
-
-private theorem runPlan_add_native_table (graph : Vegas.EventGraph Player L)
-    (plan : graph.EventPlan) : ∀ first second (config : graph.Config),
-    graph.runPlan plan (first + second) config =
-      (graph.runPlan plan first config).bind (graph.runPlan plan second) := by
-  intro first
-  induction first with
-  | zero => intro second config; simp only [Nat.zero_add, runPlan, PMF.pure_bind]
-  | succ first ih =>
-      intro second config
-      by_cases terminal : config.cut.Terminal
-      · cases second <;>
-          simp only [runPlan, dite_eq_left terminal, PMF.pure_bind]
-      · simp only [Nat.succ_add, runPlan, dite_eq_right terminal, PMF.bind_bind]
-        apply bind_congr_on_support _
-        intro choice _
-        apply bind_congr_on_support _
-        intro next _
-        exact ih second next
-
-end Vegas.EventGraph
 
 namespace Vegas.EventGraph
 
@@ -152,8 +126,10 @@ theorem native_binding_subfamily_mixture
         simp only [Nat.add_zero, sourceRun, runPlan, PMF.pure_bind]
     | succ rest ih =>
         intro past ghost below supported
-        have frame := runPlan_submitted_binding_frame reference sourceSubmits past start
+        have frame := runPlan_submitted_binding_frame reference past start
           execution.application.config ordered clear (by omega)
+          (fun event _ _ owner actor observation active action member =>
+            sourceSubmits owner event actor observation active action member)
           (fun event lower upper => bindings event lower (by omega)) ghost supported
         obtain ⟨ghostOrdered, ghostPath, ghostClear, _ghostClean, ghostRecords⟩ := frame
         let rank := start + past
@@ -178,7 +154,7 @@ theorem native_binding_subfamily_mixture
         have nextSupported (action : G.Action event) (selected : action ∈ kernel.support)
             (next : G.Config) (moved : next ∈ (ghost.step event ready action).support) :
             next ∈ (sourceRun (past + 1) execution.application.config).support := by
-          have combined := runPlan_add_native_table G
+          have combined := runPlan_add G
             (G.policyPlan reference G.canonicalScheduler) past 1 execution.application.config
           change sourceRun (past + 1) execution.application.config =
             (sourceRun past execution.application.config).bind (sourceRun 1) at combined
@@ -314,8 +290,13 @@ theorem native_binding_subfamily_mixture
               (next : G.Config) (moved : next ∈ (ghost.step event ready action).support) :
               memberRun action = native (rank + 1) next := by
             obtain ⟨value, actionEq, _nextClear, _nextPath, _nextRecord, output⟩ :=
-              step_submitted_binding_frame reference sourceSubmits ghost ghostClear event ready
-                owner payload binding action selected next moved
+              step_submitted_binding_frame ghost ghostClear event ready
+                owner payload binding action (by
+                  have played := selected
+                  change action ∈ (actionLaw reference ghost event).support at played
+                  rw [actionLaw_of_actor reference ghost owned, dite_eq_right active] at played
+                  exact sourceSubmits owner event owned (G.playerObserve owner ghost) active
+                    action played) next moved
             let head := G.prefixPolicy owner (frozen (rank + 1) next owner)
             have fixed : ∀ observation active, head event owned observation active =
                 PMF.pure action := by
@@ -375,5 +356,132 @@ theorem native_binding_subfamily_mixture
   have result := advance bindingCount 0 execution.application.config (by omega) initial
   simpa only [Nat.zero_add, Nat.add_zero, native, players, frozen, freezeBindingsBefore_at_start,
     sourceRun] using result
+
+
+/-- Sample the honest table from the source origin while preserving the full native law. -/
+theorem native_binding_unilateral_source_mixture
+    {horizon nativeCount remaining turns : Nat}
+    (scheduler : (serviceApplication setup deps duration leaks).Scheduler)
+    (bound : (serviceGraph setup deps).EventId → Nat)
+    (relaxed : (serviceGraph setup deps).RevealRelaxedOrdered)
+    (profile : (serviceGraph setup deps).BehavioralProfile)
+    (submits : (serviceGraph setup deps).SubmitsBindings profile)
+    (focal : Player) (deviation : (serviceApplication setup deps duration leaks).Policy)
+    (stop : (serviceApplication setup deps duration leaks).Execution → Prop) [DecidablePred stop]
+    (execution : (serviceApplication setup deps duration leaks).Execution)
+    {inputs : (serviceGraph setup deps).Inputs}
+    (initialReach : execution.application.config.Reachable inputs)
+    (sourceOrigin : setup.informationGraph.Config)
+    (same : runKey execution.application.config =
+      runKey ((serviceGraph setup deps).fromSequentialConfig sourceOrigin))
+    (start bindingCount : Nat) (ordered : sourceOrigin.cut.IsPrefix start)
+    (clear : sourceOrigin.defaulted = ∅)
+    (bounded : start + bindingCount ≤ (serviceGraph setup deps).order.eventCount)
+    (bindings : ∀ event : (serviceGraph setup deps).EventId,
+      start ≤ event.val → event.val < start + bindingCount →
+      ∃ owner payload, (serviceGraph setup deps).outputLayout event = .binding owner payload)
+    (truthful : ∀ owner, owner ≠ focal → OwnSubmissionsAtTurn setup leaks execution owner)
+    (untouched : ∀ owner, owner ≠ focal →
+      ∀ event : (serviceGraph setup deps).EventId,
+      start ≤ event.val → event.val < start + bindingCount →
+      (serviceGraph setup deps).actor? event = some owner → Untouched setup leaks event execution)
+    (trace : ((serviceApplication setup deps duration leaks).protocol
+      (serviceInitialLaw setup deps) horizon scheduler).Trace
+        (some ⟨remaining + nativeCount, none, execution⟩)) :
+    let G := serviceGraph setup deps
+    let app := serviceApplication setup deps duration leaks
+    let clients := fun reference => serviceReferenceTurnPolicy setup deps duration leaks bound turns
+      (firstTurnTiming setup turns deps) reference
+    let players := fun reference => Function.update (clients reference) focal deviation
+    let placeholder := Function.update profile focal
+      (submittedFailurePolicy (graph := setup.informationGraph) focal)
+    app.runUntil scheduler (players (G.prefixProfile profile)) stop nativeCount execution =
+      (setup.informationGraph.runPlan (setup.informationGraph.policyPlan
+        (setup.informationGraph.prefixProfile placeholder)
+          setup.informationGraph.canonicalScheduler) bindingCount sourceOrigin).bind fun ghost =>
+            app.runUntil scheduler (players (setup.informationGraph.prefixProfile
+              (setup.informationGraph.freezeBindingsBefore profile start
+                (start + bindingCount) ghost))) stop nativeCount execution := by
+  classical
+  intro G app clients players placeholder
+  have actualOrdered : execution.application.config.cut.IsPrefix start := by
+    have cut : execution.application.config.cut = (G.fromSequentialConfig sourceOrigin).cut :=
+      congrArg Prod.fst same
+    rw [cut]
+    exact ordered
+  have actualClear : execution.application.config.defaulted = ∅ := by
+    have records := congrArg (fun key => key.2.2) same
+    rw [defaulted_eq_of_completionOf_eq records, G.fromSequentialConfig_defaulted, clear]
+  let prescribed := fun reference actor =>
+    if actor ≠ focal then clients reference actor else deviation
+  have prescribedEq (reference : G.BehavioralProfile) :
+      prescribed reference = players reference := by
+    funext owner
+    by_cases own : owner = focal
+    · subst owner
+      simp only [prescribed, players, Function.update_self, ne_eq, not_true_eq_false, ite_false]
+    · simp only [prescribed, players, ite_eq_left own, Function.update_of_ne own]
+  have drawn := native_binding_subfamily_mixture (setup := setup) (deps := deps)
+    (duration := duration) (leaks := leaks) (turns := turns) scheduler bound relaxed profile submits
+    (fun owner => owner ≠ focal) (fun _ => deviation) stop execution initialReach start bindingCount
+    actualOrdered actualClear bounded bindings truthful untouched trace
+  change app.runUntil scheduler (prescribed (G.prefixProfile profile)) stop nativeCount execution =
+    (G.runPlan (G.policyPlan (G.prefixProfile profile) G.canonicalScheduler) bindingCount
+      execution.application.config).bind (fun ghost => app.runUntil scheduler
+        (prescribed (G.prefixProfile (G.freezeBindingsBefore profile start
+          (start + bindingCount) ghost))) stop nativeCount execution) at drawn
+  simp_rw [prescribedEq] at drawn
+  have normalized := drawn.trans (runPlan_canonical_prefixProfile_bind_frozen_fromSequential
+    (graph := G) profile bindingCount start (start + bindingCount) execution.application.config
+      sourceOrigin same
+      (fun reference => app.runUntil scheduler (players reference) stop nativeCount execution))
+  change app.runUntil scheduler (players (G.prefixProfile profile)) stop nativeCount execution =
+    (setup.informationGraph.runPlan (setup.informationGraph.policyPlan
+      (setup.informationGraph.prefixProfile profile) setup.informationGraph.canonicalScheduler)
+      bindingCount sourceOrigin).bind (fun ghost => app.runUntil scheduler
+        (players (setup.informationGraph.prefixProfile (setup.informationGraph.freezeBindingsBefore
+          profile start (start + bindingCount) ghost))) stop nativeCount execution) at normalized
+  have prefixSubmits (base : setup.informationGraph.BehavioralProfile)
+      (baseSubmits : setup.informationGraph.SubmitsBindings base) :
+      setup.informationGraph.SubmitsBindings (setup.informationGraph.prefixProfile base) := by
+    intro owner event actor observation active action supported
+    exact baseSubmits owner event actor _ _ action supported
+  have placeholderSubmits : setup.informationGraph.SubmitsBindings placeholder := by
+    intro owner event actor observation active action supported
+    dsimp only [placeholder] at supported
+    by_cases own : owner = focal
+    · subst owner
+      rw [Function.update_self] at supported
+      exact setup.informationGraph.policySubmitsBindings_submitPolicy focal _ event actor
+        observation active action supported
+    · rw [Function.update_of_ne own] at supported
+      exact submits owner event actor observation active action supported
+  have playersEq (left right : G.BehavioralProfile)
+      (policies : ∀ owner, owner ≠ focal → left owner = right owner) :
+      players left = players right :=
+    by
+    funext owner
+    by_cases own : owner = focal
+    · subst owner
+      simp only [players, Function.update_self]
+    · simp only [players, Function.update_of_ne own]
+      exact serviceReferenceTurnPolicy_eq_of_owner (setup := setup) (deps := deps)
+        (duration := duration) (leaks := leaks) bound turns (firstTurnTiming setup turns deps)
+        left right owner (policies owner own)
+  apply normalized.trans
+  refine runPlan_bind_frozen_of_bindingObservers (graph := setup.informationGraph) focal profile
+    (setup.informationGraph.prefixProfile profile)
+    (setup.informationGraph.prefixProfile placeholder) (prefixSubmits profile submits)
+    (prefixSubmits placeholder placeholderSubmits) ?_ bindingCount start (start + bindingCount)
+    sourceOrigin sourceOrigin ordered ordered bounded bindings rfl
+    (fun reference => app.runUntil scheduler (players reference) stop nativeCount execution) ?_
+  · intro owner foreign
+    change setup.informationGraph.prefixPolicy owner (profile owner) =
+      setup.informationGraph.prefixPolicy owner (Function.update profile focal
+        (submittedFailurePolicy (graph := setup.informationGraph) focal) owner)
+    rw [Function.update_of_ne foreign]
+  · intro left right policies
+    exact congrArg (fun reference => app.runUntil scheduler reference stop nativeCount execution)
+      (playersEq left right policies)
 
 end Vegas
