@@ -4,6 +4,7 @@ module
 
 public import Vegas.Examples.BoundedPaymentAuction
 public import Vegas.Examples.BoundedPrivateValueAuction
+public import Vegas.Examples.BoundedPrivateAuctionConditions
 public import Vegas.Examples.CommitRevealAuction
 public import Vegas.Examples.CommitTimingInformationSource
 public import Vegas.Examples.ConcurrentRevealOrderLaw
@@ -14,6 +15,7 @@ public import Vegas.Examples.LateOpeningRuntimeSource
 public import Vegas.Examples.LateOpeningRuntimeSourceContinuation
 public import Vegas.Examples.OddsEvensEquilibrium
 public import Vegas.Examples.OddsEvensConcurrentGraph
+public import Vegas.Examples.OddsEvensConcurrentNative
 public import Vegas.Examples.OddsEvensFairDecode
 public import Vegas.Examples.OddsEvensFairLaw
 public import Vegas.Examples.OddsEvensFairProfile

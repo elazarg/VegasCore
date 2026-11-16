@@ -4,6 +4,8 @@ module
 
 public import Vegas.Examples.BoundedPaymentAuction
 public import Vegas.Game.IntendedAuthenticOpening
+public import Vegas.Source.PrivateInputsIndependent
+public import Vegas.Game.OnePacketPublicInitialSignal
 public import GameTheory.Math.Probability.FiniteUniform
 
 @[expose] public section
@@ -156,5 +158,51 @@ theorem truthful_source_law (prior : PMF (Player → Bid)) :
   exact PMF.bind_pure_comp _ _
 
 theorem eventCount : Vegas.eventCount program = 4 := rfl
+
+theorem initial_values (state : State simpleExpr context) : initial (values state) = state := by
+  funext name kind cell
+  cases cell with
+  | here => rfl
+  | there cell =>
+    cases cell with
+    | here => rfl
+    | there absent => cases absent
+
+theorem initial_mass (state : State simpleExpr context) :
+    (setup uniformPrior).initialLaw state = (Fintype.card (Player → Bid) : ENNReal)⁻¹ := by
+  classical
+  change (uniformPrior.map initial) state = _
+  rw [PMF.map_apply]
+  calc
+    _ = if state = initial (values state) then uniformPrior (values state) else 0 := by
+      apply tsum_eq_single (values state)
+      intro types different
+      rw [ite_eq_right]
+      intro same
+      apply different
+      have mapped := congrArg values same
+      simpa using mapped.symm
+    _ = _ := by rw [initial_values, ite_eq_left rfl]; rfl
+
+def signal (_state : State simpleExpr context) : Unit := ()
+
+theorem independent : (setup uniformPrior).PrivateInputsIndependentGiven signal := by
+  intro who first second _
+  exact (congrArg₂ (fun x y : ENNReal => x * y)
+    (initial_mass (splice who first second)) (initial_mass (splice who second first))).trans
+      (congrArg₂ (fun x y : ENNReal => x * y) (initial_mass first) (initial_mass second)).symm
+
+theorem observable : (setup uniformPrior).PublicInitialSignal signal := by intro _ _ _; rfl
+
+theorem wellFormed (prior : PMF (Player → Bid)) : (setup prior).WellFormed where
+  initialValues := by
+    intro state _ name owner payload cell
+    cases cell with
+    | there cell => cases cell with
+      | there absent => cases absent
+  guardsSatisfiable := by
+    intro state _
+    exact ⟨⟨BoundedPaymentAuction.bid 0, rfl⟩, fun _ _ =>
+      ⟨⟨BoundedPaymentAuction.bid 0, rfl⟩, fun _ _ => trivial⟩⟩
 
 end Vegas.Examples.BoundedPrivateValueAuction

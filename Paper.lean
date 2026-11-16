@@ -20,6 +20,7 @@ public import Vegas.Game.ClientCompiler
 public import Vegas.Game.ClientAssessmentFidelity
 public import Vegas.Game.PaymentPreservation
 public import Vegas.Examples.OddsEvensRawEquilibrium
+public import Vegas.Examples.OddsEvensConcurrentNative
 public import Vegas.Examples.OddsEvensFullSource
 public import Vegas.Examples.CommitRevealAuction
 public import Vegas.Examples.LateLeak
@@ -1169,6 +1170,77 @@ theorem Vegas.Paper.oddsEvens_asyncTimely :
 #print axioms Vegas.Paper.oddsEvens_asyncTimely
 
 end ConcreteService
+
+section ConcurrentOddsEvens
+
+open Vegas Vegas.SourceProgram Vegas.EventGraph Vegas.EventGraphRuntime Interaction
+  GameTheory GameTheory.Protocol GameTheory.Math.Probability
+open Vegas.Examples.OddsEvens Vegas.Examples.OddsEvensConcurrent
+
+/-- The concrete graph permits both bindings and, after them, both revelations. -/
+theorem Vegas.Paper.oddsEvens_concurrent_geometry :
+    {0, 1} ⊆ initial.cut.enabled ∧
+    ∀ evenBit oddBit : Bool,
+      Config.Reachable initial.inputs (bothBound evenBit oddBit) ∧
+        {2, 3} ⊆ (bothBound evenBit oddBit).cut.enabled := by
+  exact ⟨bindings_enabled_initial, fun evenBit oddBit =>
+    ⟨bothBound_reachable evenBit oddBit, reveals_enabled_after_bindings evenBit oddBit⟩⟩
+
+/-- info: 'Vegas.Paper.oddsEvens_concurrent_geometry' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.oddsEvens_concurrent_geometry
+
+/-- Every public scheduler preserves the fair graph equilibrium and its full joint law. -/
+theorem Vegas.Paper.oddsEvens_concurrent_graph (scheduler : graph.PublicScheduler) :
+    IsεNash (graph.gameForm (setup.graphInputs dependencies) scheduler)
+      (setup.graphForfeitPayoff dependencies (fun _ => ()) sourceUtility 200) 0 graphClients ∧
+    (∀ outcome ∈ ((graph.gameForm (setup.graphInputs dependencies) scheduler).play
+        graphClients).support,
+      (setup.graphReadout dependencies outcome).defaulted = ∅ ∧
+        ∀ who, failedReveals program who
+          (publicOutcome program (setup.graphReadout dependencies outcome)) = 0) ∧
+    (((graph.gameForm (setup.graphInputs dependencies) scheduler).play graphClients).map
+      (fun outcome => (some (setup.graphReadout dependencies outcome),
+        setup.graphForfeitPayoff dependencies (fun _ => ()) sourceUtility 200 outcome))) =
+      uniformJointLaw ∧
+    ∀ who, expect ((graph.gameForm (setup.graphInputs dependencies) scheduler).play graphClients)
+      (fun outcome => setup.graphForfeitPayoff dependencies (fun _ => ()) sourceUtility 200
+        outcome who) = 100 :=
+  graph_equilibrium scheduler
+
+/-- info: 'Vegas.Paper.oddsEvens_concurrent_graph' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.oddsEvens_concurrent_graph
+
+/-- The concrete periodic ledger preserves fair play against arbitrary raw deviations. -/
+theorem Vegas.Paper.oddsEvens_concurrent_ledger :
+    let app := serviceApplication setup dependencies serviceDuration leaks
+    let native := app.roundsFrom (serviceInitialLaw setup dependencies) serviceScheduler
+      clients serviceHorizon
+    IsεNash (serviceGame setup dependencies serviceDuration leaks serviceScheduler serviceHorizon)
+      (setup.graphForfeitConfigPayoff dependencies (fun _ => ()) sourceUtility 200) 0 clients ∧
+    (∀ final ∈ native.support,
+      final.application.config.cut.Terminal ∧ final.application.config.defaulted = ∅ ∧
+        ∃ terminal,
+          serviceRankedReadout setup dependencies serviceDuration leaks (app.finished final) =
+            some terminal ∧ ∀ who,
+              failedReveals program who (publicOutcome program terminal) = 0) ∧
+    native.map (fun final =>
+      (serviceRankedReadout setup dependencies serviceDuration leaks (app.finished final),
+        setup.graphForfeitConfigPayoff dependencies (fun _ => ()) sourceUtility 200
+          final.application.config)) = uniformJointLaw ∧
+    ∀ who, expect native (fun final => setup.graphForfeitConfigPayoff dependencies (fun _ => ())
+      sourceUtility 200 final.application.config who) = 100 :=
+  native_equilibrium
+
+/-- info: 'Vegas.Paper.oddsEvens_concurrent_ledger' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.oddsEvens_concurrent_ledger
+
+end ConcurrentOddsEvens
 
 section FairLedger
 open Vegas.Examples
