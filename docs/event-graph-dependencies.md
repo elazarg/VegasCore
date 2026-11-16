@@ -85,6 +85,20 @@ application and `Vegas.serviceGame`.
 
 ## Runtime and proof interfaces
 
+Complete event orders are characterized independently of node code and player
+behavior. A topological order lists each event once and places every direct
+predecessor before its event. The pure order API in
+[TopologicalOrder](../Vegas/EventGraph/TopologicalOrder.lean) characterizes these
+lists as the orders obtainable from source rank by adjacent swaps of distinct
+events with no direct dependency in either direction.
+[ExecutionOrder](../Vegas/EventGraph/ExecutionOrder.lean) identifies them with
+the supported complete run orders, even for a fixed behavioral profile and
+initial input. Its deterministic public scheduler forces any given topological
+order for every profile and input; it uses only the public completion count.
+These are event-identity statements. The terminal-law results above retain
+their own dependency and client hypotheses, and do not assert equality of laws
+conditional on an adaptive scheduler's realized order.
+
 The native runtime continues to execute any event graph with its per-event
 timeout durations. It does not select a source compilation mode.
 

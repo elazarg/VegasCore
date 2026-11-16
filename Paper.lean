@@ -10,6 +10,7 @@ public import Vegas.Game.SourcePrefixForfeit
 public import Vegas.Game.IntendedSourceProfile
 public import Vegas.Game.SourceProtocolNash
 public import Vegas.Compile.EventGraphScheduling
+public import Vegas.EventGraph.ExecutionOrder
 public import Vegas.Game.EventCompilation
 public import Vegas.Pending.GraphRefinement
 public import Vegas.Game.SourceServiceFirstTurnCompletion
@@ -485,15 +486,59 @@ theorem Vegas.Paper.exists_disclosing_extension
 end Forfeits
 end Source
 
-/-! The compiler imposes the total source order. Every public scheduler therefore
-selects the same event plan; the scheduler quantifier below supplies no alternate
-execution order. Compiled profiles retain the complete source configuration law.
-Approximate Nash equilibrium is preserved and reflected with the same error
-for every utility of the public source outcome. -/
+/-! Complete graph event orders depend only on dependencies. The source-information
+compiler additionally imposes the total source order, while prescribed profiles
+support the stated dependency relaxations. -/
 
 section Graph
 
+/-- Complete run orders, even at fixed strategies and inputs, are exactly the
+topological orderings of the graph's dependencies. -/
+theorem Vegas.Paper.event_orders_iff_topological (graph : EventGraph Player L)
+    (events : List graph.EventId) (profile : graph.BehavioralProfile) (inputs : graph.Inputs) :
+    (∃ (scheduler : graph.PublicScheduler) (final : graph.Config),
+      final ∈ (graph.runPolicies scheduler profile inputs).support ∧
+        final.history.map EventCompletion.event = events) ↔ graph.order.Topological events :=
+  (EventGraph.topological_iff_supported_run events profile inputs).symm
+
+/-- info: 'Vegas.Paper.event_orders_iff_topological' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.event_orders_iff_topological
+
+/-- The same deterministic public scheduler forces a given topological order
+for every behavioral profile and initial input. -/
+theorem Vegas.Paper.topological_order_forced (graph : EventGraph Player L)
+    (events : List graph.EventId) (topological : graph.order.Topological events) :
+    ∀ (profile : graph.BehavioralProfile) (inputs : graph.Inputs),
+      (graph.runPolicies (EventGraph.orderedScheduler events) profile inputs).map
+          (fun config => config.history.map EventCompletion.event) = PMF.pure events :=
+  EventGraph.runPolicies_orderedScheduler events topological
+
+/-- info: 'Vegas.Paper.topological_order_forced' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.topological_order_forced
+
+/-- The topological orders are precisely the lists obtained from numeric rank
+by adjacent swaps with no direct dependency edge in either direction. -/
+theorem Vegas.Paper.topological_iff_adjacent_swaps (order : EventOrder)
+    (events : List (Fin order.eventCount)) :
+    order.Topological events ↔
+      Relation.ReflTransGen order.AdjacentSwap (List.finRange order.eventCount) events :=
+  order.topological_iff_swaps events
+
+/-- info: 'Vegas.Paper.topological_iff_adjacent_swaps' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.topological_iff_adjacent_swaps
+
 variable {Γ : SourceCtx Player L} {openNames : Finset VarId}
+
+/-! Every public scheduler of the information graph selects the same event plan.
+Compiled profiles retain the complete source configuration law. Approximate Nash
+equilibrium is preserved and reflected with the same error for every utility of
+the public source outcome. -/
 
 theorem Vegas.Paper.scheduled_terminalConfig_law (program : SourceProgram Player L Γ openNames)
     (scheduler : (toInformationGraph program).PublicScheduler)
@@ -568,9 +613,9 @@ section RevealOrder
 
 open Vegas.Examples.ConcurrentRevealOrderLaw in
 theorem Vegas.Paper.reveal_order_changes_store_law :
-    (graph.runPlan (graph.policyPlan compiled bobFirstScheduler) 2 bound).map
+    (graph.runPolicies bobFirstScheduler compiled initial.inputs).map
         Vegas.EventGraph.Config.store ≠
-      (graph.runPlan (graph.policyPlan compiled graph.canonicalScheduler) 2 bound).map
+      (graph.runPolicies graph.canonicalScheduler compiled initial.inputs).map
         Vegas.EventGraph.Config.store :=
   Vegas.Examples.ConcurrentRevealOrderLaw.terminal_store_laws_differ
 

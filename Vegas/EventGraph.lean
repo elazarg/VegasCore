@@ -45,9 +45,11 @@ public import Vegas.EventGraph.DecisionTwin
 public import Vegas.EventGraph.DefaultFailure
 public import Vegas.EventGraph.Dependencies
 public import Vegas.EventGraph.Execution
+public import Vegas.EventGraph.ExecutionOrder
 public import Vegas.EventGraph.Information
 public import Vegas.EventGraph.ObservationStep
 public import Vegas.EventGraph.Order
+public import Vegas.EventGraph.TopologicalOrder
 public import Vegas.EventGraph.OwnedStep
 public import Vegas.EventGraph.PolicyCongruence
 public import Vegas.EventGraph.Recall

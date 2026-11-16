@@ -159,14 +159,12 @@ private theorem bound_bobFirst_plan (notTerminal : ¬ bound.cut.Terminal) :
     (by decide)).map _ = _
   rw [bob_before_alice, PMF.pure_map]
 
-private theorem bobFirst_plan_eq_canonical (notTerminal : ¬ bobFirst.cut.Terminal) :
-    graph.policyPlan compiled bobFirstScheduler bobFirst notTerminal =
-      graph.policyPlan compiled graph.canonicalScheduler bobFirst notTerminal := by
+private theorem bobFirst_plan_eq_canonical (config : graph.Config)
+    (notTerminal : ¬ config.cut.Terminal) (unavailable : (3 : graph.EventId) ∉ config.cut.enabled) :
+    graph.policyPlan compiled bobFirstScheduler config notTerminal =
+      graph.policyPlan compiled graph.canonicalScheduler config notTerminal := by
   unfold policyPlan bobFirstScheduler
   dsimp only
-  have unavailable : (3 : graph.EventId) ∉ bobFirst.cut.enabled := by
-    intro enabled
-    exact ((EventOrder.Cut.mem_enabled _ _).1 enabled).1 (by decide)
   rw [dite_eq_right unavailable]
 
 /-- Serving Bob first executes the actual two raw policy callbacks. -/
@@ -179,7 +177,9 @@ theorem bob_first_policy_law :
   have sameRun : graph.runPlan (graph.policyPlan compiled bobFirstScheduler) 1 bobFirst =
       graph.runPlan (graph.policyPlan compiled graph.canonicalScheduler) 1 bobFirst := by
     rw [runPlan, runPlan, dite_eq_right (by decide), dite_eq_right (by decide),
-      bobFirst_plan_eq_canonical]
+      bobFirst_plan_eq_canonical bobFirst _ (by
+        intro enabled
+        exact ((EventOrder.Cut.mem_enabled _ _).1 enabled).1 (by decide))]
     simp only [runPlan]
   rw [sameRun, graph.runPlan_canonical_actor compiled 0 bobFirst 2 bobFirst_alice_ready
     (by decide) Player.alice alice_actor (by decide), alice_after_bob, PMF.pure_bind,
@@ -202,10 +202,73 @@ theorem bobFirst_cut_terminal : bobFirst_terminal.cut.Terminal := by decide
 
 theorem bobSecond_cut_terminal : bobSecond.cut.Terminal := by decide
 
+private theorem canonical_binding_prefix :
+    graph.runPlan (graph.policyPlan compiled graph.canonicalScheduler) 2 initial =
+      PMF.pure bound := by
+  rw [graph.runPlan_canonical_actor compiled 1 initial 0 first_ready (by decide)
+    Player.alice (by rfl) (by decide)]
+  change (PMF.pure (some (PublicationResult.success (6 : Int)))).bind _ = _
+  rw [PMF.pure_bind, initial_step, PMF.pure_bind]
+  rw [graph.runPlan_canonical_actor compiled 0 first 1 second_ready (by decide)
+    Player.bob (by rfl) (by decide)]
+  change (PMF.pure (some (PublicationResult.success (4 : Int)))).bind _ = _
+  rw [PMF.pure_bind, first_step, PMF.pure_bind]
+  rfl
+
+private theorem bob_first_binding_prefix :
+    graph.runPlan (graph.policyPlan compiled bobFirstScheduler) 2 initial =
+      PMF.pure bound := by
+  have initialPlan (notTerminal : ¬ initial.cut.Terminal) :
+      graph.policyPlan compiled bobFirstScheduler initial notTerminal =
+        PMF.pure ⟨⟨0, first_ready⟩, some (.success (6 : Int))⟩ := by
+    rw [bobFirst_plan_eq_canonical initial notTerminal (by
+      intro enabled
+      have ready := (EventOrder.Cut.mem_enabled _ _).1 enabled
+      exact (show (1 : graph.EventId) ∉ initial.cut.completed by decide)
+        (ready.2 (graph.reads_available 3 (.inr 1) (by decide))))]
+    have selected := canonical_selected_eq initial 0 first_ready (by decide)
+    have scheduled : graph.canonicalScheduler (graph.publicObserve initial) initial.cut.enabled
+        (enabled_nonempty_of_not_terminal initial notTerminal) =
+          PMF.pure ⟨0, (EventOrder.Cut.mem_enabled _ _).2 first_ready⟩ := by
+      apply congrArg PMF.pure
+      exact Subtype.ext selected
+    unfold policyPlan
+    dsimp only
+    rw [scheduled, PMF.pure_bind]
+    change (PMF.pure (some (PublicationResult.success (6 : Int)))).map _ = _
+    exact PMF.pure_map _ _
+  have firstPlan (notTerminal : ¬ first.cut.Terminal) :
+      graph.policyPlan compiled bobFirstScheduler first notTerminal =
+        PMF.pure ⟨⟨1, second_ready⟩, some (.success (4 : Int))⟩ := by
+    rw [bobFirst_plan_eq_canonical first notTerminal (by
+      intro enabled
+      have ready := (EventOrder.Cut.mem_enabled _ _).1 enabled
+      exact (show (1 : graph.EventId) ∉ first.cut.completed by decide)
+        (ready.2 (graph.reads_available 3 (.inr 1) (by decide))))]
+    have selected := canonical_selected_eq first 1 second_ready (by decide)
+    have scheduled : graph.canonicalScheduler (graph.publicObserve first) first.cut.enabled
+        (enabled_nonempty_of_not_terminal first notTerminal) =
+          PMF.pure ⟨1, (EventOrder.Cut.mem_enabled _ _).2 second_ready⟩ := by
+      apply congrArg PMF.pure
+      exact Subtype.ext selected
+    unfold policyPlan
+    dsimp only
+    rw [scheduled, PMF.pure_bind]
+    change (PMF.pure (some (PublicationResult.success (4 : Int)))).map _ = _
+    exact PMF.pure_map _ _
+  rw [runPlan, dite_eq_right (by decide), initialPlan, PMF.pure_bind,
+    initial_step, PMF.pure_bind, runPlan, dite_eq_right (by decide), firstPlan,
+    PMF.pure_bind, first_step, PMF.pure_bind]
+  rfl
+
+/-- The same compiled profile has different complete store laws from the same initial input. -/
 theorem terminal_store_laws_differ :
-    (graph.runPlan (graph.policyPlan compiled bobFirstScheduler) 2 bound).map Config.store ≠
-    (graph.runPlan (graph.policyPlan compiled graph.canonicalScheduler) 2 bound).map
-      Config.store := by
+    (graph.runPolicies bobFirstScheduler compiled initial.inputs).map Config.store ≠
+      (graph.runPolicies graph.canonicalScheduler compiled initial.inputs).map Config.store := by
+  change (graph.runPlan (graph.policyPlan compiled bobFirstScheduler) (2 + 2) initial).map _ ≠
+    (graph.runPlan (graph.policyPlan compiled graph.canonicalScheduler) (2 + 2) initial).map _
+  rw [graph.runPlan_add, graph.runPlan_add, bob_first_binding_prefix,
+    canonical_binding_prefix, PMF.pure_bind, PMF.pure_bind]
   rw [bob_first_policy_law, alice_first_policy_law, PMF.pure_map, PMF.pure_map]
   intro same
   have values := congrArg (fun law : PMF (EventGraph.Store graph.layout) =>
