@@ -4,7 +4,8 @@ module
 
 public import Vegas.Game.RevealServiceHonestLaw
 public import Vegas.Game.RevealServiceReference
-public import Vegas.Game.ConcurrentRevealNash
+public import Vegas.Compile.EventGraphCanonical
+public import Vegas.EventGraph.SequentialNormalization
 
 @[expose] public section
 
@@ -120,9 +121,6 @@ private theorem concurrentReference_initial_law (setup : Setup (Player := Player
     source
   have sourceLaw := canonical_setup_law setup source
   rw [← sourceLaw, PMF.map_comp]
-  change _ = ((setup.graphInputs setup.revealDependencies).bind
-    (setup.informationGraph.terminalOutcomes setup.informationGraph.canonicalScheduler
-      compiled)).map _
   change _ = ((setup.initialLaw.map fun initial => setup.eventInputs initial).bind
     (setup.informationGraph.terminalOutcomes setup.informationGraph.canonicalScheduler
       compiled)).map _

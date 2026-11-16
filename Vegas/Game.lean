@@ -411,9 +411,7 @@ public import Vegas.Game.OnePacketPooledMemberGains
 public import Vegas.Game.OnePacketKeyedCommitmentComparisons
 public import Vegas.Game.OnePacketKeyedComparisons
 public import Vegas.Game.SequentialCompilation
-public import Vegas.Game.ConcurrentRevealNash
 public import Vegas.Game.IntendedSourceProfile
-public import Vegas.Game.ConcurrentRevealForfeit
 public import Vegas.Game.RevealServiceRankedReadout
 public import Vegas.Game.RevealServiceReference
 public import Vegas.Game.RevealServiceTimely
