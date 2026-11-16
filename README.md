@@ -30,7 +30,8 @@ theorems for ideal authenticated commitment interfaces and specified services.
 They do not themselves implement signatures, cryptography or an EVM backend.
 
 The [open-problems guide](docs/sequential-se-open-problems.md) states the exact
-boundaries and the next questions. The [two-player service](Vegas/Examples/OddsEvensService.lean) and its
+boundaries and the next questions. The [two-player instance](Vegas/Examples/OddsEvensService.lean)
+uses the [shared periodic service](Vegas/Pending/PeriodicServiceCompletion.lean), whose
 clock, opportunity, receipt and completion proofs exercise actual runtime
 service premises.
 

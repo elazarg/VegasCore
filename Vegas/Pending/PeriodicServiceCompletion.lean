@@ -2,29 +2,47 @@ module
 
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-public import Vegas.Examples.OddsEvensServiceClock
+public import Vegas.Pending.PeriodicServiceClock
 public import Interaction.ReactiveAnchoredTrace
+public import Vegas.Pending.PeriodicServiceOpportunity
+public import Vegas.Pending.PeriodicServiceReceipts
 
 @[expose] public section
 
-/-! # Expiry gives a finite completion budget for the forced-exit service -/
+/-! # Completion and service certificates for small two-player graphs -/
 
 noncomputable section
 
-namespace Vegas.Examples.OddsEvensService
+namespace Vegas.EventGraphRuntime.PeriodicService
 
-open SourceProgram EventGraphRuntime Interaction GameTheory GameTheory.Protocol
+open EventGraphRuntime Interaction GameTheory GameTheory.Protocol
   GameTheory.Math.Probability
 
-private theorem every_event_owned (event : compiled.EventId) :
-    (compiled.actor? event).isSome = true := by
-  fin_cases event <;> rfl
+variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
-theorem window_completes_ready (inputs : compiled.Inputs) (players : OddsEvens.Player → app.Policy)
-    (cycle : Nat) (before after : app.Execution) (aligned : ClockAligned inputs 0 before)
+variable {graph : EventGraph Player L} {roster : Bool ≃ Player}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)}
+  {inputLaw : PMF graph.Inputs}
+
+local notation "app" => (reactiveApplication (timeouts graph)) leaks
+local notation "deadlines" => timeouts graph
+local notation "startLaw" => initial graph leaks inputLaw
+local notation "schedule" => scheduler graph roster leaks
+local notation "selectedCommand" => command graph roster leaks
+
+variable [Fact (graph.order.eventCount ≤ 4)]
+  [Fact (∀ event : graph.EventId, (graph.actor? event).isSome = true)]
+
+omit [DecidableEq Player] [Fact (graph.order.eventCount ≤ 4)] in
+private theorem every_event_owned (event : graph.EventId) :
+    (graph.actor? event).isSome = true :=
+  (Fact.out : ∀ event : graph.EventId, (graph.actor? event).isSome = true) event
+
+theorem window_completes_ready (inputs : graph.Inputs) (players : Player → (app).Policy)
+    (cycle : Nat) (before after : (app).Execution) (aligned : ClockAligned inputs 0 before)
     (cursor : before.environmentRecall.length = cycle * width)
-    (event : compiled.EventId) (ready : before.application.config.cut.Ready event)
-    (reached : after ∈ (app.runRounds scheduler players (8 * width) before).support) :
+    (event : graph.EventId) (ready : before.application.config.cut.Ready event)
+    (reached : after ∈ ((app).runRounds schedule players (8 * width) before).support) :
     event ∈ after.application.config.cut.completed := by
   have active := (aligned.valid.activated_iff event).mpr ⟨ready, every_event_owned event⟩
   obtain ⟨entered, activated⟩ := Option.isSome_iff_exists.mp active
@@ -33,23 +51,24 @@ theorem window_completes_ready (inputs : compiled.Inputs) (players : OddsEvens.P
     simpa only [Nat.add_zero] using (cursor_arithmetic cycle 0 (by decide)).1
   have enteredBound := aligned.valid.activated_le event entered activated
   rw [beforeClock] at enteredBound
-  have eventBound : event.val < 4 := event.isLt
+  have eventBound : event.val < 4 := event.isLt.trans_le (Fact.out : graph.order.eventCount ≤ 4)
   let prefixRounds := 6 * width + (packetBudget + 2 + event.val)
   let tail := 8 * width - prefixRounds - 1
   have room : prefixRounds < 8 * width := by
     dsimp [prefixRounds, width, packetBudget, cycles]
     omega
   have splitCount : 8 * width = prefixRounds + (tail + 1) := by dsimp [tail]; omega
-  rw [splitCount, app.runRounds_add] at reached
+  rw [splitCount, (app).runRounds_add] at reached
   obtain ⟨middle, prefixReached, suffixReached⟩ :=
     Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
-  have middleAligned := (clock_aligned_invariant inputs 0).runRounds players prefixRounds
+  have middleAligned := (clock_aligned_invariant (roster := roster) inputs 0).runRounds players
+    prefixRounds
     before middle aligned prefixReached
   obtain ⟨_, prefixProgress⟩ := runRounds_progress inputs players
     prefixRounds before middle aligned.valid prefixReached
   have middleCursor : middle.environmentRecall.length =
       (cycle + 6) * width + (packetBudget + 2 + event.val) := by
-    rw [app.runRounds_environmentRecall_length scheduler players prefixRounds before middle
+    rw [(app).runRounds_environmentRecall_length schedule players prefixRounds before middle
       prefixReached, cursor]
     dsimp [prefixRounds]
     ring
@@ -58,12 +77,12 @@ theorem window_completes_ready (inputs : compiled.Inputs) (players : OddsEvens.P
     exact (cursor_arithmetic (cycle + 6) (packetBudget + 2 + event.val) (by
       change 64 + 2 + event.val < 71
       omega)).1
-  have roundEq : app.round scheduler players middle =
-      app.dispatch players (.application (.expire event)) middle := by
+  have roundEq : (app).round schedule players middle =
+      (app).dispatch players (.application (.expire event)) middle := by
     simp only [ReactiveApplication.round, scheduler, PMF.pure_bind]
-    rw [middleCursor, expire_command]
-  change after ∈ ((app.round scheduler players middle).bind
-    (app.runRounds scheduler players tail)).support at suffixReached
+    rw [middleCursor, expire_command _ _ eventBound]
+  change after ∈ (((app).round schedule players middle).bind
+    ((app).runRounds schedule players tail)).support at suffixReached
   rw [roundEq] at suffixReached
   obtain ⟨expired, moved, finalReached⟩ :=
     Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ suffixReached)
@@ -74,34 +93,34 @@ theorem window_completes_ready (inputs : compiled.Inputs) (players : OddsEvens.P
     simpa only [PMF.bind_pure] using moved
   obtain ⟨_, suffixProgress⟩ := runRounds_progress inputs players
     tail expired after
-      (reactive_environment_progress timeouts leaks inputs middle expired
+      (reactive_environment_progress deadlines leaks inputs middle expired
         (.application (.expire event)) middleAligned.valid expiredReached).invariant
       finalReached
   by_cases done : event ∈ middle.application.config.cut.completed
-  · have step := reactive_environment_progress timeouts leaks inputs middle expired
+  · have step := reactive_environment_progress deadlines leaks inputs middle expired
       (.application (.expire event)) middleAligned.valid expiredReached
     exact suffixProgress.completed (step.completed done)
   · have stillReady := (prefixProgress.ready_or_completed event ready).resolve_left done
     have stillActivated := prefixProgress.activated event entered activated done
-    have due : timeouts.duration event ≤ middle.application.clock - entered := by
+    have due : (deadlines).duration event ≤ middle.application.clock - entered := by
       change 6 ≤ middle.application.clock - entered
       rw [middleClock]
       omega
     obtain ⟨updated, observed, rfl⟩ := PMF.support_map .. ▸ expiredReached
     obtain ⟨native, nativeMoved, rfl⟩ := PMF.support_map .. ▸ observed
-    change native ∈ ((environmentStep timeouts middle.application (.expire event)).map
+    change native ∈ ((environmentStep deadlines middle.application (.expire event)).map
       State.drain).support at nativeMoved
     obtain ⟨raw, rawMoved, rfl⟩ := PMF.support_map .. ▸ nativeMoved
-    have completed := environmentStep_expire_complete timeouts middle.application raw
+    have completed := environmentStep_expire_complete deadlines middle.application raw
       event stillReady (every_event_owned event) entered stillActivated due rawMoved
     exact suffixProgress.completed
       (raw.drainFuel_completed_subset raw.config.remaining completed)
 
-theorem nonterminal_window_progress (inputs : compiled.Inputs)
-    (players : OddsEvens.Player → app.Policy) (cycle : Nat) (before after : app.Execution)
+theorem nonterminal_window_progress (inputs : graph.Inputs)
+    (players : Player → (app).Policy) (cycle : Nat) (before after : (app).Execution)
     (aligned : ClockAligned inputs 0 before)
     (cursor : before.environmentRecall.length = cycle * width)
-    (reached : after ∈ (app.runRounds scheduler players (8 * width) before).support)
+    (reached : after ∈ ((app).runRounds schedule players (8 * width) before).support)
     (unfinished : ¬ after.application.config.cut.Terminal) :
     before.application.config.cut.completed.card + 1 ≤
       after.application.config.cut.completed.card := by
@@ -122,10 +141,10 @@ theorem nonterminal_window_progress (inputs : compiled.Inputs)
       ready.1 (equal ▸ completed)⟩
   exact Nat.succ_le_of_lt (Finset.card_lt_card strict)
 
-theorem windows_card_bound (inputs : compiled.Inputs) (players : OddsEvens.Player → app.Policy)
-    (blocks cycle : Nat) (before after : app.Execution) (aligned : ClockAligned inputs 0 before)
+theorem windows_card_bound (inputs : graph.Inputs) (players : Player → (app).Policy)
+    (blocks cycle : Nat) (before after : (app).Execution) (aligned : ClockAligned inputs 0 before)
     (cursor : before.environmentRecall.length = cycle * width)
-    (reached : after ∈ (app.runRounds scheduler players (blocks * (8 * width)) before).support)
+    (reached : after ∈ ((app).runRounds schedule players (blocks * (8 * width)) before).support)
     (unfinished : ¬ after.application.config.cut.Terminal) :
     before.application.config.cut.completed.card + blocks ≤
       after.application.config.cut.completed.card := by
@@ -138,10 +157,11 @@ theorem windows_card_bound (inputs : compiled.Inputs) (players : OddsEvens.Playe
   | succ blocks ih =>
       have splitCount : (blocks + 1) * (8 * width) =
           8 * width + blocks * (8 * width) := by ring
-      rw [splitCount, app.runRounds_add] at reached
+      rw [splitCount, (app).runRounds_add] at reached
       obtain ⟨middle, firstReached, finalReached⟩ :=
         Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
-      have middleAligned := (clock_aligned_invariant inputs 0).runRounds players (8 * width)
+      have middleAligned := (clock_aligned_invariant (roster := roster) inputs 0).runRounds
+        players (8 * width)
         before middle aligned firstReached
       obtain ⟨_, later⟩ := runRounds_progress inputs players
         (blocks * (8 * width)) middle after middleAligned.valid finalReached
@@ -153,15 +173,15 @@ theorem windows_card_bound (inputs : compiled.Inputs) (players : OddsEvens.Playe
       have strict := nonterminal_window_progress inputs players cycle before middle aligned
         cursor firstReached middleUnfinished
       have middleCursor : middle.environmentRecall.length = (cycle + 8) * width := by
-        rw [app.runRounds_environmentRecall_length scheduler players (8 * width) before middle
+        rw [(app).runRounds_environmentRecall_length schedule players (8 * width) before middle
           firstReached, cursor]
         ring
       have bound := ih (cycle + 8) middle after middleAligned middleCursor finalReached unfinished
       omega
 
-theorem runRounds_complete (inputs : compiled.Inputs) (players : OddsEvens.Player → app.Policy)
-    (final : app.Execution)
-    (reached : final ∈ (app.runRounds scheduler players horizon
+theorem runRounds_complete (inputs : graph.Inputs) (players : Player → (app).Policy)
+    (final : (app).Execution)
+    (reached : final ∈ ((app).runRounds schedule players horizon
       (ReactiveApplication.Execution.initial app (State.initial inputs))).support) :
     final.application.config.cut.Terminal := by
   by_contra unfinished
@@ -172,23 +192,38 @@ theorem runRounds_complete (inputs : compiled.Inputs) (players : OddsEvens.Playe
   have bound := windows_card_bound inputs players 4 0 _ final aligned (by rfl) reached unfinished
   apply unfinished
   apply Finset.eq_of_subset_of_card_le (Finset.subset_univ _)
-  change 4 ≤ final.application.config.cut.completed.card
-  omega
+  have countBound : graph.order.eventCount ≤ 4 := Fact.out
+  simpa only [Finset.card_univ, Fintype.card_fin] using
+    countBound.trans (by simpa only [ReactiveApplication.Execution.initial, State.initial,
+      EventGraph.Config.initial, EventOrder.Cut.empty, Finset.card_empty,
+      Nat.zero_add] using bound)
 
-theorem completesPlay : CompletesPlay timeouts leaks initial horizon scheduler := by
+theorem completesPlay : CompletesPlay deadlines leaks startLaw horizon schedule := by
   intro current trace terminal
   rcases current with ⟨remaining, actor, execution⟩
   obtain ⟨rfl, rfl⟩ := terminal
-  let players : OddsEvens.Player → app.Policy := fun _ => app.silentPolicy
-  obtain ⟨_, supported⟩ := app.mem_roundsFrom_anchoredPolicy_of_trace initial horizon scheduler
+  let players : Player → (app).Policy := fun _ => (app).silentPolicy
+  obtain ⟨_, supported⟩ := (app).mem_roundsFrom_anchoredPolicy_of_trace startLaw horizon schedule
     players trace
-  change execution ∈ (initial.bind fun state => app.runRounds scheduler
-    (app.anchoredPolicy execution players) horizon
+  change execution ∈ ((startLaw).bind fun state => (app).runRounds schedule
+    ((app).anchoredPolicy execution players) horizon
       (ReactiveApplication.Execution.initial app state)).support at supported
   obtain ⟨state, initialized, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
-  rw [initial, Vegas.initialLaw, serviceInitialLaw, PMF.support_map] at initialized
+  rw [initial, PMF.support_map] at initialized
   obtain ⟨input, _, rfl⟩ := initialized
-  exact runRounds_complete (fixture.eventInputs input) (app.anchoredPolicy execution players)
+  exact runRounds_complete (input) ((app).anchoredPolicy execution players)
     execution reached
 
-end Vegas.Examples.OddsEvensService
+
+omit [Fact (graph.order.eventCount ≤ 4)]
+  [Fact (∀ event : graph.EventId, (graph.actor? event).isSome = true)] in
+/-- Every raw history receives an owner opportunity, protected inclusion and
+completion within the fixed service horizon. -/
+theorem contract (small : graph.order.eventCount ≤ 4)
+    (owned : ∀ event : graph.EventId, (graph.actor? event).isSome = true) :
+    AsyncContract deadlines leaks startLaw horizon schedule (fun _ => 3) (fun _ => 2) := by
+  let : Fact (graph.order.eventCount ≤ 4) := ⟨small⟩
+  let : Fact (∀ event : graph.EventId, (graph.actor? event).isSome = true) := ⟨owned⟩
+  exact ⟨opportunity, protectedInclusion, completesPlay⟩
+
+end Vegas.EventGraphRuntime.PeriodicService

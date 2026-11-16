@@ -32,15 +32,17 @@ There are 32 cycles. Players receive no pending packets in this concrete
 instance. This is a bounded periodic service instance, not a necessity claim
 about blockchain scheduling or capacity.
 
-The [clock](../Vegas/Examples/OddsEvensServiceClock.lean),
-[opportunity](../Vegas/Examples/OddsEvensServiceOpportunity.lean),
-[receipt](../Vegas/Examples/OddsEvensServiceReceipts.lean),
-[capacity](../Vegas/Examples/OddsEvensServiceCapacity.lean) and
-[completion](../Vegas/Examples/OddsEvensServiceCompletion.lean) proofs concern
+The shared [clock](../Vegas/Pending/PeriodicServiceClock.lean),
+[opportunity](../Vegas/Pending/PeriodicServiceOpportunity.lean),
+[receipt](../Vegas/Pending/PeriodicServiceReceipts.lean),
+[capacity](../Vegas/Pending/PeriodicServiceCapacity.lean) and
+[completion](../Vegas/Pending/PeriodicServiceCompletion.lean) proofs concern
 actual raw histories, including deviations and histories after exclusion.
 Rejected application calls still receive ledger receipts. The pending bound
 comes from counting every possible callback transmission within the finite
-horizon; it is not inferred from honest play.
+horizon; it is not inferred from honest play. The same certificate applies to
+any two-player graph with at most four owned events; it does not require source
+order.
 
 ## Imperfect evidence and funding
 

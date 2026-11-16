@@ -3,9 +3,6 @@ module
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 public import Vegas.Examples.OddsEvensService
-public import Vegas.Examples.OddsEvensServiceReceipts
-public import Vegas.Examples.OddsEvensServiceCompletion
-public import Vegas.Examples.OddsEvensServiceOpportunity
 public import Vegas.Examples.OddsEvensFairLaw
 public import Vegas.Examples.OddsEvensEquilibrium
 public import Vegas.Game.SequentialCompilation
@@ -31,11 +28,11 @@ local notation "serviceScheduler" => OddsEvensService.scheduler
 def halfRate : Set.Icc (0 : ℝ) 1 := ⟨1 / 2, by norm_num⟩
 
 abbrev evidenceService :=
-  EvidenceReportService.thinned (Evidence := CountEvidence compiled) halfRate halfRate
+  EvidenceReportService.thinned (Evidence := CountEvidence OddsEvens.compiled) halfRate halfRate
 
 /-- Each actual evidence item is collected with probability exactly one quarter. -/
-theorem collection_probability (actual : List (CountEvidence compiled))
-    (evidence : CountEvidence compiled) (member : evidence ∈ actual) :
+theorem collection_probability (actual : List (CountEvidence OddsEvens.compiled))
+    (evidence : CountEvidence OddsEvens.compiled) (member : evidence ∈ actual) :
     ((evidenceService.sample actual).toOuterMeasure
       {collected | evidence ∈ collected}).toReal = 1 / 4 := by
   have mass := EvidenceReportService.thinned_collection_mass halfRate halfRate
@@ -45,7 +42,7 @@ theorem collection_probability (actual : List (CountEvidence compiled))
 
 /-- The source, service and audit certificates of the two-player runtime. -/
 def specification : Vegas.ClientSpec
-    fixture rt leaks Vegas.Examples.OddsEvens.bounds steps serviceScheduler
+    OddsEvens.setup rt leaks Vegas.Examples.OddsEvens.bounds steps serviceScheduler
     (fun _ => ()) Vegas.Examples.OddsEvens.sourceUtility (fun _ => 0) where
   finiteNature := by change app.FiniteNature initial serviceScheduler; infer_instance
   finiteSource := inferInstance
@@ -56,19 +53,19 @@ def specification : Vegas.ClientSpec
   observable := Vegas.Examples.OddsEvens.observable
   delay := fun _ => 3
   bound := fun _ => 2
-  opportunity := opportunity
-  inclusion := protectedInclusion
-  completes := completesPlay
-  timely := timely
+  opportunity := OddsEvensService.contract.opportunity
+  inclusion := OddsEvensService.contract.inclusion
+  completes := OddsEvensService.contract.completes
+  timely := PeriodicService.timely (graph := OddsEvens.compiled)
   lowerUtility := fun _ => 0
   upperUtility := fun _ => 200
   lower_le := fun _ terminal _ who => (Vegas.Examples.OddsEvens.sourceUtility_bounds
-    (fixture.parameterOutcome (fun _ => ()) terminal) who).1
+    (OddsEvens.setup.parameterOutcome (fun _ => ()) terminal) who).1
   le_upper := fun _ terminal _ who => (Vegas.Examples.OddsEvens.sourceUtility_bounds
-    (fixture.parameterOutcome (fun _ => ()) terminal) who).2
+    (OddsEvens.setup.parameterOutcome (fun _ => ()) terminal) who).2
   exitBelow := fun _ terminal _ who =>
     (Vegas.Examples.OddsEvens.sourceUtility_bounds
-      (fixture.parameterOutcome (fun _ => ()) terminal) who).1
+      (OddsEvens.setup.parameterOutcome (fun _ => ()) terminal) who).1
   outputValues := Vegas.Examples.OddsEvens.outputValues
   inputValues := Vegas.Examples.OddsEvens.inputValues
   capacity := Vegas.Examples.OddsEvens.candidateCapacity
@@ -79,14 +76,15 @@ def specification : Vegas.ClientSpec
   coverage := thinnedCountEvidence_coverage halfRate halfRate
   deposit := fun _ => 800
   deposit_nonnegative := fun _ => by norm_num
-  funded := fun _ => by norm_num [fixture, Vegas.Examples.OddsEvens.setup, halfRate]
+  funded := fun _ => by norm_num [Vegas.Examples.OddsEvens.setup, halfRate]
 
 /-- Every intended source equilibrium has a clean raw-runtime realization under
 the concrete two-player service and imperfect audit. -/
 theorem intended_equilibrium_preserved
-    (intended : fixture.intendedModel.BehavioralAssessment)
+    (intended : OddsEvens.setup.intendedModel.BehavioralAssessment)
     (equilibrium :
-      fixture.IntendedSequentialEquilibrium (fun _ => ()) OddsEvens.sourceUtility intended) :
+      OddsEvens.setup.IntendedSequentialEquilibrium (fun _ => ()) OddsEvens.sourceUtility
+        intended) :
     let raw := OddsEvens.bounds.rawMenu rt leaks
     let observe := app.stateTraffic
     let audit := countAudit rt leaks
@@ -104,13 +102,13 @@ theorem intended_equilibrium_preserved
         ∀ who, TerminalAudit.charge observe audit final.state who = 0) ∧
       (raw.run initial steps serviceScheduler target.strategy).bind
         (fun final => (settle final.state).map fun payoffs =>
-          (sourceReadout fixture rt leaks final.state, payoffs)) =
-        (fixture.intendedModel.runBehavioral intended.strategy
-          (instructionCount fixture.program + 1)).map
-          (intendedReadoutExclusion fixture (fun _ => ()) OddsEvens.sourceUtility
+          (sourceReadout OddsEvens.setup rt leaks final.state, payoffs)) =
+        (OddsEvens.setup.intendedModel.runBehavioral intended.strategy
+          (instructionCount OddsEvens.setup.program + 1)).map
+          (intendedReadoutExclusion OddsEvens.setup (fun _ => ()) OddsEvens.sourceUtility
             (fun _ => 0)) := by
   intro raw observe audit settle
-  let : app.FiniteNature (Vegas.initialLaw fixture) serviceScheduler :=
+  let : app.FiniteNature (Vegas.initialLaw OddsEvens.setup) serviceScheduler :=
     (inferInstance : app.FiniteNature initial serviceScheduler)
   obtain ⟨compiled⟩ := Vegas.intended_raw_sequentialEquilibrium_preserved
     specification intended equilibrium
@@ -142,12 +140,12 @@ theorem fair_equilibrium_exists :
         ∀ who, TerminalAudit.charge observe audit final.state who = 0) ∧
       (raw.run initial steps serviceScheduler target.strategy).bind
         (fun final => (settle final.state).map fun payoffs =>
-          (sourceReadout fixture rt leaks final.state, payoffs)) =
+          (sourceReadout OddsEvens.setup rt leaks final.state, payoffs)) =
               OddsEvens.uniformJointLaw ∧
       ∀ who, expect (
         (raw.run initial steps serviceScheduler target.strategy).bind
         (fun final => (settle final.state).map fun payoffs =>
-          (sourceReadout fixture rt leaks final.state, payoffs)))
+          (sourceReadout OddsEvens.setup rt leaks final.state, payoffs)))
           (fun realized => realized.2 who) = 100 := by
   intro raw observe audit settle
   obtain ⟨target, rational, clear, noCharges, joint⟩ :=

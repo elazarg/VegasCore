@@ -48,6 +48,12 @@ The full-source interfaces in
 [ServiceHonestLaw](../Vegas/Game/ServiceHonestLaw.lean) use the source information
 graph directly. Asynchronous service retains arbitrary public scheduling and
 per-event deadlines under its service contract.
+The actual [periodic service](../Vegas/Pending/PeriodicServiceCompletion.lean)
+supplies the raw-history contract for any graph with two players and at most
+four owned events, under arbitrary dependencies, input laws and pending
+observations. It uses deadlines six, reaction bounds three and inclusion bounds
+two. [OddsEvensService](../Vegas/Examples/OddsEvensService.lean) specializes this
+shared service to the source-ordered game and its empty pending observations.
 [CompilerCorrectness](../Vegas/Game/CompilerCorrectness.lean)
 realizes the law with bounded-menu clients under the supplied value-coverage
 and capacity interfaces. The lower graph APIs retain genuinely nonordered

@@ -1151,9 +1151,7 @@ and completion guarantees on every initialized legal history. -/
 theorem Vegas.Paper.oddsEvens_asyncContract :
     AsyncContract OddsEvensService.timeouts OddsEvensService.leaks OddsEvensService.initial
       OddsEvensService.horizon OddsEvensService.scheduler (fun _ => 3) (fun _ => 2) :=
-  ⟨Vegas.Examples.OddsEvensService.opportunity,
-      Vegas.Examples.OddsEvensService.protectedInclusion,
-      Vegas.Examples.OddsEvensService.completesPlay⟩
+  Vegas.Examples.OddsEvensService.contract
 
 /-- info: 'Vegas.Paper.oddsEvens_asyncContract' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
@@ -1163,7 +1161,7 @@ theorem Vegas.Paper.oddsEvens_asyncContract :
 /-- Reaction three and inclusion two fit within every six-tick deadline. -/
 theorem Vegas.Paper.oddsEvens_asyncTimely :
     AsyncTimely OddsEvensService.timeouts (fun _ => 3) (fun _ => 2) :=
-  Vegas.Examples.OddsEvensService.timely
+  PeriodicService.timely (graph := OddsEvens.compiled)
 
 /-- info: 'Vegas.Paper.oddsEvens_asyncTimely' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
@@ -1191,7 +1189,7 @@ def Vegas.Paper.fairLedgerRun (profile : Profile (fairModel).behavioralSignature
 def Vegas.Paper.fairLedgerJointLaw (profile : Profile (fairModel).behavioralSignature) :=
   (Vegas.Paper.fairLedgerRun profile).bind fun final =>
       ((fairSpec).settlement final.state).map fun payoffs =>
-        (sourceReadout OddsEvensService.fixture OddsEvensService.timeouts
+        (sourceReadout OddsEvens.setup OddsEvensService.timeouts
           OddsEvensService.leaks final.state, payoffs)
 
 /-- A fair ledger equilibrium has no defaults or charges and retains the source payoff law. -/
@@ -1223,8 +1221,8 @@ theorem Vegas.Paper.fair_equilibrium_exists :
 /-- Independent half-rate collection and enforcement collect each actual item
 with probability one quarter. -/
 theorem Vegas.Paper.collection_probability
-    (actual : List (CountEvidence OddsEvensService.compiled))
-    (evidence : CountEvidence OddsEvensService.compiled) (member : evidence ∈ actual) :
+    (actual : List (CountEvidence OddsEvens.compiled))
+    (evidence : CountEvidence OddsEvens.compiled) (member : evidence ∈ actual) :
     ((OddsEvensRaw.evidenceService.sample actual).toOuterMeasure
       {collected | evidence ∈ collected}).toReal = 1 / 4 := by
   exact OddsEvensRaw.collection_probability actual evidence member

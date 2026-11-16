@@ -26,7 +26,7 @@ open SourceProgram GameTheory GameTheory.Math.Probability
 inductive Player where
   | alice
   | bob
-  deriving DecidableEq
+  deriving DecidableEq, Fintype
 
 def acceptGuard {Γ : SourceCtx Player simpleExpr} (who : Player) (name : VarId) :
     SourceGuard simpleExpr Γ who name .int where

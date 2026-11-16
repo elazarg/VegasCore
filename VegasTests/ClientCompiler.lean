@@ -24,27 +24,27 @@ open Vegas Vegas.SourceProgram Vegas.EventGraphRuntime Interaction
 open Vegas.Examples.OddsEvensService
 open Vegas.Examples.OddsEvensRaw
 
-def compiled (intended : fixture.intendedModel.BehavioralAssessment)
-    (equilibrium : fixture.IntendedSequentialEquilibrium
+def compiled (intended : Vegas.Examples.OddsEvens.setup.intendedModel.BehavioralAssessment)
+    (equilibrium : Vegas.Examples.OddsEvens.setup.IntendedSequentialEquilibrium
       (fun _ => ()) Vegas.Examples.OddsEvens.sourceUtility intended) :=
   specification.compile intended equilibrium
 
-example (intended : fixture.intendedModel.BehavioralAssessment)
-    (equilibrium : fixture.IntendedSequentialEquilibrium
+example (intended : Vegas.Examples.OddsEvens.setup.intendedModel.BehavioralAssessment)
+    (equilibrium : Vegas.Examples.OddsEvens.setup.IntendedSequentialEquilibrium
       (fun _ => ()) Vegas.Examples.OddsEvens.sourceUtility intended) (who : Bool) :
     ReactiveApplication.Policy.IgnoresLeakedFields app
       ((compiled intended equilibrium).ledgerClients who) :=
   (compiled intended equilibrium).ledgerClients_ignoreLeakedFields who
 
-example (intended : fixture.intendedModel.BehavioralAssessment)
-    (equilibrium : fixture.IntendedSequentialEquilibrium
+example (intended : Vegas.Examples.OddsEvens.setup.intendedModel.BehavioralAssessment)
+    (equilibrium : Vegas.Examples.OddsEvens.setup.IntendedSequentialEquilibrium
       (fun _ => ()) Vegas.Examples.OddsEvens.sourceUtility intended)
     (who : Bool) (past : List app.PlayerEntry) (view : app.PlayerView) :
     ((compiled intended equilibrium).ledgerClients who past view).support.Finite :=
   (compiled intended equilibrium).ledgerClients_support_finite who past view
 
-example (intended : fixture.intendedModel.BehavioralAssessment)
-    (equilibrium : fixture.IntendedSequentialEquilibrium
+example (intended : Vegas.Examples.OddsEvens.setup.intendedModel.BehavioralAssessment)
+    (equilibrium : Vegas.Examples.OddsEvens.setup.IntendedSequentialEquilibrium
       (fun _ => ()) Vegas.Examples.OddsEvens.sourceUtility intended)
     (state : app.ProtocolState)
     (supported : state ∈ (app.finish initial horizon scheduler
@@ -53,8 +53,8 @@ example (intended : fixture.intendedModel.BehavioralAssessment)
     control.execution.application.config.defaulted = ∅ :=
   (compiled intended equilibrium).clients_noDefaults state supported control current
 
-example (intended : fixture.intendedModel.BehavioralAssessment)
-    (equilibrium : fixture.IntendedSequentialEquilibrium
+example (intended : Vegas.Examples.OddsEvens.setup.intendedModel.BehavioralAssessment)
+    (equilibrium : Vegas.Examples.OddsEvens.setup.IntendedSequentialEquilibrium
       (fun _ => ()) Vegas.Examples.OddsEvens.sourceUtility intended)
     (state : app.ProtocolState)
     (supported : state ∈ (app.finish initial horizon scheduler
@@ -63,14 +63,14 @@ example (intended : fixture.intendedModel.BehavioralAssessment)
       ((countAudit timeouts) leaks specification.evidenceService.sample) state who = 0 :=
   (compiled intended equilibrium).clients_noCharges state supported who
 
-example (intended : fixture.intendedModel.BehavioralAssessment)
-    (equilibrium : fixture.IntendedSequentialEquilibrium
+example (intended : Vegas.Examples.OddsEvens.setup.intendedModel.BehavioralAssessment)
+    (equilibrium : Vegas.Examples.OddsEvens.setup.IntendedSequentialEquilibrium
       (fun _ => ()) Vegas.Examples.OddsEvens.sourceUtility intended) :
     (app.finish initial horizon scheduler (compiled intended equilibrium).ledgerClients none).bind
       (specification.observation) =
-    (fixture.intendedModel.runBehavioral intended.strategy
-      (instructionCount fixture.program + 1)).map
-      (Vegas.intendedReadoutExclusion fixture (fun _ => ())
+    (Vegas.Examples.OddsEvens.setup.intendedModel.runBehavioral intended.strategy
+      (instructionCount Vegas.Examples.OddsEvens.setup.program + 1)).map
+      (Vegas.intendedReadoutExclusion Vegas.Examples.OddsEvens.setup (fun _ => ())
         Vegas.Examples.OddsEvens.sourceUtility (fun _ => 0)) :=
   (compiled intended equilibrium).ledgerClients_outcomeLaw (by intro _ _; rfl)
 

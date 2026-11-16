@@ -2,6 +2,13 @@ module
 
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
+public import Vegas.Pending.PeriodicService
+public import Vegas.Pending.PeriodicServiceClock
+public import Vegas.Pending.PeriodicServiceCapacity
+public import Vegas.Pending.PeriodicServiceOpportunity
+public import Vegas.Pending.PeriodicServiceReceipts
+public import Vegas.Pending.PeriodicServiceCompletion
+
 public import Vegas.Pending.AcceptedEventOwnership
 public import Vegas.Pending.CanonicalKeyLaw
 public import Vegas.Pending.CanonicalKeyPublication

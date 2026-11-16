@@ -28,6 +28,8 @@ abbrev Bid := Val (.range 0 6)
 def bid (index : Fin 7) : Bid :=
   ⟨index.val, by have := index.isLt; constructor <;> omega⟩
 
+instance : Inhabited Bid := ⟨bid 0⟩
+
 def publications : List (PublicationResult Bid) :=
   .failure :: (List.finRange 7).map (fun index => .success (bid index))
 
