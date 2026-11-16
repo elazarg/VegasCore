@@ -630,10 +630,9 @@ section RevealOrder
 
 open Vegas.Examples.ConcurrentRevealOrderLaw in
 theorem Vegas.Paper.reveal_order_changes_store_law :
-    (graph.runPolicies bobFirstScheduler compiled initial.inputs).map
-        Vegas.EventGraph.Config.store ≠
-      (graph.runPolicies graph.canonicalScheduler compiled initial.inputs).map
-        Vegas.EventGraph.Config.store :=
+    let storeLaw := fun scheduler : graph.PublicScheduler =>
+      (graph.runPolicies scheduler compiled initial.inputs).map Vegas.EventGraph.Config.store
+    storeLaw bobFirstScheduler ≠ storeLaw graph.canonicalScheduler :=
   Vegas.Examples.ConcurrentRevealOrderLaw.terminal_store_laws_differ
 
 /-- info: 'Vegas.Paper.reveal_order_changes_store_law' depends on axioms:
