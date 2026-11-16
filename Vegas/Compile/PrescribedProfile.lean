@@ -406,4 +406,64 @@ theorem compilePrescribedProfile_submitBindings {Γ : SourceCtx Player L} {O : F
   simp only [submitProfile_prefixProfile]
   rw [submitProfile_compile_submitBindings program deps profile]
 
+/-- On every coherent, binding-default-free information prefix, prescribed
+clients retain the complete canonical continuation of submitting source policies. -/
+theorem runPlan_canonical_prescribed_compile_of_reachable
+    {Γ : SourceCtx Player L} {names : Finset VarId}
+    (program : SourceProgram Player L Γ names) (profile : BehavioralProfile program)
+    (submits : ∀ who, SourceProgram.SubmitsBindings program (profile who))
+    (count : Nat) (origin : (toInformationGraph program).Config)
+    {inputs : (toInformationGraph program).Inputs} (reachable : origin.Reachable inputs)
+    (clean : origin.NoBindingDefaults) :
+    (toInformationGraph program).runPlan
+      ((toInformationGraph program).policyPlan
+        (compilePrescribedProfile program (toInformationGraph program).dependencies profile)
+        (toInformationGraph program).canonicalScheduler) count origin =
+      (toInformationGraph program).runPlan
+        ((toInformationGraph program).policyPlan (compileEventProfile program profile)
+          (toInformationGraph program).canonicalScheduler) count origin := by
+  let G := toInformationGraph program
+  let prescribed := compilePrescribedProfile program G.dependencies profile
+  let compiled : G.BehavioralProfile := compileEventProfile program profile
+  apply runPlan_congr_profile prescribed compiled G.canonicalScheduler count origin
+  intro current reached event ready
+  have currentReach : current.Reachable inputs := by
+    clear ready
+    induction reached with
+    | refl => exact reachable
+    | tail _ moved ih =>
+      obtain ⟨prior, eligible, action, supported⟩ := moved.toStep
+      exact .step ih prior eligible action _ supported
+  have currentClean := clean.planReachable
+    (compilePrescribedProfile_submits program G.dependencies profile) reached
+  have ordered : current.cut.IsPrefix event.val :=
+    ⟨event.isLt.le, fun prior => EventOrder.Cut.mem_completed_iff_lt_of_ready current.cut ready⟩
+  have observation (who : Player) : G.prefixObservation who event (G.playerObserve who current) =
+      G.playerObserve who current :=
+    (prefixObservation_playerObserve_of_prefix who event current ordered currentClean).trans
+      (normalizeObservation_playerObserve_of_rankOrdered who current
+        (rankSort_history_of_reachable (fun prior selected earlier =>
+          (EventOrder.sequential.mem_predecessors prior selected).mpr earlier) currentReach))
+  cases actor : G.actor? event with
+  | none => rw [actionLaw_of_ownerless _ _ actor, actionLaw_of_ownerless _ _ actor]
+  | some who =>
+    rw [actionLaw_of_actor _ _ actor, actionLaw_of_actor _ _ actor]
+    by_cases inactive : who ∈ current.defaulted
+    · rw [dite_eq_left inactive, dite_eq_left inactive]
+    rw [dite_eq_right inactive, dite_eq_right inactive]
+    have prefixActive : who ∉
+        (G.prefixObservation who event (G.playerObserve who current)).defaulted := by
+      rw [observation who, playerObserve_defaulted]
+      exact inactive
+    change ((compiled who event actor (G.prefixObservation who event (G.playerObserve who current))
+      prefixActive).map (EventField.submitAction (G.outputLayout event))) = _
+    have views : (⟨G.prefixObservation who event (G.playerObserve who current), prefixActive⟩ :
+        {view : G.PlayerObservation who // who ∉ view.defaulted}) =
+        ⟨G.playerObserve who current, inactive⟩ := Subtype.ext (observation who)
+    have laws := congrArg (fun view : {view : G.PlayerObservation who // who ∉ view.defaulted} =>
+      compiled who event actor view.1 view.2) views
+    rw [laws]
+    exact compileEventPolicy_submit_eq_of_prefix program who (profile who) (submits who) event
+      current ordered actor inactive
+
 end Vegas

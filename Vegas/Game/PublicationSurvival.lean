@@ -3,6 +3,8 @@ module
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 public import Vegas.Game.RevealRunCoupling
+public import Vegas.Game.SourceServiceTurnPolicy
+public import Interaction.ReactiveRoundCongruence
 public import Vegas.Game.RevealRunPoint
 public import Vegas.Game.RevealServiceEffectiveTimely
 public import Vegas.Pending.CanonicalOutcomePublication
@@ -256,6 +258,124 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 /-- First focal failure is a public stop. Up to that stop, the entire focal
 traffic law depends on the ordinary-open source successor only through its
 complete post-view, including in a public run with repeated owners. -/
+private theorem effectivePublication_client_eq
+    (bound : (serviceGraph setup deps).EventId → Nat) (turns : Nat)
+    (left right : (serviceGraph setup deps).BehavioralProfile) (owner : Player)
+    (current : (serviceApplication setup deps duration leaks).Execution)
+    (publications : ∀ event : (serviceGraph setup deps).EventId,
+      current.application.config.cut.Ready event →
+        ((serviceGraph setup deps).outputLayout event).IsPublication) :
+    serviceReferenceTurnPolicy setup deps duration leaks bound turns
+        (firstTurnTiming setup turns deps) (effectiveOpening left)
+        owner (current.logs owner)
+        (current.observe (serviceApplication setup deps duration leaks) owner) =
+      serviceReferenceTurnPolicy setup deps duration leaks bound turns
+        (firstTurnTiming setup turns deps) (effectiveOpening right) owner (current.logs owner)
+        (current.observe (serviceApplication setup deps duration leaks) owner) := by
+  apply serviceReferenceTurnPolicy_eq_of_ready_kernels (setup := setup) (deps := deps)
+    (duration := duration) (leaks := leaks)
+  intro event ready actor observation active
+  have currentReady := (State.publicView_eventReady current.application event).mp ready
+  obtain ⟨owner', payload, binding, checks, outputEq, codeEq, node⟩ :=
+    exists_resolve_of_publication (publications event currentReady)
+  have sameOwner : owner' = owner := Option.some.inj
+    ((nodeView_resolve_actor outputEq codeEq).symm.trans actor)
+  subst owner'
+  rw [effectiveOpening_of_resolve left node actor, effectiveOpening_of_resolve right node actor]
+
+end Vegas
+
+namespace Vegas
+
+open SourceProgram EventGraphRuntime EventGraph Interaction GameTheory.Math.Probability
+
+variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
+  {setup : Setup (Player := Player) (L := L)} {deps : setup.dataflowGraph.Dependencies}
+  {duration : (serviceGraph setup deps).EventId → Nat}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup deps))}
+
+private theorem effectivePublication_round_eq
+    (scheduler : (serviceApplication setup deps duration leaks).Scheduler)
+    (bound : (serviceGraph setup deps).EventId → Nat) (turns : Nat)
+    (left right : (serviceGraph setup deps).BehavioralProfile)
+    (focal : Player) (deviation : (serviceApplication setup deps duration leaks).Policy)
+    (current : (serviceApplication setup deps duration leaks).Execution)
+    (publications : ∀ event : (serviceGraph setup deps).EventId,
+      current.application.config.cut.Ready event →
+        ((serviceGraph setup deps).outputLayout event).IsPublication) :
+    let app := serviceApplication setup deps duration leaks
+    let players := fun reference => Function.update
+      (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+        (firstTurnTiming setup turns deps) (effectiveOpening reference)) focal deviation
+    app.round scheduler (players left) current = app.round scheduler (players right) current := by
+  intro app players
+  have same := app.round_map_congr scheduler (players left) (players right) current current id
+    rfl rfl rfl (by
+      intro owner _selected sample _sampled
+      by_cases isFocal : owner = focal
+      · subst owner
+        simp only [players, Function.update_self]
+      · simp only [players, Function.update_of_ne isFocal]
+        rw [effectivePublication_client_eq bound turns left right owner
+          (current.sampledActivation app owner sample) publications]) (by
+      intro _command _selected _inactive
+      rfl)
+  simpa only [PMF.map_id] using same
+
+private theorem effectivePublication_runUntil_eq
+    (scheduler : (serviceApplication setup deps duration leaks).Scheduler)
+    (bound : (serviceGraph setup deps).EventId → Nat) (turns : Nat)
+    (left right : (serviceGraph setup deps).BehavioralProfile)
+    (focal : Player) (deviation : (serviceApplication setup deps duration leaks).Policy)
+    (stop : (serviceApplication setup deps duration leaks).Execution → Prop) [DecidablePred stop]
+    (holds : Nat → (serviceApplication setup deps duration leaks).Execution → Prop)
+    (publications : ∀ remaining current, holds (remaining + 1) current → ¬ stop current →
+      ∀ event : (serviceGraph setup deps).EventId, current.application.config.cut.Ready event →
+        ((serviceGraph setup deps).outputLayout event).IsPublication)
+    (preserved : ∀ remaining current, holds (remaining + 1) current → ¬ stop current →
+      ∀ next ∈ ((serviceApplication setup deps duration leaks).round scheduler
+        (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+          (firstTurnTiming setup turns deps) (effectiveOpening left)) focal deviation)
+        current).support, holds remaining next) :
+    ∀ count current, holds count current →
+      (serviceApplication setup deps duration leaks).runUntil scheduler
+        (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+          (firstTurnTiming setup turns deps) (effectiveOpening left)) focal deviation)
+        stop count current =
+      (serviceApplication setup deps duration leaks).runUntil scheduler
+        (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+          (firstTurnTiming setup turns deps) (effectiveOpening right)) focal deviation)
+        stop count current := by
+  let app := serviceApplication setup deps duration leaks
+  let players := fun reference => Function.update
+    (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+      (firstTurnTiming setup turns deps) (effectiveOpening reference)) focal deviation
+  have rounds (n : Nat) (current : app.Execution) (valid : holds (n + 1) current)
+      (running : ¬ stop current) :
+      app.round scheduler (players left) current = app.round scheduler (players right) current :=
+    effectivePublication_round_eq (setup := setup) (deps := deps) (duration := duration)
+      (leaks := leaks) scheduler bound turns left right focal deviation current
+      (publications n current valid running)
+  have rightStep : ∀ n current, holds (n + 1) current → ¬ stop current →
+      ∀ next ∈ (app.round scheduler (players right) current).support, holds n next := by
+    intro n current valid running next reached
+    rw [← rounds n current valid running] at reached
+    exact preserved n current valid running next reached
+  intro count current valid
+  have coupled := app.runUntil_map_congr_of_rounds scheduler (players left) (players right)
+    stop id holds holds (by
+      intro _ first second _ _ same
+      change first = second at same
+      subst second
+      exact Iff.rfl) (by
+      intro n first second firstValid _secondValid same running
+      change first = second at same
+      subst second
+      exact congrArg (PMF.map id) (rounds n first firstValid running)) preserved rightStep
+    count current current valid valid rfl
+  simpa only [PMF.map_id] using coupled
+
+
 theorem publication_first_failure_traffic_congr
     {horizon turns : Nat}
     (scheduler : (serviceApplication setup deps duration leaks).Scheduler)
@@ -265,18 +385,18 @@ theorem publication_first_failure_traffic_congr
     (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
       (serviceInitialLaw setup deps) horizon scheduler delay bound)
     (timely : AsyncTimely (serviceTimeouts setup deps duration) delay bound)
-    (profile reference : (serviceGraph setup deps).BehavioralProfile)
+    (profile leftReference rightReference : (serviceGraph setup deps).BehavioralProfile)
     (independent : ReadyIndependent profile) (opens : OpensPublications profile)
     (focal : Player) (deviation : (serviceApplication setup deps duration leaks).Policy)
     {start finish : Nat} (run : RevealRun (serviceGraph setup deps) start finish)
     (left right : (serviceApplication setup deps duration leaks).Execution)
     (leftBoundary : PhaseBoundary scheduler
       (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
-        (firstTurnTiming setup turns deps) (effectiveOpening reference)) focal deviation)
+        (firstTurnTiming setup turns deps) (effectiveOpening leftReference)) focal deviation)
       horizon start left)
     (rightBoundary : PhaseBoundary scheduler
       (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
-        (firstTurnTiming setup turns deps) (effectiveOpening reference)) focal deviation)
+        (firstTurnTiming setup turns deps) (effectiveOpening rightReference)) focal deviation)
       horizon start right)
     (leftDonor rightDonor : (serviceGraph setup deps).Config)
     {leftInputs rightInputs : (serviceGraph setup deps).Inputs}
@@ -292,21 +412,22 @@ theorem publication_first_failure_traffic_congr
       (bindingTraffic (serviceTimeouts setup deps duration)) leaks focal right) :
     ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
       (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
-        (firstTurnTiming setup turns deps) (effectiveOpening reference)) focal deviation)
+        (firstTurnTiming setup turns deps) (effectiveOpening leftReference)) focal deviation)
       (fun current => BlockDone finish current.application.config ∨
         focal ∈ current.application.config.defaulted) horizon left).map
       ((bindingTraffic (serviceTimeouts setup deps duration)) leaks focal) =
     ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
       (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
-        (firstTurnTiming setup turns deps) (effectiveOpening reference)) focal deviation)
+        (firstTurnTiming setup turns deps) (effectiveOpening rightReference)) focal deviation)
       (fun current => BlockDone finish current.application.config ∨
         focal ∈ current.application.config.defaulted) horizon right).map
       ((bindingTraffic (serviceTimeouts setup deps duration)) leaks focal) := by
   classical
   let G := serviceGraph setup deps
   let app := serviceApplication setup deps duration leaks
-  let players := Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
-    (firstTurnTiming setup turns deps) (effectiveOpening reference)) focal deviation
+  let players := fun reference => Function.update
+    (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+      (firstTurnTiming setup turns deps) (effectiveOpening reference)) focal deviation
   let traffic := (bindingTraffic (serviceTimeouts setup deps duration)) leaks focal
   let stop := fun current : app.Execution => BlockDone finish current.application.config ∨
     focal ∈ current.application.config.defaulted
@@ -326,11 +447,11 @@ theorem publication_first_failure_traffic_congr
       nodeView G event = .resolve owner payload binding checks outputEq codeEq →
       ∀ (actor : G.actor? event = some owner)
         (active : owner ∉ (G.playerObserve owner config).defaulted),
-      effectiveOpening reference owner event actor (G.playerObserve owner config) active =
+      effectiveOpening leftReference owner event actor (G.playerObserve owner config) active =
         PMF.pure (cast (congrArg EventField.Action outputEq.symm)
           (openingAccepted event config.store)) := by
     intro config event owner payload binding checks outputEq codeEq node actor active
-    rw [effectiveOpening_of_resolve reference node actor]
+    rw [effectiveOpening_of_resolve leftReference node actor]
     change PMF.pure (cast _ (openingAccepted event (G.playerStore owner config.store))) = _
     rw [openingAccepted_playerStore event actor]
   have observedStop (current other : app.Execution) (same : traffic current = traffic other) :
@@ -346,25 +467,28 @@ theorem publication_first_failure_traffic_congr
     change (BlockDone finish current.application.config ∨ _) ↔
       (BlockDone finish other.application.config ∨ _)
     simp only [BlockDone, cuts, defaults]
-  let good := fun (origin : app.Execution) (donor : G.Config)
+  let good := fun (reference : G.BehavioralProfile) (origin : app.Execution) (donor : G.Config)
       (remaining : Nat) (current : app.Execution) =>
-    current ∈ (app.roundsFrom (serviceInitialLaw setup deps) scheduler players
+    current ∈ (app.roundsFrom (serviceInitialLaw setup deps) scheduler (players reference)
       current.environmentRecall.length).support ∧
     current.environmentRecall.length + remaining ≤ horizon ∧
     Relation.ReflTransGen Config.Step origin.application.config current.application.config ∧
     (focal ∈ current.application.config.defaulted ∨
       canonicalLaw profile current.application.config = canonicalLaw profile donor)
-  have goodRound (donor : G.Config)
+  have goodRound (reference : G.BehavioralProfile) (donor : G.Config)
       (donorLaw : outcomeLaw profile Config.defaulted donor = PMF.pure ∅)
       (origin : app.Execution)
-      (originBoundary : PhaseBoundary scheduler players horizon start origin) :
-      ∀ n current, good origin donor (n + 1) current → ¬ stop current →
-        ∀ next ∈ (app.round scheduler players current).support, good origin donor n next := by
+      (originBoundary : PhaseBoundary scheduler (players reference) horizon start origin) :
+      ∀ n current, good reference origin donor (n + 1) current → ¬ stop current →
+        ∀ next ∈ (app.round scheduler (players reference) current).support, good reference
+          origin donor n next := by
     intro n current valid running next moved
     obtain ⟨currentSupport, currentBound, currentPath, potential⟩ := valid
-    have length := app.round_environmentRecall_length scheduler players current next moved
+    have length := app.round_environmentRecall_length scheduler (players reference) current
+      next moved
     refine ⟨?_, by omega, currentPath.trans (reactive_round_graph_steps
-      (serviceTimeouts setup deps duration) leaks scheduler players current next moved), ?_⟩
+      (serviceTimeouts setup deps duration) leaks scheduler (players reference) current next
+        moved), ?_⟩
     · rw [length, app.roundsFrom_succ]
       exact (PMF.mem_support_bind_iff _ _ _).mpr ⟨current, currentSupport, moved⟩
     obtain potential | potential := potential
@@ -387,16 +511,21 @@ theorem publication_first_failure_traffic_congr
         currentLaw readyPublic moved with failed | ⟨_clear, advanced⟩
     · exact Or.inl failed
     · exact Or.inr (advanced.trans potential)
-  have leftPoint := leftBoundary.runPoint bound turns (effectiveOpening reference) focal deviation
+  have leftPoint := leftBoundary.runPoint bound turns (effectiveOpening leftReference) focal
+    deviation
     relaxed run
-  have rightPoint := rightBoundary.runPoint bound turns (effectiveOpening reference) focal deviation
+  have rightPoint := rightBoundary.runPoint bound turns (effectiveOpening rightReference)
+    focal deviation
     relaxed run
-  have leftStart : good left leftDonor (horizon - left.environmentRecall.length) left :=
+  have leftStart : good leftReference left leftDonor (horizon - left.environmentRecall.length)
+    left :=
     ⟨leftBoundary.supported, by have := leftBoundary.bounded; omega, .refl, Or.inr leftPotential⟩
-  have rightStart : good right rightDonor (horizon - right.environmentRecall.length) right :=
+  have rightStart : good rightReference right rightDonor (horizon -
+    right.environmentRecall.length) right :=
     ⟨rightBoundary.supported, by have := rightBoundary.bounded; omega, .refl, Or.inr rightPotential⟩
   have agreeAt : ∀ (n : Nat) (current other : app.Execution),
-      good left leftDonor (n + 1) current → good right rightDonor (n + 1) other →
+      good leftReference left leftDonor (n + 1) current → good rightReference right rightDonor
+        (n + 1) other →
       current.application.config.cut = other.application.config.cut →
       ¬ stop current → ¬ stop other →
       ∀ (event : G.EventId) (owner : Player) (payload : L.Ty)
@@ -458,19 +587,20 @@ theorem publication_first_failure_traffic_congr
         FieldRef G.layout (.publication payload)).get? rightDonor.store =
         some (.success value) := by
       simpa only [values] using otherStored
-    have reachableOf (execution : app.Execution)
-        (support : execution ∈ (app.roundsFrom (serviceInitialLaw setup deps) scheduler players
+    have reachableOf (reference : G.BehavioralProfile) (execution : app.Execution)
+        (support : execution ∈ (app.roundsFrom (serviceInitialLaw setup deps) scheduler
+          (players reference)
           execution.environmentRecall.length).support)
         (bounded : execution.environmentRecall.length ≤ horizon) :
         ∃ inputs, execution.application.config.Reachable inputs := by
       obtain ⟨trace⟩ := app.raw_trace_roundsFrom (serviceInitialLaw setup deps) horizon scheduler
-        players _ bounded _ support
+        (players reference) _ bounded _ support
       rw [serviceInitialLaw_eq_inputs setup] at trace
       obtain ⟨inputs, _, valid⟩ := reactive_history_invariant (serviceTimeouts setup deps duration)
         leaks (setup.initialLaw.map setup.eventInputs) horizon scheduler trace
       exact ⟨inputs, valid.reachable⟩
-    obtain ⟨inputs, currentReach⟩ := reachableOf current currentSupport (by omega)
-    obtain ⟨otherInputs, otherReach⟩ := reachableOf other otherSupport (by omega)
+    obtain ⟨inputs, currentReach⟩ := reachableOf leftReference current currentSupport (by omega)
+    obtain ⟨otherInputs, otherReach⟩ := reachableOf rightReference other otherSupport (by omega)
     exact ((currentReach.ready_publication_of_canonicalLaw_eq profile profile leftDonor
       currentPotential event ready owner payload binding checks outputEq codeEq value
       stored).1).trans
@@ -479,29 +609,62 @@ theorem publication_first_failure_traffic_congr
   have lengths : left.environmentRecall.length = right.environmentRecall.length :=
     congrArg (fun value => value.2.2.1.length) sameTraffic
   obtain ⟨leftTrace⟩ := app.raw_trace_roundsFrom (serviceInitialLaw setup deps) horizon scheduler
-    players _ leftBoundary.bounded _ leftBoundary.supported
+    (players leftReference) _ leftBoundary.bounded _ leftBoundary.supported
   obtain ⟨rightTrace⟩ := app.raw_trace_roundsFrom (serviceInitialLaw setup deps) horizon scheduler
-    players _ rightBoundary.bounded _ rightBoundary.supported
+    (players rightReference) _ rightBoundary.bounded _ rightBoundary.supported
+  have rightPublic : ∀ n current, good rightReference right rightDonor (n + 1) current →
+      ¬ stop current → ∀ event : G.EventId, current.application.config.cut.Ready event →
+        (G.outputLayout event).IsPublication := by
+    intro n current valid running event ready
+    have earlier : ∀ prior : G.EventId, prior.val < start →
+        prior ∈ current.application.config.cut.completed :=
+      fun prior before => Config.Step.path_completed_mono valid.2.2.1
+        (rightBoundary.earlier prior before)
+    have inside : InBlock start finish current.application.config :=
+      ⟨earlier, fun prior later done => running (Or.inl (run.done_of_later relaxed later done))⟩
+    obtain ⟨lower, upper⟩ := (run.shaped relaxed) _ inside
+      (fun done => running (Or.inl done)) event ready
+    exact run.publications event lower upper
+  have rightRoundCommon : ∀ n current,
+      good rightReference right rightDonor (n + 1) current → ¬ stop current →
+      ∀ next ∈ (app.round scheduler (players leftReference) current).support,
+        good rightReference right rightDonor n next := by
+    intro n current valid running next moved
+    have equal := effectivePublication_round_eq scheduler bound turns rightReference leftReference
+      focal deviation current (rightPublic n current valid running)
+    rw [← equal] at moved
+    exact goodRound rightReference rightDonor rightLaw right rightBoundary n current valid
+      running next moved
+  have rightRunEq := effectivePublication_runUntil_eq scheduler bound turns rightReference
+    leftReference focal deviation stop (good rightReference right rightDonor) rightPublic
+    (goodRound rightReference rightDonor rightLaw right rightBoundary)
+    (horizon - right.environmentRecall.length) right rightStart
   have coupled := run_stopped_traffic_congr
-    relaxed.actorSerial scheduler bound turns (effectiveOpening reference) decides focal deviation
+    relaxed.actorSerial scheduler bound turns (effectiveOpening leftReference) decides focal
+      deviation
     start finish (run.shaped relaxed) run.publications stop
-    (fun _ done => Or.inl done) observedStop (good left leftDonor) (good right rightDonor)
-    (goodRound leftDonor leftLaw left leftBoundary)
-    (goodRound rightDonor rightLaw right rightBoundary)
+    (fun _ done => Or.inl done) observedStop (good leftReference left leftDonor) (good
+      rightReference right rightDonor)
+    (goodRound leftReference leftDonor leftLaw left leftBoundary)
+    rightRoundCommon
     (horizon - left.environmentRecall.length) 0 0 left right
     (by simpa only [Nat.zero_add] using leftTrace)
     (by rw [lengths]; simpa only [Nat.zero_add] using rightTrace)
     leftPoint.inside rightPoint.inside leftPoint.submissions rightPoint.submissions
-    (runTurnFacts_roundsFrom relaxed.actorSerial scheduler bound turns (effectiveOpening reference)
+    (runTurnFacts_roundsFrom relaxed.actorSerial scheduler bound turns (effectiveOpening
+      leftReference)
       focal deviation _ _ leftBoundary.supported)
-    (runTurnFacts_roundsFrom relaxed.actorSerial scheduler bound turns (effectiveOpening reference)
+    (runTurnFacts_roundsFrom relaxed.actorSerial scheduler bound turns (effectiveOpening
+      rightReference)
       focal deviation _ _ rightBoundary.supported)
     leftStart (by rw [lengths]; exact rightStart) agreeAt sameTraffic
-  change (app.runUntil scheduler players stop (horizon - left.environmentRecall.length) left).map
+  change (app.runUntil scheduler (players leftReference) stop (horizon -
+    left.environmentRecall.length) left).map
       traffic =
-    (app.runUntil scheduler players stop (horizon - right.environmentRecall.length) right).map
+    (app.runUntil scheduler (players rightReference) stop (horizon -
+      right.environmentRecall.length) right).map
       traffic
-  rw [← lengths]
+  rw [rightRunEq, ← lengths]
   exact coupled
 
 /-- The original complete public phase has an observation-local surviving traffic law.
@@ -515,18 +678,18 @@ theorem publication_surviving_traffic_congr
     (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
       (serviceInitialLaw setup deps) horizon scheduler delay bound)
     (timely : AsyncTimely (serviceTimeouts setup deps duration) delay bound)
-    (profile reference : (serviceGraph setup deps).BehavioralProfile)
+    (profile leftReference rightReference : (serviceGraph setup deps).BehavioralProfile)
     (independent : ReadyIndependent profile) (opens : OpensPublications profile)
     (focal : Player) (deviation : (serviceApplication setup deps duration leaks).Policy)
     {start finish : Nat} (run : RevealRun (serviceGraph setup deps) start finish)
     (left right : (serviceApplication setup deps duration leaks).Execution)
     (leftBoundary : PhaseBoundary scheduler
       (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
-        (firstTurnTiming setup turns deps) (effectiveOpening reference)) focal deviation)
+        (firstTurnTiming setup turns deps) (effectiveOpening leftReference)) focal deviation)
       horizon start left)
     (rightBoundary : PhaseBoundary scheduler
       (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
-        (firstTurnTiming setup turns deps) (effectiveOpening reference)) focal deviation)
+        (firstTurnTiming setup turns deps) (effectiveOpening rightReference)) focal deviation)
       horizon start right)
     (leftDonor rightDonor : (serviceGraph setup deps).Config)
     {leftInputs rightInputs : (serviceGraph setup deps).Inputs}
@@ -542,21 +705,22 @@ theorem publication_surviving_traffic_congr
       (bindingTraffic (serviceTimeouts setup deps duration)) leaks focal right) :
     ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
       (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
-        (firstTurnTiming setup turns deps) (effectiveOpening reference)) focal deviation)
+        (firstTurnTiming setup turns deps) (effectiveOpening leftReference)) focal deviation)
       (fun current => BlockDone finish current.application.config) horizon left).map
       (fun final => if focal ∈ final.application.config.defaulted then none else
         some ((bindingTraffic (serviceTimeouts setup deps duration)) leaks focal final)) =
     ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
       (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
-        (firstTurnTiming setup turns deps) (effectiveOpening reference)) focal deviation)
+        (firstTurnTiming setup turns deps) (effectiveOpening rightReference)) focal deviation)
       (fun current => BlockDone finish current.application.config) horizon right).map
       (fun final => if focal ∈ final.application.config.defaulted then none else
         some ((bindingTraffic (serviceTimeouts setup deps duration)) leaks focal final)) := by
   classical
   let G := serviceGraph setup deps
   let app := serviceApplication setup deps duration leaks
-  let players := Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
-    (firstTurnTiming setup turns deps) (effectiveOpening reference)) focal deviation
+  let players := fun reference => Function.update
+    (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+      (firstTurnTiming setup turns deps) (effectiveOpening reference)) focal deviation
   let traffic := (bindingTraffic (serviceTimeouts setup deps duration)) leaks focal
   let Traffic := MessageNetwork Player app.Payload × List (MessageId Player × Bool) ×
     List app.EnvironmentEntry × List app.PlayerEntry × PlayerView G × PublicView G
@@ -564,26 +728,29 @@ theorem publication_surviving_traffic_congr
     if focal ∈ extra.2.2.2.2.1.observation.defaulted then none else some extra
   let read := fun final : app.Execution =>
     if focal ∈ final.application.config.defaulted then none else some (traffic final)
-  have absorb (current : app.Execution) (failed : focal ∈ current.application.config.defaulted)
-      (next : app.Execution) (moved : next ∈ (app.round scheduler players current).support) :
+  have absorb (reference : G.BehavioralProfile) (current : app.Execution) (failed : focal ∈
+    current.application.config.defaulted)
+      (next : app.Execution) (moved : next ∈ (app.round scheduler (players reference)
+        current).support) :
       focal ∈ next.application.config.defaulted :=
     Config.Step.path_defaulted_mono
-      (reactive_round_graph_steps (serviceTimeouts setup deps duration) leaks scheduler players
+      (reactive_round_graph_steps (serviceTimeouts setup deps duration) leaks scheduler
+        (players reference)
         current next moved) failed
   have erased := congrArg (PMF.map erase)
-    (publication_first_failure_traffic_congr scheduler bound relaxed contract timely profile
-        reference
+    (publication_first_failure_traffic_congr scheduler bound relaxed contract timely
+      profile leftReference rightReference
       independent opens focal deviation run left right leftBoundary rightBoundary leftDonor
       rightDonor leftReach rightReach leftPrefix rightPrefix leftLaw rightLaw leftPotential
       rightPotential postViews sameTraffic)
   simp only [PMF.map_comp, Function.comp_def] at erased
-  have stopped (origin : app.Execution) :=
-    ReactiveApplication.runUntil_map_stop_or_absorbing scheduler players
+  have stopped (reference : G.BehavioralProfile) (origin : app.Execution) :=
+    ReactiveApplication.runUntil_map_stop_or_absorbing scheduler (players reference)
       (fun current : app.Execution => BlockDone finish current.application.config)
-      (fun current => focal ∈ current.application.config.defaulted) read absorb
+      (fun current => focal ∈ current.application.config.defaulted) read (absorb reference)
       (fun current failed => by simp only [read, ite_eq_left failed])
       (horizon - origin.environmentRecall.length) origin
-  exact (stopped left).trans (erased.trans (stopped right).symm)
+  exact (stopped leftReference left).trans (erased.trans (stopped rightReference right).symm)
 
 /-- At a surviving complete public boundary the physical event table equals
 its ordinary-open source donor. Chronological native order is not identified. -/
@@ -641,7 +808,8 @@ theorem publication_surviving_endpoint_key
   refine ⟨clear, Config.runKey_eq_of_canonicalLaw_eq profile profile
     final.application.config donor ?_ (same.trans potential)⟩
   have finalWithin := blockRun_within_of_clear (serviceTimeouts setup deps duration) leaks
-    scheduler players (run.shaped relaxed)
+    scheduler players (fun current => BlockDone finish current.application.config)
+    (run.shaped relaxed) (fun _ done => done)
     (horizon - origin.environmentRecall.length) origin final within reached clear
   exact EventOrder.Cut.ext (Finset.ext fun event =>
     ((finalWithin.isPrefix run.bounded done).2 event).trans (ordered.2 event).symm)
@@ -658,7 +826,8 @@ theorem publication_surviving_joint
     (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
       (serviceInitialLaw setup deps) horizon scheduler delay bound)
     (timely : AsyncTimely (serviceTimeouts setup deps duration) delay bound)
-    (profile reference : (serviceGraph setup deps).BehavioralProfile)
+    (profile : (serviceGraph setup deps).BehavioralProfile)
+    (reference : Seed → (serviceGraph setup deps).BehavioralProfile)
     (independent : ReadyIndependent profile) (opens : OpensPublications profile)
     (focal : Player) (deviation : (serviceApplication setup deps duration leaks).Policy)
     {start finish : Nat} (run : RevealRun (serviceGraph setup deps) start finish)
@@ -678,7 +847,7 @@ theorem publication_surviving_joint
         (noise (observe current)).map fun extra => (current, extra))
     (boundary : ∀ seed ∈ prior.support, PhaseBoundary scheduler
       (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
-        (firstTurnTiming setup turns deps) (effectiveOpening reference)) focal deviation)
+        (firstTurnTiming setup turns deps) (effectiveOpening (reference seed))) focal deviation)
       horizon start (execution seed))
     (reachable : ∀ seed ∈ prior.support,
       ∃ inputs, (donor (advance (source seed))).Reachable inputs)
@@ -703,7 +872,7 @@ theorem publication_surviving_joint
       (prior.bind fun seed =>
         ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
           (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
-            (firstTurnTiming setup turns deps) (effectiveOpening reference)) focal deviation)
+            (firstTurnTiming setup turns deps) (effectiveOpening (reference seed))) focal deviation)
           (fun current => BlockDone finish current.application.config) horizon (execution seed)).map
             fun final => (advance (source seed),
               if focal ∈ final.application.config.defaulted then none else
@@ -712,10 +881,11 @@ theorem publication_surviving_joint
           (nextNoise (nextView next)).map fun extra => (next, extra) := by
   classical
   let app := serviceApplication setup deps duration leaks
-  let players := Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
-    (firstTurnTiming setup turns deps) (effectiveOpening reference)) focal deviation
+  let players := fun seed => Function.update
+    (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+      (firstTurnTiming setup turns deps) (effectiveOpening (reference seed))) focal deviation
   let traffic := (bindingTraffic (serviceTimeouts setup deps duration)) leaks focal
-  let phase := fun seed => (app.runUntilHorizon scheduler players
+  let phase := fun seed => (app.runUntilHorizon scheduler (players seed)
     (fun current => BlockDone finish current.application.config) horizon (execution seed)).map
       fun final => if focal ∈ final.application.config.defaulted then none else some (traffic final)
   obtain ⟨nextNoise, law⟩ := exists_updated_observation_kernel_of_readout prior source
@@ -726,8 +896,9 @@ theorem publication_surviving_joint
       intro left leftMember _ _ right rightMember _ _ same sameTraffic
       obtain ⟨leftInputs, leftReach⟩ := reachable left leftMember
       obtain ⟨rightInputs, rightReach⟩ := reachable right rightMember
-      exact publication_surviving_traffic_congr scheduler bound relaxed contract timely profile
-        reference
+      exact publication_surviving_traffic_congr scheduler bound relaxed contract
+        timely
+        profile (reference left) (reference right)
         independent opens focal deviation run (execution left) (execution right)
         (boundary left leftMember) (boundary right rightMember)
         (donor (advance (source left))) (donor (advance (source right))) leftReach rightReach
@@ -741,5 +912,6 @@ theorem publication_surviving_joint
       (prior.map source).map advance := PMF.bind_pure_comp advance (prior.map source)
   rw [mapped, PMF.map_comp] at law
   simpa only [phase, PMF.map_comp, Function.comp_def] using law
+
 
 end Vegas

@@ -550,12 +550,13 @@ theorem honest_prefix_runToHorizon_outcomeLaw
               fun query beyond completed => Nat.not_lt.mpr (Nat.le_trans later.le beyond)
                 ((boundary.ordered.2 query).mp completed)⟩
           have within := blockRun_within_of_clear (serviceTimeouts setup deps duration) leaks
-            scheduler clients shaped (horizon - origin.environmentRecall.length) origin final
+            scheduler clients stop shaped (fun _ done => done)
+            (horizon - origin.environmentRecall.length) origin final
             (boundary.ordered.within later.le) reached clearFinal
           have finalPrefix := within.isPrefix endBound done
-          have future := blockRun_untouched later.le shaped scheduler clients
-            (horizon - origin.environmentRecall.length) origin final inside boundary.untouched
-              reached
+          have future := blockRun_untouched shaped scheduler clients stop (fun _ done => done)
+            (horizon - origin.environmentRecall.length) origin final inside
+            (fun event beyond => boundary.untouched event (Nat.le_trans later.le beyond)) reached
           obtain ⟨used, withinBudget, rounds, lengthEq⟩ := app.runUntil_runRounds scheduler clients
             stop (horizon - origin.environmentRecall.length) origin final reached
           have finalSupport := app.roundsFrom_runUntil scheduler clients

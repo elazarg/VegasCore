@@ -440,3 +440,57 @@ theorem serviceReferenceTurnPolicy_eq_of_owner
 end Generic
 
 end Vegas
+
+namespace Vegas
+
+open SourceProgram EventGraph EventGraphRuntime Interaction GameTheory.Math.Probability
+
+variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
+  {setup : Setup (Player := Player) (L := L)} {deps : setup.dataflowGraph.Dependencies}
+  {duration : (serviceGraph setup deps).EventId → Nat}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup deps))}
+
+/-- First-turn clients agree whenever their ready graph kernels agree. -/
+theorem serviceReferenceTurnPolicy_eq_of_ready_kernels
+    (bound : (serviceGraph setup deps).EventId → Nat) (turns : Nat)
+    (left right : (serviceGraph setup deps).BehavioralProfile) (who : Player)
+    (past : List (serviceApplication setup deps duration leaks).PlayerEntry)
+    (view : (serviceApplication setup deps duration leaks).PlayerView)
+    (same : ∀ event, view.application.publicView.EventReady event →
+      ∀ actor observation active,
+        left who event actor observation active = right who event actor observation active) :
+    serviceReferenceTurnPolicy setup deps duration leaks bound turns
+        (firstTurnTiming setup turns deps) left who past view =
+      serviceReferenceTurnPolicy setup deps duration leaks bound turns
+        (firstTurnTiming setup turns deps) right who past view := by
+  classical
+  have policies : serviceReferencePolicy setup deps duration leaks left who past view =
+      serviceReferencePolicy setup deps duration leaks right who past view := by
+    unfold serviceReferencePolicy
+    split
+    · cases serving : view.application.publicView.ownTurn? who with
+      | none => simp only
+      | some event =>
+          simp only
+          split
+          · rename_i actor
+            split
+            · rfl
+            · rename_i active
+              rw [same event (view.application.publicView.ownTurn?_spec who event serving).1
+                actor _ active]
+          · rfl
+    · rfl
+  cases serving : view.application.publicView.ownTurn? who with
+  | none => simp only [serviceReferenceTurnPolicy, serving]
+  | some event =>
+      have actor := (view.application.publicView.ownTurn?_spec who event serving).2
+      by_cases first : serviceTurn setup deps duration leaks who event past view = some 0
+      · rw [sourceServiceTurnPolicy_firstTurn_reference actor first,
+          sourceServiceTurnPolicy_firstTurn_reference actor first]
+        unfold serviceReferenceOpportunity
+        rw [policies]
+      · rw [sourceServiceTurnPolicy_laterTurn_reference actor serving first,
+          sourceServiceTurnPolicy_laterTurn_reference actor serving first]
+
+end Vegas

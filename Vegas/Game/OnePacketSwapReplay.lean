@@ -40,59 +40,6 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol Intera
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
-/-- **A decoded action is available at its decoded point** under the forfeiture
-interface, to every player. -/
-theorem decodeSourcePrefix?_available (who : Player) {Field : Type} [DecidableEq Field]
-    {layout : Field → EventGraph.EventField Player L} : ∀ (count : Nat)
-    {Γ : SourceCtx Player L} {O : Finset VarId} (program : SourceProgram Player L Γ O)
-    (refs : ContextRefs layout Γ) (registry : Registry Γ) (revelations : Revelations Γ)
-    (outputs : ∀ event, EventGraph.FieldRef layout (outputLayout program event))
-    (store : EventGraph.Store layout) (history : History Player L)
-    (defaults : DefaultHistory Player) (state : ProtocolState program),
-    decodeSourcePrefix? program refs registry revelations outputs count store history defaults =
-      some state →
-    (inside : count < eventCount program) →
-    ∀ (graphAction : EventGraph.EventField.Action (outputLayout program ⟨count, inside⟩))
-      (action : OwnAction Player L),
-      decodeEventAction program ⟨count, inside⟩ graphAction = some action →
-      action ∈ ProtocolView.available who program (CommitmentInterface.forfeiture program)
-        (ProtocolState.observe who program state)
-  | 0, _, _, program, refs, registry, revelations, outputs, store, history, defaults,
-      state, decoded, inside => by
-      cases program with
-      | ret _ => simp [eventCount] at inside
-      | sample _ _ _ next =>
-          intro _ _ decodedAction
-          cases decodedAction
-      | commit _ _ _ _ next =>
-          obtain ⟨_, _, rfl⟩ := Option.map_eq_some_iff.mp decoded
-          intro graphAction action decodedAction
-          cases decodedAction
-          refine ⟨graphAction, ?_, rfl⟩
-          cases graphAction with
-          | none => trivial
-          | some result => cases result <;> trivial
-      | reveal _ _ _ _ _ _ next =>
-          obtain ⟨_, _, rfl⟩ := Option.map_eq_some_iff.mp decoded
-          intro graphAction action decodedAction
-          cases decodedAction
-          exact ⟨graphAction, rfl⟩
-  | count + 1, _, _, program, refs, registry, revelations, outputs, store, history, defaults, state,
-      decoded, inside => by
-      cases program with
-      | ret _ => cases decoded
-      | sample _ _ _ next =>
-          obtain ⟨rest, restDecoded, rfl⟩ := Option.map_eq_some_iff.mp decoded
-          exact decodeSourcePrefix?_available who count next _ _ _ _ store history defaults rest
-            restDecoded (by simpa [eventCount] using inside)
-      | commit _ _ _ _ next =>
-          obtain ⟨rest, restDecoded, rfl⟩ := Option.map_eq_some_iff.mp decoded
-          exact decodeSourcePrefix?_available who count next _ _ _ _ store history defaults rest
-            restDecoded (by simpa [eventCount] using inside)
-      | reveal _ _ _ _ _ _ next =>
-          obtain ⟨rest, restDecoded, rfl⟩ := Option.map_eq_some_iff.mp decoded
-          exact decodeSourcePrefix?_available who count next _ _ _ _ store history defaults rest
-            restDecoded (by simpa [eventCount] using inside)
 
 variable {setup : Setup (Player := Player) (L := L)}
   {timeouts : EventTimeouts setup.informationGraph}

@@ -3,6 +3,8 @@ module
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 public import Vegas.Game.SourceServiceReachedDecoding
+public import Vegas.EventGraph.OwnedStep
+public import Vegas.Game.IntendedSourceProfile
 public import Vegas.Compile.EventGraphLaw
 
 @[expose] public section
@@ -127,4 +129,120 @@ theorem SourceResidual.runPlan_readout_law {rank : Nat} {config : setup.informat
     _ = (SourceProgram.runFrom residual.program residual.residualProfile residual.source).bind
         terminalLaw := by rw [PMF.bind_map]; rfl
     _ = _ := sourceLaw
+end Vegas
+
+namespace Vegas
+
+open SourceProgram GameTheory GameTheory.Protocol GameTheory.Math.Probability
+
+variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
+
+/-- A supported residual source step at a genuine intended prefix retains a genuine history. -/
+theorem SourceResidual.intendedHistory_of_step
+    {setup : Setup (Player := Player) (L := L)} [Fintype Player]
+    (intended : Profile setup.intendedModel.behavioralSignature)
+    (target : Profile (setup.informationModel
+      (CommitmentInterface.forfeiture setup.program)).behavioralSignature)
+    (agrees : (setup.intendedRestriction
+      (CommitmentInterface.forfeiture setup.program)).ExtendsProfile intended target)
+    {rank : Nat} {ghost : setup.informationGraph.Config}
+    (residual : SourceResidual setup (setup.decodeBehavioralProfile
+      (CommitmentInterface.forfeiture setup.program) target) rank ghost)
+    (history : setup.intendedProtocol.History)
+    (historyAt : history.state = sourceServicePrefix? setup rank ghost)
+    (after : ProtocolState residual.program)
+    (selected : after ∈ (ProtocolState.behavioralStateStep residual.program
+      residual.residualProfile (ProtocolState.entry residual.program residual.source)).support) :
+    ∃ next : setup.intendedProtocol.History, next.state = some (residual.lift after) := by
+  classical
+  let admission := CommitmentInterface.forfeiture setup.program
+  let profile := setup.decodeBehavioralProfile admission target
+  have permitted (who : Player) : (profile who).Admitted setup.program admission :=
+    ((setup.behavioralPolicyEquiv admission who).symm (target who)).2
+  have encoded : (fun who => setup.toProtocolBehavioralPolicy admission who (profile who)
+      (permitted who)) = target :=
+    funext fun who => (setup.behavioralPolicyEquiv admission who).apply_symm_apply (target who)
+  have kernel := setup.behavioralStateStep_encoded_some admission profile permitted
+    (residual.lift (ProtocolState.entry residual.program residual.source))
+  rw [encoded] at kernel
+  have original : history.state =
+      some (residual.lift (ProtocolState.entry residual.program residual.source)) :=
+    historyAt.trans residual.decode
+  have wholeSelected : some (residual.lift after) ∈
+      (setup.behavioralStateStep admission target history.state).support := by
+    rw [original, kernel, residual.commutes, PMF.map_comp]
+    exact (PMF.mem_support_map_iff _ _ _).mpr ⟨after, selected, rfl⟩
+  exact setup.intendedHistory_of_extending_step admission intended target agrees history
+    (some (residual.lift after)) wholeSelected
+
+/-- Any legal intended joint step retains a genuine history, including off-support choices. -/
+theorem SourceResidual.intendedHistory_of_legal_step
+    {setup : Setup (Player := Player) (L := L)}
+    {profile : BehavioralProfile setup.program} {rank : Nat}
+    {ghost : setup.informationGraph.Config}
+    (residual : SourceResidual setup profile rank ghost)
+    (history : setup.intendedProtocol.History)
+    (historyAt : history.state = sourceServicePrefix? setup rank ghost)
+    (joint : Player → Option (OwnAction Player L))
+    (legal : setup.intendedProtocol.Legal history.state joint)
+    (after : ProtocolState residual.program)
+    (selected : after ∈ (ProtocolState.step residual.program
+      (ProtocolState.entry residual.program residual.source) joint).support) :
+    ∃ next : setup.intendedProtocol.History, next.state = some (residual.lift after) := by
+  have original : history.state =
+      some (residual.lift (ProtocolState.entry residual.program residual.source)) :=
+    historyAt.trans residual.decode
+  have wholeSelected : some (residual.lift after) ∈
+      (setup.protocolStep history.state joint).support := by
+    rw [original]
+    change some (residual.lift after) ∈ ((ProtocolState.step setup.program
+      (residual.lift (ProtocolState.entry residual.program residual.source))
+      joint).map some).support
+    rw [residual.steps, PMF.map_comp]
+    exact (PMF.mem_support_map_iff _ _ _).mpr ⟨after, selected, rfl⟩
+  exact ⟨history.extend legal wholeSelected, rfl⟩
+
+end Vegas
+
+namespace Vegas
+
+open SourceProgram GameTheory.Math.Probability
+
+variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
+
+/-- An owned graph completion and its supported residual source step decode to the same point. -/
+theorem SourceResidual.decode_of_actor_step
+    {setup : Setup (Player := Player) (L := L)}
+    {profile : BehavioralProfile setup.program} {rank : Nat}
+    {before : setup.informationGraph.Config}
+    (residual : SourceResidual setup profile rank before)
+    (event : setup.informationGraph.EventId) (ready : before.cut.Ready event)
+    (action : setup.informationGraph.Action event) (after : setup.informationGraph.Config)
+    (member : after ∈ (before.step event ready action).support)
+    (actor : Player) (owned : setup.informationGraph.actor? event = some actor)
+    (sourceAfter : ProtocolState residual.program)
+    (sourceSelected : sourceAfter ∈ (ProtocolState.step residual.program
+      (ProtocolState.entry residual.program residual.source)
+      (fun _ => decodeEventAction setup.program event action)).support) :
+    sourceServicePrefix? setup (rank + 1) after = some (residual.lift sourceAfter) := by
+  classical
+  obtain ⟨next, _, mass⟩ := residual.step_mass event ready action after member
+  obtain ⟨value, pure⟩ := before.step_eq_pure_of_actor event ready action actor owned
+  have afterEq : after = value := by
+    rwa [pure, PMF.mem_support_pure_iff] at member
+  let law := ProtocolState.step setup.program
+    (residual.lift (ProtocolState.entry residual.program residual.source))
+    (fun _ => decodeEventAction setup.program event action)
+  let point := next.lift (ProtocolState.entry next.program next.source)
+  have one : law point = 1 := mass.trans (by rw [pure, afterEq, PMF.pure_apply_self])
+  have singleton := (PMF.apply_eq_one_iff law point).mp one
+  have lifted : residual.lift sourceAfter ∈ law.support := by
+    change residual.lift sourceAfter ∈ (ProtocolState.step setup.program
+      (residual.lift (ProtocolState.entry residual.program residual.source))
+      (fun _ => decodeEventAction setup.program event action)).support
+    rw [residual.steps]
+    exact (PMF.mem_support_map_iff _ _ _).mpr ⟨sourceAfter, sourceSelected, rfl⟩
+  rw [singleton, Set.mem_singleton_iff] at lifted
+  exact next.decode.trans (congrArg some lifted.symm)
+
 end Vegas

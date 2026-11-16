@@ -3,6 +3,7 @@ module
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 public import Vegas.EventGraph.SchedulerErasure
+public import Vegas.EventGraph.PolicyCongruence
 
 @[expose] public section
 
@@ -99,5 +100,60 @@ theorem runPlan_congr_of_actionLaw (scheduler : graph.PublicScheduler)
         intro event done
         rw [config.step_cut selected.1 ready action next member, EventOrder.Cut.mem_complete]
         exact Or.inr (completed event done)
+
+/-- One policy realizes a canonical head window followed by one common tail policy. -/
+theorem exists_canonical_policy_splice
+    (reference : graph.BehavioralProfile) (focal : Player)
+    (head tail : graph.BehavioralPolicy focal) (start headCount tailCount : Nat)
+    (bounded : start + headCount ≤ graph.order.eventCount) :
+    ∃ policy : graph.BehavioralPolicy focal, ∀ origin : graph.Config,
+      origin.cut.IsPrefix start →
+      graph.runPlan (graph.policyPlan (Function.update reference focal policy)
+        graph.canonicalScheduler) (headCount + tailCount) origin =
+        (graph.runPlan (graph.policyPlan (Function.update reference focal head)
+          graph.canonicalScheduler) headCount origin).bind
+          (graph.runPlan (graph.policyPlan (Function.update reference focal tail)
+            graph.canonicalScheduler) tailCount) := by
+  classical
+  let policy : graph.BehavioralPolicy focal := fun event actor observation active =>
+    if event.val < start + headCount then head event actor observation active
+    else tail event actor observation active
+  let full := Function.update reference focal policy
+  let initial := Function.update reference focal head
+  let final := Function.update reference focal tail
+  have outside (config : graph.Config) (event : graph.EventId)
+      (later : ¬ event.val < start + headCount) :
+      actionLaw full config event = actionLaw final config event := by
+    cases owned : (graph.nodes event).actor with
+    | none => rw [actionLaw_of_ownerless _ _ owned, actionLaw_of_ownerless _ _ owned]
+    | some owner =>
+        rw [actionLaw_of_actor _ _ owned, actionLaw_of_actor _ _ owned]
+        by_cases inactive : owner ∈ config.defaulted
+        · rw [dite_eq_left inactive, dite_eq_left inactive]
+        · rw [dite_eq_right inactive, dite_eq_right inactive]
+          by_cases same : owner = focal
+          · subst owner
+            simp only [full, final, Function.update_self, policy, ite_eq_right later]
+          · simp only [full, final, Function.update_of_ne same]
+  refine ⟨policy, ?_⟩
+  intro origin ordered
+  have headEq : graph.runPlan (graph.policyPlan full graph.canonicalScheduler) headCount origin =
+      graph.runPlan (graph.policyPlan initial graph.canonicalScheduler) headCount origin := by
+    apply runPlan_canonical_prefix_congr _ _ headCount start origin ordered bounded
+    intro event _lower upper owner actor observation active
+    by_cases same : owner = focal
+    · subst owner
+      simp only [full, initial, Function.update_self, policy, ite_eq_left upper]
+    · simp only [full, initial, Function.update_of_ne same]
+  change graph.runPlan (graph.policyPlan full graph.canonicalScheduler)
+    (headCount + tailCount) origin = _
+  rw [graph.runPlan_add _ headCount tailCount origin, headEq]
+  apply bind_congr_on_support _
+  intro next reached
+  apply runPlan_congr_of_actionLaw graph.canonicalScheduler
+    (fun event => event.val < start + headCount) outside tailCount next
+  intro event earlier
+  exact ((runPlan_canonical_isPrefix initial headCount start origin ordered bounded next
+    reached).2 event).mpr earlier
 
 end Vegas.EventGraph

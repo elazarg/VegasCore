@@ -293,4 +293,16 @@ theorem canonical_fromSequential_store_law
     (graph.canonical_fromSequential_config_law profile inputs)
   simpa only [PMF.map_comp, Function.comp_def, fromSequentialConfig_store] using full
 
+/-- Forgetting additional sequential prerequisites preserves genuine graph reachability. -/
+theorem Config.Reachable.fromSequentialConfig (graph : Vegas.EventGraph Player L)
+    {inputs : graph.Inputs} {config : graph.sequentialize.Config}
+    (reachable : Config.Reachable (graph := graph.sequentialize) inputs config) :
+    Config.Reachable (graph := graph) inputs (graph.fromSequentialConfig config) := by
+  induction reachable with
+  | initial => exact .initial
+  | @step before previous event ready action next member ih =>
+    apply Config.Reachable.step ih event (graph.fromSequentialReady before event ready) action
+    rw [← graph.fromSequentialConfig_step before event ready action]
+    exact (PMF.mem_support_map_iff _ _ _).mpr ⟨next, member, rfl⟩
+
 end Vegas.EventGraph

@@ -166,4 +166,56 @@ theorem intendedOpeningProfile_runFrom [Finite Player] (wellFormed : setup.WellF
   rw [← law, PMF.map_comp] at source
   exact source
 
+/-- Every extension has the same full source continuation from any genuine
+intended history, including histories with zero probability under the profile. -/
+theorem continuationLaw_eq_of_intended_extension [Finite Player]
+    (wellFormed : setup.WellFormed)
+    (admission : CommitmentInterface setup.program)
+    (intended : Profile setup.intendedModel.behavioralSignature)
+    (target : Profile (setup.informationModel admission).behavioralSignature)
+    (agrees : (setup.intendedRestriction admission).ExtendsProfile intended target)
+    (history : setup.intendedProtocol.History) :
+    setup.continuationLaw (setup.decodeBehavioralProfile admission target) history.state =
+      setup.continuationLaw (setup.intendedOpeningProfile intended) history.state := by
+  let restriction := setup.intendedRestriction admission
+  let fuel := setup.protocolRemaining history.state
+  have histories := restriction.runFrom_law intended target agrees fuel history
+  have readouts := congrArg (PMF.map fun final => setup.protocolReadout final.state) histories
+  have targetLaw := setup.runBehavioralFrom_readout admission target fuel
+    (restriction.history history) (by rfl)
+  have intendedLaw := setup.intendedOpeningProfile_runFrom wellFormed intended fuel history le_rfl
+  have equal : (setup.continuationLaw (setup.decodeBehavioralProfile admission target)
+      history.state).map some =
+      (setup.continuationLaw (setup.intendedOpeningProfile intended) history.state).map some := by
+    rw [PMF.map_comp] at readouts
+    exact targetLaw.symm.trans (readouts.symm.trans intendedLaw)
+  exact pmf_map_injective (Option.some_injective _) equal
+
+/-- The source continuation of an arbitrary extension is clear at every
+intended history; no reach probability or equilibrium hypothesis is needed. -/
+theorem continuation_clean_of_intended_extension [Finite Player]
+    (wellFormed : setup.WellFormed)
+    (admission : CommitmentInterface setup.program)
+    (intended : Profile setup.intendedModel.behavioralSignature)
+    (target : Profile (setup.informationModel admission).behavioralSignature)
+    (agrees : (setup.intendedRestriction admission).ExtendsProfile intended target)
+    (history : setup.intendedProtocol.History)
+    (terminal : Config Player L setup.program.terminalCtx)
+    (supported : terminal ∈ (setup.continuationLaw
+      (setup.decodeBehavioralProfile admission target) history.state).support) :
+    terminal.defaulted = ∅ ∧
+      ∀ who, failedReveals setup.program who (publicOutcome setup.program terminal) = 0 := by
+  rw [setup.continuationLaw_eq_of_intended_extension wellFormed admission intended target
+    agrees history] at supported
+  let fuel := setup.protocolRemaining history.state
+  have intendedLaw := setup.intendedOpeningProfile_runFrom wellFormed intended fuel history le_rfl
+  have chosen : some terminal ∈ ((setup.continuationLaw
+      (setup.intendedOpeningProfile intended) history.state).map some).support :=
+    (PMF.mem_support_map_iff _ _ _).mpr ⟨terminal, supported, rfl⟩
+  rw [← intendedLaw] at chosen
+  obtain ⟨final, _finalSupport, read⟩ := (PMF.mem_support_map_iff _ _ _).mp chosen
+  exact ⟨Finset.eq_empty_iff_forall_notMem.mpr fun who =>
+    setup.not_defaulted_of_intendedState (setup.intendedState_trace wellFormed final.trace)
+      who read, setup.intended_no_failed_reveals wellFormed final read⟩
+
 end Vegas.SourceProgram.Setup

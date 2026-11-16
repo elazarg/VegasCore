@@ -4,6 +4,9 @@ module
 
 public import Vegas.Game.SourceServiceDecodedDebt
 public import Vegas.Game.SourceDebtObservation
+public import Vegas.Source.CellSwapDebt
+public import Vegas.EventGraph.RecordedReplay
+public import Vegas.EventGraph.BindingPrefixObservation
 
 @[expose] public section
 
@@ -137,5 +140,192 @@ theorem SourceResidual.defaulted_of_owesFailure_path
   exact ProtocolState.defaulted_of_owesFailure_trace setup.program
     (CommitmentInterface.forfeiture setup.program) (Config.initial initial) history.trace who
     finalOwed historyRead
+
+section
+
+open SourceProgram EventGraph
+
+private theorem decodeSourcePrefix?_replace_history {Field : Type} [DecidableEq Field]
+    {layout : Field → EventGraph.EventField Player L} :
+    ∀ (count : Nat) {Γ : SourceCtx Player L} {names : Finset VarId}
+      (program : SourceProgram Player L Γ names) (refs : ContextRefs layout Γ)
+      (registry : Registry Γ) (revelations : Revelations Γ)
+      (outputs : ∀ event, EventGraph.FieldRef layout (outputLayout program event))
+      (store : EventGraph.Store layout) (history replacement : History Player L)
+      (defaults nextDefaults : DefaultHistory Player) (point : ProtocolState program),
+      decodeSourcePrefix? program refs registry revelations outputs count store history defaults =
+        some point →
+      ∃ changed, decodeSourcePrefix? program refs registry revelations outputs count store
+          replacement nextDefaults = some changed ∧
+        ProtocolState.SameCells program point changed
+  | 0, _, _, program, refs, registry, revelations, outputs, store, history, replacement,
+      defaults, nextDefaults, point, decoded => by
+      simp only [decodeSourcePrefix?] at decoded
+      obtain ⟨state, read, rfl⟩ := Option.map_eq_some_iff.mp decoded
+      refine ⟨ProtocolState.entry program
+        ⟨state, registry, revelations, replacement, nextDefaults⟩, ?_, ?_⟩
+      · simp only [decodeSourcePrefix?, read, Option.map_some]
+      · cases program <;> rfl
+  | _ + 1, _, _, .ret _, _, _, _, _, _, _, _, _, _, _, decoded => by
+      cases decoded
+  | count + 1, _, _, .sample _ _ _ next, refs, registry, revelations, outputs, store, history,
+      replacement, defaults, nextDefaults, point, decoded
+  | count + 1, _, _, .commit _ _ _ _ next, refs, registry, revelations, outputs, store, history,
+      replacement, defaults, nextDefaults, point, decoded
+  | count + 1, _, _, .reveal _ _ _ _ _ _ next, refs, registry, revelations, outputs, store,
+      history, replacement, defaults, nextDefaults, point, decoded => by
+      simp only [decodeSourcePrefix?] at decoded
+      obtain ⟨rest, read, rfl⟩ := Option.map_eq_some_iff.mp decoded
+      obtain ⟨changed, changedRead, same⟩ := decodeSourcePrefix?_replace_history count next
+        _ _ _ _ store history replacement defaults nextDefaults rest read
+      exact ⟨.inr changed, congrArg (Option.map Sum.inr) changedRead, same⟩
+
+/-- Debt at a decoded program position depends only on the masked store. Own-action
+and public-default histories may differ, including defaults of unrelated players. -/
+theorem owesFailure_of_decoded_playerStore_eq {graph : EventGraph Player L} (who : Player)
+    {Γ : SourceCtx Player L} {names : Finset VarId}
+    (program : SourceProgram Player L Γ names) (refs : ContextRefs graph.layout Γ)
+    (registry : Registry Γ) (revelations : Revelations Γ)
+    (outputs : ∀ event, EventGraph.FieldRef graph.layout (outputLayout program event))
+    (count : Nat) (left right : EventGraph.Store graph.layout)
+    (leftHistory rightHistory : History Player L)
+    (leftDefaults rightDefaults : DefaultHistory Player) (first last : ProtocolState program)
+    (firstRead : decodeSourcePrefix? program refs registry revelations outputs count left
+      leftHistory leftDefaults = some first)
+    (lastRead : decodeSourcePrefix? program refs registry revelations outputs count right
+      rightHistory rightDefaults = some last)
+    (same : graph.playerStore who left = graph.playerStore who right)
+    (owed : ProtocolState.OwesFailure who program first) :
+    ProtocolState.OwesFailure who program last := by
+  obtain ⟨changed, changedRead, cells⟩ := decodeSourcePrefix?_replace_history count program refs
+    registry revelations outputs left leftHistory rightHistory leftDefaults rightDefaults first
+    firstRead
+  have firstStatic := decodeSourcePrefix?_staticAt count program refs registry revelations outputs
+    left leftHistory leftDefaults first firstRead
+  have changedStatic := decodeSourcePrefix?_staticAt count program refs registry revelations
+    outputs left rightHistory rightDefaults changed changedRead
+  have lastStatic := decodeSourcePrefix?_staticAt count program refs registry revelations outputs
+    right rightHistory rightDefaults last lastRead
+  have changedOwed := (ProtocolState.owesFailure_iff_of_sameCells who program registry revelations
+    first changed firstStatic changedStatic cells).mp owed
+  have leftView := decodeViewPrefix?_eq_observe who count program refs registry revelations outputs
+    left rightHistory rightDefaults changed changedRead
+  have rightView := decodeViewPrefix?_eq_observe who count program refs registry revelations outputs
+    right rightHistory rightDefaults last lastRead
+  have viewEq : ProtocolState.observe who program changed =
+      ProtocolState.observe who program last := by
+    apply Option.some.inj
+    rw [← leftView, ← rightView,
+      ← decodeViewPrefix?_playerStore who count program refs outputs left,
+      ← decodeViewPrefix?_playerStore who count program refs outputs right, same]
+  exact (ProtocolState.owesFailure_iff_of_observe_eq who program registry revelations changed last
+    changedStatic lastStatic viewEq).mp changedOwed
+
+
+/-- Source debt in a private prefix is irrevocable on every actual terminal path
+with matching own binding records. Foreign private values, omissions and scheduling
+may differ from the source prefix. -/
+theorem SourceResidual.failedReveals_of_matching_binding_records
+    {setup : Setup (Player := Player) (L := L)}
+    (deps : setup.dataflowGraph.Dependencies)
+    (serial : (setup.dataflowGraph.withDependencies deps).ActorSerial)
+    {profile : BehavioralProfile setup.program} {rank : Nat}
+    {sourceGhost : setup.informationGraph.Config}
+    (residual : SourceResidual setup profile rank sourceGhost)
+    (initial : State L setup.context) (focal : Player)
+    (origin ghost final : (setup.dataflowGraph.withDependencies deps).Config) (start : Nat)
+    (originReach : EventGraph.Config.Reachable (graph := setup.dataflowGraph.withDependencies deps)
+      (setup.eventInputs initial) origin)
+    (before : origin.cut.IsPrefix start)
+    (ghostPath : Relation.ReflTransGen EventGraph.Config.Step origin ghost)
+    (ghostKey : runKey ghost = runKey
+      ((setup.dataflowGraph.withDependencies deps).fromSequentialConfig sourceGhost))
+    (finalPath : Relation.ReflTransGen EventGraph.Config.Step origin final)
+    (terminal : final.cut.Terminal)
+    (bindings : ∀ event : (setup.dataflowGraph.withDependencies deps).EventId,
+      start ≤ event.val → event.val < rank →
+      ∃ owner payload, (setup.dataflowGraph.withDependencies deps).outputLayout event =
+        .binding owner payload)
+    (records : ∀ event : (setup.dataflowGraph.withDependencies deps).EventId,
+      start ≤ event.val → event.val < rank →
+      (setup.dataflowGraph.withDependencies deps).actor? event = some focal →
+      completionOf ghost event = completionOf final event)
+    (owed : ProtocolState.OwesFailure focal setup.program
+      (residual.lift (ProtocolState.entry residual.program residual.source))) :
+    1 ≤ failedReveals setup.program focal
+      (publicOutcome setup.program (terminalConfig setup.program
+        ⟨rankedConfig (graph := setup.dataflowGraph.withDependencies deps) final terminal,
+          rankedConfig_terminal (graph := setup.dataflowGraph.withDependencies deps)
+            final terminal⟩)) := by
+  let G := setup.dataflowGraph.withDependencies deps
+  let orderedFinal : setup.informationGraph.Config := rankedConfig (graph := G) final terminal
+  have finalReach := Config.Step.path_reachable finalPath originReach
+  have orderedReach : EventGraph.Config.Reachable (graph := setup.informationGraph)
+      (setup.eventInputs initial) orderedFinal :=
+    serial.rankedConfig_reachable _ final finalReach terminal
+  have initialPath : Relation.ReflTransGen EventGraph.Config.Step
+      (Config.initial (graph := setup.informationGraph) (setup.eventInputs initial))
+      orderedFinal := by
+    have all (state : setup.informationGraph.Config)
+        (reachable : EventGraph.Config.Reachable (graph := setup.informationGraph)
+          (setup.eventInputs initial) state) :
+        Relation.ReflTransGen EventGraph.Config.Step
+          (Config.initial (graph := setup.informationGraph) (setup.eventInputs initial)) state := by
+      induction reachable with
+      | initial => exact .refl
+      | step previous event ready action next member ih =>
+          exact ih.tail ⟨event, ready, action, member⟩
+    exact all orderedFinal orderedReach
+  have orderedTerminal : orderedFinal.cut.IsPrefix (eventCount setup.program) := by
+    refine ⟨le_rfl, ?_⟩
+    intro event
+    exact iff_of_true (Finset.mem_univ _) event.isLt
+  obtain ⟨replay, replayOrdered, prefixPath, suffixPath⟩ :=
+    Config.Step.path_prefix_at (graph := G) initialPath (EventOrder.Cut.empty_isPrefix _)
+      orderedTerminal (Nat.zero_le rank) residual.checkpoint.ordered.1
+  have restrictedInfo := Config.restrictionOf_path replayOrdered suffixPath
+  let replayNative := G.fromSequentialConfig replay
+  have restricted : replayNative.RestrictionOf (fun event => event.val < rank) final := by
+    constructor
+    · intro event
+      have record := restrictedInfo.records event
+      rw [completionOf_rankedConfig] at record
+      exact record
+    · intro field
+      have store := restrictedInfo.store field
+      cases field <;> exact store
+  have ghostOrdered : ghost.cut.IsPrefix rank := by
+    refine ⟨residual.checkpoint.ordered.1, ?_⟩
+    intro event
+    have same := congrArg (fun key => event ∈ key.1.completed) ghostKey
+    exact same ▸ residual.checkpoint.ordered.2 event
+  have masked := playerStore_eq_of_binding_replay_prefix focal origin ghost final replayNative
+    start rank originReach before ghostOrdered ghostPath finalPath restricted bindings records
+  have ghostStore : ghost.store = sourceGhost.store := by
+    funext field
+    have same := congrArg (fun key => key.2.1 field) ghostKey
+    cases field <;> exact same
+  have replayStore : replayNative.store = replay.store := by
+    funext field
+    cases field <;> rfl
+  have maskedSource : setup.informationGraph.playerStore focal sourceGhost.store =
+      setup.informationGraph.playerStore focal replay.store := by
+    rw [ghostStore, replayStore] at masked
+    exact masked
+  obtain ⟨nextRank, ⟨nextResidual⟩⟩ :=
+    (SourceResidual.initial setup profile initial).path prefixPath
+  have sameRank : nextRank = rank := nextResidual.checkpoint.ordered.unique replayOrdered
+  subst nextRank
+  have replayOwed := owesFailure_of_decoded_playerStore_eq (graph := setup.informationGraph)
+    focal setup.program
+    (ContextRefs.initial setup.context (outputLayout setup.program)) []
+    (Revelations.initial setup.context) (outputRef setup.program) rank
+    sourceGhost.store replay.store
+    (decodeHistory setup.program sourceGhost.history) (decodeHistory setup.program replay.history)
+    sourceGhost.defaults replay.defaults _ _ residual.decode nextResidual.decode maskedSource owed
+  exact nextResidual.failedReveals_of_owesFailure_path suffixPath
+    (rankedConfig_terminal (graph := G) final terminal) focal _ nextResidual.decode replayOwed
+
+end
 
 end Vegas

@@ -9,6 +9,8 @@ public import Vegas.Game.SourceServiceCanonicalAcceptance
 public import Vegas.Game.SourceServiceTurnSubmissions
 public import Vegas.EventGraph.PrefixRestriction
 public import Vegas.Pending.ReactiveCompletion
+public import Vegas.Compile.EventGraphHistory
+public import Vegas.Source.Protocol
 
 @[expose] public section
 
@@ -679,5 +681,240 @@ theorem fixed_reference_binding_record_runRounds
   · exact Or.inr (valid.2.2 inactive completed)
 
 end FixedCalls
+
+private theorem handle_binding_owner_active
+    {graph : Vegas.EventGraph Player L}
+    (timeouts : EventTimeouts graph) (state next : EventGraphRuntime.State graph)
+    (message : Message Player (Payload graph)) (event : graph.EventId)
+    (owner : Player) (payload : L.Ty)
+    (binding : graph.outputLayout event = .binding owner payload)
+    (named : message.payload.event? graph = some event)
+    (accepted : handle timeouts state message = some next) : owner ∉ next.config.defaulted := by
+  rcases message with ⟨id, packet⟩
+  cases packet with
+  | malformed raw => simp [handle] at accepted
+  | commitment query candidate =>
+      have equal : query = event := Option.some.inj named
+      subst query
+      obtain ⟨active, ready, _timely, actualOwner, actualPayload, outputEq, codeEq, _view,
+        sender, _handleOwner, _vacant, _unused, nextEq⟩ :=
+        (handle_commitment_iff timeouts state next id event candidate).mp accepted
+      have ownerSame := (EventField.binding.inj (outputEq.symm.trans binding)).1
+      rw [nextEq, ← ownerSame]
+      change actualOwner ∉ (state.config.complete event ready
+        (cast (congrArg EventField.Action outputEq.symm)
+          (some (state.bindingResult candidate actualPayload)))
+        (cast (congrArg EventField.Value outputEq.symm)
+          (state.bindingResult candidate actualPayload))).defaults.defaulted
+      rw [EventGraph.Config.complete_defaults, state.config.completion_bind_some_defaultEvent
+        event actualOwner actualPayload outputEq codeEq, DefaultHistory.defaulted_record_none,
+        ← sender]
+      exact active
+  | opening query candidate raw =>
+      have equal : query = event := Option.some.inj named
+      subst query
+      obtain ⟨_active, _ready, _timely, actualOwner, actualPayload, _subject, _checks, outputEq,
+        _codeEq, _value, _result, _view, _sender, _handleOwner, _associated, _rawEq, _verified,
+        _stored, _resolved, _nextEq⟩ :=
+        (handle_opening_iff timeouts state next id event candidate raw).mp accepted
+      cases binding.symm.trans outputEq
+
+
+/-- A newly recorded submitted binding leaves its owner active after the whole native command. -/
+private theorem environment_submitted_binding_active
+    (timeouts : EventTimeouts (serviceGraph setup deps))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup deps)))
+    (before after : ((reactiveApplication timeouts) leaks).Execution)
+    (command : ((reactiveApplication timeouts) leaks).Command)
+    (reached : after ∈ (before.environmentStep ((reactiveApplication timeouts) leaks)
+      command).support)
+    (event : (serviceGraph setup deps).EventId) (owner : Player) (name : VarId) (payload : L.Ty)
+    (binding : (serviceGraph setup deps).outputLayout event = .binding owner payload)
+    (decode : ∀ choice : Option (PublicationResult (L.Val payload)),
+      decodeEventAction setup.program event
+        (cast (congrArg EventField.Action binding.symm) choice) =
+          some (.commit owner name payload choice))
+    (pending : event ∉ before.application.config.cut.completed)
+    (result : PublicationResult (L.Val payload))
+    (played : OwnAction.binding owner name payload
+      (decodeActionAt setup.program event after.application.config.history) = some result) :
+    owner ∉ after.application.config.defaulted := by
+  classical
+  let G := serviceGraph setup deps
+  let read := fun record : G.Completion => OwnAction.binding owner name payload
+    (record.decision.bind (decodeEventAction setup.program record.event))
+  have recorded : ∃ record, completionOf after.application.config event = some record := by
+    cases found : completionOf after.application.config event with
+    | none =>
+        exfalso
+        unfold decodeActionAt at played
+        change OwnAction.binding owner name payload
+          ((completionOf after.application.config event).bind _) = some result at played
+        rw [found] at played
+        simp [OwnAction.binding] at played
+    | some record => exact ⟨record, rfl⟩
+  obtain ⟨record, found⟩ := recorded
+  have observed : read record = some result := by
+    unfold decodeActionAt at played
+    change OwnAction.binding owner name payload
+      ((completionOf after.application.config event).bind _) = some result at played
+    rw [found] at played
+    exact played
+  obtain ⟨present, equal⟩ :=
+    (completionOf_eq_some_iff after.application.config event record).mp found
+  subst event
+  have fresh : record ∉ before.application.config.history := by
+    intro old
+    exact pending ((before.application.config.history_exact record.event).mp
+      (List.mem_map.mpr ⟨record, old, rfl⟩))
+  rcases reactive_new_completion_cases timeouts leaks before after command reached record fresh
+      present with accepted | expired | nature | automatic
+  · obtain ⟨message, _pending, native, _ledger, _receipt, named, _sender, handled, drained,
+      _primary⟩ := accepted
+    rw [← drained, native.drain_defaulted]
+    exact handle_binding_owner_active timeouts before.application native
+      ⟨message.id, message.payload.call⟩ record.event owner payload binding named handled
+  · obtain ⟨_command, _entered, _activated, _due, action, value, expired, recordEq⟩ := expired
+    have actionEq := expired_binding_action expired owner payload binding
+    have owned : G.actor? record.event = some owner :=
+      EventCode.actor_eq_of_binding (G.nodes record.event) binding
+    have missing : read record = none := by
+      rw [recordEq]
+      change OwnAction.binding owner name payload
+        ((before.application.config.actualDecision record.event action).bind
+          (decodeEventAction setup.program record.event)) = none
+      rw [actionEq]
+      by_cases inactive : owner ∈ before.application.config.defaulted
+      · rw [before.application.config.actualDecision_of_defaulted record.event owner owned
+          inactive]
+        simp [OwnAction.binding]
+      · rw [before.application.config.actualDecision_of_active record.event owner owned inactive]
+        change OwnAction.binding owner name payload
+          (decodeEventAction setup.program record.event
+            (cast (congrArg EventField.Action binding.symm) none)) = none
+        rw [decode none, OwnAction.binding_commit]
+    rw [missing] at observed
+    cases observed
+  · have owned : (serviceGraph setup deps).actor? record.event = some owner :=
+      EventCode.actor_eq_of_binding (G.nodes record.event) binding
+    rw [owned] at nature
+    cases nature
+  · obtain ⟨_native, _drained, _fresh, _origin, silent, _default, _owned⟩ := automatic
+    have missing : read record = none := by simp [read, silent, OwnAction.binding]
+    rw [missing] at observed
+    cases observed
+
+
+private theorem round_submitted_binding_active
+    (timeouts : EventTimeouts (serviceGraph setup deps))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup deps)))
+    (scheduler : ((reactiveApplication timeouts) leaks).Scheduler)
+    (players : Player → ((reactiveApplication timeouts) leaks).Policy)
+    (before after : ((reactiveApplication timeouts) leaks).Execution)
+    (reached : after ∈ (((reactiveApplication timeouts) leaks).round scheduler players
+      before).support)
+    (event : (serviceGraph setup deps).EventId) (owner : Player) (name : VarId) (payload : L.Ty)
+    (binding : (serviceGraph setup deps).outputLayout event = .binding owner payload)
+    (decode : ∀ choice : Option (PublicationResult (L.Val payload)),
+      decodeEventAction setup.program event
+        (cast (congrArg EventField.Action binding.symm) choice) =
+          some (.commit owner name payload choice))
+    (pending : event ∉ before.application.config.cut.completed)
+    (result : PublicationResult (L.Val payload))
+    (played : OwnAction.binding owner name payload
+      (decodeActionAt setup.program event after.application.config.history) = some result) :
+    owner ∉ after.application.config.defaulted := by
+  let app := (reactiveApplication timeouts) leaks
+  obtain ⟨command, _, dispatched⟩ := (PMF.mem_support_bind_iff _ _ _).mp reached
+  obtain ⟨middle, moved, resumed⟩ := (PMF.mem_support_bind_iff _ _ _).mp dispatched
+  have same : after.application.config = middle.application.config := by
+    cases actor : command.actor? app with
+    | none =>
+        change after ∈ (app.resume players (command.actor? app) middle).support at resumed
+        rw [actor] at resumed
+        cases (PMF.mem_support_pure_iff _ _).mp resumed
+        rfl
+    | some who =>
+        change after ∈ (app.resume players (command.actor? app) middle).support at resumed
+        rw [actor] at resumed
+        obtain ⟨response, _, rfl⟩ := PMF.support_map .. ▸ resumed
+        exact (reactive_respond_application timeouts leaks middle who response).1
+  rw [same] at played ⊢
+  exact environment_submitted_binding_active timeouts leaks before middle command moved event
+    owner name payload binding decode pending result played
+
+private theorem runUntil_submitted_binding_active_of_pending
+    (timeouts : EventTimeouts (serviceGraph setup deps))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup deps)))
+    (scheduler : ((reactiveApplication timeouts) leaks).Scheduler)
+    (players : Player → ((reactiveApplication timeouts) leaks).Policy)
+    (event : (serviceGraph setup deps).EventId) (owner : Player) (name : VarId) (payload : L.Ty)
+    (binding : (serviceGraph setup deps).outputLayout event = .binding owner payload)
+    (decode : ∀ choice : Option (PublicationResult (L.Val payload)),
+      decodeEventAction setup.program event
+        (cast (congrArg EventField.Action binding.symm) choice) =
+          some (.commit owner name payload choice)) :
+    ∀ (count : Nat) (before after : ((reactiveApplication timeouts) leaks).Execution),
+      event ∉ before.application.config.cut.completed →
+      after ∈ (((reactiveApplication timeouts) leaks).runUntil scheduler players
+        (fun current => event ∈ current.application.config.cut.completed) count before).support →
+      ∀ result : PublicationResult (L.Val payload),
+        OwnAction.binding owner name payload
+          (decodeActionAt setup.program event after.application.config.history) = some result →
+        owner ∉ after.application.config.defaulted := by
+  classical
+  let app := (reactiveApplication timeouts) leaks
+  intro count
+  induction count with
+  | zero =>
+      intro before after pending reached result played
+      cases (PMF.mem_support_pure_iff _ _).mp reached
+      have absent := (completionOf_eq_none_iff before.application.config event).mpr pending
+      unfold decodeActionAt at played
+      change OwnAction.binding owner name payload
+        ((completionOf before.application.config event).bind _) = some result at played
+      rw [absent] at played
+      simp [OwnAction.binding] at played
+  | succ count ih =>
+      intro before after pending reached result played
+      simp only [ReactiveApplication.runUntil, pending, ite_false] at reached
+      obtain ⟨middle, moved, rest⟩ := (PMF.mem_support_bind_iff _ _ _).mp reached
+      by_cases done : event ∈ middle.application.config.cut.completed
+      · rw [app.runUntil_of_stop scheduler players _ count middle done,
+          PMF.mem_support_pure_iff] at rest
+        subst after
+        exact round_submitted_binding_active timeouts leaks scheduler players before middle
+          moved event owner name payload binding decode pending result played
+      · exact ih middle after done rest result played
+
+/-- A stopped submitted binding of an active owner cannot introduce a default,
+including when independent bindings are concurrently ready. -/
+theorem runUntil_submitted_binding_active
+    (timeouts : EventTimeouts (serviceGraph setup deps))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup deps)))
+    (scheduler : ((reactiveApplication timeouts) leaks).Scheduler)
+    (players : Player → ((reactiveApplication timeouts) leaks).Policy)
+    (event : (serviceGraph setup deps).EventId) (owner : Player) (name : VarId) (payload : L.Ty)
+    (binding : (serviceGraph setup deps).outputLayout event = .binding owner payload)
+    (decode : ∀ choice : Option (PublicationResult (L.Val payload)),
+      decodeEventAction setup.program event
+        (cast (congrArg EventField.Action binding.symm) choice) =
+          some (.commit owner name payload choice))
+    (count : Nat) (before after : ((reactiveApplication timeouts) leaks).Execution)
+    (active : owner ∉ before.application.config.defaulted)
+    (reached : after ∈ (((reactiveApplication timeouts) leaks).runUntil scheduler players
+      (fun current => event ∈ current.application.config.cut.completed) count before).support)
+    (result : PublicationResult (L.Val payload))
+    (played : OwnAction.binding owner name payload
+      (decodeActionAt setup.program event after.application.config.history) = some result) :
+    owner ∉ after.application.config.defaulted := by
+  classical
+  by_cases done : event ∈ before.application.config.cut.completed
+  · rw [((reactiveApplication timeouts) leaks).runUntil_of_stop scheduler players _ count before
+      done, PMF.mem_support_pure_iff] at reached
+    subst after
+    exact active
+  · exact runUntil_submitted_binding_active_of_pending timeouts leaks scheduler players event
+      owner name payload binding decode count before after done reached result played
 
 end Vegas

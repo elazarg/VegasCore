@@ -658,3 +658,35 @@ theorem intended_sequentialEquilibrium_preserved [Finite Player]
     exact readouts.symm
 
 end Vegas.SourceProgram.Setup
+
+namespace Vegas.SourceProgram.Setup
+
+open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
+  GameTheory.Math.Probability
+
+variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
+
+/-- At a genuine intended history, a debt-free legal successor used an intended local option. -/
+theorem intended_option_of_not_owesFailure
+    (setup : Setup (Player := Player) (L := L))
+    (admission : CommitmentInterface setup.program) (wellFormed : setup.WellFormed)
+    (history : setup.intendedProtocol.History) (joint : Player → Option (OwnAction Player L))
+    (legal : (setup.executionProtocol admission).Legal history.state joint)
+    (who : Player) (after : setup.ProtocolState)
+    (selected : after ∈ ((setup.executionProtocol admission).step history.state
+      ⟨joint, legal⟩).support) (debtFree : ¬ setup.OwesFailureState who after) :
+    joint who ∈ setup.intendedMenu who (setup.protocolObserve who history.state) := by
+  cases chosen : joint who with
+  | none =>
+      have option := (setup.executionProtocol admission).legalOption_of_legal legal who
+      rw [chosen] at option
+      have intendedOption : LegalOption setup.intendedProtocol history.state who none := option
+      have menu := (setup.intendedModel.menu_adequate who history.trace none).mpr intendedOption
+      rw [setup.intended_info who history.trace] at menu
+      exact menu
+  | some action =>
+      by_contra new
+      exact debtFree (setup.owesFailureState_of_deviation admission who
+        (setup.intendedState_trace wellFormed history.trace) joint legal chosen new after selected)
+
+end Vegas.SourceProgram.Setup

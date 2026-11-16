@@ -10,6 +10,8 @@ public import Vegas.EventGraph.FootprintIndependence
 public import Vegas.EventGraph.ErasureTwin
 public import Vegas.Pending.CanonicalKeyPublication
 public import Vegas.EventGraph.PrefixPolicy
+public import Vegas.EventGraph.StoredBindingProfile
+public import Vegas.EventGraph.PolicyCongruence
 public import Vegas.EventGraph.BindingSubmission
 
 @[expose] public section
@@ -442,5 +444,81 @@ theorem _root_.Vegas.EventGraph.SubmitsBindings.effectiveOpening
   · exact EventField.submitted_of_publication _ publication _
   · rw [effectiveOpening_of_not_publication base publication actor] at selected
     exact submits who event actor observation active action selected
+
+end Vegas.EventGraphRuntime
+
+namespace Vegas.EventGraphRuntime
+
+open EventGraph GameTheory.Math.Probability
+
+variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
+  {graph : Vegas.EventGraph Player L}
+
+omit [DecidableEq Player] [IExpr.ResultTypes L] in
+private theorem storedBindingLaw_publication
+    (field : EventField Player L) (publication : field.IsPublication)
+    (stored : Option field.Value) (original : PMF field.Action) :
+    field.storedBindingLaw stored original = original := by
+  cases field with
+  | publication payload => rfl
+  | publicData payload => cases publication
+  | privateInput owner payload => cases publication
+  | binding owner payload => cases publication
+
+/-- Freezing binding results commutes with effective opening. -/
+theorem effectiveOpening_freezeBindingsBefore
+    (profile : graph.BehavioralProfile) (start rank : Nat) (ghost : graph.Config) :
+    effectiveOpening (graph.freezeBindingsBefore profile start rank ghost) =
+      graph.freezeBindingsBefore (effectiveOpening profile) start rank ghost := by
+  funext who event actor observation active
+  cases node : nodeView graph event with
+  | bind owner payload outputEq codeEq =>
+      simp only [effectiveOpening, node, freezeBindingsBefore]
+  | sample payload law outputEq codeEq =>
+      simp only [effectiveOpening, node, freezeBindingsBefore]
+  | resolve owner payload binding checks outputEq codeEq =>
+      simp only [effectiveOpening, node, freezeBindingsBefore]
+      by_cases inside : start ≤ event.val ∧ event.val < rank
+      · rw [ite_eq_left inside]
+        exact (storedBindingLaw_publication (graph.outputLayout event)
+          (by rw [outputEq]; trivial) _ _).symm
+      · rw [ite_eq_right inside]
+
+/-- Effective opening preserves the full canonical law on a binding interval. -/
+theorem runPlan_effectiveOpening_binding_interval
+    (profile : graph.BehavioralProfile) (count start : Nat) (origin : graph.Config)
+    (ordered : origin.cut.IsPrefix start) (bounded : start + count ≤ graph.order.eventCount)
+    (bindings : ∀ event : graph.EventId, start ≤ event.val → event.val < start + count →
+      ∃ owner payload, graph.outputLayout event = .binding owner payload) :
+    graph.runPlan (graph.policyPlan (effectiveOpening profile) graph.canonicalScheduler)
+        count origin =
+      graph.runPlan (graph.policyPlan profile graph.canonicalScheduler) count origin := by
+  apply runPlan_canonical_prefix_congr _ _ count start origin ordered bounded
+  intro event lower upper who actor observation active
+  obtain ⟨owner, payload, outputEq⟩ := bindings event lower upper
+  exact effectiveOpening_of_not_publication profile (by rw [outputEq]; exact id) actor _ _
+
+/-- Updating a focal policy retains effective-opening equivalence on a binding interval. -/
+theorem runPlan_prefix_effectiveOpening_update_binding_interval
+    (profile : graph.BehavioralProfile) (focal : Player) (policy : graph.BehavioralPolicy focal)
+    (count start : Nat) (origin : graph.Config)
+    (ordered : origin.cut.IsPrefix start) (bounded : start + count ≤ graph.order.eventCount)
+    (bindings : ∀ event : graph.EventId, start ≤ event.val → event.val < start + count →
+      ∃ owner payload, graph.outputLayout event = .binding owner payload) :
+    graph.runPlan (graph.policyPlan
+        (graph.prefixProfile (Function.update (effectiveOpening profile) focal policy))
+        graph.canonicalScheduler) count origin =
+      graph.runPlan (graph.policyPlan
+        (graph.prefixProfile (Function.update profile focal policy))
+        graph.canonicalScheduler) count origin := by
+  apply runPlan_canonical_prefix_congr _ _ count start origin ordered bounded
+  intro event lower upper who actor observation active
+  simp only [prefixProfile, prefixPolicy]
+  by_cases own : who = focal
+  · subst who
+    simp only [Function.update_self]
+  · simp only [Function.update_of_ne own]
+    obtain ⟨owner, payload, outputEq⟩ := bindings event lower upper
+    exact effectiveOpening_of_not_publication profile (by rw [outputEq]; exact id) actor _ _
 
 end Vegas.EventGraphRuntime

@@ -10,8 +10,8 @@ public import Vegas.EventGraph.BarrierBlocks
 /-! # Native opacity across private binding runs
 
 Jointly varying private inputs and submitting reference kernels have the same focal traffic
-law through a binding run. The ready anchor may change; the stopping target may already
-have completed or may not yet be ready.
+law through a private binding run. The ready anchor may change. Stops are determined
+by focal traffic and occur no later than completion of the whole binding block.
 -/
 
 noncomputable section
@@ -26,8 +26,8 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {duration : (serviceGraph setup deps).EventId → Nat}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup deps))}
 
-/-- Private-binding opacity holds until any traffic-visible stop at or before
-target completion. -/
+/-- Private-binding opacity holds through every traffic-determined stop no later than
+completion of the whole binding block. -/
 theorem bindingBlock_stopped_traffic_congr
     (relaxed : (serviceGraph setup deps).RevealRelaxedOrdered)
     {horizon count leftRemaining rightRemaining turns : Nat}
@@ -39,13 +39,11 @@ theorem bindingBlock_stopped_traffic_congr
         (serviceGraph setup deps).outputLayout event = .binding owner payload)
     (barrier : ∀ event : (serviceGraph setup deps).EventId, event.val = finish →
       ((serviceGraph setup deps).outputLayout event).IsPublic)
-    (target : (serviceGraph setup deps).EventId)
-    (targetLate : target.val < finish)
     (focal : Player) (deviation : (serviceApplication setup deps duration leaks).Policy)
     (stop : (serviceApplication setup deps duration leaks).Execution → Prop)
     [DecidablePred stop]
     (completedStops : ∀ current : (serviceApplication setup deps duration leaks).Execution,
-      target ∈ current.application.config.cut.completed → stop current)
+      BlockDone finish current.application.config → stop current)
     (determinedStop : ∀ left right : (serviceApplication setup deps duration leaks).Execution,
       (bindingTraffic (serviceTimeouts setup deps duration)) leaks focal left =
         (bindingTraffic (serviceTimeouts setup deps duration)) leaks focal right →
@@ -86,13 +84,13 @@ theorem bindingBlock_stopped_traffic_congr
   let invariant := fun (n : Nat) (current : app.Execution) =>
     (∃ remaining, Nonempty ((app.protocol (serviceInitialLaw setup deps) horizon scheduler).Trace
       (some ⟨remaining + n, none, current⟩))) ∧
-    (target ∉ current.application.config.cut.completed →
+    (¬ BlockDone finish current.application.config →
       InBlock start finish current.application.config) ∧
     ∀ actor, actor ≠ focal →
       OwnSubmissionsAtTurn setup leaks current actor ∧ CanonicalSlotsUsed setup leaks current actor
   have advance (reference : (serviceGraph setup deps).BehavioralProfile) (n : Nat)
       (current : app.Execution) (valid : invariant (n + 1) current)
-      (running : target ∉ current.application.config.cut.completed)
+      (running : ¬ BlockDone finish current.application.config)
       (next : app.Execution)
       (reached : next ∈ (app.round scheduler (players reference) current).support) :
       invariant n next := by
@@ -106,7 +104,7 @@ theorem bindingBlock_stopped_traffic_congr
       (players reference) current next reached
     refine ⟨⟨remaining, ⟨nextTrace⟩⟩, ?_, ?_⟩
     · intro unfinished
-      exact (inside running).path shaped path (fun done => unfinished (done target targetLate))
+      exact (inside running).path shaped path unfinished
     · intro actor foreign
       obtain ⟨own, slots⟩ := canonical actor foreign
       exact canonicalSlots_round relaxed.actorSerial (by
@@ -122,14 +120,15 @@ theorem bindingBlock_stopped_traffic_congr
   · intro n left right _leftValid _rightValid equal
     exact determinedStop left right equal
   · intro n left right leftValid rightValid equal notStopped
-    have running : target ∉ left.application.config.cut.completed :=
+    have running : ¬ BlockDone finish left.application.config :=
       fun completed => notStopped (completedStops left completed)
     obtain ⟨⟨leftRest, ⟨leftCurrentTrace⟩⟩, currentLeftInside, currentLeftCanonical⟩ := leftValid
     obtain ⟨⟨rightRest, ⟨rightCurrentTrace⟩⟩, currentRightInside, currentRightCanonical⟩ :=
       rightValid
     have publics : left.application.publicView = right.application.publicView :=
       congrArg (fun value => value.2.2.2.2.2) equal
-    have rightRunning : target ∉ right.application.config.cut.completed := by
+    have rightRunning : ¬ BlockDone finish right.application.config := by
+      change ¬ ∀ event, event.val < finish → event ∈ right.application.config.cut.completed
       rw [← cut_eq_of_publicView_eq publics]
       exact running
     have leftBefore : (app.protocol (serviceInitialLaw setup deps) horizon scheduler).Trace
@@ -138,8 +137,7 @@ theorem bindingBlock_stopped_traffic_congr
     have rightBefore : (app.protocol (serviceInitialLaw setup deps) horizon scheduler).Trace
         (some ⟨(rightRest + n) + 1, none, right⟩) := by
       simpa only [Nat.add_assoc] using rightCurrentTrace
-    have unfinished : ¬ BlockDone finish left.application.config :=
-      fun done => running (done target targetLate)
+    have unfinished : ¬ BlockDone finish left.application.config := running
     obtain ⟨anchor, owner, payload, anchorReady, outputEq⟩ :=
       exists_ready_binding_of_block_pending start finish bindings left.application.config
         (currentLeftInside running) unfinished

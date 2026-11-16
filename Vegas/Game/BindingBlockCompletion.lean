@@ -22,7 +22,9 @@ public import Vegas.Pending.CanonicalOutcomePublication
 A fixed submitted binding stays within its protected inclusion window. Fixed
 binding clients therefore finish a private interval without defaults and recover
 the complete sampled graph key, even when physical completions have another order.
-The initialized boundary may come from a different reference profile.
+The original raw anchor may come from a different reference profile. A selected
+compiled subfamily can finish the interval after the remaining owners' records
+are complete; its service facts are retained from that same original anchor.
 -/
 
 noncomputable section
@@ -339,230 +341,295 @@ theorem fixedBinding_withinDeadline_runRounds {horizon remaining count : Nat}
     exact (firstTurn_inclusionFits unique contract timely nextTrace answeredNext owned ready
       first).withinDeadline
 
-/-- Fixed submitted binding clients complete a private block at exactly its source end,
-without creating a public default. The initial trace may come from other clients. -/
+private theorem bindingTail_rounds_path
+    (scheduler : (serviceApplication setup deps duration leaks).Scheduler)
+    (players : Player → (serviceApplication setup deps duration leaks).Policy)
+    (count : Nat) (origin final : (serviceApplication setup deps duration leaks).Execution)
+    (reached : final ∈ ((serviceApplication setup deps duration leaks).runRounds scheduler players
+      count origin).support) :
+    Relation.ReflTransGen Config.Step origin.application.config final.application.config := by
+  induction count generalizing origin with
+  | zero =>
+    cases (PMF.mem_support_pure_iff _ _).mp reached
+    exact .refl
+  | succ count ih =>
+    obtain ⟨middle, moved, rest⟩ := (PMF.mem_support_bind_iff _ _ _).mp reached
+    exact (reactive_round_graph_steps (serviceTimeouts setup deps duration) leaks scheduler players
+      origin middle moved).trans (ih middle rest)
+
+/-- Once all bindings outside the compiled subfamily have completed, live clients finish the
+remaining private interval without a default. Every deadline is justified from
+the original block anchor, rather than from a newly initialized frozen profile. -/
 theorem fixedBinding_block_endpoint
-    {horizon budget turns : Nat}
+    {horizon budget used turns : Nat}
     (scheduler : (serviceApplication setup deps duration leaks).Scheduler)
     (bound : (serviceGraph setup deps).EventId → Nat)
-    (relaxed : (serviceGraph setup deps).RevealRelaxedOrdered)
+    (serial : (serviceGraph setup deps).ActorSerial)
     {delay : (serviceGraph setup deps).EventId → Nat}
     (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
       (serviceInitialLaw setup deps) horizon scheduler delay bound)
     (timely : AsyncTimely (serviceTimeouts setup deps duration) delay bound)
-    (reference : (serviceGraph setup deps).BehavioralProfile)
-    (origin : (serviceApplication setup deps duration leaks).Execution)
+    (reference : (serviceGraph setup deps).BehavioralProfile) (compiled : Player → Prop)
+    (players : Player → (serviceApplication setup deps duration leaks).Policy)
+    (follows : ∀ owner, compiled owner → players owner =
+      serviceReferenceTurnPolicy setup deps duration leaks bound turns
+        (firstTurnTiming setup turns deps) reference owner)
+    (anchor : (serviceApplication setup deps duration leaks).Execution)
     (trace : ((serviceApplication setup deps duration leaks).protocol
-      (serviceInitialLaw setup deps) horizon scheduler).Trace (some ⟨budget, none, origin⟩))
-    (truthful : ∀ owner, OwnSubmissionsAtTurn setup leaks origin owner)
-    (answered : ActivationsAnswered setup leaks origin)
-    (calls : ∀ owner, OwnFreshCalls setup leaks bound origin owner)
-    (once : ∀ owner, OneCallPerEvent setup leaks origin owner)
-    (start finish : Nat) (start_le_finish : start ≤ finish)
+      (serviceInitialLaw setup deps) horizon scheduler).Trace (some ⟨budget, none, anchor⟩))
+    (truthful : ∀ owner, compiled owner → OwnSubmissionsAtTurn setup leaks anchor owner)
+    (answered : ActivationsAnswered setup leaks anchor)
+    (calls : ∀ owner, compiled owner → OwnFreshCalls setup leaks bound anchor owner)
+    (once : ∀ owner, compiled owner → OneCallPerEvent setup leaks anchor owner)
+    (start finish : Nat) (shaped : BlockShaped (graph := serviceGraph setup deps) start finish)
     (bounded : finish ≤ (serviceGraph setup deps).order.eventCount)
-    (ordered : origin.application.config.cut.IsPrefix start)
-    (clear : origin.application.config.defaulted = ∅)
     (bindings : ∀ event : (serviceGraph setup deps).EventId,
       start ≤ event.val → event.val < finish →
       ∃ owner payload, (serviceGraph setup deps).outputLayout event = .binding owner payload)
-    (barrier : ∀ event : (serviceGraph setup deps).EventId, event.val = finish →
-      ((serviceGraph setup deps).outputLayout event).IsPublic)
     (fixed : ∀ event : (serviceGraph setup deps).EventId,
+      start ≤ event.val → event.val < finish → ∀ owner,
+      (owned : (serviceGraph setup deps).actor? event = some owner) → compiled owner →
+      ∃ (payload : L.Ty)
+        (binding : (serviceGraph setup deps).outputLayout event = .binding owner payload)
+        (result : PublicationResult (L.Val payload)),
+        ∀ view active, reference owner event owned view active =
+          PMF.pure (cast (congrArg EventField.Action binding.symm) (some result)))
+    (untouched : ∀ owner, compiled owner → ∀ event : (serviceGraph setup deps).EventId,
       start ≤ event.val → event.val < finish →
-      ∃ (owner : Player) (payload : L.Ty)
-        (binding : (serviceGraph setup deps).outputLayout event =
-          .binding owner payload) (result : PublicationResult (L.Val payload)),
-        ∀ view active, reference owner event
-          (EventCode.actor_eq_of_binding ((serviceGraph setup deps).nodes event) binding)
-          view active = PMF.pure (cast (congrArg EventField.Action binding.symm) (some result)))
-    (untouched : ∀ event : (serviceGraph setup deps).EventId,
-      start ≤ event.val → event.val < finish → Untouched setup leaks event origin)
+      (serviceGraph setup deps).actor? event = some owner → Untouched setup leaks event anchor)
+    (current : (serviceApplication setup deps duration leaks).Execution)
+    (counted : used ≤ budget)
+    (supported : current ∈ ((serviceApplication setup deps duration leaks).runRounds scheduler
+      players used anchor).support)
+    (clear : current.application.config.defaulted = ∅)
+    (inside : InBlock start finish current.application.config)
+    (completed : ∀ event : (serviceGraph setup deps).EventId,
+      start ≤ event.val → event.val < finish → ∀ owner,
+      (serviceGraph setup deps).actor? event = some owner → ¬ compiled owner →
+        event ∈ current.application.config.cut.completed)
     (final : (serviceApplication setup deps duration leaks).Execution)
-    (reached : final ∈ ((serviceApplication setup deps duration leaks).runUntil scheduler
-      (serviceReferenceTurnPolicy setup deps duration leaks bound turns
-        (firstTurnTiming setup turns deps) reference)
-      (fun current => BlockDone finish current.application.config) budget origin).support) :
+    (reached : final ∈ ((serviceApplication setup deps duration leaks).runUntil scheduler players
+      (fun next => BlockDone finish next.application.config) (budget - used) current).support) :
     final.application.config.defaulted = ∅ ∧
       final.application.config.cut.IsPrefix finish ∧
-      ∃ used ≤ budget, final ∈ ((serviceApplication setup deps duration leaks).runRounds scheduler
-        (serviceReferenceTurnPolicy setup deps duration leaks bound turns
-          (firstTurnTiming setup turns deps) reference) used origin).support := by
+      ∃ extra, used + extra ≤ budget ∧
+        final ∈ ((serviceApplication setup deps duration leaks).runRounds scheduler players
+          (used + extra) anchor).support := by
   classical
   let G := serviceGraph setup deps
   let app := serviceApplication setup deps duration leaks
-  let players := serviceReferenceTurnPolicy setup deps duration leaks bound turns
-    (firstTurnTiming setup turns deps) reference
-  let stop := fun current : app.Execution => BlockDone finish current.application.config
-  let holds := fun (remaining : Nat) (current : app.Execution) =>
-    ∃ used, used + remaining = budget ∧
-      current ∈ (app.runRounds scheduler players used origin).support ∧
-      current.application.config.defaulted = ∅ ∧
-      current.application.config.cut.Within start finish
-  have shaped := bindingInterval_shaped relaxed start finish bindings barrier
-  have preserved : ∀ remaining current, holds (remaining + 1) current → ¬ stop current →
-      ∀ next ∈ (app.round scheduler players current).support, holds remaining next := by
-    intro remaining current valid running next moved
-    obtain ⟨used, accounted, supported, currentClear, within⟩ := valid
-    have inside : InBlock start finish current.application.config :=
-      ⟨within.1, fun event late completed => Nat.not_lt.mpr late (within.2 event completed)⟩
-    have readyBounds (event : G.EventId) (ready : current.application.config.cut.Ready event) :
-        start ≤ event.val ∧ event.val < finish := shaped _ inside running event ready
-    have currentBindings (event : G.EventId) (ready : current.application.config.cut.Ready event) :
+  let stop := fun next : app.Execution => BlockDone finish next.application.config
+  let holds := fun (remaining : Nat) (next : app.Execution) =>
+    ∃ extra, used + extra + remaining = budget ∧
+      next ∈ (app.runRounds scheduler players (used + extra) anchor).support ∧
+      next.application.config.defaulted = ∅ ∧ next.application.config.cut.Within start finish ∧
+      ∀ event : G.EventId, start ≤ event.val → event.val < finish → ∀ owner,
+        G.actor? event = some owner → ¬ compiled owner →
+          event ∈ next.application.config.cut.completed
+  have preserved : ∀ remaining next, holds (remaining + 1) next → ¬ stop next →
+      ∀ later ∈ (app.round scheduler players next).support, holds remaining later := by
+    intro remaining next valid running later moved
+    obtain ⟨extra, accounted, supportedNext, clearNext, within, alreadyDone⟩ := valid
+    have insideNext : InBlock start finish next.application.config :=
+      ⟨within.1, fun event late done => Nat.not_lt.mpr late (within.2 event done)⟩
+    have readyBounds (event : G.EventId) (ready : next.application.config.cut.Ready event) :
+        start ≤ event.val ∧ event.val < finish := shaped _ insideNext running event ready
+    have currentBindings (event : G.EventId) (ready : next.application.config.cut.Ready event) :
         ∃ owner payload, G.outputLayout event = .binding owner payload :=
       bindings event (readyBounds event ready).1 (readyBounds event ready).2
-    have deadlines (event : G.EventId) (ready : current.application.config.cut.Ready event) :
-        current.application.WithinDeadline (serviceTimeouts setup deps duration) event := by
-      obtain ⟨owner, payload, binding, result, constant⟩ := fixed event
-        (readyBounds event ready).1 (readyBounds event ready).2
-      have traceBudget : ((serviceApplication setup deps duration leaks).protocol
-          (serviceInitialLaw setup deps) horizon scheduler).Trace
-            (some ⟨(remaining + 1) + used, none, origin⟩) := by
-        simpa only [show (remaining + 1) + used = budget by omega] using trace
+    have deadlines (event : G.EventId) (ready : next.application.config.cut.Ready event) :
+        next.application.WithinDeadline (serviceTimeouts setup deps duration) event := by
+      obtain ⟨owner, _payload, binding⟩ := currentBindings event ready
+      have actor := EventCode.actor_eq_of_binding (G.nodes event) binding
+      have ownerCompiled : compiled owner := by
+        by_contra outside
+        exact ready.1 (alreadyDone event (readyBounds event ready).1
+          (readyBounds event ready).2 owner actor outside)
+      obtain ⟨payload, binding, result, constant⟩ := fixed event
+        (readyBounds event ready).1 (readyBounds event ready).2 owner actor ownerCompiled
+      have traceBudget : (app.protocol (serviceInitialLaw setup deps) horizon scheduler).Trace
+          (some ⟨(remaining + 1) + (used + extra), none, anchor⟩) := by
+        simpa only [show (remaining + 1) + (used + extra) = budget by omega] using trace
       exact fixedBinding_withinDeadline_runRounds contract timely players owner reference event
-        (relaxed.actorSerial event) payload binding result constant rfl origin current traceBudget
-        (truthful owner) answered (calls owner) (once owner)
-        (untouched event (readyBounds event ready).1 (readyBounds event ready).2) supported ready
-    obtain ⟨nextClear, primary⟩ := reactive_round_bindings_clear
-      (serviceTimeouts setup deps duration) leaks scheduler players current next currentClear
-        currentBindings deadlines moved
-    refine ⟨used + 1, by omega, ?_, nextClear, ?_⟩
-    · rw [app.runRounds_add scheduler players used 1 origin, PMF.mem_support_bind_iff]
-      exact ⟨current, supported, by
+        (serial event) payload binding result constant (follows owner ownerCompiled)
+        anchor next traceBudget (truthful owner ownerCompiled) answered (calls owner ownerCompiled)
+        (once owner ownerCompiled)
+        (untouched owner ownerCompiled event (readyBounds event ready).1
+          (readyBounds event ready).2 actor) supportedNext ready
+    obtain ⟨clearLater, primary⟩ := reactive_round_bindings_clear
+      (serviceTimeouts setup deps duration) leaks scheduler players next later clearNext
+      currentBindings deadlines moved
+    refine ⟨extra + 1, by omega, ?_, clearLater, ?_, ?_⟩
+    · rw [show used + (extra + 1) = (used + extra) + 1 by omega,
+        app.runRounds_add scheduler players (used + extra) 1 anchor, PMF.mem_support_bind_iff]
+      exact ⟨next, supportedNext, by
         simpa only [ReactiveApplication.runRounds, PMF.bind_pure] using moved⟩
     · rcases primary with same | ⟨event, ready, action, selected⟩
       · rw [same]
         exact within
-      · rw [current.application.config.step_cut event ready action next.application.config selected]
+      · rw [next.application.config.step_cut event ready action later.application.config selected]
         exact within.complete event ready (readyBounds event ready).2
-  have initial : holds budget origin :=
-    ⟨0, by omega, by simp only [ReactiveApplication.runRounds, PMF.mem_support_pure_iff], clear,
-      ordered.within start_le_finish⟩
-  obtain ⟨remaining, used, accounted, supported, finalClear, finalWithin⟩ :=
-    app.runUntil_support_holds scheduler players stop holds preserved budget origin initial final
-      reached
+    · intro event lower upper owner owned outside
+      exact Config.Step.path_completed_mono
+        (reactive_round_graph_steps (serviceTimeouts setup deps duration) leaks scheduler players
+          next later moved) (alreadyDone event lower upper owner owned outside)
+  have initial : holds (budget - used) current :=
+    ⟨0, by omega, by simpa only [Nat.add_zero] using supported, clear,
+      ⟨inside.1, fun event done => Nat.lt_of_not_ge (fun late => inside.2 event late done)⟩,
+      completed⟩
+  obtain ⟨remaining, extra, accounted, supportedFinal, clearFinal, withinFinal, _alreadyDone⟩ :=
+    app.runUntil_support_holds scheduler players stop holds preserved (budget - used) current
+      initial final reached
   have done : BlockDone finish final.application.config := by
-    rcases app.runUntil_stopped scheduler players stop budget origin final reached with finished |
-      spent
+    rcases app.runUntil_stopped scheduler players stop (budget - used) current final reached with
+      finished | spent
     · exact finished
-    · have lengths := app.runRounds_environmentRecall_length scheduler players used origin final
-        supported
-      have exhausted : used = budget := by omega
-      obtain ⟨finalTrace⟩ := app.raw_trace_runRounds (serviceInitialLaw setup deps) horizon
-        scheduler players 0 used origin final
-        (by simpa only [Nat.zero_add, exhausted] using trace) supported
-      have terminal := contract.completes ⟨0, none, final⟩ finalTrace ⟨rfl, rfl⟩
-      intro event _
-      rw [terminal]
-      exact Finset.mem_univ event
-  exact ⟨finalClear, finalWithin.isPrefix bounded done, used, by omega, supported⟩
+    have currentLength := app.runRounds_environmentRecall_length scheduler players used anchor
+      current supported
+    have finalLength := app.runRounds_environmentRecall_length scheduler players (used + extra)
+      anchor final supportedFinal
+    have exhausted : used + extra = budget := by omega
+    obtain ⟨finalTrace⟩ := app.raw_trace_runRounds (serviceInitialLaw setup deps) horizon scheduler
+      players 0 (used + extra) anchor final
+      (by simpa only [Nat.zero_add, exhausted] using trace) supportedFinal
+    have terminal := contract.completes ⟨0, none, final⟩ finalTrace ⟨rfl, rfl⟩
+    intro event _
+    rw [terminal]
+    exact Finset.mem_univ event
+  exact ⟨clearFinal, withinFinal.isPrefix bounded done, extra, by omega, supportedFinal⟩
 
-/-- Fixed honest binding clients recover the complete sampled graph key at the block end. -/
+/-- Completing a selected compiled subfamily recovers the exact source table, retaining
+all other records that were already accepted before the tail started. -/
 theorem fixedBinding_block_key
-    {horizon budget turns : Nat}
+    {horizon budget used turns : Nat}
     (scheduler : (serviceApplication setup deps duration leaks).Scheduler)
     (bound : (serviceGraph setup deps).EventId → Nat)
-    (relaxed : (serviceGraph setup deps).RevealRelaxedOrdered)
+    (serial : (serviceGraph setup deps).ActorSerial)
     {delay : (serviceGraph setup deps).EventId → Nat}
     (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
       (serviceInitialLaw setup deps) horizon scheduler delay bound)
     (timely : AsyncTimely (serviceTimeouts setup deps duration) delay bound)
-    (reference : (serviceGraph setup deps).BehavioralProfile)
-    (origin : (serviceApplication setup deps duration leaks).Execution)
+    (reference : (serviceGraph setup deps).BehavioralProfile) (compiled : Player → Prop)
+    (players : Player → (serviceApplication setup deps duration leaks).Policy)
+    (follows : ∀ owner, compiled owner → players owner =
+      serviceReferenceTurnPolicy setup deps duration leaks bound turns
+        (firstTurnTiming setup turns deps) reference owner)
+    (anchor : (serviceApplication setup deps duration leaks).Execution)
     (trace : ((serviceApplication setup deps duration leaks).protocol
-      (serviceInitialLaw setup deps) horizon scheduler).Trace (some ⟨budget, none, origin⟩))
-    (truthful : ∀ owner, OwnSubmissionsAtTurn setup leaks origin owner)
-    (answered : ActivationsAnswered setup leaks origin)
-    (calls : ∀ owner, OwnFreshCalls setup leaks bound origin owner)
-    (once : ∀ owner, OneCallPerEvent setup leaks origin owner)
-    (start finish : Nat) (start_le_finish : start ≤ finish)
-    (bounded : finish ≤ (serviceGraph setup deps).order.eventCount)
-    (ordered : origin.application.config.cut.IsPrefix start)
-    (clear : origin.application.config.defaulted = ∅)
+      (serviceInitialLaw setup deps) horizon scheduler).Trace (some ⟨budget, none, anchor⟩))
+    (truthful : ∀ owner, compiled owner → OwnSubmissionsAtTurn setup leaks anchor owner)
+    (answered : ActivationsAnswered setup leaks anchor)
+    (calls : ∀ owner, compiled owner → OwnFreshCalls setup leaks bound anchor owner)
+    (once : ∀ owner, compiled owner → OneCallPerEvent setup leaks anchor owner)
+    (start finish : Nat) (shaped : BlockShaped (graph := serviceGraph setup deps) start finish)
+    (ordered : anchor.application.config.cut.IsPrefix start)
     (bindings : ∀ event : (serviceGraph setup deps).EventId,
       start ≤ event.val → event.val < finish →
       ∃ owner payload, (serviceGraph setup deps).outputLayout event = .binding owner payload)
-    (barrier : ∀ event : (serviceGraph setup deps).EventId, event.val = finish →
-      ((serviceGraph setup deps).outputLayout event).IsPublic)
     (ghost : (serviceGraph setup deps).Config)
     {inputs : (serviceGraph setup deps).Inputs}
-    (originReach : origin.application.config.Reachable inputs)
-    (ghostPath : Relation.ReflTransGen EventGraph.Config.Step origin.application.config ghost)
+    (anchorReach : anchor.application.config.Reachable inputs)
+    (ghostPath : Relation.ReflTransGen Config.Step anchor.application.config ghost)
     (ghostOrdered : ghost.cut.IsPrefix finish)
     (fixed : ∀ event : (serviceGraph setup deps).EventId,
-      start ≤ event.val → event.val < finish →
-      ∃ (owner : Player) (payload : L.Ty)
-        (binding : (serviceGraph setup deps).outputLayout event =
-          .binding owner payload) (result : PublicationResult (L.Val payload)),
-        (∀ view active, reference owner event
-          (EventCode.actor_eq_of_binding ((serviceGraph setup deps).nodes event) binding)
-          view active = PMF.pure (cast (congrArg EventField.Action binding.symm) (some result))) ∧
+      start ≤ event.val → event.val < finish → ∀ owner,
+      (owned : (serviceGraph setup deps).actor? event = some owner) → compiled owner →
+      ∃ (payload : L.Ty)
+        (binding : (serviceGraph setup deps).outputLayout event = .binding owner payload)
+        (result : PublicationResult (L.Val payload)),
+        (∀ view active, reference owner event owned view active =
+          PMF.pure (cast (congrArg EventField.Action binding.symm) (some result))) ∧
         completionOf ghost event = some (EventGraph.completion (serviceGraph setup deps) event
           (some (cast (congrArg EventField.Action binding.symm) (some result)))
           (cast (congrArg EventField.Value binding.symm) result)))
-    (untouched : ∀ event : (serviceGraph setup deps).EventId,
-      start ≤ event.val → event.val < finish → Untouched setup leaks event origin)
+    (untouched : ∀ owner, compiled owner → ∀ event : (serviceGraph setup deps).EventId,
+      start ≤ event.val → event.val < finish →
+      (serviceGraph setup deps).actor? event = some owner → Untouched setup leaks event anchor)
+    (current : (serviceApplication setup deps duration leaks).Execution)
+    (counted : used ≤ budget)
+    (supported : current ∈ ((serviceApplication setup deps duration leaks).runRounds scheduler
+      players used anchor).support)
+    (clear : current.application.config.defaulted = ∅)
+    (inside : InBlock start finish current.application.config)
+    (completed : ∀ event : (serviceGraph setup deps).EventId,
+      start ≤ event.val → event.val < finish → ∀ owner,
+      (serviceGraph setup deps).actor? event = some owner → ¬ compiled owner →
+        event ∈ current.application.config.cut.completed)
+    (matched : ∀ event : (serviceGraph setup deps).EventId,
+      start ≤ event.val → event.val < finish → ∀ owner,
+      (serviceGraph setup deps).actor? event = some owner → ¬ compiled owner →
+        completionOf current.application.config event = completionOf ghost event)
     (final : (serviceApplication setup deps duration leaks).Execution)
-    (reached : final ∈ ((serviceApplication setup deps duration leaks).runUntil scheduler
-      (serviceReferenceTurnPolicy setup deps duration leaks bound turns
-        (firstTurnTiming setup turns deps) reference)
-      (fun current => BlockDone finish current.application.config) budget origin).support) :
-    final.application.config.defaulted = ∅ ∧
-      runKey final.application.config = runKey ghost := by
+    (reached : final ∈ ((serviceApplication setup deps duration leaks).runUntil scheduler players
+      (fun next => BlockDone finish next.application.config) (budget - used) current).support) :
+    final.application.config.defaulted = ∅ ∧ final.application.config.cut.IsPrefix finish ∧
+      runKey final.application.config = runKey ghost ∧
+      ∃ extra, used + extra ≤ budget ∧
+        final ∈ ((serviceApplication setup deps duration leaks).runRounds scheduler players
+          (used + extra) anchor).support := by
+  classical
   let G := serviceGraph setup deps
   let app := serviceApplication setup deps duration leaks
-  let players := serviceReferenceTurnPolicy setup deps duration leaks bound turns
-    (firstTurnTiming setup turns deps) reference
-  have constant : ∀ event : G.EventId, start ≤ event.val → event.val < finish →
-      ∃ (owner : Player) (payload : L.Ty)
-        (binding : G.outputLayout event = .binding owner payload)
+  have constant : ∀ event : G.EventId, start ≤ event.val → event.val < finish → ∀ owner,
+      (owned : G.actor? event = some owner) → compiled owner →
+      ∃ (payload : L.Ty) (binding : G.outputLayout event = .binding owner payload)
         (result : PublicationResult (L.Val payload)),
-        ∀ view active, reference owner event
-          (EventCode.actor_eq_of_binding (G.nodes event) binding) view active =
+        ∀ view active, reference owner event owned view active =
           PMF.pure (cast (congrArg EventField.Action binding.symm) (some result)) := by
-    intro event lower upper
-    obtain ⟨owner, payload, binding, result, fixed, _⟩ := fixed event lower upper
-    exact ⟨owner, payload, binding, result, fixed⟩
-  obtain ⟨finalClear, finalOrdered, used, within, supported⟩ := fixedBinding_block_endpoint
-    scheduler bound relaxed contract timely reference origin trace truthful answered calls once
-    start finish start_le_finish bounded ordered clear bindings barrier constant untouched final
-    reached
-  have actualPath := reactive_runUntil_graph_steps (serviceTimeouts setup deps duration) leaks
-    scheduler players (fun current => BlockDone finish current.application.config) budget origin
-    final reached
+    intro event lower upper owner owned selected
+    obtain ⟨payload, binding, result, fixed, _⟩ := fixed event lower upper owner owned selected
+    exact ⟨payload, binding, result, fixed⟩
+  obtain ⟨finalClear, finalOrdered, extra, enough, finalSupport⟩ := fixedBinding_block_endpoint
+    scheduler bound serial contract timely reference compiled players follows anchor trace truthful
+    answered calls once start finish shaped ghostOrdered.1 bindings constant untouched current
+    counted supported clear inside completed final reached
+  have actualPath := bindingTail_rounds_path scheduler players (used + extra) anchor final
+    finalSupport
+  have tailPath := reactive_runUntil_graph_steps (serviceTimeouts setup deps duration) leaks
+    scheduler players (fun next => BlockDone finish next.application.config) (budget - used)
+    current final reached
   have records : completionOf final.application.config = completionOf ghost := by
     funext event
     by_cases early : event.val < start
-    · have completed := (ordered.2 event).mpr early
+    · have done := (ordered.2 event).mpr early
       obtain ⟨record, found⟩ := Option.isSome_iff_exists.mp
-        ((completionOf_isSome_iff origin.application.config event).mpr completed)
-      rw [EventGraph.Config.Step.path_completionOf_of_some actualPath event record found,
-        EventGraph.Config.Step.path_completionOf_of_some ghostPath event record found]
-    · by_cases inside : event.val < finish
-      · obtain ⟨owner, payload, binding, result, head, expected⟩ := fixed event (by omega) inside
-        have owned := EventCode.actor_eq_of_binding (G.nodes event) binding
-        have unfinished : event ∉ origin.application.config.cut.completed :=
+        ((completionOf_isSome_iff anchor.application.config event).mpr done)
+      rw [Config.Step.path_completionOf_of_some actualPath event record found,
+        Config.Step.path_completionOf_of_some ghostPath event record found]
+    by_cases upper : event.val < finish
+    · obtain ⟨owner, _payload, binding⟩ := bindings event (by omega) upper
+      have actor := EventCode.actor_eq_of_binding (G.nodes event) binding
+      by_cases selected : compiled owner
+      · obtain ⟨payload, binding, result, constant, expected⟩ :=
+          fixed event (by omega) upper owner actor selected
+        have unfinished : event ∉ anchor.application.config.cut.completed :=
           fun done => early ((ordered.2 event).mp done)
-        have completed : event ∈ final.application.config.cut.completed :=
-          (finalOrdered.2 event).mpr inside
-        have record := fixed_reference_binding_record_runRounds leaks scheduler bound turns
-          reference
-          owner event owned payload binding result head players rfl origin trace (truthful owner)
-          (untouched event (by omega) inside) unfinished used final supported completed
-        rcases record with defaulted | ⟨actual, _output⟩
+        have done : event ∈ final.application.config.cut.completed :=
+          (finalOrdered.2 event).mpr upper
+        rcases fixed_reference_binding_record_runRounds leaks scheduler bound turns reference owner
+            event actor payload binding result constant players (follows owner selected) anchor
+            trace (truthful owner selected)
+            (untouched owner selected event (by omega) upper actor) unfinished
+            (used + extra) final finalSupport done with defaulted | ⟨actual, _⟩
         · simp only [finalClear, Finset.notMem_empty] at defaulted
         · exact actual.trans expected.symm
-      · rw [(completionOf_eq_none_iff final.application.config event).mpr
-          (fun done => inside ((finalOrdered.2 event).mp done)),
-          (completionOf_eq_none_iff ghost event).mpr
-            (fun done => inside ((ghostOrdered.2 event).mp done))]
-  have stores := store_eq_of_binding_paths origin.application.config final.application.config
-    ghost start finish originReach ordered actualPath ghostPath finalOrdered ghostOrdered bindings
+      · obtain ⟨record, found⟩ := Option.isSome_iff_exists.mp
+          ((completionOf_isSome_iff current.application.config event).mpr
+            (completed event (by omega) upper owner actor selected))
+        exact (Config.Step.path_completionOf_of_some tailPath event record found).trans
+          (found.symm.trans (matched event (by omega) upper owner actor selected))
+    · rw [(completionOf_eq_none_iff final.application.config event).mpr
+        (fun done => upper ((finalOrdered.2 event).mp done)),
+        (completionOf_eq_none_iff ghost event).mpr
+          (fun done => upper ((ghostOrdered.2 event).mp done))]
+  have stores := store_eq_of_binding_paths anchor.application.config final.application.config
+    ghost start finish anchorReach ordered actualPath ghostPath finalOrdered ghostOrdered bindings
     records
   have cuts : final.application.config.cut = ghost.cut := by
     apply EventOrder.Cut.ext
     ext event
     exact (finalOrdered.2 event).trans (ghostOrdered.2 event).symm
-  refine ⟨finalClear, ?_⟩
+  refine ⟨finalClear, finalOrdered, ?_, extra, enough, finalSupport⟩
   change (final.application.config.cut, final.application.config.store,
     completionOf final.application.config) = (ghost.cut, ghost.store, completionOf ghost)
   rw [cuts, stores, records]
@@ -669,12 +736,38 @@ theorem native_binding_block_key_law
       rw [castSome (congrArg EventField.Value binding)
         (cast (congrArg EventField.Value binding.symm) result)]
       simp only [cast_cast, cast_eq]
+    let frozen := G.prefixProfile (G.freezeBindingsBefore profile start finish ghost)
+    have fixedOwned : ∀ event : G.EventId, start ≤ event.val → event.val < finish → ∀ owner,
+        (owned : G.actor? event = some owner) → True →
+        ∃ (payload : L.Ty) (binding : G.outputLayout event = .binding owner payload)
+          (result : PublicationResult (L.Val payload)),
+          (∀ view active, frozen owner event owned view active =
+            PMF.pure (cast (congrArg EventField.Action binding.symm) (some result))) ∧
+          completionOf ghost event = some (EventGraph.completion G event
+            (some (cast (congrArg EventField.Action binding.symm) (some result)))
+            (cast (congrArg EventField.Value binding.symm) result)) := by
+      intro event lower upper owner owned _
+      obtain ⟨actor, payload, binding, result, constant, record⟩ := fixed event lower upper
+      have equal : actor = owner := Option.some.inj
+        ((EventCode.actor_eq_of_binding (G.nodes event) binding).symm.trans owned)
+      subst actor
+      exact ⟨payload, binding, result, constant, record⟩
+    have initialInside : InBlock start finish origin.application.config := by
+      have within := ordered.within (show start ≤ finish by dsimp only [finish]; omega)
+      exact ⟨within.1, fun event late done => Nat.not_lt.mpr late (within.2 event done)⟩
     have exactKey (final : app.Execution) (selected : final ∈ (member ghost).support) :
-        runKey final.application.config = runKey ghost :=
-      (fixedBinding_block_key scheduler bound relaxed contract timely
-        (G.prefixProfile (G.freezeBindingsBefore profile start finish ghost)) origin trace truthful
-        answered calls once start finish (by dsimp only [finish]; omega) bounded ordered clear
-        bindings barrier ghost initialReach ghostPath ghostOrdered fixed untouched final selected).2
+        runKey final.application.config = runKey ghost := by
+      have result := fixedBinding_block_key (used := 0) scheduler bound relaxed.actorSerial
+        contract timely frozen (fun _ => True) (clients frozen) (fun _ _ => rfl) origin trace
+        (fun owner _ => truthful owner) answered (fun owner _ => calls owner)
+        (fun owner _ => once owner) start finish
+        (bindingInterval_shaped relaxed start finish bindings barrier) ordered bindings ghost
+        initialReach ghostPath ghostOrdered fixedOwned
+        (fun _ _ event lower upper _ => untouched event lower upper) origin (Nat.zero_le _)
+        (by simp only [ReactiveApplication.runRounds, PMF.mem_support_pure_iff]) clear initialInside
+        (fun _ _ _ _ _ outside => (outside trivial).elim)
+        (fun _ _ _ _ _ outside => (outside trivial).elim) final selected
+      exact result.2.2.1
     calc
       _ = (member ghost).map (fun _ => runKey ghost) := map_congr_on_support _ exactKey
       _ = _ := pmf_map_fun_const _ _
@@ -765,5 +858,145 @@ theorem native_binding_block_outcomeLaw
       rw [PMF.bind_map]
       exact bind_congr_on_support _ (fun config _ => factor config)
     _ = _ := runPlan_bind_outcomeLaw reference read count origin.application.config
+
+/-- Fixed foreign bindings remain clear up to an arbitrary block-bounded stop
+whenever the focal owner remains active at that stop. -/
+theorem fixedBinding_runUntil_clear_of_active
+    {horizon budget used turns : Nat}
+    (scheduler : (serviceApplication setup deps duration leaks).Scheduler)
+    (bound : (serviceGraph setup deps).EventId → Nat)
+    (serial : (serviceGraph setup deps).ActorSerial)
+    {delay : (serviceGraph setup deps).EventId → Nat}
+    (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
+      (serviceInitialLaw setup deps) horizon scheduler delay bound)
+    (timely : AsyncTimely (serviceTimeouts setup deps duration) delay bound)
+    (reference : (serviceGraph setup deps).BehavioralProfile) (focal : Player)
+    (players : Player → (serviceApplication setup deps duration leaks).Policy)
+    (follows : ∀ owner, owner ≠ focal → players owner =
+      serviceReferenceTurnPolicy setup deps duration leaks bound turns
+        (firstTurnTiming setup turns deps) reference owner)
+    (anchor : (serviceApplication setup deps duration leaks).Execution)
+    (trace : ((serviceApplication setup deps duration leaks).protocol
+      (serviceInitialLaw setup deps) horizon scheduler).Trace (some ⟨budget, none, anchor⟩))
+    (truthful : ∀ owner, owner ≠ focal → OwnSubmissionsAtTurn setup leaks anchor owner)
+    (answered : ActivationsAnswered setup leaks anchor)
+    (calls : ∀ owner, owner ≠ focal → OwnFreshCalls setup leaks bound anchor owner)
+    (once : ∀ owner, owner ≠ focal → OneCallPerEvent setup leaks anchor owner)
+    (start finish : Nat) (shaped : BlockShaped (graph := serviceGraph setup deps) start finish)
+    (bindings : ∀ event : (serviceGraph setup deps).EventId,
+      start ≤ event.val → event.val < finish →
+      ∃ owner payload, (serviceGraph setup deps).outputLayout event = .binding owner payload)
+    (fixed : ∀ event : (serviceGraph setup deps).EventId,
+      start ≤ event.val → event.val < finish → ∀ owner,
+      (owned : (serviceGraph setup deps).actor? event = some owner) → owner ≠ focal →
+      ∃ (payload : L.Ty)
+        (binding : (serviceGraph setup deps).outputLayout event = .binding owner payload)
+        (result : PublicationResult (L.Val payload)),
+        ∀ view active, reference owner event owned view active =
+          PMF.pure (cast (congrArg EventField.Action binding.symm) (some result)))
+    (untouched : ∀ owner, owner ≠ focal → ∀ event : (serviceGraph setup deps).EventId,
+      start ≤ event.val → event.val < finish →
+      (serviceGraph setup deps).actor? event = some owner → Untouched setup leaks event anchor)
+    (current : (serviceApplication setup deps duration leaks).Execution)
+    (counted : used ≤ budget)
+    (supported : current ∈ ((serviceApplication setup deps duration leaks).runRounds scheduler
+      players used anchor).support)
+    (clear : current.application.config.defaulted = ∅)
+    (inside : InBlock start finish current.application.config)
+    (stop : (serviceApplication setup deps duration leaks).Execution → Prop)
+    [DecidablePred stop]
+    (completedStops : ∀ next, BlockDone finish next.application.config → stop next)
+    (final : (serviceApplication setup deps duration leaks).Execution)
+    (reached : final ∈ ((serviceApplication setup deps duration leaks).runUntil scheduler players
+      stop (budget - used) current).support)
+    (active : focal ∉ final.application.config.defaulted) :
+    final.application.config.defaulted = ∅ ∧
+      final.application.config.cut.Within start finish ∧ stop final ∧
+      ∃ extra, used + extra ≤ budget ∧
+        final ∈ ((serviceApplication setup deps duration leaks).runRounds scheduler players
+          (used + extra) anchor).support := by
+  classical
+  let G := serviceGraph setup deps
+  let app := serviceApplication setup deps duration leaks
+  let holds := fun (remaining : Nat) (next : app.Execution) =>
+    ∃ extra, used + extra + remaining = budget ∧
+      next ∈ (app.runRounds scheduler players (used + extra) anchor).support ∧
+      (focal ∈ next.application.config.defaulted ∨
+        (next.application.config.defaulted = ∅ ∧
+          next.application.config.cut.Within start finish))
+  have preserved : ∀ remaining next, holds (remaining + 1) next → ¬ stop next →
+      ∀ later ∈ (app.round scheduler players next).support, holds remaining later := by
+    intro remaining next valid running later moved
+    obtain ⟨extra, accounted, supportedNext, safe⟩ := valid
+    have supportedLater : later ∈
+        (app.runRounds scheduler players (used + (extra + 1)) anchor).support := by
+      rw [show used + (extra + 1) = (used + extra) + 1 by omega,
+        app.runRounds_add scheduler players (used + extra) 1 anchor, PMF.mem_support_bind_iff]
+      exact ⟨next, supportedNext, by
+        simpa only [ReactiveApplication.runRounds, PMF.bind_pure] using moved⟩
+    refine ⟨extra + 1, by omega, supportedLater, ?_⟩
+    rcases safe with failed | ⟨clearNext, within⟩
+    · exact Or.inl (Config.Step.path_defaulted_mono
+        (reactive_round_graph_steps (serviceTimeouts setup deps duration) leaks scheduler players
+          next later moved) failed)
+    · have unfinished : ¬ BlockDone finish next.application.config :=
+        fun done => running (completedStops next done)
+      have insideNext : InBlock start finish next.application.config :=
+        ⟨within.1, fun event late done => Nat.not_lt.mpr late (within.2 event done)⟩
+      have readyBounds (event : G.EventId) (ready : next.application.config.cut.Ready event) :
+          start ≤ event.val ∧ event.val < finish := shaped _ insideNext unfinished event ready
+      have currentBindings (event : G.EventId) (ready : next.application.config.cut.Ready event) :
+          ∃ owner payload, G.outputLayout event = .binding owner payload :=
+        bindings event (readyBounds event ready).1 (readyBounds event ready).2
+      have deadlines (event : G.EventId) (owner : Player)
+          (ready : next.application.config.cut.Ready event) (owned : G.actor? event = some owner)
+          (foreign : owner ≠ focal) :
+          next.application.WithinDeadline (serviceTimeouts setup deps duration) event := by
+        obtain ⟨payload, binding, result, constant⟩ := fixed event
+          (readyBounds event ready).1 (readyBounds event ready).2 owner owned foreign
+        have traceBudget : (app.protocol (serviceInitialLaw setup deps) horizon scheduler).Trace
+            (some ⟨(remaining + 1) + (used + extra), none, anchor⟩) := by
+          simpa only [show (remaining + 1) + (used + extra) = budget by omega] using trace
+        exact fixedBinding_withinDeadline_runRounds contract timely players owner reference event
+          (serial event) payload binding result constant (follows owner foreign) anchor next
+          traceBudget (truthful owner foreign) answered (calls owner foreign) (once owner foreign)
+          (untouched owner foreign event (readyBounds event ready).1
+            (readyBounds event ready).2 owned) supportedNext ready
+      rcases reactive_round_bindings_clear_or_focal_default
+          (serviceTimeouts setup deps duration) leaks scheduler players next later focal
+          clearNext currentBindings deadlines moved with failed | ⟨clearLater, primary⟩
+      · exact Or.inl failed
+      · right
+        refine ⟨clearLater, ?_⟩
+        rcases primary with same | ⟨event, ready, action, selected⟩
+        · rw [same]
+          exact within
+        · rw [next.application.config.step_cut event ready action later.application.config selected]
+          exact within.complete event ready (readyBounds event ready).2
+  have initial : holds (budget - used) current :=
+    ⟨0, by omega, by simpa only [Nat.add_zero] using supported, Or.inr ⟨clear,
+      ⟨inside.1, fun event done => Nat.lt_of_not_ge (fun late => inside.2 event late done)⟩⟩⟩
+  obtain ⟨remaining, extra, accounted, supportedFinal, safeFinal⟩ :=
+    app.runUntil_support_holds scheduler players stop holds preserved (budget - used) current
+      initial final reached
+  obtain ⟨clearFinal, withinFinal⟩ := safeFinal.resolve_left active
+  have done : stop final := by
+    rcases app.runUntil_stopped scheduler players stop (budget - used) current final reached with
+      finished | spent
+    · exact finished
+    have currentLength := app.runRounds_environmentRecall_length scheduler players used anchor
+      current supported
+    have finalLength := app.runRounds_environmentRecall_length scheduler players (used + extra)
+      anchor final supportedFinal
+    have exhausted : used + extra = budget := by omega
+    obtain ⟨finalTrace⟩ := app.raw_trace_runRounds (serviceInitialLaw setup deps) horizon scheduler
+      players 0 (used + extra) anchor final
+      (by simpa only [Nat.zero_add, exhausted] using trace) supportedFinal
+    have terminal := contract.completes ⟨0, none, final⟩ finalTrace ⟨rfl, rfl⟩
+    apply completedStops final
+    intro event _
+    rw [terminal]
+    exact Finset.mem_univ event
+  exact ⟨clearFinal, withinFinal, done, extra, by omega, supportedFinal⟩
 
 end Vegas

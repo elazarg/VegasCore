@@ -474,6 +474,7 @@ public import Vegas.Game.NativeBindingTableSampling
 public import Vegas.Game.BindingSourceCheckpoint
 public import Vegas.Game.BindingBlockCompletion
 public import Vegas.Game.PrefixClientOutcomeLaw
+public import Vegas.Game.IntendedPrefixContinuation
 public import Vegas.Game.PublicationSurvival
 public import Vegas.Game.BindingSourceFill
 

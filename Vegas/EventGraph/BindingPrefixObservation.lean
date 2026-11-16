@@ -499,4 +499,56 @@ theorem prefixProfile_actionLaw_of_cropped_binding_fill
         exact honest (Option.some.inj (actor.symm.trans focalActor))
       rw [records prior (by omega) (by omega), ite_eq_right different]
 
+/-- A private source prefix and the corresponding crop of any later actual path
+have the same visible store once the player's own binding records agree. -/
+theorem playerStore_eq_of_binding_replay_prefix
+    {inputs : graph.Inputs} (focal : Player) (origin ghost final replay : graph.Config)
+    (start rank : Nat) (originReach : origin.Reachable inputs)
+    (before : origin.cut.IsPrefix start) (ghostOrdered : ghost.cut.IsPrefix rank)
+    (ghostPath : Relation.ReflTransGen Config.Step origin ghost)
+    (finalPath : Relation.ReflTransGen Config.Step origin final)
+    (restricted : replay.RestrictionOf (fun event => event.val < rank) final)
+    (bindings : ∀ event : graph.EventId, start ≤ event.val → event.val < rank →
+      ∃ owner payload, graph.outputLayout event = .binding owner payload)
+    (records : ∀ event : graph.EventId, start ≤ event.val → event.val < rank →
+      graph.actor? event = some focal → completionOf ghost event = completionOf final event) :
+    graph.playerStore focal ghost.store = graph.playerStore focal replay.store := by
+  apply graph.playerStore_congr
+  intro field visible
+  rw [restricted.store]
+  cases field with
+  | inl input =>
+      change some (ghost.inputs input) = some (final.inputs input)
+      rw [Config.Step.path_inputs_eq ghostPath, Config.Step.path_inputs_eq finalPath]
+  | inr event =>
+      change ghost.outputs event = if event.val < rank then final.outputs event else none
+      by_cases earlier : event.val < rank
+      · rw [ite_eq_left earlier]
+        by_cases old : event.val < start
+        · have completed : event ∈ origin.cut.completed := (before.2 event).mpr old
+          obtain ⟨value, found⟩ := Option.isSome_iff_exists.mp
+            ((origin.output_available event).mpr completed)
+          exact (Config.Step.path_store_of_some ghostPath (.inr event) value found).trans
+            (Config.Step.path_store_of_some finalPath (.inr event) value found).symm
+        · obtain ⟨owner, payload, binding⟩ := bindings event (by omega) earlier
+          have ownerEq : owner = focal := by
+            change (graph.outputLayout event).VisibleTo focal at visible
+            simpa only [binding, EventField.VisibleTo] using visible
+          subst owner
+          have owned : graph.actor? event = some focal := by
+            have codeEq : cast (congrArg (EventCode graph.layout) binding) (graph.nodes event) =
+                .bind focal payload := by
+              generalize cast (congrArg (EventCode graph.layout) binding) (graph.nodes event) = code
+              cases code
+              rfl
+            exact (EventCode.actor_cast binding (graph.nodes event)).symm.trans
+              (by rw [codeEq]; rfl)
+          exact Config.Reachable.binding_outputs_eq_of_completionOf
+            (Config.Step.path_reachable ghostPath originReach)
+            (Config.Step.path_reachable finalPath originReach) event focal payload binding
+            (records event (by omega) earlier owned)
+      · rw [ite_eq_right earlier]
+        exact Option.not_isSome_iff_eq_none.mp fun available => earlier
+          ((ghostOrdered.2 event).mp ((ghost.output_available event).mp available))
+
 end Vegas.EventGraph

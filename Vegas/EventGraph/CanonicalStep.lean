@@ -212,6 +212,56 @@ theorem runPlan_canonical_ownerless (profile : graph.BehavioralProfile)
     cases impossible
   · rw [PMF.pure_bind]
 
+/-- A bounded canonical run advances its completed source prefix by its execution count. -/
+theorem runPlan_canonical_isPrefix
+    (profile : graph.BehavioralProfile) :
+    ∀ (count start : Nat) (origin : graph.Config), origin.cut.IsPrefix start →
+      start + count ≤ graph.order.eventCount →
+      ∀ final ∈ (graph.runPlan (graph.policyPlan profile graph.canonicalScheduler)
+        count origin).support, final.cut.IsPrefix (start + count) := by
+  intro count
+  induction count with
+  | zero =>
+      intro start origin ordered _bounded final reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
+      simpa only [Nat.add_zero] using ordered
+  | succ count ih =>
+      intro start origin ordered bounded final reached
+      have active : start < graph.order.eventCount := by omega
+      let event : graph.EventId := ⟨start, active⟩
+      have ready : origin.cut.Ready event := ordered.ready active
+      have least : ∀ other, other ∉ origin.cut.completed → event.val ≤ other.val := by
+        intro other unfinished
+        have notBefore : ¬ other.val < start := by
+          simpa only [ordered.2 other] using unfinished
+        exact Nat.le_of_not_gt notBefore
+      have tails (action : graph.Action event) (next : graph.Config)
+          (selected : next ∈ (origin.step event ready action).support)
+          (rest : final ∈ (graph.runPlan (graph.policyPlan profile graph.canonicalScheduler)
+            count next).support) : final.cut.IsPrefix (start + (count + 1)) := by
+        have nextPrefix : next.cut.IsPrefix (start + 1) := by
+          rw [origin.step_cut event ready action next selected]
+          exact ordered.complete active
+        have result := ih (start + 1) next nextPrefix (by omega) final rest
+        rwa [show start + 1 + count = start + (count + 1) by omega] at result
+      cases actor : graph.actor? event with
+      | none =>
+          rw [runPlan_canonical_ownerless profile count origin event ready least actor] at reached
+          obtain ⟨next, selected, rest⟩ := (PMF.mem_support_bind_iff _ _ _).mp reached
+          exact tails _ next selected rest
+      | some who =>
+          by_cases inactive : who ∈ origin.defaulted
+          · rw [runPlan_canonical_defaulted profile count origin event ready least who actor
+              inactive ((graph.nodes event).failureAction who actor)] at reached
+            obtain ⟨next, selected, rest⟩ := (PMF.mem_support_bind_iff _ _ _).mp reached
+            exact tails _ next selected rest
+          · rw [runPlan_canonical_actor profile count origin event ready least who actor inactive]
+              at reached
+            obtain ⟨action, _selected, remainder⟩ := (PMF.mem_support_bind_iff _ _ _).mp reached
+            obtain ⟨next, selected, rest⟩ := (PMF.mem_support_bind_iff _ _ _).mp remainder
+            exact tails action next selected rest
+
+
 end Vegas.EventGraph
 
 namespace Vegas.EventGraph.Config.Step
@@ -238,6 +288,34 @@ theorem path_isPrefix_sequential (graph : Vegas.EventGraph Player L)
         exact ordered.complete_at event ready rankEq
       obtain ⟨nextRank, lower, finalPrefix⟩ := ih nextPrefix
       exact ⟨nextRank, by omega, finalPrefix⟩
+
+/-- Every intermediate source rank occurs on a sequential graph path. -/
+theorem path_prefix_at {graph : Vegas.EventGraph Player L}
+    {first last : graph.sequentialize.Config}
+    (path : Relation.ReflTransGen Config.Step first last) {start finish rank : Nat}
+    (before : first.cut.IsPrefix start) (after : last.cut.IsPrefix finish)
+    (lower : start ≤ rank) (upper : rank ≤ finish) :
+    ∃ middle : graph.sequentialize.Config, middle.cut.IsPrefix rank ∧
+      Relation.ReflTransGen Config.Step first middle ∧
+      Relation.ReflTransGen Config.Step middle last := by
+  induction path using Relation.ReflTransGen.head_induction_on generalizing start with
+  | refl =>
+      have same := before.unique after
+      have atRank : start = rank := by omega
+      exact ⟨_, atRank ▸ before, .refl, .refl⟩
+  | @head first middle moved rest ih =>
+      by_cases atRank : start = rank
+      · exact ⟨first, atRank ▸ before, .refl, rest.head moved⟩
+      obtain ⟨event, ready, action, supported⟩ := moved
+      have actual : first.cut.IsPrefix event.val :=
+        ⟨event.isLt.le, fun query =>
+          graph.sequentialize_mem_completed_iff_lt_of_ready first.cut ready⟩
+      have rankEq := actual.unique before
+      have nextPrefix : middle.cut.IsPrefix (start + 1) := by
+        rw [first.step_cut event ready action middle supported]
+        exact before.complete_at event ready rankEq
+      obtain ⟨found, ordered, prefixPath, suffixPath⟩ := ih nextPrefix (by omega)
+      exact ⟨found, ordered, prefixPath.head ⟨event, ready, action, supported⟩, suffixPath⟩
 
 end Vegas.EventGraph.Config.Step
 

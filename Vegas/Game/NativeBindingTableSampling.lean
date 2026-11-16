@@ -3,6 +3,7 @@ module
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 public import Vegas.EventGraph.StoredBindingProfile
+public import Vegas.Pending.EffectiveOpening
 public import Vegas.EventGraph.BindingChain
 public import Vegas.Game.NativeSlotPolicies
 public import Vegas.Game.BindingPrefixSampling
@@ -483,5 +484,105 @@ theorem native_binding_unilateral_source_mixture
   · intro left right policies
     exact congrArg (fun reference => app.runUntil scheduler reference stop nativeCount execution)
       (playersEq left right policies)
+
+end Vegas
+
+namespace Vegas
+
+open SourceProgram EventGraph EventGraphRuntime Interaction GameTheory.Math.Probability
+
+variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
+  {setup : Setup (Player := Player) (L := L)} {deps : setup.dataflowGraph.Dependencies}
+  {duration : (serviceGraph setup deps).EventId → Nat}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup deps))}
+
+/-- Effective-opening clients predraw the same ordinary source binding table. -/
+theorem native_binding_unilateral_effective_source_mixture
+    {horizon nativeCount remaining turns : Nat}
+    (scheduler : (serviceApplication setup deps duration leaks).Scheduler)
+    (bound : (serviceGraph setup deps).EventId → Nat)
+    (relaxed : (serviceGraph setup deps).RevealRelaxedOrdered)
+    (profile : (serviceGraph setup deps).BehavioralProfile)
+    (submits : (serviceGraph setup deps).SubmitsBindings profile)
+    (focal : Player) (deviation : (serviceApplication setup deps duration leaks).Policy)
+    (stop : (serviceApplication setup deps duration leaks).Execution → Prop) [DecidablePred stop]
+    (execution : (serviceApplication setup deps duration leaks).Execution)
+    {inputs : (serviceGraph setup deps).Inputs}
+    (initialReach : execution.application.config.Reachable inputs)
+    (sourceOrigin : setup.informationGraph.Config)
+    (same : runKey execution.application.config =
+      runKey ((serviceGraph setup deps).fromSequentialConfig sourceOrigin))
+    (start bindingCount : Nat) (ordered : sourceOrigin.cut.IsPrefix start)
+    (clear : sourceOrigin.defaulted = ∅)
+    (bounded : start + bindingCount ≤ (serviceGraph setup deps).order.eventCount)
+    (bindings : ∀ event : (serviceGraph setup deps).EventId,
+      start ≤ event.val → event.val < start + bindingCount →
+      ∃ owner payload, (serviceGraph setup deps).outputLayout event = .binding owner payload)
+    (truthful : ∀ owner, owner ≠ focal → OwnSubmissionsAtTurn setup leaks execution owner)
+    (untouched : ∀ owner, owner ≠ focal →
+      ∀ event : (serviceGraph setup deps).EventId,
+      start ≤ event.val → event.val < start + bindingCount →
+      (serviceGraph setup deps).actor? event = some owner → Untouched setup leaks event execution)
+    (trace : ((serviceApplication setup deps duration leaks).protocol
+      (serviceInitialLaw setup deps) horizon scheduler).Trace
+        (some ⟨remaining + nativeCount, none, execution⟩)) :
+    let G := serviceGraph setup deps
+    let app := serviceApplication setup deps duration leaks
+    let clients := fun raw => serviceReferenceTurnPolicy setup deps duration leaks bound turns
+      (firstTurnTiming setup turns deps) (effectiveOpening (G.prefixProfile raw))
+    let players := fun raw => Function.update (clients raw) focal deviation
+    let placeholder := Function.update profile focal
+      (submittedFailurePolicy (graph := setup.informationGraph) focal)
+    app.runUntil scheduler (players profile) stop nativeCount execution =
+      (setup.informationGraph.runPlan (setup.informationGraph.policyPlan
+        (setup.informationGraph.prefixProfile placeholder)
+          setup.informationGraph.canonicalScheduler) bindingCount sourceOrigin).bind fun ghost =>
+            app.runUntil scheduler (players (setup.informationGraph.freezeBindingsBefore profile
+              start (start + bindingCount) ghost)) stop nativeCount execution := by
+  let G := serviceGraph setup deps
+  have law := native_binding_unilateral_source_mixture (turns := turns) scheduler bound relaxed
+    (effectiveOpening (graph := G) profile) submits.effectiveOpening focal deviation stop execution
+      initialReach sourceOrigin same start bindingCount ordered clear bounded bindings truthful
+        untouched trace
+  dsimp only at law
+  have sourceLaw : setup.informationGraph.runPlan (setup.informationGraph.policyPlan
+      (setup.informationGraph.prefixProfile
+        (Function.update (effectiveOpening (graph := G) profile) focal
+          (submittedFailurePolicy (graph := setup.informationGraph) focal)))
+      setup.informationGraph.canonicalScheduler) bindingCount sourceOrigin =
+      setup.informationGraph.runPlan (setup.informationGraph.policyPlan
+        (setup.informationGraph.prefixProfile (Function.update profile focal
+          (submittedFailurePolicy (graph := setup.informationGraph) focal)))
+        setup.informationGraph.canonicalScheduler) bindingCount sourceOrigin := by
+    apply runPlan_canonical_prefix_congr (graph := setup.informationGraph) _ _ bindingCount
+      start sourceOrigin ordered bounded
+    intro event lower upper who actor observation active
+    simp only [prefixProfile, prefixPolicy]
+    by_cases own : who = focal
+    · subst who
+      simp only [Function.update_self]
+    · simp only [Function.update_of_ne own]
+      obtain ⟨owner, payload, outputEq⟩ := bindings event lower upper
+      exact effectiveOpening_of_not_publication profile (by rw [outputEq]; exact id) actor _ _
+  rw [sourceLaw] at law
+  have frozen (ghost : setup.informationGraph.Config) :
+      setup.informationGraph.freezeBindingsBefore (effectiveOpening (graph := G) profile)
+          start (start + bindingCount) ghost =
+        effectiveOpening (graph := G)
+          (setup.informationGraph.freezeBindingsBefore profile
+          start (start + bindingCount) ghost) := by
+    change (serviceGraph setup deps).freezeBindingsBefore (effectiveOpening (graph := G) profile)
+        start (start + bindingCount) ((serviceGraph setup deps).fromSequentialConfig ghost) =
+      effectiveOpening (graph := G)
+        ((serviceGraph setup deps).freezeBindingsBefore profile
+        start (start + bindingCount) ((serviceGraph setup deps).fromSequentialConfig ghost))
+    exact (effectiveOpening_freezeBindingsBefore profile start (start + bindingCount) _).symm
+  have prefixed (raw : (serviceGraph setup deps).BehavioralProfile) :
+      setup.informationGraph.prefixProfile (effectiveOpening (graph := G) raw) =
+        effectiveOpening (graph := G)
+          ((serviceGraph setup deps).prefixProfile raw) := by
+    change (serviceGraph setup deps).prefixProfile (effectiveOpening (graph := G) raw) = _
+    exact prefixProfile_effectiveOpening (graph := G) raw
+  simpa only [frozen, prefixed, prefixProfile_effectiveOpening] using law
 
 end Vegas

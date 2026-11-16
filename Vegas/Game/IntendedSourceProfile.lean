@@ -7,6 +7,7 @@ public import Vegas.Source.IntendedGame
 public import Vegas.Source.Honest
 public import Vegas.Source.ValueBindingAdmission
 public import GameTheory.Protocol.RestrictionProfile
+public import GameTheory.Protocol.RestrictionExecution
 
 @[expose] public section
 
@@ -546,3 +547,56 @@ theorem disclosingSourceProfile_disclosing
 end Setup
 
 end Vegas.SourceProgram
+
+namespace Vegas.SourceProgram.Setup
+
+open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
+  GameTheory.Math.Probability
+
+variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
+
+/-- A supported step of an extending profile from an intended history retains a genuine history. -/
+theorem intendedHistory_of_extending_step (setup : Setup (Player := Player) (L := L))
+    [Fintype Player] (admission : CommitmentInterface setup.program)
+    (intended : Profile setup.intendedModel.behavioralSignature)
+    (target : Profile (setup.informationModel admission).behavioralSignature)
+    (agrees : (setup.intendedRestriction admission).ExtendsProfile intended target)
+    (history : setup.intendedProtocol.History) (after : setup.ProtocolState)
+    (selected : after ∈ (setup.behavioralStateStep admission target history.state).support) :
+    ∃ next : setup.intendedProtocol.History, next.state = after := by
+  classical
+  let restriction := setup.intendedRestriction admission
+  have stateMap (next : setup.intendedProtocol.History) :
+      (restriction.history next).state = next.state := rfl
+  have one := restriction.runFrom_law intended target agrees 1 history
+  have projected := congrArg (PMF.map History.state) one
+  rw [PMF.map_comp, setup.runBehavioralFrom_state admission target 1] at projected
+  have states : (setup.intendedModel.runBehavioralFrom intended 1 history).map History.state =
+      setup.behavioralStateStep admission target history.state := by
+    simpa only [Function.comp_def, stateMap, Function.iterate_one, PMF.pure_bind] using projected
+  rw [← states, PMF.mem_support_map_iff] at selected
+  obtain ⟨next, _, same⟩ := selected
+  exact ⟨next, same⟩
+
+/-- Every supported extending choice at a genuine history comes from an intended choice. -/
+theorem intendedChoice_of_extending_support (setup : Setup (Player := Player) (L := L))
+    (admission : CommitmentInterface setup.program)
+    (intended : Profile setup.intendedModel.behavioralSignature)
+    (target : Profile (setup.informationModel admission).behavioralSignature)
+    (agrees : (setup.intendedRestriction admission).ExtendsProfile intended target)
+    (history : setup.intendedProtocol.History)
+    (running : ¬ setup.intendedProtocol.terminal history.state) (who : Player)
+    (choice : (setup.informationModel admission).Choice who
+      ((setup.informationModel admission).infoOf who
+        ((setup.intendedRestriction admission).history history).trace))
+    (selected : choice ∈ (target who ((setup.informationModel admission).infoOf who
+      ((setup.intendedRestriction admission).history history).trace)).support) :
+    ∃ original : setup.intendedModel.Choice who
+        (setup.intendedModel.infoOf who history.trace),
+      original ∈ (intended who (setup.intendedModel.infoOf who history.trace)).support ∧
+        (setup.intendedRestriction admission).choiceAt who history original = choice := by
+  rw [(setup.intendedRestriction admission).extends_at_history intended target agrees history
+    running who, PMF.mem_support_map_iff] at selected
+  exact selected
+
+end Vegas.SourceProgram.Setup

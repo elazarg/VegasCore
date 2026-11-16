@@ -3,6 +3,7 @@ module
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 public import Vegas.Game.GraphPayoff
+public import GameTheory.Math.Probability.Bounds
 public import Vegas.Compile.BindingReveal
 public import Vegas.Compile.RevealFailureReadout
 
@@ -37,6 +38,28 @@ def graphForfeitPayoff (setup : Setup (Player := Player) (L := L))
           rankedConfig_terminal (graph := (setup.dataflowGraph.withDependencies deps))
             outcome.1 outcome.2⟩)
     who
+
+/-- The forfeiture payoff of a configuration read in source rank; unfinished runs pay zero. -/
+def graphForfeitConfigPayoff (setup : Setup (Player := Player) (L := L))
+    (deps : setup.dataflowGraph.Dependencies) {Parameter : Type}
+    (parameter : State L setup.context → Parameter)
+    (utility : Parameter × PublicOutcome setup.program → Player → ℝ) (forfeit : ℝ)
+    (config : (setup.dataflowGraph.withDependencies deps).Config) (who : Player) : ℝ :=
+  if terminal : config.cut.Terminal then
+    setup.graphForfeitPayoff deps parameter utility forfeit ⟨config, terminal⟩ who
+  else 0
+
+/-- At completion the total configuration payoff is the terminal graph payoff. -/
+theorem graphForfeitConfigPayoff_terminal (setup : Setup (Player := Player) (L := L))
+    (deps : setup.dataflowGraph.Dependencies) {Parameter : Type}
+    (parameter : State L setup.context → Parameter)
+    (utility : Parameter × PublicOutcome setup.program → Player → ℝ) (forfeit : ℝ)
+    (config : (setup.dataflowGraph.withDependencies deps).Config)
+    (terminal : config.cut.Terminal) :
+    setup.graphForfeitConfigPayoff deps parameter utility forfeit config =
+      setup.graphForfeitPayoff deps parameter utility forfeit ⟨config, terminal⟩ := by
+  funext who
+  exact dite_eq_left terminal
 
 /-- A player with no default or failed reveal in the source readout has the
 same forfeited utility and fixed-exit utility, for any exit payoff. -/
@@ -253,5 +276,105 @@ theorem graphForfeitPayoff_le_any_graphPayoff_of_failed
   (setup.graphForfeitPayoff_le_leastUtility_of_failed nativeDeps parameter utility range outcome
     who failed).trans (setup.leastUtility_le_graphPayoff sourceDeps parameter utility range who
       source)
+
+
+private theorem utility_abs_bound {P Outcome : Type} (utility : Outcome → P → ℝ)
+    {spread : ℝ} (range : ∀ high low who, utility high who - utility low who ≤ spread)
+    (who : P) : ∃ bound, 0 ≤ bound ∧ ∀ outcome, |utility outcome who| ≤ bound := by
+  classical
+  by_cases inhabited : Nonempty Outcome
+  · obtain ⟨anchor⟩ := inhabited
+    refine ⟨|utility anchor who| + |spread|, add_nonneg (abs_nonneg _) (abs_nonneg _), ?_⟩
+    intro outcome
+    apply abs_le.mpr
+    have high := range outcome anchor who
+    have low := range anchor outcome who
+    have anchorHigh := le_abs_self (utility anchor who)
+    have anchorLow := neg_abs_le (utility anchor who)
+    have spreadHigh := le_abs_self spread
+    constructor <;> linarith
+  · exact ⟨0, le_rfl, fun outcome => (inhabited ⟨outcome⟩).elim⟩
+
+/-- The spread bound gives a uniform absolute native payoff bound, including unfinished states.
+No finiteness of payloads, initial support or runtime traffic is needed. -/
+theorem graphForfeitConfigPayoff_abs_bound
+    (setup : Setup (Player := Player) (L := L)) (deps : setup.dataflowGraph.Dependencies)
+    {Parameter : Type} (parameter : State L setup.context → Parameter)
+    (utility : Parameter × PublicOutcome setup.program → Player → ℝ) {forfeit : ℝ}
+    (range : ∀ high low who, utility high who - utility low who ≤ forfeit) (who : Player) :
+    ∃ bound, 0 ≤ bound ∧ ∀ config : (setup.dataflowGraph.withDependencies deps).Config,
+      |setup.graphForfeitConfigPayoff deps parameter utility forfeit config who| ≤ bound := by
+  obtain ⟨ordinaryBound, nonnegative, ordinaryBounded⟩ := utility_abs_bound utility range who
+  let bound := ordinaryBound + |forfeit| * (revealCells setup.program).length
+  have boundNonnegative : 0 ≤ bound :=
+    add_nonneg nonnegative (mul_nonneg (abs_nonneg _) (Nat.cast_nonneg _))
+  refine ⟨bound, boundNonnegative, ?_⟩
+  intro config
+  unfold graphForfeitConfigPayoff
+  split
+  · rename_i terminal
+    let outcome := setup.eventParameterOutcome parameter
+      ⟨rankedConfig (graph := setup.dataflowGraph.withDependencies deps) config terminal,
+        rankedConfig_terminal (graph := setup.dataflowGraph.withDependencies deps) config terminal⟩
+    change |utility outcome who - forfeit * (failedReveals setup.program who outcome.2 : ℝ)| ≤ bound
+    have count : (failedReveals setup.program who outcome.2 : ℝ) ≤
+        (revealCells setup.program).length := by
+      have naturalCount : failedReveals setup.program who outcome.2 ≤
+          (revealCells setup.program).length := List.length_filter_le _ _
+      exact_mod_cast naturalCount
+    calc
+      _ ≤ |utility outcome who| + |forfeit * (failedReveals setup.program who outcome.2 : ℝ)| :=
+        abs_sub _ _
+      _ = |utility outcome who| + |forfeit| * (failedReveals setup.program who outcome.2 : ℝ) := by
+        rw [abs_mul, abs_of_nonneg
+          (show 0 ≤ (failedReveals setup.program who outcome.2 : ℝ) from Nat.cast_nonneg _)]
+      _ ≤ bound := add_le_add (ordinaryBounded outcome)
+        (mul_le_mul_of_nonneg_left count (abs_nonneg _))
+  · simpa only [abs_zero] using boundNonnegative
+
+/-- Fixed-exit source payoff is uniformly bounded in absolute value under the spread bound. -/
+theorem graphPayoff_abs_bound
+    (setup : Setup (Player := Player) (L := L)) (deps : setup.dataflowGraph.Dependencies)
+    {Parameter : Type} (parameter : State L setup.context → Parameter)
+    (utility : Parameter × PublicOutcome setup.program → Player → ℝ) {forfeit : ℝ}
+    (range : ∀ high low who, utility high who - utility low who ≤ forfeit) (who : Player) :
+    ∃ bound, 0 ≤ bound ∧ ∀ config : (setup.dataflowGraph.withDependencies deps).Config,
+      |setup.graphPayoff deps parameter utility (leastUtility utility) who config| ≤ bound := by
+  obtain ⟨ordinaryBound, nonnegative, ordinaryBounded⟩ := utility_abs_bound utility range who
+  refine ⟨max ordinaryBound |leastUtility utility who|,
+    nonnegative.trans (le_max_left _ _), ?_⟩
+  intro config
+  unfold graphPayoff exclusionUtility
+  split
+  · split
+    · exact le_max_right _ _
+    · exact (ordinaryBounded _).trans (le_max_left _ _)
+  · exact le_max_right _ _
+
+/-- Every native graph-payoff law has an absolute expectation. -/
+theorem graphForfeitConfigPayoff_integrable
+    (setup : Setup (Player := Player) (L := L)) (deps : setup.dataflowGraph.Dependencies)
+    {Parameter : Type} (parameter : State L setup.context → Parameter)
+    (utility : Parameter × PublicOutcome setup.program → Player → ℝ) {forfeit : ℝ}
+    (range : ∀ high low who, utility high who - utility low who ≤ forfeit) (who : Player)
+    (law : PMF (setup.dataflowGraph.withDependencies deps).Config) :
+    PayoffIntegrable law (fun config =>
+      setup.graphForfeitConfigPayoff deps parameter utility forfeit config who) := by
+  obtain ⟨bound, _nonnegative, bounded⟩ :=
+    setup.graphForfeitConfigPayoff_abs_bound deps parameter utility range who
+  exact payoffIntegrable_of_bounded law _ bounded
+
+/-- Every fixed-exit source payoff law has an absolute expectation. -/
+theorem graphPayoff_integrable
+    (setup : Setup (Player := Player) (L := L)) (deps : setup.dataflowGraph.Dependencies)
+    {Parameter : Type} (parameter : State L setup.context → Parameter)
+    (utility : Parameter × PublicOutcome setup.program → Player → ℝ) {forfeit : ℝ}
+    (range : ∀ high low who, utility high who - utility low who ≤ forfeit) (who : Player)
+    (law : PMF (setup.dataflowGraph.withDependencies deps).Config) :
+    PayoffIntegrable law (setup.graphPayoff deps parameter utility (leastUtility utility) who) := by
+  obtain ⟨bound, _nonnegative, bounded⟩ :=
+    setup.graphPayoff_abs_bound deps parameter utility range who
+  exact payoffIntegrable_of_bounded law _ bounded
+
 
 end Vegas.SourceProgram.Setup

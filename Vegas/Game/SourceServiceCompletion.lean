@@ -3,6 +3,8 @@ module
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 public import Vegas.Game.SourceServicePrefix
+public import Vegas.Game.SourceServiceTurnPolicy
+public import Vegas.EventGraph.PrefixPolicy
 public import Vegas.Game.SourceServiceReachedDecoding
 public import Vegas.Game.SourceServiceFacts
 public import Vegas.Source.SetupProtocolEvaluation
@@ -269,23 +271,24 @@ theorem runUntil_seenOnly {allowed : (serviceGraph setup deps).EventId → Prop}
     count execution ⟨valid, seen⟩ final reached
   exact finalSeen
 
-/-- Completing a block leaves every later event unseen, even under arbitrary native clients
-and automatic completion tails. -/
+/-- Stopping no later than block completion leaves every later event unseen,
+including under arbitrary native clients and automatic completion tails. -/
 theorem blockRun_untouched
-    {start finish : Nat} (start_le_finish : start ≤ finish)
+    {start finish : Nat}
     (shaped : BlockShaped (graph := serviceGraph setup deps) start finish)
     (scheduler : (serviceApplication setup deps duration leaks).Scheduler)
     (players : Player → (serviceApplication setup deps duration leaks).Policy)
+    (stop : (serviceApplication setup deps duration leaks).Execution → Prop) [DecidablePred stop]
+    (completed : ∀ current, BlockDone finish current.application.config → stop current)
     (count : Nat) (origin final : (serviceApplication setup deps duration leaks).Execution)
     (inside : InBlock start finish origin.application.config)
-    (untouched : ∀ event : (serviceGraph setup deps).EventId, start ≤ event.val →
+    (untouched : ∀ event : (serviceGraph setup deps).EventId, finish ≤ event.val →
       Untouched setup leaks event origin)
     (reached : final ∈ ((serviceApplication setup deps duration leaks).runUntil scheduler players
-      (fun current => BlockDone finish current.application.config) count origin).support) :
+      stop count origin).support) :
     ∀ event : (serviceGraph setup deps).EventId, finish ≤ event.val →
       Untouched setup leaks event final := by
   let app := serviceApplication setup deps duration leaks
-  let stop := fun current : app.Execution => BlockDone finish current.application.config
   let holds := fun current : app.Execution =>
     ¬ stop current → InBlock start finish current.application.config
   have initial : holds origin := fun _ => inside
@@ -294,11 +297,11 @@ theorem blockRun_untouched
     intro current valid running next moved unfinished
     exact (valid running).path shaped
       (reactive_round_graph_steps (serviceTimeouts setup deps duration) leaks scheduler players
-        current next moved) unfinished
+        current next moved) (fun done => unfinished (completed next done))
   have allowed : ∀ current, holds current → ¬ stop current →
       ∀ event, current.application.config.cut.Ready event → event.val < finish := by
     intro current valid running event ready
-    exact (shaped _ (valid running) running event ready).2
+    exact (shaped _ (valid running) (fun done => running (completed current done)) event ready).2
   have seen : SeenOnly (fun event => event.val < finish) origin := by
     intro who entry present event ready
     by_contra later
@@ -673,5 +676,53 @@ theorem service_play_outcomeLaw (setup : Setup (Player := Player) (L := L))
   rfl
 
 end
+
+end Vegas
+
+namespace Vegas
+
+open SourceProgram EventGraph EventGraphRuntime Interaction GameTheory.Math.Probability
+
+variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
+  {setup : Setup (Player := Player) (L := L)} {deps : setup.dataflowGraph.Dependencies}
+  {duration : (serviceGraph setup deps).EventId → Nat}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup deps))}
+
+/-- Changing unseen graph decisions preserves initialized native support. -/
+theorem roundsFrom_reference_support_of_untouched
+    (scheduler : (serviceApplication setup deps duration leaks).Scheduler)
+    (bound : (serviceGraph setup deps).EventId → Nat) (turns : Nat)
+    (left right : (serviceGraph setup deps).BehavioralProfile)
+    (changed : (serviceGraph setup deps).EventId → Prop)
+    (same : ∀ who event actor observation active, ¬ changed event →
+      left who event actor observation active = right who event actor observation active)
+    (focal : Player) (deviation : (serviceApplication setup deps duration leaks).Policy)
+    (count : Nat) (after : (serviceApplication setup deps duration leaks).Execution)
+    (unseen : ∀ event, changed event → Untouched setup leaks event after)
+    (reached : after ∈ ((serviceApplication setup deps duration leaks).roundsFrom
+      (serviceInitialLaw setup deps) scheduler
+      (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+        (firstTurnTiming setup turns deps) ((serviceGraph setup deps).prefixProfile left))
+          focal deviation) count).support) :
+    after ∈ ((serviceApplication setup deps duration leaks).roundsFrom
+      (serviceInitialLaw setup deps) scheduler
+      (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+        (firstTurnTiming setup turns deps) ((serviceGraph setup deps).prefixProfile right))
+          focal deviation) count).support := by
+  classical
+  apply ReactiveApplication.roundsFrom_support_of_recorded_policy_eq
+    (serviceApplication setup deps duration leaks) (serviceInitialLaw setup deps) scheduler _ _
+      count after reached
+  intro who entry member past
+  by_cases own : who = focal
+  · subst who
+    simp only [Function.update_self]
+  · simp only [Function.update_of_ne own]
+    apply serviceReferenceTurnPolicy_eq_of_ready_kernels bound turns
+    intro event ready actor observation active
+    simp only [prefixProfile, prefixPolicy]
+    apply same
+    intro modified
+    exact unseen event modified who entry member ready
 
 end Vegas

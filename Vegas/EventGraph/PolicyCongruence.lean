@@ -136,3 +136,68 @@ theorem runPlan_canonical_map_runKey_congr (profile : graph.BehavioralProfile)
             count next).map runKey) (fun a _ b _ eq => ih a b eq)
 
 end Vegas.EventGraph
+
+namespace Vegas.EventGraph
+
+open GameTheory.Math.Probability
+
+variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
+  {graph : Vegas.EventGraph Player L}
+
+/-- Equal kernels on a bounded rank interval give the same complete configuration law there. -/
+theorem runPlan_canonical_prefix_congr
+    (left right : graph.BehavioralProfile) :
+    ∀ (count start : Nat) (origin : graph.Config), origin.cut.IsPrefix start →
+      start + count ≤ graph.order.eventCount →
+      (∀ event : graph.EventId, start ≤ event.val → event.val < start + count →
+        ∀ who actor observation active,
+          left who event actor observation active = right who event actor observation active) →
+      graph.runPlan (graph.policyPlan left graph.canonicalScheduler) count origin =
+        graph.runPlan (graph.policyPlan right graph.canonicalScheduler) count origin := by
+  intro count
+  induction count with
+  | zero => intros; rfl
+  | succ count ih =>
+      intro start origin ordered bounded same
+      have active : start < graph.order.eventCount := by omega
+      let event : graph.EventId := ⟨start, active⟩
+      have ready : origin.cut.Ready event := ordered.ready active
+      have least : ∀ other, other ∉ origin.cut.completed → event.val ≤ other.val := by
+        intro other unfinished
+        have notBefore : ¬ other.val < start := by
+          simpa only [ordered.2 other] using unfinished
+        exact Nat.le_of_not_gt notBefore
+      have tails (action : graph.Action event) (next : graph.Config)
+          (selected : next ∈ (origin.step event ready action).support) :
+          graph.runPlan (graph.policyPlan left graph.canonicalScheduler) count next =
+            graph.runPlan (graph.policyPlan right graph.canonicalScheduler) count next := by
+        apply ih (start + 1) next
+        · rw [origin.step_cut event ready action next selected]
+          exact ordered.complete active
+        · omega
+        · intro query lower upper who actor observation enabled
+          exact same query (by omega) (by omega) who actor observation enabled
+      cases actor : graph.actor? event with
+      | none =>
+          rw [runPlan_canonical_ownerless left count origin event ready least actor,
+            runPlan_canonical_ownerless right count origin event ready least actor]
+          apply bind_congr_on_support _
+          exact tails _
+      | some who =>
+          by_cases inactive : who ∈ origin.defaulted
+          · rw [runPlan_canonical_defaulted left count origin event ready least who actor inactive
+                ((graph.nodes event).failureAction who actor),
+              runPlan_canonical_defaulted right count origin event ready least who actor inactive
+                ((graph.nodes event).failureAction who actor)]
+            apply bind_congr_on_support _
+            exact tails _
+          · rw [runPlan_canonical_actor left count origin event ready least who actor inactive,
+              runPlan_canonical_actor right count origin event ready least who actor inactive,
+              same event (by rfl) (by dsimp only [event]; omega) who actor
+                (graph.playerObserve who origin) inactive]
+            apply bind_congr_on_support _
+            intro action _
+            apply bind_congr_on_support _
+            exact tails action
+
+end Vegas.EventGraph
