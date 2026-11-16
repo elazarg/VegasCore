@@ -107,7 +107,8 @@ example :
         (spec.compile intended equilibrium).clients none).bind spec.programPaymentObservation =
       setup.intendedPaymentLaw intended :=
   (spec.compile intended equilibrium).clients_programPayments_preserved setup timeouts leaks bounds
-    horizon scheduler parameter valuation exitValuation spec intended
+    horizon scheduler parameter (setup.parameterPaymentUtility valuation)
+      (fun who => exitValuation who + (setup.exitTransfers who : ℝ)) spec intended
 
 end MonetaryCompilation
 

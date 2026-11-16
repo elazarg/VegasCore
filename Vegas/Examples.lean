@@ -5,6 +5,9 @@ module
 public import Vegas.Examples.BoundedPaymentAuction
 public import Vegas.Examples.BoundedPrivateValueAuction
 public import Vegas.Examples.BoundedPrivateAuctionConditions
+public import Vegas.Examples.BoundedPrivateValueAuctionEconomic
+public import Vegas.Examples.BoundedPrivateValueAuctionSequential
+public import Vegas.Examples.BoundedAuctionService
 public import Vegas.Examples.CommitRevealAuction
 public import Vegas.Examples.CommitTimingInformationSource
 public import Vegas.Examples.ConcurrentRevealOrderLaw

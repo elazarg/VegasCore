@@ -10,9 +10,9 @@ public import Vegas.Game.TerminalObservation
 
 /-! # Monetary sequential preservation
 
-Valuation and executable receipts share the native public default and complete
-source readout. Their joint utility law determines the realized cash law while
-retaining the initial inputs, terminal state and public results.
+The complete source readout and absence of public defaults and audit charges
+determine the realized executable receipts, independently of the utility used
+to prove equilibrium.
 -/
 
 noncomputable section
@@ -65,19 +65,13 @@ def SourceProgram.Setup.intendedPaymentLaw
       (fun who => (setup.protocolReadout final.state).elim 0 (fun terminal =>
         setup.transfers (setup.program.publicOutcome terminal) who))
 
-variable (valuation : Parameter × PublicOutcome setup.program → Player → ℝ)
-  (exitValuation : Player → ℝ)
 
-local notation "utility" => setup.parameterPaymentUtility valuation
-local notation "exitTransfer" => (fun who => (setup.exitTransfers who : ℝ))
-local notation "exitPayoff" => (fun who => exitValuation who + exitTransfer who)
+variable (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
+  (exitPayoff : Player → ℝ)
 
-local notation "base" => exclusionBase setup timeouts parameter utility exitPayoff leaks
 local notation "read" => sourceReadout setup timeouts leaks
 
-/-- Every supplied native compilation preserves realized cash jointly with
-initial inputs, terminal state and public results. Cash uses the setup's declared
-exit transfer; valuation is supplied separately. -/
+/-- Clean compiled play preserves executable receipts for any equilibrium utility. -/
 theorem intended_raw_programPayments_preserved
     (spec : ClientSpec setup timeouts leaks bounds horizon scheduler parameter utility exitPayoff)
     (intended : setup.intendedModel.BehavioralAssessment)
@@ -86,72 +80,52 @@ theorem intended_raw_programPayments_preserved
         (fun final => spec.programPaymentObservation final.state) =
       setup.intendedPaymentLaw intended := by
   classical
-  let observe := (app).stateTraffic
-  let audit := (countAudit timeouts) leaks spec.evidenceService.sample
-  let settle := TerminalAudit.settlement base observe audit spec.deposit
-  let target := compiled.assessment
-  have clear := compiled.noDefaults
-  have joint : ((raw).run Initial horizon scheduler target.strategy).bind
-        (fun final => (settle final.state).map fun payoffs => (read final.state, payoffs)) =
-      (setup.intendedModel.runBehavioral intended.strategy
-        (instructionCount setup.program + 1)).map
-        (intendedReadoutExclusion setup parameter utility exitPayoff) := compiled.outcomeLaw
-  let targetLaw := ((raw).run Initial horizon scheduler target.strategy).map History.state
-  let sourceLaw := (setup.intendedModel.runBehavioral intended.strategy
-    (instructionCount setup.program + 1)).map (fun final =>
-      let terminal := setup.protocolReadout final.state
-      (terminal, fun who => terminal.elim 0 (fun state =>
-        setup.transfers (setup.program.publicOutcome state) who)))
-  have utilityLaw :
-      (TerminalAudit.jointSettlement targetLaw base observe audit spec.deposit).map
-        (fun realized => (read realized.1, realized.2)) =
-        sourceLaw.map (utilityReadout (fun terminal who => terminal.elim 0 (fun state =>
-          valuation (setup.parameterOutcome parameter state) who))) := by
-    have left : (TerminalAudit.jointSettlement targetLaw base observe audit spec.deposit).map
-        (fun realized => (read realized.1, realized.2)) =
-        ((raw).run Initial horizon scheduler target.strategy).bind
-          (fun final => (settle final.state).map fun payoffs => (read final.state, payoffs)) := by
-      simp only [targetLaw, TerminalAudit.jointSettlement, PMF.map_bind, PMF.bind_map,
-        PMF.map_comp, Function.comp_def]
-      rfl
-    rw [left, joint]
-    simp only [sourceLaw, PMF.map_comp]
-    congr 1
-    funext final
-    apply Prod.ext
-    · rfl
-    · funext who
-      change exclusionReadoutUtility setup parameter utility exitPayoff
-          (setup.protocolReadout final.state) who =
-        (setup.protocolReadout final.state).elim 0 (fun terminal =>
-          valuation (setup.parameterOutcome parameter terminal) who) +
-        (setup.protocolReadout final.state).elim 0 (fun terminal =>
-          setup.transfers (setup.program.publicOutcome terminal) who)
-      rw [setup.intended_exclusionReadoutUtility spec.wellFormed parameter utility exitPayoff
-        final who]
-      cases setup.protocolReadout final.state <;>
-        simp only [Option.elim_none, Option.elim_some, Setup.parameterPaymentUtility_eq, add_zero]
-      rfl
-  have cleanSupport : ∀ control, some control ∈ targetLaw.support →
+  let native := (raw).run Initial horizon scheduler compiled.assessment.strategy
+  let source := setup.intendedModel.runBehavioral intended.strategy
+    (instructionCount setup.program + 1)
+  let states := native.map History.state
+  let cash : Parameter × PublicOutcome setup.program → Player → ℝ :=
+    fun outcome who => setup.transfers outcome.2 who
+  let exit := fun who => (setup.exitTransfers who : ℝ)
+  let reader := fun terminal : Option (Config Player L setup.program.terminalCtx) =>
+    TerminalObservation.read setup (terminal.map (fun config => (config.state, config.defaults)))
+      (fun who => terminal.elim 0 (fun config => setup.transfers
+        (setup.program.publicOutcome config) who))
+  have readLaw : native.map (fun final => read final.state) =
+      source.map (fun final => setup.protocolReadout final.state) := by
+    have projected := congrArg (PMF.map Prod.fst) compiled.outcomeLaw
+    have constant (final : ((raw).protocol Initial horizon scheduler).History) :
+        (spec.settlement final.state).map (fun _ => read final.state) =
+          PMF.pure (read final.state) := PMF.map_const _ _
+    simp only [ClientSpec.observation, PMF.map_bind, PMF.map_comp, Function.comp_def,
+      intendedReadoutExclusion] at projected
+    simp_rw [constant] at projected
+    exact projected
+  have clear : ∀ control, some control ∈ states.support →
       control.execution.application.config.defaulted = ∅ := by
     intro control supported
-    obtain ⟨final, finalSupported, same⟩ := (PMF.mem_support_map_iff _ _ _).mp supported
-    exact clear final finalSupported control same
+    obtain ⟨final, reached, same⟩ := (PMF.mem_support_map_iff _ _ _).mp supported
+    exact compiled.noDefaults final reached control same
   have factors := exclusionBase_valuation_factors (timeouts := timeouts) (leaks := leaks)
-    parameter valuation exitValuation targetLaw cleanSupport
-  have cash := jointCashLaw_of_utility_law (timeouts := timeouts) (leaks := leaks) parameter
-    valuation (fun outcome who => setup.transfers outcome.2 who)
-    exitValuation exitTransfer targetLaw sourceLaw factors observe audit spec.deposit utilityLaw
-  have observed := congrArg (PMF.map (fun realized =>
-    TerminalObservation.read setup
-      (realized.1.map (fun config => (config.state, config.defaults))) realized.2)) cash
-  simpa only [targetLaw, sourceLaw, target, ClientSpec.programPaymentObservation,
-    Setup.intendedPaymentLaw, TerminalAudit.jointSettlement, PMF.map_bind, PMF.bind_map,
-    PMF.map_comp, Function.comp_def] using observed
+    parameter cash exit states clear
+  have cleanObservation (final) (supported : final ∈ native.support) :
+      spec.programPaymentObservation final.state = PMF.pure (reader (read final.state)) := by
+    have present : final.state ∈ states.support :=
+      (PMF.mem_support_map_iff _ _ _).mpr ⟨final, supported, rfl⟩
+    rw [ClientSpec.programPaymentObservation,
+      TerminalAudit.settlement_clean _ _ _ _ _ (compiled.noCharges final supported),
+      PMF.pure_map, factors final.state present]
+    rfl
+  calc
+    _ = native.map (fun final => reader (read final.state)) := by
+      rw [← PMF.bind_pure_comp]
+      exact bind_congr_on_support _ cleanObservation
+    _ = setup.intendedPaymentLaw intended := by
+      have observed := congrArg (PMF.map reader) readLaw
+      simp only [PMF.map_comp, Function.comp_def] at observed
+      exact observed
 
-
-/-- The exact physical clients decoded from any supplied compilation preserve
-program receipts; no source-equilibrium premise is needed for this law. -/
+/-- The same cash law holds for the compiled physical clients. -/
 theorem ClientCompilation.clients_programPayments_preserved
     (spec : ClientSpec setup timeouts leaks bounds horizon scheduler parameter utility exitPayoff)
     (intended : setup.intendedModel.BehavioralAssessment)
@@ -161,6 +135,6 @@ theorem ClientCompilation.clients_programPayments_preserved
       setup.intendedPaymentLaw intended := by
   rw [← compiled.clients_stateLaw, PMF.bind_map]
   exact intended_raw_programPayments_preserved setup timeouts leaks bounds horizon scheduler
-    parameter valuation exitValuation spec intended compiled
+    parameter utility exitPayoff spec intended compiled
 
 end Vegas

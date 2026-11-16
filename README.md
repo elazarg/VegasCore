@@ -40,6 +40,16 @@ positive latency with imperfect evidence capture and delivery on the same
 forced-exit runtime. Its fair source equilibrium, exact joint law, expected
 payoff of 100 per player, and funding scope are checked.
 
+The [concurrent Odds–Evens application](Vegas/Examples/OddsEvensConcurrentNative.lean)
+uses the combined binding/reveal relaxation, full pending observation and the
+same periodic builder. Its compiled clients preserve fair Nash play and the
+complete configuration/payoff law against arbitrary native policies.
+The [bounded private-values auction](Vegas/Examples/BoundedPrivateValueAuctionSequential.lean)
+has a truthful intended sequential equilibrium for every prior. Its
+[concrete ledger compilation](Vegas/Examples/BoundedAuctionService.lean) uses
+independent uniform values, full pending observation and a funded finite raw
+interface, preserving the full law and expected utility 8/7 per bidder.
+
 ## Language and compiler
 
 Programs are finite, straight-line typed descriptions of public samples,

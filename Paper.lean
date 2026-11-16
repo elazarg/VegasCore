@@ -21,6 +21,7 @@ public import Vegas.Game.ClientAssessmentFidelity
 public import Vegas.Game.PaymentPreservation
 public import Vegas.Examples.OddsEvensRawEquilibrium
 public import Vegas.Examples.OddsEvensConcurrentNative
+public import Vegas.Examples.BoundedAuctionService
 public import Vegas.Examples.OddsEvensFullSource
 public import Vegas.Examples.CommitRevealAuction
 public import Vegas.Examples.LateLeak
@@ -1108,16 +1109,12 @@ def Vegas.Paper.physicalProgramPaymentLaw
 
 section Payments
 
-variable (valuation : Parameter × PublicOutcome setup.program → Player → ℝ)
-  (exitValuation : Player → ℝ)
-
-local notation "paidUtility" => setup.parameterPaymentUtility valuation
-local notation "exitTransfer" => (fun who => (setup.exitTransfers who : ℝ))
-local notation "exitUtility" => (fun who => exitValuation who + exitTransfer who)
+variable (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
+  (exitPayoff : Player → ℝ)
 
 theorem Vegas.Paper.intended_raw_programPayments_preserved
     (spec : ClientSpec setup timeouts leaks bounds horizon scheduler
-      parameter paidUtility exitUtility)
+      parameter utility exitPayoff)
     (intended : setup.intendedModel.BehavioralAssessment)
     (compiled : ClientCompilation spec intended) :
     Vegas.Paper.rawProgramPaymentLaw spec compiled.assessment.strategy =
@@ -1125,9 +1122,9 @@ theorem Vegas.Paper.intended_raw_programPayments_preserved
       Vegas.Paper.physicalProgramPaymentLaw spec compiled.clients =
         setup.intendedPaymentLaw intended := by
   exact ⟨Vegas.intended_raw_programPayments_preserved setup timeouts leaks bounds horizon scheduler
-      parameter valuation exitValuation spec intended compiled,
+      parameter utility exitPayoff spec intended compiled,
     compiled.clients_programPayments_preserved setup timeouts leaks bounds horizon scheduler
-      parameter valuation exitValuation spec intended⟩
+      parameter utility exitPayoff spec intended⟩
 
 /-- info: 'Vegas.Paper.intended_raw_programPayments_preserved' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
@@ -1346,6 +1343,99 @@ theorem Vegas.Paper.uniformJointLaw_expected (who : Vegas.Examples.OddsEvens.Pla
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.uniformJointLaw_expected
 end FairSource
+
+section PrivateValueAuction
+
+open Vegas Vegas.SourceProgram GameTheory GameTheory.Protocol GameTheory.Math.Probability
+open Vegas.Examples.BoundedPrivateValueAuction
+
+local notation "auctionPlayer" => Vegas.Examples.CommitRevealAuction.Player
+
+/-- Truthful bidding gives the same intended equilibrium and full law for every prior. -/
+theorem Vegas.Paper.privateValueAuction_intended_equilibrium
+    (prior : PMF (auctionPlayer → Bid)) :
+    (setup prior).IntendedSequentialEquilibrium values utility (truthfulAssessment prior) ∧
+      (truthfulAssessment prior).strategy = truthfulProfile prior ∧
+      ((setup prior).intendedModel.runBehavioral (truthfulAssessment prior).strategy
+        (instructionCount program + 1)).map (fun final =>
+          ((setup prior).protocolReadout final.state, fun who => terminalUtility prior who final)) =
+        prior.map (fun types =>
+          (some (finalConfig types (types .alice) (types .bob)),
+            surplus types (types .alice) (types .bob))) :=
+  ⟨truthfulAssessment_equilibrium prior, truthfulAssessment_strategy prior,
+    truthfulAssessment_joint_law prior⟩
+
+/-- info: 'Vegas.Paper.privateValueAuction_intended_equilibrium' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.privateValueAuction_intended_equilibrium
+
+end PrivateValueAuction
+
+section PrivateValueAuctionNative
+
+open Vegas Vegas.SourceProgram Vegas.EventGraphRuntime Interaction
+  GameTheory GameTheory.Protocol GameTheory.Math.Probability GameTheory.Enforcement
+open Vegas.Examples.BoundedPrivateValueAuction
+open Vegas.Examples.BoundedAuctionService
+
+local notation "auctionTimeouts" => Vegas.Examples.BoundedAuctionService.timeouts
+local notation "auctionInitial" => Vegas.Examples.BoundedAuctionService.initialLaw
+
+local notation "auctionPlayer" => Vegas.Examples.CommitRevealAuction.Player
+
+/-- The fixed auction runtime retains one truthful assessment, clean play,
+complete utility and executable-cash laws, and expected utility eight sevenths. -/
+theorem Vegas.Paper.privateValueAuction_native_equilibrium :
+  (
+    Nonempty (ClientAssessmentRefinement game auctionTimeouts leaks bounds horizon scheduler
+      (truthfulAssessment uniformPrior) compilation.assessment) ∧
+    compilation.assessment.IsSequentialEquilibrium
+      (raw.decisionInformationAntichain auctionInitial horizon scheduler)
+      (raw.bounded auctionInitial horizon scheduler).wellFoundedHistories
+      (fun who final => specification.payoff who final.state) ∧
+    (∀ who, raw.restrictPolicy auctionInitial horizon scheduler who (compilation.clients who) =
+      compilation.assessment.strategy who) ∧
+    (∀ final ∈ (raw.run auctionInitial horizon scheduler compilation.assessment.strategy).support,
+      ∃ (control : app.Control) (terminal : Config auctionPlayer simpleExpr program.terminalCtx),
+        final.state = some control ∧ control.execution.application.config.cut.Terminal ∧
+        sourceReadout game auctionTimeouts leaks final.state = some terminal ∧
+        control.execution.application.config.defaulted = ∅ ∧
+        (∀ who, failedReveals program who (publicOutcome program terminal) = 0) ∧
+        ∀ who, TerminalAudit.charge app.stateTraffic
+          ((countAudit auctionTimeouts) leaks evidenceService.sample) final.state who = 0) ∧
+    (∀ state ∈ (app.finish auctionInitial horizon scheduler compilation.clients none).support,
+      ∃ (control : app.Control) (terminal : Config auctionPlayer simpleExpr program.terminalCtx),
+        state = some control ∧ control.execution.application.config.cut.Terminal ∧
+        sourceReadout game auctionTimeouts leaks state = some terminal ∧
+        control.execution.application.config.defaulted = ∅ ∧
+        (∀ who, failedReveals program who (publicOutcome program terminal) = 0) ∧
+        ∀ who, TerminalAudit.charge app.stateTraffic
+          ((countAudit auctionTimeouts) leaks evidenceService.sample) state who = 0) ∧
+    rawJointLaw = jointLaw ∧
+    ((app.finish auctionInitial horizon scheduler compilation.clients none).bind
+      specification.observation) = jointLaw ∧
+    ∀ who, expect rawJointLaw (fun realized => realized.2 who) = 8 / 7 ∧
+      expect ((app.finish auctionInitial horizon scheduler compilation.clients none).bind
+        specification.observation) (fun realized => realized.2 who) = 8 / 7
+  ) ∧
+  (
+    ((raw.run auctionInitial horizon scheduler compilation.assessment.strategy).bind
+      (fun final => specification.programPaymentObservation final.state)) =
+        game.intendedPaymentLaw (truthfulAssessment uniformPrior) ∧
+    ((app.finish auctionInitial horizon scheduler compilation.clients none).bind
+      specification.programPaymentObservation) =
+        game.intendedPaymentLaw (truthfulAssessment uniformPrior)
+  ) :=
+  ⟨Vegas.Examples.BoundedAuctionService.native_equilibrium,
+    Vegas.Examples.BoundedAuctionService.program_payments_preserved⟩
+
+/-- info: 'Vegas.Paper.privateValueAuction_native_equilibrium' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.privateValueAuction_native_equilibrium
+
+end PrivateValueAuctionNative
 
 section AuctionObstruction
 open Vegas.Examples.CommitRevealAuction

@@ -1,4 +1,6 @@
-# Two-player Odds–Evens on the forced-exit runtime
+# Checked two-player runtime instances
+
+## Odds–Evens
 
 The source has two Boolean commitments followed by two reveals. [The setup](../Vegas/Examples/OddsEvensSetup.lean)
 computes the paper's five settlement cases: matching bits pay (126,74), differing
@@ -79,7 +81,26 @@ same forced-exit runtime and distinguishes executable cash from valuation.
 Concurrent SE preservation is separate research; its service and information
 hypotheses require their own argument.
 
+## Bounded private-values auction
+
+The [auction](../Vegas/Examples/BoundedPrivateValueAuction.lean) stores values
+from zero through six in owner-private initial cells and computes second-price
+cash receipts, with ties favoring Alice and a six-unit failure charge.
+Its [truthful intended assessment](../Vegas/Examples/BoundedPrivateValueAuctionSequential.lean)
+is a sequential equilibrium for every joint prior over those values.
+
+The [concrete ledger instance](../Vegas/Examples/BoundedAuctionService.lean)
+specializes to independent uniform values and exposes every fresh foreign
+pending message. It uses the shared periodic service, exit utility minus six,
+independent half-rate evidence capture and reporting, and deposits of 48. The raw
+catalogue contains all seven bid values and two candidate slots per bidder.
+One compiled assessment retains the source correspondence and full
+configuration/settlement law, with no supported defaults, failed reveals or
+audit charges. Its actual executable cash law is preserved too; each bidder's
+expected utility is 8/7.
+
 Useful refinements are an operational evidence-capture producer, a more
-selective service satisfying the same all-history contract, and concrete
-instances with nonempty partial pending observation. The general native sequential
-preservation theorem already permits arbitrary finitely branching observation.
+selective service satisfying the same all-history contract, and selective
+pending-observation kernels between the empty and full-observation instances.
+The general native sequential-preservation theorem permits arbitrary finitely
+branching observation.

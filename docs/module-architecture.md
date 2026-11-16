@@ -164,8 +164,11 @@ its declarations. These standalone examples each protect a concrete behavior:
 | Example | Checked behavior |
 | --- | --- |
 | [BoundedPaymentAuction](../Vegas/Examples/BoundedPaymentAuction.lean) | Executable bounded-auction transfers retain a profitable conditional-withholding misreport, so truth telling is not dominant for any integer withholding charge. |
+| [BoundedPrivateValueAuctionSequential](../Vegas/Examples/BoundedPrivateValueAuctionSequential.lean) | Truthful bidding has a consistent intended sequential equilibrium and exact full configuration/payoff law for every prior over bounded private values. |
+| [BoundedAuctionService](../Vegas/Examples/BoundedAuctionService.lean) | One concrete compiled auction assessment retains sequential equilibrium, source-decision fidelity, clean raw and physical play, actual cash and expected utility 8/7 under full pending observation. |
 | [CommitTimingInformationSource](../Vegas/Examples/CommitTimingInformationSource.lean) | Alice's honest expected value is one half because her first commitment cannot observe Bob's retained private bit. |
 | [ConcurrentRevealOrderLaw](../Vegas/Examples/ConcurrentRevealOrderLaw.lean) | The actual raw callbacks at independent reveals yield different terminal store laws under two reveal orders. |
+| [OddsEvensConcurrentNative](../Vegas/Examples/OddsEvensConcurrentNative.lean) | Actual concurrent bindings and reveals preserve the compiled fair Nash equilibrium and full configuration/payoff law under a checked periodic builder and full pending observation. |
 | [CorrelatedInitialBitsInformation](../Vegas/Examples/CorrelatedInitialBitsInformation.lean) | Actual private views identify the shared-bit component of an information fiber and support the conditional Bayes-belief transport. |
 | [LateLeak.CalibratedPenaltyPreservation](../Vegas/Examples/LateLeak/CalibratedPenaltyPreservation.lean) | The finite late-leak game admits a preserving sequential equilibrium under the calibrated cost bounds, including a forfeit-only construction. |
 | [LateLeak.ObservableOutcomeSeparation](../Vegas/Examples/LateLeak/ObservableOutcomeSeparation.lean) | Profitable deferral creates a positive total-variation gap in the observable result law of the finite late-leak game. |
