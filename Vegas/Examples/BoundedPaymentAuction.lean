@@ -94,7 +94,7 @@ def cashExpr {Γ : CtxSimple} (penalty : Int) (who : Player)
     (.eq (publicLiteral pair.2) bob)) (fun pair => cash penalty pair.1 pair.2 who)
     (publications.product publications)
 
-private theorem eval_cashExpr {Γ : CtxSimple} (penalty : Int) (who : Player)
+theorem eval_cashExpr {Γ : CtxSimple} (penalty : Int) (who : Player)
     (alice bob : Expr Γ (.result (.range 0 6))) (env : PlainEnv Γ) :
     evalExpr (cashExpr penalty who alice bob) env =
       cash penalty (evalExpr alice env) (evalExpr bob env) who := by
