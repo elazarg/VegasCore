@@ -17,7 +17,7 @@ source policy. The manuscript is maintained separately in `overleaf/`.
 | `Vegas.intended_raw_sequentialEquilibrium_preserved` | Intended-game SE extends to the bounded raw-menu game of the forced-exit contract on the sequential graph with finite catalogues covering every binding, publication and initial-input value, under a finitely branching asynchronous builder, arbitrary finitely branching pending observation, conditional independence of initial private data given a public signal, and funded count-audit coverage. The realized joint outcome/payoff law is preserved and no player is excluded or charged on the implementing path. |
 | `Vegas.SourceProgram.Setup.compileIntendedExtension_forfeit` | Source-prefix graph clients preserve intended ε-Nash equilibrium with independent bindings and reveals concurrent, for every disclosing intended extension and every public scheduler of any dependency choice retaining the required barriers. The complete source-configuration/payoff law is preserved, with no defaults or failed reveals; private inputs may be correlated. |
 | `Vegas.native_compileIntendedExtension_law` | Under timely asynchronous service, effective-opening source-prefix clients preserve the full source-configuration/payoff law of every intended extension with independent bindings and reveals concurrent. Supported runs terminate without defaults or failed reveals. No equilibrium, finite binding catalogue, finite initial support, disclosure or utility-bound premise is required. |
-| `Vegas.concurrentReveal_intended_ledger` | Under every timely asynchronous service scheduler, first-turn effective-opening clients preserve intended ε-Nash equilibrium with concurrent independent reveals, against arbitrary native policies. The complete source-configuration/payoff law is preserved, with no defaults, failed reveals or audit deposit. |
+| `Vegas.native_compileIntendedExtension_preserved` | For every `RevealRelaxedOrdered` dependency choice, including concurrent independent bindings and reveals, first-turn effective-opening source-prefix clients of every supplied intended extension preserve the same ε-Nash error against arbitrary raw native policies. The actual full runtime readout and forfeited payoff vector have the intended joint law; supported runs terminate without defaults or failed reveals. The theorem assumes well formedness, finite players, finite binding types and initial support, the utility-spread forfeit bound, and timely asynchronous service. It needs no source disclosure, independent-prior, audit or deposit premise. |
 | `Vegas.intended_raw_programPayments_preserved` | Every supplied compilation and its exact physical clients retain executable receipts jointly with initial inputs, typed terminal state and public results. |
 | `Vegas.EventGraphRuntime.MessageBounds.onePacket_raw_sequentialEquilibrium` | Extension from the one-permitted-packet game to the bounded raw response menu of the same native application and scheduler, for normalization-invariant utilities, authentic count-evidence coverage and deposits covering the legal-history payoff spread. |
 
@@ -44,18 +44,19 @@ payoff of 100 per player, and funding scope are checked.
 Programs are finite, straight-line typed descriptions of public samples,
 owner-private commitments, guarded reveals and terminal payments. The intended
 game is the analysis view in which commitments and reveals succeed. Public defaults are absorbing: a defaulted player stays inactive at later
-instructions. The graph and ledger preserve the same source configuration.
+instructions. The graph and ledger retain this absorbing rule.
 See [source semantics](docs/source-semantics.md).
 
 The compiler lowers source instructions to a typed dataflow graph. Its
 information-preserving compilation adds total source order: every public graph
 scheduler then produces the same event plan
-(`Vegas.toInformationGraph_policyPlan_eq`). The checked source-law and Nash
+(`Vegas.toInformationGraph_policyPlan_eq`). The full-source law and Nash
 correspondence results use that information graph. Composable binding and reveal
 relaxations permit real scheduling choices. Prescribed source-prefix clients
-preserve intended Nash equilibrium for both relaxations on the graph. Their full
-honest-execution law is also checked on the native ledger for both relaxations;
-native Nash preservation is checked for concurrent reveals.
+preserve intended Nash equilibrium under both relaxations on the graph and native
+ledger. The [native capstone](Vegas/Game/PrefixClientNash.lean) retains the same
+Nash error, the joint law of the actual full runtime readout and forfeited payoff,
+and clean terminal play for every intended extension.
 See the [dependency design](docs/event-graph-dependencies.md).
 Source execution and the native runtime
 share absorbing public defaults; the runtime mechanically
@@ -100,9 +101,9 @@ modules and inspect signatures with `python lean-defs.py` before adding machiner
 
 The [research archive](docs/archives.md) preserves the broader concurrent work,
 proof experiments and earlier design documents at fixed revisions, with a
-restart guide. Native concurrent-binding Nash preservation and concurrent
-sequential-equilibrium preservation remain open. The [concurrent-commitment guide](docs/concurrent-commitment-preservation.md)
-separates these obligations from the checked graph Nash theorem.
+restart guide. Concurrent sequential-equilibrium preservation remains open.
+The [concurrent-commitment guide](docs/concurrent-commitment-preservation.md)
+describes the checked graph and native Nash results and their observation scope.
 
 ## Build and validate
 

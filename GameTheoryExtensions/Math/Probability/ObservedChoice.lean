@@ -224,4 +224,124 @@ theorem factor_extend_hidden_kernel {Seed Source View Traffic Latent : Type}
       rw [PMF.bind_comm]
       rfl
 
+
+theorem fiberPosterior_observation_channel
+    {Source View Noise Flag : Type} (prior : PMF Source) (view : Source → View)
+    (noise : View → PMF Noise) (flag : Noise → Flag) (selected : Flag)
+    (present : selected ∈ ((prior.bind fun source =>
+      (noise (view source)).map fun extra => (source, extra)).map
+        (fun pair => flag pair.2)).support) :
+    let joint := prior.bind fun source => (noise (view source)).map fun extra => (source, extra)
+    let accepted := fiberPosterior joint (fun pair => flag pair.2) selected
+    accepted = (accepted.map Prod.fst).bind fun source =>
+      (fiberPosterior (noise (view source)) flag selected).map fun extra => (source, extra) := by
+  intro joint accepted
+  let choices := prior.bind fun source =>
+    ((noise (view source)).map flag).map fun chosen => (source, chosen)
+  let channel := fun pair : Source × Flag =>
+    (fiberPosterior (noise (view pair.1)) flag pair.2).map fun extra => (pair.1, extra)
+  have reconstructed : choices.bind channel = joint := by
+    simp only [choices, channel, PMF.bind_bind, PMF.bind_map, Function.comp_def]
+    apply bind_congr_on_support _
+    intro source _
+    rw [← PMF.map_bind]
+    apply congrArg (PMF.map (fun extra => (source, extra)))
+    exact (PMF.bind_map _ _ _).symm.trans (fiberPosterior_reconstruct _ _)
+  have observes : ∀ pair ∈ choices.support, ∀ outcome ∈ (channel pair).support,
+      flag outcome.2 = pair.2 := by
+    intro pair supported outcome reached
+    obtain ⟨source, _sourceSupported, picked⟩ := (PMF.mem_support_bind_iff _ _ _).mp supported
+    obtain ⟨chosen, chosenSupport, same⟩ := (PMF.mem_support_map_iff _ _ _).mp picked
+    cases same
+    obtain ⟨extra, extraSupport, same⟩ := (PMF.mem_support_map_iff _ _ _).mp reached
+    cases same
+    exact (mem_support_fiberPosterior chosenSupport extraSupport).1
+  have choicesPresent : selected ∈ (choices.map Prod.snd).support := by
+    have finalPresent := present
+    change selected ∈ (joint.map (fun pair => flag pair.2)).support at finalPresent
+    rw [← reconstructed, PMF.mem_support_map_iff] at finalPresent
+    obtain ⟨outcome, supported, same⟩ := finalPresent
+    obtain ⟨pair, pairSupported, reached⟩ := (PMF.mem_support_bind_iff _ _ _).mp supported
+    exact (PMF.mem_support_map_iff _ _ _).mpr
+      ⟨pair, pairSupported, (observes pair pairSupported outcome reached).symm.trans same⟩
+  have posterior := fiberPosterior_bind_of_observation choices channel Prod.snd
+    (fun pair => flag pair.2) observes selected choicesPresent
+  rw [reconstructed] at posterior
+  change accepted = _ at posterior
+  have rebind : (fiberPosterior choices Prod.snd selected).bind channel =
+      ((fiberPosterior choices Prod.snd selected).map Prod.fst).bind fun source =>
+        (fiberPosterior (noise (view source)) flag selected).map fun extra => (source, extra) := by
+    rw [PMF.bind_map]
+    apply bind_congr_on_support _
+    intro pair supported
+    have picked := (mem_support_fiberPosterior choicesPresent supported).1
+    simp only [channel, picked, Function.comp_def]
+  have marginal : accepted.map Prod.fst =
+      (fiberPosterior choices Prod.snd selected).map Prod.fst := by
+    rw [posterior, PMF.map_bind]
+    calc
+      _ = (fiberPosterior choices Prod.snd selected).bind (fun pair => PMF.pure pair.1) := by
+        apply bind_congr_on_support _
+        intro pair _
+        dsimp only [channel]
+        rw [PMF.map_comp]
+        exact PMF.map_const _ pair.1
+      _ = _ := PMF.bind_pure_comp Prod.fst _
+  rw [marginal]
+  exact posterior.trans rebind
+
+
+/-- A surviving optional readout remains ancillary after conditioning on survival.
+The hidden source coordinate is retained jointly, including correlated latent data. -/
+theorem surviving_channel_posterior
+    {Native Source View Traffic : Type} (law : PMF Native) (reference : PMF Source)
+    (source : Native → Source) (traffic : Native → Traffic) (good : Native → Bool)
+    (view : Source → View) (noise : View → PMF (Option Traffic)) (fallback : Traffic)
+    (joint : law.map (fun point =>
+      (source point, if good point then some (traffic point) else none)) =
+      reference.bind fun current => (noise (view current)).map fun extra => (current, extra))
+    (present : true ∈ (law.map good).support) :
+    let accepted := fiberPosterior law good true
+    accepted.map (fun point => (source point, traffic point)) =
+      (accepted.map source).bind fun current =>
+        ((fiberPosterior (noise (view current)) Option.isSome true).map
+          (fun extra => extra.getD fallback)).map fun observed => (current, observed) := by
+  classical
+  intro accepted
+  let read := fun point => (source point, if good point then some (traffic point) else none)
+  let flag := fun pair : Source × Option Traffic => pair.2.isSome
+  have actualFlag : flag ∘ read = good := by
+    funext point
+    cases selected : good point <;>
+      simp only [Function.comp_def, read, selected, Bool.false_eq_true,
+      ↓reduceIte, flag, Option.isSome_none, Option.isSome_some]
+  have mapped := map_fiberPosterior_readout law read flag true (by rw [actualFlag]; exact present)
+  rw [actualFlag, joint] at mapped
+  change accepted.map read = _ at mapped
+  let next := reference.bind fun current =>
+    (noise (view current)).map fun extra => (current, extra)
+  have nextPresent : true ∈ (next.map flag).support := by
+    rw [show next = law.map read from joint.symm, PMF.map_comp, actualFlag]
+    exact present
+  have factors := fiberPosterior_observation_channel reference view noise Option.isSome true
+    nextPresent
+  change fiberPosterior next flag true = _ at factors
+  have marginal : (fiberPosterior next flag true).map Prod.fst = accepted.map source := by
+    rw [← mapped, PMF.map_comp]
+    rfl
+  have erased := congrArg (PMF.map (fun pair : Source × Option Traffic =>
+    (pair.1, pair.2.getD fallback))) (mapped.trans factors)
+  rw [marginal] at erased
+  have actual : (accepted.map read).map (fun pair : Source × Option Traffic =>
+      (pair.1, pair.2.getD fallback)) =
+        accepted.map (fun point => (source point, traffic point)) := by
+    rw [PMF.map_comp]
+    apply map_congr_on_support _
+    intro point supported
+    have chosen := (mem_support_fiberPosterior present supported).1
+    simp only [Function.comp_def, read, chosen, ↓reduceIte, Option.getD_some]
+  rw [actual] at erased
+  simpa only [PMF.map_bind, PMF.map_comp, Function.comp_def] using erased
+
+
 end GameTheory.Math.Probability

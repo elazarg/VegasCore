@@ -133,6 +133,25 @@ theorem reactive_round_config_eq_of_pending (timeouts : EventTimeouts graph)
   Config.Step.path_eq_of_ready_of_not_completed event unique pending
     (reactive_round_graph_steps timeouts leaks scheduler players before after reached)
 
+/-- Every finite native round sequence follows a supported graph path, including automatic
+completions performed by the rounds. -/
+theorem reactive_runRounds_graph_steps (timeouts : EventTimeouts graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (scheduler : ((reactiveApplication timeouts) leaks).Scheduler)
+    (players : Player → ((reactiveApplication timeouts) leaks).Policy)
+    (count : Nat) (before after : ((reactiveApplication timeouts) leaks).Execution)
+    (reached : after ∈ (((reactiveApplication timeouts) leaks).runRounds scheduler players
+      count before).support) :
+    Relation.ReflTransGen Config.Step before.application.config after.application.config := by
+  induction count generalizing before with
+  | zero =>
+      cases (PMF.mem_support_pure_iff _ _).mp reached
+      exact .refl
+  | succ count ih =>
+      obtain ⟨middle, first, rest⟩ := (PMF.mem_support_bind_iff _ _ _).mp reached
+      exact (reactive_round_graph_steps timeouts leaks scheduler players before middle first).trans
+        (ih middle rest)
+
 /-- Every stopped native execution follows a finite supported graph path.
 The path may contain several automatic completions in one scheduler round. -/
 theorem reactive_runUntil_graph_steps (timeouts : EventTimeouts graph)

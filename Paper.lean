@@ -5,7 +5,7 @@ module
 public import Vegas.Compile.PublicationPolicy
 public import Vegas.Source.Safety
 public import Vegas.Game.IntendedNash
-public import Vegas.Game.ConcurrentRevealPreservation
+public import Vegas.Game.PrefixClientNash
 public import Vegas.Game.SourcePrefixForfeit
 public import Vegas.Game.IntendedSourceProfile
 public import Vegas.Game.SourceProtocolNash
@@ -362,55 +362,107 @@ theorem Vegas.Paper.intended_bindingReveal_forfeit
 #print axioms Vegas.Paper.intended_bindingReveal_forfeit
 
 include finite wellFormed initialFinite in
-/-- The effective-opening clients preserve intended approximate Nash equilibrium,
-complete source readout and the payoff vector on the concurrent-reveal ledger.
-No public default or failed reveal occurs on supported play. -/
-theorem Vegas.Paper.concurrentReveal_intended_ledger
+/-- Effective-opening source-prefix clients preserve the intended Nash error,
+actual full readout/payoff law and clean play under concurrent bindings and reveals. -/
+theorem Vegas.Paper.intended_concurrent_ledger
+    (deps : setup.dataflowGraph.Dependencies)
+    (relaxed : (serviceGraph setup deps).RevealRelaxedOrdered)
     (range : ∀ high low who, utility high who - utility low who ≤ forfeit)
     (intended : Profile setup.intendedModel.behavioralSignature)
     (target : Profile (setup.informationModel forfeiture).behavioralSignature)
     (agrees : (setup.intendedRestriction forfeiture).ExtendsProfile intended target) (ε : ℝ)
     (equilibrium : IsεNash (setup.intendedModel.toBehavioralGameForm horizon)
       (fun final => readoutPayoff setup base final.state) ε intended)
-    (disclosing : ∀ who, Disclosing setup.program
-      (setup.decodeBehavioralProfile forfeiture target who))
-    (duration : (serviceGraph setup setup.revealDependencies).EventId → Nat)
+    (duration : (serviceGraph setup deps).EventId → Nat)
     (leaks : MessageNetwork.ObservationRule Player
-      (WitnessedPacket (serviceGraph setup setup.revealDependencies)))
+      (WitnessedPacket (serviceGraph setup deps)))
     {ledgerHorizon turns : Nat}
-    {scheduler : (serviceApplication setup setup.revealDependencies duration
-      leaks).Scheduler}
-    {delay bound : (serviceGraph setup setup.revealDependencies).EventId → Nat}
-    (contract : AsyncContract (serviceTimeouts setup setup.revealDependencies duration)
-      leaks
-      (serviceInitialLaw setup setup.revealDependencies) ledgerHorizon scheduler delay
-        bound)
-    (timely : AsyncTimely (serviceTimeouts setup setup.revealDependencies duration) delay
-      bound) :
-    IsεNash (concurrentLedgerGame setup duration leaks scheduler ledgerHorizon)
-        (concurrentConfigPayoff setup parameter utility forfeit) ε
-        (concurrentLedgerClients setup duration leaks bound turns
-          (setup.decodeBehavioralProfile forfeiture target)) ∧
-      (∀ config ∈ ((concurrentLedgerGame setup duration leaks scheduler ledgerHorizon).play
-          (concurrentLedgerClients setup duration leaks bound turns
-            (setup.decodeBehavioralProfile forfeiture target))).support,
-        config.cut.Terminal ∧ config.defaulted = ∅ ∧ ∃ terminal,
-          concurrentRankedRead setup config = some terminal ∧ NoFailedReveals setup terminal) ∧
-      (((concurrentLedgerGame setup duration leaks scheduler ledgerHorizon).play
-          (concurrentLedgerClients setup duration leaks bound turns
-            (setup.decodeBehavioralProfile forfeiture target))).map fun config =>
-            (concurrentRankedRead setup config,
-              concurrentConfigPayoff setup parameter utility forfeit config)) =
+    {scheduler : (serviceApplication setup deps duration leaks).Scheduler}
+    {delay bound : (serviceGraph setup deps).EventId → Nat}
+    (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
+      (serviceInitialLaw setup deps) ledgerHorizon scheduler delay bound)
+    (timely : AsyncTimely (serviceTimeouts setup deps duration) delay bound) :
+    let app := serviceApplication setup deps duration leaks
+    let clients := serviceReferenceTurnPolicy setup deps duration leaks bound turns
+      (firstTurnTiming setup turns deps)
+      (effectiveOpening (compilePrescribedProfile setup.program deps
+        (setup.decodeBehavioralProfile forfeiture target)))
+    let native := app.roundsFrom (serviceInitialLaw setup deps) scheduler clients ledgerHorizon
+    IsεNash (serviceGame setup deps duration leaks scheduler ledgerHorizon)
+        (setup.graphForfeitConfigPayoff deps parameter utility forfeit) ε clients ∧
+      (∀ final ∈ native.support,
+        final.application.config.cut.Terminal ∧ final.application.config.defaulted = ∅ ∧
+          ∃ terminal, serviceRankedReadout setup deps duration leaks (app.finished final) =
+            some terminal ∧ NoFailedReveals setup terminal) ∧
+      native.map (fun final =>
+        (serviceRankedReadout setup deps duration leaks (app.finished final),
+          setup.graphForfeitConfigPayoff deps parameter utility forfeit
+            final.application.config)) =
         (setup.intendedModel.runBehavioral intended horizon).map
           (fun final => (setup.protocolReadout final.state,
-            readoutPayoff setup base final.state)) :=
-  Vegas.concurrentReveal_intended_ledger setup finite wellFormed parameter utility forfeit range
-    intended target agrees ε equilibrium disclosing duration leaks contract timely
+            readoutPayoff setup base final.state)) := by
+  exact native_compileIntendedExtension_preserved setup deps relaxed finite wellFormed parameter
+    utility forfeit range intended target agrees ε equilibrium duration leaks (turns := turns)
+    scheduler bound contract timely
 
-/-- info: 'Vegas.Paper.concurrentReveal_intended_ledger' depends on axioms:
+/-- info: 'Vegas.Paper.intended_concurrent_ledger' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.Paper.concurrentReveal_intended_ledger
+#print axioms Vegas.Paper.intended_concurrent_ledger
+
+include finite wellFormed initialFinite in
+/-- Effective-opening source-prefix clients preserve the intended Nash error,
+actual full readout/payoff law and clean play under concurrent bindings and reveals. -/
+theorem Vegas.Paper.intended_bindingReveal_ledger
+    (range : ∀ high low who, utility high who - utility low who ≤ forfeit)
+    (intended : Profile setup.intendedModel.behavioralSignature)
+    (target : Profile (setup.informationModel forfeiture).behavioralSignature)
+    (agrees : (setup.intendedRestriction forfeiture).ExtendsProfile intended target) (ε : ℝ)
+    (equilibrium : IsεNash (setup.intendedModel.toBehavioralGameForm horizon)
+      (fun final => readoutPayoff setup base final.state) ε intended)
+    (duration : (serviceGraph setup bindingRevealDeps).EventId → Nat)
+    (leaks : MessageNetwork.ObservationRule Player
+      (WitnessedPacket (serviceGraph setup bindingRevealDeps)))
+    {ledgerHorizon turns : Nat}
+    {scheduler : (serviceApplication setup bindingRevealDeps duration leaks).Scheduler}
+    {delay bound : (serviceGraph setup bindingRevealDeps).EventId → Nat}
+    (contract : AsyncContract (serviceTimeouts setup bindingRevealDeps duration) leaks
+      (serviceInitialLaw setup bindingRevealDeps) ledgerHorizon scheduler delay bound)
+    (timely : AsyncTimely (serviceTimeouts setup bindingRevealDeps duration) delay bound) :
+    let app := serviceApplication setup bindingRevealDeps duration leaks
+    let clients := serviceReferenceTurnPolicy setup bindingRevealDeps duration leaks bound turns
+      (firstTurnTiming setup turns bindingRevealDeps)
+      (effectiveOpening (compilePrescribedProfile setup.program bindingRevealDeps
+        (setup.decodeBehavioralProfile forfeiture target)))
+    let native := app.roundsFrom (serviceInitialLaw setup bindingRevealDeps) scheduler clients
+      ledgerHorizon
+    IsεNash (serviceGame setup bindingRevealDeps duration leaks scheduler ledgerHorizon)
+        (setup.graphForfeitConfigPayoff bindingRevealDeps parameter utility forfeit) ε clients ∧
+      (∀ final ∈ native.support,
+        final.application.config.cut.Terminal ∧ final.application.config.defaulted = ∅ ∧
+          ∃ terminal, serviceRankedReadout setup bindingRevealDeps duration leaks
+              (app.finished final) =
+            some terminal ∧ NoFailedReveals setup terminal) ∧
+      native.map (fun final =>
+        (serviceRankedReadout setup bindingRevealDeps duration leaks (app.finished final),
+          setup.graphForfeitConfigPayoff bindingRevealDeps parameter utility forfeit
+            final.application.config)) =
+        (setup.intendedModel.runBehavioral intended horizon).map
+          (fun final => (setup.protocolReadout final.state,
+            readoutPayoff setup base final.state)) := by
+  have relaxed : (serviceGraph setup bindingRevealDeps).RevealRelaxedOrdered :=
+    setup.informationGraph.relaxReveals.relaxBindings_revealRelaxedOrdered
+      (setup.informationGraph.relaxReveals_revealRelaxedOrdered
+        (toInformationGraph_barrierOrdered setup.program).revealRelaxedOrdered)
+  exact Vegas.Paper.intended_concurrent_ledger (setup := setup) (parameter := parameter)
+    (utility := utility) (finite := finite) (wellFormed := wellFormed) (forfeit := forfeit)
+    (turns := turns) bindingRevealDeps relaxed range intended target agrees ε equilibrium
+    duration leaks contract timely
+
+/-- info: 'Vegas.Paper.intended_bindingReveal_ledger' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.intended_bindingReveal_ledger
 
 omit [Finite Player] initialFinite in
 /-- Every intended profile has an extension that opens at every reveal. -/

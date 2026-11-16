@@ -73,8 +73,15 @@ active reveals; the same Nash error, full source-configuration/payoff law and
 absence of defaults and failed reveals are preserved. The
 [native honest-execution law](../Vegas/Game/PrefixClientOutcomeLaw.lean) covers
 both relaxations for every intended extension, without a source disclosure or
-equilibrium premise. Native Nash preservation is checked for concurrent reveals;
-its extension to concurrent bindings remains open.
+equilibrium premise. The [native Nash theorem](../Vegas/Game/PrefixClientNash.lean)
+preserves the same ε against arbitrary raw native policies for every dependency
+choice satisfying `RevealRelaxedOrdered`, including the combined binding/reveal
+relaxation. Its first-turn clients use effective openings of prescribed
+source-prefix policies, with no caller disclosure premise. The conclusion
+retains the actual full runtime readout jointly with the true forfeited payoff
+vector, and supported native runs terminate without defaults or failed reveals.
+It uses the same service and timeliness contracts on the existing native
+application and `Vegas.serviceGame`.
 
 ## Runtime and proof interfaces
 

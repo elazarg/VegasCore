@@ -1,122 +1,72 @@
 # Concurrent commitment preservation
 
-The graph result is checked in
-[SourcePrefixForfeit](../Vegas/Game/SourcePrefixForfeit.lean) and pinned in
-[Paper.lean](../Paper.lean). The full native honest-execution law is checked in
-[PrefixClientOutcomeLaw](../Vegas/Game/PrefixClientOutcomeLaw.lean). Native
-concurrent-binding Nash preservation remains open.
+The graph theorem is checked in
+[SourcePrefixForfeit](../Vegas/Game/SourcePrefixForfeit.lean). The native
+capstone `Vegas.native_compileIntendedExtension_preserved` is in
+[PrefixClientNash](../Vegas/Game/PrefixClientNash.lean). Both are pinned in
+[Paper.lean](../Paper.lean), including the concrete combined binding/reveal
+relaxation. The native theorem uses the existing dependency-parametric
+`Vegas.serviceGame` and application.
 
-## Checked graph result
+## Checked scope
 
-Retain the source program, information model, initial distribution, payoff and
-native application. Permit independent bindings of different owners and
-independent reveals to complete in either order. Retain public barriers, causal
-reads and the order of each owner's bindings. No independence assumption on
-private inputs is needed.
+Both results are uniform over valid dependencies satisfying
+`Vegas.EventGraph.RevealRelaxedOrdered`: retain public barriers, causal reads
+and same-owner order, while permitting independent private bindings and
+independent reveals to complete in either order. The combined instance is
+`setup.dataflowGraph.bindingDependencies setup.revealDependencies`.
+Private inputs may be correlated.
 
-For every intended approximate Nash equilibrium and every supplied disclosing
-extension under the full commitment interface, its prescribed graph clients have
-the same approximation error and the same joint law of the full terminal source
-configuration and payoff vector. Their supported outcomes have no
-defaults or failed reveals. Deviations retain the full chronological observation
-and all available actions. Use the existing fixed-exit utility, or the existing
-forfeit at least as large as the utility spread. The theorem is uniform over
-valid dependencies satisfying `Vegas.EventGraph.RevealRelaxedOrdered`, including
-the source information order with both independent-edge relaxations applied.
-The fixed-exit theorem is in [SourcePrefixNash](../Vegas/Game/SourcePrefixNash.lean).
-Native deviation comparison must still be proved under the existing service
-and timeliness contracts.
+For every intended ε-Nash equilibrium and every supplied extension under the
+full commitment interface, the native first-turn effective-opening source-prefix
+clients preserve the same ε against arbitrary raw native policies. The joint
+law uses the actual `Vegas.serviceRankedReadout` and actual forfeited payoff
+vector. It equals the intended law of the complete terminal source configuration
+and ordinary payoff vector. Supported native runs terminate without public
+defaults or failed reveals.
 
-The target concerns intended equilibrium preservation. Arbitrary source profiles
-can condition on an earlier commitment's public omission, which an early
-concurrent decision has not yet observed. Preserving all such contingent choices
-is a separate, stronger problem.
+The native theorem assumes well formedness, finite players, finite binding
+payload types and initial support, a forfeit at least the utility spread, and
+the existing asynchronous service and timeliness contracts. There is no source
+disclosure, independent-prior, audit, deposit or finite raw-menu premise.
+The graph result uses every disclosing extension and every public scheduler.
 
-## Prescribed observations
+The [honest native law](../Vegas/Game/PrefixClientOutcomeLaw.lean) separately
+preserves the full configuration/payoff law and clean terminal play of every
+intended extension without equilibrium, finite binding catalogue, finite initial
+support, source disclosure or utility-bound premises.
 
-Sorting completed events alone does not reconstruct a source decision. The
-default log has one slot per completed instruction, including successful
-instructions. An intended policy can count those slots. A commitment completed
-early would otherwise see a different information value even on successful play.
+## Prescribed clients
 
-At event rank `e`, prescribed clients receive the source-ranked prefix before
-`e`, with one default slot per source instruction and their own earlier actions
-in rank order. Public-event default markers are retained. Private-binding slots
-carry `none`, including bindings not yet completed. Visible values stay in the
-existing projected store. Publications always open. These are restrictions on
-the prescribed policies, not changes to players' actual observations.
+At event rank `e`, the prescribed observation is the source-ranked prefix before
+`e`, with one default slot per instruction and only the owner's earlier actions,
+in rank order. Public-event default markers are retained; private-binding slots
+carry `none`, including bindings not yet completed. The typed projected store
+is unchanged. Binding omission is replaced by an opaque unopenable submission.
 
-Under the existing reveal-relaxed barrier discipline, foreign binding
-completions leave this decision interface unchanged. Concurrent publications
-leave the prescribed opening action unchanged. The existing ready-independence
-theorem therefore gives exact public-scheduler independence of the final store
-and per-event completion records.
+The graph theorem uses clients that disclose every active reveal. Native clients
+apply effective opening to the prescribed source-prefix profile: they open exactly when the
+opening would be accepted, and otherwise stay silent. The final theorem uses
+these clients of the original supplied extension, with no disclosure premise.
+Deviators retain their full actual observations, timing, pending traffic and
+available native responses.
 
-## Deviations and failure
+## Proof ownership and remaining scope
 
-First compare payoffs with a fixed-exit surrogate whose exit payoff is no greater
-than any ordinary utility. Repair an active binding omission by submitting an
-opaque unopenable binding. The omitted branch immediately defaults the player
-and pays the exit value; the repaired continuation is bounded below by that
-value. Non-omitting actions are unchanged. The existing analogous argument
-replaces withholding by opening. This is a fixed-exit comparison, not a claim
-that repairing omissions increases the actual forfeited utility pointwise.
+[PrefixClientDeviation](../Vegas/Game/PrefixClientDeviation.lean) composes actual
+stopped binding, publication and chance phases into one policy of the existing
+source information-graph game that bounds the expected native deviation payoff.
+Its conditional sampling retains the full source state and remaining honest suffix
+jointly with native traffic; no product prior is assumed. Intermediate native
+cuts need not be source prefixes. Actual defaults and source debt are connected
+to failed native publications before applying the forfeiture bound.
 
-Prescribed policies also submit at every active binding. Thus, after repair,
-private-binding completions create no new default markers. Automatic
-completions of an already defaulted owner create no new decisions. The prefix
-interface agrees with the ordinary source prefix on these executions.
+[PrefixClientNash](../Vegas/Game/PrefixClientNash.lean) derives binding repair
+and forced source disclosure internally, retaining the original effective-opening
+clients, and combines the deviation bound with the honest full law. The source
+fixed-exit comparator is internal; the native equilibrium and final joint law
+use the actual forfeited payoff.
 
-Fix a deterministic public scheduling tape. At a selected binding decision,
-the tape, source-visible public values and public default markers determine
-the actual chronological completion transcript up to that decision. The replay
-witness must be selected at the same binding event: equality of padded prefix
-observations alone does not identify the current cut. Public barriers and
-same-owner order then recover the player's actual visible values and own-action
-history. Predrawing public scheduler randomness yields a mixture of source
-deviations. Source equilibrium bounds each member of the mixture.
-
-Finally, every reachable default entails a failed reveal under the existing
-binding-revelation invariant. The actual forfeited payoff is bounded above by
-the fixed-exit surrogate and agrees with ordinary utility on intended play.
-This transfers the deviation bound without an additional economic assumption.
-
-## Native transport
-
-For every intended extension, the effective-opening source-prefix clients retain
-the joint law of the full source configuration and payoff vector under the existing
-service and timeliness contracts. Their supported runs terminate with no defaults
-or failed reveals. This honest-execution result is uniform over
-`RevealRelaxedOrdered` dependencies. It requires no equilibrium, source disclosure,
-finite binding catalogue, finite initial support or utility-bound premise.
-
-The native application already has hidden-binding inclusion and prepared-handle
-opacity lemmas. Canonical commitment packets do not expose the chosen value;
-same-owner order fixes the prepared serial at each binding. The checked
-[BindingWindowTransport](../Vegas/Game/BindingWindowTransport.lean) couples a
-whole binding window while keeping other owners active, including their private
-binding completions. Its comparison uses the focal player's native traffic and
-turn/submission counters; honest private inputs and kernels may vary jointly.
-It is an operational component, not an end-to-end preservation theorem.
-
-The checked [table sampler](../Vegas/Game/NativeBindingTableSampling.lean) retains
-full stopped native executions for an arbitrary selected family of honest owners,
-with every other client still active. Its unilateral specialization transports the
-same law to a genuine source-origin table. The
-[traffic-opacity theorem](../Vegas/Game/BindingBlockOpacity.lean) uses actual
-traffic at traffic-determined stops no later than target completion, including
-early default.
-
-The remaining Nash obligation is to compose the stopped laws into one deviation
-of the existing source information-graph game, with at least the native payoff.
-The recursion must preserve source histories, earlier own binding records and
-the conditional law of the sampled honest suffix.
-Intermediate configurations need not be source prefixes. Treating each binding
-as the sole ready event would restore serialization and would not establish the
-target. The accepted-opening discipline from native reveal preservation must
-also be retained when composing binding and reveal windows.
-
-Exact sequential assessment replay and concurrent sequential equilibrium are
-separate obligations. A native prefix can contain a later binding before an
-earlier source binding has been chosen, so the current deterministic linear
-prefix replay cannot simply be reused as a correspondence at every native site.
+Full-source exact correspondence under relaxed dependencies and concurrent
+sequential-equilibrium preservation remain separate questions. The checked SE
+compiler retains the source information graph.

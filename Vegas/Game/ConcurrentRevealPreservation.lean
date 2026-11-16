@@ -18,7 +18,8 @@ noncomputable section
 
 namespace Vegas
 
-open SourceProgram GameTheory GameTheory.Math.Probability Interaction EventGraphRuntime EventGraph
+open SourceProgram SourceProgram.Setup GameTheory GameTheory.Math.Probability Interaction
+  EventGraphRuntime EventGraph
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
@@ -51,23 +52,25 @@ theorem concurrentReveal_intended_ledger (setup : Setup (Player := Player) (L :=
     (contract : AsyncContract (serviceTimeouts setup setup.revealDependencies duration) leaks
       (serviceInitialLaw setup setup.revealDependencies) horizon scheduler delay bound)
     (timely : AsyncTimely (serviceTimeouts setup setup.revealDependencies duration) delay bound) :
-    IsεNash (concurrentLedgerGame setup duration leaks scheduler horizon)
-        (concurrentConfigPayoff setup parameter utility forfeit) ε
+    IsεNash (serviceGame setup setup.revealDependencies duration leaks scheduler horizon)
+        (setup.graphForfeitConfigPayoff setup.revealDependencies parameter utility forfeit) ε
         (concurrentLedgerClients setup duration leaks bound turns
           (setup.decodeBehavioralProfile (CommitmentInterface.forfeiture setup.program) target)) ∧
-      (∀ config ∈ ((concurrentLedgerGame setup duration leaks scheduler horizon).play
+      (∀ config ∈ ((serviceGame setup setup.revealDependencies duration leaks scheduler
+        horizon).play
           (concurrentLedgerClients setup duration leaks bound turns
             (setup.decodeBehavioralProfile (CommitmentInterface.forfeiture setup.program)
               target))).support,
         config.cut.Terminal ∧ config.defaulted = ∅ ∧ ∃ terminal,
           concurrentRankedRead setup config = some terminal ∧
             ∀ who, failedReveals setup.program who (publicOutcome setup.program terminal) = 0) ∧
-      (((concurrentLedgerGame setup duration leaks scheduler horizon).play
+      (((serviceGame setup setup.revealDependencies duration leaks scheduler horizon).play
           (concurrentLedgerClients setup duration leaks bound turns
             (setup.decodeBehavioralProfile (CommitmentInterface.forfeiture setup.program)
               target))).map fun config =>
             (concurrentRankedRead setup config,
-              concurrentConfigPayoff setup parameter utility forfeit config)) =
+              setup.graphForfeitConfigPayoff setup.revealDependencies parameter utility forfeit
+                config)) =
         (setup.intendedModel.runBehavioral intended (instructionCount setup.program + 1)).map
           (fun final => (setup.protocolReadout final.state, fun who =>
             (setup.protocolReadout final.state).elim 0
@@ -78,18 +81,19 @@ theorem concurrentReveal_intended_ledger (setup : Setup (Player := Player) (L :=
   let reference := concurrentReference setup source
   let graphPlay := (G.gameForm (setup.graphInputs setup.revealDependencies)
       G.canonicalScheduler).play reference
-  let ledgerPlay := (concurrentLedgerGame setup duration leaks scheduler horizon).play
+  let ledgerPlay := (serviceGame setup setup.revealDependencies duration leaks scheduler
+    horizon).play
     (concurrentLedgerClients setup duration leaks bound turns source)
   let observe := fun config : G.Config =>
     (concurrentRankedRead setup config.erase,
-      concurrentConfigPayoff setup parameter utility forfeit config)
+      setup.graphForfeitConfigPayoff setup.revealDependencies parameter utility forfeit config)
   have keyed : ∀ left right : G.Config, runKey left = runKey right →
       observe left = observe right := fun left right same =>
     Prod.ext (concurrentRankedRead_congr setup (erasedKey_congr same))
-      (concurrentConfigPayoff_congr setup parameter utility forfeit same)
+      (setup.graphForfeitConfigPayoff_congr setup.revealDependencies parameter utility forfeit same)
   have invariant : ∀ config : G.Config, observe config.erase = observe config := by
     intro config
-    simp only [observe, EventGraph.Config.erase_erase, concurrentConfigPayoff_erase]
+    simp only [observe, EventGraph.Config.erase_erase, graphForfeitConfigPayoff_erase]
   have physical := effective_roundsFrom_outcomeLaw (duration := duration) (leaks := leaks)
     (turns := turns) contract timely
     (setup.informationGraph.relaxReveals_revealsOnlyConcurrent setup.informationGraph_total)
@@ -126,7 +130,8 @@ theorem concurrentReveal_intended_ledger (setup : Setup (Player := Player) (L :=
     intro outcome supported
     simp only [observe, outcome.1.erase_eq_of_defaulted_empty (graphDefaults outcome supported),
       concurrentRankedRead_terminal setup outcome.1 outcome.2,
-      concurrentConfigPayoff_terminal setup parameter utility forfeit outcome.1 outcome.2]
+      setup.graphForfeitConfigPayoff_terminal setup.revealDependencies parameter utility forfeit
+        outcome.1 outcome.2]
     rfl
   have represented : ∀ config ∈ ledgerPlay.support,
       ∃ outcome ∈ graphPlay.support, observe config =

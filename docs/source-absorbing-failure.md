@@ -67,12 +67,14 @@ intended play has successful cells and no public defaults.
 
 ## Graph compilation
 
-[EventGraphAssembly](../Vegas/Compile/EventGraphAssembly.lean) compiles each
-source instruction into a typed node and uses sequential dependencies between
-source instructions. Public omission is observable: a later player can condition
-on an earlier player's default. Moving the later instruction before that public
-cause can change the game. More concurrency needs an information-preservation
-argument.
+[EventGraphAssembly](../Vegas/Compile/EventGraphAssembly.lean) constructs the
+declared-read dataflow graph and the source information graph. The full-source
+laws below use the information graph's total source order. Public omission is
+observable: a later player can condition on an earlier player's default, so
+moving a decision before that public cause can change the game.
+[Source-prefix native preservation](../Vegas/Game/PrefixClientNash.lean)
+separately preserves intended Nash equilibrium under the allowed independent
+binding and reveal relaxations.
 
 The graph has one executor, `Config.step`, in
 [Execution](../Vegas/EventGraph/Execution.lean). It normalizes requested actions

@@ -117,9 +117,11 @@ sequential graph and isolate the missing local adapters before broadening the
 interface. Reuse existing operations and probability APIs; do not introduce
 another runtime or make this extension a prerequisite for the basic capstones.
 
-Further general DAGs, concurrent public reveals, joint backtranslation of
-arbitrary Interaction profiles, and concurrent raw-runtime SE are separate
-targets. The unilateral physical deviation law above already covers arbitrary
-policies against compiled first-turn opponents.
+Full-source compiler laws on further DAGs, joint backtranslation of arbitrary
+Interaction profiles, and concurrent raw-runtime SE are separate targets.
+The [source-prefix native theorem](../Vegas/Game/PrefixClientNash.lean) already
+preserves intended Nash equilibrium under the allowed binding and reveal
+relaxations. The unilateral physical deviation law above covers arbitrary
+policies against compiled first-turn opponents on the information graph.
 Parsing, extraction, cryptographic refinement and machine execution are outside
 the typed-source-to-ledger-model boundary.

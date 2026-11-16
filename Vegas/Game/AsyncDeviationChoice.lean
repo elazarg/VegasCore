@@ -34,7 +34,6 @@ def sampledValue {compiled : Vegas.EventGraph Player L}
 private theorem chance_completed_value_law
     {setup : Setup (Player := Player) (L := L)} (timeouts : EventTimeouts setup.informationGraph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
-    (profile : setup.informationGraph.BehavioralProfile)
     (scheduler : (application setup timeouts leaks).Scheduler)
     (players : Player → (application setup timeouts leaks).Policy)
     (event : setup.informationGraph.EventId) (ownerless : setup.informationGraph.actor? event =
@@ -55,8 +54,11 @@ private theorem chance_completed_value_law
       (fun final => event ∈ final.application.config.cut.completed) count execution).map
         (fun final => sampledValue event outputEq final.application.config) =
       L.evalDist distribution (sourcePublicEnv source) := by
-  have raw := chance_completed_output_law timeouts leaks profile scheduler players event ownerless
-    count execution ready completed
+  have raw := chance_completed_output_law timeouts leaks
+    (fun other => (setup.dataflowGraph.sequentialize_solitary other).ownerSolitary) scheduler
+    players
+    event ownerless (setup.dataflowGraph.sequentialize_solitary event) count execution ready
+    completed
   rw [(setup.informationGraph.nodes event).action_eq_of_actor_none ownerless
     (EventCode.actionOfActorNone (setup.informationGraph.nodes event) ownerless)
     (cast (congrArg EventField.Action outputEq.symm) PUnit.unit),
@@ -389,8 +391,8 @@ theorem sourceService_chance_law
         timeouts.duration)
         leaks focal event outputEq final
     simp_rw [pointwise]
-    exact chance_completed_value_law timeouts leaks (compileEventProfile setup.program wholeProfile)
-      scheduler players event ownerless _ (execution seed) (readyAt seed supported) outputEq refs
+    exact chance_completed_value_law timeouts leaks scheduler players event ownerless _
+      (execution seed) (readyAt seed supported) outputEq refs
       distribution (codeEq seed) (source seed).state (checkpoint seed).agrees
       (completed seed supported)
   obtain ⟨nextNoise, joint⟩ := primary_sample_joint_of_marginal name distribution setup leaks

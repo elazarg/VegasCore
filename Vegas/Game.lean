@@ -478,4 +478,9 @@ public import Vegas.Game.IntendedPrefixContinuation
 public import Vegas.Game.PublicationSurvival
 public import Vegas.Game.BindingSourceFill
 
+public import Vegas.Game.NativeForfeitContinuation
+
+public import Vegas.Game.PrefixClientDeviation
+public import Vegas.Game.PrefixClientNash
+
 @[expose] public section

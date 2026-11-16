@@ -3,6 +3,7 @@ module
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 public import Vegas.Compile.ConcurrentRevealGraph
+public import Vegas.EventGraph.RankedConfig
 public import Vegas.Compile.PublicationPolicy
 public import Vegas.Game.RevealServiceRankedReadout
 public import Vegas.Pending.CanonicalKeyPublication
@@ -98,18 +99,6 @@ theorem concurrentRankedRead_congr (setup : Setup (Player := Player) (L := L))
     rw [records]
   unfold concurrentRankedRead
   rw [cut, store, history]
-
-/-- The ranked history of an erasure is the erased ranked history. -/
-theorem rankedHistory_erase {graph : EventGraph Player L} (config : graph.Config) :
-    EventGraph.rankedHistory config.erase =
-      (EventGraph.rankedHistory config).map (graph.eraseCompletion config.defaulted) := by
-  unfold EventGraph.rankedHistory
-  simp only [completionOf_erase]
-  generalize List.finRange graph.order.eventCount = events
-  induction events with
-  | nil => rfl
-  | cons head tail ih =>
-      cases found : completionOf config head <;> simp [found, ih]
 
 /-- The outcome read from a concurrent-reveal configuration in instruction
 order: the parameter, public values and defaults of the decoded source

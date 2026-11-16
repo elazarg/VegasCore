@@ -4,6 +4,7 @@ module
 
 public import Vegas.Game.SourceServiceAsyncStep
 public import Vegas.Pending.ExclusionPolicyLaw
+public import Vegas.Pending.CanonicalOutcomeHead
 
 @[expose] public section
 
@@ -14,6 +15,8 @@ and arbitrary responses preserve its canonical remaining-run law: sampling execu
 same chance kernel followed by automatic completion, and other commands preserve the
 configuration. Bounded waiting therefore preserves the full continuation even when its
 budget ends before sampling, without a completion or initialization premise.
+The stopped output law applies to a solitary chance event of any actor-serial
+service graph; it needs no reference profile.
 -/
 noncomputable section
 
@@ -358,42 +361,61 @@ private theorem runPlan_output_law {compiled : Vegas.EventGraph Player L}
 /-- Once a ready chance event has completed, its stopped output has exactly
 its graph sampling law, including any automatic completions after the draw. -/
 theorem chance_completed_output_law
-    {setup : Setup (Player := Player) (L := L)} (timeouts : EventTimeouts setup.informationGraph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
-    (profile : setup.informationGraph.BehavioralProfile)
-    (scheduler : (application setup timeouts leaks).Scheduler)
-    (players : Player → (application setup timeouts leaks).Policy)
-    (event : setup.informationGraph.EventId) (ownerless : setup.informationGraph.actor? event =
-      none)
-    (count : Nat) (execution : (application setup timeouts leaks).Execution)
+    {setup : Setup (Player := Player) (L := L)} {deps : setup.dataflowGraph.Dependencies}
+    (timeouts : EventTimeouts (serviceGraph setup deps))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup deps)))
+    (serial : (serviceGraph setup deps).ActorSerial)
+    (scheduler : ((reactiveApplication timeouts) leaks).Scheduler)
+    (players : Player → ((reactiveApplication timeouts) leaks).Policy)
+    (event : (serviceGraph setup deps).EventId)
+    (ownerless : (serviceGraph setup deps).actor? event =
+      none) (solitary : (serviceGraph setup deps).Solitary event)
+    (count : Nat) (execution : ((reactiveApplication timeouts) leaks).Execution)
     (ready : execution.application.config.cut.Ready event)
-    (completed : ∀ final ∈ ((application setup timeouts leaks).runUntil scheduler players
+    (completed : ∀ final ∈ (((reactiveApplication timeouts) leaks).runUntil scheduler players
       (fun final => event ∈ final.application.config.cut.completed) count execution).support,
       event ∈ final.application.config.cut.completed) :
-    ((application setup timeouts leaks).runUntil scheduler players
+    (((reactiveApplication timeouts) leaks).runUntil scheduler players
       (fun final => event ∈ final.application.config.cut.completed) count execution).map
         (fun final => final.application.config.outputs event) =
       (execution.application.config.step event ready
-        (EventCode.actionOfActorNone (setup.informationGraph.nodes event) ownerless)).map
+        (EventCode.actionOfActorNone ((serviceGraph setup deps).nodes event) ownerless)).map
           (fun final => final.outputs event) := by
-  let plan := setup.informationGraph.policyPlan profile setup.informationGraph.canonicalScheduler
-  have law := congrArg (PMF.map (fun final : setup.informationGraph.Config => final.outputs event))
-    (chance_runUntil_bind_runPlan timeouts leaks profile scheduler players event ownerless
-      count execution ready)
-  simp only [PMF.map_bind] at law
+  let graph := serviceGraph setup deps
+  let choices := fun who event (actor : graph.actor? event = some who) =>
+    PMF.pure ((graph.nodes event).failureAction who actor)
+  let profile : graph.BehavioralProfile := fun who event actor _ _ => choices who event actor
+  have independent : ReadyIndependent profile := serial.readyIndependent_of_eventLaws choices
+  let plan := graph.policyPlan profile graph.canonicalScheduler
+  let read := fun config : graph.Config => config.outputs event
+  have keyed (left right : graph.Config) (same : runKey left = runKey right) :
+      read left = read right := congrFun (congrArg (fun key => key.2.1) same) (.inr event)
+  have waiting := chance_runUntil_bind_continuation timeouts leaks
+    (outcomeLaw profile read) (fun state => outcomeLaw_drain independent read keyed state)
+    scheduler players event solitary
+    (fun config ready action => step_bind_outcomeLaw_ownerless profile read config event ready
+      (fun other pending => by
+        obtain ⟨earlier, earlierReady, before⟩ :=
+          config.cut.exists_ready_le_of_unfinished other pending
+        rw [solitary _ earlierReady ready] at before
+        exact before) ownerless action) ownerless count execution ready
+  change _ = (graph.runPlan plan execution.application.config.remaining
+    execution.application.config).map read at waiting
+  have law := waiting
+  dsimp only [outcomeLaw, read] at law
   have left :
-      (((application setup timeouts leaks).runUntil scheduler players
+      ((((reactiveApplication timeouts) leaks).runUntil scheduler players
         (fun final => event ∈ final.application.config.cut.completed) count execution).bind
-        fun final => (setup.informationGraph.runPlan plan final.application.config.remaining
+        fun final => ((serviceGraph setup deps).runPlan plan final.application.config.remaining
           final.application.config).map (fun config => config.outputs event)) =
-      ((application setup timeouts leaks).runUntil scheduler players
+      (((reactiveApplication timeouts) leaks).runUntil scheduler players
         (fun final => event ∈ final.application.config.cut.completed) count execution).map
           (fun final => final.application.config.outputs event) := by
     rw [← PMF.bind_pure_comp]
     apply bind_congr_on_support _
     intro final supported
     exact runPlan_output_law plan _ _ event (completed final supported)
-  change _ = (setup.informationGraph.runPlan plan execution.application.config.remaining
+  change _ = ((serviceGraph setup deps).runPlan plan execution.application.config.remaining
     execution.application.config).map (fun final => final.outputs event) at law
   rw [left] at law
   rw [law]
@@ -402,9 +424,13 @@ theorem chance_completed_output_law
     have terminal := execution.application.config.terminal_iff_remaining_zero.mpr zero
     exact ready.1 (terminal ▸ Finset.mem_univ event)
   obtain ⟨fuel, fuelEq⟩ := Nat.exists_eq_succ_of_ne_zero nonzero
-  rw [fuelEq, setup.informationGraph.runPlan_canonical_ownerless profile fuel
+  rw [fuelEq, (serviceGraph setup deps).runPlan_canonical_ownerless profile fuel
     execution.application.config event ready
-    (fun _ pending => setup.informationGraph.sequentialize_ready_le_unfinished _ ready pending)
+    (fun other pending => by
+      obtain ⟨earlier, earlierReady, before⟩ :=
+        execution.application.config.cut.exists_ready_le_of_unfinished other pending
+      rw [solitary _ earlierReady ready] at before
+      exact before)
     ownerless, PMF.map_bind]
   rw [← PMF.bind_pure_comp]
   apply bind_congr_on_support _
@@ -413,7 +439,5 @@ theorem chance_completed_output_law
   rw [execution.application.config.step_cut event ready _ next supported,
     EventOrder.Cut.mem_complete]
   exact Or.inl rfl
-
-
 
 end Vegas

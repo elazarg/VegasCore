@@ -3,6 +3,7 @@ module
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 public import Vegas.Compile.PublicationPolicy
+public import Vegas.Game.GraphForfeit
 public import Vegas.Game.RevealClosureSimulation
 public import Vegas.Game.ConcurrentRevealForfeit
 public import Vegas.Game.RevealServiceEffectiveOutcomeLaw
@@ -23,39 +24,10 @@ noncomputable section
 
 namespace Vegas
 
-open SourceProgram GameTheory GameTheory.Math.Probability Interaction EventGraphRuntime EventGraph
+open SourceProgram SourceProgram.Setup GameTheory GameTheory.Math.Probability Interaction
+  EventGraphRuntime EventGraph
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
-
-/-- The forfeited payoff of a concurrent-reveal configuration read in
-instruction order; an unfinished configuration pays nothing. -/
-def concurrentConfigPayoff (setup : Setup (Player := Player) (L := L)) {Parameter : Type}
-    (parameter : State L setup.context → Parameter)
-    (utility : Parameter × PublicOutcome setup.program → Player → ℝ) (forfeit : ℝ)
-    (config : setup.revealRelaxedGraph.Config) (who : Player) : ℝ :=
-  (concurrentOutcome setup parameter config).elim 0 fun outcome =>
-    forfeitUtility setup.program forfeit utility outcome who
-
-/-- The payoff ignores the decisions of defaulted players. -/
-theorem concurrentConfigPayoff_erase (setup : Setup (Player := Player) (L := L))
-    {Parameter : Type} (parameter : State L setup.context → Parameter)
-    (utility : Parameter × PublicOutcome setup.program → Player → ℝ) (forfeit : ℝ)
-    (config : setup.revealRelaxedGraph.Config) :
-    concurrentConfigPayoff setup parameter utility forfeit config.erase =
-      concurrentConfigPayoff setup parameter utility forfeit config := by
-  unfold concurrentConfigPayoff
-  rw [concurrentOutcome_erase]
-
-/-- The payoff depends only on the order-free key. -/
-theorem concurrentConfigPayoff_congr (setup : Setup (Player := Player) (L := L))
-    {Parameter : Type} (parameter : State L setup.context → Parameter)
-    (utility : Parameter × PublicOutcome setup.program → Player → ℝ) (forfeit : ℝ)
-    {left right : setup.revealRelaxedGraph.Config}
-    (same : runKey left = runKey right) :
-    concurrentConfigPayoff setup parameter utility forfeit left =
-      concurrentConfigPayoff setup parameter utility forfeit right := by
-  unfold concurrentConfigPayoff concurrentOutcome
-  rw [concurrentRankedRead_congr setup same]
 
 /-- A terminal configuration reads its graph readout. -/
 theorem concurrentRankedRead_terminal (setup : Setup (Player := Player) (L := L))
@@ -78,19 +50,6 @@ theorem concurrentRankedRead_terminal (setup : Setup (Player := Player) (L := L)
   rw [storeEq] at decoded
   exact decoded
 
-/-- At a terminal configuration the payoff is the concurrent graph game's. -/
-theorem concurrentConfigPayoff_terminal (setup : Setup (Player := Player) (L := L))
-    {Parameter : Type} (parameter : State L setup.context → Parameter)
-    (utility : Parameter × PublicOutcome setup.program → Player → ℝ) (forfeit : ℝ)
-    (config : setup.revealRelaxedGraph.Config) (terminal :
-      config.cut.Terminal) :
-    concurrentConfigPayoff setup parameter utility forfeit config =
-      setup.graphForfeitPayoff setup.revealDependencies parameter utility forfeit ⟨config,
-          terminal⟩ := by
-  unfold concurrentConfigPayoff concurrentOutcome
-  rw [concurrentRankedRead_terminal setup config terminal]
-  rfl
-
 /-- The payoff read from the typed terminal state and public defaults. -/
 def concurrentStatePayoff (setup : Setup (Player := Player) (L := L)) {Parameter : Type}
     (parameter : State L setup.context → Parameter)
@@ -100,17 +59,23 @@ def concurrentStatePayoff (setup : Setup (Player := Player) (L := L)) {Parameter
     (parameter (initialState setup.program final.1), ⟨sourcePublicEnv final.1, final.2⟩) who
 
 /-- The configuration payoff is the state payoff of the instruction-order read. -/
-theorem concurrentConfigPayoff_eq_stateRead (setup : Setup (Player := Player) (L := L))
+theorem graphForfeitConfigPayoff_eq_concurrentStateRead (setup : Setup (Player := Player) (L := L))
     {Parameter : Type} (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ) (forfeit : ℝ)
     (config : setup.revealRelaxedGraph.Config) :
-    concurrentConfigPayoff setup parameter utility forfeit config =
+    setup.graphForfeitConfigPayoff setup.revealDependencies parameter utility forfeit config =
       fun who => (concurrentStateRead setup
         (concurrentStatePayoff setup parameter utility forfeit) config).elim 0 fun pay =>
           pay who := by
-  funext who
-  unfold concurrentConfigPayoff concurrentOutcome concurrentStateRead
-  cases concurrentRankedRead setup config <;> rfl
+  by_cases terminal : config.cut.Terminal
+  · rw [setup.graphForfeitConfigPayoff_terminal setup.revealDependencies parameter utility
+      forfeit config terminal, concurrentStateRead,
+      concurrentRankedRead_terminal setup config terminal]
+    rfl
+  · simp only [concurrentStateRead, concurrentRankedRead, ite_eq_right terminal,
+      Option.map_none, Option.elim_none]
+    funext who
+    exact dite_eq_right terminal
 
 /-- The concurrent graph game's payoff law under the scheduler serving one player
 last is the last-served payoff law from the initial configurations. -/
@@ -123,7 +88,7 @@ theorem play_payoff_eq_lastRun (setup : Setup (Player := Player) (L := L)) {Para
       (setup.graphForfeitPayoff setup.revealDependencies parameter utility forfeit) =
     (serviceInitialLaw setup setup.revealDependencies).bind fun state =>
       (lastRun profile who state.config).map
-        (concurrentConfigPayoff setup parameter utility forfeit) := by
+        (setup.graphForfeitConfigPayoff setup.revealDependencies parameter utility forfeit) := by
   change ((setup.initialLaw.map (fun initial => setup.eventInputs initial)).bind
       (fun inputs => setup.revealRelaxedGraph.terminalOutcomes
         (setup.revealRelaxedGraph.lastScheduler who) profile inputs)).map _ = _
@@ -132,9 +97,11 @@ theorem play_payoff_eq_lastRun (setup : Setup (Player := Player) (L := L)) {Para
   intro initial _
   simp only [Function.comp_apply]
   have payoffs : setup.graphForfeitPayoff setup.revealDependencies parameter utility forfeit =
-      concurrentConfigPayoff setup parameter utility forfeit ∘ Subtype.val := by
+      setup.graphForfeitConfigPayoff setup.revealDependencies parameter utility forfeit ∘
+        Subtype.val := by
     funext outcome
-    exact (concurrentConfigPayoff_terminal setup parameter utility forfeit outcome.1
+    exact (setup.graphForfeitConfigPayoff_terminal setup.revealDependencies parameter utility
+      forfeit outcome.1
       outcome.2).symm
   rw [payoffs, ← PMF.map_comp,
     terminalOutcomes_map_val (graph := setup.revealRelaxedGraph)]
@@ -158,22 +125,26 @@ theorem ReadyIndependent.payoff_scheduler_congr (setup : Setup (Player := Player
     (config : setup.revealRelaxedGraph.Config) :
     (setup.revealRelaxedGraph.runPlan
         (setup.revealRelaxedGraph.policyPlan profile first) config.remaining
-        config).map (concurrentConfigPayoff setup parameter utility forfeit) =
+        config).map (setup.graphForfeitConfigPayoff setup.revealDependencies parameter utility
+          forfeit) =
       (setup.revealRelaxedGraph.runPlan
         (setup.revealRelaxedGraph.policyPlan profile second) config.remaining
-        config).map (concurrentConfigPayoff setup parameter utility forfeit) := by
+        config).map (setup.graphForfeitConfigPayoff setup.revealDependencies parameter utility
+          forfeit) := by
   classical
   let read := fun key : RunKey setup.revealRelaxedGraph =>
     if found : ∃ other : setup.revealRelaxedGraph.Config, runKey other = key
       then
-      concurrentConfigPayoff setup parameter utility forfeit found.choose
+      setup.graphForfeitConfigPayoff setup.revealDependencies parameter utility forfeit found.choose
     else fun _ => 0
-  have factored : concurrentConfigPayoff setup parameter utility forfeit = read ∘ runKey := by
+  have factored : setup.graphForfeitConfigPayoff setup.revealDependencies parameter utility
+    forfeit = read ∘ runKey := by
     funext current
     have found : ∃ other : setup.revealRelaxedGraph.Config,
         runKey other = runKey current := ⟨current, rfl⟩
     simp only [Function.comp_apply, read, dite_eq_left found]
-    exact (concurrentConfigPayoff_congr setup parameter utility forfeit found.choose_spec).symm
+    exact (setup.graphForfeitConfigPayoff_congr setup.revealDependencies parameter utility
+      forfeit found.choose_spec).symm
   rw [factored, ← PMF.map_comp, ← PMF.map_comp,
     independent.runPlan_map_runKey first _ config rfl,
     independent.runPlan_map_runKey second _ config rfl]
@@ -194,7 +165,7 @@ theorem honest_play_payoff_law (setup : Setup (Player := Player) (L := L)) {Para
   rw [play_payoff_eq_lastRun]
   have canonical : ∀ state : EventGraphRuntime.State setup.revealRelaxedGraph,
       (lastRun (concurrentReference setup source) who state.config).map
-          (concurrentConfigPayoff setup parameter utility forfeit) =
+          (setup.graphForfeitConfigPayoff setup.revealDependencies parameter utility forfeit) =
         (outcomeLaw (concurrentReference setup source)
           (concurrentStateRead setup (concurrentStatePayoff setup parameter utility forfeit))
           state.config).map fun pay => fun player => pay.elim 0 fun vector => vector player := by
@@ -205,7 +176,7 @@ theorem honest_play_payoff_law (setup : Setup (Player := Player) (L := L)) {Para
       setup.revealRelaxedGraph.canonicalScheduler, PMF.map_comp]
     congr 1
     funext config
-    exact concurrentConfigPayoff_eq_stateRead setup parameter utility forfeit config
+    exact graphForfeitConfigPayoff_eq_concurrentStateRead setup parameter utility forfeit config
   simp only [canonical]
   rw [← PMF.map_bind, concurrentReference_initial_stateLaw, PMF.map_comp]
   rfl
@@ -244,7 +215,8 @@ theorem ledger_honest_payoff_law (setup : Setup (Player := Player) (L := L)) {Pa
         (serviceReferenceTurnPolicy setup setup.revealDependencies duration leaks bound turns
           (firstTurnTiming setup turns setup.revealDependencies)
           (concurrentEffectiveReference setup source)) horizon).map
-      (fun final => concurrentConfigPayoff setup parameter utility forfeit
+      (fun final => setup.graphForfeitConfigPayoff setup.revealDependencies parameter utility
+        forfeit
         final.application.config) =
     (setup.run source).map fun final =>
       concurrentStatePayoff setup parameter utility forfeit (final.state, final.defaults) := by
@@ -257,7 +229,7 @@ theorem ledger_honest_payoff_law (setup : Setup (Player := Player) (L := L)) {Pa
   congr 1
   funext final
   simp only [Function.comp_apply]
-  rw [concurrentConfigPayoff_eq_stateRead]
+  rw [graphForfeitConfigPayoff_eq_concurrentStateRead]
   rfl
 
 /-- **The ledger payoff law of a deviation.** Against effective-opening clients
@@ -285,14 +257,15 @@ theorem ledger_deviation_payoff_law (setup : Setup (Player := Player) (L := L))
           (Function.update (serviceReferenceTurnPolicy setup setup.revealDependencies duration leaks
             bound turns (firstTurnTiming setup turns setup.revealDependencies)
             (concurrentEffectiveReference setup source)) who deviation) horizon).map
-        (fun final => concurrentConfigPayoff setup parameter utility forfeit
+        (fun final => setup.graphForfeitConfigPayoff setup.revealDependencies parameter utility
+          forfeit
           final.application.config) =
       (serviceInitialLaw setup setup.revealDependencies).bind fun state =>
         (lastRun (setup.revealRelaxedGraph.normalizeProfile
           (GameTheory.Profile.update (sig := (serviceGraph setup
             setup.revealDependencies).gameSignature)
             (compileEventProfile setup.program source) who policy)) who state.config).map
-          (concurrentConfigPayoff setup parameter utility forfeit) := by
+          (setup.graphForfeitConfigPayoff setup.revealDependencies parameter utility forfeit) := by
   classical
   let G := setup.revealRelaxedGraph
   let app := serviceApplication setup setup.revealDependencies duration leaks
@@ -310,19 +283,22 @@ theorem ledger_deviation_payoff_law (setup : Setup (Player := Player) (L := L))
   refine ⟨policy, ?_⟩
   let read := fun key : RunKey G =>
     if found : ∃ other : G.Config, runKey other = key then
-      concurrentConfigPayoff setup parameter utility forfeit found.choose
+      setup.graphForfeitConfigPayoff setup.revealDependencies parameter utility forfeit found.choose
     else fun _ => 0
   have readKey (config : G.Config) :
-      read (runKey config) = concurrentConfigPayoff setup parameter utility forfeit config := by
+      read (runKey config) = setup.graphForfeitConfigPayoff setup.revealDependencies parameter
+        utility forfeit config := by
     have found : ∃ other : G.Config, runKey other = runKey config := ⟨config, rfl⟩
     simp only [read, dite_eq_left found]
-    exact concurrentConfigPayoff_congr setup parameter utility forfeit found.choose_spec
+    exact setup.graphForfeitConfigPayoff_congr setup.revealDependencies parameter utility forfeit
+      found.choose_spec
   have readErasedKey (config : G.Config) :
       read (readErased (runKey config)) =
-        concurrentConfigPayoff setup parameter utility forfeit config := by
+        setup.graphForfeitConfigPayoff setup.revealDependencies parameter utility forfeit config
+          := by
     rw [readErased_runKey]
     unfold erasedKey
-    rw [readKey, concurrentConfigPayoff_erase]
+    rw [readKey, graphForfeitConfigPayoff_erase]
   have twins := erasureTwins_effectiveOpening (graph := G)
     (compileEventProfile setup.program source)
     (fun owner event actor publication observation active =>
@@ -332,7 +308,8 @@ theorem ledger_deviation_payoff_law (setup : Setup (Player := Player) (L := L))
           (Function.update (serviceReferenceTurnPolicy setup setup.revealDependencies duration leaks
             bound turns (firstTurnTiming setup turns setup.revealDependencies)
             (concurrentEffectiveReference setup source)) who deviation) horizon).map
-        (fun final => concurrentConfigPayoff setup parameter utility forfeit
+        (fun final => setup.graphForfeitConfigPayoff setup.revealDependencies parameter utility
+          forfeit
           final.application.config))
       = ((serviceInitialLaw setup setup.revealDependencies).bind fun state =>
           (app.runToHorizon scheduler
@@ -362,7 +339,8 @@ theorem ledger_deviation_payoff_law (setup : Setup (Player := Player) (L := L))
     _ = (serviceInitialLaw setup setup.revealDependencies).bind fun state =>
           (lastRun (G.lastDeviationProfile
             (effectiveOpening (compileEventProfile setup.program source)) who policy) who
-            state.config).map (concurrentConfigPayoff setup parameter utility forfeit) := by
+            state.config).map (setup.graphForfeitConfigPayoff setup.revealDependencies parameter
+              utility forfeit) := by
         rw [PMF.map_bind]
         apply bind_congr_on_support _
         intro state _
@@ -372,14 +350,15 @@ theorem ledger_deviation_payoff_law (setup : Setup (Player := Player) (L := L))
         funext config
         simp only [Function.comp_apply]
         unfold erasedKey
-        rw [readKey, concurrentConfigPayoff_erase]
+        rw [readKey, graphForfeitConfigPayoff_erase]
     _ = _ := by
         apply bind_congr_on_support _
         intro state _
         unfold lastRun
         exact twins.runPlan_map_of_erase_invariant (G.lastScheduler who)
-          (concurrentConfigPayoff setup parameter utility forfeit)
-          (concurrentConfigPayoff_erase setup parameter utility forfeit) _ _
+          (setup.graphForfeitConfigPayoff setup.revealDependencies parameter utility forfeit)
+          (setup.graphForfeitConfigPayoff_erase setup.revealDependencies parameter utility
+            forfeit) _ _
 
 /-- **Effective-opening clients are an approximate Nash equilibrium with
 concurrent reveals.** For a well-formed setup with finitely many binding values
@@ -417,7 +396,8 @@ theorem concurrentEffectiveClients_deviation_bound (setup : Setup (Player := Pla
     (who : Player)
     (deviation : (serviceApplication setup setup.revealDependencies duration leaks).Policy) :
     extendedExpectedUtility (fun final player =>
-        concurrentConfigPayoff setup parameter utility forfeit final.application.config player)
+        setup.graphForfeitConfigPayoff setup.revealDependencies parameter utility forfeit
+          final.application.config player)
       who ((serviceApplication setup setup.revealDependencies duration leaks).roundsFrom
         (serviceInitialLaw setup setup.revealDependencies) scheduler
         (Function.update (serviceReferenceTurnPolicy setup setup.revealDependencies duration leaks
@@ -426,7 +406,8 @@ theorem concurrentEffectiveClients_deviation_bound (setup : Setup (Player := Pla
           (concurrentEffectiveReference setup (setup.decodeBehavioralProfile
             (CommitmentInterface.forfeiture setup.program) target))) who deviation) horizon) ≤
       extendedExpectedUtility (fun final player =>
-        concurrentConfigPayoff setup parameter utility forfeit final.application.config player)
+        setup.graphForfeitConfigPayoff setup.revealDependencies parameter utility forfeit
+          final.application.config player)
       who ((serviceApplication setup setup.revealDependencies duration leaks).roundsFrom
         (serviceInitialLaw setup setup.revealDependencies) scheduler
         (serviceReferenceTurnPolicy setup setup.revealDependencies duration leaks bound turns
@@ -445,10 +426,12 @@ theorem concurrentEffectiveClients_deviation_bound (setup : Setup (Player := Pla
   have viaPayoffs
       (law : PMF (serviceApplication setup setup.revealDependencies duration leaks).Execution) :
       extendedExpectedUtility (fun final player =>
-          concurrentConfigPayoff setup parameter utility forfeit final.application.config player)
+          setup.graphForfeitConfigPayoff setup.revealDependencies parameter utility forfeit
+            final.application.config player)
         who law =
       extendedExpectedUtility (fun pay player => pay player) who
-        (law.map fun final => concurrentConfigPayoff setup parameter utility forfeit
+        (law.map fun final => setup.graphForfeitConfigPayoff setup.revealDependencies parameter
+          utility forfeit
           final.application.config) := by
     rw [extendedExpectedUtility_map]
   have viaGame (profile : G.BehavioralProfile) :
@@ -469,21 +452,6 @@ theorem concurrentEffectiveClients_deviation_bound (setup : Setup (Player := Pla
     ← viaGame, ← viaGame]
   exact bound
 
-/-- **The ledger game with concurrent reveals.** Each player chooses a native
-ledger policy; the outcome is the configuration reached by the horizon. -/
-def concurrentLedgerGame (setup : Setup (Player := Player) (L := L))
-    (duration : setup.revealRelaxedGraph.EventId → Nat)
-    (leaks : MessageNetwork.ObservationRule Player
-      (WitnessedPacket setup.revealRelaxedGraph))
-    (scheduler : (serviceApplication setup setup.revealDependencies duration leaks).Scheduler)
-    (horizon : Nat) : GameForm Player where
-  sig := { Strategy := fun _ => (serviceApplication setup setup.revealDependencies duration
-    leaks).Policy
-           Outcome := setup.revealRelaxedGraph.Config }
-  play profile := ((serviceApplication setup setup.revealDependencies duration leaks).roundsFrom
-    (serviceInitialLaw setup setup.revealDependencies) scheduler profile horizon).map
-      fun final => final.application.config
-
 /-- The effective-opening clients of a source profile: each player opens a
 reveal at its first opportunity exactly when the opening would be accepted. -/
 def concurrentLedgerClients (setup : Setup (Player := Player) (L := L))
@@ -496,39 +464,6 @@ def concurrentLedgerClients (setup : Setup (Player := Player) (L := L))
   serviceReferenceTurnPolicy setup setup.revealDependencies duration leaks bound turns
     (firstTurnTiming setup turns setup.revealDependencies) (concurrentEffectiveReference setup
       source)
-
-/-- Every expectation of a payoff bounded above exists. -/
-private theorem hasExpectation_of_le {α : Type*} {law : PMF α} {pay : α → ℝ} {top : ℝ}
-    (below : ∀ outcome, pay outcome ≤ top) : HasExpectation law pay := by
-  rw [← hasExpectation_neg_iff, ← hasExpectation_affine_iff (c := 1) top one_pos]
-  exact hasExpectation_of_nonneg fun outcome _ => by linarith [below outcome]
-
-/-- The configuration payoff is bounded above when the forfeit is at least the
-payoff range. -/
-private theorem concurrentConfigPayoff_le (setup : Setup (Player := Player) (L := L))
-    {Parameter : Type} (parameter : State L setup.context → Parameter)
-    (utility : Parameter × PublicOutcome setup.program → Player → ℝ) (forfeit : ℝ)
-    (range : ∀ high low who, utility high who - utility low who ≤ forfeit) (who : Player) :
-    ∃ top, ∀ config, concurrentConfigPayoff setup parameter utility forfeit config who ≤ top := by
-  classical
-  by_cases inhabited : Nonempty (Parameter × PublicOutcome setup.program)
-  · obtain ⟨anchor⟩ := inhabited
-    have nonneg : 0 ≤ forfeit := by simpa using range anchor anchor who
-    refine ⟨max 0 (utility anchor who + forfeit), fun config => ?_⟩
-    unfold concurrentConfigPayoff
-    cases concurrentOutcome setup parameter config with
-    | none => exact le_max_left _ _
-    | some outcome =>
-        simp only [Option.elim, forfeitUtility]
-        have := range outcome anchor who
-        have : 0 ≤ forfeit * (failedReveals setup.program who outcome.2 : ℝ) :=
-          mul_nonneg nonneg (Nat.cast_nonneg _)
-        exact le_max_of_le_right (by linarith)
-  · refine ⟨0, fun config => ?_⟩
-    unfold concurrentConfigPayoff
-    cases concurrentOutcome setup parameter config with
-    | none => exact le_rfl
-    | some outcome => exact (inhabited ⟨outcome⟩).elim
 
 /-- **Nash equilibria of the intended game are preserved on the ledger with
 concurrent reveals.** For a well-formed program with finitely many binding
@@ -562,21 +497,28 @@ theorem concurrentReveal_ledger_isεNash (setup : Setup (Player := Player) (L :=
     (contract : AsyncContract (serviceTimeouts setup setup.revealDependencies duration) leaks
       (serviceInitialLaw setup setup.revealDependencies) horizon scheduler delay bound)
     (timely : AsyncTimely (serviceTimeouts setup setup.revealDependencies duration) delay bound) :
-    IsεNash (concurrentLedgerGame setup duration leaks scheduler horizon)
-      (concurrentConfigPayoff setup parameter utility forfeit) ε
+    IsεNash (serviceGame setup setup.revealDependencies duration leaks scheduler horizon)
+      (setup.graphForfeitConfigPayoff setup.revealDependencies parameter utility forfeit) ε
       (concurrentLedgerClients setup duration leaks bound turns
         (setup.decodeBehavioralProfile (CommitmentInterface.forfeiture setup.program) target)) := by
   rw [isεNash_iff]
   intro who replacement
-  obtain ⟨top, below⟩ := concurrentConfigPayoff_le setup parameter utility forfeit range who
-  refine ⟨hasExpectation_of_le below, hasExpectation_of_le below, ?_⟩
-  change extendedExpectedUtility (concurrentConfigPayoff setup parameter utility forfeit) who
+  have integrable (law : PMF setup.revealRelaxedGraph.Config) :
+      UtilityIntegrable
+        (setup.graphForfeitConfigPayoff setup.revealDependencies parameter utility forfeit)
+        who law :=
+    setup.graphForfeitConfigPayoff_integrable setup.revealDependencies parameter utility range
+      who law
+  refine ⟨(integrable _).hasExpectation, (integrable _).hasExpectation, ?_⟩
+  change extendedExpectedUtility (setup.graphForfeitConfigPayoff setup.revealDependencies
+    parameter utility forfeit) who
       (((serviceApplication setup setup.revealDependencies duration leaks).roundsFrom
         (serviceInitialLaw setup setup.revealDependencies) scheduler
         (Function.update (concurrentLedgerClients setup duration leaks bound turns
           (setup.decodeBehavioralProfile (CommitmentInterface.forfeiture setup.program) target))
           who replacement) horizon).map fun final => final.application.config) ≤
-    extendedExpectedUtility (concurrentConfigPayoff setup parameter utility forfeit) who
+    extendedExpectedUtility (setup.graphForfeitConfigPayoff setup.revealDependencies parameter
+      utility forfeit) who
       (((serviceApplication setup setup.revealDependencies duration leaks).roundsFrom
         (serviceInitialLaw setup setup.revealDependencies) scheduler
         (concurrentLedgerClients setup duration leaks bound turns

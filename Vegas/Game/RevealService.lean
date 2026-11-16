@@ -3,6 +3,7 @@ module
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 public import Vegas.Compile.EventGraphInputs
+public import Interaction.ReactiveRoundReachability
 public import Vegas.EventGraph.Sequential
 public import Vegas.Pending.ReactiveRuntime
 public import Vegas.Pending.EventPublicState
@@ -112,6 +113,18 @@ abbrev serviceApplication :=
 graph of a dependency choice. -/
 def serviceInitialLaw : PMF (EventGraphRuntime.State (serviceGraph setup deps)) :=
   setup.initialLaw.map (fun initial => EventGraphRuntime.State.initial (setup.eventInputs initial))
+
+/-- Each player selects an unrestricted native policy; the outcome is the
+configuration of the existing service application at the supplied horizon. -/
+def serviceGame
+    (scheduler : (serviceApplication setup deps duration leaks).Scheduler)
+    (horizon : Nat) : GameTheory.GameForm Player where
+  sig := { Strategy := fun _ => (serviceApplication setup deps duration leaks).Policy
+           Outcome := (serviceGraph setup deps).Config }
+  play players := ((serviceApplication setup deps duration leaks).roundsFrom
+    (serviceInitialLaw setup deps) scheduler players horizon).map
+      fun final => final.application.config
+
 
 /-- A finitely supported prior compiles to finitely many initial states. -/
 theorem serviceInitialLaw_support_finite [setup.FiniteInitialLaw] :

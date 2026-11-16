@@ -3,6 +3,7 @@ module
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 public import Vegas.EventGraph.SchedulerReplay
+public import Vegas.EventGraph.DecisionTwin
 public import Vegas.EventGraph.SequentialLaw
 public import Vegas.EventGraph.SequentialNormalization
 public import Vegas.EventGraph.NormalizedRestriction
@@ -47,6 +48,19 @@ theorem rankedHistory_events {graph : Vegas.EventGraph Player L} (config : graph
   | nil => rfl
   | cons head tail ih =>
       cases present : (completionOf config head).isSome <;> simp [present, ih]
+
+/-- Listing erased completions by rank erases only their private decisions. -/
+theorem rankedHistory_erase {graph : EventGraph Player L} (config : graph.Config) :
+    rankedHistory config.erase =
+      (rankedHistory config).map (graph.eraseCompletion config.defaulted) := by
+  unfold rankedHistory
+  simp only [completionOf_erase]
+  generalize List.finRange graph.order.eventCount = events
+  induction events with
+  | nil => rfl
+  | cons head tail ih =>
+      cases found : completionOf config head <;> simp [found, ih]
+
 
 /-- A terminal configuration of the concurrent graph, as a configuration of the
 compiled graph whose history lists completions in source order. -/

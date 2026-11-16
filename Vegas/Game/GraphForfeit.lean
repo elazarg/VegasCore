@@ -61,6 +61,78 @@ theorem graphForfeitConfigPayoff_terminal (setup : Setup (Player := Player) (L :
   funext who
   exact dite_eq_left terminal
 
+/-- The total forfeiture reader depends only on the cut, store and per-event records. -/
+theorem graphForfeitConfigPayoff_congr
+    (setup : Setup (Player := Player) (L := L)) (deps : setup.dataflowGraph.Dependencies)
+    {Parameter : Type} (parameter : State L setup.context → Parameter)
+    (utility : Parameter × PublicOutcome setup.program → Player → ℝ) (forfeit : ℝ)
+    {left right : (setup.dataflowGraph.withDependencies deps).Config}
+    (same : runKey left = runKey right) :
+    setup.graphForfeitConfigPayoff deps parameter utility forfeit left =
+      setup.graphForfeitConfigPayoff deps parameter utility forfeit right := by
+  let G := setup.dataflowGraph.withDependencies deps
+  have cuts : left.cut = right.cut := congrArg Prod.fst same
+  by_cases terminal : left.cut.Terminal
+  · have rightTerminal : right.cut.Terminal := cuts ▸ terminal
+    rw [setup.graphForfeitConfigPayoff_terminal deps parameter utility forfeit left terminal,
+      setup.graphForfeitConfigPayoff_terminal deps parameter utility forfeit right rightTerminal]
+    unfold graphForfeitPayoff
+    have outcomes : (⟨rankedConfig (graph := G) left terminal,
+        rankedConfig_terminal (graph := G) left terminal⟩ :
+        setup.informationGraph.gameSignature.Outcome) =
+        ⟨rankedConfig (graph := G) right rightTerminal,
+          rankedConfig_terminal (graph := G) right rightTerminal⟩ :=
+      Subtype.ext (rankedConfig_congr same terminal rightTerminal)
+    exact congrArg (fun outcome => forfeitUtility setup.program forfeit utility
+      (setup.eventParameterOutcome parameter outcome)) outcomes
+  · have rightNotTerminal : ¬ right.cut.Terminal := by rw [← cuts]; exact terminal
+    funext who
+    have leftZero : setup.graphForfeitConfigPayoff deps parameter utility forfeit left who = 0 :=
+      dite_eq_right terminal
+    have rightZero : setup.graphForfeitConfigPayoff deps parameter utility forfeit right who = 0 :=
+      dite_eq_right rightNotTerminal
+    exact leftZero.trans rightZero.symm
+
+/-- Erasing decisions of defaulted players leaves every forfeited payoff unchanged. -/
+theorem graphForfeitConfigPayoff_erase
+    (setup : Setup (Player := Player) (L := L)) (deps : setup.dataflowGraph.Dependencies)
+    {Parameter : Type} (parameter : State L setup.context → Parameter)
+    (utility : Parameter × PublicOutcome setup.program → Player → ℝ) (forfeit : ℝ)
+    (config : (setup.dataflowGraph.withDependencies deps).Config) :
+    setup.graphForfeitConfigPayoff deps parameter utility forfeit config.erase =
+      setup.graphForfeitConfigPayoff deps parameter utility forfeit config := by
+  let G := setup.dataflowGraph.withDependencies deps
+  have defaultsEq : EventCompletion.defaults (rankedHistory config.erase) =
+      EventCompletion.defaults (rankedHistory config) := by
+    rw [rankedHistory_erase]
+    unfold EventCompletion.defaults
+    simp only [List.map_map, Function.comp_def, eraseCompletion_defaultEvent]
+  by_cases terminal : config.cut.Terminal
+  · rw [setup.graphForfeitConfigPayoff_terminal deps parameter utility forfeit config.erase
+      terminal, setup.graphForfeitConfigPayoff_terminal deps parameter utility forfeit config
+        terminal]
+    unfold graphForfeitPayoff
+    let first := terminalConfig setup.program
+      ⟨rankedConfig (graph := G) config.erase terminal,
+        rankedConfig_terminal (graph := G) config.erase terminal⟩
+    let last := terminalConfig setup.program
+      ⟨rankedConfig (graph := G) config terminal,
+        rankedConfig_terminal (graph := G) config terminal⟩
+    have states : first.state = last.state := rfl
+    have defaults : first.defaults = last.defaults := defaultsEq
+    have outcomes : setup.parameterOutcome parameter first =
+        setup.parameterOutcome parameter last := by
+      unfold parameterOutcome publicOutcome
+      rw [states, defaults]
+    exact congrArg (forfeitUtility setup.program forfeit utility) outcomes
+  · funext who
+    have erasedZero : setup.graphForfeitConfigPayoff deps parameter utility forfeit
+        config.erase who = 0 := dite_eq_right terminal
+    have originalZero : setup.graphForfeitConfigPayoff deps parameter utility forfeit config
+        who = 0 := dite_eq_right terminal
+    exact erasedZero.trans originalZero.symm
+
+
 /-- A player with no default or failed reveal in the source readout has the
 same forfeited utility and fixed-exit utility, for any exit payoff. -/
 theorem graphForfeitPayoff_eq_graphPayoff_of_clean
