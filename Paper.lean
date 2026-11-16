@@ -24,6 +24,7 @@ public import Vegas.Examples.OddsEvensConcurrentNative
 public import Vegas.Examples.BoundedAuctionService
 public import Vegas.Examples.OddsEvensFullSource
 public import Vegas.Examples.CommitRevealAuction
+public import Vegas.Examples.ConcurrentRevealOrderLaw
 public import Vegas.Examples.LateLeak
 
 @[expose] public section
@@ -529,7 +530,56 @@ theorem Vegas.Paper.eventGame_approximate_nash_iff (setup : Setup (Player := Pla
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.eventGame_approximate_nash_iff
 
+/-- On every dependency choice retaining the reveal-relaxed barriers, prescribed
+source-prefix clients of a submitting, disclosing source profile preserve the complete
+source-configuration and fixed-exit payoff law under every public scheduler. No
+equilibrium, finiteness or independence premise is required. -/
+theorem Vegas.Paper.compilePrescribedProfile_law (setup : Setup (Player := Player) (L := L))
+    (deps : setup.dataflowGraph.Dependencies)
+    (relaxed : (setup.dataflowGraph.withDependencies deps).RevealRelaxedOrdered)
+    {Parameter : Type} (parameter : State L setup.context → Parameter)
+    (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
+    (excluded : Player → ℝ) (source : BehavioralProfile setup.program)
+    (submits : ∀ who, SourceProgram.SubmitsBindings setup.program (source who))
+    (disclosing : ∀ who, Disclosing setup.program (source who))
+    (scheduler : (setup.dataflowGraph.withDependencies deps).PublicScheduler) :
+    (((setup.dataflowGraph.withDependencies deps).gameForm (setup.graphInputs deps) scheduler).play
+        (compilePrescribedProfile setup.program deps source)).map
+        (fun outcome => (some (setup.graphReadout deps outcome), fun who =>
+          setup.graphPayoff deps parameter utility excluded who outcome.1)) =
+      (setup.run source).map fun terminal =>
+        (some terminal, fun who => exclusionUtility setup.program excluded utility
+          (setup.parameterOutcome parameter terminal) who) :=
+  setup.compilePrescribedProfile_law deps relaxed parameter utility excluded source submits
+    disclosing scheduler
+
+/-- info: 'Vegas.Paper.compilePrescribedProfile_law' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.compilePrescribedProfile_law
+
 end Graph
+
+/-! Relaxing independent reveals does not preserve unrestricted source profiles: in the
+commit–reveal auction, a profile whose second reveal depends on the first published bid
+has different terminal store laws under two public schedulers of the reveal-relaxed graph. -/
+
+section RevealOrder
+
+open Vegas.Examples.ConcurrentRevealOrderLaw in
+theorem Vegas.Paper.reveal_order_changes_store_law :
+    (graph.runPlan (graph.policyPlan compiled bobFirstScheduler) 2 bound).map
+        Vegas.EventGraph.Config.store ≠
+      (graph.runPlan (graph.policyPlan compiled graph.canonicalScheduler) 2 bound).map
+        Vegas.EventGraph.Config.store :=
+  Vegas.Examples.ConcurrentRevealOrderLaw.terminal_store_laws_differ
+
+/-- info: 'Vegas.Paper.reveal_order_changes_store_law' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.reveal_order_changes_store_law
+
+end RevealOrder
 
 /-! A native protocol control exposes a graph configuration. Each raw transition
 follows a finite graph path, and initialized histories retain graph reachability.
