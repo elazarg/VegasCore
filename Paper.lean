@@ -648,37 +648,23 @@ A service completion guarantee additionally makes every terminal field available
 
 section Runtime
 
-variable {graph : EventGraph Player L} (timeouts : EventTimeouts graph)
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-
-/-- The graph configuration retained by a native protocol control. -/
-def Vegas.Paper.controlConfig
-    (control : ((reactiveApplication timeouts) leaks).Control) : graph.Config :=
-  control.execution.application.config
-
-/-- Every typed graph field has an available stored value. -/
-def Vegas.Paper.FieldsAvailable (config : graph.Config) : Prop :=
-  ∀ field, (config.store field).isSome = true
-
-variable (inputs : PMF graph.Inputs) (horizon : ℕ)
-  (scheduler : ((reactiveApplication timeouts) leaks).Scheduler)
-
-local notation "app" => (reactiveApplication timeouts) leaks
-local notation "initial" => inputs.map EventGraphRuntime.State.initial
-local notation "protocol" => ReactiveApplication.protocol
-  ((reactiveApplication timeouts) leaks) (inputs.map EventGraphRuntime.State.initial) horizon
-    scheduler
-local notation "configAt" => controlConfig timeouts leaks
-
-theorem Vegas.Paper.reactive_protocol_graph_refinement :
+theorem Vegas.Paper.reactive_protocol_graph_refinement {graph : EventGraph Player L}
+    (timeouts : EventTimeouts graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (inputs : PMF graph.Inputs) (horizon : ℕ)
+    (scheduler : ((reactiveApplication timeouts) leaks).Scheduler) :
+    let ledger := (reactiveApplication timeouts) leaks
+    let initial := inputs.map EventGraphRuntime.State.initial
+    let protocol := ledger.protocol initial horizon scheduler
+    let configAt := fun control : ledger.Control => control.execution.application.config
     (∀ before after joint,
-      some after ∈ ((app).transition initial horizon scheduler (some before) joint).support →
+      some after ∈ (ledger.transition initial horizon scheduler (some before) joint).support →
         Relation.ReflTransGen EventGraph.Config.Step (configAt before) (configAt after)) ∧
-    ∀ control, (protocol).Trace (some control) →
+    ∀ control, protocol.Trace (some control) →
       (∃ input ∈ inputs.support, (configAt control).Reachable input) ∧
-      ((CompletesPlay timeouts) leaks initial horizon scheduler → (protocol).terminal (some
-        control) →
-        (configAt control).cut.Terminal ∧ FieldsAvailable (configAt control)) :=
+      (CompletesPlay timeouts leaks initial horizon scheduler →
+        protocol.terminal (some control) →
+        (configAt control).cut.Terminal ∧ ∀ field, ((configAt control).store field).isSome) :=
   Vegas.EventGraphRuntime.reactive_protocol_graph_refinement timeouts leaks inputs horizon scheduler
 
 /-- info: 'Vegas.Paper.reactive_protocol_graph_refinement' depends on axioms:
@@ -699,44 +685,27 @@ for each owned event; both conditions concern the supplied scheduler and runtime
 
 section OrdinaryCompiler
 
-variable {setup : Setup (Player := Player) (L := L)} [Finite Player]
-  (timeouts : EventTimeouts setup.informationGraph)
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
-  {horizon turns : ℕ} (scheduler : (application setup timeouts leaks).Scheduler)
-  (delay bound : setup.informationGraph.EventId → ℕ) (original : BehavioralProfile setup.program)
-
-/-- The initialized actual-client law, read as an optional complete source configuration. -/
-def Vegas.Paper.clientReadoutLaw : PMF (Option (TerminalConfig setup)) :=
-  ((application setup timeouts leaks).roundsFrom (initialLaw setup) scheduler
-      (serviceClientPolicy setup setup.informationDependencies timeouts.duration leaks
-        bound turns
-        (firstTurnTiming setup turns) (setup.program.normalizeDisclosureProfile original))
-      horizon).map
-      (fun execution => sourceReadout setup timeouts leaks
-        ((application setup timeouts leaks).finished execution))
-
-/-- An observation of the terminal typed state together with public default history. -/
-def Vegas.Paper.terminalObservation {Outcome : Type u}
-    (read : State L setup.program.terminalCtx × DefaultHistory Player → Outcome)
-    (terminal : TerminalConfig setup) : Outcome :=
-  read (terminal.state, terminal.defaults)
-
-variable (contract : (AsyncContract timeouts) leaks (initialLaw setup) horizon scheduler delay
-  bound)
-  (timely : (AsyncTimely timeouts) delay bound) {Outcome : Type u}
-  (read : State L setup.program.terminalCtx × DefaultHistory Player → Outcome)
-
-local notation "clientLaw" => clientReadoutLaw (horizon := horizon) (turns := turns)
-  timeouts leaks scheduler bound original
-local notation "observe" => terminalObservation (setup := setup) read
-
-include contract timely in
-theorem Vegas.Paper.sourceServiceClientPolicy_outcome_law :
-    (clientLaw).map
-        (Option.map (fun terminal => observe terminal)) =
+theorem Vegas.Paper.sourceServiceClientPolicy_outcome_law
+    {setup : Setup (Player := Player) (L := L)} [Finite Player]
+    (timeouts : EventTimeouts setup.informationGraph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
+    {horizon turns : ℕ} (scheduler : (application setup timeouts leaks).Scheduler)
+    (delay bound : setup.informationGraph.EventId → ℕ)
+    (contract : AsyncContract timeouts leaks (initialLaw setup) horizon scheduler delay bound)
+    (timely : AsyncTimely timeouts delay bound)
+    (original : BehavioralProfile setup.program) {Outcome : Type u}
+    (read : State L setup.program.terminalCtx × DefaultHistory Player → Outcome) :
+    let ledger := application setup timeouts leaks
+    let clients := serviceClientPolicy setup setup.informationDependencies timeouts.duration
+      leaks bound turns (firstTurnTiming setup turns)
+      (setup.program.normalizeDisclosureProfile original)
+    let ledgerRun := ledger.roundsFrom (initialLaw setup) scheduler clients horizon
+    let readout := fun execution => sourceReadout setup timeouts leaks (ledger.finished execution)
+    let observe := fun terminal : TerminalConfig setup => read (terminal.state, terminal.defaults)
+    (ledgerRun.map readout).map (Option.map observe) =
       (setup.run original).map (fun terminal => some (observe terminal)) := by
-  dsimp only [clientReadoutLaw, terminalObservation]
-  simpa only [PMF.map_comp, Function.comp_def] using
+  intro ledger clients ledgerRun readout observe
+  simpa only [ledgerRun, readout, observe, PMF.map_comp, Function.comp_def] using
     Vegas.sourceServiceClientPolicy_outcome_law timeouts leaks scheduler delay bound original
       contract timely read
 
@@ -745,16 +714,29 @@ theorem Vegas.Paper.sourceServiceClientPolicy_outcome_law :
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.sourceServiceClientPolicy_outcome_law
 
-include contract timely in
-theorem Vegas.Paper.sourceServiceClientPolicy_graph_law :
-    (clientLaw).map
-        (Option.map (fun terminal => observe terminal)) =
-      ((setup.informationGraph.canonicalGame (setup.initialLaw.map setup.eventInputs)).play
-        (compileEventProfile setup.program original)).map
-        (fun terminal =>
-          some (observe (terminalConfig setup.program terminal))) := by
-  dsimp only [clientReadoutLaw, terminalObservation]
-  simpa only [PMF.map_comp, Function.comp_def] using
+theorem Vegas.Paper.sourceServiceClientPolicy_graph_law
+    {setup : Setup (Player := Player) (L := L)} [Finite Player]
+    (timeouts : EventTimeouts setup.informationGraph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
+    {horizon turns : ℕ} (scheduler : (application setup timeouts leaks).Scheduler)
+    (delay bound : setup.informationGraph.EventId → ℕ)
+    (contract : AsyncContract timeouts leaks (initialLaw setup) horizon scheduler delay bound)
+    (timely : AsyncTimely timeouts delay bound)
+    (original : BehavioralProfile setup.program) {Outcome : Type u}
+    (read : State L setup.program.terminalCtx × DefaultHistory Player → Outcome) :
+    let ledger := application setup timeouts leaks
+    let clients := serviceClientPolicy setup setup.informationDependencies timeouts.duration
+      leaks bound turns (firstTurnTiming setup turns)
+      (setup.program.normalizeDisclosureProfile original)
+    let ledgerRun := ledger.roundsFrom (initialLaw setup) scheduler clients horizon
+    let readout := fun execution => sourceReadout setup timeouts leaks (ledger.finished execution)
+    let observe := fun terminal : TerminalConfig setup => read (terminal.state, terminal.defaults)
+    let graphRun := (setup.informationGraph.canonicalGame
+      (setup.initialLaw.map setup.eventInputs)).play (compileEventProfile setup.program original)
+    (ledgerRun.map readout).map (Option.map observe) =
+      graphRun.map (fun terminal => some (observe (terminalConfig setup.program terminal))) := by
+  intro ledger clients ledgerRun readout observe graphRun
+  simpa only [ledgerRun, readout, observe, graphRun, PMF.map_comp, Function.comp_def] using
     Vegas.sourceServiceClientPolicy_graph_law timeouts leaks scheduler delay bound original
       contract timely read
 
