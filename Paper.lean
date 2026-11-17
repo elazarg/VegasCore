@@ -791,6 +791,23 @@ theorem Vegas.Paper.unobserved_submission {graph : EventGraph Player L}
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.unobserved_submission
 
+/-- Extending bounded inclusion to early watcher reports gives conditional delivery rate one. -/
+theorem Vegas.Paper.protected_report_delivery {graph : EventGraph Player L}
+    (service : EvidenceReportService (CountEvidence graph)) (observationRate : Player → ℝ)
+    (capture : ∀ actual who, actual ∈ countViolation who → observationRate who ≤
+      ((service.observations actual).toOuterMeasure (countViolation who)).toReal)
+    (inclusion : ∀ actual, ∀ seen ∈ (service.observations actual).support,
+      ∀ reports ∈ (service.reports seen).support, ∀ item ∈ firstCountReports seen,
+      ∃ report ∈ reports, report.evidence = item ∧
+        report.includedAt ≤ report.submittedAt + service.window.inclusionBound) :
+    CountEvidenceCoverage service observationRate (fun _ => 1) :=
+  countEvidenceCoverage_of_bounded_report_delay service observationRate capture inclusion
+
+/-- info: 'Vegas.Paper.protected_report_delivery' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.protected_report_delivery
+
 /-- With unrestricted inclusion delay, the sharp uniform collection bound is zero. -/
 theorem Vegas.Paper.uniform_count_collection_bound {graph : EventGraph Player L}
     (window : ChallengeWindow) (actual : List (CountEvidence graph)) (sender : Player)

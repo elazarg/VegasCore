@@ -120,21 +120,27 @@ matching commitment. Treating an incomplete archive as complete can therefore
 both miss violations and accuse a lawful sender. A forbidden submission can
 also leave the passive view of blocks and leaked traffic empty.
 
-The [challenge-window result](../Interaction/DelayedEvidence.lean) gives zero
-as the greatest uniform lower bound on collection when inclusion delay is
-unrestricted. Its witness captures every item, submits every report immediately
-and includes every report one tick after settlement. This applies even on a
-fixed offending history. A larger finite deposit still yields zero guaranteed
-expected collection on that history.
+Early player moves and early audit reports can use the same bounded-inclusion
+service. The [player contract](../Vegas/Pending/ReactiveAsyncContract.lean)
+protects the owner's sole identifier for its ready event. Its scope stops at
+game traffic. If the ledger also protects the watcher's selected reports, the
+watcher can submit by a cutoff that leaves one inclusion bound before
+settlement. Each selected witness then arrives with conditional probability
+one on every supported observation. The capture bound carries through to
+collection. [Protected report delivery](../Vegas/Pending/CountReportSelection.lean)
+
+The [zero lower bound](../Interaction/DelayedEvidence.lean) applies when
+report delay is unrestricted. In its witness every report is submitted
+immediately and included one tick after settlement. Extending bounded
+inclusion to reports rules out that service.
 
 In the EVM prototype, the watcher samples blocks and configured pools, and the
 contract accepts reports only before its audit window closes. The contract
 permits phase-valid repeats and separately burns the bond on binding expiry.
 The count audit distinguishes fresh signed submissions to the same event and
-charges only on signed evidence. The phase verdict therefore differs, and the
-report-based collection guarantee is zero. The model assigns a fresh serial
-to every emitted envelope. A deployment
-would have to justify that invariant even for competing signed transactions.
+charges only on signed evidence. The phase verdict therefore differs. The
+model assigns a fresh serial to every emitted envelope. A deployment would
+have to justify that invariant even for competing signed transactions.
 Its collection rate depends on its network and inclusion law.
 [Watcher](https://github.com/elazarg/vegas/blob/8d306fb21dd0aca30670b6589ca4d1f6e8894c2a/src/main/kotlin/vegas/watcher/Watcher.kt#L54-L109)
 · [Contract report](https://github.com/elazarg/vegas/blob/8d306fb21dd0aca30670b6589ca4d1f6e8894c2a/src/main/kotlin/vegas/backend/evm/Solidity.kt#L320-L341)

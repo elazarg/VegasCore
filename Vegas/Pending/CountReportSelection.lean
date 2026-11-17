@@ -128,6 +128,31 @@ theorem countEvidenceCoverage_of_firstReport (service : EvidenceReportService (C
   intro reports delivered
   exact ⟨item, delivered.1, owner, bad⟩
 
+/-- Protecting each selected report for one inclusion bound after submission
+gives conditional delivery rate one. The cutoff reserves this time before settlement. -/
+theorem countEvidenceCoverage_of_bounded_report_delay
+    (service : EvidenceReportService (CountEvidence graph)) (observationRate : Player → ℝ)
+    (capture : ∀ actual who, actual ∈ countViolation who → observationRate who ≤
+      ((service.observations actual).toOuterMeasure (countViolation who)).toReal)
+    (inclusion : ∀ actual, ∀ seen ∈ (service.observations actual).support,
+      ∀ reports ∈ (service.reports seen).support, ∀ item ∈ firstCountReports seen,
+      ∃ report ∈ reports, report.evidence = item ∧
+        report.includedAt ≤ report.submittedAt + service.window.inclusionBound) :
+    CountEvidenceCoverage service observationRate (fun _ => 1) := by
+  apply countEvidenceCoverage_of_firstReport service observationRate _ capture
+  intro actual who _ seen observed item selected _
+  have allTimely : (service.reports seen).support ⊆ {reports |
+      item ∈ EvidenceReport.deliveredEvidence
+        (service.window.reportCutoff + service.window.inclusionBound) reports} := by
+    intro reports supported
+    obtain ⟨report, present, same, bounded⟩ := inclusion actual seen observed reports supported
+      item selected
+    have early := (service.reports_timelySubmitted seen reports supported report present).1
+    exact (EvidenceReport.mem_deliveredEvidence ..).mpr
+      ⟨report, present, same, bounded.trans (Nat.add_le_add_right early _)⟩
+  rw [((service.reports seen).toOuterMeasure_apply_eq_one_iff _).mpr allTimely]
+  simp
+
 /-- The one-witness service with whole-batch capture and delivery coins. -/
 abbrev thinnedFirstCountReports (capture delivery : Set.Icc (0 : ℝ) 1) :
     EvidenceReportService (CountEvidence graph) :=
