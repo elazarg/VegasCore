@@ -10,7 +10,7 @@ public import Vegas.Game.ClientCompiler
 
 noncomputable section
 
-namespace Vegas.ClientCompilation
+namespace Vegas
 
 open SourceProgram Interaction EventGraphRuntime GameTheory GameTheory.Protocol
   GameTheory.Protocol.ExecutionProtocol GameTheory.Math.Probability GameTheory.Enforcement
@@ -32,6 +32,46 @@ local notation "app" => application setup timeouts leaks
 local notation "raw" => bounds.rawMenu timeouts leaks
 local notation "one" => bounds.onePacketMenu timeouts leaks
 local notation "N" => onePacketModel setup timeouts leaks bounds Initial horizon scheduler
+
+variable (setup timeouts leaks bounds horizon scheduler) in
+/-- Replay a raw execution prefix by normalizing its responses, recovering the
+one-packet history when it exists, and replaying its completed source steps. -/
+def rawIntendedHistory? (history : ((raw).protocol Initial horizon scheduler).History) :
+    Option setup.intendedProtocol.History :=
+  let effective := ((reactiveNormalization timeouts) leaks).history (raw)
+    (bounds.rawMenu_recall timeouts leaks) Initial horizon scheduler history
+  let embed := (bounds.onePacketRestriction timeouts leaks Initial horizon scheduler).history
+  (Function.partialInv embed effective).bind fun retained =>
+    intendedHistory? setup timeouts leaks bounds horizon scheduler retained.trace
+
+namespace ClientCompilation
+
+/-- On a forced own turn displaying an intended site, replay of the raw
+posterior gives the entire intended posterior, including at repeated turns. -/
+theorem raw_belief_replay {who : Player} (source : setup.intendedModel.InformationSite who)
+    (site : (N).InformationSite who)
+    (rawSite : ((raw).information Initial horizon scheduler).InformationSite who)
+    (same : ((reactiveNormalization timeouts) leaks).site (raw)
+      (bounds.rawMenu_recall timeouts leaks) Initial horizon scheduler who rawSite =
+      (bounds.onePacketRestriction timeouts leaks Initial horizon scheduler).site who site)
+    (projected : source.1 = projectView setup timeouts leaks who site.1)
+    (forced : forcedAgent (timeouts := timeouts) (one) Initial horizon scheduler who site.1)
+    {past view} (shown : site.1 = some (past, view))
+    {event} (ownTurn : view.application.publicView.ownTurn? who = some event) :
+    (compiled.assessment.belief who rawSite).map (fun history =>
+      rawIntendedHistory? setup timeouts leaks bounds horizon scheduler history.1) =
+    (intended.belief who source).map (fun history => some history.1) := by
+  let embed := (bounds.onePacketRestriction timeouts leaks Initial horizon scheduler).history
+  let replay := fun history => (Function.partialInv embed history).bind fun retained =>
+    intendedHistory? setup timeouts leaks bounds horizon scheduler retained.trace
+  have normalized := MessageBounds.ExtendsOnePacketAssessment.belief_history_map bounds timeouts
+    leaks Initial horizon scheduler compiled.refinement.extension who site rawSite same
+  have transported := congrArg (fun law => PMF.map replay law) normalized
+  simp only [PMF.map_comp, Function.comp_def, replay, embed,
+    Function.partialInv_left (bounds.onePacketRestriction timeouts leaks Initial horizon
+      scheduler).history.injective, Option.bind_some] at transported
+  exact transported.trans (compiled.refinement.fidelity.belief source site projected forced
+    shown ownTurn)
 
 /-- At every realized source decision, restricting the physical client and normalizing its
 response gives precisely the intended decision law retained by the audit extension. -/
@@ -97,4 +137,6 @@ theorem clients_continuation_at_sourceBoundary
     compiled.refinement.physical_continuation_noCharges spec nativeStart rawStart same outcome
       supported⟩
 
-end Vegas.ClientCompilation
+end ClientCompilation
+
+end Vegas

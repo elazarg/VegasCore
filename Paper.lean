@@ -1044,6 +1044,36 @@ theorem Vegas.Paper.compile_correct
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.compile_correct
 
+/-- At matching raw sites, replay of the actual ledger belief has the supplied
+source posterior, even at a later activation or a zero-probability site. -/
+theorem Vegas.Paper.raw_belief_replay
+    {spec : ClientSpec setup timeouts leaks bounds horizon scheduler
+      parameter utility excludedPayoff}
+    {intended : setup.intendedModel.BehavioralAssessment}
+    (compiled : ClientCompilation spec intended) {who : Player}
+    (source : setup.intendedModel.InformationSite who)
+    (site : (onePacketModel setup timeouts leaks bounds Initial horizon
+      scheduler).InformationSite who)
+    (rawSite : (model).InformationSite who)
+    (same : ((reactiveNormalization timeouts) leaks).site (raw)
+      (bounds.rawMenu_recall timeouts leaks) Initial horizon scheduler who rawSite =
+      (bounds.onePacketRestriction timeouts leaks Initial horizon scheduler).site who site)
+    (projected : source.1 = projectView setup timeouts leaks who site.1)
+    (forced : forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks)
+      Initial horizon scheduler who site.1)
+    {past : List (app).PlayerEntry} {view : (app).PlayerView}
+    (shown : site.1 = some (past, view)) {event : setup.informationGraph.EventId}
+    (ownTurn : view.application.publicView.ownTurn? who = some event) :
+    (compiled.assessment.belief who rawSite).map (fun history =>
+      rawIntendedHistory? setup timeouts leaks bounds horizon scheduler history.1) =
+    (intended.belief who source).map (fun history => some history.1) :=
+  compiled.raw_belief_replay source site rawSite same projected forced shown ownTurn
+
+/-- info: 'Vegas.Paper.raw_belief_replay' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.raw_belief_replay
+
 theorem Vegas.Paper.compile_ledger_correct
     (spec : ClientSpec setup timeouts leaks bounds horizon scheduler
       parameter utility excludedPayoff)
