@@ -24,6 +24,7 @@ theorem thinnedCountEvidence_coverage (capture delivery : Set.Icc (0 : ℝ) 1) :
     CountEvidenceCoverage
       (EvidenceReportService.thinned (Evidence := CountEvidence graph) capture delivery)
       (fun _ => capture.val) (fun _ => delivery.val) := by
+  apply countEvidenceCoverage_of_item_bounds
   intro actual evidence member _
   constructor
   · exact (EvidenceReportService.thinned_observation_mass capture delivery

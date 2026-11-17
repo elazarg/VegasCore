@@ -22,8 +22,8 @@ charge.
 
 The count audit charges nobody in the one-packet game, under any scheduler. An
 excluded response transmits a packet the count verdict forbids, and that
-packet stays forbidden under every later play, so coverage of forbidden count
-evidence collects it with probability at least the coverage rate. Once the rate
+packet stays forbidden under every later play. Coverage therefore bounds the
+probability of charging its sender under every continuation. Once the rate
 times the deposit covers the spread of the utility, every sequential
 equilibrium of the one-packet game extends to the bounded effective runtime and
 then to the bounded raw runtime, with the same law of play and no charge on its

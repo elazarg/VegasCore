@@ -5,7 +5,7 @@ module
 public import Vegas.Examples.BoundedPrivateAuctionConditions
 public import Vegas.Examples.BoundedPrivateValueAuctionSequential
 public import Vegas.Pending.PeriodicServiceCompletion
-public import Vegas.Pending.ThinnedCountCollection
+public import Vegas.Pending.CountReportSelection
 public import Interaction.MessageNetworkObservation
 public import Vegas.Game.ClientCompiler
 public import Vegas.Game.PaymentPreservation
@@ -60,15 +60,16 @@ theorem contract :
 def halfRate : Set.Icc (0 : ℝ) 1 := ⟨1 / 2, by norm_num⟩
 
 abbrev evidenceService :=
-  EvidenceReportService.thinned (Evidence := CountEvidence graph) halfRate halfRate
+  thinnedFirstCountReports (graph := graph) halfRate halfRate
 
-/-- Each actual signed evidence item is collected with probability one quarter. -/
+/-- Each offending bidder's first forbidden witness is collected with probability one quarter. -/
 theorem collection_probability (actual : List (CountEvidence graph))
-    (evidence : CountEvidence graph) (member : evidence ∈ actual) :
+    (evidence : CountEvidence graph) (member : evidence ∈ firstCountReports actual) :
     ((evidenceService.sample actual).toOuterMeasure
       {collected | evidence ∈ collected}).toReal = 1 / 4 := by
+  rw [evidenceService, thinnedFirstCountReports_sample]
   have mass := EvidenceReportService.thinned_collection_mass halfRate halfRate
-    actual evidence member
+    (firstCountReports actual) evidence member
   norm_num [halfRate] at mass
   exact mass
 
@@ -100,7 +101,7 @@ def specification : ClientSpec game timeouts leaks bounds horizon scheduler
   observationRate := fun _ => halfRate.val
   deliveryRate := fun _ => halfRate.val
   delivery_nonnegative := fun _ => by norm_num [halfRate]
-  coverage := thinnedCountEvidence_coverage halfRate halfRate
+  coverage := thinnedFirstCountReports_coverage halfRate halfRate
   deposit := fun _ => 48
   deposit_nonnegative := fun _ => by norm_num
   funded := fun _ => by norm_num [halfRate]

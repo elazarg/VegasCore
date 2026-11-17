@@ -103,41 +103,40 @@ theorem sample_authentic (actual collected : List Evidence)
 /-- Coverage bounds actual collection. The delivery bound is conditional on
 the complete observation, so no independence of sampling and scheduling is
 required. It includes censoring or starvation of reports. -/
-theorem sample_coverage (actual : List Evidence) (evidence : Evidence)
+theorem sample_coverage (actual : List Evidence) (event : Set (List Evidence))
+    (upward : ∀ {first last : List Evidence}, first ⊆ last → first ∈ event → last ∈ event)
     (observationRate deliveryRate : ℝ) (delivery_nonnegative : 0 ≤ deliveryRate)
     (observation_coverage : observationRate ≤
-      ((service.observations actual).toOuterMeasure {observed | evidence ∈ observed}).toReal)
+      ((service.observations actual).toOuterMeasure event).toReal)
     (delivery_coverage : ∀ observed ∈ (service.observations actual).support,
-      evidence ∈ observed → deliveryRate ≤
+      observed ∈ event → deliveryRate ≤
         ((service.reports observed).toOuterMeasure {reports |
-          evidence ∈ EvidenceReport.deliveredEvidence
-            (service.window.reportCutoff + service.window.inclusionBound) reports}).toReal) :
+          EvidenceReport.deliveredEvidence
+            (service.window.reportCutoff + service.window.inclusionBound) reports
+            ∈ event}).toReal) :
     observationRate * deliveryRate ≤
-      ((service.sample actual).toOuterMeasure {collected | evidence ∈ collected}).toReal := by
+      ((service.sample actual).toOuterMeasure event).toReal := by
   classical
-  let event : Set (List Evidence) := {observed | evidence ∈ observed}
   let delivered := fun observed => (service.reports observed).map
     (EvidenceReport.deliveredEvidence service.window.settlementTime)
   have pointwise (observed : List Evidence)
       (supported : observed ∈ (service.observations actual).support) :
       deliveryRate * event.indicator (fun _ => (1 : ℝ)) observed ≤
         ((delivered observed).toOuterMeasure event).toReal := by
-    by_cases present : evidence ∈ observed
+    by_cases present : observed ∈ event
     · have timely := delivery_coverage observed supported present
-      have ordered : {reports | evidence ∈ EvidenceReport.deliveredEvidence
-            (service.window.reportCutoff + service.window.inclusionBound) reports} ⊆
-          {reports | evidence ∈ EvidenceReport.deliveredEvidence
-            service.window.settlementTime reports} :=
-        fun reports member => EvidenceReport.deliveredEvidence_mono
-          service.window.settlement_waits reports member
+      have ordered : {reports | EvidenceReport.deliveredEvidence
+            (service.window.reportCutoff + service.window.inclusionBound) reports ∈ event} ⊆
+          {reports | EvidenceReport.deliveredEvidence
+            service.window.settlementTime reports ∈ event} :=
+        fun reports member => upward (EvidenceReport.deliveredEvidence_mono
+          service.window.settlement_waits reports) member
       have bound := ENNReal.toReal_mono
         (outerMeasure_ne_top (service.reports observed) _)
-        ((service.reports observed).toOuterMeasure_mono (fun reports member => ordered member.1))
-      have member : observed ∈ event := present
-      simpa only [Set.indicator_of_mem member, mul_one, delivered, event,
-        PMF.toOuterMeasure_map_apply, Set.preimage_ofPred_eq] using timely.trans bound
-    · have absent : observed ∉ event := present
-      simp only [Set.indicator_of_notMem absent, mul_zero]
+        ((service.reports observed).toOuterMeasure_mono (fun _ member => ordered member.1))
+      simpa only [Set.indicator_of_mem present, mul_one, delivered,
+        PMF.toOuterMeasure_map_apply, Set.preimage] using timely.trans bound
+    · simp only [Set.indicator_of_notMem present, mul_zero]
       exact ENNReal.toReal_nonneg
   calc
     observationRate * deliveryRate ≤

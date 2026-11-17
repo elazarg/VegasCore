@@ -77,6 +77,18 @@ private theorem delivered_map (seen : List Evidence) :
   | cons first rest ih =>
       simpa [EvidenceReport.deliveredEvidence] using congrArg (first :: ·) ih
 
+/-- At settlement the batch channel has either delivered its input list or
+lost the entire batch, with the specified delivery rate. -/
+theorem thinned_delivered_law (capture delivery : Set.Icc (0 : ℝ) 1) (seen : List Evidence) :
+    ((thinned capture delivery).reports seen).map
+      (EvidenceReport.deliveredEvidence
+        ((thinned (Evidence := Evidence) capture delivery).window.settlementTime)) =
+      erase delivery seen := by
+  change (erase delivery (seen.map fun item => (⟨item, 0, 1⟩ : EvidenceReport Evidence))).map
+    (EvidenceReport.deliveredEvidence 1) = erase delivery seen
+  simp only [erase, mix_map, PMF.pure_map, delivered_map]
+  rfl
+
 theorem thinned_observation_mass (capture delivery : Set.Icc (0 : ℝ) 1)
     (actual : List Evidence) (evidence : Evidence) (member : evidence ∈ actual) :
     (((thinned capture delivery).observations actual).toOuterMeasure

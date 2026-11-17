@@ -94,16 +94,24 @@ Count evidence includes a signed envelope and the signed traffic list against
 which its serial is judged. That traffic is the model's actual emission record;
 it is not automatically a publicly available ledger.
 
-Coverage is stronger than authenticity. For every forbidden actual evidence
-item it lower-bounds observation, and then lower-bounds delivery at every
-supported observed list containing that item. Dependence between censorship
-and observation is allowed, but the conditional lower bound must still hold.
-This rules out just multiplying unrelated unconditional averages.
+For any actual list with a violation by a player, coverage lower-bounds the
+probability of observing at least one violation by that player. On each
+supported observed list containing one, it lower-bounds the probability of
+delivering a witness for the player by the deadline. Per-item bounds also
+suffice. Delivery may depend on the entire observation.
 
-The next concrete task is to specify who obtains the needed signed evidence,
-how missing earlier messages affect verification, who publishes the evidence,
-and why publication receives the claimed coverage before settlement. Derive
-the existing coverage definition from those operations. Include packets
+The [one-report service](../Vegas/Pending/CountReportSelection.lean) submits
+the first forbidden item per sender from the observed list. Its coverage
+proof accepts arbitrary partial observations with the capture bound and
+conditional timely delivery of each selected witness. With whole-batch
+capture and delivery coins, the joint charge-vector law agrees with reporting
+the full list. The bounded auction uses that service. The capture law still
+takes authenticated count evidence as input.
+
+The next concrete task is to construct verified witnesses from the packets
+available to a watcher. Specify how earlier signed messages needed for the
+verdict become available, who publishes the selected evidence, and why
+publication meets the conditional deadline bound. Include packets
 sent after exclusion and packets rejected by the game. A verifier alone, an
 honest-relayer assertion, or a complete-evidence example does not discharge
 availability for a realistic partially observed network.

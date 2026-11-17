@@ -92,7 +92,11 @@ is a sequential equilibrium for every joint prior over those values.
 The [concrete ledger instance](../Vegas/Examples/BoundedAuctionService.lean)
 specializes to independent uniform values and exposes every fresh foreign
 pending message. It uses the shared periodic service, exit utility minus six,
-independent half-rate evidence capture and reporting, and deposits of 48. The raw
+and deposits of 48. After half-rate batch capture the
+[reporter](../Vegas/Pending/CountReportSelection.lean) selects the first
+forbidden witness per bidder and delivers that batch with probability one half.
+Each selected witness is collected with probability one quarter given the
+actual traffic. The raw
 catalogue contains all seven bid values and two candidate slots per bidder.
 One compiled assessment retains the source correspondence and full
 configuration/settlement law, with no supported defaults, failed reveals or

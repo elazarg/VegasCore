@@ -63,19 +63,49 @@ def countAudit (sample : List (CountEvidence graph) → PMF (List (CountEvidence
     (fun evidence => evidence.2.sender) (fun evidence => countPermits evidence.1 evidence.2)
     sample traffic
 
-/-- Authentic backend coverage for count evidence the count verdict forbids.
-Delivery is conditional on the entire observed list, allowing arbitrary
-dependence between observation and censorship of reports. -/
+/-- Evidence lists witnessing a count violation by the given player. -/
+def countViolation (who : Player) : Set (List (CountEvidence graph)) :=
+  {items | ∃ item ∈ items, item.2.sender = who ∧ countPermits item.1 item.2 = false}
+
+/-- On traffic with a violation by a player, observation covers some violation
+by that player. Conditional on each such observation, a witness for that
+player is delivered by the deadline. -/
 def CountEvidenceCoverage (service : EvidenceReportService (CountEvidence graph))
     (observationRate deliveryRate : Player → ℝ) : Prop :=
-  ∀ actual evidence, evidence ∈ actual → countPermits evidence.1 evidence.2 = false →
-    observationRate evidence.2.sender ≤
-      ((service.observations actual).toOuterMeasure {seen | evidence ∈ seen}).toReal ∧
-    ∀ seen ∈ (service.observations actual).support, evidence ∈ seen →
-      deliveryRate evidence.2.sender ≤
-        ((service.reports seen).toOuterMeasure {delivered |
-          evidence ∈ EvidenceReport.deliveredEvidence
-            (service.window.reportCutoff + service.window.inclusionBound) delivered}).toReal
+  ∀ actual who, actual ∈ countViolation who →
+    observationRate who ≤ ((service.observations actual).toOuterMeasure
+      (countViolation who)).toReal ∧
+    ∀ seen ∈ (service.observations actual).support, seen ∈ countViolation who →
+      deliveryRate who ≤ ((service.reports seen).toOuterMeasure {reports |
+        EvidenceReport.deliveredEvidence
+          (service.window.reportCutoff + service.window.inclusionBound) reports
+            ∈ countViolation who}).toReal
+
+/-- Per-item observation and delivery suffice for coverage by player. -/
+theorem countEvidenceCoverage_of_item_bounds (service : EvidenceReportService (CountEvidence graph))
+    (observationRate deliveryRate : Player → ℝ)
+    (bounds : ∀ actual item, item ∈ actual → countPermits item.1 item.2 = false →
+      observationRate item.2.sender ≤
+        ((service.observations actual).toOuterMeasure {seen | item ∈ seen}).toReal ∧
+      ∀ seen ∈ (service.observations actual).support, item ∈ seen →
+        deliveryRate item.2.sender ≤ ((service.reports seen).toOuterMeasure {reports |
+          item ∈ EvidenceReport.deliveredEvidence
+            (service.window.reportCutoff + service.window.inclusionBound) reports}).toReal) :
+    CountEvidenceCoverage service observationRate deliveryRate := by
+  have widen {α : Type} (law : PMF α) (read : α → List (CountEvidence graph))
+      (item : CountEvidence graph) (bad : countPermits item.1 item.2 = false) :
+      (law.toOuterMeasure {x | item ∈ read x}).toReal ≤
+        (law.toOuterMeasure {x | read x ∈ countViolation item.2.sender}).toReal :=
+    ENNReal.toReal_mono (outerMeasure_ne_top _ _) (law.toOuterMeasure_mono
+      fun _ hx => ⟨item, hx.1, rfl, bad⟩)
+  rintro actual who ⟨item, member, rfl, bad⟩
+  constructor
+  · exact ((bounds actual item member bad).1).trans (widen _ id item bad)
+  · rintro seen supported ⟨other, present, owner, forbidden⟩
+    have delivered := (bounds actual other
+      (service.observations_authentic actual seen supported present) forbidden).2 seen
+      supported present
+    simpa only [owner] using delivered.trans (widen _ _ other forbidden)
 
 /-- A forbidden packet in the actual traffic gives the product of observation
 and conditional delivery coverage as a lower bound on its sender's collected
@@ -95,12 +125,12 @@ theorem countAudit_collection (service : EvidenceReportService (CountEvidence gr
   rw [ReactiveApplication.sampledTrafficAudit_collection]
   have member : (countEvidence timeouts) leaks traffic record ∈
       traffic.map ((countEvidence timeouts) leaks traffic) := List.mem_map_of_mem present
-  obtain ⟨observed, delivered⟩ := coverage _ _ member forbidden
-  refine (service.sample_coverage _ _ _ _ (delivery_nonnegative _) observed delivered).trans ?_
-  apply ENNReal.toReal_mono (outerMeasure_ne_top _ _)
-  apply PMF.toOuterMeasure_mono
-  rintro seen ⟨included, _⟩
-  exact ⟨_, included, rfl, forbidden⟩
+  obtain ⟨observed, delivered⟩ := coverage _ record.envelope.sender
+    ⟨_, member, rfl, forbidden⟩
+  apply service.sample_coverage _ (countViolation record.envelope.sender) _ _ _
+    (delivery_nonnegative _) observed delivered
+  rintro first last incl ⟨item, present, owner, bad⟩
+  exact ⟨item, incl present, owner, bad⟩
 
 /-- Traffic whose packets the count verdict all permits is charged to nobody. -/
 theorem countAudit_charge_zero (service : EvidenceReportService (CountEvidence graph))

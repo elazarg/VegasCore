@@ -40,8 +40,8 @@ def withDeposit (spec : ClientSpec setup timeouts leaks bounds horizon scheduler
   __ := spec
   observationRate := fun who => max 0 (spec.observationRate who)
   coverage := by
-    intro actual evidence present forbidden
-    obtain ⟨observed, delivered⟩ := spec.coverage actual evidence present forbidden
+    intro actual who witnessed
+    obtain ⟨observed, delivered⟩ := spec.coverage actual who witnessed
     exact ⟨max_le ENNReal.toReal_nonneg observed, delivered⟩
   deposit := deposit
   deposit_nonnegative := fun who => (spec.deposit_nonnegative who).trans (larger who)

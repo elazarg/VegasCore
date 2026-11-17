@@ -12,6 +12,7 @@ public import Vegas.Game.SourceProtocolNash
 public import Vegas.Compile.EventGraphScheduling
 public import Vegas.EventGraph.ExecutionOrder
 public import Vegas.Game.EventCompilation
+public import Vegas.Pending.CountReportSelection
 public import Vegas.Pending.GraphRefinement
 public import Vegas.Game.SourceServiceFirstTurnCompletion
 public import Vegas.Game.AsyncServiceRawNash
@@ -671,6 +672,32 @@ theorem Vegas.Paper.reactive_protocol_graph_refinement {graph : EventGraph Playe
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.reactive_protocol_graph_refinement
+
+/-- Reporting only the first observed violation per sender preserves the full
+charge-vector law under batch capture and delivery and satisfies role coverage. -/
+theorem Vegas.Paper.firstCountReports_audit {graph : EventGraph Player L}
+    (timeouts : EventTimeouts graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (capture delivery : Set.Icc (0 : ℝ) 1) :
+    let service := thinnedFirstCountReports (graph := graph) capture delivery
+    CountEvidenceCoverage service (fun _ => capture.val) (fun _ => delivery.val) ∧
+    (∀ (seen : List (CountEvidence graph)) (who : Player),
+      (firstCountReports seen).find? (fun item => item.2.sender == who) =
+        seen.find? (fun item => item.2.sender == who && !countPermits item.1 item.2)) ∧
+    (∀ (seen : List (CountEvidence graph)) (reports : List (EvidenceReport (CountEvidence graph))),
+      reports ∈ (service.reports seen).support →
+        (reports.map (fun report => report.evidence.2.sender)).Nodup) ∧
+    ∀ traffic : List ((reactiveApplication timeouts) leaks).TrafficRecord,
+      countAudit timeouts leaks service.sample traffic = countAudit timeouts leaks
+        (EvidenceReportService.thinned capture delivery).sample traffic := by
+  exact ⟨thinnedFirstCountReports_coverage capture delivery, find_firstCountReports,
+    thinnedFirstCountReports_senders_nodup capture delivery,
+    thinnedFirstCountReports_audit timeouts leaks capture delivery⟩
+
+/-- info: 'Vegas.Paper.firstCountReports_audit' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.firstCountReports_audit
 
 end Runtime
 
