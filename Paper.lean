@@ -676,8 +676,8 @@ end Runtime
 
 /-! The ordinary physical compiler uses actual first-turn clients, including
 silent omission and withholding followed by expiry. Its readout law records
-the complete typed source state and public default history. The following two
-laws quantify over every observation of that joint result and every source profile.
+the complete typed source state and public default history. The following law
+quantifies over every observation of that joint result and every source profile.
 `AsyncContract` requires bounded owner opportunities, protected inclusion of an
 owner's sole submitted identifier, and completion on initialized legal terminal
 histories. `AsyncTimely` requires `delay event + bound event < duration event`
@@ -685,7 +685,7 @@ for each owned event; both conditions concern the supplied scheduler and runtime
 
 section OrdinaryCompiler
 
-theorem Vegas.Paper.sourceServiceClientPolicy_outcome_law
+theorem Vegas.Paper.sourceServiceClientPolicy_law
     {setup : Setup (Player := Player) (L := L)} [Finite Player]
     (timeouts : EventTimeouts setup.informationGraph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
@@ -702,48 +702,28 @@ theorem Vegas.Paper.sourceServiceClientPolicy_outcome_law
     let ledgerRun := ledger.roundsFrom (initialLaw setup) scheduler clients horizon
     let readout := fun execution => sourceReadout setup timeouts leaks (ledger.finished execution)
     let observe := fun terminal : TerminalConfig setup => read (terminal.state, terminal.defaults)
-    (ledgerRun.map readout).map (Option.map observe) =
-      (setup.run original).map (fun terminal => some (observe terminal)) := by
-  intro ledger clients ledgerRun readout observe
-  simpa only [ledgerRun, readout, observe, PMF.map_comp, Function.comp_def] using
-    Vegas.sourceServiceClientPolicy_outcome_law timeouts leaks scheduler delay bound original
-      contract timely read
-
-/-- info: 'Vegas.Paper.sourceServiceClientPolicy_outcome_law' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Vegas.Paper.sourceServiceClientPolicy_outcome_law
-
-theorem Vegas.Paper.sourceServiceClientPolicy_graph_law
-    {setup : Setup (Player := Player) (L := L)} [Finite Player]
-    (timeouts : EventTimeouts setup.informationGraph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
-    {horizon turns : ℕ} (scheduler : (application setup timeouts leaks).Scheduler)
-    (delay bound : setup.informationGraph.EventId → ℕ)
-    (contract : AsyncContract timeouts leaks (initialLaw setup) horizon scheduler delay bound)
-    (timely : AsyncTimely timeouts delay bound)
-    (original : BehavioralProfile setup.program) {Outcome : Type u}
-    (read : State L setup.program.terminalCtx × DefaultHistory Player → Outcome) :
-    let ledger := application setup timeouts leaks
-    let clients := serviceClientPolicy setup setup.informationDependencies timeouts.duration
-      leaks bound turns (firstTurnTiming setup turns)
-      (setup.program.normalizeDisclosureProfile original)
-    let ledgerRun := ledger.roundsFrom (initialLaw setup) scheduler clients horizon
-    let readout := fun execution => sourceReadout setup timeouts leaks (ledger.finished execution)
-    let observe := fun terminal : TerminalConfig setup => read (terminal.state, terminal.defaults)
+    let clientLaw := (ledgerRun.map readout).map (Option.map observe)
+    let sourceLaw := (setup.run original).map (fun terminal => some (observe terminal))
     let graphRun := (setup.informationGraph.canonicalGame
       (setup.initialLaw.map setup.eventInputs)).play (compileEventProfile setup.program original)
-    (ledgerRun.map readout).map (Option.map observe) =
-      graphRun.map (fun terminal => some (observe (terminalConfig setup.program terminal))) := by
-  intro ledger clients ledgerRun readout observe graphRun
-  simpa only [ledgerRun, readout, observe, graphRun, PMF.map_comp, Function.comp_def] using
-    Vegas.sourceServiceClientPolicy_graph_law timeouts leaks scheduler delay bound original
-      contract timely read
+    let graphLaw :=
+      graphRun.map (fun terminal => some (observe (terminalConfig setup.program terminal)))
+    clientLaw = sourceLaw ∧ clientLaw = graphLaw := by
+  intro ledger clients ledgerRun readout observe clientLaw sourceLaw graphRun graphLaw
+  refine ⟨?_, ?_⟩
+  · simpa only [clientLaw, sourceLaw, ledgerRun, readout, observe, PMF.map_comp,
+      Function.comp_def] using
+      Vegas.sourceServiceClientPolicy_outcome_law timeouts leaks scheduler delay bound original
+        contract timely read
+  · simpa only [clientLaw, graphLaw, ledgerRun, readout, observe, graphRun, PMF.map_comp,
+      Function.comp_def] using
+      Vegas.sourceServiceClientPolicy_graph_law timeouts leaks scheduler delay bound original
+        contract timely read
 
-/-- info: 'Vegas.Paper.sourceServiceClientPolicy_graph_law' depends on axioms:
+/-- info: 'Vegas.Paper.sourceServiceClientPolicy_law' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.Paper.sourceServiceClientPolicy_graph_law
+#print axioms Vegas.Paper.sourceServiceClientPolicy_law
 
 end OrdinaryCompiler
 
