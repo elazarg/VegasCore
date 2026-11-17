@@ -1573,6 +1573,41 @@ theorem Vegas.Paper.lateLeak_intended_outcome_not_preserved
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.lateLeak_intended_outcome_not_preserved
 
+/-- For each fixed reward, forfeit and drop charge with a positive forfeit margin,
+sufficiently reliable late inclusion separates every late-turn equilibrium from the intended law. -/
+theorem Vegas.Paper.lateLeak_not_preserved_for_every_margin
+    (R D c : ℝ) (reward : 0 < R) (margin : R < D) (charge : 0 ≤ c) :
+    lateLeakInclusionThreshold R D c < 1 ∧
+      ∀ q : Set.Ioo (0 : ℝ) 1, lateLeakInclusionThreshold R D c < q →
+        let game : LateLeakParameters := ⟨R, D, c, q⟩
+        (∃ assessment, Vegas.Paper.lateLeakSequential game false assessment) ∧
+        (∀ assessment, Vegas.Paper.lateLeakSequential game false assessment →
+          lateLeakOutcomeLaw game false assessment.strategy = lateLeakIntendedOutcome) ∧
+        (∃ assessment, Vegas.Paper.lateLeakSequential game true assessment) ∧
+        (∀ assessment, Vegas.Paper.lateLeakSequential game true assessment →
+          lateLeakOutcomeLaw game true assessment.strategy ≠ lateLeakIntendedOutcome) := by
+  exact Vegas.lateLeak_not_preserved_for_every_margin R D c reward margin charge
+
+/-- info: 'Vegas.Paper.lateLeak_not_preserved_for_every_margin' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.lateLeak_not_preserved_for_every_margin
+
+/-- At each fixed inclusion probability below one, a finite forfeit restores the intended
+outcome at a late-turn sequential equilibrium with no drop charge. -/
+theorem Vegas.Paper.lateLeak_exists_preserving_forfeit_without_dropCharge
+    (R : ℝ) (reward : 0 ≤ R) (q : Set.Ioo (0 : ℝ) 1) :
+    ∃ D : ℝ, 0 ≤ D ∧
+      let game : LateLeakParameters := ⟨R, D, 0, q⟩
+      ∃ assessment, Vegas.Paper.lateLeakSequential game true assessment ∧
+        lateLeakOutcomeLaw game true assessment.strategy = lateLeakIntendedOutcome := by
+  exact Vegas.lateLeak_exists_preserving_forfeit_without_dropCharge ⟨R, 0, 0, q⟩ reward
+
+/-- info: 'Vegas.Paper.lateLeak_exists_preserving_forfeit_without_dropCharge' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.lateLeak_exists_preserving_forfeit_without_dropCharge
+
 /-- At the sample parameters, both games have sequential equilibria, and every target
 equilibrium departs from the one intended outcome law. -/
 theorem Vegas.Paper.lateLeak_sample_intended_outcome_not_preserved :
