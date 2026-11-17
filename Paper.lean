@@ -12,6 +12,8 @@ public import Vegas.Game.SourceProtocolNash
 public import Vegas.Compile.EventGraphScheduling
 public import Vegas.EventGraph.ExecutionOrder
 public import Vegas.Game.EventCompilation
+public import Interaction.DelayedEvidence
+public import Vegas.Pending.CountReportObservation
 public import Vegas.Pending.CountReportSelection
 public import Vegas.Pending.GraphRefinement
 public import Vegas.Game.SourceServiceFirstTurnCompletion
@@ -698,6 +700,114 @@ theorem Vegas.Paper.firstCountReports_audit {graph : EventGraph Player L}
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.firstCountReports_audit
+
+/-- An authentic archive can certify forbidden packets by checking earlier sender serials. -/
+theorem Vegas.Paper.observed_count_reports {graph : EventGraph Player L}
+    (network : MessageNetwork Player (WitnessedPacket graph))
+    (unique : network.UniqueIds) (seen : List (Message Player (WitnessedPacket graph)))
+    (authentic : seen ⊆ network.inputs) (message : Message Player (WitnessedPacket graph)) :
+    message ∈ observedCountReports seen ↔
+      message ∈ seen ∧
+      (∀ n < message.id.2, (message.sender, n) ∈ seen.map Message.id) ∧
+      countPermits network.inputs message = false :=
+  mem_observedCountReports network unique seen authentic message
+
+/-- info: 'Vegas.Paper.observed_count_reports' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.observed_count_reports
+
+/-- A complete sender stream suffices on every legal prefix. -/
+theorem Vegas.Paper.sender_archive_report {graph : EventGraph Player L}
+    (timeouts : EventTimeouts graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (initial : PMF (EventGraphRuntime.State graph)) (horizon : ℕ)
+    (scheduler : ((reactiveApplication timeouts) leaks).Scheduler)
+    (control : ((reactiveApplication timeouts) leaks).Control)
+    (trace : (((reactiveApplication timeouts) leaks).protocol initial horizon scheduler).Trace
+      (some control))
+    (sender : Player) (seen : List (Message Player (WitnessedPacket graph)))
+    (authentic : seen ⊆ control.execution.network.inputs)
+    (complete : ∀ m ∈ control.execution.network.inputs, m.sender = sender → m ∈ seen) :
+    ((observedCountReports seen).find? (fun m => m.sender == sender)).isSome ↔
+      ∃ m ∈ control.execution.network.inputs, m.sender = sender ∧
+        countPermits control.execution.network.inputs m = false :=
+  observedCountReports_sender_history timeouts leaks initial horizon scheduler control trace
+    sender seen authentic complete
+
+/-- info: 'Vegas.Paper.sender_archive_report' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.sender_archive_report
+
+/-- The same observed binding packet has opposite count verdicts across two histories. -/
+theorem Vegas.Paper.ambiguous_binding_report {graph : EventGraph Player L}
+    (sender : Player) (event : graph.EventId)
+    (owned : bindingOwnedBy graph sender event = true) (raw : Raw L) :
+    ∃ (message first prior : Message Player (WitnessedPacket graph)),
+      message.id = (sender, 1) ∧ first.id = (sender, 0) ∧ prior.id = first.id ∧
+      message.payload = ⟨.commitment event (sender, .prepared 0), none, some ⟨event⟩⟩ ∧
+      first.payload.call = .malformed raw ∧ prior.payload = message.payload ∧
+      countPermits [first, message] message = true ∧
+      countPermits [prior, message] message = false :=
+  binding_countVerdicts_differ sender event owned raw
+
+/-- info: 'Vegas.Paper.ambiguous_binding_report' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.ambiguous_binding_report
+
+/-- An authentic subarchive preserves a permitted event-bound opening precisely
+when it contains an earlier matching commitment. -/
+theorem Vegas.Paper.opening_report_predecessor {graph : EventGraph Player L}
+    (actual seen : List (Message Player (WitnessedPacket graph))) (authentic : seen ⊆ actual)
+    (message : Message Player (WitnessedPacket graph)) (event binding : graph.EventId)
+    (handle : Handle graph) (raw : Raw L) (call : message.payload.call = .opening event handle raw)
+    (resolves : match nodeView graph event with
+      | .resolve _ _ ref .. => ref.field = .inr binding
+      | _ => False)
+    (lawful : countPermits actual message = true) :
+    countPermits seen message = true ↔ ∃ prior, EarlierOwnPacket seen message prior ∧
+      prior.payload.call = .commitment binding handle :=
+  opening_permitted_iff_commitment_observed actual seen authentic message event binding handle raw
+    call resolves lawful
+
+/-- info: 'Vegas.Paper.opening_report_predecessor' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.opening_report_predecessor
+
+/-- A forbidden submission can leave the entire passive observation unchanged. -/
+theorem Vegas.Paper.unobserved_submission {graph : EventGraph Player L}
+    (sender observer : Player) (call : Payload graph) :
+    let net : MessageNetwork Player (WitnessedPacket graph) := .empty
+    let (message, after) := net.submit sender ⟨call, none, none⟩
+    message ∈ after.inputs ∧ countPermits after.inputs message = false ∧
+      after.observe observer = net.observe observer :=
+  forbiddenSubmission_sameView sender observer call
+
+/-- info: 'Vegas.Paper.unobserved_submission' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.unobserved_submission
+
+/-- With unrestricted inclusion delay, the sharp uniform collection bound is zero. -/
+theorem Vegas.Paper.uniform_count_collection_bound {graph : EventGraph Player L}
+    (window : ChallengeWindow) (actual : List (CountEvidence graph)) (sender : Player)
+    (bound : ℝ) :
+    (∀ service : EvidenceReportService (CountEvidence graph), service.window = window →
+      service.observations actual = PMF.pure actual →
+      (∀ reports ∈ (service.reports actual).support,
+        reports.map EvidenceReport.evidence = actual ∧ ∀ r ∈ reports, r.submittedAt = 0) →
+      bound ≤ ((service.sample actual).toOuterMeasure (countViolation sender)).toReal) ↔
+      bound ≤ 0 :=
+  EvidenceReportService.uniform_collection_bound_iff window actual (countViolation sender)
+    (by simp [countViolation]) bound
+
+/-- info: 'Vegas.Paper.uniform_count_collection_bound' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.uniform_count_collection_bound
 
 end Runtime
 

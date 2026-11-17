@@ -18,6 +18,7 @@ public import Vegas.Pending.LastKeyLaw
 public import Vegas.Pending.LastErasedKeyLaw
 public import Vegas.Pending.EffectiveOpening
 public import Vegas.Pending.CanonicalOutcomeAccepted
+public import Vegas.Pending.CountReportObservation
 public import Vegas.Pending.CountReportSelection
 public import Vegas.Pending.DrainOutputs
 public import Vegas.Pending.EventActivationOrigin

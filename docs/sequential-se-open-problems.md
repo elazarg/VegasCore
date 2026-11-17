@@ -80,9 +80,7 @@ The substantive premises remain:
 
 There is no complete-pending-observation premise in the native sequential-preservation theorems and no
 independent-per-message-delay premise. Those facts distinguish their scope
-from the deferred concurrent construction. The evidence-coverage premise still
-needs an operational producer; finitely branching pending observation does not produce
-it automatically.
+from the deferred concurrent construction. The evidence-coverage premise requires a capture and delivery law for the chosen backend.
 
 ## First priority: an explicit audit backend
 
@@ -108,25 +106,46 @@ capture and delivery coins, the joint charge-vector law agrees with reporting
 the full list. The bounded auction uses that service. The capture law still
 takes authenticated count evidence as input.
 
-The next concrete task is to construct verified witnesses from the packets
-available to a watcher. Specify how earlier signed messages needed for the
-verdict become available, who publishes the selected evidence, and why
-publication meets the conditional deadline bound. Include packets
-sent after exclusion and packets rejected by the game. A verifier alone, an
-honest-relayer assertion, or a complete-evidence example does not discharge
-availability for a realistic partially observed network.
+The [sender archive checker](../Vegas/Pending/CountReportObservation.lean)
+constructs count reports from bare observed envelopes. It retains a forbidden
+packet of serial `k` when the archive contains each serial below `k` from that
+sender. Authentication and unique IDs identify every predecessor the verdict
+uses. On every legal prefix, a complete archive for one sender supplies a
+report exactly when that sender has a violation. Packets from other senders
+are unnecessary. The same binding at serial one has opposite verdicts when
+the unseen serial zero is a malformed packet or an earlier copy of the
+binding. For a permitted opening of an event-bound field, the verdict on
+an authentic subarchive agrees exactly when the archive contains an earlier
+matching commitment. Treating an incomplete archive as complete can therefore
+both miss violations and accuse a lawful sender. A forbidden submission can
+also leave the passive view of blocks and leaked traffic empty.
 
-Traffic rejected before ledger inclusion needs a separate capture route.
-Recording rejected contract calls alone does not establish evidence coverage
-for packets that cannot enter the ledger at all.
+The [challenge-window result](../Interaction/DelayedEvidence.lean) gives zero
+as the greatest uniform lower bound on collection when inclusion delay is
+unrestricted. Its witness captures every item, submits every report immediately
+and includes every report one tick after settlement. This applies even on a
+fixed offending history. A larger finite deposit still yields zero guaranteed
+expected collection on that history.
 
-Start with a small complete operational example and state its availability
-assumption openly. Then weaken capture or delivery while preserving a positive
-conditional lower bound. The existing deposit inequality localizes the cost of
-such a weakening. If the lower bound becomes zero where disclosure is
-profitable, increased finite deposits alone cannot recover this deterrence
-argument. That observation identifies a proof limitation; a game-level
-impossibility claim additionally needs a complete equilibrium counterexample.
+In the EVM prototype, the watcher samples blocks and configured pools, and the
+contract accepts reports only before its audit window closes. The contract
+permits phase-valid repeats and separately burns the bond on binding expiry.
+The count audit distinguishes fresh signed submissions to the same event and
+charges only on signed evidence. The phase verdict therefore differs, and the
+report-based collection guarantee is zero. The model assigns a fresh serial
+to every emitted envelope. A deployment
+would have to justify that invariant even for competing signed transactions.
+Its collection rate depends on its network and inclusion law.
+[Watcher](https://github.com/elazarg/vegas/blob/8d306fb21dd0aca30670b6589ca4d1f6e8894c2a/src/main/kotlin/vegas/watcher/Watcher.kt#L54-L109)
+· [Contract report](https://github.com/elazarg/vegas/blob/8d306fb21dd0aca30670b6589ca4d1f6e8894c2a/src/main/kotlin/vegas/backend/evm/Solidity.kt#L320-L341)
+· [Prototype assumptions](https://github.com/elazarg/vegas/blob/8d306fb21dd0aca30670b6589ca4d1f6e8894c2a/docs/AUDITED-RUNTIME.md#L58-L100)
+
+A positive deployment result would need an authenticated source of witnesses
+covering every admissible route, including unconfirmed and rejected traffic,
+a contract that verifies the same rule, and a lower bound on report inclusion
+conditional on each supported observation containing a witness. The existing
+enforcement theorem then uses the product of those bounds. Establishing them
+for a specified deployment is a separate obligation from the preservation proof.
 
 ## Second priority: weaken the private-prior condition
 

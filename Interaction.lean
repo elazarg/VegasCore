@@ -3,6 +3,7 @@ module
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 public import Interaction.ChallengeWindow
+public import Interaction.DelayedEvidence
 public import Interaction.CommitmentCandidates
 public import Interaction.IdealCommitments
 public import Interaction.MessageInvariant
