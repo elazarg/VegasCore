@@ -356,6 +356,32 @@ theorem drawn_splicePoint
   exact ⟨_, setup.splice_mem_support signal independent r mineMember othersMember sameSignal,
     initialCellsAt_splicePoint mineCells otherCells⟩
 
+/-- With at most two players, a responder repair keeps the first point's
+initial draw whenever the other player's observations agree. -/
+theorem initialCellsAt_splicePoint_of_two_players [Fintype Player]
+    (players : Fintype.card Player ≤ 2)
+    {who : Player} (different : r ≠ who)
+    (sameView : ProtocolState.observe who setup.program p =
+      ProtocolState.observe who setup.program w)
+    {initial : State L setup.context} (cells : InitialCellsAt initial p) :
+    InitialCellsAt initial (ProtocolState.splicePoint setup.program r p w) := by
+  have pair : ({r, who} : Finset Player) = Finset.univ :=
+    Finset.eq_of_subset_of_card_le (Finset.subset_univ _) (by simpa [different] using players)
+  have otherOwner (owner : Player) (foreign : owner ≠ r) : owner = who := by
+    have member : owner ∈ ({r, who} : Finset Player) := pair ▸ Finset.mem_univ _
+    simpa [foreign] using member
+  intro name kind source
+  apply Eq.trans _ (cells source)
+  by_cases hidden : kind.hiddenOwner? = some r
+  · exact ProtocolState.cell?_splicePoint_of_hidden hidden
+  · have visible : (cellField kind).VisibleTo who := by
+      cases kind with
+      | publicData | publication => trivial
+      | privateInput owner _ | commitment owner _ =>
+        exact otherOwner owner (fun eq => hidden (congrArg some eq))
+    exact ProtocolState.cell?_splicePoint_of_eq
+      (ProtocolState.cell?_eq_of_observe visible setup.program sameView)
+
 section Fixes
 
 variable {q : ProtocolState setup.program} {publicAgree : PublicCellsAgree setup p q}

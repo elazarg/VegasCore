@@ -397,7 +397,6 @@ theorem assembled_intendedCommitment_belief_comparison
 
 
 
-variable {Public : Type*} {signal : State L setup.context → Public}
 
 open Classical in
 /-- The exact assembled native sequence has a uniformly vanishing error for
@@ -406,8 +405,8 @@ theorem assembled_intendedCommitment_gain_bounds
     [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
     [Finite setup.intendedProtocol.History]
     [∀ who, DecidableEq ((N).InfoState who)]
-    (wellFormed : setup.WellFormed) (independent : setup.PrivateInputsIndependentGiven signal)
-    (observable : setup.PublicInitialSignal signal)
+    (wellFormed : setup.WellFormed)
+    (priors : SequentialPriorCondition setup timeouts leaks bounds horizon scheduler)
     (covers : bounds.CoversOutputValues) (coversInputs : bounds.CoversInputValues)
     (capacity : ∀ player, bindingEventCount setup.informationGraph player < bounds.candidateCount)
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
@@ -484,12 +483,12 @@ theorem assembled_intendedCommitment_gain_bounds
               error n := by
   obtain ⟨distance, distanceLimit, posterior⟩ := source_belief_bounds_of_assembled setup
     timeouts leaks
-    bounds horizon scheduler wellFormed independent observable sequence sourceMixed sourceBayes
+    bounds horizon scheduler wellFormed priors sequence sourceMixed sourceBayes
     scale positive
     le_one scaleEq covers coversInputs capacity weights targetSequence assembled mixed bayes
   obtain ⟨drift, driftLimit, irregular⟩ := irregular_belief_bounds_of_assembled setup timeouts leaks
     bounds
-    horizon scheduler wellFormed independent observable sequence sourceMixed scale positive
+    horizon scheduler wellFormed priors sequence sourceMixed scale positive
     le_one scaleEq
     covers coversInputs capacity weights targetSequence assembled mixed bayes
   let retentionError := fun n => 1 - slotRetention (scale n)

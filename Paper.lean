@@ -1161,6 +1161,23 @@ section Equilibrium
 variable {utility : Parameter × PublicOutcome setup.program → Player → ℝ}
   {excludedPayoff : Player → ℝ}
 
+/-- In a two-player responder repair, the other player's matching observation
+ensures that the original initial draw still supplies every initial cell. -/
+theorem Vegas.Paper.two_player_repair_retains_draw [DecidableEq (CellTy Player L)]
+    (players : Fintype.card Player ≤ 2) {who responder : Player} (different : responder ≠ who)
+    {first other : Vegas.SourceProgram.ProtocolState setup.program}
+    (sameView : Vegas.SourceProgram.ProtocolState.observe who setup.program first =
+      Vegas.SourceProgram.ProtocolState.observe who setup.program other)
+    {initial : Vegas.State L setup.context} (cells : InitialCellsAt initial first) :
+    InitialCellsAt initial (Vegas.SourceProgram.ProtocolState.splicePoint setup.program
+      responder first other) :=
+  initialCellsAt_splicePoint_of_two_players players different sameView cells
+
+/-- info: 'Vegas.Paper.two_player_repair_retains_draw' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.two_player_repair_retains_draw
+
 theorem Vegas.Paper.intended_raw_sequentialEquilibrium_preserved
     (spec : ClientSpec setup timeouts leaks bounds horizon scheduler
       parameter utility excludedPayoff)
@@ -1640,6 +1657,30 @@ local notation "auctionTimeouts" => Vegas.Examples.BoundedAuctionService.timeout
 local notation "auctionInitial" => Vegas.Examples.BoundedAuctionService.initialLaw
 
 local notation "auctionPlayer" => Vegas.Examples.CommitRevealAuction.Player
+
+/-- For every joint valuation prior, including priors with missing type pairs,
+a timely single-opportunity service realizes the truthful auction's exact joint law. -/
+theorem Vegas.Paper.privateValueAuction_single_opportunity (prior : PMF (auctionPlayer → Bid))
+    (rt : EventTimeouts graph)
+    (steps : Nat) (builder : ((reactiveApplication rt) leaks).Scheduler)
+    (finiteNature : ((reactiveApplication rt) leaks).FiniteNature (Vegas.initialLaw (setup prior))
+      builder) (delay bound : graph.EventId → Nat)
+    (service : AsyncContract rt leaks (Vegas.initialLaw (setup prior)) steps builder delay bound)
+    (timely : AsyncTimely rt delay bound)
+    (once : SingleSubmissionOpportunity (setup prior) rt leaks bounds steps builder) :
+    let spec := fundedSpecification prior rt steps builder finiteNature delay bound service timely
+      (.singleOpportunity (by decide) once)
+    ∃ compiled : ClientCompilation spec (truthfulAssessment prior),
+      (((bounds.rawMenu rt leaks).run (Vegas.initialLaw (setup prior)) steps builder
+        compiled.assessment.strategy).bind (fun final => spec.observation final.state)) =
+          prior.map (fun types => (some (finalConfig types (types .alice) (types .bob)),
+            surplus types (types .alice) (types .bob))) :=
+  truthful_single_opportunity prior rt steps builder finiteNature delay bound service timely once
+
+/-- info: 'Vegas.Paper.privateValueAuction_single_opportunity' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.privateValueAuction_single_opportunity
 
 /-- The fixed auction runtime retains one truthful assessment, clean play,
 complete utility and executable-cash laws, and expected utility eight sevenths. -/

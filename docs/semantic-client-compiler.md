@@ -25,8 +25,9 @@ completion of the source game still requires the stated service contract.
 
 `Vegas.ClientSpec` packages the source and runtime premises:
 
-* source well-formedness and private-input independence conditional on a signal
-  determined by public initial inputs;
+* source well-formedness and either private-input independence given a signal determined
+  by public initial inputs, or at most two players and a single submission opportunity
+  per event on every legal one-packet history;
 * finitely many players and intended-source histories;
 * finite support for the physical initial law, scheduler decisions, application
   environment steps and pending-observation kernels;

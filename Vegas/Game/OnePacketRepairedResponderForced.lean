@@ -31,14 +31,12 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
-variable {Public : Type*} {signal : State L setup.context → Public}
-
 /-- Every actual foreign responder input along a forced focal history is
 forced once the concrete single-owner repair constructor is available.
 Responder-preserving repair may retain that responder's own failed bindings. -/
 theorem forcedAgent_of_responder_preserving_repair (wellFormed : setup.WellFormed)
-    (independent : setup.PrivateInputsIndependentGiven signal)
-    (observable : setup.PublicInitialSignal signal) (covered : BindingFieldsCovered bounds)
+    (priors : SequentialPriorCondition setup timeouts leaks bounds horizon scheduler)
+    (covered : BindingFieldsCovered bounds)
     {focal responder : Player} (different : responder ≠ focal)
     {site : (onePacketInformation setup timeouts leaks bounds horizon scheduler).InformationSite
       focal}
@@ -181,7 +179,7 @@ theorem forcedAgent_of_responder_preserving_repair (wellFormed : setup.WellForme
         (initialLaw setup) horizon scheduler responder
           ((application setup timeouts leaks).observe responder (some current)) := by
     intro current priorTrace prefixOf
-    exact forcedAgent_of_splice (timeouts := timeouts) wellFormed independent observable covered
+    exact forcedAgent_of_splice (timeouts := timeouts) wellFormed priors covered
       image decoded
       secondState sameView
       (decodedPoint_staticAt witnessDecoded) readyOwn succeed priorTrace prefixOf different
@@ -199,8 +197,8 @@ theorem forcedAgent_of_responder_preserving_repair (wellFormed : setup.WellForme
 /-- Actual witness-guided binding repairs make every foreign responder's
 recorded decision input forced, including decisions after its own failed binding. -/
 theorem forcedAgent_of_intended_witness_repairs (wellFormed : setup.WellFormed)
-    (independent : setup.PrivateInputsIndependentGiven signal)
-    (observable : setup.PublicInitialSignal signal) (covers : bounds.CoversOutputValues)
+    (priors : SequentialPriorCondition setup timeouts leaks bounds horizon scheduler)
+    (covers : bounds.CoversOutputValues)
     (covered : BindingFieldsCovered bounds)
     {focal responder : Player} (different : responder ≠ focal)
     {site : (onePacketInformation setup timeouts leaks bounds horizon scheduler).InformationSite
@@ -235,8 +233,7 @@ theorem forcedAgent_of_intended_witness_repairs (wellFormed : setup.WellFormed)
     forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks) (initialLaw setup)
       horizon scheduler
       responder ((application setup timeouts leaks).observe responder (some control)) := by
-  refine forcedAgent_of_responder_preserving_repair (timeouts := timeouts) wellFormed independent
-    observable covered
+  refine forcedAgent_of_responder_preserving_repair (timeouts := timeouts) wellFormed priors covered
     different
     decision forced turn history witness historyState witnessState witnessDecoded free ?_
     prior joint legal realized isPrefix acting

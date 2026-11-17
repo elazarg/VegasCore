@@ -46,11 +46,9 @@ def specification : Vegas.ClientSpec
     (fun _ => ()) Vegas.Examples.OddsEvens.sourceUtility (fun _ => 0) where
   finiteNature := by change app.FiniteNature initial serviceScheduler; infer_instance
   finiteSource := inferInstance
-  Public := Unit
-  signal := Vegas.Examples.OddsEvens.signal
   wellFormed := Vegas.Examples.OddsEvens.wellFormed
-  independent := Vegas.Examples.OddsEvens.independent
-  observable := Vegas.Examples.OddsEvens.observable
+  prior := .independent Vegas.Examples.OddsEvens.signal Vegas.Examples.OddsEvens.independent
+    Vegas.Examples.OddsEvens.observable
   delay := fun _ => 3
   bound := fun _ => 2
   opportunity := OddsEvensService.contract.opportunity

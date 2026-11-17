@@ -2,6 +2,7 @@ module
 
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
+public import Vegas.Game.SequentialPrior
 public import Vegas.Game.OnePacketSplicePoint
 public import Vegas.Game.OnePacketSwapFiberSum
 public import Vegas.Game.OnePacketSwapBaseWeight
@@ -20,9 +21,9 @@ failure. A responder `r ≠ who` at a state along `h` may owe at `p` (its own
 cells may be the ones that went wrong), and the swap between `p` and `w` may
 move what `r` sees. Splicing `p` and `w` for `r`
 (`Vegas.SourceProgram.ProtocolState.splicePoint`) keeps `r`'s hidden cells and
-takes everybody else's from `w`. With hidden initial cells independent given a public
-signal, the swap between `p` and the splice is guarded at the end of `h`, so it maps `h` and each
-of its prefixes to histories (`Vegas.forcedAgent_of_splice`):
+takes everybody else's from `w`. Conditional independence gives a supported initial draw
+for the splice. With at most two players the draw at `p` itself suffices. The guarded swap
+maps `h` and each of its prefixes to histories (`Vegas.forcedAgent_of_splice`):
 
 * it fixes `r`, so the image of each prefix carries `r`'s information there;
 * at the image of the end of `h`, every player other than `r` observes its cells
@@ -47,8 +48,6 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol Intera
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
   {timeouts : EventTimeouts setup.informationGraph} [DecidableEq (CellTy Player L)]
-
-variable {Public : Type*} {signal : State L setup.context → Public}
 
 section Points
 
@@ -226,13 +225,13 @@ theorem swapGuardState_of_tracePrefix (swap : HiddenSwap setup.informationGraph)
 ending at a state `current` with decoded point `p`, at which every ready reveal
 belongs to `who`, and the end `w` of an intended history that `who` observes like
 `p`, at which nobody owes a failure. Assume the commitments changed by the splice
-that retains the responder's hidden cells are successful. With hidden initial cells
-independent given a publicly determined signal and bounds covering every binding field, every player
+that retains the responder's hidden cells are successful. Under either prior condition,
+with bounds covering every binding field, every player
 `r ≠ who` acting at a state along the history acts at an information state
 forced for it. -/
 theorem forcedAgent_of_splice (wellFormed : setup.WellFormed)
-    (independent : setup.PrivateInputsIndependentGiven signal)
-    (observable : setup.PublicInitialSignal signal) (covered : BindingFieldsCovered bounds)
+    (priors : SequentialPriorCondition setup timeouts leaks bounds horizon scheduler)
+    (covered : BindingFieldsCovered bounds)
     {who : Player} {current : (application setup timeouts leaks).Control}
     (trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some current))
     {p w : ProtocolState setup.program}
@@ -270,8 +269,15 @@ theorem forcedAgent_of_splice (wellFormed : setup.WellFormed)
     rw [decodedP, Option.some.injEq] at pointEq
     subst pointEq
     exact ⟨initial, member, found⟩
-  have drawn := drawn_splicePoint (r := r) independent observable publicAgree drawnP
-    (exists_initialCellsAt second.trace secondState)
+  have drawn : ∃ initial ∈ setup.initialLaw.support, InitialCellsAt initial q := by
+    cases priors with
+    | independent _ independent observable =>
+      exact drawn_splicePoint independent observable publicAgree drawnP
+        (exists_initialCellsAt second.trace secondState)
+    | singleOpportunity players _ =>
+      obtain ⟨initial, member, cells⟩ := drawnP
+      exact ⟨initial, member, initialCellsAt_splicePoint_of_two_players players different
+        sameView cells⟩
   have staticP := decodedPoint_staticAt decodedP
   have guarded : SwapGuardState setup timeouts swap (swapAllowed swap) (some current) :=
     swapGuardState_of_agree (timeouts := timeouts) drawn trace decodedP

@@ -1,10 +1,11 @@
 # Correlated priors: proof obstruction and a common-signal extension
 
-This is a finite mathematical derivation, not a checked weakening of the Lean
-preservation theorems. It identifies a genuine extension by conditioning and
-gluing, and separates it from the unresolved case of correlated private
-information that nobody jointly knows. The implementation, scheduler,
-observation rule and audit remain fixed throughout.
+The [native preservation theorem](../Vegas/Game/SequentialCompilation.lean) admits
+every joint prior for at most two players with a single submission opportunity per
+event. The proof reuses the original supported draw for responder repair and has no
+late posterior comparison. The remaining discussion concerns runtimes that allow
+repeat opportunities. It develops a conditioning and gluing argument for a signal
+already known to every player, with the same scheduler, observation rule and audit.
 
 ## Checked source adapters
 

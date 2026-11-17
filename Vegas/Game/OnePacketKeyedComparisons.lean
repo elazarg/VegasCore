@@ -38,7 +38,6 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
   (bounds : MessageBounds setup.informationGraph) (horizon : Nat)
   (scheduler : (application setup timeouts leaks).Scheduler)
-  {Public : Type*} {signal : State L setup.context → Public}
 
 local notation "N" => onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
   scheduler
@@ -179,8 +178,8 @@ theorem assembled_keyed_local_comparisons
     [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
     [Finite setup.intendedProtocol.History]
     [∀ player, DecidableEq ((N).InfoState player)]
-    (wellFormed : setup.WellFormed) (independent : setup.PrivateInputsIndependentGiven signal)
-    (observable : setup.PublicInitialSignal signal)
+    (wellFormed : setup.WellFormed)
+    (priors : SequentialPriorCondition setup timeouts leaks bounds horizon scheduler)
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (sourceMixed : ∀ n, (sequence n).IsFullyMixed)
     (sourceBayes : ∀ n, BehavioralAssessment.IsBayesConsistent setup.intendedModel (sequence n)
@@ -271,26 +270,26 @@ theorem assembled_keyed_local_comparisons
                 error n := by
   let certificate := ((Menu).bounded (initialLaw setup) horizon scheduler).wellFoundedHistories
   obtain ⟨memberError, memberLimit, members⟩ := assembled_pooled_member_gain_bounds setup timeouts
-    leaks bounds horizon scheduler wellFormed independent observable sequence sourceMixed scale
+    leaks bounds horizon scheduler wellFormed priors sequence sourceMixed scale
     positive le_one scaleEq covers coversInputs capacity slots_pos weights targetSequence
           assembled mixed
     bayes opportunity inclusion timely completes parameter utility excludedPayoff payoffBound
     nonnegative payoffBounded excludedBounded readoutBounded upper le_upper below pooled
   obtain ⟨continuation, score, affineError, affineLimit, scoreUnit, affineValues⟩ :=
     assembled_keyed_component_value_bounds setup timeouts leaks bounds horizon scheduler
-      wellFormed independent observable sequence sourceMixed scale positive le_one scaleEq covers
+      wellFormed priors sequence sourceMixed scale positive le_one scaleEq covers
       coversInputs capacity slots_pos weights targetSequence assembled mixed bayes opportunity
           inclusion
       timely completes parameter utility excludedPayoff payoffBound nonnegative payoffBounded
       excludedBounded readoutBounded upper le_upper below
   obtain ⟨valueError, valueLimit, comparisonValues⟩ :=
     assembled_terminal_stopped_comparison_bounds setup timeouts leaks bounds horizon scheduler
-      parameter utility excludedPayoff wellFormed independent observable sequence sourceMixed
+      parameter utility excludedPayoff wellFormed priors sequence sourceMixed
       scale positive le_one scaleEq covers coversInputs capacity weights targetSequence assembled
       mixed bayes opportunity inclusion timely completes nonnegative payoffBounded excludedBounded
   obtain ⟨nativeError, nativeLimit, nativeCommitments⟩ :=
     assembled_keyed_commitment_comparisons setup timeouts leaks bounds horizon scheduler
-      wellFormed independent observable covers coversInputs capacity slots_pos sequence sourceMixed
+      wellFormed priors covers coversInputs capacity slots_pos sequence sourceMixed
       sourceBayes scale positive le_one scaleEq weights targetSequence assembled mixed bayes
       (fun control trace _ => opportunity control
         ((Menu).toRawTrace (initialLaw setup) horizon scheduler trace))
@@ -300,7 +299,7 @@ theorem assembled_keyed_local_comparisons
         ((Menu).toRawTrace (initialLaw setup) horizon scheduler trace) ended)
       parameter utility excludedPayoff nonnegative readoutBounded excludedBounded
   obtain ⟨irregularError, irregularLimit, irregular⟩ := irregular_belief_bounds_of_assembled
-    setup timeouts leaks bounds horizon scheduler wellFormed independent observable sequence
+    setup timeouts leaks bounds horizon scheduler wellFormed priors sequence
     sourceMixed scale positive le_one scaleEq covers coversInputs capacity weights targetSequence
     assembled mixed bayes
   have scaleLimit : Tendsto scale atTop (nhds 0) := by

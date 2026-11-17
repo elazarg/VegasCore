@@ -430,15 +430,13 @@ end LateBounds
 section SetupAssembly
 
 variable (setup timeouts leaks bounds horizon scheduler)
-  {Public : Type*} {signal : State L setup.context → Public}
 
 open Classical in
 /-- The source information, value coverage and private-binding exchange construct
 all base comparison inputs at the canonical tremble scale. -/
 def OnePacketBaseInputs.ofSetup
     (wellFormed : setup.WellFormed)
-    (independent : setup.PrivateInputsIndependentGiven signal)
-    (observable : setup.PublicInitialSignal signal)
+    (priors : SequentialPriorCondition setup timeouts leaks bounds horizon scheduler)
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (sourceMixed : ∀ n, (sequence n).IsFullyMixed)
     (covers : bounds.CoversOutputValues) (coversInputs : bounds.CoversInputValues)
@@ -451,8 +449,8 @@ def OnePacketBaseInputs.ofSetup
     0 (le_refl 0) covers coversInputs capacity slots_pos ?_
   intro weights targetSequence assembled mixed _bayes who site notFree notOwing
     past view atSite event turn
-  exact OnePacketCounterpartInputs.ofBindingRepairs (timeouts := timeouts) wellFormed independent
-    observable sourceMixed
+  exact OnePacketCounterpartInputs.ofBindingRepairs (timeouts := timeouts) wellFormed
+    priors sourceMixed
     (fun n => trembleScale_pos
       (combinedFloor_pos setup timeouts leaks bounds horizon scheduler (sequence n)))
     (fun n => trembleScale_le_one

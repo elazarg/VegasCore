@@ -27,7 +27,6 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
   (bounds : MessageBounds setup.informationGraph) (horizon : Nat)
   (scheduler : (application setup timeouts leaks).Scheduler)
-  {Public : Type*} {signal : State L setup.context → Public}
 
 local notation "N" => onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
   scheduler
@@ -76,8 +75,8 @@ theorem assembled_keyed_commitment_comparisons
     [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
     [Finite setup.intendedProtocol.History]
     [∀ who, DecidableEq ((N).InfoState who)]
-    (wellFormed : setup.WellFormed) (independent : setup.PrivateInputsIndependentGiven signal)
-    (observable : setup.PublicInitialSignal signal)
+    (wellFormed : setup.WellFormed)
+    (priors : SequentialPriorCondition setup timeouts leaks bounds horizon scheduler)
     (covers : bounds.CoversOutputValues) (coversInputs : bounds.CoversInputValues)
     (capacity : ∀ player, bindingEventCount setup.informationGraph player < bounds.candidateCount)
     (slots_pos : 0 < bounds.candidateCount)
@@ -158,8 +157,7 @@ theorem assembled_keyed_commitment_comparisons
             success * intendedSiteGain setup parameter utility excludedPayoff (sequence n)
               sourceDeviation + error n := by
   let inputs := OnePacketBaseInputs.ofSetup setup timeouts leaks bounds horizon scheduler
-        wellFormed independent
-    observable
+        wellFormed priors
     sequence sourceMixed covers coversInputs capacity slots_pos
   have sameScale : scale = inputs.scale := funext scaleEq
   subst scale
@@ -176,7 +174,7 @@ theorem assembled_keyed_commitment_comparisons
     target assembled mixed bayes
   obtain ⟨distance, distanceLimit, posterior⟩ := source_belief_bounds_of_assembled setup
     timeouts leaks
-    bounds horizon scheduler wellFormed independent observable sequence sourceMixed sourceBayes
+    bounds horizon scheduler wellFormed priors sequence sourceMixed sourceBayes
     inputs.scale
     positive le_one (fun _ => rfl) covers coversInputs capacity weights target
     assembled mixed bayes

@@ -31,7 +31,6 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (scheduler : (application setup timeouts leaks).Scheduler)
   [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
   [Finite setup.intendedProtocol.History]
-  {Public : Type*} {signal : State L setup.context → Public}
 
 local notation "Initial" => initialLaw setup
 local notation "Menu" => bounds.onePacketMenu timeouts leaks
@@ -48,8 +47,8 @@ open Classical in
 a continuation value above the declared exit payoff, up to a vanishing error. -/
 theorem assembled_keyed_component_value_bounds
     [∀ who, DecidableEq ((N).InfoState who)]
-    (wellFormed : setup.WellFormed) (independent : setup.PrivateInputsIndependentGiven signal)
-    (observable : setup.PublicInitialSignal signal)
+    (wellFormed : setup.WellFormed)
+    (priors : SequentialPriorCondition setup timeouts leaks bounds horizon scheduler)
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (sourceMixed : ∀ n, (sequence n).IsFullyMixed)
     (scale : ℕ → ℝ) (positive : ∀ n, 0 < scale n) (le_one : ∀ n, scale n ≤ 1)
@@ -105,7 +104,7 @@ theorem assembled_keyed_component_value_bounds
                 (continuation n agent - excludedPayoff agent.1))| ≤ error n := by
   obtain ⟨failureScore, stoppedError, stoppedLimit, scoreUnit, stoppedValues⟩ :=
     Vegas.assembled_keyed_value_bounds setup timeouts leaks bounds horizon scheduler wellFormed
-      independent observable sequence sourceMixed scale positive le_one scaleEq covers coversInputs
+      priors sequence sourceMixed scale positive le_one scaleEq covers coversInputs
       capacity slotsPositive weights targetSequence assembled mixed bayes
       (fun control trace _ => opportunity control
         ((Menu).toRawTrace Initial horizon scheduler trace))
@@ -115,7 +114,7 @@ theorem assembled_keyed_component_value_bounds
       parameter utility excludedPayoff payoffBound nonnegative readoutBounded excludedBounded
   obtain ⟨terminalError, terminalLimit, terminalValues⟩ :=
     assembled_terminal_stopped_comparison_bounds setup timeouts leaks bounds horizon scheduler
-      parameter utility excludedPayoff wellFormed independent observable sequence sourceMixed
+      parameter utility excludedPayoff wellFormed priors sequence sourceMixed
       scale positive le_one scaleEq covers coversInputs capacity weights targetSequence assembled
       mixed bayes opportunity inclusion timely completes nonnegative payoffBounded excludedBounded
   let continuation := fun n (agent : (N).InformationAgent (N).playedInformation) =>
@@ -188,8 +187,8 @@ open Classical in
 component-mixture gain by one vanishing error. -/
 theorem assembled_pooled_member_gain_bounds
     [∀ who, DecidableEq ((N).InfoState who)]
-    (wellFormed : setup.WellFormed) (independent : setup.PrivateInputsIndependentGiven signal)
-    (observable : setup.PublicInitialSignal signal)
+    (wellFormed : setup.WellFormed)
+    (priors : SequentialPriorCondition setup timeouts leaks bounds horizon scheduler)
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (sourceMixed : ∀ n, (sequence n).IsFullyMixed)
     (scale : ℕ → ℝ) (positive : ∀ n, 0 < scale n) (le_one : ∀ n, scale n ≤ 1)
@@ -262,7 +261,7 @@ theorem assembled_pooled_member_gain_bounds
           memberError n := by
   obtain ⟨continuation, score, error, limit, _scoreUnit, values⟩ :=
     assembled_keyed_component_value_bounds setup timeouts leaks bounds horizon scheduler
-      wellFormed independent observable sequence sourceMixed scale positive le_one scaleEq
+      wellFormed priors sequence sourceMixed scale positive le_one scaleEq
       covers coversInputs capacity slotsPositive weights targetSequence assembled mixed bayes
       opportunity inclusion timely completes parameter utility excludedPayoff payoffBound
       nonnegative

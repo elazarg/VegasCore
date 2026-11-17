@@ -39,7 +39,6 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   {scheduler : (application setup timeouts leaks).Scheduler}
   [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
   [Finite setup.intendedProtocol.History]
-  {Public : Type*} {signal : State L setup.context → Public}
 
 local notation "Initial" => initialLaw setup
 local notation "Menu" => bounds.onePacketMenu timeouts leaks
@@ -58,8 +57,7 @@ variable {Parameter : Type} (parameter : State L setup.context → Parameter)
 open Classical in
 private theorem intended_onePacket_sequentialEquilibrium_preserved_of_bounded_utility
     (wellFormed : setup.WellFormed)
-    (independent : setup.PrivateInputsIndependentGiven signal)
-    (observable : setup.PublicInitialSignal signal)
+    (priors : SequentialPriorCondition setup timeouts leaks bounds horizon scheduler)
     {delay bound : setup.informationGraph.EventId → Nat}
     (opportunity : Opportunity timeouts leaks Initial horizon scheduler delay)
     (inclusion : ProtectedInclusion timeouts leaks Initial horizon scheduler bound)
@@ -114,7 +112,7 @@ private theorem intended_onePacket_sequentialEquilibrium_preserved_of_bounded_ut
   have assembledNative : OnePacketAssembled setup timeouts leaks bounds horizon scheduler
       sourceSequence scale positive le_one weights sequence := assembled
   have fidelity := onePacketAssembled_limit_fidelity setup timeouts leaks bounds horizon scheduler
-    wellFormed independent observable sourceSequence sourceMixed sourceBayes scale positive le_one
+    wellFormed priors sourceSequence sourceMixed sourceBayes scale positive le_one
     vanishes (fun _ => rfl) covers coversInputs capacity weights sequence assembledNative mixed
     bayes intended limit sourceConverges index increasing converges opportunity inclusion completes
     timely
@@ -139,14 +137,14 @@ private theorem intended_onePacket_sequentialEquilibrium_preserved_of_bounded_ut
         · exact readoutBounded who _
   obtain ⟨nonlateError, nonlateLimit, nonlateComparisons⟩ :=
     OnePacketComparison.assembled_nonlate_local_comparisons setup timeouts leaks bounds horizon
-      scheduler wellFormed independent observable covers coversInputs capacity sourceSequence
+      scheduler wellFormed priors covers coversInputs capacity sourceSequence
       sourceMixed sourceBayes scale positive le_one (fun _ => rfl) weights sequence assembledNative
       mixed bayes opportunity inclusion timely completes parameter utility excludedPayoff below
       upperUtility le_upper nonnegative readoutBounded excludedBounded payoffBounded
   obtain ⟨keyedError, keyedLimit, keyedComparisons⟩ :=
     if slotsPositive : 0 < bounds.candidateCount then
       OnePacketComparison.assembled_keyed_local_comparisons setup timeouts leaks bounds horizon
-        scheduler wellFormed independent observable sourceSequence sourceMixed sourceBayes scale
+        scheduler wellFormed priors sourceSequence sourceMixed sourceBayes scale
         positive le_one (fun _ => rfl) covers coversInputs capacity slotsPositive weights sequence
         assembledNative mixed bayes opportunity inclusion timely parameter utility excludedPayoff
         payoffBound nonnegative completes payoffBounded excludedBounded below upperUtility le_upper
@@ -276,8 +274,7 @@ open Classical in
 implementation with the same joint configuration and base payoff law. -/
 theorem intended_onePacket_sequentialEquilibrium_preserved
     (wellFormed : setup.WellFormed)
-    (independent : setup.PrivateInputsIndependentGiven signal)
-    (observable : setup.PublicInitialSignal signal)
+    (priors : SequentialPriorCondition setup timeouts leaks bounds horizon scheduler)
     {delay bound : setup.informationGraph.EventId → Nat}
     (opportunity : Opportunity timeouts leaks Initial horizon scheduler delay)
     (inclusion : ProtectedInclusion timeouts leaks Initial horizon scheduler bound)
@@ -347,7 +344,7 @@ theorem intended_onePacket_sequentialEquilibrium_preserved
     exact below history terminal observed who
   obtain ⟨native, fidelity, rational, clear, law⟩ :=
     intended_onePacket_sequentialEquilibrium_preserved_of_bounded_utility parameter extension
-      excludedPayoff wellFormed independent observable opportunity inclusion completes timely
+      excludedPayoff wellFormed priors opportunity inclusion completes timely
       (fun who => -bound who) bound
       (fun outcome who => (abs_le.mp (bounded outcome who)).1)
       (fun outcome who => (abs_le.mp (bounded outcome who)).2)

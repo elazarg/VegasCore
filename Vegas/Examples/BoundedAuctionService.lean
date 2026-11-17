@@ -73,22 +73,26 @@ theorem collection_probability (actual : List (CountEvidence graph))
   norm_num [halfRate] at mass
   exact mass
 
-/-- The actual finite source, full-pending service and quarter-rate funded audit. -/
-def specification : ClientSpec game timeouts leaks bounds horizon scheduler
-    values utility (fun _ => -6) where
-  finiteNature := by change app.FiniteNature initialLaw scheduler; infer_instance
+/-- The bounded auction's utility bounds, message catalogue and funded audit
+serve every joint valuation prior and every builder meeting the stated timing conditions. -/
+def fundedSpecification (prior : PMF (Player → Bid)) (rt : EventTimeouts graph)
+    (steps : Nat) (builder : ((reactiveApplication rt) leaks).Scheduler)
+    (finiteNature : ((reactiveApplication rt) leaks).FiniteNature (Vegas.initialLaw (setup prior))
+      builder) (delay bound : graph.EventId → Nat)
+    (service : AsyncContract rt leaks (Vegas.initialLaw (setup prior)) steps builder delay bound)
+    (timely : AsyncTimely rt delay bound)
+    (priors : SequentialPriorCondition (setup prior) rt leaks bounds steps builder) :
+    ClientSpec (setup prior) rt leaks bounds steps builder values utility (fun _ => -6) where
+  finiteNature := finiteNature
   finiteSource := inferInstance
-  Public := Unit
-  signal := signal
-  wellFormed := wellFormed uniformPrior
-  independent := independent
-  observable := observable
-  delay := fun _ => 3
-  bound := fun _ => 2
-  opportunity := contract.opportunity
-  inclusion := contract.inclusion
-  completes := contract.completes
-  timely := PeriodicService.timely (graph := graph)
+  wellFormed := wellFormed prior
+  prior := priors
+  delay := delay
+  bound := bound
+  opportunity := service.opportunity
+  inclusion := service.inclusion
+  completes := service.completes
+  timely := timely
   lowerUtility := fun _ => -6
   upperUtility := fun _ => 6
   lower_le := fun _ terminal _ who => (utility_bounds _ who).1
@@ -105,6 +109,13 @@ def specification : ClientSpec game timeouts leaks bounds horizon scheduler
   deposit := fun _ => 48
   deposit_nonnegative := fun _ => by norm_num
   funded := fun _ => by norm_num [halfRate]
+
+/-- Independent uniform bids on the periodic full-pending service. -/
+def specification : ClientSpec game timeouts leaks bounds horizon scheduler
+    values utility (fun _ => -6) :=
+  fundedSpecification uniformPrior timeouts horizon scheduler
+    (inferInstanceAs (app.FiniteNature initialLaw scheduler)) _ _ contract
+    (PeriodicService.timely (graph := graph)) (.independent signal independent observable)
 
 /-- One selected raw assessment retains the truthful source assessment and its physical clients. -/
 def compilation : ClientCompilation specification (truthfulAssessment uniformPrior) :=
@@ -124,25 +135,49 @@ def rawJointLaw : PMF (Option (Config Player simpleExpr program.terminalCtx) × 
   (raw.run initialLaw horizon scheduler compilation.assessment.strategy).bind
     (fun final => specification.observation final.state)
 
-private theorem intended_jointLaw :
-    ((game.intendedModel.runBehavioral (truthfulAssessment uniformPrior).strategy
+private theorem intended_jointLaw (prior : PMF (Player → Bid)) :
+    (((setup prior).intendedModel.runBehavioral (truthfulAssessment prior).strategy
       (instructionCount program + 1)).map
-      (intendedReadoutExclusion game values utility (fun _ => -6))) = jointLaw := by
-  have law := truthfulAssessment_joint_law uniformPrior
+      (intendedReadoutExclusion (setup prior) values utility (fun _ => -6))) =
+        prior.map (fun types => (some (finalConfig types (types .alice) (types .bob)),
+          surplus types (types .alice) (types .bob))) := by
+  have law := truthfulAssessment_joint_law prior
   refine Eq.trans ?_ law
   apply map_congr_on_support _
   intro final _supported
   refine Prod.ext rfl (funext fun who => ?_)
-  exact game.intended_exclusionReadoutUtility (wellFormed uniformPrior) values utility
+  exact (setup prior).intended_exclusionReadoutUtility (wellFormed prior) values utility
     (fun _ => -6) final who
 
+/-- For every joint valuation prior, including priors with missing type pairs,
+a timely single-opportunity service realizes the truthful auction's exact joint law. -/
+theorem truthful_single_opportunity (prior : PMF (Player → Bid)) (rt : EventTimeouts graph)
+    (steps : Nat) (builder : ((reactiveApplication rt) leaks).Scheduler)
+    (finiteNature : ((reactiveApplication rt) leaks).FiniteNature (Vegas.initialLaw (setup prior))
+      builder) (delay bound : graph.EventId → Nat)
+    (service : AsyncContract rt leaks (Vegas.initialLaw (setup prior)) steps builder delay bound)
+    (timely : AsyncTimely rt delay bound)
+    (once : SingleSubmissionOpportunity (setup prior) rt leaks bounds steps builder) :
+    let spec := fundedSpecification prior rt steps builder finiteNature delay bound service timely
+      (.singleOpportunity (by decide) once)
+    ∃ compiled : ClientCompilation spec (truthfulAssessment prior),
+      (((bounds.rawMenu rt leaks).run (Vegas.initialLaw (setup prior)) steps builder
+        compiled.assessment.strategy).bind (fun final => spec.observation final.state)) =
+          prior.map (fun types => (some (finalConfig types (types .alice) (types .bob)),
+            surplus types (types .alice) (types .bob))) := by
+  dsimp only
+  let spec := fundedSpecification prior rt steps builder finiteNature delay bound service timely
+    (.singleOpportunity (by decide) once)
+  let compiled := spec.compile (truthfulAssessment prior) (truthfulAssessment_equilibrium prior)
+  exact ⟨compiled, compiled.outcomeLaw.trans (intended_jointLaw prior)⟩
+
 private theorem raw_jointLaw : rawJointLaw = jointLaw :=
-  compilation.outcomeLaw.trans intended_jointLaw
+  compilation.outcomeLaw.trans (intended_jointLaw uniformPrior)
 
 private theorem physical_jointLaw :
     ((app.finish initialLaw horizon scheduler compilation.clients none).bind
       specification.observation) = jointLaw :=
-  compilation.clients_outcomeLaw.trans intended_jointLaw
+  compilation.clients_outcomeLaw.trans (intended_jointLaw uniformPrior)
 
 private theorem raw_readout_law :
     (raw.run initialLaw horizon scheduler compilation.assessment.strategy).map

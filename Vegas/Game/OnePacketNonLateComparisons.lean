@@ -27,7 +27,6 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
   (bounds : MessageBounds setup.informationGraph) (horizon : Nat)
   (scheduler : (application setup timeouts leaks).Scheduler)
-  {Public : Type*} {signal : State L setup.context → Public}
 
 local notation "N" => onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
   scheduler
@@ -46,8 +45,8 @@ theorem assembled_nonlate_pending_comparisons
     [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
     [Finite setup.intendedProtocol.History]
     [∀ who, DecidableEq ((N).InfoState who)]
-    (wellFormed : setup.WellFormed) (independent : setup.PrivateInputsIndependentGiven signal)
-    (observable : setup.PublicInitialSignal signal)
+    (wellFormed : setup.WellFormed)
+    (priors : SequentialPriorCondition setup timeouts leaks bounds horizon scheduler)
     (covers : bounds.CoversOutputValues) (coversInputs : bounds.CoversInputValues)
     (capacity : ∀ player, bindingEventCount setup.informationGraph player < bounds.candidateCount)
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
@@ -127,14 +126,14 @@ theorem assembled_nonlate_pending_comparisons
     OnePacketComparison.assembled_intendedCommitment_gain_bounds setup timeouts leaks bounds
       horizon
       scheduler
-      wellFormed independent observable covers coversInputs capacity sequence sourceMixed
+      wellFormed priors covers coversInputs capacity sequence sourceMixed
       sourceBayes scale
       positive le_one scaleEq weights targetSequence assembled mixed bayes opportunity inclusion
       timely completes parameter utility
       excludedPayoff below upper le_upper boundNonneg readoutBounded excludedBounded
   obtain ⟨drift, driftLimit, irregular⟩ := irregular_belief_bounds_of_assembled setup timeouts leaks
     bounds
-    horizon scheduler wellFormed independent observable sequence sourceMixed scale positive
+    horizon scheduler wellFormed priors sequence sourceMixed scale positive
     le_one scaleEq
     covers coversInputs capacity weights targetSequence assembled mixed bayes
   let rowError := fun n =>
@@ -391,8 +390,8 @@ theorem assembled_nonlate_local_comparisons
     [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
     [Finite setup.intendedProtocol.History]
     [∀ who, DecidableEq ((N).InfoState who)]
-    (wellFormed : setup.WellFormed) (independent : setup.PrivateInputsIndependentGiven signal)
-    (observable : setup.PublicInitialSignal signal)
+    (wellFormed : setup.WellFormed)
+    (priors : SequentialPriorCondition setup timeouts leaks bounds horizon scheduler)
     (covers : bounds.CoversOutputValues) (coversInputs : bounds.CoversInputValues)
     (capacity : ∀ player, bindingEventCount setup.informationGraph player < bounds.candidateCount)
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
@@ -455,7 +454,7 @@ theorem assembled_nonlate_local_comparisons
                 error n := by
   obtain ⟨nativeError, nativeLimit, nativeComparisons⟩ :=
     assembled_nonlate_pending_comparisons setup timeouts leaks bounds horizon scheduler
-      wellFormed independent observable covers coversInputs capacity sequence sourceMixed
+      wellFormed priors covers coversInputs capacity sequence sourceMixed
       sourceBayes scale positive le_one scaleEq weights targetSequence assembled mixed bayes
       (fun control trace _ => opportunity control
         ((Menu).toRawTrace (initialLaw setup) horizon scheduler trace))
@@ -467,7 +466,7 @@ theorem assembled_nonlate_local_comparisons
       excludedBounded
   obtain ⟨valueError, valueLimit, comparisonValues⟩ :=
     assembled_terminal_stopped_comparison_bounds setup timeouts leaks bounds horizon scheduler
-      parameter utility excludedPayoff wellFormed independent observable sequence sourceMixed
+      parameter utility excludedPayoff wellFormed priors sequence sourceMixed
       scale positive le_one scaleEq covers coversInputs capacity weights targetSequence assembled
       mixed bayes opportunity inclusion timely completes boundNonneg payoffBounded excludedBounded
   let error := fun n => |nativeError n| + 2 * |valueError n|

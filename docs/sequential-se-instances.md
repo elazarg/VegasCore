@@ -88,6 +88,9 @@ from zero through six in owner-private initial cells and computes second-price
 cash receipts, with ties favoring Alice and a six-unit failure charge.
 Its [truthful intended assessment](../Vegas/Examples/BoundedPrivateValueAuctionSequential.lean)
 is a sequential equilibrium for every joint prior over those values.
+On any timely single-opportunity service satisfying the auction's finite branching
+and funded audit conditions, the raw equilibrium preserves the joint law of the
+truthful terminal configuration and bidder surpluses under that same prior.
 
 The [concrete ledger instance](../Vegas/Examples/BoundedAuctionService.lean)
 specializes to independent uniform values and exposes every fresh foreign

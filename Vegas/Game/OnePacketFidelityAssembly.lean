@@ -28,7 +28,6 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   [Finite setup.intendedProtocol.History]
   [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
     scheduler).InfoState who)]
-  {Public : Type*} {signal : State L setup.context → Public}
 
 local notation "N" => onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
   scheduler
@@ -42,8 +41,8 @@ local instance fidelityAssemblyHistoryFintype : Fintype (E).History :=
 /-- The common assessment limit simultaneously retains intended strategies, actual replay
 posteriors and complete clean-boundary continuations. -/
 theorem onePacketAssembled_limit_fidelity
-    (wellFormed : setup.WellFormed) (independent : setup.PrivateInputsIndependentGiven signal)
-    (observable : setup.PublicInitialSignal signal)
+    (wellFormed : setup.WellFormed)
+    (priors : SequentialPriorCondition setup timeouts leaks bounds horizon scheduler)
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (sourceMixed : ∀ n, (sequence n).IsFullyMixed)
     (sourceBayes : ∀ n, BehavioralAssessment.IsBayesConsistent setup.intendedModel (sequence n)
@@ -98,7 +97,7 @@ theorem onePacketAssembled_limit_fidelity
       Subtype.ext projected.symm
     have law := assembled_limit_belief_replay_law setup timeouts leaks bounds horizon scheduler
       wellFormed
-      independent observable sequence sourceMixed sourceBayes scale positive le_one scaleEq covers
+      priors sequence sourceMixed sourceBayes scale positive le_one scaleEq covers
       coversInputs capacity weights target assembled mixed bayes intended native sourceConverges
       index increasing nativeConverges site notFree notOwing atSite turn decision
     exact law.trans (congrArg (fun source : setup.intendedModel.InformationSite who =>
@@ -128,7 +127,7 @@ theorem onePacketAssembled_limit_fidelity
       (sequence 0) (sourceMixed 0) sourceSite
   · intro who sourceSite site realization sourceHistory
     exact exists_native_replay_at_sourceDecision setup timeouts leaks bounds horizon scheduler
-      wellFormed independent observable covers coversInputs capacity (sequence 0) (sourceMixed 0)
+      wellFormed priors covers coversInputs capacity (sequence 0) (sourceMixed 0)
       (sourceBayes 0) sourceSite site realization sourceHistory
 
 omit [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]

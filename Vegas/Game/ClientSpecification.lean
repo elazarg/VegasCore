@@ -6,7 +6,7 @@ public import Vegas.Game.OnePacketExclusionPayoff
 public import Vegas.Game.OnePacketAssessmentFidelity
 public import Vegas.Game.OnePacketAssessmentExtension
 public import Vegas.Game.OnePacketRawCoverage
-public import Vegas.Game.OnePacketPublicInitialSignal
+public import Vegas.Game.SequentialPrior
 public import Vegas.Game.OnePacketRetention
 public import Vegas.Game.OnePacketSwapFiberSum
 public import Vegas.Pending.ReactiveAsyncContract
@@ -57,11 +57,8 @@ structure ClientSpec where
   finiteNature : (app).FiniteNature Initial scheduler
   /-- The intended source game has finitely many legal histories. -/
   finiteSource : Finite setup.intendedProtocol.History
-  Public : Type
-  signal : State L setup.context → Public
   wellFormed : setup.WellFormed
-  independent : setup.PrivateInputsIndependentGiven signal
-  observable : setup.PublicInitialSignal signal
+  prior : SequentialPriorCondition setup timeouts leaks bounds horizon scheduler
   delay : setup.informationGraph.EventId → Nat
   bound : setup.informationGraph.EventId → Nat
   opportunity : Opportunity timeouts leaks Initial horizon scheduler delay

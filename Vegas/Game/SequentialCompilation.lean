@@ -53,7 +53,7 @@ theorem intended_raw_sequentialEquilibrium_preserved
   let := spec.finiteSource
   obtain ⟨native, fidelity, nativeSE, nativeClear, nativeLaw⟩ :=
     intended_onePacket_sequentialEquilibrium_preserved (timeouts := timeouts) parameter utility
-      excludedPayoff spec.wellFormed spec.independent spec.observable spec.opportunity
+      excludedPayoff spec.wellFormed spec.prior spec.opportunity
       spec.inclusion spec.completes spec.timely spec.exitBelow intended equilibrium
       spec.outputValues spec.inputValues spec.capacity
   obtain ⟨target, refinement, targetSE, clean, states, joint⟩ :=

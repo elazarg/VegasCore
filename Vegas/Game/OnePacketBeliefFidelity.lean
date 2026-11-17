@@ -65,7 +65,6 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   [Finite setup.intendedProtocol.History]
   [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
     scheduler).InfoState who)]
-  {Public : Type*} {signal : State L setup.context → Public}
 
 local notation "N" => onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
   scheduler
@@ -80,8 +79,8 @@ open Classical in
 /-- The common native limit has exactly the supplied intended posterior after replay at every
 debt-free forced own turn, including sites outside the equilibrium path. -/
 theorem assembled_limit_belief_eq
-    (wellFormed : setup.WellFormed) (independent : setup.PrivateInputsIndependentGiven signal)
-    (observable : setup.PublicInitialSignal signal)
+    (wellFormed : setup.WellFormed)
+    (priors : SequentialPriorCondition setup timeouts leaks bounds horizon scheduler)
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (sourceMixed : ∀ n, (sequence n).IsFullyMixed)
     (sourceBayes : ∀ n, BehavioralAssessment.IsBayesConsistent setup.intendedModel (sequence n)
@@ -124,7 +123,7 @@ theorem assembled_limit_belief_eq
   let : Fintype (setup.intendedModel.InformationHistory who
       (projectedSite setup timeouts leaks decision).1) := Fintype.ofFinite _
   obtain ⟨error, errorConverges, errorBounds⟩ := source_belief_bounds_of_assembled setup timeouts
-    leaks bounds horizon scheduler wellFormed independent observable sequence sourceMixed
+    leaks bounds horizon scheduler wellFormed priors sequence sourceMixed
     sourceBayes scale positive le_one scaleEq covers coversInputs capacity weights target assembled
     mixed bayes
   exact projected_belief_limit_eq _ (nativeConverges.belief who site)
@@ -139,8 +138,8 @@ open Classical in
 /-- Every supported posterior history at a debt-free forced own turn has an actual successful
 intended replay; the arbitrary branch of `replayProjection` receives no limiting belief mass. -/
 theorem assembled_limit_belief_replay_exists
-    (wellFormed : setup.WellFormed) (independent : setup.PrivateInputsIndependentGiven signal)
-    (observable : setup.PublicInitialSignal signal)
+    (wellFormed : setup.WellFormed)
+    (priors : SequentialPriorCondition setup timeouts leaks bounds horizon scheduler)
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (sourceMixed : ∀ n, (sequence n).IsFullyMixed)
     (scale : ℕ → ℝ) (positive : ∀ n, 0 < scale n) (le_one : ∀ n, scale n ≤ 1)
@@ -193,7 +192,7 @@ theorem assembled_limit_belief_replay_exists
     exact intendedHistory?_isSome (sequence n) who history.1.trace control current
       (current ▸ inForced) regular own
   have inputs := OnePacketCounterpartInputs.ofBindingRepairs (timeouts := timeouts) wellFormed
-    independent observable sourceMixed positive le_one scaleEq covers coversInputs capacity
+    priors sourceMixed positive le_one scaleEq covers coversInputs capacity
     weights assembled mixed notFree notOwing atSite turn
   have irregularConverges := onePacket_irregularVanishes setup timeouts leaks bounds horizon
     scheduler mixed bayes inputs
@@ -219,8 +218,8 @@ open Classical in
 /-- The limiting native posterior, replayed by the actual partial replay function, is exactly the
 intended posterior on successful replays. In particular replay failure has zero posterior mass. -/
 theorem assembled_limit_belief_replay_law
-    (wellFormed : setup.WellFormed) (independent : setup.PrivateInputsIndependentGiven signal)
-    (observable : setup.PublicInitialSignal signal)
+    (wellFormed : setup.WellFormed)
+    (priors : SequentialPriorCondition setup timeouts leaks bounds horizon scheduler)
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (sourceMixed : ∀ n, (sequence n).IsFullyMixed)
     (sourceBayes : ∀ n, BehavioralAssessment.IsBayesConsistent setup.intendedModel (sequence n)
@@ -262,11 +261,11 @@ theorem assembled_limit_belief_replay_law
     (intended.belief who (projectedSite setup timeouts leaks decision)).map
       (fun history => some history.1) := by
   have beliefEq := assembled_limit_belief_eq setup timeouts leaks bounds horizon scheduler
-    wellFormed independent observable sequence sourceMixed sourceBayes scale positive le_one
+    wellFormed priors sequence sourceMixed sourceBayes scale positive le_one
     scaleEq covers coversInputs capacity weights target assembled mixed bayes intended native
     sourceConverges index increasing nativeConverges site notFree notOwing atSite turn decision
   have replayExists := assembled_limit_belief_replay_exists setup timeouts leaks bounds horizon
-    scheduler wellFormed independent observable sequence sourceMixed scale positive le_one scaleEq
+    scheduler wellFormed priors sequence sourceMixed scale positive le_one scaleEq
     covers coversInputs capacity weights target assembled mixed bayes native index increasing
     nativeConverges site notFree notOwing atSite turn
   calc

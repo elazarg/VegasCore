@@ -27,7 +27,6 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup)
     horizon scheduler).InfoState who)]
   [Finite setup.intendedProtocol.History]
-  {Public : Type*} {signal : State L setup.context → Public}
 
 local notation "N" => onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
   scheduler
@@ -36,8 +35,8 @@ open Classical in
 /-- On the supplied native assessment sequence, decided-event failure has one
 score at each late key and option, up to a uniformly vanishing error. -/
 theorem keyed_failure_bounds_of_assembled
-    (wellFormed : setup.WellFormed) (independent : setup.PrivateInputsIndependentGiven signal)
-    (observable : setup.PublicInitialSignal signal)
+    (wellFormed : setup.WellFormed)
+    (priors : SequentialPriorCondition setup timeouts leaks bounds horizon scheduler)
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (sourceMixed : ∀ n, (sequence n).IsFullyMixed)
     (scale : ℕ → ℝ) (positive : ∀ n, 0 < scale n) (le_one : ∀ n, scale n ≤ 1)
@@ -74,13 +73,13 @@ theorem keyed_failure_bounds_of_assembled
               positive le_one n ((N).agentAt site) option) - failureScore n key option| ≤
           drift n := by
   let inputs := OnePacketBaseInputs.ofSetup setup timeouts leaks bounds horizon scheduler
-    wellFormed independent observable sequence sourceMixed covers coversInputs capacity slots_pos
+    wellFormed priors sequence sourceMixed covers coversInputs capacity slots_pos
   have sameScale : scale = inputs.scale := funext scaleEq
   subst scale
   obtain ⟨unforcedDrift, unforcedLimit, unforced⟩ := inputs.lateUnforced setup timeouts leaks
     bounds horizon scheduler wellFormed weights targetSequence assembled mixed bayes
   obtain ⟨recordDrift, recordLimit, records⟩ := inputs.lateRecords_of_keyed setup timeouts leaks
-    bounds horizon scheduler wellFormed independent observable weights targetSequence
+    bounds horizon scheduler wellFormed priors weights targetSequence
     assembled mixed bayes
   let lumping := fun n who => certificateLumping setup timeouts leaks bounds horizon scheduler
     sequence inputs.scale positive le_one inputs.covers

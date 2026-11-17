@@ -153,7 +153,6 @@ section Assembled
 
 variable [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
   [Finite setup.intendedProtocol.History]
-  {Public : Type*} {signal : State L setup.context → Public}
 
 local instance stoppedComparisonHistoryFintype : Fintype (E).History :=
   (Menu).historyFintype (initialLaw setup) horizon scheduler
@@ -164,8 +163,8 @@ vanishing terminal-versus-stopped value error. The gain error is twice this
 value error. All continuations retain the supplied assembled weights. -/
 theorem assembled_terminal_stopped_comparison_bounds
     [∀ who, DecidableEq ((N).InfoState who)]
-    (wellFormed : setup.WellFormed) (independent : setup.PrivateInputsIndependentGiven signal)
-    (observable : setup.PublicInitialSignal signal)
+    (wellFormed : setup.WellFormed)
+    (priors : SequentialPriorCondition setup timeouts leaks bounds horizon scheduler)
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (sourceMixed : ∀ n, (sequence n).IsFullyMixed)
     (scale : ℕ → ℝ) (positive : ∀ n, 0 < scale n) (le_one : ∀ n, scale n ≤ 1)
@@ -229,7 +228,7 @@ theorem assembled_terminal_stopped_comparison_bounds
                 expect ((N).runBehavioralUntil certificate common stopped history.1) payoff)| ≤
             2 * error n := by
   obtain ⟨drift, driftLimit, irregular⟩ := irregular_belief_bounds_of_assembled setup timeouts leaks
-    bounds horizon scheduler wellFormed independent observable sequence sourceMixed scale positive
+    bounds horizon scheduler wellFormed priors sequence sourceMixed scale positive
     le_one scaleEq covers coversInputs capacity weights targetSequence assembled mixed bayes
   let cost := fun n => (scale n ^ 2 + scale n) * (2 * horizon + 1)
   let error := fun n => 2 * payoffBound * (|drift n| + cost n)

@@ -17,9 +17,9 @@ under no pending delivery. Its catalogue premises require finite binding, public
 initial-input value types. The [diagnostic client analysis](ledger-client-correctness.md)
 isolates the belief obligation for a manually prescribed policy; it is not an
 additional premise of the semantic compiler.
-The [correlated-prior analysis](sequential-correlated-prior-analysis.md) gives a
-conditioning/gluing route for an existing signal known to every player, with
-its outstanding formal adapters. It does not settle generic correlated priors.
+With at most two players and a single submission opportunity per event, the capstone
+accepts arbitrary private priors. The [correlated-prior analysis](sequential-correlated-prior-analysis.md)
+discusses the remaining problem with repeated opportunities.
 
 ## Checked starting points
 
@@ -63,8 +63,10 @@ The substantive premises remain:
 
 * Well-formed source syntax, finite intended histories, finitely many players,
   and finite physical nature for the actual bounded execution.
-* Private initial inputs and commitments are independent of the remainder
-  conditional on a signal determined by existing public initial inputs.
+* Either each player's private initial inputs and commitments are independent of the
+  remainder given a signal determined by public initial inputs, or there are at most two
+  players and the owner of a ready event cannot pass and get a second chance to submit
+  for that event on any legal one-packet history.
 * The actual raw-history service supplies opportunity, protected inclusion and
   completion. The opportunity and inclusion bounds sum to strictly less than
   each owned event's supplied relative deadline.
@@ -155,38 +157,25 @@ for a specified deployment is a separate obligation from the preservation proof.
 
 ## Second priority: weaken the private-prior condition
 
-The current hypothesis is precisely conditional independence, not merely
-pairwise independence. It excludes correlated hands and signals not explained
-by the existing public initial inputs. Introducing a new public latent signal
-changes the game and therefore is not a general solution.
+The checked [prior condition](../Vegas/Game/SequentialPrior.lean) admits every joint
+prior, including priors with impossible type pairs, for at most two players with a
+single submission opportunity per event. An owner may wait, but cannot then receive
+another opportunity to submit for that same pending event. The condition ranges over
+off-path decisions too. Raw deviations still use the full bounded message menu.
 
-Two proof uses should be separated. Hidden-cell splicing needs supported
-repaired initial states. Prior transport also uses a constant multiplicative
-change of weight across repaired histories. Rectangular support can address
-the first without addressing the second; card-dealing priors can fail even
-the first. Full support alone does not prove the required common continuation
-optimizer.
+The repair keeps the responder's hidden cells. Every other initial cell is visible
+to the other player, whose observation agrees across the two histories. The repaired
+draw therefore equals the original supported draw. A single opportunity also rules
+out the late decisions at which the proof has to compare posterior weights.
+The [bounded auction](../Vegas/Examples/BoundedAuctionService.lean) consequently
+preserves the truthful joint outcome and surplus law under any valuation prior on
+such a service. Its separately instantiated periodic service uses uniform private values.
 
-A manageable first result retains rectangular support but allows a correlated
-prior. Show directly that the actual timing components have a common best
-choice at every pooled information site, or transport their relevant gain
-observables through the nonconstant likelihood ratio. Keep the actual legal
-deviation family, continuation payoffs and the one common fully mixed
-consistency sequence. Assuming a common-best property at the final preservation
-interface exposes an adapter; deriving it from the runtime is the research
-result.
-
-Next try a small nonrectangular prior, such as two correlated private bits with
-one impossible joint state. Either construct source-faithful supported repairs
-without splicing arbitrary cells, or give an exact failure of preservation.
-A failure of the existing splicing or pooling lemma only refutes that proof
-route. A preservation counterexample must fix one valid intended SE and show
-that every target SE changes the required joint law under the retained service
-and audit assumptions.
-
-This problem is independent of the concurrent proposal's independence of
-message service. Do not import that network premise into the non-concurrent
-runtime definitions.
+For a builder offering retries, the checked theorem still uses conditional
+independence given public initial data. Two players suffice for the support repair
+even there. What remains is the comparison of off-path incentives at late decisions
+with the same timing information. With more players, the support repair can also
+require a new joint draw. Neither limitation establishes failure of preservation.
 
 ## Third priority: a physical clock and service realization
 

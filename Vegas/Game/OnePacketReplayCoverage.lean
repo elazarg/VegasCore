@@ -27,7 +27,6 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (scheduler : (application setup timeouts leaks).Scheduler)
   [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
   [Finite setup.intendedProtocol.History]
-  {Public : Type*} {signal : State L setup.context → Public}
 
 local notation "N" => onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
   scheduler
@@ -39,8 +38,8 @@ local instance exactReplayHistoryFintype : Fintype
 /-- Every intended history in a realized source decision fiber has an actual native replay
 preimage, whether or not the preserved equilibrium assigns that history positive probability. -/
 theorem exists_native_replay_at_sourceDecision
-    (wellFormed : setup.WellFormed) (independent : setup.PrivateInputsIndependentGiven signal)
-    (observable : setup.PublicInitialSignal signal)
+    (wellFormed : setup.WellFormed)
+    (priors : SequentialPriorCondition setup timeouts leaks bounds horizon scheduler)
     (covers : bounds.CoversOutputValues) (coversInputs : bounds.CoversInputValues)
     (capacity : ∀ who, bindingEventCount setup.informationGraph who < bounds.candidateCount)
     (reference : setup.intendedModel.BehavioralAssessment) (full : reference.IsFullyMixed)
@@ -91,7 +90,7 @@ theorem exists_native_replay_at_sourceDecision
   have canonicalEq : projectedSite setup timeouts leaks decision = sourceSite :=
     Subtype.ext realization.projected.symm
   have replayLaw := assembled_limit_belief_replay_law setup timeouts leaks bounds horizon scheduler
-    wellFormed independent observable sources (fun _ => full) (fun _ => referenceBayes) scale
+    wellFormed priors sources (fun _ => full) (fun _ => referenceBayes) scale
     positive le_one (fun _ => rfl) covers coversInputs capacity weights sequence assembledNative
     mixed bayes reference limit (behavioralAssessmentConvergesPointwise_const reference) index
     increasing converges nativeSite notFree notOwing atSite turn decision

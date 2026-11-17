@@ -2,6 +2,7 @@ module
 
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
+public import Vegas.Game.SequentialPrior
 public import Vegas.Game.OnePacketOwnerKeyedLate
 public import Vegas.Game.OnePacketBaseAssembly
 public import GameTheoryExtensions.Math.Probability.ApproximateLumping
@@ -19,7 +20,8 @@ base laws of the two sites agree by the owner's hidden swap, and the irregular
 histories carry little reach (`Vegas.keyedRecord_near`). So, with hidden initial cells
 independent given a public initial signal, the law of records at
 a fixed late delivery of each key serves every late delivery with that key, up to
-a vanishing drift (`Vegas.OnePacketBaseInputs.lateRecords_of_keyed`).
+a vanishing drift (`Vegas.OnePacketBaseInputs.lateRecords_of_keyed`). A single submission
+opportunity rules out the first late site in the comparison.
 -/
 
 noncomputable section
@@ -39,8 +41,6 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
   (bounds : MessageBounds setup.informationGraph) (horizon : Nat)
   (scheduler : (application setup timeouts leaks).Scheduler)
-
-variable {Public : Type*} {signal : State L setup.context → Public}
 
 local notation "onePacketN" =>
   onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon scheduler
@@ -93,8 +93,8 @@ irregular ratios and `ε` is the factorization error. -/
 theorem keyedRecord_near
     [Finite ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).History]
-    (wellFormed : setup.WellFormed) (independent : setup.PrivateInputsIndependentGiven signal)
-    (observable : setup.PublicInitialSignal signal)
+    (wellFormed : setup.WellFormed)
+    (priors : SequentialPriorCondition setup timeouts leaks bounds horizon scheduler)
     (coversInputs : bounds.CoversInputValues)
     {sequence : ℕ → setup.intendedModel.BehavioralAssessment}
     {targetSequence : ℕ → (onePacketN).BehavioralAssessment} (n : ℕ)
@@ -131,6 +131,9 @@ theorem keyedRecord_near
       2 * ρ / (1 + ρ) +
       2 * ((1 + steps.error n) ^ (2 * horizon + 1) - 1) /
         (1 - ((1 + steps.error n) ^ (2 * horizon + 1) - 1)) := by
+  cases priors
+  case singleOpportunity _ once => exact (once who site₁ firstLate).elim
+  rename_i Public signal independent observable
   let menu := bounds.onePacketMenu timeouts leaks
   let ε := (1 + steps.error n) ^ (2 * horizon + 1) - 1
   have εNonneg : 0 ≤ ε := by
@@ -320,8 +323,7 @@ theorem OnePacketBaseInputs.lateRecords_of_keyed
     {sequence : ℕ → setup.intendedModel.BehavioralAssessment} {slots : Nat}
     (inputs : OnePacketBaseInputs setup timeouts leaks bounds horizon scheduler sequence slots)
     (wellFormed : setup.WellFormed)
-    (independent : setup.PrivateInputsIndependentGiven signal)
-    (observable : setup.PublicInitialSignal signal)
+    (priors : SequentialPriorCondition setup timeouts leaks bounds horizon scheduler)
     (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
       horizon scheduler slots p))
     (targetSequence : ℕ → (onePacketN).BehavioralAssessment)
@@ -437,7 +439,7 @@ theorem OnePacketBaseInputs.lateRecords_of_keyed
         rw [lawEq]
         by_cases smallAt : ε n < 1
         · simp only [smallAt, ↓reduceIte]
-          exact keyedRecord_near (timeouts := timeouts) wellFormed independent observable
+          exact keyedRecord_near (timeouts := timeouts) wellFormed priors
             inputs.coversInputs n (mixed n)
             (bayes n) atSite atSite' (siteKey.trans foundKey.symm) debtFree
             (siteDebtFree_of_not_owing setup timeouts leaks bounds horizon scheduler notOwing')

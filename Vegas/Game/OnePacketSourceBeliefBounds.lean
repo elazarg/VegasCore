@@ -26,7 +26,6 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   [Finite setup.intendedProtocol.History]
   [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
     scheduler).InfoState who)]
-  {Public : Type*} {signal : State L setup.context → Public}
 
 local notation "N" => onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
   scheduler
@@ -39,8 +38,8 @@ open Classical in
 /-- One vanishing error bounds the source posterior discrepancy at every debt-free forced own turn
 along the supplied fully mixed Bayes assessment sequence. -/
 theorem source_belief_bounds_of_assembled
-    (wellFormed : setup.WellFormed) (independent : setup.PrivateInputsIndependentGiven signal)
-    (observable : setup.PublicInitialSignal signal)
+    (wellFormed : setup.WellFormed)
+    (priors : SequentialPriorCondition setup timeouts leaks bounds horizon scheduler)
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (sourceMixed : ∀ n, (sequence n).IsFullyMixed)
     (sourceBayes : ∀ n, BehavioralAssessment.IsBayesConsistent setup.intendedModel (sequence n)
@@ -119,7 +118,7 @@ theorem source_belief_bounds_of_assembled
           target site (projectedSite setup timeouts leaks decision) atSite rfl :=
         { toOnePacketCounterpartInputs :=
           OnePacketCounterpartInputs.ofBindingRepairs (timeouts := timeouts) wellFormed
-            independent observable sourceMixed positive le_one scaleEq covers coversInputs capacity
+            priors sourceMixed positive le_one scaleEq covers coversInputs capacity
             weights assembled mixed notFree notOwing atSite turn
           toOnePacketOwnInputs := OnePacketOwnInputs.ofAssembled (timeouts :=
             timeouts) wellFormed sourceMixed

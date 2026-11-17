@@ -35,8 +35,6 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
     scheduler).InfoState who)]
   [Finite setup.intendedProtocol.History]
 
-variable {Public : Type*} {signal : State L setup.context → Public}
-
 local instance bindingRepairAssemblyHistoryFintype :
     Fintype ((bounds.onePacketMenu timeouts leaks).protocol
     (initialLaw setup) horizon scheduler).History :=
@@ -49,8 +47,8 @@ omit [Finite setup.intendedProtocol.History] in
 /-- At every debt-free forced own-turn site, actual repairs give the
 certificate's quantitative regular counterpart for every irregular history. -/
 theorem exists_counterpart_certificate_of_repairs (wellFormed : setup.WellFormed)
-    (independent : setup.PrivateInputsIndependentGiven signal)
-    (observable : setup.PublicInitialSignal signal) (covered : BindingFieldsCovered bounds)
+    (priors : SequentialPriorCondition setup timeouts leaks bounds horizon scheduler)
+    (covered : BindingFieldsCovered bounds)
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (scale : ℕ → ℝ) (scale_pos : ∀ n, 0 < scale n) (scale_le_one : ∀ n, scale n ≤ 1)
     (small : ∀ n, scale n ≤ 1 / 4) (floor : ℕ → ℝ) (floor_pos : ∀ n, 0 < floor n)
@@ -109,7 +107,7 @@ theorem exists_counterpart_certificate_of_repairs (wellFormed : setup.WellFormed
     (toDecision history)
   obtain ⟨counterpart, counterpartRegular, dominated⟩ :=
     reach_le_counterpart_certificate_of_repairs (timeouts := timeouts)
-    wellFormed independent observable covered sequence scale scale_pos scale_le_one small floor
+    wellFormed priors covered sequence scale scale_pos scale_le_one small floor
     floor_pos
     floored covers capacity weights error_tendsto n mixed atSite
     (forcedAgent_of_not_free setup timeouts leaks bounds (initialLaw setup)
@@ -123,8 +121,7 @@ theorem exists_counterpart_certificate_of_repairs (wellFormed : setup.WellFormed
 /-- Actual private-binding repairs assemble counterpart inputs with no
 successful-cell or external counterpart-construction premise. -/
 def OnePacketCounterpartInputs.ofBindingRepairs (wellFormed : setup.WellFormed)
-    (independent : setup.PrivateInputsIndependentGiven signal)
-    (observable : setup.PublicInitialSignal signal)
+    (priors : SequentialPriorCondition setup timeouts leaks bounds horizon scheduler)
     {sequence : ℕ → setup.intendedModel.BehavioralAssessment}
     (mixedSource : ∀ n, (sequence n).IsFullyMixed)
     {scale : ℕ → ℝ} (scale_pos : ∀ n, 0 < scale n) (scale_le_one : ∀ n, scale n ≤ 1)
@@ -180,7 +177,7 @@ def OnePacketCounterpartInputs.ofBindingRepairs (wellFormed : setup.WellFormed)
     scaleEq
     weights assembled mixed (fun n history => exists_counterpart_certificate_of_repairs (timeouts
       := timeouts)
-      wellFormed independent observable covered
+      wellFormed priors covered
       sequence scale scale_pos scale_le_one small floor floor_pos floored covers
       capacity weights error_tendsto n (mixedSource n) forced notOwing atSite turn history)
 

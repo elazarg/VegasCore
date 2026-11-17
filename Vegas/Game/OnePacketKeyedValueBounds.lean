@@ -26,7 +26,6 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
   (bounds : MessageBounds setup.informationGraph) (horizon : Nat)
   (scheduler : (application setup timeouts leaks).Scheduler)
-  {Public : Type*} {signal : State L setup.context → Public}
 
 local notation "N" => onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
   scheduler
@@ -379,8 +378,8 @@ theorem assembled_keyed_value_bounds
     [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
     [∀ who, DecidableEq ((N).InfoState who)]
     [Finite setup.intendedProtocol.History]
-    (wellFormed : setup.WellFormed) (independent : setup.PrivateInputsIndependentGiven signal)
-    (observable : setup.PublicInitialSignal signal)
+    (wellFormed : setup.WellFormed)
+    (priors : SequentialPriorCondition setup timeouts leaks bounds horizon scheduler)
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (sourceMixed : ∀ n, (sequence n).IsFullyMixed)
     (scale : ℕ → ℝ) (positive : ∀ n, 0 < scale n) (le_one : ∀ n, scale n ≤ 1)
@@ -453,8 +452,7 @@ theorem assembled_keyed_value_bounds
                 who))| ≤
           error n := by
   let inputs := OnePacketBaseInputs.ofSetup setup timeouts leaks bounds horizon scheduler
-          wellFormed independent
-    observable
+          wellFormed priors
     sequence sourceMixed covers coversInputs capacity slots_pos
   have sameScale : scale = inputs.scale := funext scaleEq
   subst scale
@@ -471,7 +469,7 @@ theorem assembled_keyed_value_bounds
     target assembled mixed bayes
   obtain ⟨score, scoreError, scoreLimit, scoreUnit, scoreNear⟩ :=
     keyed_failure_bounds_of_assembled setup timeouts leaks bounds horizon scheduler
-      wellFormed independent observable sequence sourceMixed inputs.scale positive le_one
+      wellFormed priors sequence sourceMixed inputs.scale positive le_one
       (fun _ => rfl) covers coversInputs capacity slots_pos
       weights
       target assembled mixed bayes
