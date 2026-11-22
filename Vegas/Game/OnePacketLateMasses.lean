@@ -38,7 +38,7 @@ theorem bind_mix_right {α β : Type} (weights : PMF α) (t : ℝ) (h0 : 0 ≤ t
     ENNReal.ofReal t * fixed b + ENNReal.ofReal (1 - t) * (weights.bind varying) b
   rw [PMF.bind_apply]
   simp only [mul_add]
-  rw [ENNReal.tsum_add, ← ENNReal.tsum_mul_left]
+  rw [tsum_add, ← ENNReal.tsum_mul_left]
   congr 1
   · rw [show (fun option => weights option * (ENNReal.ofReal t * fixed b)) =
         fun option => weights option * (ENNReal.ofReal t * fixed b) from rfl,

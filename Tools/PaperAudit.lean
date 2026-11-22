@@ -182,9 +182,12 @@ private partial def PaperAudit.typeHasHole (stx : Syntax) : Bool := Id.run do
 private partial def PaperAudit.checkVariableTypes (state : IO.Ref PaperAudit)
     (stx : Syntax) : PaperAudit.Elaboration Unit := do
   if stx.isOfKind ``Parser.Command.variable then
-    for binder in stx[1].getArgs do
-      if (binderType? binder).any typeHasHole then
-        fail state "Paper section variable types cannot contain holes"
+    match stx with
+    | `(command| $[$_:visibility]? variable $binders*) =>
+      for binder in binders do
+        if (binderType? binder.raw).any typeHasHole then
+          fail state "Paper section variable types cannot contain holes"
+    | _ => fail state "unrecognized Paper section variable syntax"
   for child in stx.getArgs do checkVariableTypes state child
 
 private def PaperAudit.checkExplicitStatement (state : IO.Ref PaperAudit)

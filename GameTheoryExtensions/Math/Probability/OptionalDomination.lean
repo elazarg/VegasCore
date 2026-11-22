@@ -28,7 +28,7 @@ theorem exists_residual_of_le {γ : Type*} (π : PMF (Option γ)) (ν : PMF γ)
     ∃ residual : PMF γ, π.bind (fun outcome => outcome.elim residual PMF.pure) = ν := by
   classical
   have optionSum (f : Option γ → ENNReal) : ∑' outcome, f outcome = f none + ∑' c, f (some c) := by
-    rw [ENNReal.tsum_eq_add_tsum_ite none]
+    rw [tsum_eq_add_tsum_ite none]
     congr 1
     symm
     convert Function.Injective.tsum_eq (Option.some_injective γ) (f := fun outcome =>
@@ -46,7 +46,7 @@ theorem exists_residual_of_le {γ : Type*} (π : PMF (Option γ)) (ν : PMF γ)
     ne_top_of_le_ne_top ENNReal.one_ne_top (split ▸ le_add_self)
   have gap : ∑' c, (ν c - π (some c)) = π none := by
     have whole : ∑' c, (ν c - π (some c)) + ∑' c, π (some c) = 1 := by
-      rw [← ENNReal.tsum_add]
+      rw [← tsum_add]
       simp only [tsub_add_cancel_of_le (dominated _)]
       exact ν.tsum_coe
     rw [← ENNReal.add_sub_cancel_right someFinite (a := ∑' c, (ν c - π (some c))), whole,
@@ -63,7 +63,7 @@ theorem exists_residual_of_le {γ : Type*} (π : PMF (Option γ)) (ν : PMF γ)
   · refine ⟨ν, PMF.ext fun c => ?_⟩
     rw [apply, empty, zero_mul, zero_add]
     have zero : ν c - π (some c) = 0 :=
-      ENNReal.tsum_eq_zero.mp (gap.trans empty) c
+      tsum_eq_zero_iff.mp (gap.trans empty) c
     exact le_antisymm (dominated c) (tsub_eq_zero_iff_le.mp zero)
   · have finite : π none ≠ ⊤ := PMF.apply_ne_top π none
     refine ⟨PMF.normalize (fun c => ν c - π (some c)) (gap ▸ empty) (gap ▸ finite),
@@ -161,8 +161,9 @@ theorem map_optional_source_le_marginal {Source Traffic : Type}
       (law.map Prod.fst) source := by
   classical
   rw [PMF.map_apply, PMF.map_apply]
-  apply ENNReal.tsum_le_tsum
+  apply tsum_le_tsum
   intro pair
+  dsimp only
   cases present : pair.2 with
   | none => simp
   | some traffic => simp

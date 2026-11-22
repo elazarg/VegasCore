@@ -466,7 +466,7 @@ theorem honest_prefix_runToHorizon_outcomeLaw
   have graphCount : G.order.eventCount = (serviceGraph setup deps).order.eventCount := rfl
   generalize leftEq : horizon - origin.environmentRecall.length = left
   induction left using Nat.strong_induction_on generalizing rank origin with
-  | h left ih =>
+  | ind left ih =>
     intro boundary budget safe
     by_cases terminal : origin.application.config.cut.Terminal
     · have exactRead (final : app.Execution) (member : final ∈

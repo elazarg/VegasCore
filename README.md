@@ -118,10 +118,10 @@ describes the checked graph and native Nash results and their observation scope.
 
 ## Build and validate
 
-The GameTheory foundation is a separately managed Git submodule. The pinned
-toolchain and manifest determine dependencies. The pinned foundation revision
-is anchored by the annotated tag
-[`v4.35.0`](https://github.com/elazarg/GameTheory/tree/v4.35.0).
+The GameTheory foundation is a separately managed Lake package. The pinned
+toolchain and manifest determine dependencies, and Lake fetches them into
+`.lake/packages`. The pinned foundation revision is anchored by the annotated tag
+[`v4.36.0`](https://github.com/elazarg/GameTheory/tree/v4.36.0).
 Run:
 
 ```powershell

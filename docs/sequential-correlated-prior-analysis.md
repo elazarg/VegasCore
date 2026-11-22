@@ -301,7 +301,7 @@ contains the earlier likelihood, coupling and observable-gain directions.
 ## Reuse boundary for formalization
 
 The word “component” has two different meanings here. In
-[ComponentCompletion](../GameTheory/GameTheory/Analysis/Protocol/ComponentCompletion.lean),
+[ComponentCompletion](https://github.com/elazarg/GameTheory/blob/v4.36.0/GameTheory/Analysis/Protocol/ComponentCompletion.lean),
 `GameTheory.Protocol.InformationModel.exists_consistent_completion_with_shared_mixture_weights` and
 `GameTheory.Protocol.InformationModel.exists_consistent_component_completion`
 construct equilibrating mixtures of each information agent's local action
@@ -331,11 +331,11 @@ those sequences directly and needs no fresh subsequence or belief choice.
 The smaller foundation APIs are closer to the required proof:
 
 * `GameTheory.Protocol.InformationModel.bayesBelief_apply` in
-  [BehavioralBayes](../GameTheory/GameTheory/Protocol/BehavioralBayes.lean)
+  [BehavioralBayes](https://github.com/elazarg/GameTheory/blob/v4.36.0/GameTheory/Protocol/BehavioralBayes.lean)
   exposes the exact normalized reach weight. It is the immediate consumer of
   the conditional-initial-law reach scaling identity.
 * `GameTheory.Protocol.InformationModel.bayesBelief_projection_of_reach` in
-  [BeliefTransport](../GameTheory/GameTheory/Analysis/Protocol/BeliefTransport.lean)
+  [BeliefTransport](https://github.com/elazarg/GameTheory/blob/v4.36.0/GameTheory/Analysis/Protocol/BeliefTransport.lean)
   transports beliefs through an actual history map when reach weights sum
   exactly over fibers. Its current premise has scalar one. Conditional versus
   unconditional reach instead differs by pi_z, so it cannot be instantiated
@@ -346,19 +346,19 @@ The smaller foundation APIs are closer to the required proof:
 * `GameTheory.Protocol.InformationModel.informationMass_projection_of_proportional_reach`
   and
   `GameTheory.Protocol.InformationModel.bayesBelief_projection_of_proportional_reach`
-  in [BeliefTransport](../GameTheory/GameTheory/Analysis/Protocol/BeliefTransport.lean)
+  in [BeliefTransport](https://github.com/elazarg/GameTheory/blob/v4.36.0/GameTheory/Analysis/Protocol/BeliefTransport.lean)
   provide the scalar generalization and are used by the actual source Bayes
   consumer. Their fiber-sum premise is
   `scale * target reach = summed raw reach`. The positive finite multiplier
   cancels in Bayes normalization; the source consumer uses scale pi_z inverse,
   from conditional histories to their embedded global histories.
 * `GameTheory.Protocol.InformationModel.BehavioralAssessment.IsLimitConsistent.exists_sequence`
-  in [BehavioralAssessment](../GameTheory/GameTheory/Protocol/BehavioralAssessment.lean)
+  in [BehavioralAssessment](https://github.com/elazarg/GameTheory/blob/v4.36.0/GameTheory/Protocol/BehavioralAssessment.lean)
   extracts the existing consistency witness. The gluing construction should
   reuse such witnesses rather than merely pick new beliefs independently at
   each zero-probability information set.
-* [ActionRestriction](../GameTheory/GameTheory/Protocol/ActionRestriction.lean)
-  and [RestrictionExecution](../GameTheory/GameTheory/Protocol/RestrictionExecution.lean)
+* [ActionRestriction](https://github.com/elazarg/GameTheory/blob/v4.36.0/GameTheory/Protocol/ActionRestriction.lean)
+  and [RestrictionExecution](https://github.com/elazarg/GameTheory/blob/v4.36.0/GameTheory/Protocol/RestrictionExecution.lean)
   provide history/information embeddings and exact continuation-law transport
   when actions are restricted. They preserve the initial history and initialized
   law through their stated structure. Conditioning a chance distribution is

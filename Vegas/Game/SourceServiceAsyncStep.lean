@@ -199,7 +199,7 @@ theorem CompletionBoundary.runToHorizon_law {Outcome : Type*}
   let plan := setup.informationGraph.policyPlan profile setup.informationGraph.canonicalScheduler
   generalize remainingEq : execution.application.config.remaining = remaining
   induction remaining using Nat.strong_induction_on generalizing rank execution with
-  | h remaining ih =>
+  | ind remaining ih =>
       rw [← remainingEq]
       by_cases finished : rank = setup.informationGraph.order.eventCount
       · have terminal : execution.application.config.cut.IsPrefix

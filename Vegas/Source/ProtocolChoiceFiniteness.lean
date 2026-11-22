@@ -56,7 +56,8 @@ theorem ProtocolView.finite_choice (who : Player) {Γ : SourceCtx Player L} {O :
     (admission : CommitmentInterface program) (view : ProtocolView who program) :
     Finite {action : Option (OwnAction Player L) //
       ProtocolView.menu who program admission view action} := by
-  apply Set.Finite.to_subtype
+  refine Set.Finite.to_subtype
+    (s := {action | ProtocolView.menu who program admission view action}) ?_
   have all := (ProtocolView.available_finite who program finite admission view).image some
   apply (all.insert none).subset
   intro action legal

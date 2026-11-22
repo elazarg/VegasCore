@@ -55,8 +55,9 @@ class ProofInventoryTests(unittest.TestCase):
             self.assertEqual({item["path"] for item in rows[0]}, {"A.lean", "B.lean"})
 
     def test_dependency_module_names_and_layer(self):
-        self.assertEqual(INVENTORY.module_name("GameTheory/GameTheory/Core/Utility.lean"),
-                         "GameTheory.Core.Utility")
+        dependency = ".lake/packages/GameTheory/GameTheory/Core/Utility.lean"
+        self.assertEqual(INVENTORY.module_name(dependency), "GameTheory.Core.Utility")
+        self.assertEqual(INVENTORY.layer(dependency), "GameTheory")
         self.assertEqual(INVENTORY.layer("Vegas/Game/Example.lean"), "Vegas.Game")
 
     def test_result_type_lets_are_not_proof_assignments(self):

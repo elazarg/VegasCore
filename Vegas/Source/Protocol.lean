@@ -302,7 +302,7 @@ def informationModel {Γ : SourceCtx Player L} {O : Finset VarId}
     (initial : Config Player L Γ) :
     InformationModel (executionProtocol program admission initial) where
   toInfoSignals := protocolSignals program admission initial
-  menu who := ProtocolView.menu who program admission
+  menu who view := {choice | ProtocolView.menu who program admission view choice}
   menu_adequate := by
     intro who state trace choice
     rw [protocol_info]

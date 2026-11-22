@@ -152,7 +152,7 @@ def check(root: Path) -> list[str]:
                 modules[module] = imports(path.read_text(encoding="utf-8"))
 
     # A tracked Lean source outside configured libraries is an orphan.
-    # Git submodules are gitlinks, so this does not enumerate dependency trees.
+    # Lake packages are untracked, so this does not enumerate dependency trees.
     if (root / ".git").exists():
         tracked = subprocess.run(
             ["git", "-C", str(root), "ls-files", "-z", "--", "*.lean"],

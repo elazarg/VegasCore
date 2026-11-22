@@ -50,8 +50,10 @@ example (intended : Vegas.Examples.OddsEvens.setup.intendedModel.BehavioralAsses
     (supported : state ∈ (app.finish initial horizon scheduler
       (compiled intended equilibrium).clients none).support)
     (control : app.Control) (current : state = some control) :
-    control.execution.application.config.defaulted = ∅ :=
-  (compiled intended equilibrium).clients_noDefaults state supported control current
+    control.execution.application.config.defaulted = ∅ := by
+  unfold initial at supported
+  with_reducible
+    exact (compiled intended equilibrium).clients_noDefaults state supported control current
 
 example (intended : Vegas.Examples.OddsEvens.setup.intendedModel.BehavioralAssessment)
     (equilibrium : Vegas.Examples.OddsEvens.setup.IntendedSequentialEquilibrium
@@ -60,8 +62,9 @@ example (intended : Vegas.Examples.OddsEvens.setup.intendedModel.BehavioralAsses
     (supported : state ∈ (app.finish initial horizon scheduler
       (compiled intended equilibrium).clients none).support) (who : Bool) :
     GameTheory.Enforcement.TerminalAudit.charge app.stateTraffic
-      ((countAudit timeouts) leaks specification.evidenceService.sample) state who = 0 :=
-  (compiled intended equilibrium).clients_noCharges state supported who
+      ((countAudit timeouts) leaks specification.evidenceService.sample) state who = 0 := by
+  unfold initial at supported
+  with_reducible exact (compiled intended equilibrium).clients_noCharges state supported who
 
 example (intended : Vegas.Examples.OddsEvens.setup.intendedModel.BehavioralAssessment)
     (equilibrium : Vegas.Examples.OddsEvens.setup.IntendedSequentialEquilibrium

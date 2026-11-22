@@ -22,7 +22,7 @@ theorem bind_branch_lower {α β : Type*} (timing : PMF α) (index : α)
   rw [← ENNReal.toReal_mul]
   apply ENNReal.toReal_mono (PMF.apply_ne_top _ _)
   rw [PMF.bind_apply]
-  exact ENNReal.le_tsum (f := fun other => timing other * (branch other) outcome) index
+  exact le_tsum (f := fun other => timing other * (branch other) outcome) index
 
 
 /-- A mixture retains its right component with its original weight. -/

@@ -187,7 +187,7 @@ theorem responseMass_le_of_slotTrembled
         control.execution.observe (application setup timeouts leaks) actor))).map Subtype.val)
           (joint actor) = 0 := by
       rw [PMF.map_apply]
-      refine ENNReal.tsum_eq_zero.mpr fun choice => ?_
+      refine tsum_eq_zero_iff.mpr fun choice => ?_
       split_ifs with same
       · exact (found ⟨choice, same.symm⟩).elim
       · rfl

@@ -184,7 +184,7 @@ theorem honest_runToHorizon_outcomeLaw
   intro execution
   generalize leftEq : horizon - execution.environmentRecall.length = left
   induction left using Nat.strong_induction_on generalizing execution with
-  | h left ih =>
+  | ind left ih =>
   intro supported bounded seen
   obtain ⟨trace⟩ := app.raw_trace_roundsFrom (serviceInitialLaw setup deps) horizon scheduler
     players execution.environmentRecall.length bounded execution supported

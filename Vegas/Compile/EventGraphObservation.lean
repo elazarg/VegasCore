@@ -146,9 +146,8 @@ theorem decodeObservation?_eq_collect {Field : Type}
           simp only [collectObservation?, PartialEnvironment.collect?, ContextRefs.tail, head, tail,
             Option.bind_eq_bind, Option.pure_def, Option.map, Option.bind, ↓reduceDIte,
             Option.some.injEq, SourceObservation.mk.injEq]
-      all_goals
-        funext readName readCell source
-        cases source <;> rfl
+      funext readName readCell source
+      cases source <;> rfl
 
 omit R in
 theorem decodeObservation?_congr_of_visible {Field : Type}

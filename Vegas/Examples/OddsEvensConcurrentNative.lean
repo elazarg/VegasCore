@@ -82,7 +82,10 @@ theorem native_equilibrium :
     utility_spread uniformAssessment.strategy target target_extends 0 uniform_isNash
     serviceDuration leaks serviceScheduler (fun _ => 2) serviceContract serviceTimely
   have exactLaw := law.trans uniform_joint_law
-  refine ⟨nash, clean, exactLaw, ?_⟩
+  refine ⟨nash, fun final reached => clean final ?_, exactLaw, ?_⟩
+  · -- Compare the laws, not the memberships, which would evaluate the concrete game.
+    refine Eq.mp (congrArg (fun law => final ∈ PMF.support law) ?_) reached
+    rfl
   intro who
   have expected := congrArg (fun law => expect law (fun observed => observed.2 who)) exactLaw
   rw [expect_map] at expected

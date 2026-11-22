@@ -7,6 +7,9 @@ citations are resolved through the namespace at the citation site and explicit
 snake_case and camelCase citations are accepted only when their short name is
 unique in the project index.
 
+The GameTheory foundation is read from its Lake package checkout. Links into
+its repository must name the revision the manifest pins and a file in that tree.
+
 Markdown links to external Lean sources pinned by full GitHub commit IDs are
 nonlocal citations: their labels are exempt from local resolution, not verified
 against the remote source.
@@ -16,6 +19,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import importlib.util
+import json
 import os
 from pathlib import Path
 import re
@@ -23,9 +27,11 @@ import subprocess
 import sys
 
 
+FOUNDATION = Path(".lake/packages/GameTheory")
 ROOTS_DEFINING = (
     "GameTheoryExtensions", "GameTheoryExtensionsTests", "Interaction",
-    "InteractionTests", "Vegas", "VegasTests", "Paper", "Tools", "GameTheory/GameTheory",
+    "InteractionTests", "Vegas", "VegasTests", "Paper", "Tools",
+    (FOUNDATION / "GameTheory").as_posix(),
 )
 ROOTS_CITING = (
     "GameTheoryExtensions", "GameTheoryExtensionsTests", "Interaction",
@@ -69,6 +75,9 @@ DOC_COMMENT = re.compile(r"/-(?:!|-)[\s\S]*?-/")
 PROJECT_PATH = re.compile(
     r"`((?:GameTheoryExtensions|GameTheoryExtensionsTests|Interaction|InteractionTests|Vegas|VegasTests|Paper|Tools)"
     r"(?:/[A-Za-z0-9_.-]+)*\.lean)(?::\d+)?`"
+)
+FOUNDATION_SOURCE = re.compile(
+    r"https://github\.com/elazarg/GameTheory/blob/(?P<rev>[^/]+)/(?P<path>.+)"
 )
 MARKDOWN_LINK = re.compile(r"\[[^\]]*\]\(([^)]+)\)")
 # Retired results stay at this tag. A citation inside the text of a link to it
@@ -116,9 +125,9 @@ def lean_files(roots):
 
 
 def module_name(path: Path) -> str:
+    if path.is_relative_to(FOUNDATION):
+        path = path.relative_to(FOUNDATION)
     parts = path.with_suffix("").parts
-    if len(parts) >= 2 and parts[:2] == ("GameTheory", "GameTheory"):
-        parts = ("GameTheory",) + parts[2:]
     return ".".join(parts)
 
 
@@ -298,9 +307,21 @@ def tracked_markdown(root: Path) -> tuple[list[Path], bool]:
     return [root / item.decode("utf-8") for item in sorted(filter(None, tracked))], True
 
 
+def foundation_revision(root: Path) -> str | None:
+    """Return the manifest's input revision of the GameTheory package."""
+    manifest = root / "lake-manifest.json"
+    if not manifest.is_file():
+        return None
+    for package in json.loads(manifest.read_text(encoding="utf-8"))["packages"]:
+        if package["name"] == "GameTheory":
+            return package.get("inputRev")
+    return None
+
+
 def markdown_findings(root: Path, index: NameIndex):
     """Check local paths and declaration-shaped inline-code citations."""
     paths, checked = tracked_markdown(root)
+    pinned = foundation_revision(root)
     findings = []
     for source in paths:
         if not source.is_file():
@@ -313,6 +334,11 @@ def markdown_findings(root: Path, index: NameIndex):
                     findings.append((relative_source, number, cited, "file"))
             for destination in MARKDOWN_LINK.findall(line):
                 destination = destination.strip().strip("<>").split("#", 1)[0]
+                if pinned and (source_link := FOUNDATION_SOURCE.fullmatch(destination)):
+                    if (source_link["rev"] != pinned
+                            or not (root / FOUNDATION / source_link["path"]).is_file()):
+                        findings.append((relative_source, number, destination, "foundation"))
+                    continue
                 if not destination or "://" in destination or destination.startswith("/"):
                     continue
                 destination = re.sub(r":\d+$", "", destination)
@@ -334,6 +360,10 @@ def main() -> int:
     if not (root / "lakefile.toml").is_file():
         print(f"No lakefile.toml in {root}: run the check from the repository root.")
         return 2
+    if foundation_revision(root) and not (root / FOUNDATION).is_dir():
+        print(f"No GameTheory package at {FOUNDATION.as_posix()}: "
+              "run `lake env true` to fetch the pinned dependencies.")
+        return 2
     index = index_declarations()
     findings = dangling(index)
     for path, number, cited in findings:
@@ -349,6 +379,9 @@ def main() -> int:
     for path, number, cited, kind in markdown:
         if kind == "file":
             print(f"{path}:{number}: Markdown cites missing local file `{cited}`")
+        elif kind == "foundation":
+            print(f"{path}:{number}: Markdown cites a GameTheory source absent from "
+                  f"the pinned revision `{cited}`")
         else:
             print(f"{path}:{number}: Markdown cites unknown Lean name `{cited}`")
     if findings or markdown:

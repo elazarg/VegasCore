@@ -23,8 +23,16 @@ jobs:
 
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      # The documentation check reads the pinned GameTheory sources, so install
+      # elan and let Lake fetch the dependencies before the repository checks.
+      - name: Install elan
+        uses: leanprover/lean-action@24581d74d674803a25a81b10b059c5c0cdd344c6 # v1.6.2
         with:
-          submodules: recursive
+          auto-config: "false"
+          use-mathlib-cache: "false"
+          use-github-cache: "false"
+      - name: Fetch the pinned dependencies
+        run: lake env true
       - name: Check documentation references resolve
         run: python scripts/check-doc-references.py
       - name: Require centralized Lean options
@@ -33,15 +41,6 @@ jobs:
         run: python scripts/check-module-boundaries.py
       - name: Test repository checks before the Lean build
         run: python -m unittest discover -s scripts -p 'test_*.py'
-      - name: Record the GameTheory revision
-        id: gametheory
-        run: echo "sha=$(git -C GameTheory rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-      # lean-action caches the root `.lake` only; the GameTheory path dependency
-      # builds into its own directory.
-      - uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
-        with:
-          path: GameTheory/.lake
-          key: gametheory-${{ runner.os }}-${{ hashFiles('lean-toolchain', 'lake-manifest.json') }}-${{ steps.gametheory.outputs.sha }}
       - uses: leanprover/lean-action@24581d74d674803a25a81b10b059c5c0cdd344c6 # v1.6.2
         with:
           build-args: "--wfail"
@@ -64,15 +63,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
-        with:
-          submodules: recursive
-      - name: Record the GameTheory revision
-        id: gametheory
-        run: echo "sha=$(git -C GameTheory rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-      - uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
-        with:
-          path: GameTheory/.lake
-          key: gametheory-${{ runner.os }}-${{ hashFiles('lean-toolchain', 'lake-manifest.json') }}-${{ steps.gametheory.outputs.sha }}
       # docgen-action expects the toolchain and the build of the same job; the
       # build job's caches make this build a restore.
       - uses: leanprover/lean-action@24581d74d674803a25a81b10b059c5c0cdd344c6 # v1.6.2

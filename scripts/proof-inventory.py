@@ -19,6 +19,7 @@ import re
 import subprocess
 
 ROOT = Path(__file__).resolve().parent.parent
+FOUNDATION = ".lake/packages/GameTheory"
 
 
 def load_module(name, path):
@@ -77,7 +78,7 @@ def proof_bodies(text):
 
 def layer(path):
     parts = Path(path).parts
-    if parts[0] == "GameTheory":
+    if path.startswith(f"{FOUNDATION}/"):
         return "GameTheory"
     if parts[0] == "Vegas" and len(parts) > 2:
         return ".".join(parts[:2])
@@ -90,15 +91,16 @@ def tracked_sources(root):
             ["git", "-C", str(directory), "ls-files", "-z", "--", "*.lean"]
         ).decode("utf-8").split("\0")
     paths = [path for path in tracked(root) if path]
-    dependency = root / "GameTheory"
-    if (dependency / "AGENTS.md").exists():
-        paths.extend("GameTheory/" + path for path in tracked(dependency) if path)
+    dependency = root / FOUNDATION
+    if not dependency.is_dir():
+        raise SystemExit(f"No GameTheory package at {FOUNDATION}: "
+                         "run `lake env true` to fetch the pinned dependencies.")
+    paths.extend(f"{FOUNDATION}/{path}" for path in tracked(dependency) if path)
     return sorted(set(paths))
 
 
 def module_name(path):
-    if path.startswith("GameTheory/"):
-        path = path.removeprefix("GameTheory/")
+    path = path.removeprefix(f"{FOUNDATION}/")
     return path.removesuffix(".lean").replace("/", ".")
 
 

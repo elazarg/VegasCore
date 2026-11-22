@@ -183,6 +183,31 @@ class DocReferenceTests(unittest.TestCase):
         )
         self.assertEqual(result.returncode, 0, result.stdout)
 
+    def test_foundation_names_and_links_resolve_in_the_pinned_package(self):
+        package = {
+            "lake-manifest.json":
+                '{"packages": [{"name": "GameTheory", "inputRev": "v2.0.0"}]}',
+            ".lake/packages/GameTheory/GameTheory/Core.lean":
+                "namespace GameTheory\ntheorem core_result : True := trivial\nend GameTheory\n",
+        }
+        source = "https://github.com/elazarg/GameTheory/blob/"
+        valid = f"`GameTheory.core_result` in [Core]({source}v2.0.0/GameTheory/Core.lean#L2)\n"
+        result = self.run_markdown_checker(valid, package)
+        self.assertEqual(result.returncode, 0, result.stdout)
+        for stale in ("v1.0.0/GameTheory/Core.lean", "v2.0.0/GameTheory/Missing.lean"):
+            with self.subTest(stale=stale):
+                result = self.run_markdown_checker(f"[Core]({source}{stale})\n", package)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("absent from the pinned revision", result.stdout)
+
+    def test_unfetched_foundation_is_reported(self):
+        result = self.run_markdown_checker("No citations.\n", {
+            "lake-manifest.json":
+                '{"packages": [{"name": "GameTheory", "inputRev": "v2.0.0"}]}',
+        })
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("No GameTheory package", result.stdout)
+
     def test_field_assignment_is_not_indexed(self):
         result = self.run_checker(
             "structure Config where\n"
@@ -199,7 +224,7 @@ class DocReferenceTests(unittest.TestCase):
             root = Path(directory)
             (root / "lakefile.toml").write_text("", encoding="utf-8")
             (root / "Vegas").mkdir()
-            (root / "GameTheory/GameTheory").mkdir(parents=True)
+            (root / ".lake/packages/GameTheory/GameTheory").mkdir(parents=True)
             (root / "Vegas/Test.lean").write_text(
                 "/-! A stale citation to `missing.name`. -/\n", encoding="utf-8"
             )

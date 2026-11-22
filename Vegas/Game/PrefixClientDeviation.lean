@@ -4661,7 +4661,7 @@ private theorem sourceResidual_binding_interval_induction
   intro rank origin frame lower upper
   generalize distanceEq : finish - rank = distance
   induction distance using Nat.strong_induction_on generalizing rank origin with
-  | h distance ih =>
+  | ind distance ih =>
       by_cases last : rank = finish
       · subst rank
         exact atFinish origin frame
@@ -7279,7 +7279,7 @@ private theorem nativeSourceContinuation_of_private_blocks [Finite Player]
     exact proof _ rank point frame rfl
   intro gap
   induction gap using Nat.strong_induction_on with
-  | h gap ih =>
+  | ind gap ih =>
     intro rank point frame gapEq
     have bounded : rank ≤ G.order.eventCount := frame.checkpoint.ordered.1
     have tailOf (finish : Nat) (later : rank < finish) (within : finish ≤ G.order.eventCount)

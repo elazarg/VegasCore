@@ -86,12 +86,12 @@ private theorem filter_mul_mass (prior : PMF α) (part : Set α)
     ENNReal.inv_mul_cancel ?_ ?_, mul_one]
   · obtain ⟨witness, inside, supported⟩ := some
     intro zero
-    have := ENNReal.tsum_eq_zero.mp zero witness
+    have := tsum_eq_zero_iff.mp zero witness
     rw [Set.indicator_of_mem inside] at this
     exact supported this
   · exact ne_top_of_le_ne_top ENNReal.one_ne_top (by
       calc (∑' other, part.indicator prior other) ≤ ∑' other, prior other :=
-            ENNReal.tsum_le_tsum fun other => Set.indicator_le_self part prior other
+            tsum_le_tsum fun other => Set.indicator_le_self part prior other
         _ = 1 := prior.tsum_coe)
 
 /-- The bind of a prior on a set, through the prior restricted to it. -/
@@ -121,7 +121,7 @@ theorem bind_eq_of_split (prior : PMF α) (part : Set α) (first second : α →
       ∑' a, prior a * continuation a b =
         ∑' a, part.indicator prior a * continuation a b +
           ∑' a, partᶜ.indicator prior a * continuation a b := by
-    rw [← ENNReal.tsum_add]
+    rw [← tsum_add]
     congr 1
     funext a
     by_cases member : a ∈ part
@@ -140,7 +140,7 @@ theorem bind_eq_of_split (prior : PMF α) (part : Set α) (first second : α →
     · push Not at some
       have vanish (continuation : α → PMF β) :
           ∑' a, piece.indicator prior a * continuation a b = 0 := by
-        apply ENNReal.tsum_eq_zero.mpr
+        apply tsum_eq_zero_iff.mpr
         intro a
         by_cases member : a ∈ piece
         · rw [Set.indicator_of_mem member,
@@ -162,13 +162,13 @@ theorem bind_filter_eq (prior : PMF α) (part : Set α) (first second : α → P
   have mass : (∑' other, part.indicator prior other) ≠ 0 := by
     obtain ⟨witness, inside, supported⟩ := some
     intro zero
-    have := ENNReal.tsum_eq_zero.mp zero witness
+    have := tsum_eq_zero_iff.mp zero witness
     rw [Set.indicator_of_mem inside] at this
     exact supported this
   have massFinite : (∑' other, part.indicator prior other) ≠ ⊤ :=
     ne_top_of_le_ne_top ENNReal.one_ne_top (by
       calc (∑' other, part.indicator prior other) ≤ ∑' other, prior other :=
-            ENNReal.tsum_le_tsum fun other => Set.indicator_le_self part prior other
+            tsum_le_tsum fun other => Set.indicator_le_self part prior other
         _ = 1 := prior.tsum_coe)
   ext b
   have restricted (continuation : α → PMF β)
@@ -187,7 +187,7 @@ theorem bind_filter_eq (prior : PMF α) (part : Set α) (first second : α → P
         · rw [(PMF.apply_eq_zero_iff (continuation a) b).mpr (fun inSupport =>
             member ((classified a supported b inSupport).mp classifiedB)), mul_zero]
         · rw [(PMF.apply_eq_zero_iff prior a).mpr supported, zero_mul]
-    · apply ENNReal.tsum_eq_zero.mpr
+    · apply tsum_eq_zero_iff.mpr
       intro a
       by_cases member : a ∈ part
       · rw [Set.indicator_of_mem member]

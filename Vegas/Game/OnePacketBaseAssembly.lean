@@ -244,7 +244,7 @@ def OnePacketOwnInputs.ofAssembled (wellFormed : setup.WellFormed)
       notFree) atSite projected
     (own n) (sourceMixed n) turn (bindingFieldsCovered_of_covers covers coversInputs)
     point sourceSite.2.choose using 1
-  all_goals congr 2
+  congr 2
 
 open Classical in
 /-- Assemble the base certificate at the canonical tremble scale and all

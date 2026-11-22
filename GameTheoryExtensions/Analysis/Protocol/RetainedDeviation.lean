@@ -69,13 +69,13 @@ theorem le_embeddedConditional (law : PMF β) (embedding : α ↪ β) (fallback 
           apply le_mul_of_one_le_right zero_le
           apply ENNReal.one_le_inv.mpr
           calc ∑' b, (Set.range embedding).indicator law b ≤ ∑' b, law b :=
-                ENNReal.tsum_le_tsum fun b => Set.indicator_le_self _ _ b
+                tsum_le_tsum fun b => Set.indicator_le_self _ _ b
             _ = 1 := law.tsum_coe
       _ = (law.filter (Set.range embedding) support) (embedding a) := by
           rw [PMF.filter_apply, Set.indicator_of_mem (Set.mem_range_self a)]
       _ ≤ _ := by
           rw [PMF.map_apply]
-          refine le_trans ?_ (ENNReal.le_tsum (embedding a))
+          refine le_trans ?_ (le_tsum _ (embedding a))
           simp only [inverse, ↓reduceIte, le_refl]
   · have absent : law (embedding a) = 0 := by
       by_contra nonzero
@@ -154,8 +154,9 @@ private theorem one_step_le (reflecting : restriction.Reflecting)
       funext i
       exact (restriction.choiceAt i original).injective (congrFun same i)
     rw [← embedInjective.tsum_eq]
-    · apply ENNReal.tsum_le_tsum
+    · apply tsum_le_tsum
       intro draws
+      dsimp only
       have stepEq : N.localStep (restriction.history original) (embed draws) =
           (M.localStep original draws).map restriction.history :=
         (restriction.step original draws).symm
@@ -205,7 +206,7 @@ theorem runBehavioral_embedded_le (reflecting : restriction.Reflecting)
       unfold runBehavioral
       rw [N.runBehavioralFrom_add _ fuel 1, M.runBehavioralFrom_add _ fuel 1, PMF.bind_apply,
         PMF.bind_apply, ← restriction.history.injective.tsum_eq]
-      · apply ENNReal.tsum_le_tsum
+      · apply tsum_le_tsum
         intro original
         exact mul_le_mul' (ih original)
           (one_step_le reflecting source target agrees who deviation fallback original history)

@@ -83,6 +83,7 @@ theorem intendedBitChoice_surjective (who : Player) (view : setup.ProtocolView w
   suffices ∃ bit, intendedBitAction bit who view = selected by
     obtain ⟨bit, same⟩ := this
     exact ⟨bit, Subtype.ext same⟩
+  change Option (OwnAction Player simpleExpr) at selected
   change selected ∈ setup.intendedMenu who view at legal
   cases who <;> rcases view with _ | (view | (view | (view | (view | view)))) <;>
     rcases selected with _ | action
@@ -90,9 +91,7 @@ theorem intendedBitChoice_surjective (who : Player) (view : setup.ProtocolView w
     aesop (config := { terminal := false, warnOnNonterminal := false })
       (add simp [Setup.intendedMenu, setup, program, ProtocolView.intendedMenu,
       ProtocolView.actor, ProtocolView.intendedAvailable, intendedBitAction, even, odd,
-      Membership.mem, Set.instMembership, Set.Mem, Set.ofPred,
-      Set.instSingletonSet, Set.singleton])
-  all_goals exact Eq.symm (by assumption)
+      Set.mem_ofPred_eq, Set.mem_singleton_iff, Set.mem_empty_iff_false])
 
 def uniformProfile : ∀ who, setup.intendedModel.BehavioralPolicy who :=
   fun who view => (uniformLaw Bool).map (fun bit => intendedBitChoice bit who view)

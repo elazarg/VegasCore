@@ -175,7 +175,7 @@ theorem selector_reconstructs_recall (who : Principal) (reference past : List ap
       past[index] = reference[index] := by
     intro index
     induction index using Nat.strong_induction_on with
-    | h index ih =>
+    | ind index ih =>
         intro inside other
         have earlier : past.take index = reference.take index := by
           apply List.ext_getElem

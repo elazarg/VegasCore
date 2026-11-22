@@ -137,6 +137,8 @@ class PaperAuditTests(unittest.TestCase):
                 proof(result='x = (1 : Nat) → x = 1', body='id') + pin(),
             'variable_named_hole': 'variable (x : ?a)\n' +
                 proof(result='x = (1 : Nat) → x = 1', body='id') + pin(),
+            'variable_visibility_hole': 'public variable (x : _)\n' +
+                proof(result='x = (1 : Nat) → x = 1', body='id') + pin(),
             'named_binder_type': 'theorem Vegas.Paper.result (x : ?a) : '
                 'x = (1 : Nat) → x = 1 := id\n' + pin(),
             'implicit_variable': 'variable (x : Nat)\nvariable {x}\n' +
@@ -255,7 +257,7 @@ class PaperAuditTests(unittest.TestCase):
         self.assertEqual(self.reports['anonymous_binder_function']['errors'], [])
 
     def test_section_variables_and_named_type_holes(self):
-        for case in ('variable_hole', 'variable_named_hole'):
+        for case in ('variable_hole', 'variable_named_hole', 'variable_visibility_hole'):
             with self.subTest(case=case):
                 self.error(case, 'Paper section variable types cannot contain holes')
         self.error('named_binder_type', 'needs explicit binder types')

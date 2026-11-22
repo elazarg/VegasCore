@@ -149,6 +149,6 @@ theorem certificate_responseMass_le_cube
   rcases mainForm with rfl | ⟨late, rfl⟩
   · exact honestZero
   · rw [PMF.bind_apply]
-    exact ENNReal.tsum_eq_zero.mpr fun option => by rw [lateZero option, mul_zero]
+    exact tsum_eq_zero_iff.mpr fun option => by rw [lateZero option, mul_zero]
 
 end Vegas
