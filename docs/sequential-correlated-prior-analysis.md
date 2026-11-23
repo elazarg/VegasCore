@@ -80,6 +80,12 @@ every supplied intended sequential equilibrium on that periodic service with its
 exact joint configuration and settled-payoff law.
 [Correlated-bit equilibrium](../Vegas/Examples/CorrelatedInitialBitsEquilibrium.lean)
 
+On a legal one-packet history the first owner passes and receives another turn
+for the same binding. The instance also fails independence given every signal
+determined by the public initial cells. Thus neither alternative of
+`SequentialPriorCondition` covers this game and service.
+[Repeated opportunity](../Vegas/Examples/CorrelatedInitialBitsRetry.lean)
+
 ## Where the component compiler uses independence
 
 The relevant declaration surfaces are in

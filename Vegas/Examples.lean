@@ -16,6 +16,7 @@ public import Vegas.Examples.CorrelatedInitialBits
 public import Vegas.Examples.CorrelatedInitialBitsEquilibrium
 public import Vegas.Examples.CorrelatedInitialBitsInformation
 public import Vegas.Examples.CorrelatedInitialBitsLedger
+public import Vegas.Examples.CorrelatedInitialBitsRetry
 public import Vegas.Examples.CorrelatedInitialBitsService
 public import Vegas.Examples.LateLeak
 public import Vegas.Examples.LateOpeningRuntimeSource
