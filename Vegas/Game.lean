@@ -12,6 +12,8 @@ public import Vegas.Game.AsyncServiceNash
 public import Vegas.Game.AsyncServiceRawNash
 public import Vegas.Game.AsyncServiceSpec
 public import Vegas.Game.BindingWindowTransport
+public import Vegas.Game.ConditionedLedgerClients
+public import Vegas.Game.ConditionedLedgerService
 public import Vegas.Game.ConditionedSourceBayes
 public import Vegas.Game.ConditionedSourceReach
 public import Vegas.Game.CompilerCorrectness

@@ -13,6 +13,7 @@ public import Vegas.Examples.CommitTimingInformationSource
 public import Vegas.Examples.ConcurrentRevealOrderLaw
 public import Vegas.Examples.CorrelatedInitialBits
 public import Vegas.Examples.CorrelatedInitialBitsInformation
+public import Vegas.Examples.CorrelatedInitialBitsLedger
 public import Vegas.Examples.LateLeak
 public import Vegas.Examples.LateOpeningRuntimeSource
 public import Vegas.Examples.LateOpeningRuntimeSourceContinuation

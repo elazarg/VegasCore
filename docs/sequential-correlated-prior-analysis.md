@@ -43,6 +43,15 @@ The source conditioning and Bayes accounting are mechanized:
   component and applies the Bayes transport theorem to them. It reuses the
   source's initial-cell observation and preservation invariants.
 
+At the ledger, [service conditioning](../Vegas/Game/ConditionedLedgerService.lean)
+retains the builder's all-history service guarantees and finite nature on each
+supported component. [Physical client selection](../Vegas/Game/ConditionedLedgerClients.lean)
+uses a signal read from each player's existing view to run the corresponding
+component clients. For any round count the complete execution law is the
+mixture of their conditional laws. The [correlated-bit instance](../Vegas/Examples/CorrelatedInitialBitsLedger.lean)
+recovers the bit from the player's private ledger store after arbitrary traffic,
+for any scheduler and pending-observation rule.
+
 This does not yet weaken a raw-runtime SE preservation theorem. It remains to
 restrict and glue SE consistency witnesses and continuation rationality, and
 transport the actual forced-exit runtime and service hypotheses through
