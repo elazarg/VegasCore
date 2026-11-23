@@ -25,7 +25,12 @@ prior. Every supported terminal history has an empty public default set and
 zero count-audit charges. The original [client refinement](../Vegas/Game/ClientSpecification.lean)
 also states replay preimage and intermediate continuation guarantees.
 The observed-component theorem states equilibrium, the initialized joint law
-and clean supported paths. [Observed-component theorem](../Vegas/Game/ObservedComponentEquilibrium.lean)
+and clean supported paths. The same assessment [retains source strategies and beliefs](../Vegas/Game/ConditionedAssessmentFidelity.lean).
+Every intended information site has a global raw counterpart whose posterior
+replays to the supplied intended posterior. The normalized client plays the
+intended action law at matching first decisions, and replay holds at all matching
+forced sites with an owner turn. The decoder identifies the observed component,
+replays the native history there, and embeds the source history in the original game. [Observed-component theorem](../Vegas/Game/ObservedComponentEquilibrium.lean)
 
 ## How the assessments fit together
 

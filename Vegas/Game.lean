@@ -13,6 +13,7 @@ public import Vegas.Game.AsyncServiceRawNash
 public import Vegas.Game.AsyncServiceSpec
 public import Vegas.Game.BindingWindowTransport
 public import Vegas.Game.CommonInitialSignal
+public import Vegas.Game.ConditionedAssessmentFidelity
 public import Vegas.Game.ConditionedClientCompiler
 public import Vegas.Game.ConditionedClientSpecification
 public import Vegas.Game.ConditionedLedgerAssessment

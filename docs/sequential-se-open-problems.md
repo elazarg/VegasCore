@@ -183,8 +183,11 @@ evidence rule and deposits. The resulting raw sequential equilibrium preserves
 the initialized joint configuration/payoff law, with no defaults or charges on
 supported paths. The [correlated-bit game](../Vegas/Examples/CorrelatedInitialBitsEquilibrium.lean)
 instantiates this theorem on a periodic ledger with full pending observation.
-The stronger replay and intermediate-continuation guarantees in
-`ClientCompilation` apply to the component compilations. A full global
+Each intended information site has a global raw counterpart recovering its intended
+posterior, and first-decision action fidelity holds for the assembled clients.
+[Global assessment fidelity](../Vegas/Game/ConditionedAssessmentFidelity.lean)
+The full intermediate-continuation guarantees in `ClientCompilation` apply to
+the component compilations. A full global
 `ClientCompilation` for the shared-signal construction remains a separate target.
 
 A correlated prior with a connected support graph can leave every shared

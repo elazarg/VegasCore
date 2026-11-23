@@ -49,7 +49,8 @@ private theorem ledger_component_atom (st : (application setup timeouts leaks).S
   exact (setup.conditionInitial_initialLaw_scale signal key supported draw same).symm
 
 include observed supported in
-private theorem ledger_component_active_read
+/-- Every active menu decision on a component history identifies its initializing signal. -/
+theorem ledger_component_active_read
     {state : (application setup timeouts leaks).ProtocolState}
     (trace : (menu.protocol (component key) horizon scheduler).Trace state)
     (who : Player) (active : (menu.protocol (component key) horizon scheduler).active state who) :
