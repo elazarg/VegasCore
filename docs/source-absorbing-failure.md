@@ -165,8 +165,10 @@ readouts of legal histories, rather than fabricated impossible default records.
 
 [SequentialCompilation](../Vegas/Game/SequentialCompilation.lean) preserves
 each intended sequential equilibrium in the actual bounded raw-menu game.
-It uses one consistent limit assessment, the original service, conditional
-initial-information independence, utility, coverage and deposit hypotheses.
+It uses one consistent limit assessment, the original service, utility,
+coverage and deposit hypotheses, and the [prior condition](../Vegas/Game/SequentialPrior.lean).
+For at most two players, a single submission opportunity per event permits an
+arbitrary prior.
 Its implementing path has no public defaults or audit charges and preserves
 the joint full source configuration/default-history/payoff-vector law.
 This covers every intended equilibrium law; it does not characterize all target

@@ -14,7 +14,8 @@ source policy. The manuscript is maintained separately in `overleaf/`.
 
 | Result | Checked scope |
 | --- | --- |
-| `Vegas.intended_raw_sequentialEquilibrium_preserved` | Intended-game SE extends to the bounded raw-menu game of the forced-exit contract on the sequential graph with finite catalogues covering every binding, publication and initial-input value, under a finitely branching asynchronous builder, arbitrary finitely branching pending observation, conditional independence of initial private data given a public signal, and funded count-audit coverage. The realized joint outcome/payoff law is preserved and no player is excluded or charged on the implementing path. |
+| `Vegas.intended_raw_sequentialEquilibrium_preserved` | Intended-game SE extends to the bounded raw-menu game of the forced-exit contract on the sequential graph with finite catalogues covering every binding, publication and initial-input value, under a finitely branching asynchronous builder, arbitrary finitely branching pending observation, funded count-audit coverage, and either conditional independence of private initial data given a public signal or at most two players with one submission opportunity per event. The realized joint outcome/payoff law is preserved and no player is excluded or charged on the implementing path. |
+| [Observed common signal](Vegas/Game/ObservedComponentEquilibrium.lean) | Every player can recover the same signal from its own initial observation. When each supported component satisfies the compiler hypotheses under a shared service, audit and deposits, one global raw sequential equilibrium realizes the supplied intended equilibrium's joint configuration and settled-payoff law with no supported defaults or charges. |
 | `Vegas.SourceProgram.Setup.compileIntendedExtension_forfeit` | Source-prefix graph clients preserve intended ε-Nash equilibrium with independent bindings and reveals concurrent, for every disclosing intended extension and every public scheduler of any dependency choice retaining the required barriers. The complete source-configuration/payoff law is preserved, with no defaults or failed reveals; private inputs may be correlated. |
 | `Vegas.native_compileIntendedExtension_law` | Under timely asynchronous service, effective-opening source-prefix clients preserve the full source-configuration/payoff law of every intended extension with independent bindings and reveals concurrent. Supported runs terminate without defaults or failed reveals. No equilibrium, finite binding catalogue, finite initial support, disclosure or utility-bound premise is required. |
 | `Vegas.native_compileIntendedExtension_preserved` | For every `RevealRelaxedOrdered` dependency choice, including concurrent independent bindings and reveals, first-turn effective-opening source-prefix clients of every supplied intended extension preserve the same ε-Nash error against arbitrary raw native policies. The actual full runtime readout and forfeited payoff vector have the intended joint law; supported runs terminate without defaults or failed reveals. The theorem assumes well formedness, finite players, finite binding types and initial support, the utility-spread forfeit bound, and timely asynchronous service. It needs no source disclosure, independent-prior, audit or deposit premise. |
@@ -48,7 +49,10 @@ The [bounded private-values auction](Vegas/Examples/BoundedPrivateValueAuctionSe
 has a truthful intended sequential equilibrium for every prior. Its
 [concrete ledger compilation](Vegas/Examples/BoundedAuctionService.lean) uses
 independent uniform values, full pending observation and a funded finite raw
-interface, preserving the full law and expected utility 8/7 per bidder.
+interface, preserving the full law and expected utility 8/7 per bidder. A
+[fixed public builder](Vegas/Examples/BoundedAuctionRoster.lean) gives each ready
+event a single submission opportunity and realizes truthful play for every joint
+valuation prior.
 
 ## Language and compiler
 

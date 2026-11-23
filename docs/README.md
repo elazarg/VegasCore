@@ -4,7 +4,7 @@ The maintained development centers on checked non-concurrent SE preservation.
 
 * [Open problems and exact theorem scope](sequential-se-open-problems.md).
 * [Two-player instance, imperfect audit and funding](sequential-se-instances.md).
-* [Correlated-prior analysis and common-signal route](sequential-correlated-prior-analysis.md).
+* [Correlated priors and the common-signal preservation theorem](sequential-correlated-prior-analysis.md).
 * [Module ownership and reuse](module-architecture.md).
 * [Event dependencies, information order and actor service](event-graph-dependencies.md).
 * [Concurrent commitments: graph and native Nash preservation](concurrent-commitment-preservation.md).

@@ -19,7 +19,8 @@ isolates the belief obligation for a manually prescribed policy; it is not an
 additional premise of the semantic compiler.
 With at most two players and a single submission opportunity per event, the capstone
 accepts arbitrary private priors. The [correlated-prior analysis](sequential-correlated-prior-analysis.md)
-discusses the remaining problem with repeated opportunities.
+describes the observed-common-signal theorem for services with repeated opportunities
+and the remaining problem of private correlation within each signal component.
 
 ## Checked starting points
 
@@ -59,7 +60,7 @@ and the exact physical clients decoded from it, including the output of
 transfer, and needs no additional source-equilibrium premise after the artifact
 has been supplied.
 
-The substantive premises remain:
+The direct capstone has the following substantive premises.
 
 * Well-formed source syntax, finite intended histories, finitely many players,
   and finite physical nature for the actual bounded execution.
@@ -174,11 +175,24 @@ such a service. An [explicit event-tagged roster](../Vegas/Examples/BoundedAucti
 satisfies those conditions for every joint valuation prior. The separately instantiated
 periodic service uses uniform private values.
 
-For a builder offering retries, the checked theorem still uses conditional
-independence given public initial data. Two players suffice for the support repair
-even there. What remains is the comparison of off-path incentives at late decisions
-with the same timing information. With more players, the support repair can also
-require a new joint draw. Neither limitation establishes failure of preservation.
+For a builder offering retries, an [observed common signal](../Vegas/Game/ObservedComponentEquilibrium.lean)
+can account for additional correlation. Every player must determine the same
+signal from its own initial observation, and each supported conditional prior
+must satisfy the component compiler's hypotheses under the shared service,
+evidence rule and deposits. The resulting raw sequential equilibrium preserves
+the initialized joint configuration/payoff law, with no defaults or charges on
+supported paths. The [correlated-bit game](../Vegas/Examples/CorrelatedInitialBitsEquilibrium.lean)
+instantiates this theorem on a periodic ledger with full pending observation.
+The stronger replay and intermediate-continuation guarantees in
+`ClientCompilation` apply to the component compilations. A full global
+`ClientCompilation` for the shared-signal construction remains a separate target.
+
+A correlated prior with a connected support graph can leave every shared
+statistic constant. For retries with arbitrary residual correlation, the
+comparison of off-path incentives across hidden types at late decisions remains
+open. With two players, the responder repair can reuse the supported initial
+draw. With more players it can also require a new joint draw.
+[Prior analysis](sequential-correlated-prior-analysis.md)
 
 ## Third priority: a physical clock and service realization
 

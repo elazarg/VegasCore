@@ -97,6 +97,7 @@ sequential preservation and the uniform semantic client compiler use
 this same runtime and preserve the complete source configuration and payoff law.
 
 Start with [sequential preservation](../Vegas/Game/SequentialCompilation.lean),
+[observed-component preservation](../Vegas/Game/ObservedComponentEquilibrium.lean),
 [monetary preservation](../Vegas/Game/PaymentPreservation.lean) and
 the [one-packet raw extension](../Vegas/Game/OnePacketExtension.lean).
 Their imports identify the actual proof adapters. The
@@ -171,6 +172,7 @@ its declarations. These standalone examples each protect a concrete behavior:
 | [ConcurrentRevealOrderLaw](../Vegas/Examples/ConcurrentRevealOrderLaw.lean) | The actual raw callbacks at independent reveals yield different terminal store laws under two reveal orders. |
 | [OddsEvensConcurrentNative](../Vegas/Examples/OddsEvensConcurrentNative.lean) | Actual concurrent bindings and reveals preserve the compiled fair Nash equilibrium and full configuration/payoff law under a checked periodic builder and full pending observation. |
 | [CorrelatedInitialBitsInformation](../Vegas/Examples/CorrelatedInitialBitsInformation.lean) | Actual private views identify the shared-bit component of an information fiber and support the conditional Bayes-belief transport. |
+| [CorrelatedInitialBitsEquilibrium](../Vegas/Examples/CorrelatedInitialBitsEquilibrium.lean) | Existence of intended sequential equilibrium and preservation of every supplied equilibrium on the periodic ledger with a common private bit. |
 | [LateLeak.CalibratedPenaltyPreservation](../Vegas/Examples/LateLeak/CalibratedPenaltyPreservation.lean) | The finite late-leak game admits a preserving sequential equilibrium under the calibrated cost bounds, including a forfeit-only construction. |
 | [LateLeak.ObservableOutcomeSeparation](../Vegas/Examples/LateLeak/ObservableOutcomeSeparation.lean) | Profitable deferral creates a positive total-variation gap in the observable result law of the finite late-leak game. |
 | [LateLeak.SettleLatePreservation](../Vegas/Examples/LateLeak/SettleLatePreservation.lean) | A sufficiently high inclusion probability prevents preservation in the finite settle-late game despite arbitrary prescribed forfeit and charge margins. |
