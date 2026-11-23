@@ -52,10 +52,12 @@ mixture of their conditional laws. The [correlated-bit instance](../Vegas/Exampl
 recovers the bit from the player's private ledger store after arbitrary traffic,
 for any scheduler and pending-observation rule.
 
-This does not yet weaken a raw-runtime SE preservation theorem. It remains to
-restrict and glue SE consistency witnesses and continuation rationality, and
-transport the actual forced-exit runtime and service hypotheses through
-conditioning. The proofs do not assume the signal is ledger-public.
+[Source equilibrium restriction](../Vegas/Game/ConditionedSourceRationality.lean)
+preserves a supplied intended sequential equilibrium on each supported component
+whose decision views identify the component, including the correlated-bit instance.
+The ledger theorem with retries still requires gluing component assessments:
+their common consistency witnesses, whole-continuation rationality, and the
+retained source strategies and beliefs must all hold for one global assessment.
 
 ## Where the existing proof uses independence
 
@@ -401,11 +403,8 @@ raw side, original histories on its target side and scale pi_z inverse. There
 is no need to totalize a new inverse projection or prove another normalization
 lemma.
 
-The next result should restrict an existing source SE and its one common
-consistency sequence to an observed component, preserving whole-continuation
-rationality under the same actual history and choice maps. The source-law and
-Bayes lemmas do not themselves transport continuation deviations or prove
-consistency of a selected limiting conditional belief system. Derive those
-properties and instantiate them on the correlated-bit source before attempting
-runtime SE gluing. The forced-exit runtime and finite gluing steps remain
-distinct obligations; the source regression is not raw SE preservation.
+The [conditional assessment](../Vegas/Game/ConditionedSourceEquilibrium.lean) restricts
+one common tremble sequence across all decision sites. Every conditional whole-policy
+deviation is the restriction of an original deviation, and the [continuation law](../Vegas/Game/ConditionedSourceContinuation.lean)
+agrees on complete histories for every finite fuel after initialization. Together
+these facts give the source equilibrium restriction above.

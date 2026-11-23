@@ -3,7 +3,7 @@ module
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 public import Vegas.Examples.CorrelatedInitialBits
-public import Vegas.Game.IntendedPreservation
+public import Vegas.Game.ConditionedSourceRationality
 
 @[expose] public section
 
@@ -90,5 +90,18 @@ theorem conditional_bayesBelief (bit : Bool)
           (setup.intended_decision_antichain who _) globalPositive :=
   setup.conditionInitial_bayesBelief signal bit (signal_supported bit) policies site
     (informationFiber_component bit who site) _ _ conditionalPositive globalPositive
+
+/-- Conditioning the intended game on either privately observed common bit
+preserves the supplied sequential equilibrium, including its off-path beliefs. -/
+theorem conditional_intended_equilibrium (bit : Bool) {Parameter : Type}
+    (parameter : State simpleExpr setup.context → Parameter)
+    (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
+    (assessment : setup.intendedModel.BehavioralAssessment)
+    (equilibrium : setup.IntendedSequentialEquilibrium parameter utility assessment) :
+    (setup.conditionInitial signal bit).IntendedSequentialEquilibrium parameter utility
+      (setup.conditionInitial_assessment signal bit (signal_supported bit)
+        (informationFiber_component bit) assessment) :=
+  setup.conditionInitial_intendedSequentialEquilibrium signal bit (signal_supported bit)
+    (informationFiber_component bit) parameter utility assessment equilibrium
 
 end Vegas.Examples.CorrelatedInitialBits

@@ -16,6 +16,7 @@ public import Vegas.Game.ConditionedLedgerClients
 public import Vegas.Game.ConditionedLedgerService
 public import Vegas.Game.ConditionedSourceBayes
 public import Vegas.Game.ConditionedSourceReach
+public import Vegas.Game.ConditionedSourceRationality
 public import Vegas.Game.CompilerCorrectness
 public import Vegas.Game.DecodedRevelations
 public import Vegas.Game.EventCompilation
