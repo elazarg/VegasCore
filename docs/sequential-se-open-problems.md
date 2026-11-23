@@ -169,7 +169,9 @@ draw therefore equals the original supported draw. A single opportunity also rul
 out the late decisions at which the proof has to compare posterior weights.
 The [bounded auction](../Vegas/Examples/BoundedAuctionService.lean) consequently
 preserves the truthful joint outcome and surplus law under any valuation prior on
-such a service. Its separately instantiated periodic service uses uniform private values.
+such a service. An [explicit event-tagged roster](../Vegas/Examples/BoundedAuctionRoster.lean)
+satisfies those conditions for every joint valuation prior. The separately instantiated
+periodic service uses uniform private values.
 
 For a builder offering retries, the checked theorem still uses conditional
 independence given public initial data. Two players suffice for the support repair

@@ -345,6 +345,8 @@ public import Vegas.Game.ServiceDeviationTraffic
 public import Vegas.Game.ServiceHonestLaw
 public import Vegas.Game.ServiceInformation
 public import Vegas.Game.ServiceObservation
+public import Vegas.Game.ReadyRosterService
+public import Vegas.Game.RosterSubmissionOpportunity
 public import Vegas.Game.ServiceRoster
 public import Vegas.Game.ServiceRosterAsync
 public import Vegas.Game.ServiceRosterContract

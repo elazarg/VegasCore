@@ -26,10 +26,10 @@ namespace RosterCalendarInvariant
 variable (setup : Setup (Player := Player) (L := L))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
   (rosters : setup.informationGraph.EventId → List Player)
-  (network : (NetworkPolicy (timeouts setup)) leaks)
+  (scheduler : (application setup (Vegas.timeouts setup) leaks).Scheduler)
   (calendar : ∀ (control : (application setup (Vegas.timeouts setup) leaks).Control),
     ((application setup (Vegas.timeouts setup) leaks).protocol (initialLaw setup)
-      (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).Trace
+      (rosterPlan setup rosters).length scheduler).Trace
         (some control) → RosterCalendarInvariant setup leaks rosters (some control))
 
 include calendar
@@ -37,7 +37,7 @@ include calendar
 /-- Every ready owner is activated within its event's rank bound. -/
 theorem opportunity (opportunities : ActorOpportunities setup rosters) :
     Opportunity (timeouts setup) leaks (initialLaw setup) (rosterPlan setup rosters).length
-      (rosterScheduler setup leaks rosters network) (fun event => event.val) := by
+      scheduler (fun event => event.val) := by
   intro control trace event owner entered owned readyView activated late
   dsimp only at late
   have ready := (State.publicView_eventReady _ event).mp readyView
@@ -68,7 +68,7 @@ theorem opportunity (opportunities : ActorOpportunities setup rosters) :
 before any subsequent clock advance, including after an early obsolete-block response. -/
 theorem protectedInclusion :
     ProtectedInclusion (timeouts setup) leaks (initialLaw setup) (rosterPlan setup rosters).length
-      (rosterScheduler setup leaks rosters network) (fun _ => 0) := by
+      scheduler (fun _ => 0) := by
   intro control trace event owner owned earlier later entry message split emitted authored
     addressed seen sole unfinished late
   dsimp only at late
@@ -99,7 +99,7 @@ theorem protectedInclusion :
 /-- Exhausting the fixed command horizon leaves every graph event completed. -/
 theorem completesPlay :
     CompletesPlay (timeouts setup) leaks (initialLaw setup) (rosterPlan setup rosters).length
-      (rosterScheduler setup leaks rosters network) := by
+      scheduler := by
   intro control trace terminal
   obtain ⟨finished, _⟩ := terminal
   rcases calendar control trace with

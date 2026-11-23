@@ -165,6 +165,7 @@ its declarations. These standalone examples each protect a concrete behavior:
 | --- | --- |
 | [BoundedPaymentAuction](../Vegas/Examples/BoundedPaymentAuction.lean) | Executable bounded-auction transfers retain a profitable conditional-withholding misreport, so truth telling is not dominant for any integer withholding charge. |
 | [BoundedPrivateValueAuctionSequential](../Vegas/Examples/BoundedPrivateValueAuctionSequential.lean) | Truthful bidding has a consistent intended sequential equilibrium and exact full configuration/payoff law for every prior over bounded private values. |
+| [BoundedAuctionRoster](../Vegas/Examples/BoundedAuctionRoster.lean) | One fixed public single-opportunity builder realizes the truthful sequential equilibrium and exact joint configuration/surplus law under every joint valuation prior. |
 | [BoundedAuctionService](../Vegas/Examples/BoundedAuctionService.lean) | One concrete compiled auction assessment retains sequential equilibrium, source-decision fidelity, clean raw and physical play, actual cash and expected utility 8/7 under full pending observation. |
 | [CommitTimingInformationSource](../Vegas/Examples/CommitTimingInformationSource.lean) | Alice's honest expected value is one half because her first commitment cannot observe Bob's retained private bit. |
 | [ConcurrentRevealOrderLaw](../Vegas/Examples/ConcurrentRevealOrderLaw.lean) | The actual raw callbacks at independent reveals yield different terminal store laws under two reveal orders. |

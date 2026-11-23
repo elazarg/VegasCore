@@ -92,7 +92,14 @@ On any timely single-opportunity service satisfying the auction's finite branchi
 and funded audit conditions, the raw equilibrium preserves the joint law of the
 truthful terminal configuration and bidder surpluses under that same prior.
 
-The [concrete ledger instance](../Vegas/Examples/BoundedAuctionService.lean)
+One [explicit public builder](../Vegas/Examples/BoundedAuctionRoster.lean) works
+for every joint prior. Its 22-command calendar offers the owner of each ready
+event a single turn. A block whose tagged event is obsolete offers no turn.
+Protected inclusion costs zero clock ticks, all pending envelopes are visible,
+and deposits of 48 fund the audit. The compiled truthful assessment preserves
+the joint law of terminal configurations and bidder surpluses.
+
+The [periodic ledger instance](../Vegas/Examples/BoundedAuctionService.lean)
 specializes to independent uniform values and exposes every fresh foreign
 pending message. It uses the shared periodic service, exit utility minus six,
 and deposits of 48. After half-rate batch capture the

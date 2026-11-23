@@ -30,7 +30,8 @@ theorem rosterScheduler_protectedInclusion (setup : Setup (Player := Player) (L 
     (network : (NetworkPolicy (timeouts setup)) leaks) :
     ProtectedInclusion (timeouts setup) leaks (initialLaw setup) (rosterPlan setup rosters).length
       (rosterScheduler setup leaks rosters network) (fun _ => 0) :=
-  RosterCalendarInvariant.protectedInclusion setup leaks rosters network
+  RosterCalendarInvariant.protectedInclusion setup leaks rosters
+    (rosterScheduler setup leaks rosters network)
     (fun _ trace => RosterCalendarInvariant.history setup leaks rosters network trace)
 
 /-- The fixed command horizon completes the graph under arbitrary responses. -/
@@ -40,7 +41,8 @@ theorem rosterScheduler_completesPlay (setup : Setup (Player := Player) (L := L)
     (network : (NetworkPolicy (timeouts setup)) leaks) :
     CompletesPlay (timeouts setup) leaks (initialLaw setup) (rosterPlan setup rosters).length
       (rosterScheduler setup leaks rosters network) :=
-  RosterCalendarInvariant.completesPlay setup leaks rosters network
+  RosterCalendarInvariant.completesPlay setup leaks rosters
+    (rosterScheduler setup leaks rosters network)
     (fun _ trace => RosterCalendarInvariant.history setup leaks rosters network trace)
 
 /-- The roster scheduler supplies rank-bounded activation, zero-time protected
@@ -52,7 +54,8 @@ theorem rosterScheduler_asyncContract (setup : Setup (Player := Player) (L := L)
     (opportunities : ActorOpportunities setup rosters) :
     AsyncContract (timeouts setup) leaks (initialLaw setup) (rosterPlan setup rosters).length
       (rosterScheduler setup leaks rosters network) (fun event => event.val) (fun _ => 0) where
-  opportunity := RosterCalendarInvariant.opportunity setup leaks rosters network
+  opportunity := RosterCalendarInvariant.opportunity setup leaks rosters
+    (rosterScheduler setup leaks rosters network)
     (fun _ trace => RosterCalendarInvariant.history setup leaks rosters network trace) opportunities
   inclusion := rosterScheduler_protectedInclusion setup leaks rosters network
   completes := rosterScheduler_completesPlay setup leaks rosters network
