@@ -137,12 +137,13 @@ immediately and included one tick after settlement. Extending bounded
 inclusion to reports rules out that service.
 
 In the EVM prototype, the watcher samples blocks and configured pools, and the
-contract accepts reports only before its audit window closes. The contract
-permits phase-valid repeats and separately burns the bond on binding expiry.
-The count audit distinguishes fresh signed submissions to the same event and
-charges only on signed evidence. The phase verdict therefore differs. The
-model assigns a fresh serial to every emitted envelope. A deployment would
-have to justify that invariant even for competing signed transactions.
+contract accepts reports only before its audit window closes. The checked audit judges signed submissions, including unconfirmed
+traffic, and distinguishes a second fresh submission from the same packet being
+observed again. It checks an opening against the sender's earlier signed
+commitment. A contract that checks only accepted commitments needs a separate
+correspondence argument for signed but unaccepted commitments. A deployment
+also needs to relate its transaction identities and fee replacements to the
+fresh serial that the model assigns to each emitted envelope.
 Its collection rate depends on its network and inclusion law.
 [Watcher](https://github.com/elazarg/vegas/blob/8d306fb21dd0aca30670b6589ca4d1f6e8894c2a/src/main/kotlin/vegas/watcher/Watcher.kt#L54-L109)
 · [Contract report](https://github.com/elazarg/vegas/blob/8d306fb21dd0aca30670b6589ca4d1f6e8894c2a/src/main/kotlin/vegas/backend/evm/Solidity.kt#L320-L341)
