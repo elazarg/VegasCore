@@ -490,8 +490,7 @@ end Forfeits
 end Source
 
 /-! Complete graph event orders depend only on dependencies. The source-information
-compiler additionally imposes the total source order, while prescribed profiles
-support the stated dependency relaxations. -/
+compiler additionally imposes the total source order. -/
 
 section Graph
 
@@ -523,18 +522,6 @@ theorem Vegas.Paper.topological_order_forced (graph : EventGraph Player L)
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.topological_order_forced
 
-/-- The topological orders are precisely the lists obtained from numeric rank
-by adjacent swaps with no direct dependency edge in either direction. -/
-theorem Vegas.Paper.topological_iff_adjacent_swaps (order : EventOrder)
-    (events : List (Fin order.eventCount)) :
-    order.Topological events ↔
-      Relation.ReflTransGen order.AdjacentSwap (List.finRange order.eventCount) events :=
-  order.topological_iff_swaps events
-
-/-- info: 'Vegas.Paper.topological_iff_adjacent_swaps' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Vegas.Paper.topological_iff_adjacent_swaps
 
 variable {Γ : SourceCtx Player L} {openNames : Finset VarId}
 
@@ -586,42 +573,6 @@ theorem Vegas.Paper.eventGame_approximate_nash_iff (setup : Setup (Player := Pla
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.eventGame_approximate_nash_iff
-
-/-- On every dependency choice retaining the reveal-relaxed barriers, prescribed
-source-prefix clients of a submitting, disclosing source profile preserve the complete
-source-configuration and fixed-exit payoff law under every public scheduler. No
-equilibrium, finiteness or independence premise is required. -/
-theorem Vegas.Paper.compilePrescribedProfile_law (setup : Setup (Player := Player) (L := L))
-    (deps : setup.dataflowGraph.Dependencies) {Parameter : Type}
-    (parameter : State L setup.context → Parameter)
-    (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
-    (excluded : Player → ℝ) (source : BehavioralProfile setup.program) :
-    let graph := setup.dataflowGraph.withDependencies deps
-    let payoff := fun terminal =>
-      exclusionUtility setup.program excluded utility (setup.parameterOutcome parameter terminal)
-    let withPayoff := fun terminal => (some terminal, payoff terminal)
-    graph.RevealRelaxedOrdered →
-    (∀ who, SourceProgram.SubmitsBindings setup.program (source who)) →
-    (∀ who, Disclosing setup.program (source who)) →
-    ∀ scheduler : graph.PublicScheduler,
-      let graphRun := (graph.gameForm (setup.graphInputs deps) scheduler).play
-        (compilePrescribedProfile setup.program deps source)
-      (graphRun.map (setup.graphReadout deps)).map withPayoff =
-        (setup.run source).map withPayoff := by
-  intro graph payoff withPayoff relaxed submits disclosing scheduler graphRun
-  rw [PMF.map_comp]
-  refine Eq.trans ?_ (setup.compilePrescribedProfile_law deps relaxed parameter utility excluded
-    source submits disclosing scheduler)
-  congr 1
-  funext outcome
-  simp only [Function.comp_apply, withPayoff, payoff, SourceProgram.Setup.graphPayoff,
-    dite_eq_left outcome.2]
-  rfl
-
-/-- info: 'Vegas.Paper.compilePrescribedProfile_law' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Vegas.Paper.compilePrescribedProfile_law
 
 end Graph
 
