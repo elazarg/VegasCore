@@ -3,7 +3,7 @@ module
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 public import Vegas.Game.ConditionedLedgerService
-public import Vegas.Pending.ReactiveServiceProgress
+public import Vegas.Pending.ReactiveStateInvariant
 public import Interaction.ReactiveRecovery
 
 @[expose] public section
@@ -30,6 +30,54 @@ def signalClients (read : Player → (app).PlayerView → Signal)
     (clients : Signal → Player → (app).Policy) (who : Player) : (app).Policy :=
   fun past view => clients (read who view) who past view
 
+/-- A unilateral change can be applied before or after selecting local policies. -/
+theorem signalClients_update (read : Player → (app).PlayerView → Signal)
+    (clients : Signal → Player → (app).Policy) (who : Player) (alternative : (app).Policy) :
+    signalClients read (fun key => Function.update (clients key) who alternative) =
+      Function.update (signalClients read clients) who alternative := by
+  funext player past view
+  by_cases same : player = who
+  · subst player
+    simp [signalClients]
+  · simp [signalClients, Function.update_of_ne same]
+
+/-- After initialization, locally selected clients have the entire component continuation
+law at every valid control, including controls immediately before a player's response. -/
+theorem finish_signalClients (read : Player → (app).PlayerView → Signal)
+    (observed : ∀ draw ∈ setup.initialLaw.support, ∀ execution : (app).Execution,
+      EventGraphRuntime.State.Invariant (graph := setup.informationGraph)
+        (setup.eventInputs draw) execution.application → ∀ who,
+        read who (execution.observe app who) = signal draw)
+    (clients : Signal → Player → (app).Policy)
+    (draw : State L setup.context) (member : draw ∈ setup.initialLaw.support)
+    (control : (app).Control)
+    (valid : EventGraphRuntime.State.Invariant (graph := setup.informationGraph)
+      (setup.eventInputs draw) control.execution.application)
+    (horizon : Nat) (initial component : PMF (app).State) :
+    (app).finish initial horizon scheduler (signalClients read clients) (some control) =
+      (app).finish component horizon scheduler (clients (signal draw)) (some control) := by
+  let chosen := signalClients read clients
+  let inputs : setup.informationGraph.Inputs := setup.eventInputs draw
+  have invariant := ((reactiveStateInvariant timeouts) leaks inputs).policyInvariant _ chosen
+  have agree (execution : (app).Execution) (ok : execution.application.Invariant inputs)
+      (who : Player) : chosen who (execution.logs who) (execution.observe app who) =
+        clients (signal draw) who (execution.logs who) (execution.observe app who) := by
+    unfold chosen signalClients
+    rw [observed draw member execution ok who]
+  have resume : (app).resume chosen control.actor control.execution =
+      (app).resume (clients (signal draw)) control.actor control.execution := by
+    cases control.actor with
+    | none => rfl
+    | some who =>
+      exact congrArg (fun law => law.map (control.execution.respond app who)) (agree _ valid who)
+  simp only [ReactiveApplication.finish]
+  change (((app).resume chosen control.actor control.execution).bind _).map _ = _
+  rw [← resume]
+  congr 1
+  apply bind_congr_on_support _
+  intro next reached
+  exact invariant.runRounds_congr _ agree scheduler _ next (invariant.resume _ _ _ valid reached)
+
 /-- Players who recover the initial signal from their existing views implement the
 component execution law at every round, for arbitrary component policies. -/
 theorem roundsFrom_signalClients (read : Player → (app).PlayerView → Signal)
@@ -54,12 +102,7 @@ theorem roundsFrom_signalClients (read : Player → (app).PlayerView → Signal)
     (predicate := fun execution : (app).Execution =>
       EventGraphRuntime.State.Invariant (graph := setup.informationGraph)
         (setup.eventInputs draw) execution.application)
-  · constructor
-    · intro execution actor action valid _
-      exact (reactive_respond_progress timeouts leaks _ execution actor action valid).invariant
-    · intro execution next command valid moved
-      exact (reactive_environment_progress timeouts leaks _ execution next command valid
-        moved).invariant
+  · exact ((reactiveStateInvariant timeouts) leaks _).policyInvariant _ _
   · intro execution valid who
     unfold signalClients
     rw [observed draw component.2 execution valid who, component.1]
