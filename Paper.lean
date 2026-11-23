@@ -30,6 +30,11 @@ public import Vegas.Examples.OddsEvensFullSource
 public import Vegas.Examples.CommitRevealAuction
 public import Vegas.Examples.ConcurrentRevealOrderLaw
 public import Vegas.Examples.LateLeak
+public import Vegas.Game.ObservedComponentEquilibrium
+public import Vegas.Game.ConditionedAssessmentFidelity
+public import Vegas.Examples.BoundedAuctionRoster
+public import Vegas.Examples.CorrelatedInitialBitsEquilibrium
+public import Vegas.Examples.CorrelatedInitialBitsRetry
 
 @[expose] public section
 
@@ -1361,6 +1366,115 @@ end ClientRuntime
 
 end PhysicalClients
 
+section SharedInitialSignal
+
+/-! # Conditioning on a privately shared initial signal
+
+When every player can compute the same signal from its own initial observation,
+the sequential compiler runs on each conditional game and the resulting
+assessments combine into one ledger sequential equilibrium.
+-/
+
+open Vegas Vegas.SourceProgram Vegas.EventGraphRuntime Interaction
+open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
+open GameTheory.Math.Probability GameTheory.Enforcement
+
+variable {Player : Type} [DecidableEq Player] [Fintype Player]
+  {L : IExpr} [IExpr.ResultTypes L]
+  {setup : Setup (Player := Player) (L := L)} {Signal : Type*}
+  {signal : Vegas.State L setup.context → Signal}
+  {timeouts : EventTimeouts setup.informationGraph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
+  {scheduler : (application setup timeouts leaks).Scheduler} {horizon : Nat}
+  {bounds : MessageBounds setup.informationGraph}
+  {Parameter : Type} {parameter : Vegas.State L setup.context → Parameter}
+  {utility : Parameter × PublicOutcome setup.program → Player → ℝ} {exit : Player → ℝ}
+
+local notation "raw" => bounds.rawMenu timeouts leaks
+local notation "one" => bounds.onePacketMenu timeouts leaks
+local notation "fullLaw" => Vegas.initialLaw setup
+local notation "part" => fun k => setup.conditionInitial signal k
+local notation "law" => fun k => Vegas.initialLaw (setup.conditionInitial signal k)
+
+/-- If every player recovers the same signal from its own initial observation, and
+each positive-probability conditional game meets the sequential compiler's
+hypotheses under one service, audit and deposit, every intended sequential
+equilibrium has a ledger sequential equilibrium with its exact joint law and
+clean supported play. -/
+theorem Vegas.Paper.sharedSignal_sequentialEquilibrium_preserved
+    (supported : ∀ key, key ∈ (setup.initialLaw.map signal).support)
+    (spec : ∀ key, ClientSpec (setup.conditionInitial signal key) timeouts leaks bounds horizon
+      scheduler parameter utility exit)
+    (intended : setup.intendedModel.BehavioralAssessment)
+    (equilibrium : setup.IntendedSequentialEquilibrium parameter utility intended)
+    (baseKey : Signal)
+    (common : setup.SharesInitialSignal signal) (formed : setup.WellFormed)
+    (audit : ∀ key, (spec key).evidenceService = (spec baseKey).evidenceService)
+    (deposits : ∀ key, (spec key).deposit = (spec baseKey).deposit) :
+    ∃ A : ((raw).information fullLaw horizon scheduler).BehavioralAssessment,
+      A.IsSequentialEquilibrium ((raw).decisionInformationAntichain fullLaw horizon scheduler)
+        ((raw).bounded fullLaw horizon scheduler).wellFoundedHistories
+        (fun who h => (spec baseKey).payoff who h.state) ∧
+      (((raw).run fullLaw horizon scheduler A.strategy).bind fun h =>
+        (spec baseKey).observation h.state) =
+        (setup.intendedModel.runBehavioral intended.strategy
+          (instructionCount setup.program + 1)).map
+          (intendedReadoutExclusion setup parameter utility exit) ∧
+      ∀ h ∈ ((raw).run fullLaw horizon scheduler A.strategy).support,
+        (∀ control, h.state = some control →
+          control.execution.application.config.defaulted = ∅) ∧
+        ∀ who, TerminalAudit.charge (application setup timeouts leaks).stateTraffic
+          ((countAudit timeouts) leaks (spec baseKey).evidenceService.sample) h.state who = 0 :=
+  Setup.SharesInitialSignal.preservesSequentialEquilibrium (signal := signal)
+    (supported := supported) (spec := spec) (intended := intended)
+    (equilibrium := equilibrium) (baseKey := baseKey) common formed audit deposits
+
+/-- info: 'Vegas.Paper.sharedSignal_sequentialEquilibrium_preserved' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.sharedSignal_sequentialEquilibrium_preserved
+
+section Fidelity
+
+variable (supported : ∀ key, key ∈ (setup.initialLaw.map signal).support)
+  (read : Player → (application setup timeouts leaks).Info → Signal)
+  (observed : ∀ draw ∈ setup.initialLaw.support,
+    ∀ execution : (application setup timeouts leaks).Execution,
+    Vegas.EventGraphRuntime.State.Invariant (graph := setup.informationGraph)
+      (setup.eventInputs draw) execution.application → ∀ who,
+      read who (some (execution.logs who, execution.observe (application setup timeouts leaks)
+        who)) = signal draw)
+  (inside : ∀ key who
+    (site : (setup.conditionInitial signal key).intendedModel.InformationSite who)
+    (h : setup.intendedModel.InformationHistory who site.1),
+    setup.initialComponent signal key h.1.state)
+  {spec : ∀ k, ClientSpec (setup.conditionInitial signal k) timeouts leaks bounds horizon scheduler
+    parameter utility exit}
+  (intended : setup.intendedModel.BehavioralAssessment)
+  (compiled : ∀ k, ClientCompilation (spec k)
+    (setup.conditionInitial_assessment signal k (supported k) (inside k) intended))
+
+/-- Every intended information set, even one of zero probability, has a ledger
+counterpart in the combined assessment whose posterior replays to the intended one. -/
+theorem Vegas.Paper.sharedSignal_belief_covered {who : Player}
+    (source : setup.intendedModel.InformationSite who) :
+    ∃ site : ((raw).information fullLaw horizon scheduler).InformationSite who,
+      ((Setup.ledger_componentAssessment (raw) supported read observed
+        (fun k => (compiled k).assessment)).belief who site).map
+          (Setup.componentReplay supported read observed site) =
+        (intended.belief who source).map (fun h => some h.1) :=
+  Setup.componentAssessment_source_belief_covered (supported := supported) (read := read)
+    (observed := observed) (inside := inside) (intended := intended) (compiled := compiled) source
+
+/-- info: 'Vegas.Paper.sharedSignal_belief_covered' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.sharedSignal_belief_covered
+
+end Fidelity
+
+end SharedInitialSignal
+
 section ConcreteInstances
 
 open Vegas Vegas.SourceProgram GameTheory GameTheory.Protocol
@@ -1685,6 +1799,99 @@ theorem Vegas.Paper.privateValueAuction_native_equilibrium :
 #print axioms Vegas.Paper.privateValueAuction_native_equilibrium
 
 end PrivateValueAuctionNative
+
+section PrivateValueAuctionRoster
+
+open Vegas Vegas.SourceProgram Vegas.EventGraphRuntime Interaction
+  GameTheory GameTheory.Protocol GameTheory.Math.Probability
+open Vegas.Examples.BoundedPrivateValueAuction
+open Vegas.Examples.BoundedAuctionRoster
+
+local notation "auctionPlayer" => Vegas.Examples.CommitRevealAuction.Player
+
+/-- One public builder, fixed before the prior, realizes the truthful sequential
+equilibrium and its exact joint law for every joint valuation prior. -/
+theorem Vegas.Paper.privateValueAuction_fixed_builder (prior : PMF (auctionPlayer → Bid)) :
+    ∃ compiled : ClientCompilation (specification prior) (truthfulAssessment prior),
+      ((bounds.rawMenu rt Vegas.Examples.BoundedAuctionService.leaks).run
+        (Vegas.initialLaw (setup prior)) steps builder compiled.assessment.strategy).bind
+          (fun final => (specification prior).observation final.state) =
+        prior.map (fun types => (some (finalConfig types (types .alice) (types .bob)),
+          surplus types (types .alice) (types .bob))) :=
+  native_equilibrium prior
+
+/-- info: 'Vegas.Paper.privateValueAuction_fixed_builder' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.privateValueAuction_fixed_builder
+
+end PrivateValueAuctionRoster
+
+section CorrelatedBits
+
+open Vegas Vegas.SourceProgram Vegas.EventGraphRuntime Interaction GameTheory.Protocol
+open Vegas.Examples.CorrelatedInitialBits Vegas.Examples.CorrelatedInitialBits.Service
+
+local notation "cbTimeouts" => Vegas.Examples.CorrelatedInitialBits.Service.timeouts
+local notation "raw" => bounds.rawMenu cbTimeouts leaks
+local notation "initial" => Vegas.initialLaw setup
+local notation "ledger" => Interaction.ReactiveApplication.ResponseMenu.information (raw)
+  initial horizon scheduler
+
+/-- Odds--Evens with one fair bit privately copied to both players has an
+intended sequential equilibrium. -/
+theorem Vegas.Paper.correlatedBits_intended_equilibrium_exists :
+    ∃ assessment, setup.IntendedSequentialEquilibrium (fun _ => ()) utility assessment :=
+  intended_equilibrium_exists
+
+/-- info: 'Vegas.Paper.correlatedBits_intended_equilibrium_exists' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.correlatedBits_intended_equilibrium_exists
+
+/-- The periodic ledger realizes every intended sequential equilibrium of the
+correlated-bit game with its exact joint law. -/
+theorem Vegas.Paper.correlatedBits_sequentialEquilibrium_preserved
+    (intended : setup.intendedModel.BehavioralAssessment)
+    (equilibrium : setup.IntendedSequentialEquilibrium (fun _ => ()) utility intended) :
+    ∃ A : (ledger).BehavioralAssessment,
+      A.IsSequentialEquilibrium ((raw).decisionInformationAntichain initial horizon scheduler)
+        ((raw).bounded initial horizon scheduler).wellFoundedHistories
+        (fun who h => (specification false).payoff who h.state) ∧
+      (((raw).run initial horizon scheduler A.strategy).bind fun h =>
+        (specification false).observation h.state) =
+        (setup.intendedModel.runBehavioral intended.strategy (instructionCount program + 1)).map
+          (intendedReadoutExclusion setup (fun _ => ()) utility (fun _ => 0)) :=
+  sequentialEquilibrium_preserved intended equilibrium
+
+/-- info: 'Vegas.Paper.correlatedBits_sequentialEquilibrium_preserved' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.correlatedBits_sequentialEquilibrium_preserved
+
+/-- After silence, the first binding's owner gets a second turn on the periodic ledger. -/
+theorem Vegas.Paper.correlatedBits_repeated_turn :
+    ∃ site : (onePacketInformation setup cbTimeouts leaks bounds horizon scheduler).InformationSite
+        false, LateDelivery setup cbTimeouts leaks false site.1 :=
+  repeated_opportunity
+
+/-- info: 'Vegas.Paper.correlatedBits_repeated_turn' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.correlatedBits_repeated_turn
+
+/-- The correlated-bit ledger satisfies neither prior alternative of the
+fixed-exit-utility theorem. -/
+theorem Vegas.Paper.correlatedBits_outside_prior_condition :
+    ¬ SequentialPriorCondition setup cbTimeouts leaks bounds horizon scheduler :=
+  not_sequentialPriorCondition
+
+/-- info: 'Vegas.Paper.correlatedBits_outside_prior_condition' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.correlatedBits_outside_prior_condition
+
+end CorrelatedBits
 
 section AuctionObstruction
 open Vegas.Examples.CommitRevealAuction
