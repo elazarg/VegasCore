@@ -45,8 +45,11 @@ graph profile under the asynchronous service contract and timing budget.
 At each reached event boundary the distribution of the native configuration
 at completion equals one canonical graph step followed by automatic completion.
 This gives equality of the complete terminal graph configuration distributions,
-including recorded actions. The proof is in
-[FirstTurnSimulation](../Vegas/Pending/FirstTurnSimulation.lean).
+including recorded actions.
+[FirstTurnSimulation](../Vegas/Pending/FirstTurnSimulation.lean) proves both
+laws for the turn policy, and
+[FirstTurnClientSimulation](../Vegas/Pending/FirstTurnClientSimulation.lean)
+proves them for the recovered ledger clients.
 The source compiler instantiates this result with its disclosure-normalized
 profile and projects it through the typed decoder, preserving the joint
 typed-state/public-default law of the original profile.
