@@ -8,6 +8,7 @@ public import Vegas.Game.ConditionedClientCompiler
 public import Vegas.Game.ConditionedClientSpecification
 public import Vegas.Game.ConditionedLedgerConsistency
 public import Vegas.Game.ConditionedLedgerRationality
+public import Vegas.Game.ClientAssessmentFidelity
 
 @[expose] public section
 
@@ -17,7 +18,8 @@ noncomputable section
 
 namespace Vegas.SourceProgram.Setup
 
-open GameTheory.Protocol Interaction EventGraphRuntime GameTheory.Enforcement
+open GameTheory.Protocol GameTheory.Math.Probability Interaction EventGraphRuntime
+  GameTheory.Enforcement
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr} [IExpr.ResultTypes L]
     {setup : Setup (Player := Player) (L := L)}
@@ -105,6 +107,120 @@ theorem compileComponent_sequentialEquilibrium
     exact compileComponent_outcomeLaw signal supported inside spec intended equilibrium read
       observed formed (spec baseKey).observation (fun key => conditionInitial_observation_eq
         (setup := setup) (signal := signal) (spec key) (spec baseKey) (audit key) (deposits key))
+
+local notation "app" => application setup timeouts leaks
+local notation "one" => bounds.onePacketMenu timeouts leaks
+local notation "component" key => setup.conditionInitial signal key
+local notation "componentLaw" key => Vegas.initialLaw (component key)
+local notation "globalAssessment" => compiledComponentAssessment signal supported inside spec
+  intended equilibrium baseKey read observed
+
+/-- Any global start at the control of a legal initialized component history has
+the complete terminal state law of that component's compiled clients. -/
+theorem compiledComponent_runFrom_stateLaw
+    (key : Signal)
+    (localStart : ((raw).protocol (componentLaw key) horizon scheduler).History)
+    (globalStart : ((raw).protocol globalLaw horizon scheduler).History)
+    (control : (app).Control) (started : localStart.state = some control)
+    (sameState : globalStart.state = localStart.state) :
+    ((raw).runFrom globalLaw horizon scheduler (globalAssessment).strategy globalStart).map
+        ExecutionProtocol.History.state =
+      (app).finish (componentLaw key) horizon scheduler (compiled key).clients
+        localStart.state := by
+  rw [(raw).runFrom_stateLaw, sameState, started]
+  have decoded := decodeProfile_componentAssessment (raw) supported infoRead observed read
+    (fun _ _ _ => rfl) (fun k => (compiled k).assessment)
+  rw [show (raw).decodeProfile globalLaw horizon scheduler (globalAssessment).strategy = _
+    from decoded]
+  have trace := (raw).toRawTrace (componentLaw key) horizon scheduler localStart.trace
+  rw [started] at trace
+  change ((app).protocol (serviceInitialLaw (component key) setup.informationDependencies)
+    horizon scheduler).Trace (some control) at trace
+  rw [serviceInitialLaw_eq_inputs (component key)] at trace
+  have invariant := reactive_history_invariant timeouts leaks
+    ((component key).initialLaw.map setup.eventInputs) horizon scheduler trace
+  obtain ⟨inputs, member, valid⟩ := invariant
+  obtain ⟨draw, supportedDraw, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp member
+  obtain ⟨selected, globalMember⟩ := mem_support_fiberPosterior (supported key) supportedDraw
+  have continuation := finish_signalClients read observed (fun k => (compiled k).clients)
+    draw globalMember control valid horizon globalLaw (componentLaw key) (scheduler := scheduler)
+  rwa [selected] at continuation
+
+/-- At a represented clean component boundary, the glued raw assessment has
+the original intended continuation's full configuration and realized payoff
+law. Every supported continuation has a complete readout, no defaults or
+failed reveals, and zero audit charges. -/
+theorem compiledComponent_continuation_at_sourceBoundary
+    (audit : ∀ key, (spec key).evidenceService = (spec baseKey).evidenceService)
+    (deposits : ∀ key, (spec key).deposit = (spec baseKey).deposit)
+    (key : Signal) (rank : Nat)
+    (nativeStart : ((one).protocol (componentLaw key) horizon scheduler).History)
+    (localStart : ((raw).protocol (componentLaw key) horizon scheduler).History)
+    (globalStart : ((raw).protocol globalLaw horizon scheduler).History)
+    (matched : ((reactiveNormalization timeouts) leaks).history (raw)
+      (bounds.rawMenu_recall timeouts leaks) (componentLaw key) horizon scheduler localStart =
+      (bounds.onePacketRestriction timeouts leaks (componentLaw key) horizon scheduler).history
+        nativeStart)
+    (sameState : globalStart.state = localStart.state)
+    (anchor : (app).Execution)
+    (state : nativeStart.state = some ⟨horizon - anchor.environmentRecall.length, none, anchor⟩)
+    (boundary : ReachedBoundary (component key) timeouts leaks horizon scheduler rank anchor)
+    (point : SourceProgram.ProtocolState setup.program)
+    (decoded : sourceServicePrefix? (component key) rank anchor.application.config = some point)
+    (valid : SourceProgram.ProtocolState.Intended setup.program point) :
+    ((raw).runFrom globalLaw horizon scheduler (globalAssessment).strategy globalStart).bind
+        (fun final => (spec baseKey).observation final.state) =
+      (setup.continuationLaw (setup.intendedOpeningProfile intended.strategy) (some point)).map
+        (fun terminal => (some terminal, utility (setup.parameterOutcome parameter terminal))) ∧
+    ∀ final ∈ ((raw).runFrom globalLaw horizon scheduler (globalAssessment).strategy
+        globalStart).support,
+      ∃ (control : (app).Control) (terminal : Config Player L setup.program.terminalCtx),
+        final.state = some control ∧
+        sourceReadout setup timeouts leaks final.state = some terminal ∧
+        control.execution.application.config.defaulted = ∅ ∧
+        (∀ who, failedReveals setup.program who (publicOutcome setup.program terminal) = 0) ∧
+        ∀ who, TerminalAudit.charge (app).stateTraffic
+          ((countAudit timeouts) leaks (spec baseKey).evidenceService.sample)
+          final.state who = 0 := by
+  have normState := congrArg ExecutionProtocol.History.state matched
+  change ((reactiveNormalization timeouts) leaks).state localStart.state = nativeStart.state
+    at normState
+  rw [state] at normState
+  obtain ⟨control, started⟩ : ∃ control, localStart.state = some control := by
+    cases current : localStart.state with
+    | none =>
+        rw [current] at normState
+        change none = some _ at normState
+        cases normState
+    | some control => exact ⟨control, rfl⟩
+  have transported := compiledComponent_runFrom_stateLaw signal supported inside spec intended
+    equilibrium baseKey read observed key localStart globalStart control started sameState
+  obtain ⟨settles, clean⟩ := (compiled key).clients_continuation_at_sourceBoundary rank
+    nativeStart localStart matched anchor state boundary point decoded valid
+  constructor
+  · have sameObservation := conditionInitial_observation_eq (setup := setup) (signal := signal)
+      (spec key) (spec baseKey) (audit key) (deposits key)
+    change ((raw).runFrom globalLaw horizon scheduler (globalAssessment).strategy globalStart).bind
+      ((spec baseKey).observation ∘ ExecutionProtocol.History.state) = _
+    rw [← PMF.bind_map, transported, ← sameObservation]
+    refine settles.trans ?_
+    have profile := setup.conditionInitial_openingProfile signal key intended.strategy
+    change (SourceProgram.ProtocolState.continuationLaw setup.program
+      ((component key).intendedOpeningProfile
+        (fun who => setup.conditionInitial_policy signal key who (intended.strategy who)))
+      point).map _ = _
+    rw [profile]
+    rfl
+  · intro final reached
+    have member := (PMF.mem_support_map_iff
+      (fun h : ((raw).protocol globalLaw horizon scheduler).History => h.state) _ final.state).mpr
+      ⟨final, reached, rfl⟩
+    rw [transported] at member
+    obtain ⟨outcome, terminal, current, readout, defaults, reveals, charges⟩ := clean _ member
+    refine ⟨outcome, terminal, current, ?_, defaults, reveals, ?_⟩
+    · rw [current] at readout ⊢
+      exact readout
+    · simpa only [audit key] using charges
 
 include supported equilibrium in
 /-- A single source-observation premise suffices for every player to select its

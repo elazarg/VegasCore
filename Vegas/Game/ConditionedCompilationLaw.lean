@@ -30,7 +30,8 @@ theorem conditionInitial_wellFormed (value : Signal)
   guardsSatisfiable draw member := formed.guardsSatisfiable draw
     (setup.conditionInitial_support_subset signal value supported member)
 
-private theorem conditionInitial_openingProfile (value : Signal)
+/-- Conditioning the initializer leaves the decoded opening profile unchanged. -/
+theorem conditionInitial_openingProfile (value : Signal)
     (policies : ∀ who, setup.intendedModel.BehavioralPolicy who) :
     (setup.conditionInitial signal value).intendedOpeningProfile
         (fun who => setup.conditionInitial_policy signal value who (policies who)) =

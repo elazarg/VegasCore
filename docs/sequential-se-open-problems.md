@@ -186,9 +186,14 @@ instantiates this theorem on a periodic ledger with full pending observation.
 Each intended information site has a global raw counterpart recovering its intended
 posterior, and first-decision action fidelity holds for the assembled clients.
 [Global assessment fidelity](../Vegas/Game/ConditionedAssessmentFidelity.lean)
-The full intermediate-continuation guarantees in `ClientCompilation` apply to
-the component compilations. A full global
-`ClientCompilation` for the shared-signal construction remains a separate target.
+A global raw start sharing the control of a represented clean component
+boundary preserves the original intended continuation's full configuration
+and settled-payoff law. Its supported continuations have complete readout,
+no defaults or failed reveals, and zero audit charges.
+[Shared-signal continuation](../Vegas/Game/ObservedComponentEquilibrium.lean)
+The complete normalized-history guarantee in `ClientCompilation` still applies
+to the component compilations. A global certificate of that guarantee remains
+a separate target.
 
 A correlated prior with a connected support graph can leave every shared
 statistic constant. For retries with arbitrary residual correlation, the
