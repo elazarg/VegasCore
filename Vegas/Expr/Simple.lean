@@ -73,6 +73,22 @@ abbrev CtxSimple : Type := Vegas.Ctx BaseTy
 /-- Plain `Env` over concrete value types. -/
 abbrev PlainEnv (Γ : CtxSimple) : Type := Vegas.Env Val Γ
 
+/-- Signed integer operations used by the Vegas surface evaluator. -/
+inductive SignedIntOp where
+  | add | sub | mul | div | mod
+
+/-- Truncation to the signed 32-bit representation used by the Vegas frontend. -/
+def signedInt32 (value : Int) : Int :=
+  (BitVec.ofInt 32 value).toInt
+
+def SignedIntOp.eval (op : SignedIntOp) (left right : Int) : Int :=
+  signedInt32 (match op with
+    | .add => left + right
+    | .sub => left - right
+    | .mul => left * right
+    | .div => left.tdiv right
+    | .mod => left.tmod right)
+
 inductive Expr : CtxSimple → BaseTy → Type where
   | var {Γ : CtxSimple} {b : BaseTy}
       (x : VarId) (h : HasVar Γ x b) : Expr Γ b
@@ -97,6 +113,10 @@ inductive Expr : CtxSimple → BaseTy → Type where
   | getResultD {Γ : CtxSimple} {b : BaseTy}
       (e : Expr Γ (.result b)) (fallback : Expr Γ b) : Expr Γ b
   | addInt {Γ : CtxSimple} (l r : Expr Γ .int) : Expr Γ .int
+  | signedInt {Γ : CtxSimple} (op : SignedIntOp) (l r : Expr Γ .int) : Expr Γ .int
+  | ltInt {Γ : CtxSimple} (l r : Expr Γ .int) : Expr Γ .bool
+  | rangeToInt {Γ : CtxSimple} {lo : Int} {len : Nat}
+      (e : Expr Γ (.range lo len)) : Expr Γ .int
   /-- EVM `ADD`: addition modulo `2 ^ wordBits`. -/
   | addWord {Γ : CtxSimple} (l r : Expr Γ .word) : Expr Γ .word
   /-- EVM `SUB`: subtraction modulo `2 ^ wordBits`. -/
@@ -129,6 +149,9 @@ def exprDeps {Γ : CtxSimple} {b : BaseTy} : Expr Γ b → Finset VarId
   | .isFailure e => exprDeps e
   | .getResultD e fallback => exprDeps e ∪ exprDeps fallback
   | .addInt l r => exprDeps l ∪ exprDeps r
+  | .signedInt _ l r => exprDeps l ∪ exprDeps r
+  | .ltInt l r => exprDeps l ∪ exprDeps r
+  | .rangeToInt e => exprDeps e
   | .addWord l r => exprDeps l ∪ exprDeps r
   | .subWord l r => exprDeps l ∪ exprDeps r
   | .mulWord l r => exprDeps l ∪ exprDeps r
@@ -198,6 +221,19 @@ theorem expr_deps_context {Γ : CtxSimple} {b : BaseTy}
       rcases Finset.mem_union.mp (by simpa [exprDeps] using hy) with hy | hy
       · exact ihl y hy
       · exact ihr y hy
+  | signedInt op l r ihl ihr =>
+      intro y hy
+      rcases Finset.mem_union.mp (by simpa [exprDeps] using hy) with hy | hy
+      · exact ihl y hy
+      · exact ihr y hy
+  | ltInt l r ihl ihr =>
+      intro y hy
+      rcases Finset.mem_union.mp (by simpa [exprDeps] using hy) with hy | hy
+      · exact ihl y hy
+      · exact ihr y hy
+  | rangeToInt e ih =>
+      intro y hy
+      exact ih y hy
   | addWord l r ihl ihr =>
       intro y hy
       rcases Finset.mem_union.mp (by simpa [exprDeps] using hy) with hy | hy
@@ -285,6 +321,15 @@ def evalExprDeps {Γ : CtxSimple} {b : BaseTy} : (e : Expr Γ b) →
         (fun x τ h hx => ρ x τ h (by simp [exprDeps, hx])) +
       evalExprDeps r
         (fun x τ h hx => ρ x τ h (by simp [exprDeps, hx]))
+  | .signedInt op l r, ρ =>
+      op.eval
+        (evalExprDeps l (fun x τ h hx => ρ x τ h (by simp [exprDeps, hx])))
+        (evalExprDeps r (fun x τ h hx => ρ x τ h (by simp [exprDeps, hx])))
+  | .ltInt l r, ρ =>
+      decide (evalExprDeps l (fun x τ h hx => ρ x τ h (by simp [exprDeps, hx])) <
+        evalExprDeps r (fun x τ h hx => ρ x τ h (by simp [exprDeps, hx])))
+  | .rangeToInt e, ρ =>
+      (evalExprDeps e (fun x τ h hx => ρ x τ h (by simpa [exprDeps] using hx))).val
   | .addWord l r, ρ =>
       evalExprDeps l
         (fun x τ h hx => ρ x τ h (by simp [exprDeps, hx])) +
