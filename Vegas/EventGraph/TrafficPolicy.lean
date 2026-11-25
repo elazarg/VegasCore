@@ -23,6 +23,17 @@ open GameTheory.Math.Probability
 variable {Player : Type} [DecidableEq Player]
 variable {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
 
+/-- A single canonical graph step from a numeric prefix runs its next event. -/
+theorem runPlan_one_at_prefix {g : Vegas.EventGraph Player L} (reference : g.BehavioralProfile)
+    (config : g.Config) (event : g.EventId) (ordered : config.cut.IsPrefix event.val) :
+    g.runPlan (g.policyPlan reference g.canonicalScheduler) 1 config =
+      eventStep reference config event (ordered.ready event.isLt) := by
+  have ready := ordered.ready event.isLt
+  rw [runPlan_canonical_succ reference 0 config ready.not_terminal event ready
+    (fun other enabled => Fin.le_iff_val_le_val.mpr (Nat.le_of_not_gt fun earlier =>
+      enabled.1 ((ordered.2 other).mpr earlier)))]
+  simp only [runPlan, PMF.bind_pure]
+
 /-- Mix the focal player's action against the traffic distribution at the
 observed event. -/
 def trafficPolicy {Traffic : Type*} (focal : Player)
@@ -93,15 +104,8 @@ theorem trafficPolicy_prefixLaw {Traffic : Type*} (reference : graph.BehavioralP
       let event : graph.EventId := ⟨rank, by omega⟩
       have step (config : {config : graph.Config // config.cut.IsPrefix rank}) :
           graph.runPlan (graph.policyPlan profile graph.canonicalScheduler) 1 config.val =
-            eventStep profile config.val event (config.property.ready event.isLt) := by
-        have ready := config.property.ready event.isLt
-        have least (other : graph.EventId) (otherReady : config.val.cut.Ready other) :
-            event ≤ other := by
-          have unfinished := otherReady.1
-          rw [config.property.2] at unfinished
-          exact Nat.le_of_not_gt unfinished
-        rw [runPlan_canonical_succ profile 0 config.val ready.not_terminal event ready least]
-        simp only [runPlan, PMF.bind_pure]
+            eventStep profile config.val event (config.property.ready event.isLt) :=
+        runPlan_one_at_prefix profile config.val event config.property
       calc
         _ = (boundary rank rankBounded).bind (fun pair =>
               eventStep (Function.update reference focal (respond pair.2)) pair.1.val event

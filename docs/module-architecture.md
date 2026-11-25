@@ -144,12 +144,14 @@ policies for the other players.
 
 [EffectiveOpeningSimulation](../Vegas/Pending/EffectiveOpeningSimulation.lean)
 proves a direct deviation law between the native ledger and the canonical
-execution of a sequentialized event graph. Against first-turn effective-opening
-clients, one graph behavioral policy realizes any raw unilateral ledger policy
+execution of a sequentialized event graph. Against first-turn clients that only
+disclose successful openings, one graph behavioral policy realizes any raw unilateral ledger policy
 at every graph rank and on the full terminal configuration. The inputs can have
 any joint distribution. The hypotheses are the asynchronous service contract
-and its timing budget. The other clients use their supplied binding policies
-and disclose precisely when their opening will succeed.
+and its timing budget. Opponents can randomize, including withholding a valid
+opening. Neither the binding policy nor the deviator needs an opening-safety
+condition. The ready owner roster supplies the service and timing guarantees
+for the [effective-opening specialization](../Vegas/Pending/EffectiveOpeningRoster.lean).
 [SingleOwnerSimulation](../Vegas/Pending/SingleOwnerSimulation.lean) needs only
 completion when every decision belongs to the deviator. It allows arbitrary
 client timing and interleaved public samples.
@@ -185,9 +187,12 @@ and source checkpoints. Concurrent SE preservation remains open.
 For the information graph, the
 [physical deviation law](../Vegas/Game/AsyncDeviationReadout.lean)
 backtranslates every raw unilateral policy against first-turn clients to one
-behavioral source policy with the same typed-state/public-default law. Its
-structural source induction carries typed checkpoints and automatic paths;
-defaulted instructions require no callback. Native Nash correspondence and its
+behavioral source policy with the same typed-state/public-default law. The
+[compiler opening-safety lemma](../Vegas/Compile/OpeningSafety.lean) proves
+that the compiled opponents satisfy the graph simulation hypothesis on every
+reachable ready configuration. The [source deviation law](../Vegas/Game/AsyncDeviationLaw.lean)
+applies that simulation, reads the terminal graph configuration and
+backtranslates its single graph policy across the whole input distribution. Native Nash correspondence and its
 program-payment specialization use this same observation and actual-history
 settlement ranges (`AsyncServiceSpec.SettlementRange`). The concrete monetary
 runtime retains the joint typed-state/default-history/cash law. Native

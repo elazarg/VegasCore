@@ -114,11 +114,101 @@ theorem foreign_rejected_publication_observation_law
   rw [firstLaw, secondLaw, PMF.pure_map, PMF.pure_map]
   exact congrArg PMF.pure observed
 
-/-- Under the effective-opening reference, a supported publication action
-discloses exactly when the result is a success. This also covers an owner
-already defaulted at the start, whose action is forced. -/
-theorem effectiveOpening_publication_action_from_output
-    (base : graph.BehavioralProfile) (config next : graph.Config)
+section Resolution
+
+variable {event : graph.EventId} {owner : Player} {payload : L.Ty}
+  {binding : FieldRef graph.layout (.binding owner payload)}
+  {checks : List (GuardCheck graph.layout payload)}
+  {outputEq : graph.outputLayout event = .publication payload}
+  {codeEq : cast (congrArg (EventCode graph.layout) outputEq) (graph.nodes event) =
+    .resolve owner payload binding checks}
+  (node : nodeView graph event = .resolve owner payload binding checks outputEq codeEq)
+
+include node
+
+omit [DecidableEq Player] in
+/-- An accepted opening successfully publishes the value of its immutable binding. -/
+theorem openingAccepted_value (config : graph.Config)
+    (accepted : openingAccepted event config.store = true) :
+    ∃ value, binding.get? config.store = some (.success value) ∧
+      EventCode.resolveOutput? binding checks true config.store = some (.success value) := by
+  obtain ⟨value, resolved⟩ :
+      ∃ value, EventCode.resolveOutput? binding checks true config.store =
+        some (.success value) := by
+    simp only [openingAccepted, node] at accepted
+    cases stored : EventCode.resolveOutput? binding checks true config.store with
+    | none => simp [stored] at accepted
+    | some output =>
+      cases output with
+      | failure => simp [stored] at accepted
+      | success value => exact ⟨value, rfl⟩
+  refine ⟨value, ?_, resolved⟩
+  cases stored : binding.get? config.store with
+  | none => simp [EventCode.resolveOutput?, stored] at resolved
+  | some bound =>
+    cases guards : GuardCheck.allAccepted? checks config.store bound with
+    | none => simp [EventCode.resolveOutput?, stored, guards] at resolved
+    | some admitted =>
+      cases admitted with
+      | false => simp [EventCode.resolveOutput?, stored, guards] at resolved
+      | true =>
+        have equal : bound = .success value := by
+          simpa [EventCode.resolveOutput?, stored, guards] using resolved
+        exact congrArg some equal
+
+/-- A disclosure supported by the effective-opening reference has an active
+owner and is accepted. -/
+theorem effectiveOpening_publication_disclosure_safe
+    (base : graph.BehavioralProfile) (config : graph.Config) (action : graph.Action event)
+    (chosen : action ∈ (actionLaw (effectiveOpening base) config event).support)
+    (disclose : (cast (congrArg EventField.Action outputEq) action : Bool) = true) :
+    owner ∉ config.defaulted ∧ openingAccepted event config.store = true := by
+  let owned := nodeView_resolve_actor outputEq codeEq
+  rw [actionLaw_of_actor _ _ owned] at chosen
+  by_cases inactive : owner ∈ config.defaulted
+  · rw [dite_eq_left inactive, PMF.mem_support_pure_iff] at chosen
+    have failed := EventCode.failureAction_eq_cast outputEq (graph.nodes event)
+      (.resolve owner payload binding checks) codeEq owner owned rfl
+    rw [chosen, failed, cast_cast, cast_eq] at disclose
+    cases disclose
+  · refine ⟨inactive, ?_⟩
+    rw [dite_eq_right inactive, effectiveOpening_of_resolve base node owned,
+      PMF.mem_support_pure_iff] at chosen
+    change action = cast (congrArg EventField.Action outputEq.symm)
+      (openingAccepted event (graph.playerStore owner config.store)) at chosen
+    rw [openingAccepted_playerStore event owned] at chosen
+    rw [chosen] at disclose
+    simpa using disclose
+
+/-- An active, accepted disclosure publishes exactly its immutable binding value. -/
+theorem publication_disclosed_value_of_accepted
+    (config next : graph.Config)
+    (ready : config.cut.Ready event) (active : owner ∉ config.defaulted)
+    (action : graph.Action event)
+    (moved : next ∈ (config.step event ready action).support)
+    (disclose : (cast (congrArg EventField.Action outputEq) action : Bool) = true)
+    (accepted : openingAccepted event config.store = true) :
+    ∃ value, binding.get? config.store = some (.success value) ∧
+      next.outputs event = some (cast (congrArg EventField.Value outputEq.symm) (.success value)) :=
+    by
+  obtain ⟨value, stored, resolved⟩ := openingAccepted_value node config accepted
+  have actionEq : action = cast (congrArg EventField.Action outputEq.symm) true := by
+    rw [← disclose, cast_cast, cast_eq]
+  have evaluates : (EventCode.resolve owner payload binding checks).eval?
+      ((EventCode.resolve owner payload binding checks).effectiveAction config.defaulted true)
+        config.store = some (PMF.pure (.success value)) := by
+    simp only [EventCode.effectiveAction, EventCode.actor, ite_eq_right active,
+      EventCode.resolve_eval?, resolved, Option.map_some]
+  rw [actionEq, config.step_eq_map_of_code event ready outputEq _ codeEq true _
+    evaluates, PMF.pure_map, PMF.mem_support_pure_iff] at moved
+  exact ⟨value, stored, moved ▸ Config.complete_output_same ..⟩
+
+end Resolution
+
+/-- If every requested disclosure here is active and accepted, the public
+result recovers the requested Boolean. Withholding remains unrestricted. -/
+theorem publication_action_from_output_of_safe
+    (config next : graph.Config)
     (event : graph.EventId) (ready : config.cut.Ready event)
     {owner : Player} {payload : L.Ty}
     {binding : FieldRef graph.layout (.binding owner payload)}
@@ -128,7 +218,8 @@ theorem effectiveOpening_publication_action_from_output
       .resolve owner payload binding checks}
     (node : nodeView graph event = .resolve owner payload binding checks outputEq codeEq)
     (action : graph.Action event)
-    (chosen : action ∈ (actionLaw (effectiveOpening base) config event).support)
+    (safe : (cast (congrArg EventField.Action outputEq) action : Bool) = true →
+      owner ∉ config.defaulted ∧ openingAccepted event config.store = true)
     (moved : next ∈ (config.step event ready action).support) :
     cast (congrArg EventField.Action outputEq) action =
       ((next.outputs event).map fun value =>
@@ -136,7 +227,6 @@ theorem effectiveOpening_publication_action_from_output
   let resolve := EventCode.resolve owner payload binding checks
   let encode := cast (congrArg EventField.Action outputEq.symm)
   let decoded := cast (congrArg EventField.Value outputEq)
-  have owned := nodeView_resolve_actor outputEq codeEq
   have falseStep : config.step event ready (encode false) = PMF.pure
       (config.complete event ready (encode false)
         (cast (congrArg EventField.Value outputEq.symm) .failure)) := by
@@ -174,45 +264,40 @@ theorem effectiveOpening_publication_action_from_output
       config event ready (encode false) (cast (congrArg EventField.Value outputEq.symm) .failure))
     rw [actionEq]
     exact readCompletion false .failure output rfl
-  rw [actionLaw_of_actor _ _ owned] at chosen
-  by_cases inactive : owner ∈ config.defaulted
-  · rw [dite_eq_left inactive, PMF.mem_support_pure_iff] at chosen
-    have failed := EventCode.failureAction_eq_cast outputEq (graph.nodes event) resolve codeEq
-      owner owned rfl
-    exact withheld (chosen.trans failed)
-  · rw [dite_eq_right inactive, effectiveOpening_of_resolve base node owned,
-      PMF.mem_support_pure_iff] at chosen
-    change action = encode (openingAccepted event
-      (graph.playerStore owner config.store)) at chosen
-    rw [openingAccepted_playerStore event owned] at chosen
-    cases opened : openingAccepted event config.store with
-    | false => exact withheld (by simpa only [opened] using chosen)
-    | true =>
-      have actionEq : action = encode true := by simpa only [opened] using chosen
-      obtain ⟨value, result⟩ :
-          ∃ value, EventCode.resolveOutput? binding checks true config.store =
-            some (.success value) := by
-        simp only [openingAccepted, node] at opened
-        cases stored : EventCode.resolveOutput? binding checks true config.store with
-        | none => simp [stored] at opened
-        | some output =>
-          cases output with
-          | failure => simp [stored] at opened
-          | success value => exact ⟨value, rfl⟩
-      have effective : resolve.effectiveAction config.defaulted true = true := by
-        simp [resolve, EventCode.effectiveAction, EventCode.actor, inactive]
-      have evaluates : resolve.eval? (resolve.effectiveAction config.defaulted true) config.store =
-          some (PMF.pure (.success value)) := by
-        rw [effective]
-        change (EventCode.resolve owner payload binding checks).eval? true config.store = _
-        rw [EventCode.resolve_eval?, result]
-        rfl
-      rw [actionEq, config.step_eq_map_of_code event ready outputEq resolve codeEq true _
-        evaluates, PMF.pure_map, PMF.mem_support_pure_iff] at moved
-      have output := moved ▸ (Config.complete_output_same
-        config event ready (encode true)
-        (cast (congrArg EventField.Value outputEq.symm) (.success value)))
-      rw [actionEq]
-      exact readCompletion true (.success value) output rfl
+  cases disclosed : (cast (congrArg EventField.Action outputEq) action : Bool) with
+  | false =>
+    have actionEq : action = encode false := by
+      rw [← disclosed]
+      simp [encode]
+    simpa only [disclosed] using withheld actionEq
+  | true =>
+    obtain ⟨active, accepted⟩ := safe disclosed
+    obtain ⟨value, _, output⟩ :=
+      publication_disclosed_value_of_accepted node config next ready active action moved
+        disclosed accepted
+    rw [output]
+    simp [PublicationResult.isFailure]
+
+/-- Under the effective-opening reference, a supported publication action
+discloses exactly when the result is a success. This also covers an owner
+already defaulted at the start, whose action is forced. -/
+theorem effectiveOpening_publication_action_from_output
+    (base : graph.BehavioralProfile) (config next : graph.Config)
+    (event : graph.EventId) (ready : config.cut.Ready event)
+    {owner : Player} {payload : L.Ty}
+    {binding : FieldRef graph.layout (.binding owner payload)}
+    {checks : List (GuardCheck graph.layout payload)}
+    {outputEq : graph.outputLayout event = .publication payload}
+    {codeEq : cast (congrArg (EventCode graph.layout) outputEq) (graph.nodes event) =
+      .resolve owner payload binding checks}
+    (node : nodeView graph event = .resolve owner payload binding checks outputEq codeEq)
+    (action : graph.Action event)
+    (chosen : action ∈ (actionLaw (effectiveOpening base) config event).support)
+    (moved : next ∈ (config.step event ready action).support) :
+    cast (congrArg EventField.Action outputEq) action =
+      ((next.outputs event).map fun value =>
+        !(cast (congrArg EventField.Value outputEq) value).isFailure).getD false := by
+  exact publication_action_from_output_of_safe config next event ready node action
+    (effectiveOpening_publication_disclosure_safe node base config action chosen) moved
 
 end Vegas.EventGraphRuntime

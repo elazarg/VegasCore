@@ -33,96 +33,29 @@ variable {event : graph.EventId} {owner : Player} {payload : L.Ty}
 include node
 
 omit [DecidableEq Player] in
-private theorem accepted_opening_value (config : graph.Config)
-    (accepted : openingAccepted event config.store = true) :
-    ∃ value, binding.get? config.store = some (.success value) ∧
-      EventCode.resolveOutput? binding checks true config.store = some (.success value) := by
-  obtain ⟨value, resolved⟩ :
-      ∃ value, EventCode.resolveOutput? binding checks true config.store =
-        some (.success value) := by
-    simp only [openingAccepted, node] at accepted
-    cases stored : EventCode.resolveOutput? binding checks true config.store with
-    | none => simp [stored] at accepted
-    | some output =>
-      cases output with
-      | failure => simp [stored] at accepted
-      | success value => exact ⟨value, rfl⟩
-  refine ⟨value, ?_, resolved⟩
-  cases stored : binding.get? config.store with
-  | none => simp [EventCode.resolveOutput?, stored] at resolved
-  | some bound =>
-    cases guards : GuardCheck.allAccepted? checks config.store bound with
-    | none => simp [EventCode.resolveOutput?, stored, guards] at resolved
-    | some admitted =>
-      cases admitted with
-      | false => simp [EventCode.resolveOutput?, stored, guards] at resolved
-      | true =>
-        have equal : bound = .success value := by
-          simpa [EventCode.resolveOutput?, stored, guards] using resolved
-        exact congrArg some equal
-
-private theorem effective_disclosure_accepted
-    (base : graph.BehavioralProfile) (config : graph.Config)
-    (active : owner ∉ config.defaulted) (action : graph.Action event)
-    (chosen : action ∈ (actionLaw (effectiveOpening base) config event).support)
-    (disclose : (cast (congrArg EventField.Action outputEq) action : Bool) = true) :
-    openingAccepted event config.store = true := by
-  let owned := nodeView_resolve_actor outputEq codeEq
-  rw [actionLaw_of_actor _ _ owned, dite_eq_right active,
-    effectiveOpening_of_resolve base node owned, PMF.mem_support_pure_iff] at chosen
-  change action = cast (congrArg EventField.Action outputEq.symm)
-    (openingAccepted event (graph.playerStore owner config.store)) at chosen
-  rw [openingAccepted_playerStore event owned] at chosen
-  rw [chosen] at disclose
-  simpa using disclose
-
-/-- The effective-opening law only prescribes realizable actions at active publications. -/
-theorem effectiveOpening_publication_realizable
-    (base : graph.BehavioralProfile) (config : graph.Config) (active : owner ∉ config.defaulted)
-    (action : graph.Action event)
-    (chosen : action ∈ (actionLaw (effectiveOpening base) config event).support) :
+private theorem publication_realizable_of_safe
+    (config : graph.Config) (action : graph.Action event)
+    (safe : (cast (congrArg EventField.Action outputEq) action : Bool) = true →
+      openingAccepted event config.store = true) :
     EffectiveAction config event action := by
   simp only [EffectiveAction, node]
   intro disclose
-  obtain ⟨value, stored, _⟩ := accepted_opening_value node config
-    (effective_disclosure_accepted node base config active action chosen disclose)
+  obtain ⟨value, stored, _⟩ := openingAccepted_value node config (safe disclose)
   exact ⟨value, stored⟩
 
-private theorem effective_publication_disclosed_value
-    (base : graph.BehavioralProfile) (config next : graph.Config)
-    (ready : config.cut.Ready event) (active : owner ∉ config.defaulted)
-    (action : graph.Action event)
-    (chosen : action ∈ (actionLaw (effectiveOpening base) config event).support)
-    (moved : next ∈ (config.step event ready action).support)
-    (disclose : (cast (congrArg EventField.Action outputEq) action : Bool) = true) :
-    ∃ value, binding.get? config.store = some (.success value) ∧
-      next.outputs event = some (cast (congrArg EventField.Value outputEq.symm) (.success value)) :=
-    by
-  obtain ⟨value, stored, resolved⟩ := accepted_opening_value node config
-    (effective_disclosure_accepted node base config active action chosen disclose)
-  have actionEq : action = cast (congrArg EventField.Action outputEq.symm) true := by
-    rw [← disclose, cast_cast, cast_eq]
-  have evaluates : (EventCode.resolve owner payload binding checks).eval?
-      ((EventCode.resolve owner payload binding checks).effectiveAction config.defaulted true)
-        config.store = some (PMF.pure (.success value)) := by
-    simp only [EventCode.effectiveAction, EventCode.actor, ite_eq_right active,
-      EventCode.resolve_eval?, resolved, Option.map_some]
-  rw [actionEq, config.step_eq_map_of_code event ready outputEq _ codeEq true _
-    evaluates, PMF.pure_map, PMF.mem_support_pure_iff] at moved
-  exact ⟨value, stored, moved ▸ Config.complete_output_same ..⟩
-
-/-- Equal observations of two effective foreign publications identify the
+/-- Equal observations of two safe foreign publications identify the
 same prescribed disclosure. If they disclose, both immutable bindings hold
 the same publicly written value. -/
-theorem foreign_effective_publication_choices_agree
-    (base : graph.BehavioralProfile)
+private theorem foreign_safe_publication_choices_agree
     (focal : Player) (foreign : owner ≠ focal)
     (left right leftNext rightNext : graph.Config)
     (leftReady : left.cut.Ready event) (rightReady : right.cut.Ready event)
     (leftActive : owner ∉ left.defaulted) (rightActive : owner ∉ right.defaulted)
     (leftAction rightAction : graph.Action event)
-    (leftChosen : leftAction ∈ (actionLaw (effectiveOpening base) left event).support)
-    (rightChosen : rightAction ∈ (actionLaw (effectiveOpening base) right event).support)
+    (leftSafe : (cast (congrArg EventField.Action outputEq) leftAction : Bool) = true →
+      openingAccepted event left.store = true)
+    (rightSafe : (cast (congrArg EventField.Action outputEq) rightAction : Bool) = true →
+      openingAccepted event right.store = true)
     (leftMoved : leftNext ∈ (left.step event leftReady leftAction).support)
     (rightMoved : rightNext ∈ (right.step event rightReady rightAction).support)
     (same : graph.playerObserve focal leftNext = graph.playerObserve focal rightNext) :
@@ -134,19 +67,19 @@ theorem foreign_effective_publication_choices_agree
   have publicResult := (foreign_publication_step_observation_eq_iff focal owner foreign event
     outputEq codeEq left right leftNext rightNext leftReady rightReady leftAction rightAction
     leftMoved rightMoved).mp same |>.2
-  have leftDecoded := effectiveOpening_publication_action_from_output base left leftNext
-    event leftReady node leftAction leftChosen leftMoved
-  have rightDecoded := effectiveOpening_publication_action_from_output base right rightNext
-    event rightReady node rightAction rightChosen rightMoved
+  have leftDecoded := publication_action_from_output_of_safe left leftNext event leftReady
+    node leftAction (fun disclosed => ⟨leftActive, leftSafe disclosed⟩) leftMoved
+  have rightDecoded := publication_action_from_output_of_safe right rightNext event rightReady
+    node rightAction (fun disclosed => ⟨rightActive, rightSafe disclosed⟩) rightMoved
   rw [publicResult] at leftDecoded
   have disclosed : decode leftAction = decode rightAction := leftDecoded.trans rightDecoded.symm
   refine ⟨disclosed, ?_⟩
   intro sends
-  obtain ⟨leftValue, leftStored, leftOutput⟩ := effective_publication_disclosed_value node base
-    left leftNext leftReady leftActive leftAction leftChosen leftMoved sends
-  obtain ⟨rightValue, rightStored, rightOutput⟩ := effective_publication_disclosed_value node base
-    right rightNext rightReady rightActive rightAction rightChosen rightMoved
-    (disclosed.symm.trans sends)
+  have rightSends := disclosed.symm.trans sends
+  obtain ⟨leftValue, leftStored, leftOutput⟩ := publication_disclosed_value_of_accepted node
+    left leftNext leftReady leftActive leftAction leftMoved sends (leftSafe sends)
+  obtain ⟨rightValue, rightStored, rightOutput⟩ := publication_disclosed_value_of_accepted node
+    right rightNext rightReady rightActive rightAction rightMoved rightSends (rightSafe rightSends)
   rw [leftOutput, rightOutput] at publicResult
   have values := congrArg (cast (congrArg EventField.Value outputEq)) (Option.some.inj publicResult)
   simp only [cast_cast, cast_eq, PublicationResult.success.injEq] at values
@@ -162,13 +95,13 @@ variable {timeouts : EventTimeouts graph}
 
 local notation "app" => reactiveApplication timeouts leaks
 
-/-- At a foreign effective publication, the stopped native execution has the
+/-- At a safe foreign publication, the stopped native execution has the
 drained reference successor law jointly with observation-local traffic.
 Already-defaulted heads advance without a new native round. -/
-theorem foreign_publication_checkpoint_successor_traffic_factor
+theorem foreign_safe_publication_checkpoint_successor_traffic_factor
     (serial : graph.ActorSerial)
     {horizon turns : Nat} (scheduler : (app).Scheduler)
-    (delay bound : graph.EventId → Nat) (base : graph.BehavioralProfile)
+    (delay bound : graph.EventId → Nat) (reference : graph.BehavioralProfile)
     (contract : AsyncContract timeouts leaks (inputs.map State.initial) horizon scheduler
       delay bound)
     (timely : AsyncTimely timeouts delay bound)
@@ -182,7 +115,6 @@ theorem foreign_publication_checkpoint_successor_traffic_factor
     (node : nodeView graph event = .resolve owner payload binding checks outputEq codeEq)
     {Seed : Type*} (prior : PMF Seed) (execution : Seed → (app).Execution)
     (config : Seed → graph.Config) :
-    let reference := effectiveOpening base
     let traffic := bindingTraffic timeouts leaks focal
     let observe := graph.playerObserve focal
     let honest := turnPolicy timeouts leaks bound turns
@@ -200,6 +132,10 @@ theorem foreign_publication_checkpoint_successor_traffic_factor
       (∀ seed ∈ prior.support, owner ∉ (config seed).defaulted →
         PrefixBoundary (inputs.map State.initial) scheduler players event.val (execution seed)) →
       (∀ seed ∈ prior.support, (execution seed).environmentRecall.length ≤ horizon) →
+      (∀ seed ∈ prior.support, owner ∉ (config seed).defaulted →
+        ∀ action ∈ (actionLaw reference (config seed) event).support,
+          (cast (congrArg EventField.Action outputEq) action : Bool) = true →
+            openingAccepted event (config seed).store = true) →
       ∃ nextNoise : graph.PlayerObservation focal → PMF _,
         (prior.bind fun seed => (phase seed).map fun final =>
           (final.application.config, traffic final)) =
@@ -208,21 +144,22 @@ theorem foreign_publication_checkpoint_successor_traffic_factor
             (eventStep reference (config seed) event ready).bind fun primary =>
               (nextNoise (observe primary)).map fun extra => (State.drainConfig primary, extra)
           else PMF.pure (config seed, traffic (execution seed))) := by
-  intro reference traffic observe honest players stop phase noise factor ordered native
-    boundary bounded
+  intro traffic observe honest players stop phase noise factor ordered native boundary bounded safe
   have owned := nodeView_resolve_actor outputEq codeEq
   apply foreign_owned_checkpoint_successor_traffic_factor scheduler delay bound reference
     contract timely focal owner deviation foreign event owned solitary prior execution config
     noise factor ordered native boundary bounded
-  · intro seed _ active action chosen
-    exact effectiveOpening_publication_realizable node base (config seed) active action chosen
+  · intro seed supported active action chosen
+    exact publication_realizable_of_safe node (config seed) action
+      (safe seed supported active action chosen)
   · intro left leftSupport right rightSupport leftAction leftChosen rightAction rightChosen
       leftReady rightReady leftActive rightActive leftAligned rightAligned leftNext leftMoved
       rightNext rightMoved same observed
     let decode := fun action => (cast (congrArg EventField.Action outputEq) action : Bool)
-    obtain ⟨agrees, values⟩ := foreign_effective_publication_choices_agree node base focal foreign
+    obtain ⟨agrees, values⟩ := foreign_safe_publication_choices_agree node focal foreign
       (config left) (config right) leftNext rightNext leftReady rightReady leftActive rightActive
-      leftAction rightAction leftChosen rightChosen leftMoved rightMoved same
+      leftAction rightAction (safe left leftSupport leftActive leftAction leftChosen)
+      (safe right rightSupport rightActive rightAction rightChosen) leftMoved rightMoved same
     have stored (sends : decode leftAction = true) : ∃ value,
         binding.get? (execution left).application.config.store = some (.success value) ∧
         binding.get? (execution right).application.config.store = some (.success value) := by
@@ -245,10 +182,10 @@ theorem foreign_publication_checkpoint_successor_traffic_factor
 
 /-- Project the stopped foreign publication to its single primary graph rank,
 retaining the actual stopped traffic of the ledger. -/
-theorem foreign_publication_checkpoint_primary_traffic_factor
+theorem foreign_safe_publication_checkpoint_primary_traffic_factor
     (serial : graph.ActorSerial)
     {horizon turns : Nat} (scheduler : (app).Scheduler)
-    (delay bound : graph.EventId → Nat) (base : graph.BehavioralProfile)
+    (delay bound : graph.EventId → Nat) (reference : graph.BehavioralProfile)
     (contract : AsyncContract timeouts leaks (inputs.map State.initial) horizon scheduler
       delay bound)
     (timely : AsyncTimely timeouts delay bound)
@@ -262,7 +199,6 @@ theorem foreign_publication_checkpoint_primary_traffic_factor
     (node : nodeView graph event = .resolve owner payload binding checks outputEq codeEq)
     {Seed : Type*} (prior : PMF Seed) (execution : Seed → (app).Execution)
     (config : Seed → graph.Config) :
-    let reference := effectiveOpening base
     let traffic := bindingTraffic timeouts leaks focal
     let observe := graph.playerObserve focal
     let honest := turnPolicy timeouts leaks bound turns
@@ -280,6 +216,10 @@ theorem foreign_publication_checkpoint_primary_traffic_factor
       (∀ seed ∈ prior.support, owner ∉ (config seed).defaulted →
         PrefixBoundary (inputs.map State.initial) scheduler players event.val (execution seed)) →
       (∀ seed ∈ prior.support, (execution seed).environmentRecall.length ≤ horizon) →
+      (∀ seed ∈ prior.support, owner ∉ (config seed).defaulted →
+        ∀ action ∈ (actionLaw reference (config seed) event).support,
+          (cast (congrArg EventField.Action outputEq) action : Bool) = true →
+            openingAccepted event (config seed).store = true) →
       ∃ nextNoise : graph.PlayerObservation focal → PMF _,
         (prior.bind phase).map (fun final =>
           (Config.rankPrefix (event.val + 1) final.application.config, traffic final)) =
@@ -288,12 +228,11 @@ theorem foreign_publication_checkpoint_primary_traffic_factor
             eventStep reference (config seed) event ready
           else PMF.pure (config seed)).bind fun primary =>
             (nextNoise (observe primary)).map fun extra => (primary, extra) := by
-  intro reference traffic observe honest players stop phase noise factor ordered native
-    boundary bounded
-  obtain ⟨nextNoise, joint⟩ := foreign_publication_checkpoint_successor_traffic_factor serial
-    scheduler delay bound base contract timely focal owner deviation foreign event solitary
+  intro traffic observe honest players stop phase noise factor ordered native boundary bounded safe
+  obtain ⟨nextNoise, joint⟩ := foreign_safe_publication_checkpoint_successor_traffic_factor serial
+    scheduler delay bound reference contract timely focal owner deviation foreign event solitary
     binding checks outputEq codeEq node prior execution config noise factor ordered native
-    boundary bounded
+    boundary bounded safe
   exact ⟨nextNoise, primary_rank_traffic_of_checkpoint_law prior phase config (fun final =>
     final.application.config) execution traffic observe event reference nextNoise ordered joint⟩
 
@@ -306,6 +245,66 @@ variable {timeouts : EventTimeouts graph.sequentialize}
 
 local notation "G" => graph.sequentialize
 local notation "app" => reactiveApplication timeouts leaks
+
+/-- A foreign reference realizes its policy step when every supported
+disclosure at the active, reachable head is accepted. It may still withhold
+when an opening would succeed. -/
+theorem physicalPrefix_foreign_safe_publication_policyStep
+    {horizon turns : Nat} (scheduler : (app).Scheduler)
+    (delay bound : (G).EventId → Nat) (inputs : PMF (G).Inputs)
+    (reference : (G).BehavioralProfile)
+    (contract : AsyncContract timeouts leaks (inputs.map State.initial) horizon scheduler
+      delay bound)
+    (timely : AsyncTimely timeouts delay bound)
+    (focal owner : Player) (deviation : (app).Policy) (foreign : owner ≠ focal)
+    (event : (G).EventId) {payload : L.Ty}
+    (binding : FieldRef (G).layout (.binding owner payload))
+    (checks : List (GuardCheck (G).layout payload))
+    (outputEq : (G).outputLayout event = .publication payload)
+    (codeEq : cast (congrArg (EventCode (G).layout) outputEq) ((G).nodes event) =
+      .resolve owner payload binding checks)
+    (node : nodeView (G) event = .resolve owner payload binding checks outputEq codeEq)
+    (safe : ∀ initial ∈ inputs.support, ∀ config : (G).Config, config.Reachable initial →
+      config.cut.Ready event → owner ∉ config.defaulted →
+      ∀ action ∈ (actionLaw reference config event).support,
+        (cast (congrArg EventField.Action outputEq) action : Bool) = true →
+          openingAccepted event config.store = true) :
+    let players := Function.update (turnPolicy timeouts leaks bound turns
+      (EventGraphRuntime.firstTurnTiming G turns) reference) focal deviation
+    PhysicalPrefixPolicyStep scheduler players inputs horizon reference focal event := by
+  intro players
+  have owned := nodeView_resolve_actor outputEq codeEq
+  have solitary := graph.sequentialize_solitary event
+  apply foreign_physicalPrefix_policyStep scheduler players inputs horizon reference
+    focal owner event owned contract.completes
+  intro noise factor ordered native boundary bounded
+  apply foreign_safe_publication_checkpoint_primary_traffic_factor (graph := graph.sequentialize)
+    (timeouts := timeouts) (leaks := leaks)
+    (fun next => (graph.sequentialize_solitary next).ownerSolitary)
+    scheduler delay bound reference contract timely focal owner deviation foreign event
+    solitary binding checks outputEq codeEq node
+    (physicalPrefix timeouts leaks scheduler players inputs horizon event.val)
+    id (fun execution => Config.rankPrefix event.val execution.application.config)
+    noise factor ordered native boundary bounded
+  intro execution supported active action chosen disclosed
+  obtain ⟨trace⟩ := (app).raw_trace_roundsFrom (inputs.map State.initial) horizon scheduler players
+    execution.environmentRecall.length (bounded execution supported) execution
+    (boundary execution supported active).supported
+  obtain ⟨initial, initialSupported, invariant⟩ :=
+    reactive_history_invariant timeouts leaks inputs horizon scheduler trace
+  let checkpoint := Config.rankPrefix event.val execution.application.config
+  have ready : checkpoint.cut.Ready event := (ordered execution supported).ready event.isLt
+  have aligned : execution.application.config = checkpoint := by
+    refine (native execution supported).trans
+      (State.drainConfig_of_quiescent (State.ofConfig checkpoint) ?_)
+    intro other automatic
+    have same := solitary _ automatic.1 ready
+    subst other
+    have inactive := automatic.2
+    rw [owned] at inactive
+    exact active inactive
+  exact safe initial initialSupported checkpoint (aligned ▸ invariant.reachable) ready active
+    action chosen disclosed
 
 /-- The effective-opening reference realizes the foreign publication policy
 step on actual physical prefixes, also across already-drained ranks. -/
@@ -329,15 +328,10 @@ theorem physicalPrefix_foreign_publication_policyStep
       (EventGraphRuntime.firstTurnTiming G turns) reference) focal deviation
     PhysicalPrefixPolicyStep scheduler players inputs horizon reference focal event := by
   intro reference players
-  apply foreign_physicalPrefix_policyStep scheduler players inputs horizon reference
-    focal owner event (nodeView_resolve_actor outputEq codeEq) contract.completes
-  exact foreign_publication_checkpoint_primary_traffic_factor (graph := graph.sequentialize)
-    (timeouts := timeouts) (leaks := leaks)
-    (fun next => (graph.sequentialize_solitary next).ownerSolitary)
-    scheduler delay bound base contract timely focal owner deviation foreign event
-    (graph.sequentialize_solitary event) binding checks outputEq codeEq node
-    (physicalPrefix timeouts leaks scheduler players inputs horizon event.val)
-    id (fun execution => Config.rankPrefix event.val execution.application.config)
+  exact physicalPrefix_foreign_safe_publication_policyStep scheduler delay bound inputs reference
+    contract timely focal owner deviation foreign event binding checks outputEq codeEq node
+    (fun _ _ config _ _ _ action chosen disclose =>
+      (effectiveOpening_publication_disclosure_safe node base config action chosen disclose).2)
 
 end PhysicalPrefix
 

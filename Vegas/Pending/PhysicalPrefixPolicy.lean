@@ -2,6 +2,7 @@ module
 
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
+public import Vegas.EventGraph.TrafficPolicy
 public import Vegas.Pending.PhysicalPrefix
 public import Vegas.Pending.OwnedCompletionConfig
 
@@ -44,17 +45,6 @@ def PhysicalPrefixPolicyStep (scheduler : (app).Scheduler) (players : Player →
         (((boundary event.val).map (config event.val)).bind ((G).runPlan
           ((G).policyPlan (Function.update reference focal policy) (G).canonicalScheduler) 1)).bind
             fun primary => (nextNoise (observe primary)).map fun extra => (primary, extra)
-
-/-- A single canonical graph step from a numeric prefix runs its next event. -/
-theorem runPlan_one_at_prefix {g : Vegas.EventGraph Player L} (reference : g.BehavioralProfile)
-    (config : g.Config) (event : g.EventId) (ordered : config.cut.IsPrefix event.val) :
-    g.runPlan (g.policyPlan reference g.canonicalScheduler) 1 config =
-      eventStep reference config event (ordered.ready event.isLt) := by
-  have ready := ordered.ready event.isLt
-  rw [runPlan_canonical_succ reference 0 config ready.not_terminal event ready
-    (fun other enabled => Fin.le_iff_val_le_val.mpr (Nat.le_of_not_gt fun earlier =>
-      enabled.1 ((ordered.2 other).mpr earlier)))]
-  simp only [runPlan, PMF.bind_pure]
 
 private theorem actionLaw_diagonal {g : Vegas.EventGraph Player L}
     (reference : g.BehavioralProfile) (focal : Player)
