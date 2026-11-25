@@ -263,13 +263,9 @@ def OnePacketBaseInputs.ofCounterparts (wellFormed : setup.WellFormed)
           horizon scheduler bounds.candidateCount p))
       (targetSequence : ℕ → (onePacketN).BehavioralAssessment),
       OnePacketAssembled setup timeouts leaks bounds horizon scheduler sequence
-        (fun n => trembleScale
-          (combinedFloor setup timeouts leaks bounds horizon scheduler (sequence n)) depth n)
-        (fun n => trembleScale_pos
-          (combinedFloor_pos setup timeouts leaks bounds horizon scheduler (sequence n)))
-        (fun n => trembleScale_le_one
-          (combinedFloor_pos setup timeouts leaks bounds horizon scheduler (sequence n)).le
-          (combinedFloor_le_one setup timeouts leaks bounds horizon scheduler (sequence n)))
+        (combinedFloorScale setup timeouts leaks bounds horizon scheduler sequence depth)
+        (combinedFloorScale_pos setup timeouts leaks bounds horizon scheduler sequence depth)
+        (combinedFloorScale_le_one setup timeouts leaks bounds horizon scheduler sequence depth)
         weights targetSequence →
       (∀ n, (targetSequence n).IsFullyMixed) →
       (∀ n, BehavioralAssessment.IsBayesConsistent (onePacketN) (targetSequence n)
@@ -289,16 +285,12 @@ def OnePacketBaseInputs.ofCounterparts (wellFormed : setup.WellFormed)
           site) :
     OnePacketBaseInputs setup timeouts leaks bounds horizon scheduler sequence
       bounds.candidateCount where
-  scale n := trembleScale
-    (combinedFloor setup timeouts leaks bounds horizon scheduler (sequence n)) depth n
-  scale_pos n := trembleScale_pos
-    (combinedFloor_pos setup timeouts leaks bounds horizon scheduler (sequence n))
-  scale_le_one n := trembleScale_le_one
-    (combinedFloor_pos setup timeouts leaks bounds horizon scheduler (sequence n)).le
-    (combinedFloor_le_one setup timeouts leaks bounds horizon scheduler (sequence n))
-  scale_vanishing := tendsto_trembleScale _
-    (fun n => combinedFloor_pos setup timeouts leaks bounds horizon scheduler (sequence n))
-    (fun n => combinedFloor_le_one setup timeouts leaks bounds horizon scheduler (sequence n))
+  scale := combinedFloorScale setup timeouts leaks bounds horizon scheduler sequence depth
+  scale_pos := combinedFloorScale_pos setup timeouts leaks bounds horizon scheduler sequence depth
+  scale_le_one :=
+    combinedFloorScale_le_one setup timeouts leaks bounds horizon scheduler sequence depth
+  scale_vanishing :=
+    tendsto_combinedFloorScale setup timeouts leaks bounds horizon scheduler sequence depth
   gapBound := gapBound
   gapBound_nonneg := gapBound_nonneg
   covers := covers
@@ -451,11 +443,10 @@ def OnePacketBaseInputs.ofSetup
     past view atSite event turn
   exact OnePacketCounterpartInputs.ofBindingRepairs (timeouts := timeouts) wellFormed
     priors sourceMixed
-    (fun n => trembleScale_pos
-      (combinedFloor_pos setup timeouts leaks bounds horizon scheduler (sequence n)))
-    (fun n => trembleScale_le_one
-      (combinedFloor_pos setup timeouts leaks bounds horizon scheduler (sequence n)).le
-      (combinedFloor_le_one setup timeouts leaks bounds horizon scheduler (sequence n)))
+    (combinedFloorScale_pos setup timeouts leaks bounds horizon scheduler sequence
+      (2 * horizon + 2))
+    (combinedFloorScale_le_one setup timeouts leaks bounds horizon scheduler sequence
+      (2 * horizon + 2))
     (fun _ => rfl) covers coversInputs capacity weights assembled mixed
     notFree notOwing atSite turn
 

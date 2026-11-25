@@ -55,17 +55,14 @@ theorem exists_native_replay_at_sourceDecision
         some sourceHistory.1 := by
   classical
   let sources : ℕ → setup.intendedModel.BehavioralAssessment := fun _ => reference
-  let floors := fun n => combinedFloor setup timeouts leaks bounds horizon scheduler (sources n)
-  let scale := fun n => trembleScale (floors n) (2 * horizon + 2) n
-  have floorPositive := fun n =>
-    combinedFloor_pos setup timeouts leaks bounds horizon scheduler (sources n)
-  have floorLeOne := fun n =>
-    combinedFloor_le_one setup timeouts leaks bounds horizon scheduler (sources n)
-  have positive : ∀ n, 0 < scale n := fun n => trembleScale_pos (floorPositive n)
-  have le_one : ∀ n, scale n ≤ 1 := fun n =>
-    trembleScale_le_one (floorPositive n).le (floorLeOne n)
-  have vanishes : Tendsto scale atTop (nhds 0) :=
-    tendsto_trembleScale floors floorPositive floorLeOne
+  let scale := combinedFloorScale setup timeouts leaks bounds horizon scheduler sources
+    (2 * horizon + 2)
+  have positive := combinedFloorScale_pos setup timeouts leaks bounds horizon scheduler
+    sources (2 * horizon + 2)
+  have le_one := combinedFloorScale_le_one setup timeouts leaks bounds horizon scheduler
+    sources (2 * horizon + 2)
+  have vanishes := tendsto_combinedFloorScale setup timeouts leaks bounds horizon scheduler
+    sources (2 * horizon + 2)
   obtain ⟨weights, sequence, limit, index, assembled, mixed, bayes, increasing, converges,
       _consistent, _pooled, _limits, _freeOptimal, _publicOptimal⟩ :=
     setup.exists_onePacket_consistent_completion timeouts leaks bounds (initialLaw setup) horizon

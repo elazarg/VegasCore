@@ -92,18 +92,14 @@ private theorem intended_onePacket_sequentialEquilibrium_preserved_of_bounded_ut
   classical
   obtain ⟨sourceSequence, sourceMixed, sourceBayes, sourceConverges, sourceRational⟩ :=
     setup.intended_exclusionSource wellFormed parameter utility excludedPayoff intended equilibrium
-  let floors := fun n =>
-    combinedFloor setup timeouts leaks bounds horizon scheduler (sourceSequence n)
-  let scale := fun n => trembleScale (floors n) (2 * horizon + 2) n
-  have floorPositive := fun n =>
-    combinedFloor_pos setup timeouts leaks bounds horizon scheduler (sourceSequence n)
-  have floorLeOne := fun n =>
-    combinedFloor_le_one setup timeouts leaks bounds horizon scheduler (sourceSequence n)
-  have positive : ∀ n, 0 < scale n := fun n => trembleScale_pos (floorPositive n)
-  have le_one : ∀ n, scale n ≤ 1 := fun n =>
-    trembleScale_le_one (floorPositive n).le (floorLeOne n)
-  have vanishes : Tendsto scale atTop (nhds 0) :=
-    tendsto_trembleScale floors floorPositive floorLeOne
+  let scale := combinedFloorScale setup timeouts leaks bounds horizon scheduler sourceSequence
+    (2 * horizon + 2)
+  have positive := combinedFloorScale_pos setup timeouts leaks bounds horizon scheduler
+    sourceSequence (2 * horizon + 2)
+  have le_one := combinedFloorScale_le_one setup timeouts leaks bounds horizon scheduler
+    sourceSequence (2 * horizon + 2)
+  have vanishes := tendsto_combinedFloorScale setup timeouts leaks bounds horizon scheduler
+    sourceSequence (2 * horizon + 2)
   obtain ⟨weights, sequence, limit, index, assembled, mixed, bayes, increasing, converges,
       consistent, pooled, _limits, freeOptimal, _publicOptimal⟩ :=
     setup.exists_onePacket_consistent_completion timeouts leaks bounds Initial horizon scheduler

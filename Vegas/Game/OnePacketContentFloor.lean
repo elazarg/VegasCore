@@ -231,4 +231,29 @@ theorem combinedFloor_le_contentFloor (assessment : setup.intendedModel.Behavior
       contentFloor setup timeouts leaks bounds horizon scheduler assessment :=
   min_le_right _ _
 
+/-- The tremble scale at a given depth for a sequence of source assessments. -/
+def combinedFloorScale (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
+    (depth n : ℕ) : ℝ :=
+  trembleScale (combinedFloor setup timeouts leaks bounds horizon scheduler (sequence n)) depth n
+
+theorem combinedFloorScale_pos (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
+    (depth n : ℕ) :
+    0 < combinedFloorScale setup timeouts leaks bounds horizon scheduler sequence depth n :=
+  trembleScale_pos (combinedFloor_pos setup timeouts leaks bounds horizon scheduler (sequence n))
+
+theorem combinedFloorScale_le_one (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
+    (depth n : ℕ) :
+    combinedFloorScale setup timeouts leaks bounds horizon scheduler sequence depth n ≤ 1 :=
+  trembleScale_le_one
+    (combinedFloor_pos setup timeouts leaks bounds horizon scheduler (sequence n)).le
+    (combinedFloor_le_one setup timeouts leaks bounds horizon scheduler (sequence n))
+
+theorem tendsto_combinedFloorScale (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
+    (depth : ℕ) :
+    Tendsto (combinedFloorScale setup timeouts leaks bounds horizon scheduler sequence depth)
+      atTop (nhds 0) :=
+  tendsto_trembleScale _
+    (fun n => combinedFloor_pos setup timeouts leaks bounds horizon scheduler (sequence n))
+    (fun n => combinedFloor_le_one setup timeouts leaks bounds horizon scheduler (sequence n))
+
 end Vegas
