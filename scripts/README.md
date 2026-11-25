@@ -44,8 +44,8 @@ native audit tests afterward.
 
 With the separate manuscript checkout available, run
 `python scripts/check-manuscript-pins.py overleaf` to compare the active TeX
-result markers with the pin names in the artifact revision cited by the
-manuscript. The local Git repository must contain that revision. The Lean-native
+result markers with the pin names in both the working tree and the artifact
+revision cited by the manuscript. The local Git repository must contain that revision. The Lean-native
 audit checks the statements and guards in the artifact itself.
 
 Documentation checks resolve active citations and Markdown paths; external

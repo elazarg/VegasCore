@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Compare the active manuscript's marked results with Paper.lean at its cited revision."""
+"""Compare active manuscript result names with the cited and working copies of Paper.lean."""
 
 import argparse
 from pathlib import Path
@@ -45,6 +45,17 @@ def cited_revision(manuscript):
     return revisions.pop()
 
 
+def check_result_names(marked, paper, location):
+    pins = set(PIN.findall(paper))
+    if not pins:
+        raise ValueError(f"No pin names found in {location}.")
+    for result in sorted(marked - pins):
+        print(f"Manuscript marker missing from {location}: {result}", file=sys.stderr)
+    for result in sorted(pins - marked):
+        print(f"Pin in {location} missing from active manuscript: {result}", file=sys.stderr)
+    return marked == pins
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("manuscript", type=Path, help="directory containing main.tex")
@@ -54,19 +65,15 @@ def main():
         revision = cited_revision(args.manuscript)
         paper = subprocess.run(["git", "show", f"{revision}:Paper.lean"], cwd=ROOT,
                                text=True, capture_output=True, check=True).stdout
-        pins = set(PIN.findall(paper))
-        if not pins:
-            raise ValueError(f"No guarded pin names found in Paper.lean at {revision}.")
+        cited_ok = check_result_names(marked, paper, f"Paper.lean at {revision}")
+        current = (ROOT / "Paper.lean").read_text(encoding="utf-8")
+        working_ok = check_result_names(marked, current, "working Paper.lean")
     except (OSError, ValueError, subprocess.CalledProcessError) as error:
         print(error, file=sys.stderr)
         return 1
-    for result in sorted(marked - pins):
-        print(f"Manuscript marker missing from cited Paper.lean: {result}", file=sys.stderr)
-    for result in sorted(pins - marked):
-        print(f"Cited Paper.lean pin missing from active manuscript: {result}", file=sys.stderr)
-    if marked != pins:
+    if not (cited_ok and working_ok):
         return 1
-    print(f"{len(pins)} manuscript result names match Paper.lean at {revision}.")
+    print(f"{len(marked)} manuscript result names match working Paper.lean and revision {revision}.")
     return 0
 
 

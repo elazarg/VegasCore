@@ -1,4 +1,6 @@
+from contextlib import redirect_stderr
 import importlib.util
+import io
 from pathlib import Path
 import tempfile
 import unittest
@@ -36,3 +38,12 @@ class ManuscriptPinTests(unittest.TestCase):
                 f"@misc{{other,\n note={{{prefix}{'1' * 40}}}}}\n"
                 f"@misc{{VegasCoreRepo2026,\n note={{{prefix}{'2' * 40}}}}}\n", encoding="utf-8")
             self.assertEqual(CHECK.cited_revision(root), "2" * 40)
+
+    def test_working_pin_drift_reports_both_directions(self):
+        errors = io.StringIO()
+        with redirect_stderr(errors):
+            matches = CHECK.check_result_names(
+                {"Vegas.Paper.old"}, "#print axioms Vegas.Paper.new", "working Paper.lean")
+        self.assertFalse(matches)
+        self.assertIn("missing from working Paper.lean: Vegas.Paper.old", errors.getvalue())
+        self.assertIn("missing from active manuscript: Vegas.Paper.new", errors.getvalue())
