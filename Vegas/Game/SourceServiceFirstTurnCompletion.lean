@@ -8,7 +8,6 @@ public import Vegas.Game.SourceServiceCanonicalAcceptance
 public import Vegas.Game.SourceServiceAcceptedContinuation
 public import Vegas.Game.SourceServiceSilentContinuation
 public import Vegas.Pending.ChanceCompletionConfig
-public import Vegas.Pending.TurnClientActionLaw
 public import Vegas.Game.SourceServiceSiteBridge
 public import Vegas.Compile.EventGraphCanonical
 public import Interaction.ReactiveMixtureRounds
