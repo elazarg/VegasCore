@@ -31,6 +31,8 @@ public import Vegas.Examples.OddsEvensFairSequential
 public import Vegas.Examples.OddsEvensFairValue
 public import Vegas.Examples.OddsEvensFullSource
 public import Vegas.Examples.OddsEvensLedgerClient
+public import Vegas.Examples.OddsEvensClientPosterior
+public import Vegas.Examples.OddsEvensExecutableClient
 public import Vegas.Examples.OddsEvensRawEquilibrium
 public import Vegas.Examples.OddsEvensService
 public import Vegas.Examples.OddsEvensSetup

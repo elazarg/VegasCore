@@ -87,6 +87,11 @@ these choices exactly when `p = 1/2`. An authentic opening fixes `p` to zero or
 one and makes the opposite bit optimal. In the intended fair game, hiding the
 first bit supplies the unbiased posterior. At unusual ledger histories,
 absence of a matching certificate alone does not prove an unbiased posterior.
+The [ledger evidence theorem](../Vegas/Examples/OddsEvensClientPosterior.lean)
+shows that a matching read determines the stored bit on every initialized
+service history. At any Odd decision site with such a read, the posterior
+on the stored commitment is a point mass for every assessment, including
+at sites reached only after deviations.
 A consistency argument must justify the candidate's fair fallback, or identify
 ledger cases requiring a different response.
 
@@ -129,8 +134,15 @@ recipient commits, even when the ledger has not yet disclosed it. The
 protected-inclusion premise covers permitted traffic, so it does not by itself
 force a forbidden revealing packet onto the ledger before that decision.
 
-The diagnostic candidate performs no pending inspection. Its current checked
-results are information factorization, repeat and exclusion behavior, concrete
-ledger observations and conditional payoff comparisons. Sequential rationality,
+The [executable Odds–Evens decision](../Vegas/Examples/OddsEvensExecutableClient.lean)
+takes a decoded turn, an optional authenticated bit and a coin. Feeding it a
+fair coin and encoding its decision gives exactly the candidate’s packet law
+at every callback and recall. The decoder and packet encoder in this equality
+use the typed graph model. For the allocator, a
+[bounded search](../Vegas/Pending/BoundedCanonicalSlot.lean) using a player's
+recall length agrees with the canonical slot at every initialized service
+history. Execution of the complete typed packet path remains open.
+
+The diagnostic candidate performs no pending inspection. Sequential rationality,
 agreement with that specific policy and its complete initialized outcome law
 remain open. They are not premises of the uniform semantic compiler.
