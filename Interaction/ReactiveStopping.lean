@@ -12,9 +12,8 @@ public import GameTheoryExtensions.Math.Probability.Support
 `Interaction.ReactiveApplication.runUntil` executes scheduler rounds until a
 stopping predicate holds or its round budget is spent. Every round records
 exactly one scheduler command, so the rounds left before a horizon are read
-from the environment recall
-(`runToHorizon`). Running to the horizon is the same as running to the
-stopping point and then on to the horizon
+from the environment recall by `Interaction.ReactiveApplication.runToHorizon`.
+Running to the horizon is the same as running to the stopping point and then on to the horizon
 (`runToHorizon_eq_runUntilHorizon_bind`): the round evaluator has the Markov
 property at every stopping time, for arbitrary schedulers and player policies.
 -/
