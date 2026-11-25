@@ -33,21 +33,12 @@ private theorem preparedSlotFresh_spec (view : PlayerView graph) (serial : Nat) 
   unfold preparedSlotFresh
   cases view.candidates (.prepared serial) <;> simp
 
-/-- At every initialized service history, finite slot selection implements the
-canonical packet client's choice, including after arbitrary player deviations. -/
-theorem boundedCanonicalSlot_history (timeouts : EventTimeouts graph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (inputs : PMF graph.Inputs) (horizon : Nat)
-    (scheduler : ((reactiveApplication timeouts) leaks).Scheduler)
-    (control : ((reactiveApplication timeouts) leaks).Control)
-    (trace : (((reactiveApplication timeouts) leaks).protocol (inputs.map State.initial)
-      horizon scheduler).Trace (some control)) (who : Player) :
-    let view := (control.execution.observe ((reactiveApplication timeouts) leaks) who).application
-    boundedCanonicalSlot (view.publicView.bindingCount who) (control.execution.logs who).length
+/-- A bounded witness for the least fresh slot suffices for the executable search. -/
+theorem boundedCanonicalSlot_eq (who : Player) (view : PlayerView graph) (recallLength : Nat)
+    (bounded : ∃ serial, serial ≤ recallLength ∧ reactiveFreshSlot view = some serial) :
+    boundedCanonicalSlot (view.publicView.bindingCount who) recallLength
       (preparedSlotFresh view) = canonicalFreshSlot who view := by
   classical
-  dsimp only
-  let view := (control.execution.observe ((reactiveApplication timeouts) leaks) who).application
   let count := view.publicView.bindingCount who
   change boundedCanonicalSlot count _ (preparedSlotFresh view) = canonicalFreshSlot who view
   by_cases preferred : view.candidates (.prepared count) = .fresh
@@ -55,9 +46,7 @@ theorem boundedCanonicalSlot_history (timeouts : EventTimeouts graph)
     simp [boundedCanonicalSlot, (preparedSlotFresh_spec _ _).mpr preferred, count]
   have skipped : preparedSlotFresh view count = false := by
     exact Bool.eq_false_iff.mpr (fun found => preferred ((preparedSlotFresh_spec _ _).mp found))
-  obtain ⟨serial, bound, selected⟩ := reactiveFreshSlot_le_recall timeouts leaks
-    control.execution who (candidateRecall_history timeouts leaks inputs horizon scheduler trace)
-  change reactiveFreshSlot view = some serial at selected
+  obtain ⟨serial, bound, selected⟩ := bounded
   have fresh := reactiveFreshSlot_spec view serial selected
   unfold canonicalFreshSlot
   change boundedCanonicalSlot count _ _ =
@@ -75,5 +64,20 @@ theorem boundedCanonicalSlot_history (timeouts : EventTimeouts graph)
     exact Bool.eq_false_iff.mpr (fun found =>
       Nat.find_min existsFresh earlier ((preparedSlotFresh_spec _ _).mp found))
   · contradiction
+
+/-- At every initialized service history, finite slot selection implements the
+canonical packet client's choice, including after arbitrary player deviations. -/
+theorem boundedCanonicalSlot_history (timeouts : EventTimeouts graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (inputs : PMF graph.Inputs) (horizon : Nat)
+    (scheduler : ((reactiveApplication timeouts) leaks).Scheduler)
+    (control : ((reactiveApplication timeouts) leaks).Control)
+    (trace : (((reactiveApplication timeouts) leaks).protocol (inputs.map State.initial)
+      horizon scheduler).Trace (some control)) (who : Player) :
+    let view := (control.execution.observe ((reactiveApplication timeouts) leaks) who).application
+    boundedCanonicalSlot (view.publicView.bindingCount who) (control.execution.logs who).length
+      (preparedSlotFresh view) = canonicalFreshSlot who view := by
+  exact boundedCanonicalSlot_eq who _ _ (reactiveFreshSlot_le_recall timeouts leaks
+    control.execution who (candidateRecall_history timeouts leaks inputs horizon scheduler trace))
 
 end Vegas.EventGraphRuntime
