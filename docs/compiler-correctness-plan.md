@@ -18,7 +18,7 @@ not assume equilibrium.
 | Source profile to graph client | `Vegas.compileEventProfile_realizable` | A source profile with authentic disclosures supplies graph-realizable actions at every reachable, ready event. Disclosure normalization supplies authenticity for arbitrary source profiles. |
 | Source to ledger | `Vegas.sourceServiceClientPolicy_source_observation_distribution_eq` | The ledger-to-graph law composed with the source-to-graph law: those same physical clients preserve the joint typed-state/default source law for every source profile, without a finite wire catalogue, equilibrium, audit, utility-bound or independent-prior premise. |
 | Original compiled profile to ledger | `Vegas.sourceServiceClientPolicy_graph_observation_distribution_eq` | The clients and canonical execution of the original profile's compiled policy have the same law through every total reader of typed state and public defaults. |
-| Raw unilateral deviation to source | `Vegas.asyncDeviation_readout_distribution` | Every physical policy against first-turn clients has one behavioral source deviation with the same typed-state/full-default-history law on the sequential compiled service graph. No finite-player or wire-value catalogue premise. |
+| Raw unilateral deviation to source | `Vegas.asyncClientDeviation_prefix_and_readout_distributions_eq` | One source deviation against the original opponents matches the typed cells and public default record at every event boundary and at completion. The terminal-only form `Vegas.asyncClientDeviation_readout_distribution` also covers infinite player types. |
 
 The owners are [graph compilation](../Vegas/Compile/EventGraphScheduling.lean),
 [operational refinement](../Vegas/Pending/GraphRefinement.lean) and

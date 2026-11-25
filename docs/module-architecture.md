@@ -210,11 +210,15 @@ that the compiled opponents satisfy the graph simulation hypothesis on every
 reachable ready configuration. The [source deviation law](../Vegas/Game/AsyncDeviationDistribution.lean)
 applies that simulation, reads the terminal graph configuration and
 backtranslates its single graph policy across the whole input distribution.
-For finite player types the same source policy also matches the decoded full
-protocol state at every instruction boundary. Its terminal law applies to
-arbitrary player types. Native Nash correspondence and its
-program-payment specialization use this same observation and actual-history
-settlement ranges (`AsyncServiceSpec.SettlementRange`). The concrete monetary
+For finite player types the same source policy matches all typed cells and the
+public default record at every instruction boundary under the original opponents,
+even when they prescribe guard-invalid reveals. Exact private action recall is
+also preserved when those opponents prescribe only effective disclosures.
+Both claims use the deployed first-turn clients. The terminal typed-state and
+public-default law applies to arbitrary player types. Exact first-turn Nash correspondence and its
+program-payment specialization apply to arbitrary real-valued utilities on the
+finite games. The deferred-client estimate uses an actual-history settlement
+range (`AsyncServiceSpec.SettlementRange`) to price the deviation in total variation. The concrete monetary
 runtime retains the joint typed-state/default-history/cash law. Native
 sequential preservation and the uniform semantic client compiler use
 this same runtime and preserve the complete source configuration and payoff law.
