@@ -272,8 +272,7 @@ theorem runtime_source_isNash_iff (bonus : Int) (choice : Bool) :
   have correspondence := (service bonus).payment_firstTurnClientProfile_isεNash_iff
     (admission bonus)
     (parameter bonus) (runtimeValuation bonus) (auditSample bonus) (audit_authentic bonus)
-    deposit (fun _ => by norm_num [deposit]) 1 (fun _ => -|(bonus : ℝ) - 1| - 1)
-    (2 * |(bonus : ℝ) - 1| + 1) (realized_payoff_bounds bonus) 0 (sourceProfile bonus choice)
+    deposit (fun _ => by norm_num [deposit]) 1 0 (sourceProfile bonus choice)
   rw [← isNash_iff_isεNash_zero, ← isNash_iff_isεNash_zero] at correspondence
   exact correspondence
 

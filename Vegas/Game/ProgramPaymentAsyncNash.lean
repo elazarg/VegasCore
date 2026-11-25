@@ -253,10 +253,7 @@ theorem payment_firstTurnClientProfile_isεNash_iff {Parameter : Type}
       PMF (List (SettledEvidence service.setup service.setup.informationDependencies)))
     (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
     (deposit : Player → ℝ) (nonnegative : ∀ who, 0 ≤ deposit who)
-    (turns : Nat) (low : Player → ℝ) (range : ℝ)
-    (within : service.SettlementRange parameter
-      (service.setup.parameterPaymentUtility valuation) sample deposit low
-      (fun _ => range))
+    (turns : Nat)
     (ε : ℝ) (source : Profile (service.sourceModel admission).behavioralSignature) :
     IsεNash (service.gameForm service.rawMenu)
       (fun history who => service.paymentExpectedUtility parameter valuation sample deposit
@@ -271,7 +268,7 @@ theorem payment_firstTurnClientProfile_isεNash_iff {Parameter : Type}
   rw [service.paymentExpectedUtility_eq]
   exact service.isεNash_firstTurnClientProfile_iff admission parameter
     (service.setup.parameterPaymentUtility valuation) sample authentic deposit
-    nonnegative turns low range within ε source
+    nonnegative turns ε source
 
 /-- For every admitted source profile, the runtime preserves the joint typed
 terminal cells, public default history and monetary receipt vector. This cash law

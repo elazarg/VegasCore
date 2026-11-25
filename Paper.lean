@@ -1004,15 +1004,14 @@ theorem Vegas.Paper.isεNash_rawClientProfile_approximate
 
 /-- Acting at the first opportunity preserves and reflects the same Nash error. -/
 theorem Vegas.Paper.isεNash_firstTurnClientProfile_iff
-    (turns : Nat) (low : Player → ℝ) (range : ℝ)
-    (within : service.SettlementRange parameter utility sample deposit low (fun _ => range))
+    (turns : Nat)
     (ε : ℝ) (source : Profile (service.sourceModel admission).behavioralSignature) :
     ledgerNash service parameter utility sample deposit ε
       (service.clientProfile admission service.rawMenu
         (firstTurnTiming service.setup turns service.setup.informationDependencies) source) ↔
       sourceNash service admission parameter utility ε source := by
   exact service.isεNash_firstTurnClientProfile_iff admission parameter utility
-    sample authentic deposit nonnegative turns low range within ε source
+    sample authentic deposit nonnegative turns ε source
 
 /-- info: 'Vegas.Paper.isεNash_firstTurnClientProfile_iff' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
@@ -1098,6 +1097,8 @@ theorem Vegas.Paper.intended_rawClientProfile_isεNash
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.intended_rawClientProfile_isεNash
 
+omit within
+
 /-- First-opportunity clients retain the intended Nash error and exact joint payoff law. -/
 theorem Vegas.Paper.intended_firstTurnClientProfile_isεNash (turns : Nat) :
     let clients := service.clientProfile (CommitmentInterface.values service.setup.program)
@@ -1108,7 +1109,7 @@ theorem Vegas.Paper.intended_firstTurnClientProfile_isεNash (turns : Nat) :
       ledgerJointDistribution service parameter forfeited sample deposit clients =
         intendedJointDistribution service parameter utility intended := by
   exact service.intended_firstTurnClientProfile_isεNash wellFormed parameter utility
-    forfeit range sample authentic deposit nonnegative turns low spread within intended source
+    forfeit range sample authentic deposit nonnegative turns intended source
     agrees ε equilibrium
 
 /-- info: 'Vegas.Paper.intended_firstTurnClientProfile_isεNash' depends on axioms:
