@@ -20,6 +20,15 @@ results and paper-facing results use the same strict proof policy.
 | Tools | Lean-native paper validation; theorem libraries cannot import this layer. |
 | Tests and examples | Retained semantic regressions and concrete consumers. |
 
+The [concrete expression instance](../Vegas/Expr/Simple.lean) supports signed 32-bit
+frontend arithmetic, ordering and conversion of bounded integer values. The
+[frontend integration tests](https://github.com/elazarg/vegas/blob/d546328/src/test/kotlin/vegas/backend/vegascore/SourceProgramTest.kt)
+evaluate emitted guards and public payouts. For the first-price private-value
+auction, Lean checks a settlement formula for every pair of successful or
+failed publications and compares all sixteen cases with the Kotlin IR evaluator.
+The strategic second-price auction in this repository has its own typed core
+program and equilibrium proof.
+
 Source execution has one configuration-based evaluator, `SourceProgram.runFrom`.
 The source protocol uses the same sample, binding and revelation successors;
 it does not reproduce their state updates in another interpreter.
