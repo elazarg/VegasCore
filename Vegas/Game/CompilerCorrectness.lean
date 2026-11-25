@@ -3,8 +3,7 @@ module
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 public import Vegas.Game.SourceServiceClientPolicy
-public import Vegas.Game.SourceServiceSiteBridge
-public import Vegas.Game.ServiceHonestLaw
+public import Vegas.Game.SourceServiceFirstTurnCompletion
 public import Vegas.Compile.EventGraphCanonical
 public import Interaction.ReactiveRestrictedContinuation
 
@@ -30,6 +29,37 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (service : AsyncServiceSpec Player L)
   (admission : CommitmentInterface service.setup.program)
 
+/-- The bounded clients realize the full canonical graph configuration distribution,
+including recorded actions, for the disclosure-normalized compiled profile. -/
+theorem firstTurnClientProfile_config_law (turns : Nat)
+    (source : Profile (service.sourceModel admission).behavioralSignature) :
+    (service.run service.rawMenu
+      (service.clientProfile admission service.rawMenu
+        (firstTurnTiming service.setup turns service.setup.informationDependencies) source)).map
+        (fun final => final.state.map (fun control => control.execution.application.config)) =
+      ((service.setup.informationGraph.canonicalGame
+          (service.setup.initialLaw.map service.setup.eventInputs)).play
+        (compileEventProfile service.setup.program (normalizeDisclosureProfile service.setup.program
+          (service.setup.decodeBehavioralProfile admission source)))).map
+            (fun terminal => some terminal.val) := by
+  let setup := service.setup
+  let app := application setup ⟨service.duration⟩ service.leaks
+  let original := setup.decodeBehavioralProfile admission source
+  let timing := firstTurnTiming setup turns setup.informationDependencies
+  let clients := serviceClientPolicy setup setup.informationDependencies service.duration
+    service.leaks service.bound turns timing (normalizeDisclosureProfile setup.program original)
+  have states := service.rawMenu.run_restrict_eq_roundsFrom
+    (initialLaw setup) service.horizon service.scheduler clients
+    (service.rawMenu_admits admission timing source)
+  have bounded := congrArg (PMF.map (fun state : app.ProtocolState =>
+    state.map fun control => control.execution.application.config)) states
+  have physical := congrArg (PMF.map some) (sourceServiceClientPolicy_canonicalGraph_law
+    (turns := turns) ⟨service.duration⟩ service.leaks service.scheduler service.delay service.bound
+    original service.contract service.timely)
+  simp only [PMF.map_comp, Function.comp_def, ReactiveApplication.finished, Option.map_some]
+    at bounded physical
+  exact bounded.trans physical
+
 /-- Every total observation of the typed terminal state and public defaults has
 its exact source law under the actual bounded first-turn clients. -/
 theorem firstTurnClientProfile_outcome_law {Outcome : Type*}
@@ -51,49 +81,18 @@ theorem firstTurnClientProfile_outcome_law {Outcome : Type*}
     service.duration service.leaks
     service.bound turns (firstTurnTiming service.setup turns service.setup.informationDependencies)
       (normalizeDisclosureProfile service.setup.program original)
-  have physical := service.rawMenu.run_restrict_eq_finish
+  have states := service.rawMenu.run_restrict_eq_roundsFrom
     (serviceInitialLaw service.setup service.setup.informationDependencies) service.horizon
-      service.scheduler clients
-    (service.rawMenu_admits admission (firstTurnTiming service.setup turns
-      service.setup.informationDependencies) source)
-    (2 * service.horizon + 1)
-    (service.rawMenu.protocol (serviceInitialLaw service.setup
-      service.setup.informationDependencies)
-      service.horizon service.scheduler).initHistory le_rfl
-  have initialized : (service.rawMenu.protocol (serviceInitialLaw service.setup
-    service.setup.informationDependencies)
-      service.horizon service.scheduler).initHistory.state = none := rfl
-  rw [initialized] at physical
-  have states : (service.run service.rawMenu
-      (service.clientProfile admission service.rawMenu
-        (firstTurnTiming service.setup turns service.setup.informationDependencies) source)).map
-          (fun final => final.state) =
-      (app.roundsFrom (serviceInitialLaw service.setup service.setup.informationDependencies)
-        service.scheduler clients
-        service.horizon).map app.finished := by
-    change ((service.rawMenu.information (serviceInitialLaw service.setup
-      service.setup.informationDependencies)
-        service.horizon service.scheduler).runBehavioralFrom
-      (fun who => service.rawMenu.restrictPolicy (serviceInitialLaw service.setup
-        service.setup.informationDependencies)
-        service.horizon service.scheduler who (clients who))
-      (2 * service.horizon + 1)
-      (service.rawMenu.protocol (serviceInitialLaw service.setup
-        service.setup.informationDependencies)
-        service.horizon service.scheduler).initHistory).map ExecutionProtocol.History.state = _
-    simpa only [ReactiveApplication.finish, ReactiveApplication.roundsFrom, PMF.map_bind]
-      using physical
+    service.scheduler clients (service.rawMenu_admits admission
+      (firstTurnTiming service.setup turns service.setup.informationDependencies) source)
   have projected := congrArg (PMF.map (fun final : app.ProtocolState =>
     (serviceSourceReadout service.setup service.setup.informationDependencies service.duration
       service.leaks final).map
       fun terminal => observe (terminal.state, terminal.defaults))) states
   simp only [PMF.map_comp, Function.comp_def] at projected
-  apply projected.trans
-  apply sourceServiceClientPolicy_outcome_law_of_firstTurn original ?_ observe
-  exact firstTurn_readout_law service.setup service.leaks service.contract service.timely
-    turns (normalizeDisclosureProfile service.setup.program original)
-      (fun who => BehavioralPolicy.normalizeDisclosures_authentic service.setup.program
-        (original who))
+  exact projected.trans (sourceServiceClientPolicy_outcome_law (turns := turns)
+    ⟨service.duration⟩ service.leaks service.scheduler service.delay service.bound
+    original service.contract service.timely observe)
 
 /-- The bounded ledger clients and the canonical compiled graph have the same
 joint law of typed state and public defaults under its asynchronous scheduler. -/

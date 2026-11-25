@@ -57,7 +57,7 @@ theorem runUntil_reference_focal
         deviation)
     (fun final => event ∈ final.application.config.cut.completed) count execution =
     (serviceApplication setup deps duration leaks).runUntil scheduler
-    (focalPlayers setup leaks who deviation)
+    (focalPlayers (serviceTimeouts setup deps duration) leaks who deviation)
         (fun final => event ∈ final.application.config.cut.completed) count execution := by
   let app := serviceApplication setup deps duration leaks
   apply app.runUntil_congr_of_agree scheduler _ _ _
@@ -397,7 +397,8 @@ theorem lastOwned_phase_patched
     rw [owned]
     exact ⟨readyAt seed supported pending, inactive⟩
   have focalEq (seed : Seed) (supported : seed ∈ prior.support) :
-      phase seed = app.runUntilHorizon scheduler (focalPlayers setup leaks who deviation)
+      phase seed = app.runUntilHorizon scheduler
+        (focalPlayers (serviceTimeouts setup deps duration) leaks who deviation)
         (fun current => event ∈ current.application.config.cut.completed) horizon
         (execution seed) :=
     runUntil_reference_focal scheduler bound turns timing reference who deviation event

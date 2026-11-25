@@ -195,14 +195,19 @@ theorem foreignRound_readout_congr (scheduler :
           (handle (serviceTimeouts setup deps duration) right.application ⟨message.id,
               message.payload.call⟩)) :
     ((serviceApplication setup deps duration leaks).round scheduler
-        (Function.update (focalPlayers setup leaks who deviation) owner first) left).map
+        (Function.update
+          (focalPlayers (serviceTimeouts setup deps duration) leaks who deviation) owner first)
+        left).map
         (foreignReadout (leaks := leaks) who owner event) =
       ((serviceApplication setup deps duration leaks).round scheduler
-        (Function.update (focalPlayers setup leaks who deviation) owner second) right).map
+        (Function.update
+          (focalPlayers (serviceTimeouts setup deps duration) leaks who deviation) owner second)
+        right).map
         (foreignReadout (leaks := leaks) who owner event) := by
   let app := serviceApplication setup deps duration leaks
   let players := fun policy : app.Policy =>
-    Function.update (focalPlayers setup leaks who deviation) owner policy
+    Function.update
+      (focalPlayers (serviceTimeouts setup deps duration) leaks who deviation) owner policy
   have sameTraffic : (bindingTraffic (serviceTimeouts setup deps duration)) leaks who left =
       (bindingTraffic (serviceTimeouts setup deps duration)) leaks who right := congrArg
         Prod.fst same
@@ -885,19 +890,22 @@ theorem binding_stopped_readout_congr
     (same : foreignReadout (leaks := leaks) focal owner event leftStart =
       foreignReadout (leaks := leaks) focal owner event rightStart) :
     ((serviceApplication setup deps duration leaks).runUntil scheduler
-      (Function.update (focalPlayers setup leaks focal deviation) owner
+      (Function.update
+        (focalPlayers (serviceTimeouts setup deps duration) leaks focal deviation) owner
         (decidedTurnPolicy setup leaks bound owner event
           (cast (congrArg EventField.Action outputEq.symm) leftChoice)))
       (fun final => event ∈ final.application.config.cut.completed) count leftStart).map
         (foreignReadout (leaks := leaks) focal owner event) =
     ((serviceApplication setup deps duration leaks).runUntil scheduler
-      (Function.update (focalPlayers setup leaks focal deviation) owner
+      (Function.update
+        (focalPlayers (serviceTimeouts setup deps duration) leaks focal deviation) owner
         (decidedTurnPolicy setup leaks bound owner event
           (cast (congrArg EventField.Action outputEq.symm) rightChoice)))
       (fun final => event ∈ final.application.config.cut.completed) count rightStart).map
         (foreignReadout (leaks := leaks) focal owner event) := by
   let app := serviceApplication setup deps duration leaks
-  let players := fun choice => Function.update (focalPlayers setup leaks focal deviation) owner
+  let players := fun choice => Function.update
+    (focalPlayers (serviceTimeouts setup deps duration) leaks focal deviation) owner
     (decidedTurnPolicy setup leaks bound owner event
       (cast (congrArg EventField.Action outputEq.symm) choice))
   let invariant := fun (start : app.Execution) (count : Nat) (current : app.Execution) =>
@@ -1019,13 +1027,15 @@ theorem sourceService_binding_traffic_congr
     (same : (bindingTraffic timeouts) leaks focal left = (bindingTraffic timeouts) leaks focal
       right) :
     (((application setup timeouts leaks).runUntilHorizon scheduler
-      (Function.update (focalPlayers setup leaks focal deviation) owner
+      (Function.update
+        (focalPlayers timeouts leaks focal deviation) owner
         (decidedTurnPolicy setup leaks bound owner event
           (cast (congrArg EventField.Action outputEq.symm) leftChoice)))
       (fun final => event ∈ final.application.config.cut.completed) horizon left).map
         ((bindingTraffic timeouts) leaks focal)) =
     (((application setup timeouts leaks).runUntilHorizon scheduler
-      (Function.update (focalPlayers setup leaks focal deviation) owner
+      (Function.update
+        (focalPlayers timeouts leaks focal deviation) owner
         (decidedTurnPolicy setup leaks bound owner event
           (cast (congrArg EventField.Action outputEq.symm) rightChoice)))
       (fun final => event ∈ final.application.config.cut.completed) horizon right).map
@@ -1123,7 +1133,7 @@ theorem sourceService_foreign_fixedRun
       (fun final => event ∈ final.application.config.cut.completed) horizon execution) =
     (application setup timeouts leaks).runUntilHorizon scheduler
       (Function.update
-        (focalPlayers (duration := timeouts.duration) setup leaks focal deviation) owner
+        (focalPlayers timeouts leaks focal deviation) owner
         (decidedTurnPolicy setup leaks bound owner event action))
       (fun final => event ∈ final.application.config.cut.completed) horizon execution := by
   intro players baseline _member
@@ -1139,7 +1149,7 @@ theorem sourceService_foreign_fixedRun
       other = event := fun cut _ ready otherReady =>
     setup.informationGraph.sequentialize_ready_unique cut otherReady ready
   apply app.runUntil_congr_of_agree scheduler (Function.update players owner member)
-    (Function.update (focalPlayers setup leaks focal deviation) owner
+    (Function.update (focalPlayers timeouts leaks focal deviation) owner
       (decidedTurnPolicy setup leaks bound owner event action))
     (fun final => event ∈ final.application.config.cut.completed)
     (fun current => event ∉ current.application.config.cut.completed →
@@ -1215,7 +1225,7 @@ theorem sourceService_foreign_mixture
       (fun final => event ∈ final.application.config.cut.completed) horizon execution) =
     law.bind fun action => (application setup timeouts leaks).runUntilHorizon scheduler
       (Function.update
-        (focalPlayers (duration := timeouts.duration) setup leaks focal deviation) owner
+        (focalPlayers timeouts leaks focal deviation) owner
         (decidedTurnPolicy setup leaks bound owner event action))
       (fun final => event ∈ final.application.config.cut.completed) horizon execution := by
   intro players
@@ -1240,7 +1250,7 @@ theorem sourceService_foreign_mixture
       other = event := fun cut _ ready otherReady =>
     setup.informationGraph.sequentialize_ready_unique cut otherReady ready
   apply app.runUntil_congr_of_agree scheduler (Function.update players owner member)
-    (Function.update (focalPlayers setup leaks focal deviation) owner
+    (Function.update (focalPlayers timeouts leaks focal deviation) owner
       (decidedTurnPolicy setup leaks bound owner event action))
     (fun final => event ∈ final.application.config.cut.completed)
     (fun current => event ∉ current.application.config.cut.completed →
@@ -1576,13 +1586,15 @@ private theorem opening_stopped_readout_congr
     (same : foreignReadout (leaks := leaks) focal owner event leftStart =
       foreignReadout (leaks := leaks) focal owner event rightStart) :
     ((serviceApplication setup deps duration leaks).runUntil scheduler
-      (Function.update (focalPlayers setup leaks focal deviation) owner
+      (Function.update
+        (focalPlayers (serviceTimeouts setup deps duration) leaks focal deviation) owner
         (decidedTurnPolicy setup leaks bound owner event
           (cast (congrArg EventField.Action outputEq.symm) true)))
       (fun final => event ∈ final.application.config.cut.completed) count leftStart).map
         (foreignReadout (leaks := leaks) focal owner event) =
     ((serviceApplication setup deps duration leaks).runUntil scheduler
-      (Function.update (focalPlayers setup leaks focal deviation) owner
+      (Function.update
+        (focalPlayers (serviceTimeouts setup deps duration) leaks focal deviation) owner
         (decidedTurnPolicy setup leaks bound owner event
           (cast (congrArg EventField.Action outputEq.symm) true)))
       (fun final => event ∈ final.application.config.cut.completed) count rightStart).map
@@ -1591,7 +1603,8 @@ private theorem opening_stopped_readout_congr
     (show (serviceGraph setup deps).Solitary event from
       fun cut _ otherReady ready => alone cut _ ready otherReady).ownerSolitary
   let app := serviceApplication setup deps duration leaks
-  let players := Function.update (focalPlayers setup leaks focal deviation) owner
+  let players := Function.update
+    (focalPlayers (serviceTimeouts setup deps duration) leaks focal deviation) owner
     (decidedTurnPolicy setup leaks bound owner event
       (cast (congrArg EventField.Action outputEq.symm) true))
   let invariant := fun (start : app.Execution) (count : Nat) (current : app.Execution) =>
@@ -1706,13 +1719,15 @@ theorem sourceService_opening_traffic_congr
     (same : (bindingTraffic timeouts) leaks focal left = (bindingTraffic timeouts) leaks focal
       right) :
     (((application setup timeouts leaks).runUntilHorizon scheduler
-      (Function.update (focalPlayers setup leaks focal deviation) owner
+      (Function.update
+        (focalPlayers timeouts leaks focal deviation) owner
         (decidedTurnPolicy setup leaks bound owner event
           (cast (congrArg EventField.Action outputEq.symm) true)))
       (fun final => event ∈ final.application.config.cut.completed) horizon left).map
         ((bindingTraffic timeouts) leaks focal)) =
     (((application setup timeouts leaks).runUntilHorizon scheduler
-      (Function.update (focalPlayers setup leaks focal deviation) owner
+      (Function.update
+        (focalPlayers timeouts leaks focal deviation) owner
         (decidedTurnPolicy setup leaks bound owner event
           (cast (congrArg EventField.Action outputEq.symm) true)))
       (fun final => event ∈ final.application.config.cut.completed) horizon right).map
@@ -1879,7 +1894,9 @@ private theorem silent_foreign_stopped_readout_congr
     (same : foreignReadout (leaks := leaks) focal owner event leftStart =
       foreignReadout (leaks := leaks) focal owner event rightStart) :
     let app := serviceApplication setup deps duration leaks
-    let players := Function.update (focalPlayers setup leaks focal deviation) owner app.silentPolicy
+    let players := Function.update
+      (focalPlayers (serviceTimeouts setup deps duration) leaks focal deviation) owner
+      app.silentPolicy
     (app.runUntil scheduler players (fun final => event ∈ final.application.config.cut.completed)
       count leftStart).map (foreignReadout (leaks := leaks) focal owner event) =
     (app.runUntil scheduler players (fun final => event ∈ final.application.config.cut.completed)
@@ -1995,13 +2012,15 @@ theorem sourceService_withholding_traffic_congr
     (same : (bindingTraffic timeouts) leaks focal left = (bindingTraffic timeouts) leaks focal
       right) :
     (((application setup timeouts leaks).runUntilHorizon scheduler
-      (Function.update (focalPlayers setup leaks focal deviation) owner
+      (Function.update
+        (focalPlayers timeouts leaks focal deviation) owner
         (decidedTurnPolicy setup leaks bound owner event
           (cast (congrArg EventField.Action outputEq.symm) false)))
       (fun final => event ∈ final.application.config.cut.completed) horizon left).map
         ((bindingTraffic timeouts) leaks focal)) =
     (((application setup timeouts leaks).runUntilHorizon scheduler
-      (Function.update (focalPlayers setup leaks focal deviation) owner
+      (Function.update
+        (focalPlayers timeouts leaks focal deviation) owner
         (decidedTurnPolicy setup leaks bound owner event
           (cast (congrArg EventField.Action outputEq.symm) false)))
       (fun final => event ∈ final.application.config.cut.completed) horizon right).map

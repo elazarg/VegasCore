@@ -3,6 +3,7 @@ module
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 public import Vegas.Game.SourceServiceReachedDecoding
+public import Vegas.Game.RevealService
 public import Vegas.Pending.ReactiveGraphSteps
 public import Vegas.Source.FailedBindingDeviation
 
@@ -164,8 +165,8 @@ theorem decodedState_history_of_stepClosed
           let residual := SourceResidual.initial setup profile initial
           refine ⟨0, ⟨residual⟩, fun point decoded => ?_⟩
           change sourceServicePrefix? setup 0
-            (EventGraphRuntime.State.initial (graph := setup.informationGraph)
-              (setup.eventInputs initial)).config = some point at decoded
+            (EventGraph.Config.initial (graph := setup.informationGraph)
+              (setup.eventInputs initial)) = some point at decoded
           rw [residual.decode, Option.some.injEq] at decoded
           subst decoded
           exact initialized initial member

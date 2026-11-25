@@ -55,6 +55,7 @@ public import Vegas.Source.Utility
 public import Vegas.Source.Setup
 public import Vegas.Source.SetupProtocol
 public import Vegas.Source.SetupProtocolBehavioral
+public import Vegas.Source.BehavioralStateKernel
 public import Vegas.Source.SetupProtocolEvaluation
 public import Vegas.Source.SetupProtocolRecall
 public import Vegas.Source.ValueBinding

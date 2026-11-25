@@ -2,12 +2,13 @@ module
 
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-public import Vegas.Game.SourceServiceCheckpoint
+public import Vegas.Compile.EventGraphCheckpoint
 public import Vegas.Compile.EventGraphReadout
 public import Vegas.Compile.EventGraphParameterReadout
 public import Vegas.Compile.EventGraphPolicy
 public import Vegas.Source.SetupProtocolEvaluation
 public import Vegas.Source.DefaultControl
+public import Vegas.Source.ProtocolBehavioralPolicy
 
 @[expose] public section
 
@@ -24,8 +25,6 @@ noncomputable section
 namespace Vegas
 
 open SourceProgram
-
-open EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
@@ -169,6 +168,71 @@ theorem decodeViewPrefix?_playerStore {graph : EventGraph Player L} (who : Playe
       simp only [decodeViewPrefix?, decodeViewPrefix?_playerStore who count next]
   | count + 1, _, _, .reveal _ _ _ _ _ _ next, refs, outputs, store, own, defaults => by
       simp only [decodeViewPrefix?, decodeViewPrefix?_playerStore who count next]
+
+/-- The active policy table reproduces the source action law at the view
+decoded at that event's rank. -/
+theorem compilePolicyTable_map_decodeEventAction
+    {Field : Type} [DecidableEq Field] {layout : Field → EventGraph.EventField Player L}
+    (who : Player) {Γ : SourceCtx Player L} {names : Finset VarId}
+    (program : SourceProgram Player L Γ names) :
+    ∀ (refs : ContextRefs layout Γ)
+      (outputs : ∀ event, EventGraph.FieldRef layout (outputLayout program event))
+      (policy : BehavioralPolicy who program) (event : Fin (eventCount program))
+      (store : EventGraph.Store layout) (defaults : DefaultHistory Player)
+      (history : List (OwnAction Player L)) (view : ProtocolView who program),
+      eventOwner? program event = some who → who ∉ defaults.defaulted →
+      decodeViewPrefix? who program refs outputs event.val store history defaults = some view →
+      (compilePolicyTable program refs outputs who policy event store defaults history).map
+          (decodeEventAction program event) = policy.protocolAction program view := by
+  induction program with
+  | ret payoff =>
+      intro refs outputs policy event
+      exact nomatch event
+  | sample name fresh law next ih =>
+      intro refs outputs policy event
+      refine Fin.cases ?_ (fun tail => ?_) event
+      · intro store defaults history view owned
+        cases owned
+      · intro store defaults history view owned active decoded
+        simp only [Fin.val_succ, decodeViewPrefix?, Option.map_eq_some_iff] at decoded
+        obtain ⟨rest, read, rfl⟩ := decoded
+        exact ih _ _ _ tail _ _ _ rest owned active read
+  | commit name owner fresh guard next ih =>
+      intro refs outputs policy event
+      refine Fin.cases ?_ (fun tail => ?_) event
+      · intro store defaults history view owned active decoded
+        have same : owner = who := Option.some.inj owned
+        simp only [Fin.val_zero, decodeViewPrefix?, Option.map_eq_some_iff] at decoded
+        obtain ⟨observation, read, rfl⟩ := decoded
+        have law := compilePolicyTable_commit_of_decode refs outputs policy same store defaults
+          active history observation read
+        refine (congrArg (PMF.map (decodeEventAction _ _)) law).trans ?_
+        simp only [BehavioralPolicy.protocolAction,
+          ProtocolView.entry, Sum.elim_inl, dite_eq_left same, DecisionView.defaulted,
+          dite_eq_left active]
+        rfl
+      · intro store defaults history view owned active decoded
+        simp only [Fin.val_succ, decodeViewPrefix?, Option.map_eq_some_iff] at decoded
+        obtain ⟨rest, read, rfl⟩ := decoded
+        exact ih _ _ _ tail _ _ _ rest owned active read
+  | reveal published owner name fresh selected unresolved next ih =>
+      intro refs outputs policy event
+      refine Fin.cases ?_ (fun tail => ?_) event
+      · intro store defaults history view owned active decoded
+        have same : owner = who := Option.some.inj owned
+        simp only [Fin.val_zero, decodeViewPrefix?, Option.map_eq_some_iff] at decoded
+        obtain ⟨observation, read, rfl⟩ := decoded
+        have law := compilePolicyTable_reveal_of_decode refs outputs policy same store defaults
+          active history observation read
+        refine (congrArg (PMF.map (decodeEventAction _ _)) law).trans ?_
+        simp only [BehavioralPolicy.protocolAction,
+          ProtocolView.entry, Sum.elim_inl, dite_eq_left same, DecisionView.defaulted,
+          dite_eq_left active]
+        rfl
+      · intro store defaults history view owned active decoded
+        simp only [Fin.val_succ, decodeViewPrefix?, Option.map_eq_some_iff] at decoded
+        obtain ⟨rest, read, rfl⟩ := decoded
+        exact ih _ _ _ tail _ _ _ rest owned active read
 
 /-- The decoded actor is the instruction owner unless that owner has publicly defaulted. -/
 theorem decodeSourcePrefix?_actor (who : Player) {Field : Type} [DecidableEq Field]
@@ -401,13 +465,13 @@ theorem decodeSourcePrefix?_defaults {Field : Type} [DecidableEq Field]
       obtain ⟨point, read, rfl⟩ := Option.map_eq_some_iff.mp decoded
       exact decodeSourcePrefix?_defaults count next _ _ _ _ _ _ _ point read
 
-/-- The deterministic readout of a configuration of the service graph of any
+/-- The deterministic readout of a compiled graph configuration for any
 dependency choice into the original initialized source protocol. Each owner's
 completions keep source rank in every dependency choice, so the chronological completions
 decode to the source history. -/
 def serviceSourcePrefix? (setup : Setup (Player := Player) (L := L))
-    (deps : setup.dataflowGraph.Dependencies) (rank : Nat) (config : (serviceGraph setup
-      deps).Config) :
+    (deps : setup.dataflowGraph.Dependencies) (rank : Nat)
+    (config : (setup.dataflowGraph.withDependencies deps).Config) :
     setup.ProtocolState :=
   decodeSourcePrefix? setup.program
     (ContextRefs.initial setup.context (outputLayout setup.program)) []
@@ -423,7 +487,7 @@ abbrev sourceServicePrefix? (setup : Setup (Player := Player) (L := L)) :
 def sourceContinuation (setup : Setup (Player := Player) (L := L))
     {deps : setup.dataflowGraph.Dependencies} (profile : BehavioralProfile setup.program) (rank :
       Nat)
-    (config : (serviceGraph setup deps).Config) :
+    (config : (setup.dataflowGraph.withDependencies deps).Config) :
     PMF (Option (Config Player L setup.program.terminalCtx)) :=
   (setup.continuationLaw profile (serviceSourcePrefix? setup deps rank config)).map some
 
@@ -431,8 +495,8 @@ theorem serviceSourcePrefix?_initial (setup : Setup (Player := Player) (L := L))
     {deps : setup.dataflowGraph.Dependencies} (initial : State L setup.context) :
       serviceSourcePrefix? setup
     deps 0
-    (EventGraphRuntime.State.initial (graph := serviceGraph setup deps)
-        (setup.eventInputs initial)).config =
+    (EventGraph.Config.initial (graph := setup.dataflowGraph.withDependencies deps)
+        (setup.eventInputs initial)) =
       some (ProtocolState.entry setup.program (Config.initial initial)) := by
   unfold serviceSourcePrefix?
   rw [initial_history setup initial]
@@ -445,11 +509,12 @@ theorem SourceCheckpoint.decode
     {setup : Setup (Player := Player) (L := L)} {deps : setup.dataflowGraph.Dependencies}
     {Γ : SourceCtx Player L} {openNames : Finset VarId}
     (program : SourceProgram Player L Γ openNames)
-    {source : Config Player L Γ} {refs : ContextRefs (serviceGraph setup deps).layout Γ}
+    {source : Config Player L Γ}
+    {refs : ContextRefs (setup.dataflowGraph.withDependencies deps).layout Γ}
     {rank : Nat}
-    {native : (serviceGraph setup deps).Config}
+    {native : (setup.dataflowGraph.withDependencies deps).Config}
     (checkpoint : SourceCheckpoint setup source refs rank native)
-    (outputs : ∀ event, EventGraph.FieldRef (serviceGraph setup deps).layout
+    (outputs : ∀ event, EventGraph.FieldRef (setup.dataflowGraph.withDependencies deps).layout
         (outputLayout program event)) :
     decodeSourcePrefix? program refs source.registry source.revelations outputs 0 native.store
       (decodeHistory setup.program (native.history)) native.defaults =
@@ -464,17 +529,19 @@ prefix and imposes no strategy, posterior, or native-memory restriction. -/
 def SourcePrefixCheckpoint (setup : Setup (Player := Player) (L := L))
     {deps : setup.dataflowGraph.Dependencies} : {Γ : SourceCtx Player L} → {openNames : Finset
       VarId} →
-    (program : SourceProgram Player L Γ openNames) → ContextRefs (serviceGraph setup deps).layout
-    Γ → Registry Γ → Revelations Γ →
-    (∀ event, EventGraph.FieldRef (serviceGraph setup deps).layout (outputLayout program event)) →
-    Nat → Nat → ProtocolState program → (serviceGraph setup deps).Config → Prop
+    (program : SourceProgram Player L Γ openNames) →
+    ContextRefs (setup.dataflowGraph.withDependencies deps).layout Γ → Registry Γ → Revelations Γ →
+    (∀ event, EventGraph.FieldRef (setup.dataflowGraph.withDependencies deps).layout
+      (outputLayout program event)) →
+    Nat → Nat → ProtocolState program → (setup.dataflowGraph.withDependencies deps).Config → Prop
   | _, _, program, refs, registry, revelations, _, offset, 0, state, native =>
       ∃ source, state = ProtocolState.entry program source ∧ source.registry = registry ∧
         @source.revelations = @revelations ∧ SourceCheckpoint setup source refs offset native
   | _, _, .ret _, _, _, _, _, _, _ + 1, _, _ => False
   | _, _, .sample (payload := payload) _ _ _ next,
       refs, registry, revelations, outputs, offset, count + 1, state, native =>
-      let headRef : EventGraph.FieldRef (serviceGraph setup deps).layout (.publicData payload) := by
+      let headRef : EventGraph.FieldRef (setup.dataflowGraph.withDependencies deps).layout
+          (.publicData payload) := by
         simpa [outputLayout, eventCount] using outputs ⟨0, by simp [eventCount]⟩
       match state with
       | .inl _ => False
@@ -482,7 +549,7 @@ def SourcePrefixCheckpoint (setup : Setup (Player := Player) (L := L))
           revelations.weaken (fun tail => outputs tail.succ) (offset + 1) count rest native
   | _, _, .commit (payload := payload) name owner _ guard next,
       refs, registry, revelations, outputs, offset, count + 1, state, native =>
-      let headRef : EventGraph.FieldRef (serviceGraph setup deps).layout
+      let headRef : EventGraph.FieldRef (setup.dataflowGraph.withDependencies deps).layout
           (.binding owner payload) := by
         simpa [outputLayout, eventCount] using outputs ⟨0, by simp [eventCount]⟩
       let nextRegistry :=
@@ -494,7 +561,7 @@ def SourcePrefixCheckpoint (setup : Setup (Player := Player) (L := L))
           revelations.weaken (fun tail => outputs tail.succ) (offset + 1) count rest native
   | _, _, .reveal (payload := payload) _ _ _ _ selected _ next,
       refs, registry, revelations, outputs, offset, count + 1, state, native =>
-      let headRef : EventGraph.FieldRef (serviceGraph setup deps).layout
+      let headRef : EventGraph.FieldRef (setup.dataflowGraph.withDependencies deps).layout
           (.publication payload) := by
         simpa [outputLayout, eventCount] using outputs ⟨0, by simp [eventCount]⟩
       match state with
@@ -510,11 +577,13 @@ theorem SourcePrefixCheckpoint.decode {setup : Setup (Player := Player) (L := L)
     {deps : setup.dataflowGraph.Dependencies} : ∀ {Γ : SourceCtx Player L} {openNames : Finset
       VarId}
     (program : SourceProgram Player L Γ openNames)
-    (refs : ContextRefs (serviceGraph setup deps).layout Γ) (registry : Registry Γ)
+    (refs : ContextRefs (setup.dataflowGraph.withDependencies deps).layout Γ)
+    (registry : Registry Γ)
     (revelations : Revelations Γ)
-    (outputs : ∀ event, EventGraph.FieldRef (serviceGraph setup deps).layout
+    (outputs : ∀ event, EventGraph.FieldRef (setup.dataflowGraph.withDependencies deps).layout
         (outputLayout program event)) (offset count : Nat) (state : ProtocolState program)
-    (native : (serviceGraph setup deps).Config), SourcePrefixCheckpoint setup program refs registry
+    (native : (setup.dataflowGraph.withDependencies deps).Config),
+    SourcePrefixCheckpoint setup program refs registry
     revelations outputs offset count state native → decodeSourcePrefix? program refs registry
     revelations outputs count native.store (decodeHistory setup.program native.history)
       native.defaults = some state := by
@@ -582,7 +651,7 @@ theorem decodeSourcePrefix?_terminal_readout
 configuration decoder in every dependency choice. -/
 theorem serviceSourcePrefix?_terminal_readout
     (setup : Setup (Player := Player) (L := L)) (deps : setup.dataflowGraph.Dependencies)
-    (config : (serviceGraph setup deps).Config) :
+    (config : (setup.dataflowGraph.withDependencies deps).Config) :
     setup.protocolReadout (serviceSourcePrefix? setup deps (eventCount setup.program) config) =
       decodeConfig? setup.program setup.program
         (ContextRefs.initial setup.context (outputLayout setup.program))
@@ -608,7 +677,7 @@ theorem sourceServicePrefix?_terminal_readout
 availability suffices; no execution provenance or service premise is needed. -/
 theorem serviceSourcePrefix?_terminal
     (setup : Setup (Player := Player) (L := L)) (deps : setup.dataflowGraph.Dependencies)
-    (config : (serviceGraph setup deps).Config) (terminal : config.cut.Terminal) :
+    (config : (setup.dataflowGraph.withDependencies deps).Config) (terminal : config.cut.Terminal) :
     ∃ point, serviceSourcePrefix? setup deps (eventCount setup.program) config = some point ∧
       ProtocolState.terminal setup.program point := by
   obtain ⟨source, decoded, _⟩ := exists_decodeState_agrees (terminalRefs setup.program)
@@ -629,7 +698,8 @@ theorem serviceSourcePrefix?_terminal
 readout of that cut, including private decisions and the public default record. -/
 theorem sourceContinuation_terminal
     (setup : Setup (Player := Player) (L := L)) {deps : setup.dataflowGraph.Dependencies}
-    (profile : BehavioralProfile setup.program) (config : (serviceGraph setup deps).Config)
+    (profile : BehavioralProfile setup.program)
+    (config : (setup.dataflowGraph.withDependencies deps).Config)
     (terminal : config.cut.Terminal) :
     sourceContinuation setup profile (eventCount setup.program) config =
       PMF.pure (setup.protocolReadout

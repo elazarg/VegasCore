@@ -2,7 +2,7 @@ module
 
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-public import Vegas.Game.ReadyRosterService
+public import Vegas.Pending.ReadyRosterService
 public import Vegas.Game.SequentialPrior
 
 @[expose] public section
@@ -22,8 +22,8 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   (network : (NetworkPolicy (timeouts setup)) leaks)
 
 local notation "app" => application setup (Vegas.timeouts setup) leaks
-local notation "plan" => rosterPlan setup rosters
-local notation "schedule" => readyRosterScheduler setup leaks rosters network
+local notation "plan" => rosterPlan setup.dataflowGraph rosters
+local notation "schedule" => readyRosterScheduler setup.dataflowGraph leaks rosters network
 
 private theorem activation_tag (past : List (app).EnvironmentEntry) (view : (app).EnvironmentView)
     (who : Player) (chosen : .activate who ∈ (schedule past view).support) :
@@ -41,7 +41,8 @@ private theorem activation_tag (past : List (app).EnvironmentEntry) (view : (app
         subst owner
         exact ⟨tag, rfl, ready⟩
       · simp [readyRosterScheduler, found, ready] at chosen
-    | wire => exact (rosterPlan_no_wire setup rosters tag (List.mem_of_getElem? found)).elim
+    | wire =>
+      exact (rosterPlan_no_wire setup.dataflowGraph rosters tag (List.mem_of_getElem? found)).elim
     | tick =>
       simp only [readyRosterScheduler, rosterScheduler, found, PMF.mem_support_pure_iff] at chosen
       split at chosen <;> cases chosen
@@ -157,5 +158,47 @@ theorem readyRoster_singleSubmissionOpportunity [Fintype Player]
       have strict := (facts.2 who entry recorded event earlier).2 (by simp [active])
       omega
     · cases member
+
+/-- A ready roster with at most one activation in each event block provides at most
+one submission opportunity per event, for every legal one-packet history. -/
+theorem readyRoster_singleSubmissionOpportunity_of_length_le_one [Fintype Player]
+    (bounds : MessageBounds setup.informationGraph)
+    (single : ∀ event, (rosters event).length ≤ 1) :
+    SingleSubmissionOpportunity setup (Vegas.timeouts setup) leaks bounds (plan).length
+      schedule := by
+  apply readyRoster_singleSubmissionOpportunity setup leaks rosters network
+    (fun event => (rosterPlanPrefix setup.dataflowGraph rosters event.val).length) bounds
+  intro i event who found
+  have locate (n : Nat) (bounded : n ≤ setup.informationGraph.order.eventCount)
+      (atIndex : (rosterPlanPrefix setup.dataflowGraph rosters n)[i]? = some (event, .player who)) :
+      i = (rosterPlanPrefix setup.dataflowGraph rosters event.val).length := by
+    induction n with
+    | zero =>
+        simp only [rosterPlanPrefix, List.take_zero, List.flatMap_nil, List.getElem?_nil] at atIndex
+        cases atIndex
+    | succ n ih =>
+        let tag : setup.informationGraph.EventId := ⟨n, by omega⟩
+        rw [rosterPlanPrefix_succ setup.dataflowGraph rosters tag] at atIndex
+        by_cases early : i < (rosterPlanPrefix setup.dataflowGraph rosters n).length
+        · exact ih (by omega) ((List.getElem?_append_left early).symm.trans atIndex)
+        · rw [List.getElem?_append_right (Nat.le_of_not_gt early), List.getElem?_map] at atIndex
+          obtain ⟨instruction, chosen, equal⟩ := Option.map_eq_some_iff.mp atIndex
+          have tagEq : tag = event := congrArg Prod.fst equal
+          have instructionEq : instruction = .player who := congrArg Prod.snd equal
+          rw [instructionEq] at chosen
+          rw [← tagEq]
+          have inside : i - (rosterPlanPrefix setup.dataflowGraph rosters tag.val).length <
+              (rosters tag).length := by
+            by_contra! beyond
+            rw [rosterBlock_eq_ending, List.getElem?_append_right (by simpa using beyond)]
+              at chosen
+            have member := List.mem_of_getElem? chosen
+            unfold rosterPhaseEnding at member
+            cases actor : setup.informationGraph.actor? tag <;> simp [actor] at member
+          have one := single tag
+          change i - (rosterPlanPrefix setup.dataflowGraph rosters n).length < _ at inside
+          change i = (rosterPlanPrefix setup.dataflowGraph rosters n).length
+          omega
+  exact locate _ le_rfl ((rosterPlanPrefix_eventCount setup.dataflowGraph rosters) ▸ found)
 
 end Vegas

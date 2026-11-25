@@ -52,7 +52,8 @@ theorem reference_foreign_fixedRun {horizon : Nat}
       (Function.update (Function.update baseline focal deviation) owner member)
       (fun final => event ∈ final.application.config.cut.completed) horizon execution) =
     (serviceApplication setup deps duration leaks).runUntilHorizon scheduler
-      (Function.update (focalPlayers (duration := duration) setup leaks focal deviation) owner
+      (Function.update
+        (focalPlayers (serviceTimeouts setup deps duration) leaks focal deviation) owner
         (decidedTurnPolicy setup leaks bound owner event action))
       (fun final => event ∈ final.application.config.cut.completed) horizon execution := by
   intro baseline member
@@ -62,7 +63,8 @@ theorem reference_foreign_fixedRun {horizon : Nat}
   let players := Function.update baseline focal deviation
   unfold ReactiveApplication.runUntilHorizon
   apply app.runUntil_congr_of_agree scheduler (Function.update players owner member)
-    (Function.update (focalPlayers setup leaks focal deviation) owner
+    (Function.update
+      (focalPlayers (serviceTimeouts setup deps duration) leaks focal deviation) owner
       (decidedTurnPolicy setup leaks bound owner event action))
     (fun final => event ∈ final.application.config.cut.completed)
     (fun current => event ∉ current.application.config.cut.completed →
@@ -140,13 +142,15 @@ theorem reference_binding_traffic_congr (serial : (serviceGraph setup deps).Acto
     (same : (bindingTraffic (serviceTimeouts setup deps duration)) leaks focal left =
       (bindingTraffic (serviceTimeouts setup deps duration)) leaks focal right) :
     (((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
-      (Function.update (focalPlayers setup leaks focal deviation) owner
+      (Function.update
+        (focalPlayers (serviceTimeouts setup deps duration) leaks focal deviation) owner
         (decidedTurnPolicy setup leaks bound owner event
           (cast (congrArg EventField.Action outputEq.symm) leftChoice)))
       (fun final => event ∈ final.application.config.cut.completed) horizon left).map
         ((bindingTraffic (serviceTimeouts setup deps duration)) leaks focal)) =
     (((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
-      (Function.update (focalPlayers setup leaks focal deviation) owner
+      (Function.update
+        (focalPlayers (serviceTimeouts setup deps duration) leaks focal deviation) owner
         (decidedTurnPolicy setup leaks bound owner event
           (cast (congrArg EventField.Action outputEq.symm) rightChoice)))
       (fun final => event ∈ final.application.config.cut.completed) horizon right).map

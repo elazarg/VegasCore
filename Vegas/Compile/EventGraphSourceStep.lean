@@ -3,22 +3,12 @@ module
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 public import Vegas.Compile.EventGraphState
-public import Vegas.Pending.EventApplication
+public import Vegas.EventGraph.Validation
 public import Vegas.Source.DisclosureAliases
 
 @[expose] public section
 
-/-! # Full-source steps in the actual native service
-
-Public sampling uses the source's exact chance law. A randomized binding
-response and reserved inclusion use the source's exact binding kernel, with
-freshness checked at entry. Source-store agreement for disclosure includes
-deferred guards; no empty-registry or initial-only binding assumption is used.
-
-These local equations preserve the source configuration and runtime
-completion functions. They are ingredients for the multi-phase correspondence,
-not an assumption of that correspondence or of sequential rationality.
--/
+/-! # Typed source cells across graph completion -/
 
 noncomputable section
 
@@ -26,7 +16,7 @@ namespace Vegas
 
 open SourceProgram
 
-open GameTheory.Math.Probability Interaction EventGraphRuntime
+open GameTheory.Math.Probability
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {graph : Vegas.EventGraph Player L}
@@ -35,9 +25,9 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 value while keeping every earlier typed cell unchanged. -/
 theorem complete_sample_agrees {Γ : SourceCtx Player L} {payload : L.Ty}
     (name : VarId) (source : Config Player L Γ) (refs : ContextRefs graph.layout Γ)
-    (native : EventGraphRuntime.State graph)
-    (agree : refs.Agrees source.state native.config.store)
-    (event : graph.EventId) (ready : native.config.cut.Ready event)
+    (native : graph.Config)
+    (agree : refs.Agrees source.state native.store)
+    (event : graph.EventId) (ready : native.cut.Ready event)
     (outputEq : graph.outputLayout event = .publicData payload)
     (before : ∀ {readName cell} (ref : HasVar Γ readName cell),
       FieldBefore event (refs.get ref).field) (value : L.Val payload) :
@@ -45,10 +35,10 @@ theorem complete_sample_agrees {Γ : SourceCtx Player L} {payload : L.Ty}
       (sampleSuccessor name source value).state
       (native.complete event ready
         (cast (congrArg EventGraph.EventField.Action outputEq.symm) PUnit.unit)
-        (cast (congrArg EventGraph.EventField.Value outputEq.symm) value)).config.store := by
+        (cast (congrArg EventGraph.EventField.Value outputEq.symm) value)).store := by
   apply ContextRefs.Agrees.cons
   · exact ContextRefs.Agrees.complete ready _ _ refs source.state agree before
-  · rw [EventGraphRuntime.State.complete, EventGraph.store_complete]
+  · rw [EventGraph.store_complete]
     simp only [EventGraph.FieldRef.get?, Function.update_self]
     have castSome {A B : Type} (same : A = B) (value : A) :
         cast (congrArg Option same) (some value) = some (cast same value) := by
@@ -102,9 +92,9 @@ theorem complete_guarded_reveal_agrees
     {Γ : SourceCtx Player L} {name : VarId} {owner : Player} {payload : L.Ty}
     (published : VarId) (selected : HasVar Γ name (.commitment owner payload))
     (source : Config Player L Γ) (refs : ContextRefs graph.layout Γ)
-    (native : EventGraphRuntime.State graph)
-    (agree : refs.Agrees source.state native.config.store)
-    (event : graph.EventId) (ready : native.config.cut.Ready event)
+    (native : graph.Config)
+    (agree : refs.Agrees source.state native.store)
+    (event : graph.EventId) (ready : native.cut.Ready event)
     (outputEq : graph.outputLayout event = .publication payload)
     (before : ∀ {readName cell} (ref : HasVar Γ readName cell),
       FieldBefore event (refs.get ref).field) (disclose : Bool) :
@@ -113,11 +103,11 @@ theorem complete_guarded_reveal_agrees
       (native.complete event ready
         (cast (congrArg EventGraph.EventField.Action outputEq.symm) disclose)
         (cast (congrArg EventGraph.EventField.Value outputEq.symm)
-          (disclosureResult published selected source disclose))).config.store := by
+          (disclosureResult published selected source disclose))).store := by
   change (refs.cons _).Agrees (Env.cons _ source.state) _
   apply ContextRefs.Agrees.cons
   · exact ContextRefs.Agrees.complete ready _ _ refs source.state agree before
-  · rw [EventGraphRuntime.State.complete, EventGraph.store_complete]
+  · rw [EventGraph.store_complete]
     simp only [EventGraph.FieldRef.get?, Function.update_self]
     have castSome {A B : Type} (same : A = B) (value : A) :
         cast (congrArg Option same) (some value) = some (cast same value) := by

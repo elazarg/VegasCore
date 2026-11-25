@@ -3,7 +3,7 @@ module
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 public import Vegas.Game.OnePacketIntendedProjection
-public import Vegas.Game.SourceServicePrefix
+public import Vegas.Compile.EventGraphPrefixReadout
 public import Vegas.Game.SourceServiceFacts
 public import Vegas.Game.SourcePrefixPublications
 public import GameTheoryExtensions.Analysis.Protocol.SingleMoverReach

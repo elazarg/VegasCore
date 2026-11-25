@@ -70,7 +70,8 @@ theorem initial_values_covered (bonus : Int) :
 def rosters (bonus : Int) : ((setup bonus).informationGraph).EventId → List Player :=
   fun _ => [.alice]
 
-theorem opportunities (bonus : Int) : ActorOpportunities (setup bonus) (rosters bonus) := by
+theorem opportunities (bonus : Int) :
+    ActorOpportunities (setup bonus).dataflowGraph (rosters bonus) := by
   intro event owner _
   cases owner
   exact List.mem_singleton_self Player.alice

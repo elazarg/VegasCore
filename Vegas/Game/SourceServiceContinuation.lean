@@ -3,6 +3,7 @@ module
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 public import Vegas.Game.SourceServiceReachedDecoding
+public import Vegas.Game.SourceStateKernel
 public import Vegas.EventGraph.OwnedStep
 public import Vegas.Game.IntendedSourceProfile
 public import Vegas.Compile.EventGraphLaw

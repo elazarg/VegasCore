@@ -3,7 +3,8 @@ module
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 public import Vegas.Game.SourceServiceMenu
-public import Vegas.Game.ServiceRosterAsync
+public import Vegas.Pending.ServiceRosterAsync
+public import Vegas.Game.SourceServiceFacts
 public import Vegas.Game.AsyncServiceSpec
 public import Vegas.Game.RevealServicePayoffs
 public import Vegas.Pending.ReactiveBoundedValues
@@ -45,7 +46,7 @@ structure SourceServiceSpec (Player : Type) [DecidableEq Player] (L : IExpr)
   /-- The candidate catalogue has a slot for every event. -/
   capacity : setup.informationGraph.order.eventCount ≤ bounds.candidateCount
   /-- Every event actor has an activation at its own event. -/
-  opportunities : ActorOpportunities setup rosters
+  opportunities : ActorOpportunities setup.dataflowGraph rosters
   /-- The prior over initial states is finitely supported. -/
   initialFinite : setup.FiniteInitialLaw
   /-- The leak rule branches finitely. -/
@@ -63,9 +64,10 @@ variable [Fintype Player]
 
 abbrev menu := sourceServiceMenu service.setup service.leaks service.bounds
 
-abbrev planLength : Nat := (rosterPlan service.setup service.rosters).length
+abbrev planLength : Nat := (rosterPlan service.setup.dataflowGraph service.rosters).length
 
-abbrev scheduler := rosterScheduler service.setup service.leaks service.rosters service.network
+abbrev scheduler :=
+  rosterScheduler service.setup.dataflowGraph service.leaks service.rosters service.network
 
 /-- The source information model of the service's program, with every binding
 value admitted. -/
@@ -102,13 +104,25 @@ def toAsync : AsyncServiceSpec Player L where
   scheduler := service.scheduler
   delay := fun event => event.val
   bound := fun _ => 0
-  contract := rosterScheduler_asyncContract service.setup service.leaks service.rosters
-    service.network service.opportunities
-  timely := rosterScheduler_asyncTimely service.setup
+  contract := by
+    let inputs := service.setup.initialLaw.map service.setup.eventInputs
+    have initial : initialLaw service.setup =
+        rosterInitialLaw service.setup.dataflowGraph inputs :=
+      serviceInitialLaw_eq_inputs service.setup
+    rw [initial]
+    exact rosterScheduler_asyncContract service.setup.dataflowGraph inputs service.leaks
+      service.rosters service.network service.opportunities
+  timely := rosterScheduler_asyncTimely service.setup.dataflowGraph
   initialFinite := service.initialFinite
   leaksFinite := service.leaksFinite
-  schedulerFinite := ReactiveApplication.FiniteNature.scheduler_finite
-    (initial := initialLaw service.setup)
+  schedulerFinite := by
+    let inputs := service.setup.initialLaw.map service.setup.eventInputs
+    let : Fact inputs.support.Finite := ⟨by
+      rw [show inputs = service.setup.initialLaw.map service.setup.eventInputs from rfl,
+        PMF.support_map]
+      exact service.setup.initialLaw_support_finite.image _⟩
+    exact (rosterScheduler_finiteNature service.setup.dataflowGraph inputs service.leaks
+      service.rosters service.network).scheduler_finite
 
 @[simp] theorem toAsync_horizon : service.toAsync.horizon = service.planLength := rfl
 

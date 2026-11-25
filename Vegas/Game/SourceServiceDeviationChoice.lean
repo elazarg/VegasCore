@@ -8,7 +8,7 @@ public import Vegas.Game.SourceServiceCheckpoint
 public import Vegas.Pending.ExclusionCompletion
 public import GameTheoryExtensions.Math.Probability.ObservedChoice
 public import Interaction.ReactiveRawRoundTrace
-public import Vegas.Game.ServiceDeviationTraffic
+public import Vegas.Pending.FocalTraffic
 public import Vegas.Game.SourceServiceTurnPolicy
 public import Vegas.Game.SourceServiceCompletion
 public import Interaction.ReactiveMixtureRounds
@@ -122,38 +122,12 @@ theorem runUntil_deviation_focal
         (firstTurnTiming setup turns deps) profile) who deviation)
     (fun final => event ∈ final.application.config.cut.completed) count execution =
     (serviceApplication setup deps duration leaks).runUntil scheduler
-    (focalPlayers setup leaks who deviation)
+    (focalPlayers (serviceTimeouts setup deps duration) leaks who deviation)
         (fun final => event ∈ final.application.config.cut.completed) count execution := by
-  let app := serviceApplication setup deps duration leaks
-  apply app.runUntil_congr_of_agree scheduler _ _ _
-    (fun current => event ∉ current.application.config.cut.completed →
-      current.application.config.cut.Ready event)
-  · intro current currentHolds running command _ middle moved player active
-    by_cases same : player = who
-    · subst same
-      simp only [focalPlayers, Function.update_self]
-    · simp only [focalPlayers, Function.update_of_ne same]
-      have activateIs : command = .activate player := by
-        cases command with
-        | activate actor => cases active; rfl
-        | «include» => cases active
-        | application => cases active
-        | wait => cases active
-      subst activateIs
-      have sameApp := activation_application setup leaks current middle player moved
-      have idle : (middle.observe app player).application.publicView.ownTurn? player = none := by
-        change middle.application.publicView.ownTurn? player = none
-        rw [sameApp]
-        apply ownTurn?_none_of_alone alone _ (currentHolds running) player
-        rcases focal with actorless | owned
-        · rw [actorless]
-          exact fun impossible => by cases impossible
-        · rw [owned]
-          exact fun equal => same (Option.some.inj equal).symm
-      simp only [serviceTurnPolicy, EventGraphRuntime.turnPolicy, idle]
-  · intro current currentHolds running next reached
-    exact round_ready_of_pending alone (currentHolds running) reached
-  · exact holds
+  exact runUntil_turnPolicy_focal
+    (timeouts := serviceTimeouts setup deps duration) (leaks := leaks) scheduler bound turns
+    (firstTurnTiming setup turns deps) (compileEventProfile setup.program profile) who deviation
+    event focal (fun cut {_} otherReady ready => alone cut _ ready otherReady) count execution holds
 
 private theorem decodeActionAt_own_record (setup : Setup (Player := Player) (L := L))
     (deps : setup.dataflowGraph.Dependencies) (who : Player)
@@ -222,7 +196,7 @@ private theorem primary_owned_joint {Seed Choice : Type} {Γ Δ : SourceCtx Play
       ∃ nextNoise : DecisionView who Δ → PMF _,
       (prior.bind fun seed =>
         ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
-          (focalPlayers setup leaks who deviation)
+          (focalPlayers (serviceTimeouts setup deps duration) leaks who deviation)
           (fun final => event ∈ final.application.config.cut.completed) horizon
           (execution seed)).map fun final =>
             (advance (source seed)
@@ -235,7 +209,8 @@ private theorem primary_owned_joint {Seed Choice : Type} {Γ Δ : SourceCtx Play
   let app := serviceApplication setup deps duration leaks
   let read := fun seed => (bindingTraffic (serviceTimeouts setup deps duration)) leaks who
     (execution seed)
-  let phase := fun seed => (app.runUntilHorizon scheduler (focalPlayers setup leaks who deviation)
+  let phase := fun seed => (app.runUntilHorizon scheduler
+    (focalPlayers (serviceTimeouts setup deps duration) leaks who deviation)
     (fun final => event ∈ final.application.config.cut.completed) horizon (execution seed)).map
       ((bindingTraffic (serviceTimeouts setup deps duration)) leaks who)
   obtain ⟨channel, channelLaw⟩ := exists_updated_observation_kernel_of_readout prior source read
@@ -448,7 +423,8 @@ theorem sourceService_deviator_reveal_law
   have phaseEq (seed : Seed) (supported : seed ∈ prior.support) :
       app.runUntilHorizon scheduler players
         (fun final => event ∈ final.application.config.cut.completed) horizon (execution seed) =
-      app.runUntilHorizon scheduler (focalPlayers setup leaks who deviation)
+      app.runUntilHorizon scheduler
+        (focalPlayers (serviceTimeouts setup deps duration) leaks who deviation)
         (fun final => event ∈ final.application.config.cut.completed) horizon
           (execution seed) := by
     exact runUntil_deviation_focal scheduler bound turns wholeProfile who deviation event
@@ -466,7 +442,8 @@ theorem sourceService_deviator_reveal_law
   refine ⟨kernel, nextNoise, ?_, ?_⟩
   · calc
       _ = prior.bind (fun seed =>
-          (app.runUntilHorizon scheduler (focalPlayers setup leaks who deviation)
+          (app.runUntilHorizon scheduler
+            (focalPlayers (serviceTimeouts setup deps duration) leaks who deviation)
             (fun final => event ∈ final.application.config.cut.completed) horizon
             (execution seed)).map fun final =>
               (revealSuccessor published binding (source seed) (readChoice final),
@@ -756,7 +733,8 @@ theorem sourceService_deviator_commit_law
   have phaseEq (seed : Seed) (supported : seed ∈ prior.support) :
       app.runUntilHorizon scheduler players
         (fun final => event ∈ final.application.config.cut.completed) horizon (execution seed) =
-      app.runUntilHorizon scheduler (focalPlayers setup leaks who deviation)
+      app.runUntilHorizon scheduler
+        (focalPlayers (serviceTimeouts setup deps duration) leaks who deviation)
         (fun final => event ∈ final.application.config.cut.completed) horizon
           (execution seed) := by
     exact runUntil_deviation_focal scheduler bound turns wholeProfile who deviation event
@@ -774,7 +752,8 @@ theorem sourceService_deviator_commit_law
   refine ⟨kernel, nextNoise, ?_, ?_⟩
   · calc
       _ = prior.bind (fun seed =>
-          (app.runUntilHorizon scheduler (focalPlayers setup leaks who deviation)
+          (app.runUntilHorizon scheduler
+            (focalPlayers (serviceTimeouts setup deps duration) leaks who deviation)
             (fun final => event ∈ final.application.config.cut.completed) horizon
             (execution seed)).map fun final =>
               (commitSuccessor name guard (source seed) (readChoice final),

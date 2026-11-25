@@ -3,7 +3,6 @@ module
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 public import Vegas.Game.RevealDeviationSimulation
-public import Vegas.Pending.EventInitialObservation
 
 @[expose] public section
 
@@ -56,18 +55,8 @@ theorem initial_bindingTraffic_eq_of_keyView (who : Player)
       (bindingTraffic (serviceTimeouts setup deps duration)) leaks who
         (ReactiveApplication.Execution.initial (serviceApplication setup deps duration leaks)
           (EventGraphRuntime.State.initial right)) := by
-  have observed := initial_playerObserve_eq_of_keyView who left right views
-  have publics := EventGraphRuntime.State.initial_publicView_eq_of_observation who left right
-    observed
-  have candidates := EventGraphRuntime.State.initial_candidates_eq_of_observation who left
-    right observed
-  have playerViews : (EventGraphRuntime.State.initial left).playerView who =
-      (EventGraphRuntime.State.initial right).playerView who := by
-    unfold EventGraphRuntime.State.playerView
-    congr 1
-  unfold EventGraphRuntime.bindingTraffic
-  dsimp only [ReactiveApplication.Execution.initial]
-  rw [playerViews, publics]
+  exact initial_bindingTraffic_eq_of_observation (serviceTimeouts setup deps duration)
+    leaks who left right (initial_playerObserve_eq_of_keyView who left right views)
 
 /-- Every initial execution is the first phase boundary. -/
 theorem initial_phaseBoundary {horizon : Nat}
@@ -148,37 +137,20 @@ theorem concurrent_deviation_erased_law {horizon : Nat}
   let traffic := (bindingTraffic (serviceTimeouts setup deps duration)) leaks who
   let start := fun state : EventGraphRuntime.State (serviceGraph setup deps) =>
     ReactiveApplication.Execution.initial app state
-  let noise := fun view : Option ((serviceGraph setup deps).PlayerObservation who) =>
-    if present : ∃ state ∈ (serviceInitialLaw setup deps).support,
-        keyView who (runKey (start state).application.config) = view then
-      PMF.pure (traffic (start present.choose))
-    else PMF.pure (traffic (start (serviceInitialLaw setup deps).support_nonempty.choose))
-  have trafficOf : ∀ first ∈ (serviceInitialLaw setup deps).support,
-      ∀ second ∈ (serviceInitialLaw setup deps).support,
-      keyView who (runKey (start first).application.config) =
-        keyView who (runKey (start second).application.config) →
-      traffic (start first) = traffic (start second) := by
-    intro first firstMember second secondMember same
-    obtain ⟨firstInitial, _, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp firstMember
-    obtain ⟨secondInitial, _, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp secondMember
-    exact initial_bindingTraffic_eq_of_keyView (duration := duration) (leaks := leaks) who _ _
-      same
+  obtain ⟨noise, initialFactor⟩ := initial_bindingTraffic_factorization_of_view
+    (serviceTimeouts setup deps duration) leaks who setup.initialLaw setup.eventInputs
+    (fun initial => runKey (Config.initial (graph := serviceGraph setup deps)
+      (setup.eventInputs initial))) (keyView who)
+    (fun left _ right _ same =>
+      initial_playerObserve_eq_of_keyView (graph := serviceGraph setup deps) who
+        (setup.eventInputs left) (setup.eventInputs right)
+        same)
   have factor : (serviceInitialLaw setup deps).map (fun state =>
       (runKey (start state).application.config, traffic (start state))) =
       ((serviceInitialLaw setup deps).map fun state => runKey (start state).application.config).bind
         fun current => (noise (keyView who current)).map fun extra => (current, extra) := by
-    rw [PMF.bind_map]
-    change (serviceInitialLaw setup deps).bind (fun state => PMF.pure
-      (runKey (start state).application.config, traffic (start state))) = _
-    apply bind_congr_on_support _
-    intro state supported
-    have present : ∃ other ∈ (serviceInitialLaw setup deps).support,
-        keyView who (runKey (start other).application.config) =
-          keyView who (runKey (start state).application.config) :=
-      ⟨state, supported, rfl⟩
-    simp only [noise, Function.comp_apply, dite_eq_left present, PMF.pure_map]
-    obtain ⟨member, same⟩ := present.choose_spec
-    rw [trafficOf state supported present.choose member same.symm]
+    simp only [serviceInitialLaw, PMF.map_comp, Function.comp_def]
+    exact initialFactor
   obtain ⟨policy, law⟩ := concurrentDeviationSimulation bound turns contract timely base decides
     referenceIndependent who deviation independent relaxed runs concurrent 0 (Nat.zero_le _)
     (serviceInitialLaw setup deps) start

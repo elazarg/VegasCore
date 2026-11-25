@@ -146,38 +146,43 @@ variable {horizon turns : Nat} {scheduler :
     (serviceApplication setup deps duration leaks).Scheduler}
   {delay bound : (serviceGraph setup deps).EventId → Nat}
 
-/-- **The honest outcome law from every boundary.** Under the asynchronous
-service contract, on a graph where only independent reveals are concurrent and
-every other event leads, honest clients of an opening, ready-independent
-reference run, from every initialized execution whose responses saw only
-completed events or publications ready, to the reference's outcome law. -/
-theorem honest_runToHorizon_outcomeLaw
+/-- Compose publication rounds and solitary segments that preserve the reference's
+outcome law, using the service contract to finish any segment that reaches the horizon. -/
+theorem runToHorizon_outcomeLaw_of_segments
     (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
       (serviceInitialLaw setup deps) horizon scheduler delay bound)
-    (timely : AsyncTimely (serviceTimeouts setup deps duration) delay bound)
     (only : (serviceGraph setup deps).RevealsOnlyConcurrent)
-    (leading : ∀ event, ¬ ((serviceGraph setup deps).outputLayout event).IsPublication →
-      (serviceGraph setup deps).Leading event)
+    (players : Player → (serviceApplication setup deps duration leaks).Policy)
     (reference : (serviceGraph setup deps).BehavioralProfile)
-    (independent : ReadyIndependent reference) (opens : OpensPublications reference)
-    {Outcome : Type*} (read : (serviceGraph setup deps).Config → Outcome)
-    (keyed : ∀ left right : (serviceGraph setup deps).Config, runKey left = runKey right →
-      read left = read right)
-    (invariant : ∀ config, read config.erase = read config) :
-    let players := turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
-      (firstTurnTiming setup turns deps) reference
-    ∀ execution : (serviceApplication setup deps duration leaks).Execution,
-      execution ∈ ((serviceApplication setup deps duration leaks).roundsFrom
-        (serviceInitialLaw setup deps) scheduler players
-          execution.environmentRecall.length).support →
+    {Outcome : Type*} (read : (serviceGraph setup deps).Config → Outcome) :
+    let app := serviceApplication setup deps duration leaks
+    let publication := fun event : (serviceGraph setup deps).EventId =>
+      ((serviceGraph setup deps).outputLayout event).IsPublication
+    let supported := fun execution : app.Execution => execution ∈
+      (app.roundsFrom (serviceInitialLaw setup deps) scheduler players
+        execution.environmentRecall.length).support
+    let law := fun execution : app.Execution =>
+      outcomeLaw reference read execution.application.config
+    (∀ execution next : app.Execution, supported execution →
       execution.environmentRecall.length ≤ horizon →
-      SeenWithin (fun event => ((serviceGraph setup deps).outputLayout event).IsPublication)
-        execution →
-      ((serviceApplication setup deps duration leaks).runToHorizon scheduler players horizon
-          execution).map (fun final => read final.application.config) =
-        outcomeLaw reference read execution.application.config := by
+      (∀ event, execution.application.config.cut.Ready event → publication event) →
+      next ∈ (app.round scheduler players execution).support →
+      law next = law execution) →
+    (∀ (execution : app.Execution) (event : (serviceGraph setup deps).EventId),
+      execution.application.config.cut.Ready event → ¬ publication event →
+      supported execution → execution.environmentRecall.length ≤ horizon →
+      Untouched setup leaks event execution →
+      (app.runUntilHorizon scheduler players
+        (fun final => event ∈ final.application.config.cut.completed) horizon execution).bind
+          law = law execution) →
+    ∀ execution : app.Execution, supported execution →
+      execution.environmentRecall.length ≤ horizon →
+      SeenWithin publication execution →
+      (app.runToHorizon scheduler players horizon execution).map
+        (fun final => read final.application.config) = law execution := by
   classical
-  intro players
+  dsimp only
+  intro publicationRound solitarySegment
   let app := serviceApplication setup deps duration leaks
   let publication := fun event : (serviceGraph setup deps).EventId =>
     ((serviceGraph setup deps).outputLayout event).IsPublication
@@ -229,13 +234,7 @@ theorem honest_runToHorizon_outcomeLaw
               exact (PMF.mem_support_bind_iff _ _ _).mpr ⟨execution, supported, reached⟩
             rw [ih left (by omega) next (by omega) supportedNext (by omega)
               (round_seenWithin seen allPublications reached)]
-            exact reactive_round_outcomeLaw_of_publications independent opens read keyed invariant
-              (serviceTimeouts setup deps duration) leaks scheduler players execution next
-              allPublications (fun event owner ready owned _ holds =>
-                honestPublication_withinDeadline contract timely players owner reference opens rfl
-                  execution.environmentRecall.length bounded execution supported event
-                      (independent.actorSerial event) owned ready
-                  (allPublications event ready) holds) reached
+            exact publicationRound execution next supported bounded allPublications reached
           _ = _ := PMF.bind_const _ _
       · push Not at allPublications
         obtain ⟨event, ready, notPublication⟩ := allPublications
@@ -284,10 +283,53 @@ theorem honest_runToHorizon_outcomeLaw
                 exact Or.inl finished
             exact ih (horizon - stopped.environmentRecall.length) (by omega) stopped rfl
               stoppedSupported stoppedBounded seenStopped
-          _ = _ := soleSegment_outcomeLaw (serviceTimeouts setup deps duration) leaks scheduler
-              delay bound contract timely reference independent read keyed players event
-              (fun _ _ => rfl) solitary (leading event notPublication) notPublication execution
-              ready supported (seen.untouched ready.1 notPublication) bounded
+          _ = _ := solitarySegment execution event ready notPublication supported bounded
+              (seen.untouched ready.1 notPublication)
+
+/-- **The honest outcome law from every boundary.** Under the asynchronous
+service contract, on a graph where only independent reveals are concurrent and
+every other event leads, honest clients of an opening, ready-independent
+reference run, from every initialized execution whose responses saw only
+completed events or publications ready, to the reference's outcome law. -/
+theorem honest_runToHorizon_outcomeLaw
+    (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
+      (serviceInitialLaw setup deps) horizon scheduler delay bound)
+    (timely : AsyncTimely (serviceTimeouts setup deps duration) delay bound)
+    (only : (serviceGraph setup deps).RevealsOnlyConcurrent)
+    (leading : ∀ event, ¬ ((serviceGraph setup deps).outputLayout event).IsPublication →
+      (serviceGraph setup deps).Leading event)
+    (reference : (serviceGraph setup deps).BehavioralProfile)
+    (independent : ReadyIndependent reference) (opens : OpensPublications reference)
+    {Outcome : Type*} (read : (serviceGraph setup deps).Config → Outcome)
+    (keyed : ∀ left right : (serviceGraph setup deps).Config, runKey left = runKey right →
+      read left = read right)
+    (invariant : ∀ config, read config.erase = read config) :
+    let players := turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
+      (firstTurnTiming setup turns deps) reference
+    ∀ execution : (serviceApplication setup deps duration leaks).Execution,
+      execution ∈ ((serviceApplication setup deps duration leaks).roundsFrom
+        (serviceInitialLaw setup deps) scheduler players
+          execution.environmentRecall.length).support →
+      execution.environmentRecall.length ≤ horizon →
+      SeenWithin (fun event => ((serviceGraph setup deps).outputLayout event).IsPublication)
+        execution →
+      ((serviceApplication setup deps duration leaks).runToHorizon scheduler players horizon
+          execution).map (fun final => read final.application.config) =
+        outcomeLaw reference read execution.application.config := by
+  intro players
+  refine runToHorizon_outcomeLaw_of_segments contract only players reference read ?_ ?_
+  · intro execution next supported bounded allPublications reached
+    exact reactive_round_outcomeLaw_of_publications independent opens read keyed invariant
+      (serviceTimeouts setup deps duration) leaks scheduler players execution next
+      allPublications (fun event owner ready owned _ holds =>
+        honestPublication_withinDeadline contract timely players owner reference opens rfl
+          execution.environmentRecall.length bounded execution supported event
+          (independent.actorSerial event) owned ready (allPublications event ready) holds) reached
+  · intro execution event ready notPublication supported bounded untouched
+    exact soleSegment_outcomeLaw (serviceTimeouts setup deps duration) leaks scheduler
+      delay bound contract timely reference independent read keyed players event
+      (fun _ _ => rfl) (only.solitary notPublication) (leading event notPublication)
+      notPublication execution ready supported untouched bounded
 
 /-- **The honest outcome law of the run.** Under the hypotheses of
 `honest_runToHorizon_outcomeLaw`, the outcome of the honest clients' run to the

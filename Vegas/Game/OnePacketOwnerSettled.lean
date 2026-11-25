@@ -147,7 +147,8 @@ theorem inputFailureRecord_of_trace (who : Player)
       let residual := SourceResidual.initial setup (failureProfile setup.program) initial
       refine ⟨0, ⟨residual⟩, fun failed point decoded => ?_⟩
       have decodedEq : sourceServicePrefix? setup 0
-          (State.initial (graph := setup.informationGraph) (setup.eventInputs initial)).config =
+          (EventGraph.Config.initial (graph := setup.informationGraph)
+            (setup.eventInputs initial)) =
             some point :=
         decoded
       rw [residual.decode] at decodedEq

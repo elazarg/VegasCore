@@ -3,6 +3,7 @@ module
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 public import Vegas.Compile.EventGraphAssembly
+public import Vegas.Compile.EventGraphSourceResidual
 public import Vegas.Compile.EventGraphBacktranslation
 public import Vegas.Compile.EventGraphCanonical
 public import Vegas.Compile.EventGraphCompiler

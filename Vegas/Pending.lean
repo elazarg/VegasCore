@@ -17,8 +17,10 @@ public import Vegas.Pending.FirstTurnMixture
 public import Vegas.Pending.FirstTurnSilence
 public import Vegas.Pending.FirstTurnSimulation
 public import Vegas.Pending.FixedOpportunity
+public import Vegas.Pending.FocalTraffic
 public import Vegas.Pending.GraphCompletionLaw
 public import Vegas.Pending.GraphEventStepLaw
+public import Vegas.Pending.OwnedCompletionConfig
 public import Vegas.Pending.PeriodicService
 public import Vegas.Pending.PeriodicServiceClock
 public import Vegas.Pending.PeriodicServiceCapacity
@@ -156,6 +158,14 @@ public import Vegas.Pending.ReactiveRuntime
 public import Vegas.Pending.ReactiveSafety
 public import Vegas.Pending.ReactiveSampleLikelihood
 public import Vegas.Pending.ReactiveSelectionObservation
+public import Vegas.Pending.ReadyRosterService
+public import Vegas.Pending.ServiceRoster
+public import Vegas.Pending.ServiceRosterAsync
+public import Vegas.Pending.ServiceRosterContract
+public import Vegas.Pending.ServiceRosterFacts
+public import Vegas.Pending.ServiceRosterHistory
+public import Vegas.Pending.ServiceRosterInvariant
+public import Vegas.Pending.ServiceRosterPosition
 public import Vegas.Pending.ReactiveService
 public import Vegas.Pending.ReactiveServiceAudit
 public import Vegas.Pending.ReactiveServiceConditions

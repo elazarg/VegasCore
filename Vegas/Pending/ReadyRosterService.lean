@@ -2,7 +2,7 @@ module
 
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-public import Vegas.Game.ServiceRosterAsync
+public import Vegas.Pending.ServiceRosterAsync
 
 @[expose] public section
 
@@ -12,32 +12,37 @@ noncomputable section
 
 namespace Vegas
 
-open SourceProgram Interaction EventGraphRuntime GameTheory.Math.Probability GameTheory.Protocol
+open Interaction EventGraphRuntime GameTheory.Math.Probability GameTheory.Protocol
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
-  (setup : Setup (Player := Player) (L := L))
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
-  (rosters : setup.informationGraph.EventId → List Player)
+  (graph : EventGraph Player L)
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph.sequentialize))
+  (rosters : graph.EventId → List Player)
 
-local notation "app" => application setup (Vegas.timeouts setup) leaks
+local notation "app" => rosterApplication graph leaks
 
 /-- Execute the public calendar, skipping a roster entry when its tagged event
 is no longer ready. -/
-def readyRosterScheduler (network : (NetworkPolicy (timeouts setup)) leaks) : (app).Scheduler :=
-  fun past view => match (rosterPlan setup rosters)[past.length]? with
+def readyRosterScheduler (network : (NetworkPolicy (rosterTimeouts graph)) leaks) :
+    (app).Scheduler :=
+  fun past view => match (rosterPlan graph rosters)[past.length]? with
     | some (event, .player who) => PMF.pure
         (if view.application.EventReady event then .activate who else .wait)
-    | _ => rosterScheduler setup leaks rosters network past view
+    | _ => rosterScheduler graph leaks rosters network past view
 
-instance readyRoster_finiteNature [setup.FiniteInitialLaw] [leaks.FiniteSupport]
-    (network : (NetworkPolicy (timeouts setup)) leaks) :
-    (app).FiniteNature (initialLaw setup) (readyRosterScheduler setup leaks rosters network) where
+instance readyRoster_finiteNature (inputs : PMF graph.Inputs) [Fact inputs.support.Finite]
+    [leaks.FiniteSupport]
+    (network : (NetworkPolicy (rosterTimeouts graph)) leaks) :
+    (app).FiniteNature (rosterInitialLaw graph inputs)
+      (readyRosterScheduler graph leaks rosters network) where
   toFiniteEnvironment := inferInstance
-  initial_finite := serviceInitialLaw_support_finite setup setup.informationDependencies
+  initial_finite := by
+    rw [rosterInitialLaw, PMF.support_map]
+    exact (Fact.out : inputs.support.Finite).image _
   scheduler_finite past view := by
-    have finite := (rosterScheduler_finiteNature setup leaks rosters network).scheduler_finite
-      past view
-    cases found : (rosterPlan setup rosters)[past.length]? with
+    have finite :=
+      (rosterScheduler_finiteNature graph inputs leaks rosters network).scheduler_finite past view
+    cases found : (rosterPlan graph rosters)[past.length]? with
     | none => simpa only [readyRosterScheduler, found] using finite
     | some pair =>
       obtain ⟨tag, instruction⟩ := pair
@@ -45,21 +50,21 @@ instance readyRoster_finiteNature [setup.FiniteInitialLaw] [leaks.FiniteSupport]
       simp only [readyRosterScheduler, found, PMF.support_pure]
       exact Set.finite_singleton _
 
-variable {setup leaks rosters}
+variable {graph leaks rosters}
 
-private theorem skippedRosterEntry {event : setup.informationGraph.EventId}
+private theorem skippedRosterEntry {event : graph.EventId}
     {offset entryClock : Nat} {obsolete : Bool} {control : (app).Control}
-    (phase : RosterCalendarPhase setup leaks rosters event offset entryClock obsolete control)
+    (phase : RosterCalendarPhase graph leaks rosters event offset entryClock obsolete control)
     (early : offset < (rosters event).length)
     (unready : ¬control.execution.application.publicView.EventReady event)
     (remaining : Nat) (counted : control.remaining = remaining + 1)
     (next : (app).Execution)
     (reached : next ∈ (control.execution.environmentStep (app) .wait).support) :
-    RosterCalendarPhase setup leaks rosters event (offset + 1) entryClock obsolete
+    RosterCalendarPhase graph leaks rosters event (offset + 1) entryClock obsolete
       ⟨remaining, none, next⟩ := by
   obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
   cases (PMF.mem_support_pure_iff _ _).mp supported
-  have classified := rosterBlockCompleted_record setup leaks rosters
+  have classified := rosterBlockCompleted_record graph leaks rosters
     control.execution.environmentRecall (control.execution.observeEnvironment app)
     (control.execution.observeEnvironment app) event .wait (by rw [phase.position]; omega)
   have oldTicks : offset - ((rosters event).length + 1) = 0 := by omega
@@ -90,13 +95,13 @@ private theorem skippedRosterEntry {event : setup.informationGraph.EventId}
 
 
 
-private theorem readyRoster_environment {event : setup.informationGraph.EventId}
+private theorem readyRoster_environment {event : graph.EventId}
     {offset entryClock : Nat} {obsolete : Bool} {control : (app).Control}
-    (network : (NetworkPolicy (timeouts setup)) leaks)
-    (phase : RosterCalendarPhase setup leaks rosters event offset entryClock obsolete control)
-    {inputs : setup.informationGraph.Inputs} (invariant : control.execution.application.Invariant
+    (network : (NetworkPolicy (rosterTimeouts graph)) leaks)
+    (phase : RosterCalendarPhase graph leaks rosters event offset entryClock obsolete control)
+    {inputs : graph.sequentialize.Inputs} (invariant : control.execution.application.Invariant
       inputs)
-    (stable : EntryEventStable (timeouts setup) leaks control.execution)
+    (stable : EntryEventStable (rosterTimeouts graph) leaks control.execution)
     (quiescent : ∀ query, ¬ control.execution.application.AutomaticReady query)
     (origins : control.execution.Provenance app)
     (recalled : control.execution.InputRecall app)
@@ -104,45 +109,45 @@ private theorem readyRoster_environment {event : setup.informationGraph.EventId}
     (sound : control.execution.ReceiptsSound app (fun _ => True))
     (remaining : Nat) (counted : control.remaining = remaining + 1)
     (command : (app).Command)
-    (selected : command ∈ (readyRosterScheduler setup leaks rosters network
+    (selected : command ∈ (readyRosterScheduler graph leaks rosters network
       control.execution.environmentRecall (control.execution.observeEnvironment app)).support)
     (next : (app).Execution)
     (reached : next ∈ (control.execution.environmentStep app command).support) :
-    RosterCalendarInvariant setup leaks rosters
+    RosterCalendarInvariant graph leaks rosters
       (some ⟨remaining, command.actor? app, next⟩) := by
   classical
   let past := control.execution.environmentRecall
   let view := control.execution.observeEnvironment app
-  by_cases skip : ∃ tag who, (rosterPlan setup rosters)[past.length]? = some (tag, .player who)
+  by_cases skip : ∃ tag who, (rosterPlan graph rosters)[past.length]? = some (tag, .player who)
       ∧ ¬view.application.EventReady tag
   · obtain ⟨tag, who, found, unready⟩ := skip
-    change command ∈ (readyRosterScheduler setup leaks rosters network past view).support
+    change command ∈ (readyRosterScheduler graph leaks rosters network past view).support
       at selected
     simp only [readyRosterScheduler, found, unready, ↓reduceIte,
       PMF.mem_support_pure_iff] at selected
     subst command
-    have located := rosterPlan_getElem_block setup rosters event offset phase.inside
+    have located := rosterPlan_getElem_block graph rosters event offset phase.inside
     rw [← phase.position] at located
-    change (rosterPlan setup rosters)[control.execution.environmentRecall.length]? = _ at found
+    change (rosterPlan graph rosters)[control.execution.environmentRecall.length]? = _ at found
     rw [found] at located
     obtain ⟨instruction, block, equal⟩ := Option.map_eq_some_iff.mp located.symm
     cases equal
     have early : offset < (rosters event).length := by
       by_contra! beyond
-      have member : ServiceInstruction.player who ∈ rosterPhaseEnding setup event := by
+      have member : ServiceInstruction.player who ∈ rosterPhaseEnding graph event := by
         obtain ⟨k, eq⟩ := Nat.exists_eq_add_of_le beyond
         rw [eq, rosterBlock_ending] at block
         exact List.mem_of_getElem? block
       unfold rosterPhaseEnding at member
-      cases actor : setup.informationGraph.actor? event <;> simp [actor] at member
+      cases actor : graph.sequentialize.actor? event <;> simp [actor] at member
     exact Or.inl ⟨event, offset + 1, entryClock, obsolete,
       skippedRosterEntry phase early unready remaining counted next reached⟩
   · apply phase.environment network invariant stable quiescent origins recalled retained sound
       remaining counted command _ next reached
-    change command ∈ (readyRosterScheduler setup leaks rosters network past view).support
+    change command ∈ (readyRosterScheduler graph leaks rosters network past view).support
       at selected
-    change command ∈ (rosterScheduler setup leaks rosters network past view).support
-    cases found : (rosterPlan setup rosters)[past.length]? with
+    change command ∈ (rosterScheduler graph leaks rosters network past view).support
+    cases found : (rosterPlan graph rosters)[past.length]? with
     | none => simpa only [readyRosterScheduler, found] using selected
     | some pair =>
       obtain ⟨tag, instruction⟩ := pair
@@ -154,31 +159,33 @@ private theorem readyRoster_environment {event : setup.informationGraph.EventId}
       simpa only [readyRosterScheduler, rosterScheduler, found, ready, ↓reduceIte,
         interactionInstruction] using selected
 
-variable (setup leaks rosters)
+variable (graph leaks rosters)
 theorem readyRoster_transition
-    (setup : Setup (Player := Player) (L := L))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
-    (rosters : setup.informationGraph.EventId → List Player)
-    (network : (NetworkPolicy (timeouts setup)) leaks)
-    (before after : (application setup (Vegas.timeouts setup) leaks).ProtocolState)
-    (prior : ((application setup (Vegas.timeouts setup) leaks).protocol (initialLaw setup)
-      (rosterPlan setup rosters).length (readyRosterScheduler setup leaks rosters network)).Trace
+    (graph : EventGraph Player L) (inputs : PMF graph.Inputs)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph.sequentialize))
+    (rosters : graph.EventId → List Player)
+    (network : (NetworkPolicy (rosterTimeouts graph)) leaks)
+    (before after : (rosterApplication graph leaks).ProtocolState)
+    (prior : ((rosterApplication graph leaks).protocol (rosterInitialLaw graph inputs)
+      (rosterPlan graph rosters).length (readyRosterScheduler graph leaks rosters network)).Trace
         before)
-    (valid : RosterCalendarInvariant setup leaks rosters before)
-    (joint : Player → Option (application setup (Vegas.timeouts setup) leaks).Action)
-    (reached : after ∈ ((application setup (Vegas.timeouts setup) leaks).transition (initialLaw
-      setup) (rosterPlan setup rosters).length (readyRosterScheduler setup leaks rosters network)
+    (valid : RosterCalendarInvariant graph leaks rosters before)
+    (joint : Player → Option (rosterApplication graph leaks).Action)
+    (reached : after ∈ ((rosterApplication graph leaks).transition
+      (rosterInitialLaw graph inputs) (rosterPlan graph rosters).length
+      (readyRosterScheduler graph leaks rosters network)
         before joint).support) :
-    RosterCalendarInvariant setup leaks rosters after := by
+    RosterCalendarInvariant graph leaks rosters after := by
   cases before with
   | none =>
       obtain ⟨state, supported, rfl⟩ := PMF.support_map .. ▸ reached
-      exact RosterCalendarInvariant.initial setup leaks rosters state supported
+      exact RosterCalendarInvariant.initial graph inputs leaks rosters state supported
   | some control =>
-      obtain ⟨⟨inputs, invariant⟩, origins, recalled, retained, sound⟩ :=
-        roster_trace_facts setup leaks _ _ prior
-      have facts := legalFacts setup leaks (rosterPlan setup rosters).length
-        (readyRosterScheduler setup leaks rosters network) control prior
+      obtain ⟨⟨_, invariant⟩, origins, recalled, retained, sound⟩ :=
+        roster_trace_facts (rosterTimeouts graph) leaks inputs _ _ prior
+      have facts := EventGraphRuntime.legalFacts (rosterTimeouts graph) leaks inputs
+        (rosterPlan graph rosters).length
+        (readyRosterScheduler graph leaks rosters network) control prior
       rcases control with ⟨remaining, actor, execution⟩
       cases actor with
       | some who =>
@@ -203,31 +210,42 @@ theorem readyRoster_transition
 
 /-- Every initialized raw history retains the public roster calendar certificate. -/
 theorem readyRoster_history
-    (setup : Setup (Player := Player) (L := L))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
-    (rosters : setup.informationGraph.EventId → List Player)
-    (network : (NetworkPolicy (timeouts setup)) leaks) :
-    ∀ {state} (_trace : ((application setup (Vegas.timeouts setup) leaks).protocol (initialLaw
-      setup)
-      (rosterPlan setup rosters).length (readyRosterScheduler setup leaks rosters network)).Trace
+    (graph : EventGraph Player L) (inputs : PMF graph.Inputs)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph.sequentialize))
+    (rosters : graph.EventId → List Player)
+    (network : (NetworkPolicy (rosterTimeouts graph)) leaks) :
+    ∀ {state} (_trace : ((rosterApplication graph leaks).protocol (rosterInitialLaw graph inputs)
+      (rosterPlan graph rosters).length (readyRosterScheduler graph leaks rosters network)).Trace
         state),
-      RosterCalendarInvariant setup leaks rosters state
+      RosterCalendarInvariant graph leaks rosters state
   | _, .start => trivial
   | _, .extend prior joint _ reached =>
-      readyRoster_transition setup leaks rosters network _ _ prior
-        (readyRoster_history setup leaks rosters network prior) joint reached
+      readyRoster_transition graph inputs leaks rosters network _ _ prior
+        (readyRoster_history graph inputs leaks rosters network prior) joint reached
 
 
 
-theorem readyRoster_contract (network : (NetworkPolicy (timeouts setup)) leaks)
-    (opportunities : ActorOpportunities setup rosters) :
-    AsyncContract (timeouts setup) leaks (initialLaw setup) (rosterPlan setup rosters).length
-      (readyRosterScheduler setup leaks rosters network) (fun event => event.val) (fun _ => 0) where
-  opportunity := RosterCalendarInvariant.opportunity setup leaks rosters _
-    (fun _ trace => readyRoster_history setup leaks rosters network trace) opportunities
-  inclusion := RosterCalendarInvariant.protectedInclusion setup leaks rosters _
-    (fun _ trace => readyRoster_history setup leaks rosters network trace)
-  completes := RosterCalendarInvariant.completesPlay setup leaks rosters _
-    (fun _ trace => readyRoster_history setup leaks rosters network trace)
+theorem readyRoster_contract (inputs : PMF graph.Inputs)
+    (network : (NetworkPolicy (rosterTimeouts graph)) leaks)
+    (opportunities : ActorOpportunities graph rosters) :
+    AsyncContract (rosterTimeouts graph) leaks (rosterInitialLaw graph inputs)
+      (rosterPlan graph rosters).length
+      (readyRosterScheduler graph leaks rosters network) (fun event => event.val) (fun _ => 0) where
+  opportunity := RosterCalendarInvariant.opportunity graph inputs leaks rosters _
+    (fun _ trace => readyRoster_history graph inputs leaks rosters network trace) opportunities
+  inclusion := RosterCalendarInvariant.protectedInclusion graph inputs leaks rosters _
+    (fun _ trace => readyRoster_history graph inputs leaks rosters network trace)
+  completes := RosterCalendarInvariant.completesPlay graph inputs leaks rosters _
+    (fun _ trace => readyRoster_history graph inputs leaks rosters network trace)
+
+/-- The graph's owner roster supplies a service contract for every typed input law. -/
+theorem readyRoster_owner_contract (inputs : PMF graph.Inputs)
+    (network : (NetworkPolicy (rosterTimeouts graph)) leaks) :
+    AsyncContract (rosterTimeouts graph) leaks (rosterInitialLaw graph inputs)
+      (rosterPlan graph (ownerRoster graph)).length
+      (readyRosterScheduler graph leaks (ownerRoster graph) network)
+      (fun event => event.val) (fun _ => 0) :=
+  readyRoster_contract graph leaks (ownerRoster graph) inputs network
+    (ownerRoster_opportunities graph)
 
 end Vegas

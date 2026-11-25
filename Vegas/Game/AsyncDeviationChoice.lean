@@ -147,7 +147,7 @@ private theorem primary_sample_joint_of_marginal
       (execution seed).application.config.cut.Ready event)
     (sampled : ∀ seed ∈ prior.support,
       (((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
-        (focalPlayers setup leaks focal deviation)
+        (focalPlayers (serviceTimeouts setup deps duration) leaks focal deviation)
         (fun final => event ∈ final.application.config.cut.completed) horizon
         (execution seed)).map fun final =>
           pick ((bindingTraffic (serviceTimeouts setup deps duration)) leaks focal final)) =
@@ -155,7 +155,7 @@ private theorem primary_sample_joint_of_marginal
     ∃ nextNoise : DecisionView focal ((name, .publicData payload) :: Γ) → PMF _,
       (prior.bind fun seed =>
         ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
-          (focalPlayers setup leaks focal deviation)
+          (focalPlayers (serviceTimeouts setup deps duration) leaks focal deviation)
           (fun final => event ∈ final.application.config.cut.completed) horizon
           (execution seed)).map fun final =>
             (sampleSuccessor name (source seed)
@@ -168,7 +168,8 @@ private theorem primary_sample_joint_of_marginal
   let app := serviceApplication setup deps duration leaks
   let read := fun seed => (bindingTraffic (serviceTimeouts setup deps duration)) leaks focal
     (execution seed)
-  let phase := fun seed => (app.runUntilHorizon scheduler (focalPlayers setup leaks focal deviation)
+  let phase := fun seed => (app.runUntilHorizon scheduler
+    (focalPlayers (serviceTimeouts setup deps duration) leaks focal deviation)
     (fun final => event ∈ final.application.config.cut.completed) horizon (execution seed)).map
       ((bindingTraffic (serviceTimeouts setup deps duration)) leaks focal)
   obtain ⟨channel, channelLaw⟩ := exists_updated_observation_kernel_of_readout prior source read
@@ -347,7 +348,8 @@ theorem sourceService_chance_law
   have phaseEq (seed : Seed) (supported : seed ∈ prior.support) :
       app.runUntilHorizon scheduler players
         (fun final => event ∈ final.application.config.cut.completed) horizon (execution seed) =
-      app.runUntilHorizon scheduler (focalPlayers setup leaks focal deviation)
+      app.runUntilHorizon scheduler
+        (focalPlayers timeouts leaks focal deviation)
         (fun final => event ∈ final.application.config.cut.completed) horizon (execution seed) :=
     runUntil_deviation_focal scheduler bound turns wholeProfile focal deviation event
       (Or.inl ownerless) alone _ (execution seed) (fun _ => readyAt seed supported)
@@ -377,7 +379,8 @@ theorem sourceService_chance_law
       rw [terminal]
       exact Finset.mem_univ _
   have sampled (seed : Seed) (supported : seed ∈ prior.support) :
-      (app.runUntilHorizon scheduler (focalPlayers setup leaks focal deviation)
+      (app.runUntilHorizon scheduler
+        (focalPlayers timeouts leaks focal deviation)
         (fun final => event ∈ final.application.config.cut.completed) horizon
         (execution seed)).map (fun final => sampledTrafficValue setup leaks event outputEq
           ((bindingTraffic timeouts) leaks focal final)) =
@@ -402,7 +405,7 @@ theorem sourceService_chance_law
   refine ⟨nextNoise, ?_, ?_⟩
   · calc
       _ = prior.bind (fun seed => (app.runUntilHorizon scheduler
-          (focalPlayers setup leaks focal deviation)
+          (focalPlayers timeouts leaks focal deviation)
           (fun final => event ∈ final.application.config.cut.completed) horizon
           (execution seed)).map fun final =>
             (sampleSuccessor name (source seed) (readChoice final),
@@ -582,7 +585,8 @@ private theorem foreign_binding_fixed_endpoint
       change outputLayout setup.program (embedding.event index) = _
       simpa [index, outputLayout, eventCount] using embedding.layout_eq index
     let action := cast (congrArg EventField.Action outputEq.symm) choice
-    let fixed := Function.update (focalPlayers setup leaks focal deviation) owner
+    let fixed := Function.update
+      (focalPlayers timeouts leaks focal deviation) owner
       (decidedTurnPolicy setup leaks bound owner event action)
     let readChoice := fun final : (application setup timeouts leaks).Execution =>
       OwnAction.binding owner name payload
@@ -761,7 +765,8 @@ private theorem binding_joint_mixed
     let phase := fun seed decision =>
       if owner ∈ (source seed).defaulted then PMF.pure (execution seed)
       else (application setup timeouts leaks).runUntilHorizon scheduler
-        (Function.update (focalPlayers setup leaks focal deviation) owner
+        (Function.update
+          (focalPlayers timeouts leaks focal deviation) owner
           (decidedTurnPolicy setup leaks bound owner event
             (cast (congrArg EventField.Action outputEq.symm) decision)))
         (fun final => event ∈ final.application.config.cut.completed) horizon (execution seed)
@@ -883,7 +888,8 @@ theorem sourceService_foreign_commit_law
           readChoice final = choice := by
   intro index event outputEq bindingRef players readChoice kernel
   let app := application setup timeouts leaks
-  let fixed := fun choice => Function.update (focalPlayers setup leaks focal deviation) owner
+  let fixed := fun choice => Function.update
+    (focalPlayers timeouts leaks focal deviation) owner
     (decidedTurnPolicy setup leaks bound owner event
       (cast (congrArg EventField.Action outputEq.symm) choice))
   have eventRank : event.val = rank := by
@@ -1221,7 +1227,8 @@ private theorem foreign_reveal_fixed_endpoint
       change outputLayout setup.program (embedding.event index) = _
       simpa [index, outputLayout, eventCount] using embedding.layout_eq index
     let action := cast (congrArg EventField.Action outputEq.symm) choice
-    let fixed := Function.update (focalPlayers setup leaks focal deviation) owner
+    let fixed := Function.update
+      (focalPlayers timeouts leaks focal deviation) owner
       (decidedTurnPolicy setup leaks bound owner event action)
     let readChoice := fun final : (application setup timeouts leaks).Execution =>
       OwnAction.disclosure
@@ -1462,7 +1469,8 @@ private theorem reveal_joint_mixed
     let phase := fun seed decision =>
       if owner ∈ (source seed).defaulted then PMF.pure (execution seed)
       else (application setup timeouts leaks).runUntilHorizon scheduler
-        (Function.update (focalPlayers setup leaks focal deviation) owner
+        (Function.update
+          (focalPlayers timeouts leaks focal deviation) owner
           (decidedTurnPolicy setup leaks bound owner event
             (cast (congrArg EventField.Action outputEq.symm) decision)))
         (fun final => event ∈ final.application.config.cut.completed) horizon (execution seed)
@@ -1618,7 +1626,8 @@ theorem sourceService_foreign_reveal_law
           readChoice final = choice := by
   intro index event outputEq publicationRef players readChoice kernel
   let app := application setup timeouts leaks
-  let fixed := fun choice => Function.update (focalPlayers setup leaks focal deviation) owner
+  let fixed := fun choice => Function.update
+    (focalPlayers timeouts leaks focal deviation) owner
     (decidedTurnPolicy setup leaks bound owner event
       (cast (congrArg EventField.Action outputEq.symm) choice))
   have eventRank : event.val = rank := by

@@ -5,7 +5,7 @@ module
 public import Vegas.Expr.Simple
 public import Vegas.Compile.EventGraphInputs
 public import Vegas.Pending.ReactiveRuntime
-public import Vegas.Game.ServiceRoster
+public import Vegas.Pending.ServiceRoster
 
 @[expose] public section
 
@@ -184,42 +184,42 @@ example (leaks : MessageNetwork.ObservationRule Bool (WitnessedPacket compiled))
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
 /-- A saved public block-entry view determines the clock decision. -/
-example (setup : Setup (Player := Player) (L := L))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
-    (rosters : setup.informationGraph.EventId → List Player)
-    (past : List (application setup (Vegas.timeouts setup) leaks).EnvironmentEntry)
-    (view : (application setup (Vegas.timeouts setup) leaks).EnvironmentView)
-    (event : setup.informationGraph.EventId)
-    (entry : (application setup (Vegas.timeouts setup) leaks).EnvironmentEntry)
-    (saved : past[(rosterPlanPrefix setup rosters event.val).length]? = some entry) :
-    rosterBlockCompleted setup leaks rosters past view event ↔
+example (graph : EventGraph Player L)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph.sequentialize))
+    (rosters : graph.EventId → List Player)
+    (past : List (rosterApplication graph leaks).EnvironmentEntry)
+    (view : (rosterApplication graph leaks).EnvironmentView)
+    (event : graph.EventId)
+    (entry : (rosterApplication graph leaks).EnvironmentEntry)
+    (saved : past[(rosterPlanPrefix graph rosters event.val).length]? = some entry) :
+    rosterBlockCompleted graph leaks rosters past view event ↔
       event ∈ entry.beforeView.application.observation.completionOrder := by
   simp only [rosterBlockCompleted, saved, Option.elim_some]
 
 /-- The calendar waits at a tick of a block already complete at entry. -/
-example (setup : Setup (Player := Player) (L := L))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
-    (rosters : setup.informationGraph.EventId → List Player)
-    (network : (NetworkPolicy (timeouts setup)) leaks)
-    (past : List (application setup (Vegas.timeouts setup) leaks).EnvironmentEntry)
-    (view : (application setup (Vegas.timeouts setup) leaks).EnvironmentView)
-    (event : setup.informationGraph.EventId)
-    (selected : (rosterPlan setup rosters)[past.length]? = some (event, .tick))
-    (completed : rosterBlockCompleted setup leaks rosters past view event) :
-    rosterScheduler setup leaks rosters network past view = PMF.pure .wait := by
+example (graph : EventGraph Player L)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph.sequentialize))
+    (rosters : graph.EventId → List Player)
+    (network : (NetworkPolicy (rosterTimeouts graph)) leaks)
+    (past : List (rosterApplication graph leaks).EnvironmentEntry)
+    (view : (rosterApplication graph leaks).EnvironmentView)
+    (event : graph.EventId)
+    (selected : (rosterPlan graph rosters)[past.length]? = some (event, .tick))
+    (completed : rosterBlockCompleted graph leaks rosters past view event) :
+    rosterScheduler graph leaks rosters network past view = PMF.pure .wait := by
   simp only [rosterScheduler, selected, ite_eq_left completed]
 
 /-- A block live at entry retains its tick after its event completes. -/
-example (setup : Setup (Player := Player) (L := L))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
-    (rosters : setup.informationGraph.EventId → List Player)
-    (network : (NetworkPolicy (timeouts setup)) leaks)
-    (past : List (application setup (Vegas.timeouts setup) leaks).EnvironmentEntry)
-    (view : (application setup (Vegas.timeouts setup) leaks).EnvironmentView)
-    (event : setup.informationGraph.EventId)
-    (selected : (rosterPlan setup rosters)[past.length]? = some (event, .tick))
-    (live : ¬ rosterBlockCompleted setup leaks rosters past view event) :
-    rosterScheduler setup leaks rosters network past view =
+example (graph : EventGraph Player L)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph.sequentialize))
+    (rosters : graph.EventId → List Player)
+    (network : (NetworkPolicy (rosterTimeouts graph)) leaks)
+    (past : List (rosterApplication graph leaks).EnvironmentEntry)
+    (view : (rosterApplication graph leaks).EnvironmentView)
+    (event : graph.EventId)
+    (selected : (rosterPlan graph rosters)[past.length]? = some (event, .tick))
+    (live : ¬ rosterBlockCompleted graph leaks rosters past view event) :
+    rosterScheduler graph leaks rosters network past view =
       PMF.pure (.application .advanceClock) := by
   simp only [rosterScheduler, selected, ite_eq_right live]
 

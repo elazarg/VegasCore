@@ -172,8 +172,8 @@ theorem SourceResidual.prescribed_defaultLaw_fromSequential [Finite Player]
     EventGraphRuntime.outcomeLaw
       (compilePrescribedProfile setup.program deps
         (setup.decodeBehavioralProfile admission target)) EventGraph.Config.defaulted
-      ((serviceGraph setup deps).fromSequentialConfig origin) = PMF.pure ∅ := by
-  let graph := serviceGraph setup deps
+      ((setup.dataflowGraph.withDependencies deps).fromSequentialConfig origin) = PMF.pure ∅ := by
+  let graph := setup.dataflowGraph.withDependencies deps
   let profile := compilePrescribedProfile setup.program deps
     (setup.decodeBehavioralProfile admission target)
   have law := residual.prescribed_defaultLaw_of_intended_history wellFormed admission intended

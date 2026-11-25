@@ -257,19 +257,7 @@ private theorem clientProfile_value_close {Parameter : Type}
         (serviceClientPolicy service.setup service.setup.informationDependencies service.duration
           service.leaks
           service.bound turns timing normalized) service.horizon).map app.finished := by
-    have physical := menu.run_restrict_eq_finish (serviceInitialLaw service.setup
-      service.setup.informationDependencies)
-      service.horizon service.scheduler
-      (serviceClientPolicy service.setup service.setup.informationDependencies service.duration
-        service.leaks
-        service.bound turns timing normalized) (covered source) (2 * service.horizon + 1)
-      (menu.protocol (serviceInitialLaw service.setup service.setup.informationDependencies)
-        service.horizon
-        service.scheduler).initHistory le_rfl
-    refine physical.trans ?_
-    unfold ReactiveApplication.finish ReactiveApplication.roundsFrom
-    simp only [PMF.map_bind]
-    rfl
+    exact menu.run_restrict_eq_roundsFrom _ _ _ _ (covered source)
   have initialized (final) (supported : final ∈ native.support) :
       ∃ execution, execution ∈ (app.roundsFrom (serviceInitialLaw service.setup
         service.setup.informationDependencies)
@@ -622,24 +610,10 @@ theorem isεBestResponse_clientProfile_of_firstTurn_bounds_readout {Parameter : 
         service.scheduler player replacement
     · simp only [players, Function.update_of_ne same, Profile.update]
       rfl
-  have physical := menu.run_restrict_eq_finish (serviceInitialLaw service.setup
-    service.setup.informationDependencies)
-    service.horizon
-    service.scheduler players admissible (2 * service.horizon + 1)
-    (menu.protocol (serviceInitialLaw service.setup service.setup.informationDependencies)
-      service.horizon
-      service.scheduler).initHistory le_rfl
-  rw [restricted] at physical
-  have deviationLaw : (model.runBehavioral
-      (Profile.update (service.clientProfile admission menu timing source) who replacement)
-      (2 * service.horizon + 1)).map History.state =
-      (app.roundsFrom (serviceInitialLaw service.setup service.setup.informationDependencies)
-        service.scheduler players
-        service.horizon).map app.finished := by
-    refine physical.trans ?_
-    unfold ReactiveApplication.roundsFrom
-    simp only [ReactiveApplication.finish, PMF.map_bind]
-    rfl
+  have deviationLaw := menu.run_restrict_eq_roundsFrom
+    (serviceInitialLaw service.setup service.setup.informationDependencies) service.horizon
+    service.scheduler players admissible
+  rw [restricted] at deviationLaw
   rw [completed] at deviationLaw
   -- The turn-counted and first-turn deviations are close.
   have coupled := deviatedTurnProfile_roundsFrom_bind_within

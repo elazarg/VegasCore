@@ -87,6 +87,12 @@ configuration law. [EventGraphScheduling](../Vegas/Compile/EventGraphScheduling.
 extends it to every permitted public scheduler: the compiled order has a unique
 ready event. These laws need no finite payload catalogue, independent initial
 law, runtime service or equilibrium premise.
+At a completed prefix, the graph store, actions and defaults determine the source
+protocol state. The fixed-action and mixed event laws identify its next-step
+distribution. With a finite player type, iterating the mixed law matches every
+bounded source prefix under the setup's joint prior.
+[EventGraphSourceResidual](../Vegas/Compile/EventGraphSourceResidual.lean)
+
 [EventGraphDeviation](../Vegas/Compile/EventGraphDeviation.lean) backtranslates
 every graph deviation to one source policy chosen before initialization,
 retaining the full terminal configuration law under arbitrary correlated priors.
@@ -143,10 +149,11 @@ backtranslates every unilateral physical policy against first-turn opponents to
 one behavioral source deviation with the same joint typed-state/default law.
 It adds no finite-player or wire-value catalogue premise.
 
-The ordinary law retains typed state and public defaults. The intended
-sequential-equilibrium compiler below additionally preserves the full source
-configuration on its implementing path. These are different observation scopes
-of the same executions.
+The ordinary source outcome law retains typed state and public defaults for the
+original profile. The bounded graph law also retains the complete graph
+configuration, including recorded actions, for the disclosure-normalized profile.
+The intended sequential-equilibrium compiler preserves the full source
+configuration on its implementing path.
 
 ## Utility, audit and sequential preservation
 

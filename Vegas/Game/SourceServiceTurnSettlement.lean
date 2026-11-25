@@ -280,20 +280,8 @@ theorem sourceServiceClients_clientPolicy_settlement_lawError_readout
   intro settle
   let app := serviceApplication setup deps duration leaks
   let clients := normalizeDisclosureProfile setup.program original
-  have physical := menu.run_restrict_eq_finish (serviceInitialLaw setup deps) horizon scheduler
-    (serviceClientPolicy setup deps duration leaks bound turns timing clients) covered
-    (2 * horizon + 1) (menu.protocol (serviceInitialLaw setup deps) horizon scheduler).initHistory
-    le_rfl
-  have states : ((menu.information (serviceInitialLaw setup deps) horizon scheduler).runBehavioral
-      (fun who => menu.restrictPolicy (serviceInitialLaw setup deps) horizon scheduler who
-        (serviceClientPolicy setup deps duration leaks bound turns timing clients who))
-      (2 * horizon + 1)).map (fun final => final.state) =
-        (serviceInitialLaw setup deps).bind (fun state =>
-          (app.runRounds scheduler
-            (serviceClientPolicy setup deps duration leaks bound turns timing clients) horizon
-            (ReactiveApplication.Execution.initial app state)).map app.finished) := by
-    rw [InformationModel.runBehavioral]
-    exact physical
+  have states := menu.run_restrict_eq_roundsFrom (serviceInitialLaw setup deps) horizon
+    scheduler (serviceClientPolicy setup deps duration leaks bound turns timing clients) covered
   have native : ((menu.information (serviceInitialLaw setup deps) horizon scheduler).runBehavioral
       (fun who => menu.restrictPolicy (serviceInitialLaw setup deps) horizon scheduler who
         (serviceClientPolicy setup deps duration leaks bound turns timing clients who))
@@ -309,11 +297,7 @@ theorem sourceServiceClients_clientPolicy_settlement_lawError_readout
       law.bind fun final =>
         (settle final).map fun payoffs =>
           (reader final, payoffs)) states
-    simp only [PMF.bind_map, PMF.bind_bind] at joint
-    refine joint.trans ?_
-    unfold ReactiveApplication.roundsFrom
-    simp only [PMF.bind_bind, Function.comp_def]
-    rfl
+    simpa only [PMF.bind_map, Function.comp_def] using joint
   have compared :=
     (sourceServiceTurnPolicy_execution_settlement_lawError_readout serial reader contract timing
       clients terminal sample authentic

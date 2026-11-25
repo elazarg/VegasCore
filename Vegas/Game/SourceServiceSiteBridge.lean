@@ -55,8 +55,10 @@ theorem initialLaw_bind_sourceContinuation (profile : BehavioralProfile setup.pr
   rw [initialLaw, serviceInitialLaw, PMF.bind_map, Setup.run, PMF.map_bind]
   congr 1
   funext initial
-  simp only [Function.comp_apply, sourceContinuation, serviceSourcePrefix?_initial,
-    Setup.continuationLaw, ProtocolState.continuationLaw_entry]
+  change sourceContinuation setup profile 0
+    (EventGraph.Config.initial (graph := setup.informationGraph) (setup.eventInputs initial)) = _
+  simp only [sourceContinuation, serviceSourcePrefix?_initial, Setup.continuationLaw,
+    ProtocolState.continuationLaw_entry]
   rfl
 
 variable {setup leaks} [Fintype Player]

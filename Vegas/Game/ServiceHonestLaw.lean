@@ -22,7 +22,7 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
 /-- First-turn clients preserve the source's full terminal configuration under
 an asynchronous scheduler and its reaction and inclusion timing budget. -/
-theorem firstTurn_readout_law [Finite Player]
+theorem firstTurn_readout_law
     (setup : Setup (Player := Player) (L := L))
     {duration : setup.informationGraph.EventId → Nat}
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))

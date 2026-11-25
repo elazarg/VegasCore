@@ -164,7 +164,8 @@ theorem chance_phase_joint
       (execution seed).application.config.cut.Ready event := by
     simpa only [Fin.eta] using (ordered seed supported).ready event.isLt
   have focalEq (seed : Seed) (supported : seed ∈ prior.support) :
-      phase seed = app.runUntilHorizon scheduler (focalPlayers setup leaks who deviation)
+      phase seed = app.runUntilHorizon scheduler
+        (focalPlayers (serviceTimeouts setup deps duration) leaks who deviation)
         (fun current => event ∈ current.application.config.cut.completed) horizon
         (execution seed) :=
     runUntil_reference_focal scheduler bound turns timing reference who deviation event

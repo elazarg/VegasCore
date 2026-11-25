@@ -4,7 +4,7 @@ module
 
 public import Vegas.Pending.ReactiveGraphSteps
 public import Vegas.Game.RevealServicePayoffs
-public import Vegas.Game.SourceServicePrefix
+public import Vegas.Compile.EventGraphPrefixReadout
 public import GameTheoryExtensions.Analysis.Protocol.StoppedReadout
 public import GameTheoryExtensions.Protocol.ContinuationHorizon
 

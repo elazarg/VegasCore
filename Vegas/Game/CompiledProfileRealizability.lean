@@ -3,7 +3,7 @@ module
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 public import Vegas.Compile.EventGraphLaw
-public import Vegas.Game.SourceServiceReachedDecoding
+public import Vegas.Compile.EventGraphSourceResidual
 public import Vegas.Pending.EffectiveAction
 public import Vegas.Source.DisclosureBehavioral
 

@@ -27,99 +27,20 @@ theorem SourceResidual.chance_step_sourceLaw
     {profile : BehavioralProfile setup.program} {rank : Nat} {config :
       setup.informationGraph.Config}
     (residual : SourceResidual setup profile rank config) (event : setup.informationGraph.EventId)
-    (atRank : event.val = rank) (ready : config.cut.Ready event)
+    (_atRank : event.val = rank) (ready : config.cut.Ready event)
     (actorless : setup.informationGraph.actor? event = none)
     (action : setup.informationGraph.Action event) {point : ProtocolState setup.program}
     (decoded : sourceServicePrefix? setup rank config = some point) :
     (config.step event ready action).map (sourceServicePrefix? setup (rank + 1)) =
       (ProtocolState.behavioralStateStep setup.program profile point).map some := by
-  let native : EventGraphRuntime.State setup.informationGraph :=
-    { EventGraphRuntime.State.initial (graph := setup.informationGraph) config.inputs with config
-      := config }
   have pointEq := Option.some.inj (residual.decode.symm.trans decoded)
-  rcases residual with ⟨Γ, names, program, residualProfile, source, refs, embedding, refsBefore,
-    aligned, admitted, authentic, supports, disclosing, lift, commutes, steps, injective,
-    transport, checkpoint⟩
-  dsimp only at pointEq
-  have counted := aligned.graphSuffix.countEq
-  change rank + eventCount program = setup.informationGraph.order.eventCount at counted
-  have nextDecode (state : ProtocolState program) (next : setup.informationGraph.Config)
-      (read : decodeSourcePrefix? program refs source.registry source.revelations embedding.ref
-        1 next.store (decodeHistory setup.program next.history) next.defaults = some state) :
-      sourceServicePrefix? setup (rank + 1) next = some (lift state) := by
-    unfold sourceServicePrefix? serviceSourcePrefix?
-    rw [transport 1, read]
-    rfl
-  cases program with
-  | ret payoffs =>
-      have := event.isLt
-      simp only [eventCount] at counted
-      omega
-  | @sample Γ openNames name payload fresh distribution next =>
-      let index : Fin (eventCount (.sample name fresh distribution next)) :=
-        ⟨0, by simp [eventCount]⟩
-      have headRank : (embedding.event index).val = rank := by
-        simpa only [index, Nat.add_zero] using aligned.graphSuffix.rankEq index
-      have same : event = embedding.event index := Fin.ext (atRank.trans headRank.symm)
-      subst same
-      have outputEq : setup.informationGraph.outputLayout (embedding.event index) =
-          .publicData payload := by
-        change outputLayout setup.program (embedding.event index) = _
-        simpa [index, outputLayout, eventCount] using embedding.layout_eq index
-      have codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
-          (setup.informationGraph.nodes (embedding.event index)) =
-            .sample payload (compilePublicDist refs distribution) := by
-        change cast (congrArg (EventGraph.EventCode (graphLayout setup.program)) outputEq)
-          ((toInformationGraph setup.program).nodes (embedding.event index)) = _
-        simpa [index, compileRankedNodes] using aligned.graphSuffix.nodeEq index
-      have decodedAction : decodeEventAction setup.program (embedding.event index)
-          (cast (congrArg EventGraph.EventField.Action outputEq.symm) PUnit.unit) = none := by
-        have lookup := aligned.actionEq index
-          (cast (congrArg EventGraph.EventField.Action outputEq.symm) PUnit.unit)
-        simpa [index, outputEq, decodeEventAction] using lookup
-      obtain ⟨marker, rfl⟩ : ∃ marker : PUnit,
-          action = cast (congrArg EventGraph.EventField.Action outputEq.symm) marker :=
-        ⟨cast (congrArg EventGraph.EventField.Action outputEq) action, by simp⟩
-      cases marker
-      have entryStep : ProtocolState.behavioralStateStep (.sample name fresh distribution next)
-          residualProfile (ProtocolState.entry _ source) =
-          (L.evalDist distribution (sourcePublicEnv source.state)).map (fun value =>
-            Sum.inr (ProtocolState.entry next (sampleSuccessor name source value))) :=
-        ProtocolState.behavioralStateStep_sample_entry residualProfile source
-      rw [← pointEq, commutes, entryStep,
-        sample_step config _ ready outputEq refs distribution codeEq source.state
-          checkpoint.agrees, PMF.map_comp, PMF.map_comp]
-      simp only [PMF.map_comp]
-      apply map_congr_on_support
-      intro value _
-      apply nextDecode
-      exact (decodeSourcePrefix?_sample fresh distribution next refs source.registry
-        source.revelations embedding.ref 0 _ _ _).trans (congrArg (Option.map Sum.inr)
-          ((checkpoint.sample (native := native) name (embedding.event index)
-            headRank ready outputEq (fun ref => refsBefore ref index) decodedAction
-            value).decode next (fun tail => embedding.ref tail.succ)))
-  | @commit Γ openNames name owner payload fresh guard next =>
-      let index : Fin (eventCount (.commit name owner fresh guard next)) :=
-        ⟨0, by simp [eventCount]⟩
-      have headRank : (embedding.event index).val = rank := by
-        simpa only [index, Nat.add_zero] using aligned.graphSuffix.rankEq index
-      have same : event = embedding.event index := Fin.ext (atRank.trans headRank.symm)
-      have actor : setup.informationGraph.actor? (embedding.event index) = some owner := by
-        change (toInformationGraph setup.program).actor? (embedding.event index) = some owner
-        simpa [index, eventOwner?, eventCount] using aligned.actorEq index
-      rw [same, actor] at actorless
-      cases actorless
-  | @reveal Γ openNames published owner name payload fresh selected unresolved next =>
-      let index : Fin (eventCount (.reveal published owner name fresh selected unresolved next)) :=
-        ⟨0, by simp [eventCount]⟩
-      have headRank : (embedding.event index).val = rank := by
-        simpa only [index, Nat.add_zero] using aligned.graphSuffix.rankEq index
-      have same : event = embedding.event index := Fin.ext (atRank.trans headRank.symm)
-      have actor : setup.informationGraph.actor? (embedding.event index) = some owner := by
-        change (toInformationGraph setup.program).actor? (embedding.event index) = some owner
-        simpa [index, eventOwner?, eventCount] using aligned.actorEq index
-      rw [same, actor] at actorless
-      cases actorless
+  have actionEq := EventGraph.EventCode.action_eq_of_actor_none
+    (setup.informationGraph.nodes event) actorless
+    (EventGraph.EventCode.actionOfActorNone (setup.informationGraph.nodes event) actorless) action
+  have law := residual.eventStep_law event ready
+  rw [EventGraph.eventStep, EventGraph.actionLaw_of_ownerless _ _ actorless,
+    PMF.pure_bind, actionEq, pointEq] at law
+  exact law
 
 variable {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}

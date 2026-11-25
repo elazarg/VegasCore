@@ -13,6 +13,7 @@ public import VegasTests.EventCompilation
 public import VegasTests.EventGraph
 public import VegasTests.EventGraphDefault
 public import VegasTests.EventGraphReadout
+public import VegasTests.GuardRejectedTraffic
 public import VegasTests.EventMessages
 public import VegasTests.EventStrategies
 public import VegasTests.FiniteSupportPurification
@@ -21,6 +22,7 @@ public import VegasTests.PartialEnvironment
 public import VegasTests.ClientCompiler
 public import VegasTests.ResultExpressions
 public import VegasTests.RosterAutomaticCompletion
+public import VegasTests.GraphReadyRoster
 public import VegasTests.RuntimeDefault
 public import VegasTests.RuntimeScenarios
 public import VegasTests.ServiceTiming

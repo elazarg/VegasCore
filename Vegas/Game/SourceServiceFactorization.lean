@@ -6,7 +6,6 @@ public import Vegas.Pending.ReactiveBindingLikelihood
 public import Vegas.Game.SourceServiceCheckpoint
 public import Vegas.Game.ServiceObservation
 public import GameTheory.Math.Probability.Support
-public import Vegas.Pending.EventInitialObservation
 
 @[expose] public section
 
@@ -28,6 +27,25 @@ open GameTheory.Math.Probability Interaction EventGraphRuntime
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
 
+/-- Equal source views give the same actual focal observation at graph initialization. -/
+private theorem source_initial_playerObservation_eq
+    (setup : Setup (Player := Player) (L := L)) {deps : setup.dataflowGraph.Dependencies}
+    (focal : Player) (left right : State L setup.context)
+    (same : (Config.initial left).view focal = (Config.initial right).view focal) :
+    (serviceGraph setup deps).playerObserve focal
+        (EventGraph.Config.initial (setup.eventInputs left)) =
+      (serviceGraph setup deps).playerObserve focal
+        (EventGraph.Config.initial (setup.eventInputs right)) := by
+  have first := SourceCheckpoint.initial (deps := deps) setup left
+  have second := SourceCheckpoint.initial (deps := deps) setup right
+  exact checkpoint_playerObservation_eq_of_order setup _ 0
+    (ContextRefs.initial_coversPrefix setup.program) focal _ _ _ _
+    EventGraph.Config.Reachable.initial EventGraph.Config.Reachable.initial
+    (by change focal ∉ (∅ : Finset Player); simp)
+    (by change focal ∉ (∅ : Finset Player); simp)
+    (by rfl) first.ordered second.ordered first.agrees second.agrees first.history
+    second.history (by rfl) (by rfl) same
+
 /-- Correlated initial draws with the same source view have identical native
 traffic projections, including the genuine owned initial candidate catalogue. -/
 theorem source_initial_traffic_eq
@@ -44,33 +62,8 @@ theorem source_initial_traffic_eq
         (ReactiveApplication.Execution.initial (serviceApplication setup deps duration leaks)
           (EventGraphRuntime.State.initial (graph := serviceGraph setup deps)
               (setup.eventInputs right))) := by
-  have first := SourceCheckpoint.initial (deps := deps) setup left
-  have second := SourceCheckpoint.initial (deps := deps) setup right
-  have observed := checkpoint_playerObservation_eq_of_order setup _ 0
-    (ContextRefs.initial_coversPrefix setup.program) focal _ _ _ _
-    EventGraph.Config.Reachable.initial EventGraph.Config.Reachable.initial
-    (by change focal ∉ (∅ : Finset Player); simp)
-    (by change focal ∉ (∅ : Finset Player); simp)
-    (by rfl) first.ordered second.ordered first.agrees second.agrees first.history
-    second.history (by rfl) (by rfl) same
-  have publics : (EventGraphRuntime.State.initial (graph := serviceGraph setup deps)
-        (setup.eventInputs left)).publicView =
-      (EventGraphRuntime.State.initial (graph := serviceGraph setup deps)
-        (setup.eventInputs right)).publicView :=
-    EventGraphRuntime.State.initial_publicView_eq_of_observation (graph := serviceGraph setup deps)
-        focal (setup.eventInputs left) (setup.eventInputs right) observed
-  have candidates := EventGraphRuntime.State.initial_candidates_eq_of_observation
-    (graph := serviceGraph setup deps) focal (setup.eventInputs left)
-    (setup.eventInputs right) observed
-  have views : (EventGraphRuntime.State.initial (graph := serviceGraph setup deps)
-        (setup.eventInputs left)).playerView focal =
-      (EventGraphRuntime.State.initial (graph := serviceGraph setup deps)
-        (setup.eventInputs right)).playerView focal := by
-    unfold EventGraphRuntime.State.playerView
-    congr 1
-  unfold EventGraphRuntime.bindingTraffic
-  dsimp only [ReactiveApplication.Execution.initial]
-  rw [views, publics]
+  exact initial_bindingTraffic_eq_of_observation (serviceTimeouts setup deps duration)
+    leaks focal _ _ (source_initial_playerObservation_eq setup focal left right same)
 
 /-- Initial native traffic factors through the focal source view for the
 supplied initial law, without an independence assumption on private types. -/
@@ -88,28 +81,8 @@ theorem source_initial_traffic_factorization
                 (setup.eventInputs initial))))) =
       (setup.initialLaw.map Config.initial).bind fun source =>
         (noise (source.view focal)).map fun extra => (source, extra) := by
-  classical
-  let read := fun initial : State L setup.context =>
-    (bindingTraffic (serviceTimeouts setup deps duration)) leaks focal
-      (ReactiveApplication.Execution.initial (serviceApplication setup deps duration leaks)
-        (EventGraphRuntime.State.initial (graph := serviceGraph setup deps)
-            (setup.eventInputs initial)))
-  let noise := fun view : DecisionView focal setup.context =>
-    if present : ∃ initial ∈ setup.initialLaw.support,
-        (Config.initial initial).view focal = view then
-      PMF.pure (read present.choose)
-    else PMF.pure (read setup.initialLaw.support_nonempty.choose)
-  refine ⟨noise, ?_⟩
-  rw [PMF.bind_map]
-  change setup.initialLaw.bind (fun initial => PMF.pure
-      (Config.initial initial, read initial)) = _
-  apply bind_congr_on_support _
-  intro initial supported
-  have present : ∃ other ∈ setup.initialLaw.support,
-      (Config.initial other).view focal = (Config.initial initial).view focal :=
-    ⟨initial, supported, rfl⟩
-  simp only [noise, Function.comp_apply, dite_eq_left present, PMF.pure_map]
-  rw [show read initial = read present.choose from
-    source_initial_traffic_eq setup leaks focal initial present.choose present.choose_spec.2.symm]
+  exact initial_bindingTraffic_factorization_of_view (serviceTimeouts setup deps duration)
+    leaks focal setup.initialLaw setup.eventInputs Config.initial (fun config => config.view focal)
+    (fun left _ right _ same => source_initial_playerObservation_eq setup focal left right same)
 
 end Vegas

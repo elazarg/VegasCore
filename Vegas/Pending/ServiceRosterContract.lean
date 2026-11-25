@@ -2,7 +2,7 @@ module
 
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-public import Vegas.Game.ServiceRosterInvariant
+public import Vegas.Pending.ServiceRosterInvariant
 
 @[expose] public section
 
@@ -17,30 +17,31 @@ noncomputable section
 
 namespace Vegas
 
-open SourceProgram Interaction EventGraphRuntime GameTheory.Math.Probability GameTheory.Protocol
+open Interaction EventGraphRuntime GameTheory.Math.Probability GameTheory.Protocol
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
 namespace RosterCalendarInvariant
 
-variable (setup : Setup (Player := Player) (L := L))
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
-  (rosters : setup.informationGraph.EventId → List Player)
-  (scheduler : (application setup (Vegas.timeouts setup) leaks).Scheduler)
-  (calendar : ∀ (control : (application setup (Vegas.timeouts setup) leaks).Control),
-    ((application setup (Vegas.timeouts setup) leaks).protocol (initialLaw setup)
-      (rosterPlan setup rosters).length scheduler).Trace
-        (some control) → RosterCalendarInvariant setup leaks rosters (some control))
+variable (graph : EventGraph Player L) (inputs : PMF graph.Inputs)
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph.sequentialize))
+  (rosters : graph.EventId → List Player)
+  (scheduler : (rosterApplication graph leaks).Scheduler)
+  (calendar : ∀ (control : (rosterApplication graph leaks).Control),
+    ((rosterApplication graph leaks).protocol (rosterInitialLaw graph inputs)
+      (rosterPlan graph rosters).length scheduler).Trace
+        (some control) → RosterCalendarInvariant graph leaks rosters (some control))
 
 include calendar
 
 /-- Every ready owner is activated within its event's rank bound. -/
-theorem opportunity (opportunities : ActorOpportunities setup rosters) :
-    Opportunity (timeouts setup) leaks (initialLaw setup) (rosterPlan setup rosters).length
+theorem opportunity (opportunities : ActorOpportunities graph rosters) :
+    Opportunity (rosterTimeouts graph) leaks (rosterInitialLaw graph inputs)
+      (rosterPlan graph rosters).length
       scheduler (fun event => event.val) := by
   intro control trace event owner entered owned readyView activated late
   dsimp only at late
-  have ready := (State.publicView_eventReady _ event).mp readyView
+  have ready := (control.execution.application.publicView_eventReady event).mp readyView
   rcases calendar control trace with
     ⟨current, offset, entryClock, obsolete, phase⟩ | ⟨_, _, terminal⟩
   · by_cases prior : event.val < current.val
@@ -67,7 +68,8 @@ theorem opportunity (opportunities : ActorOpportunities setup rosters) :
 /-- A sole authored identifier for a ready event receives an inclusion receipt
 before any subsequent clock advance, including after an early obsolete-block response. -/
 theorem protectedInclusion :
-    ProtectedInclusion (timeouts setup) leaks (initialLaw setup) (rosterPlan setup rosters).length
+    ProtectedInclusion (rosterTimeouts graph) leaks (rosterInitialLaw graph inputs)
+      (rosterPlan graph rosters).length
       scheduler (fun _ => 0) := by
   intro control trace event owner owned earlier later entry message split emitted authored
     addressed seen sole unfinished late
@@ -98,14 +100,15 @@ theorem protectedInclusion :
 
 /-- Exhausting the fixed command horizon leaves every graph event completed. -/
 theorem completesPlay :
-    CompletesPlay (timeouts setup) leaks (initialLaw setup) (rosterPlan setup rosters).length
+    CompletesPlay (rosterTimeouts graph) leaks (rosterInitialLaw graph inputs)
+      (rosterPlan graph rosters).length
       scheduler := by
   intro control trace terminal
   obtain ⟨finished, _⟩ := terminal
   rcases calendar control trace with
     ⟨current, offset, entryClock, obsolete, phase⟩ | ⟨_, _, complete⟩
   · have total := phase.remaining
-    have bound := rosterPlan_length_block setup rosters current
+    have bound := rosterPlan_length_block graph rosters current
     have inside := phase.inside
     rw [phase.position, finished] at total
     omega

@@ -83,122 +83,23 @@ theorem effective_runToHorizon_outcomeLaw
       ((serviceApplication setup deps duration leaks).runToHorizon scheduler players horizon
           execution).map (fun final => read final.application.config) =
         outcomeLaw reference read execution.application.config := by
-  classical
   intro players
-  let app := serviceApplication setup deps duration leaks
-  let publication := fun event : (serviceGraph setup deps).EventId =>
-    ((serviceGraph setup deps).outputLayout event).IsPublication
-  intro execution
-  generalize leftEq : horizon - execution.environmentRecall.length = left
-  induction left using Nat.strong_induction_on generalizing execution with
-  | ind left ih =>
-  intro supported bounded seen
-  obtain ⟨trace⟩ := app.raw_trace_roundsFrom (serviceInitialLaw setup deps) horizon scheduler
-    players execution.environmentRecall.length bounded execution supported
-  cases left with
-  | zero =>
-      rw [leftEq] at trace
-      have terminal := contract.completes _ trace ⟨rfl, rfl⟩
-      have noRounds : app.runToHorizon scheduler players horizon execution =
-          PMF.pure execution := by
-        unfold ReactiveApplication.runToHorizon
-        rw [leftEq]
-        rfl
-      have remaining : execution.application.config.remaining = 0 :=
-        execution.application.config.terminal_iff_remaining_zero.mp terminal
-      rw [noRounds, PMF.pure_map]
-      unfold outcomeLaw
-      rw [remaining, EventGraph.runPlan, PMF.pure_map]
-  | succ left =>
-      by_cases allPublications : ∀ event, execution.application.config.cut.Ready event →
-          publication event
-      · have rounds : app.runToHorizon scheduler players horizon execution =
-            (app.round scheduler players execution).bind
-              (app.runToHorizon scheduler players horizon) := by
-          unfold ReactiveApplication.runToHorizon
-          rw [leftEq, ReactiveApplication.runRounds]
-          apply bind_congr_on_support _
-          intro next reached
-          rw [app.round_environmentRecall_length scheduler players execution next reached]
-          congr 1
-          omega
-        rw [rounds, PMF.map_bind]
-        calc
-          _ = (app.round scheduler players execution).bind
-              (fun _ => outcomeLaw reference read execution.application.config) := by
-            apply bind_congr_on_support _
-            intro next reached
-            have lengthNext := app.round_environmentRecall_length scheduler players execution
-              next reached
-            have supportedNext : next ∈ (app.roundsFrom (serviceInitialLaw setup deps) scheduler
-                players next.environmentRecall.length).support := by
-              rw [lengthNext, app.roundsFrom_succ]
-              exact (PMF.mem_support_bind_iff _ _ _).mpr ⟨execution, supported, reached⟩
-            rw [ih left (by omega) next (by omega) supportedNext (by omega)
-              (round_seenWithin seen allPublications reached)]
-            exact reactive_round_outcomeLaw_of_accepted independent opens read keyed invariant
-              (serviceTimeouts setup deps duration) leaks scheduler players execution next
-              allPublications (fun event owner ready owned _ accepted =>
-                effectivePublication_withinDeadline contract timely players owner effective
-                  decides rfl execution.environmentRecall.length bounded execution supported event
-                  (effectiveIndependent.actorSerial event) owned ready (allPublications event
-                      ready) accepted) reached
-          _ = _ := PMF.bind_const _ _
-      · push Not at allPublications
-        obtain ⟨event, ready, notPublication⟩ := allPublications
-        have solitary := only.solitary notPublication
-        let stop := fun final : app.Execution => event ∈ final.application.config.cut.completed
-        rw [app.runToHorizon_eq_runUntilHorizon_bind scheduler players stop, PMF.map_bind]
-        calc
-          _ = (app.runUntilHorizon scheduler players stop horizon execution).bind
-              (fun stopped => outcomeLaw reference read stopped.application.config) := by
-            apply bind_congr_on_support _
-            intro stopped reached
-            obtain ⟨used, within, rounds, lengthEq⟩ := app.runUntil_runRounds scheduler players
-              stop _ execution stopped reached
-            have stoppedSupported := app.roundsFrom_runUntil scheduler players
-              (serviceInitialLaw setup deps) stop _ execution stopped supported reached
-            have stoppedBounded : stopped.environmentRecall.length ≤ horizon := by omega
-            have finished : event ∈ stopped.application.config.cut.completed := by
-              rcases app.runUntilHorizon_stopped scheduler players stop horizon (left + 1)
-                  execution stopped (by omega) reached with done | spent
-              · exact done
-              · obtain ⟨stoppedTrace⟩ := app.raw_trace_roundsFrom (serviceInitialLaw setup deps)
-                  horizon scheduler players stopped.environmentRecall.length stoppedBounded
-                  stopped stoppedSupported
-                rw [spent, Nat.sub_self] at stoppedTrace
-                have terminal := contract.completes _ stoppedTrace ⟨rfl, rfl⟩
-                rw [EventOrder.Cut.Terminal] at terminal
-                rw [terminal]
-                exact Finset.mem_univ _
-            have progressed : 0 < used := by
-              rcases Nat.eq_zero_or_pos used with zero | positive
-              · subst zero
-                cases (PMF.mem_support_pure_iff _ _).mp rounds
-                exact (ready.1 finished).elim
-              · exact positive
-            have seenEvent := runUntil_seenWithin (allowed := publication) scheduler players event
-              solitary _ execution stopped ready
-              (fun who entry member other readyView =>
-                (seen who entry member other readyView).imp_right Or.inl) reached
-            have seenStopped : SeenWithin publication stopped := by
-              intro who entry member other readyView
-              rcases seenEvent who entry member other readyView with completed | permitted |
-                  same
-              · exact Or.inl completed
-              · exact Or.inr permitted
-              · subst same
-                exact Or.inl finished
-            exact ih (horizon - stopped.environmentRecall.length) (by omega) stopped rfl
-              stoppedSupported stoppedBounded seenStopped
-          _ = _ := by
-            have segment := soleSegment_outcomeLaw (serviceTimeouts setup deps duration) leaks
-              scheduler delay bound contract timely effective effectiveIndependent read keyed
-              players event (fun _ _ => rfl) solitary (leading event notPublication)
-              notPublication execution ready supported (seen.untouched ready.1 notPublication)
-              bounded
-            simp only [twins] at segment
-            exact segment
+  refine runToHorizon_outcomeLaw_of_segments contract only players reference read ?_ ?_
+  · intro execution next supported bounded allPublications reached
+    exact reactive_round_outcomeLaw_of_accepted independent opens read keyed invariant
+      (serviceTimeouts setup deps duration) leaks scheduler players execution next
+      allPublications (fun event owner ready owned _ accepted =>
+        effectivePublication_withinDeadline contract timely players owner effective decides rfl
+          execution.environmentRecall.length bounded execution supported event
+          (effectiveIndependent.actorSerial event) owned ready (allPublications event ready)
+          accepted) reached
+  · intro execution event ready notPublication supported bounded untouched
+    have segment := soleSegment_outcomeLaw (serviceTimeouts setup deps duration) leaks
+      scheduler delay bound contract timely effective effectiveIndependent read keyed
+      players event (fun _ _ => rfl) (only.solitary notPublication) (leading event notPublication)
+      notPublication execution ready supported untouched bounded
+    simp only [twins] at segment
+    exact segment
 
 /-- **The honest outcome law of the run.** Under the hypotheses of
 `honest_runToHorizon_outcomeLaw`, the outcome of the honest clients' run to the

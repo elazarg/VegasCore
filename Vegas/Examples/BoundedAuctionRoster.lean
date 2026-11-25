@@ -4,6 +4,7 @@ module
 
 public import Vegas.Examples.BoundedAuctionService
 public import Vegas.Game.RosterSubmissionOpportunity
+public import Vegas.Game.SourceServiceFacts
 public import Vegas.Pending.ReactiveMonitoring
 
 @[expose] public section
@@ -21,83 +22,52 @@ open BoundedAuctionService (leaks fundedSpecification truthful_single_opportunit
 open CommitRevealAuction (Player)
 
 /-- Offer a single activation to the tagged event's owner. -/
-def rosters (event : graph.EventId) : List Player := (graph.actor? event).toList
+def rosters (event : graph.EventId) : List Player :=
+  ownerRoster (setup uniformPrior).dataflowGraph event
 
 abbrev rt : EventTimeouts graph := Vegas.timeouts (setup uniformPrior)
 abbrev network := (idleNetwork rt) leaks
-abbrev steps := (rosterPlan (setup uniformPrior) rosters).length
+abbrev steps := (rosterPlan (setup uniformPrior).dataflowGraph rosters).length
 
 /-- The calendar and its guard use the public event and completion data. -/
 def builder : ((reactiveApplication rt) leaks).Scheduler :=
-  readyRosterScheduler (setup uniformPrior) leaks rosters network
-
-private theorem plan_eq (prior : PMF (Player → Bid)) :
-    rosterPlan (setup prior) rosters = rosterPlan (setup uniformPrior) rosters := rfl
-
-private theorem prefix_eq (prior : PMF (Player → Bid)) (i : Nat) :
-    rosterPlanPrefix (setup prior) rosters i = rosterPlanPrefix (setup uniformPrior) rosters i :=
-  rfl
-
-private theorem timeouts_eq (prior : PMF (Player → Bid)) : Vegas.timeouts (setup prior) = rt := rfl
-
-private theorem builder_eq (prior : PMF (Player → Bid)) :
-    readyRosterScheduler (setup prior) leaks rosters network = builder := by
-  funext past view
-  simp only [builder, readyRosterScheduler, rosterScheduler, plan_eq prior, rosterBlockCompleted,
-    prefix_eq prior, timeouts_eq prior]
-  cases located : (rosterPlan (setup uniformPrior) rosters)[past.length]? with
-  | none => rfl
-  | some pair =>
-    obtain ⟨event, instruction⟩ := pair
-    cases instruction <;> rfl
-
-private def cursor (event : graph.EventId) : Nat :=
-  (rosterPlanPrefix (setup uniformPrior) rosters event.val).length
-
-private theorem unique_position (i : Nat) (event : graph.EventId) (who : Player)
-    (found : (rosterPlan (setup uniformPrior) rosters)[i]? = some (event, .player who)) :
-    i = cursor event := by
-  let tag : graph.EventId × ServiceInstruction graph → Option graph.EventId
-    | (target, .player _) => some target
-    | _ => none
-  have checked : ∀ index : Fin steps,
-      (((rosterPlan (setup uniformPrior) rosters)[index.val]?).bind tag).all
-        (fun target => index.val == cursor target) = true := by decide
-  have bounded : i < steps := by
-    by_contra! beyond
-    rw [List.getElem?_eq_none beyond] at found
-    cases found
-  have yes := checked ⟨i, bounded⟩
-  simpa only [found, Option.bind_some, tag, Option.all_some, beq_iff_eq] using yes
-
-private theorem opportunities (prior : PMF (Player → Bid)) :
-    ActorOpportunities (setup prior) rosters := by
-  intro event owner owned
-  change graph.actor? event = some owner at owned
-  simp [rosters, owned]
+  readyRosterScheduler (setup uniformPrior).dataflowGraph leaks rosters network
 
 theorem contract (prior : PMF (Player → Bid)) :
     AsyncContract rt leaks (Vegas.initialLaw (setup prior)) steps builder
       (fun event => event.val) (fun _ => 0) := by
-  have supplied := readyRoster_contract (setup prior) leaks rosters network (opportunities prior)
-  rw [builder_eq prior, plan_eq prior] at supplied
-  exact supplied
+  let inputs := (setup prior).initialLaw.map (setup prior).eventInputs
+  have initial : Vegas.initialLaw (setup prior) =
+      rosterInitialLaw (setup prior).dataflowGraph inputs :=
+    serviceInitialLaw_eq_inputs (setup prior)
+  rw [initial]
+  exact readyRoster_owner_contract (setup prior).dataflowGraph leaks inputs network
 
 theorem singleOpportunity (prior : PMF (Player → Bid)) :
-    SingleSubmissionOpportunity (setup prior) rt leaks bounds steps builder := by
-  simpa only [builder_eq prior, plan_eq prior, timeouts_eq prior, steps] using
-    readyRoster_singleSubmissionOpportunity (setup prior) leaks rosters network cursor bounds
-      (fun i e who found => unique_position i e who ((plan_eq prior) ▸ found))
+    SingleSubmissionOpportunity (setup prior) rt leaks bounds steps builder :=
+  readyRoster_singleSubmissionOpportunity_of_length_le_one (setup prior) leaks rosters network
+    bounds (ownerRoster_length_le_one (setup prior).dataflowGraph)
 
 instance finiteNature (prior : PMF (Player → Bid)) :
     ((reactiveApplication rt) leaks).FiniteNature (Vegas.initialLaw (setup prior)) builder := by
-  simpa only [builder_eq prior, application, timeouts_eq prior] using
-    @readyRoster_finiteNature Player _ simpleExpr _ (setup prior) leaks rosters
-      (inferInstanceAs (setup prior).FiniteInitialLaw) (inferInstanceAs leaks.FiniteSupport) network
+  let inputs := (setup prior).initialLaw.map (setup prior).eventInputs
+  have initial : Vegas.initialLaw (setup prior) =
+      rosterInitialLaw (setup prior).dataflowGraph inputs :=
+    serviceInitialLaw_eq_inputs (setup prior)
+  rw [initial]
+  let : Fact inputs.support.Finite := ⟨by
+    rw [show inputs = (setup prior).initialLaw.map (setup prior).eventInputs from rfl,
+      PMF.support_map]
+    exact (setup prior).initialLaw_support_finite.image _⟩
+  let finiteLeaks : leaks.FiniteSupport :=
+    inferInstanceAs (MessageNetwork.ObservationRule.allPending
+      (Principal := Player) (Payload := WitnessedPacket graph)).FiniteSupport
+  exact @readyRoster_finiteNature Player _ simpleExpr _ (setup prior).dataflowGraph leaks rosters
+    inputs ‹Fact inputs.support.Finite› finiteLeaks network
 
 def specification (prior : PMF (Player → Bid)) :=
   fundedSpecification prior rt steps builder (finiteNature prior) _ _ (contract prior)
-    (rosterScheduler_asyncTimely (setup prior))
+    (rosterScheduler_asyncTimely (setup prior).dataflowGraph)
     (.singleOpportunity (by decide) (singleOpportunity prior))
 
 /-- The same public builder realizes a truthful sequential equilibrium and the exact
@@ -110,6 +80,6 @@ theorem native_equilibrium (prior : PMF (Player → Bid)) :
           prior.map (fun types => (some (finalConfig types (types .alice) (types .bob)),
             surplus types (types .alice) (types .bob))) :=
   truthful_single_opportunity prior rt steps builder (finiteNature prior) _ _ (contract prior)
-    (rosterScheduler_asyncTimely (setup prior)) (singleOpportunity prior)
+    (rosterScheduler_asyncTimely (setup prior).dataflowGraph) (singleOpportunity prior)
 
 end Vegas.Examples.BoundedAuctionRoster

@@ -29,14 +29,29 @@ executor and the graph executor preserve full configurations under compilation.
 The compiler first constructs declared dataflow dependencies, then adds the
 source information order to retain public completion and default timing. The
 full-source scheduling proof uses the information graph's unique ready event.
+[EventGraphSourceResidual](../Vegas/Compile/EventGraphSourceResidual.lean)
+relates each completed cut to the remaining typed source program.
+[EventGraphPrefixReadout](../Vegas/Compile/EventGraphPrefixReadout.lean)
+reads the full source protocol state from the graph's store, actions, and defaults.
+Fixed graph actions and mixed behavioral events preserve the decoded source law.
+Under the setup's joint input law and a finite player type, the canonical graph
+runner preserves this law at every bounded prefix. The terminal suffix law in
+[EventGraphLaw](../Vegas/Compile/EventGraphLaw.lean) also applies to arbitrary
+aligned suffix configurations and permits any player type with decidable equality.
+
 The [dependency design](event-graph-dependencies.md) separates these choices
 from edge relaxation and actor service. The sole ledger application
 derives default control from the graph configuration and performs bounded
 automatic completion. Its raw transitions refine finite supported graph paths;
 initialized histories retain reachability, cells, deadlines and quiescence.
-The roster scheduler has an all-history service proof through automatic
-completion, and completed native configurations freeze readout and fixed-exit
-payoff. Sequential completion geometry uses finite paths and actual prefix ranks.
+The [ready roster](../Vegas/Pending/ReadyRosterService.lean) runs on the
+sequentialized event graph with any law on its typed inputs. Its owner roster
+provides a service contract without a separate activation-coverage proof.
+Each owned event has one activation and each chance event has a sample slot.
+Protected inclusion takes zero clock ticks. The calendar proof follows every
+legal history through automatic completion.
+Completed native configurations freeze readout and fixed-exit payoff. Sequential
+completion geometry uses finite paths and actual prefix ranks.
 `Vegas.EventTimeouts graph` supplies only per-event timeout durations, measured
 from readiness in clock ticks. The state, handlers and execution machinery
 belong to the `Vegas.EventGraphRuntime` namespace.
@@ -68,7 +83,11 @@ two. [OddsEvensService](../Vegas/Examples/OddsEvensService.lean) specializes thi
 shared service to the source-ordered game and its empty pending observations.
 [CompilerCorrectness](../Vegas/Game/CompilerCorrectness.lean)
 realizes the law with bounded-menu clients under the supplied value-coverage
-and capacity interfaces. The lower graph APIs retain genuinely nonordered
+and capacity interfaces. For the normalized profile, its bounded-menu run
+retains the entire terminal
+graph configuration, including the action history. The [initialized menu
+law](../Interaction/ReactiveRestrictedContinuation.lean) transports physical
+execution results to that run. The lower graph APIs retain genuinely nonordered
 results, including the different raw reveal-order laws in
 [ConcurrentRevealOrderLaw](../Vegas/Examples/ConcurrentRevealOrderLaw.lean).
 The dependency-parametric graph result in
@@ -85,9 +104,47 @@ defaults or failed reveals, and the intended joint law of the actual full
 runtime readout and true forfeited payoff vector. No caller disclosure,
 independent-prior, audit or deposit premise is needed.
 [PrefixClientDeviation](../Vegas/Game/PrefixClientDeviation.lean) owns the
-native-deviation comparison with the existing information-graph game.
+native-deviation comparison with the existing information-graph game. Its
+[boundary](../Vegas/Game/PrefixDeviation/Boundary.lean) specifies the joint
+source checkpoint, observed traffic, and continuation comparison. The
+[binding](../Vegas/Game/PrefixDeviation/Binding.lean),
+[publication](../Vegas/Game/PrefixDeviation/Publication.lean), and
+[chance](../Vegas/Game/PrefixDeviation/Chance.lean) proofs establish separate
+cases of that comparison.
 Both results use the existing dependency-parametric `Vegas.serviceGame` and
 native application.
+
+[OwnedCompletionConfig](../Vegas/Pending/OwnedCompletionConfig.lean) derives a
+focal decision from actual native recall at a solitary active event. When the
+joint law of the current configuration and native traffic factors through the
+focal graph observation, the induced action is observation-local and its graph
+step followed by automatic completion has the exact stopped native
+configuration law. The initial graph observation supplies the traffic factor
+for initialized executions, including correlated inputs. For a graph whose
+only event is focal-owned, this realizes the full native deviation
+configuration law by one graph policy. A defaulted event already completed
+by automatic service advances its graph checkpoint without another native
+round. When the selected owner follows the first-turn reference, the
+configuration step and automatic completion law also holds with arbitrary
+policies for the other players.
+
+[TrafficPolicy](../Vegas/EventGraph/TrafficPolicy.lean) combines conditionally
+sampled action kernels into a single unilateral graph policy at the canonical
+prefixes. Applying it to a full native run requires the joint law of the
+primary graph prefix and stopped native traffic at every event, including
+foreign actions and public samples and any ranks passed by automatic service.
+The factor must use the focal player's actual graph observation of that
+primary prefix. A realizable opening may transmit a private value that the
+guard rejects, leaving the graph publication failed. In the two-event witness,
+the canonical client sends an initially bound Boolean despite an always-failing
+guard. The next actor sees the bit in the included packet even with pending
+observation disabled. Both bits yield the same graph view at that actor's
+binding. Every graph profile is realizable under any law on the initial bit,
+and every response based on the shared graph view has the same action law in
+the two cases. [GuardRejectedTraffic](../VegasTests/GuardRejectedTraffic.lean)
+
+The foreign traffic factor therefore requires an additional information
+hypothesis. The source deviation theorem uses effective disclosures.
 
 The full honest native law in
 [PrefixClientOutcomeLaw](../Vegas/Game/PrefixClientOutcomeLaw.lean) needs no
