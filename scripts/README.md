@@ -42,6 +42,12 @@ Native mutation fixtures check coverage, adjacency and explicit statements
 independently. CI runs ordinary script tests before the Lean build and the
 native audit tests afterward.
 
+With the separate manuscript checkout available, run
+`python scripts/check-manuscript-pins.py overleaf` to compare the active TeX
+result markers with the pin names in the artifact revision cited by the
+manuscript. The local Git repository must contain that revision. The Lean-native
+audit checks the statements and guards in the artifact itself.
+
 Documentation checks resolve active citations and Markdown paths; external
 sources pinned by full commit IDs refer to their own tree.
 
