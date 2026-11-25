@@ -1414,86 +1414,70 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {utility : Parameter × PublicOutcome setup.program → Player → ℝ} {exit : Player → ℝ}
 
 local notation "raw" => bounds.rawMenu timeouts leaks
-local notation "one" => bounds.onePacketMenu timeouts leaks
 local notation "fullInitial" => Vegas.initialDistribution setup
-local notation "part" => fun k => setup.conditionInitial signal k
+
+variable (supported : ∀ key, key ∈ (setup.initialDistribution.map signal).support)
+  (spec : ∀ key, ClientSpec (setup.conditionInitial signal key) timeouts leaks bounds horizon
+    scheduler parameter utility exit)
+  (intended : setup.intendedModel.BehavioralAssessment)
+  (equilibrium : setup.IntendedSequentialEquilibrium parameter utility intended)
+  (baseKey : Signal) (common : setup.SharesInitialSignal signal)
+
+local notation "sharedReader" =>
+  Setup.nativeInitialSignal (setup := setup) (timeouts := timeouts) (leaks := leaks) signal
+local notation "sharedFibers" => fun key => common.sourceFiber key (supported key)
+local notation "sharedAssessment" =>
+  Setup.compiledComponentAssessment signal supported sharedFibers spec intended equilibrium
+    baseKey sharedReader common.native
 
 /-- If every player recovers the same signal from its own initial observation, and
 each positive-probability conditional game meets the sequential compiler's
-hypotheses under one service, audit and deposit, every intended sequential
-equilibrium has a ledger sequential equilibrium with its exact joint law and
-clean supported play. -/
+hypotheses under one service, audit and deposit, the compiled assessment is a
+ledger sequential equilibrium with the exact joint law and clean supported play. -/
 theorem Vegas.Paper.sharedSignal_sequentialEquilibrium_preserved
-    (supported : ∀ key, key ∈ (setup.initialDistribution.map signal).support)
-    (spec : ∀ key, ClientSpec (setup.conditionInitial signal key) timeouts leaks bounds horizon
-      scheduler parameter utility exit)
-    (intended : setup.intendedModel.BehavioralAssessment)
-    (equilibrium : setup.IntendedSequentialEquilibrium parameter utility intended)
-    (baseKey : Signal)
-    (common : setup.SharesInitialSignal signal) (formed : setup.WellFormed)
     (audit : ∀ key, (spec key).evidenceService = (spec baseKey).evidenceService)
     (deposits : ∀ key, (spec key).deposit = (spec baseKey).deposit) :
-    ∃ A : ((raw).information fullInitial horizon scheduler).BehavioralAssessment,
-      A.IsSequentialEquilibrium ((raw).decisionInformationAntichain fullInitial horizon scheduler)
-        ((raw).bounded fullInitial horizon scheduler).wellFoundedHistories
-        (fun who h => (spec baseKey).payoff who h.state) ∧
-      (((raw).run fullInitial horizon scheduler A.strategy).bind fun h =>
-        (spec baseKey).observation h.state) =
-        (setup.intendedModel.runBehavioral intended.strategy
-          (instructionCount setup.program + 1)).map
-          (intendedReadoutExclusion setup parameter utility exit) ∧
-      ∀ h ∈ ((raw).run fullInitial horizon scheduler A.strategy).support,
-        (∀ control, h.state = some control →
-          control.execution.application.config.defaulted = ∅) ∧
-        ∀ who, TerminalAudit.charge (application setup timeouts leaks).stateTraffic
-          ((countAudit timeouts) leaks (spec baseKey).evidenceService.sample) h.state who = 0 :=
-  Setup.SharesInitialSignal.preservesSequentialEquilibrium (signal := signal)
-    (supported := supported) (spec := spec) (intended := intended)
-    (equilibrium := equilibrium) (baseKey := baseKey) common formed audit deposits
+    (sharedAssessment).IsSequentialEquilibrium
+      ((raw).decisionInformationAntichain fullInitial horizon scheduler)
+      ((raw).bounded fullInitial horizon scheduler).wellFoundedHistories
+      (fun who h => (spec baseKey).payoff who h.state) ∧
+    (((raw).run fullInitial horizon scheduler (sharedAssessment).strategy).bind fun h =>
+      (spec baseKey).observation h.state) =
+      (setup.intendedModel.runBehavioral intended.strategy
+        (instructionCount setup.program + 1)).map
+        (intendedReadoutExclusion setup parameter utility exit) ∧
+    ∀ h ∈ ((raw).run fullInitial horizon scheduler (sharedAssessment).strategy).support,
+      (∀ control, h.state = some control →
+        control.execution.application.config.defaulted = ∅) ∧
+      ∀ who, TerminalAudit.charge (application setup timeouts leaks).stateTraffic
+        ((countAudit timeouts) leaks (spec baseKey).evidenceService.sample) h.state who = 0 := by
+  obtain ⟨se, outcome⟩ := Setup.compileComponent_sequentialEquilibrium signal supported
+    sharedFibers spec intended equilibrium baseKey sharedReader common.native audit deposits
+  exact ⟨se, outcome, Setup.compiledComponent_clean signal supported sharedFibers spec intended
+    equilibrium baseKey sharedReader common.native audit⟩
 
 /-- info: 'Vegas.Paper.sharedSignal_sequentialEquilibrium_preserved' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.sharedSignal_sequentialEquilibrium_preserved
 
-section Fidelity
-
-variable (supported : ∀ key, key ∈ (setup.initialDistribution.map signal).support)
-  (read : Player → (application setup timeouts leaks).Info → Signal)
-  (observed : ∀ draw ∈ setup.initialDistribution.support,
-    ∀ execution : (application setup timeouts leaks).Execution,
-    Vegas.EventGraphRuntime.State.Invariant (graph := setup.informationGraph)
-      (setup.eventInputs draw) execution.application → ∀ who,
-      read who (some (execution.logs who, execution.observe (application setup timeouts leaks)
-        who)) = signal draw)
-  (inside : ∀ key who
-    (site : (setup.conditionInitial signal key).intendedModel.InformationSite who)
-    (h : setup.intendedModel.InformationHistory who site.1),
-    setup.initialComponent signal key h.1.state)
-  {spec : ∀ k, ClientSpec (setup.conditionInitial signal k) timeouts leaks bounds horizon scheduler
-    parameter utility exit}
-  (intended : setup.intendedModel.BehavioralAssessment)
-  (compiled : ∀ k, ClientCompilation (spec k)
-    (setup.conditionInitial_assessment signal k (supported k) (inside k) intended))
-
 /-- Every intended information set, even one of zero probability, has a ledger
-counterpart in the combined assessment whose posterior replays to the intended one. -/
+counterpart in that same assessment whose posterior replays to the intended one. -/
 theorem Vegas.Paper.sharedSignal_belief_covered {who : Player}
     (source : setup.intendedModel.InformationSite who) :
     ∃ site : ((raw).information fullInitial horizon scheduler).InformationSite who,
-      ((Setup.ledger_componentAssessment (raw) supported read observed
-        (fun k => (compiled k).assessment)).belief who site).map
-          (Setup.componentReplay supported read observed site) =
-        (intended.belief who source).map (fun h => some h.1) :=
-  Setup.componentAssessment_source_belief_covered (supported := supported) (read := read)
-    (observed := observed) (inside := inside) (intended := intended) (compiled := compiled) source
+      ((sharedAssessment).belief who site).map
+        (Setup.componentReplay supported
+          (Setup.callbackSignal (setup := setup) (timeouts := timeouts) (leaks := leaks)
+            baseKey sharedReader) common.native site) =
+      (intended.belief who source).map (fun h => some h.1) :=
+  Setup.compiledComponent_source_belief_covered signal supported sharedFibers spec intended
+    equilibrium baseKey sharedReader common.native source
 
 /-- info: 'Vegas.Paper.sharedSignal_belief_covered' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.sharedSignal_belief_covered
-
-end Fidelity
 
 end SharedInitialSignal
 

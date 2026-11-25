@@ -22,10 +22,13 @@ The assessment is sequentially rational against whole-policy deviations, has
 consistent beliefs at every decision, and preserves the intended joint law of
 full terminal source configuration and settled payoffs under the **original**
 prior. Every supported terminal history has an empty public default set and
-zero count-audit charges. The original [client refinement](../Vegas/Game/ClientSpecification.lean)
-also states replay preimage and intermediate continuation guarantees.
-The observed-component theorem states equilibrium, the initialized joint law
-and clean supported paths. The same assessment [retains source strategies and beliefs](../Vegas/Game/ConditionedAssessmentFidelity.lean).
+zero count-audit charges. The physical clients decoded from this same
+assessment preserve the joint law from every represented clean source
+boundary, including off-path boundaries. A full-game raw history and its
+matching one-packet history suffice. The trace itself identifies the component
+for the continuation proof. [Continuation from a global boundary](../Vegas/Game/ObservedComponentEquilibrium.lean)
+
+The same assessment [retains source strategies and beliefs](../Vegas/Game/ConditionedAssessmentFidelity.lean).
 Every intended information site has a global raw counterpart whose posterior
 replays to the supplied intended posterior. The normalized client plays the
 intended action law at matching first decisions, and replay holds at all matching

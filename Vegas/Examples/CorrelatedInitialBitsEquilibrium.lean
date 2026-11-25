@@ -73,6 +73,6 @@ theorem sequentialEquilibrium_preserved (intended : setup.intendedModel.Behavior
     (leaks := leaks) (bounds := bounds) (horizon := horizon) (scheduler := scheduler)
     (parameter := fun _ => ()) (utility := utility) (exit := fun _ => 0) signal signal_supported
     informationFiber_component specification intended equilibrium false ledgerBit ledgerBit_observe
-    wellFormed (fun _ => rfl) (fun _ => rfl)⟩
+    (fun _ => rfl) (fun _ => rfl)⟩
 
 end Vegas.Examples.CorrelatedInitialBits.Service

@@ -26,6 +26,7 @@ public import Interaction.ReactiveAliasDistribution
 public import Interaction.ReactiveAliasSelector
 public import Interaction.ReactiveAliasStrategy
 public import Interaction.ReactiveConditionedMenu
+public import Interaction.ReactiveConditionedNormalization
 public import Interaction.ReactiveConditionedReach
 public import Interaction.ReactiveAllocation
 public import Interaction.ReactiveAnchoredPolicy
