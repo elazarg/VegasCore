@@ -9,6 +9,7 @@ public import Vegas.Game.SourceServiceReachedDecoding
 public import Vegas.Game.SourceServiceFacts
 public import Vegas.Source.SetupProtocolEvaluation
 public import Vegas.Game.RevealServicePayoffs
+public import Vegas.Pending.ActivationRecall
 public import Vegas.Pending.PrefixBoundary
 public import Vegas.Pending.ReactiveGraphSteps
 public import Vegas.Pending.ReactiveAsyncContract
@@ -73,22 +74,7 @@ theorem round_cases {scheduler : (serviceApplication setup deps duration leaks).
               (middle.observe (serviceApplication setup deps duration leaks) who)).support,
               next = middle.respond (serviceApplication setup deps duration leaks) who
                   response := by
-  let app := serviceApplication setup deps duration leaks
-  obtain ⟨command, selected, dispatched⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
-  obtain ⟨middle, moved, resumed⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ dispatched)
-  refine ⟨command, selected, middle, moved, ?_⟩
-  change next ∈ (app.resume players (command.actor? app) middle).support at resumed
-  cases actor : command.actor? app with
-  | none =>
-      rw [actor] at resumed
-      simp only [ReactiveApplication.resume, PMF.mem_support_pure_iff] at resumed
-      exact Or.inl ⟨rfl, resumed⟩
-  | some who =>
-      rw [actor] at resumed
-      change next ∈ (app.invoke players who middle).support at resumed
-      rw [ReactiveApplication.invoke, PMF.support_map] at resumed
-      obtain ⟨response, chosen, rfl⟩ := resumed
-      exact Or.inr ⟨who, rfl, response, chosen, rfl⟩
+  exact EventGraphRuntime.round_cases (serviceTimeouts setup deps duration) leaks reached
 
 /-- An activation leaves the application unchanged. -/
 theorem activation_application
@@ -97,18 +83,14 @@ theorem activation_application
         (execution.environmentStep (serviceApplication setup deps duration leaks)
         (.activate who)).support) :
     middle.application = execution.application := by
-  unfold ReactiveApplication.Execution.environmentStep at moved
-  rw [PMF.support_map] at moved
-  obtain ⟨updated, supported, rfl⟩ := moved
-  rw [PMF.support_map] at supported
-  obtain ⟨_, _, rfl⟩ := supported
-  rfl
+  exact EventGraphRuntime.activation_application (serviceTimeouts setup deps duration) leaks
+    execution middle who moved
 
 /-- Every recorded activation was answered by its player at the public view
 the scheduler saw. -/
-def ActivationsAnswered (execution : (serviceApplication setup deps duration leaks).Execution) :
-    Prop := ∀ entry ∈ execution.environmentRecall, ∀ who, entry.command = .activate who → ∃ answer ∈
-    execution.logs who, answer.beforeView.application.publicView = entry.beforeView.application
+abbrev ActivationsAnswered (execution : (serviceApplication setup deps duration leaks).Execution) :
+    Prop := EventGraphRuntime.ActivationsAnswered (serviceTimeouts setup deps duration) leaks
+      execution
 
 /-- Every round answers its activation at the scheduler's public view. -/
 theorem round_activationsAnswered
@@ -120,47 +102,8 @@ theorem round_activationsAnswered
         ((serviceApplication setup deps duration leaks).round scheduler players
         execution).support) :
     ActivationsAnswered setup leaks next := by
-  let app := serviceApplication setup deps duration leaks
-  obtain ⟨command, selected, dispatched⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
-  have recorded := app.dispatch_environmentRecall players command execution next dispatched
-  obtain ⟨middle', moved', resumed⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ dispatched)
-  have recallEq := app.environmentStep_recall execution middle' command moved'
-  have grows : ∀ who, execution.logs who ⊆ next.logs who := by
-    intro who
-    change next ∈ (app.resume players (command.actor? app) middle').support at resumed
-    cases actor : command.actor? app with
-    | none =>
-        rw [actor] at resumed
-        simp only [ReactiveApplication.resume, PMF.mem_support_pure_iff] at resumed
-        subst resumed
-        rw [recallEq]
-    | some player =>
-        rw [actor] at resumed
-        change next ∈ (app.invoke players player middle').support at resumed
-        rw [ReactiveApplication.invoke, PMF.support_map] at resumed
-        obtain ⟨response, _, rfl⟩ := resumed
-        rw [← recallEq]
-        exact app.respond_recall_mono middle' player who response
-  intro entry member who activated
-  rw [recorded] at member
-  rcases List.mem_append.mp member with prior | fresh
-  · obtain ⟨answer, answered, viewEq⟩ := valid entry prior who activated
-    exact ⟨answer, grows who answered, viewEq⟩
-  · rw [List.mem_singleton] at fresh
-    subst fresh
-    change command = .activate who at activated
-    subst activated
-    have sameApp := activation_application setup leaks execution middle' who moved'
-    change next ∈ (app.resume players (some who) middle').support at resumed
-    change next ∈ (app.invoke players who middle').support at resumed
-    rw [ReactiveApplication.invoke, PMF.support_map] at resumed
-    obtain ⟨response, _, rfl⟩ := resumed
-    obtain ⟨emitted, recalled, _⟩ := respond_recall_self setup leaks middle' who response
-    refine ⟨⟨middle'.observe app who, response, emitted⟩, ?_, ?_⟩
-    · rw [recalled]
-      exact List.mem_append_right _ (List.mem_singleton_self _)
-    · change middle'.application.publicView = execution.application.publicView
-      rw [sameApp]
+  exact EventGraphRuntime.round_activationsAnswered (serviceTimeouts setup deps duration) leaks
+    valid reached
 
 variable {setup leaks} in
 /-- Every activation in completed rounds has an actual response in own recall,
@@ -173,17 +116,8 @@ theorem roundsFrom_activationsAnswered
         ((serviceApplication setup deps duration leaks).roundsFrom (serviceInitialLaw setup deps)
         scheduler players count).support) :
     ActivationsAnswered setup leaks execution := by
-  let app := serviceApplication setup deps duration leaks
-  induction count generalizing execution with
-  | zero =>
-      obtain ⟨state, _, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
-      cases (PMF.mem_support_pure_iff _ _).mp reached
-      intro entry member
-      cases member
-  | succ count ih =>
-      rw [app.roundsFrom_succ (serviceInitialLaw setup deps) scheduler players count] at supported
-      obtain ⟨prior, priorMem, moved⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
-      exact round_activationsAnswered setup leaks (ih prior priorMem) moved
+  exact EventGraphRuntime.roundsFrom_activationsAnswered
+    (timeouts := serviceTimeouts setup deps duration) (leaks := leaks) count execution supported
 
 /-- No recorded response has seen `event` ready. -/
 def Untouched (event : (serviceGraph setup deps).EventId)
