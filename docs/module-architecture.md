@@ -40,10 +40,19 @@ payoff. Sequential completion geometry uses finite paths and actual prefix ranks
 `Vegas.EventTimeouts graph` supplies only per-event timeout durations, measured
 from readiness in clock ticks. The state, handlers and execution machinery
 belong to the `Vegas.EventGraphRuntime` namespace.
-The direct sequential physical-client laws compose the source continuation
-with silent expiry, typed acceptance and chance sampling in
-[SourceServiceFirstTurnCompletion](../Vegas/Game/SourceServiceFirstTurnCompletion.lean).
-They preserve the joint typed-state/public-default law of every source profile.
+For a sequentialized event graph, first-turn clients implement any realizable
+graph profile under the asynchronous service contract and timing budget.
+At each reached event boundary the distribution of the native configuration
+at completion equals one canonical graph step followed by automatic completion.
+This gives equality of the complete terminal graph configuration distributions,
+including recorded actions. The proof is in
+[FirstTurnSimulation](../Vegas/Pending/FirstTurnSimulation.lean).
+The source compiler instantiates this result with its disclosure-normalized
+profile and projects it through the typed decoder, preserving the joint
+typed-state/public-default law of the original profile.
+[SourceServiceFirstTurnCompletion](../Vegas/Game/SourceServiceFirstTurnCompletion.lean)
+and [SourceServiceSiteBridge](../Vegas/Game/SourceServiceSiteBridge.lean)
+give the source specialization and projection.
 The full-source interfaces in
 [ServiceHonestLaw](../Vegas/Game/ServiceHonestLaw.lean) use the source information
 graph directly. Asynchronous service retains arbitrary public scheduling and
