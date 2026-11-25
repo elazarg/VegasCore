@@ -149,6 +149,9 @@ use the typed graph model. For the allocator, a
 recall length agrees with the canonical slot at every initialized service
 history. Execution of the complete typed packet path remains open.
 
-The diagnostic candidate performs no pending inspection. Sequential rationality,
+When both handwritten clients are used, [the honest-prefix theorem](../Vegas/Examples/OddsEvensHonestCommitment.lean)
+shows that the ledger contains no matching certificate before the second
+commitment finishes, for any scheduler. At Odd’s unsent commitment the
+candidate therefore uses a fair coin. Sequential rationality,
 agreement with that specific policy and its complete initialized outcome law
 remain open. They are not premises of the uniform semantic compiler.

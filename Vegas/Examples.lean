@@ -34,6 +34,7 @@ public import Vegas.Examples.OddsEvensLedgerClient
 public import Vegas.Examples.OddsEvensClientPosterior
 public import Vegas.Examples.OddsEvensCommitmentPayoff
 public import Vegas.Examples.OddsEvensExecutableClient
+public import Vegas.Examples.OddsEvensHonestCommitment
 public import Vegas.Examples.OddsEvensRawEquilibrium
 public import Vegas.Examples.OddsEvensService
 public import Vegas.Examples.OddsEvensSetup
