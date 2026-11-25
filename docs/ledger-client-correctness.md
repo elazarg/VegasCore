@@ -91,7 +91,12 @@ The [ledger evidence theorem](../Vegas/Examples/OddsEvensClientPosterior.lean)
 shows that a matching read determines the stored bit on every initialized
 service history. At any Odd decision site with such a read, the posterior
 on the stored commitment is a point mass for every assessment, including
-at sites reached only after deviations.
+at sites reached only after deviations. The same module proves an unbiased
+posterior at the periodic service stop immediately after the first ordinary
+commitment. The two fixed-bit runs have identical distributions of Odd’s
+whole observation and recall, and each stores its prescribed bit. Mixing
+these runs with a fair coin leaves the bit fair conditional on every
+positive-probability observation at that stop.
 More generally, fix the distribution of Even’s publication across Odd’s
 choices and allow Even to fail. The [payoff criterion](../Vegas/Examples/OddsEvensCommitmentPayoff.lean)
 shows that a fair coin maximizes Odd’s base payoff over every randomized
