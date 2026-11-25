@@ -7,6 +7,8 @@ public import Vegas.Pending.ActivationRecall
 public import Vegas.Pending.CallSettlement
 public import Vegas.Pending.CanonicalAcceptance
 public import Vegas.Pending.CanonicalTransmission
+public import Vegas.Pending.ChanceDecisionSimulation
+public import Vegas.Pending.ChancePhaseTraffic
 public import Vegas.Pending.EffectiveAction
 public import Vegas.Pending.EventCompletionStopping
 public import Vegas.Pending.ExecutionFacts
@@ -17,7 +19,10 @@ public import Vegas.Pending.FirstTurnMixture
 public import Vegas.Pending.FirstTurnSilence
 public import Vegas.Pending.FirstTurnSimulation
 public import Vegas.Pending.FixedOpportunity
+public import Vegas.Pending.FocalCompletionTraffic
 public import Vegas.Pending.FocalTraffic
+public import Vegas.Pending.ForeignBindingObservation
+public import Vegas.Pending.InitialDecisionSimulation
 public import Vegas.Pending.GraphCompletionLaw
 public import Vegas.Pending.GraphEventStepLaw
 public import Vegas.Pending.OwnedCompletionConfig
@@ -39,6 +44,7 @@ public import Vegas.Pending.LastKeyLaw
 public import Vegas.Pending.LastErasedKeyLaw
 public import Vegas.Pending.EffectiveOpening
 public import Vegas.Pending.CanonicalOutcomeAccepted
+public import Vegas.Pending.CompletionTraffic
 public import Vegas.Pending.ConfigDrain
 public import Vegas.Pending.CountReportObservation
 public import Vegas.Pending.CountReportSelection
@@ -132,6 +138,7 @@ public import Vegas.Pending.ReactiveFiniteResponses
 public import Vegas.Pending.ReactiveFirstOpportunity
 public import Vegas.Pending.ReactiveFreshCallAcceptance
 public import Vegas.Pending.PrefixBoundary
+public import Vegas.Pending.StoppedPrefixLaw
 public import Vegas.Pending.ReactiveGraphSteps
 public import Vegas.Pending.ReactiveGuardConformance
 public import Vegas.Pending.ReactiveGuardedResponse

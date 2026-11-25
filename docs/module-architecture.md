@@ -65,6 +65,15 @@ including recorded actions.
 laws for the turn policy, and
 [FirstTurnClientSimulation](../Vegas/Pending/FirstTurnClientSimulation.lean)
 proves them for the recovered ledger clients.
+[StoppedPrefixLaw](../Vegas/Pending/StoppedPrefixLaw.lean) stops the physical run
+at a specified event's completion. Restricting the resulting configuration to
+that event's rank recovers the exact canonical prefix distribution whenever
+the full configuration law holds. This also covers stops at which several
+defaulted events completed in one native round.
+[SourceClientPrefixLaw](../Vegas/Game/SourceClientPrefixLaw.lean) decodes those
+actual stops into the full source protocol state after the corresponding
+number of instructions, for the disclosure-normalized client profile and a
+finite player type.
 The source compiler instantiates this result with its disclosure-normalized
 profile and projects it through the typed decoder, preserving the joint
 typed-state/public-default law of the original profile.
@@ -122,7 +131,12 @@ step followed by automatic completion has the exact stopped native
 configuration law. The initial graph observation supplies the traffic factor
 for initialized executions, including correlated inputs. For a graph whose
 only event is focal-owned, this realizes the full native deviation
-configuration law by one graph policy. A defaulted event already completed
+configuration law by one graph policy. [InitialDecisionSimulation](../Vegas/Pending/InitialDecisionSimulation.lean)
+extends this deviation law to an arbitrary foreign and chance suffix when
+the first event is the focal player's sole decision. It uses first-turn clients
+for the other players and the existing service, timing and realizability
+hypotheses.
+A defaulted event already completed
 by automatic service advances its graph checkpoint without another native
 round. When the selected owner follows the first-turn reference, the
 configuration step and automatic completion law also holds with arbitrary
@@ -133,8 +147,16 @@ sampled action kernels into a single unilateral graph policy at the canonical
 prefixes. Applying it to a full native run requires the joint law of the
 primary graph prefix and stopped native traffic at every event, including
 foreign actions and public samples and any ranks passed by automatic service.
-The factor must use the focal player's actual graph observation of that
-primary prefix. A realizable opening may transmit a private value that the
+[FocalCompletionTraffic](../Vegas/Pending/FocalCompletionTraffic.lean) proves
+the joint factor at an active solitary focal event. The successor graph
+observation recovers the previous observation and the action from the player's
+recall. This supplies a conditional law for the stopped traffic.
+[ChancePhaseTraffic](../Vegas/Pending/ChancePhaseTraffic.lean) proves the
+corresponding factor for a solitary public sample, using the visible sample
+value. [CompletionTraffic](../Vegas/Pending/CompletionTraffic.lean) transports
+the factor over a defaulted graph rank already completed by the ledger.
+The general iteration still needs the corresponding physical evidence for
+foreign strategic events. A realizable opening may transmit a private value that the
 guard rejects, leaving the graph publication failed. In the two-event witness,
 the canonical client sends an initially bound Boolean despite an always-failing
 guard. The next actor sees the bit in the included packet even with pending

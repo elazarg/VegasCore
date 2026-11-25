@@ -382,6 +382,7 @@ public import Vegas.Game.SourceDebtContinuation
 public import Vegas.Game.SourceDebtObservation
 public import Vegas.Game.SourceServiceFacts
 public import Vegas.Game.SourceServiceFirstTurnCompletion
+public import Vegas.Game.SourceClientPrefixLaw
 public import Vegas.Game.SourceServiceFirstTurnMixture
 public import Vegas.Game.SourceServiceFirstTurnOpportunity
 public import Vegas.Game.SourceServiceMenu

@@ -34,6 +34,9 @@ public import Vegas.EventGraph.NormalizedRestriction
 public import Vegas.EventGraph.LastKeyTarget
 public import Vegas.EventGraph.HonestClosure
 public import Vegas.EventGraph.PrefixRestriction
+public import Vegas.EventGraph.CompletionObservation
+public import Vegas.EventGraph.PrefixConfiguration
+public import Vegas.EventGraph.PrimaryObservation
 public import Vegas.EventGraph.FootprintIndependence
 public import Vegas.EventGraph.ErasureTwin
 public import Vegas.EventGraph.SchedulerPredraw
