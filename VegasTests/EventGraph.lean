@@ -4,7 +4,7 @@ module
 
 public import Vegas.EventGraph.Order
 public import Vegas.EventGraph.Code
-public import Vegas.EventGraph.Semantics
+public import Vegas.EventGraph.TrafficPolicy
 public import Vegas.Expr.Simple
 
 @[expose] public section
@@ -344,14 +344,16 @@ example :
     Vegas.EventCompletion.defaults, Vegas.DefaultHistory.defaulted, PMF.pure_map]
 
 /-- Both schedule traces consist of supported semantic binding transitions. -/
-example : pairInitial.step (0 : Fin 2) (pairInitial_ready 0) (some (.success false)) =
+private theorem pairInitial_step_firstAccepted :
+    pairInitial.step (0 : Fin 2) (pairInitial_ready 0) (some (.success false)) =
     PMF.pure firstAccepted := by
   have active : false ∉ pairInitial.defaulted := by decide
   simp [Vegas.EventGraph.Config.step, Vegas.EventGraph.EventCode.eval?, firstAccepted,
     Vegas.EventGraph.Config.effectiveAction, Vegas.EventGraph.EventCode.effectiveAction,
     Vegas.EventGraph.EventCode.actor, active, PMF.pure_map]
 
-example : firstAccepted.step (1 : Fin 2) firstAccepted_ready1 (some (.success true)) =
+private theorem firstAccepted_step_canonicalResult :
+    firstAccepted.step (1 : Fin 2) firstAccepted_ready1 (some (.success true)) =
     PMF.pure canonicalResult := by
   have active : true ∉ firstAccepted.defaulted := by decide
   simp [Vegas.EventGraph.Config.step, Vegas.EventGraph.EventCode.eval?, canonicalResult,
@@ -389,6 +391,61 @@ example (event : pairGraph.EventId) :
 example (event : pairGraph.EventId) :
     (pairGraph.publicObserve reverseResult).store (.inr event) = none := by
   fin_cases event <;> rfl
+
+private def pairTrafficBoundary (rank : Nat) (bounded : rank ≤ pairGraph.order.eventCount) :
+    PMF ({config : pairGraph.Config // config.cut.IsPrefix rank} × Bool) :=
+  match rank with
+  | 0 => PMF.pure (⟨pairInitial, EventOrder.Cut.empty_isPrefix _⟩, true)
+  | 1 => PMF.pure (⟨firstAccepted, (EventOrder.Cut.empty_isPrefix pairOrder).complete
+      (by decide)⟩, true)
+  | 2 => PMF.pure (⟨canonicalResult, ((EventOrder.Cut.empty_isPrefix pairOrder).complete
+      (by decide : 0 < pairOrder.eventCount)).complete (by decide)⟩, true)
+  | rank + 3 => by
+      change rank + 3 ≤ 2 at bounded
+      omega
+
+/-- The traffic-selected focal submission replaces a silent reference policy.
+One compiled policy realizes the actual two bindings at both prefix ranks. -/
+example :
+    let silent : pairGraph.BehavioralProfile :=
+      fun owner event actor observation active =>
+        if owner = false then PMF.pure none else pairProfile owner event actor observation active
+    ∃ policy : pairGraph.BehavioralPolicy false,
+      ∀ rank (bounded : rank ≤ pairGraph.order.eventCount),
+        (pairTrafficBoundary rank bounded).map (fun pair => pair.1.val) =
+          pairGraph.runPlan (pairGraph.policyPlan (Function.update silent false policy)
+            pairGraph.canonicalScheduler) rank pairInitial := by
+  intro silent
+  let traffic : pairGraph.EventId → pairGraph.PlayerObservation false → PMF Bool :=
+    fun _ _ => PMF.pure true
+  let respond : Bool → pairGraph.BehavioralPolicy false :=
+    fun received event actor observation active =>
+      if received then pairProfile false event actor observation active else PMF.pure none
+  refine ⟨Vegas.EventGraph.trafficPolicy false traffic respond, ?_⟩
+  have law := Vegas.EventGraph.trafficPolicy_prefixLaw silent false (PMF.pure pairInputValues)
+    traffic respond pairTrafficBoundary (by simp [pairTrafficBoundary, pairInitial, PMF.pure_map])
+    (by intro event; fin_cases event <;> simp [pairTrafficBoundary, traffic, PMF.pure_map]) ?_
+  swap
+  · intro event
+    fin_cases event <;> simp only [pairTrafficBoundary, PMF.pure_map, PMF.pure_bind]
+    · change PMF.pure firstAccepted =
+        Vegas.EventGraph.eventStep (Function.update silent false (respond true))
+          pairInitial 0 (pairInitial_ready 0)
+      have owned : (pairGraph.nodes (0 : pairGraph.EventId)).actor = some false := rfl
+      have active : false ∉ pairInitial.defaulted := by decide
+      rw [Vegas.EventGraph.eventStep, Vegas.EventGraph.actionLaw_of_actor _ _ owned,
+        dite_eq_right active, Function.update_self]
+      simpa [respond, pairProfile] using pairInitial_step_firstAccepted.symm
+    · change PMF.pure canonicalResult =
+        Vegas.EventGraph.eventStep (Function.update silent false (respond true))
+          firstAccepted 1 firstAccepted_ready1
+      have owned : (pairGraph.nodes (1 : pairGraph.EventId)).actor = some true := rfl
+      have active : true ∉ firstAccepted.defaulted := by decide
+      rw [Vegas.EventGraph.eventStep, Vegas.EventGraph.actionLaw_of_actor _ _ owned,
+        dite_eq_right active, Function.update_of_ne (by decide : true ≠ false)]
+      simpa [silent, pairProfile] using firstAccepted_step_canonicalResult.symm
+  intro rank bounded
+  simpa only [PMF.pure_bind, pairInitial] using law rank bounded
 
 end
 

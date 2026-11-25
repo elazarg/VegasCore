@@ -27,6 +27,8 @@ public import Vegas.EventGraph.SolitaryEvent
 public import Vegas.EventGraph.LastScheduler
 public import Vegas.EventGraph.LastSchedulerErasure
 public import Vegas.EventGraph.PolicyPatch
+public import Vegas.EventGraph.DeviationContinuation
+public import Vegas.EventGraph.TrafficPolicy
 public import Vegas.EventGraph.LastErasedLaw
 public import Vegas.EventGraph.NormalizedRestriction
 public import Vegas.EventGraph.LastKeyTarget
