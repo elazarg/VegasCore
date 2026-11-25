@@ -842,8 +842,10 @@ theorem Vegas.Paper.sourceServiceClientPolicy_observation_distributions_eq
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.sourceServiceClientPolicy_observation_distributions_eq
 
-theorem Vegas.Paper.sourceService_deviation_preserves_prefix_and_readout_distributions
-    [Fintype Player]
+/-- Against the first-turn clients of an arbitrary source profile, one source
+deviation against the original opponents matches every unilateral native deviation
+in the typed cells and public defaults, at each event boundary and at termination. -/
+theorem Vegas.Paper.sourceService_deviation_preserves_state_and_defaults [Fintype Player]
     (setup : Setup (Player := Player) (L := L))
     (timeouts : EventTimeouts setup.informationGraph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
@@ -852,36 +854,39 @@ theorem Vegas.Paper.sourceService_deviation_preserves_prefix_and_readout_distrib
     (contract : AsyncContract timeouts leaks (initialDistribution setup)
       horizon scheduler delay bound)
     (timely : AsyncTimely timeouts delay bound)
-    (profile : BehavioralProfile setup.program)
-    (who : Player) (effective : ∀ player, player ≠ who →
-      (profile player).EffectiveDisclosures setup.program [] (Revelations.initial setup.context))
-    (deviation : (application setup timeouts leaks).Policy) :
+    (original : BehavioralProfile setup.program)
+    (who : Player) (deviation : (application setup timeouts leaks).Policy) :
     let players := Function.update
       (serviceClientPolicy setup setup.informationDependencies timeouts.duration
-        leaks bound turns (firstTurnTiming setup turns) profile) who deviation
+        leaks bound turns (firstTurnTiming setup turns)
+        (setup.program.normalizeDisclosureProfile original)) who deviation
     let boundary := physicalPrefix (graph := setup.dataflowGraph) timeouts leaks scheduler
       players (setup.initialDistribution.map setup.eventInputs) horizon
     ∃ policy : BehavioralPolicy who setup.program,
       (∀ rank, rank ≤ eventCount setup.program →
-        (boundary rank).map (fun execution => sourceServicePrefix? setup rank
-          (EventGraph.Config.rankPrefix rank execution.application.config)) =
+        (boundary rank).map (fun execution =>
+          (sourceServicePrefix? setup rank
+            (EventGraph.Config.rankPrefix rank execution.application.config)).map
+              (ProtocolState.prefixReadout setup.program)) =
         (setup.initialDistribution.bind fun initial =>
           (fun current => current.bind (ProtocolState.behavioralStateStep setup.program
-            (Function.update profile who policy)))^[rank]
-            (PMF.pure (ProtocolState.entry setup.program (Config.initial initial)))).map some) ∧
+            (Function.update original who policy)))^[rank]
+            (PMF.pure (ProtocolState.entry setup.program (Config.initial initial)))).map
+              (fun point => some (ProtocolState.prefixReadout setup.program point))) ∧
       ((application setup timeouts leaks).roundsFrom (initialDistribution setup) scheduler
-        players horizon).map
-          (fun final => sourceReadout setup timeouts leaks
-            ((application setup timeouts leaks).finished final)) =
-        (setup.run (Function.update profile who policy)).map some :=
-  Vegas.sourceService_deviation_prefix_and_readout_distributions_eq setup timeouts leaks horizon
-    scheduler delay
-    bound turns contract timely profile who effective deviation
+        players horizon).map (fun execution =>
+          (sourceReadout setup timeouts leaks
+            ((application setup timeouts leaks).finished execution)).map
+              (fun final => (final.state, final.defaults))) =
+        (setup.run (Function.update original who policy)).map
+          (fun final => some (final.state, final.defaults)) :=
+  Vegas.asyncClientDeviation_prefix_and_readout_distributions_eq setup timeouts leaks horizon
+    scheduler delay bound turns contract timely original who deviation
 
-/-- info: 'Vegas.Paper.sourceService_deviation_preserves_prefix_and_readout_distributions' depends on axioms:
+/-- info: 'Vegas.Paper.sourceService_deviation_preserves_state_and_defaults' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.Paper.sourceService_deviation_preserves_prefix_and_readout_distributions
+#print axioms Vegas.Paper.sourceService_deviation_preserves_state_and_defaults
 
 end OrdinaryCompiler
 
