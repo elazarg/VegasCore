@@ -3,7 +3,7 @@ module
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 public import GameTheory.Math.Probability.ConditionalObservation
-public import Vegas.Game.AsyncDeviationChoice
+public import Vegas.Game.SampleReadout
 public import Vegas.Game.GraphForfeit
 public import Vegas.Game.IntendedPrefixContinuation
 public import Vegas.Game.PrefixDeviation.Boundary

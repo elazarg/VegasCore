@@ -23,6 +23,36 @@ open SourceProgram GameTheory GameTheory.Math.Probability
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
+/-- At canonical configurations, one backtranslated policy preserves the full
+graph law when compiled against the original opponents. -/
+theorem canonical_deviation_runPolicies_law
+    {Γ : SourceCtx Player L} {openNames : Finset VarId}
+    (program : SourceProgram Player L Γ openNames) (profile : BehavioralProfile program)
+    (who : Player) (replacement : (toInformationGraph program).BehavioralPolicy who)
+    (inputs : (toInformationGraph program).Inputs) :
+    let graph := toInformationGraph program
+    graph.runPolicies graph.canonicalScheduler
+        (compileEventProfile program (Profile.update (sig := SourceProgram.gameSignature program)
+          profile who (backtranslateEventPolicy program who replacement))) inputs =
+      graph.runPolicies graph.canonicalScheduler
+        (Profile.update (sig := graph.gameSignature)
+          (compileEventProfile program profile) who replacement) inputs := by
+  intro graph
+  let translated := Profile.update (sig := SourceProgram.gameSignature program) profile who
+    (backtranslateEventPolicy program who replacement)
+  apply EventGraph.runPolicies_canonical_eq_of_reachable
+  intro config reachable offset ordered event ready rank owner actor active
+  rw [show compileEventProfile program translated =
+      Profile.update (sig := graph.gameSignature) (compileEventProfile program profile) who
+        (compileEventPolicy program who (backtranslateEventPolicy program who replacement)) from
+    compileEventProfile_update program profile who _]
+  by_cases same : owner = who
+  · subst owner
+    simp only [Profile.update_same]
+    exact compileEventPolicy_backtranslate_at_prefix program who replacement
+      inputs config reachable offset ordered event ready rank actor active
+  · simp only [Profile.update_of_ne _ _ same]
+
 /-- One backtranslated policy implements a canonical graph deviation exactly,
 including every typed cell, original choice and public default record. -/
 theorem canonical_deviation_terminalConfig_law
@@ -40,30 +70,15 @@ theorem canonical_deviation_terminalConfig_law
   let graph := toInformationGraph program
   let translated := Profile.update (sig := SourceProgram.gameSignature program) profile who
     (backtranslateEventPolicy program who replacement)
-  have kernels : graph.runPolicies graph.canonicalScheduler
-      (compileEventProfile program translated) (encodeInputs state) =
-      graph.runPolicies graph.canonicalScheduler
-        (Profile.update (sig := graph.gameSignature)
-          (compileEventProfile program profile) who replacement) (encodeInputs state) := by
-    apply EventGraph.runPolicies_canonical_eq_of_reachable
-    intro config reachable offset ordered event ready rank owner actor active
-    rw [show compileEventProfile program translated =
-        Profile.update (sig := graph.gameSignature) (compileEventProfile program profile) who
-          (compileEventPolicy program who (backtranslateEventPolicy program who replacement)) from
-      compileEventProfile_update program profile who _]
-    by_cases same : owner = who
-    · subst owner
-      simp only [Profile.update_same]
-      exact compileEventPolicy_backtranslate_at_prefix program who replacement
-        (encodeInputs state) config reachable offset ordered event ready rank actor active
-    · simp only [Profile.update_of_ne _ _ same]
+  have kernels := canonical_deviation_runPolicies_law program profile who replacement
+    (encodeInputs state)
   have outcomes : graph.terminalOutcomes graph.canonicalScheduler
       (compileEventProfile program translated) (encodeInputs state) =
       graph.terminalOutcomes graph.canonicalScheduler
         (Profile.update (sig := graph.gameSignature)
           (compileEventProfile program profile) who replacement) (encodeInputs state) := by
     apply pmf_map_injective (f := Subtype.val) Subtype.val_injective
-    simpa only [EventGraph.terminalOutcomes_map_val] using kernels
+    simpa only [EventGraph.terminalOutcomes_map_val, translated, graph] using kernels
   rw [← outcomes]
   exact canonical_terminalConfig_law program translated state
 

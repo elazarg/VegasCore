@@ -9,10 +9,10 @@ public import Vegas.Source.DisclosureBehavioral
 
 /-! # Typed outcome of physical unilateral deviations
 
-The asynchronous contract and timely deadlines preserve each source successor
-jointly with the deviating player's actual traffic. Guarded source disclosure
-normalization retains the complete typed-state and default law against an
-unchanged deviation, giving the original source game's outcome.
+The ledger realizes the deviator at the event graph's canonical checkpoints.
+Compiler backtranslation gives one source policy across the initial law.
+Normalizing the other players' disclosures preserves the typed terminal state
+and public default record used by the original source game.
 -/
 
 noncomputable section

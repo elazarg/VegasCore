@@ -192,7 +192,10 @@ behavioral source policy with the same typed-state/public-default law. The
 that the compiled opponents satisfy the graph simulation hypothesis on every
 reachable ready configuration. The [source deviation law](../Vegas/Game/AsyncDeviationLaw.lean)
 applies that simulation, reads the terminal graph configuration and
-backtranslates its single graph policy across the whole input distribution. Native Nash correspondence and its
+backtranslates its single graph policy across the whole input distribution.
+For finite player types the same source policy also matches the decoded full
+protocol state at every instruction boundary. Its terminal law applies to
+arbitrary player types. Native Nash correspondence and its
 program-payment specialization use this same observation and actual-history
 settlement ranges (`AsyncServiceSpec.SettlementRange`). The concrete monetary
 runtime retains the joint typed-state/default-history/cash law. Native
