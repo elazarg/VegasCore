@@ -798,7 +798,7 @@ section OrdinaryCompiler
 open Vegas.Paper
 
 theorem Vegas.Paper.sourceServiceClientPolicy_observation_distributions_eq
-    {setup : Setup (Player := Player) (L := L)} [Finite Player]
+    {setup : Setup (Player := Player) (L := L)}
     (timeouts : EventTimeouts setup.informationGraph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
     {horizon turns : ℕ} (scheduler : (application setup timeouts leaks).Scheduler)
@@ -853,11 +853,11 @@ theorem Vegas.Paper.sourceService_deviation_preserves_prefix_and_readout_distrib
       horizon scheduler delay bound)
     (timely : AsyncTimely timeouts delay bound)
     (profile : BehavioralProfile setup.program)
-    (effective : ∀ player, (profile player).EffectiveDisclosures setup.program []
-      (Revelations.initial setup.context))
-    (who : Player) (deviation : (application setup timeouts leaks).Policy) :
+    (who : Player) (effective : ∀ player, player ≠ who →
+      (profile player).EffectiveDisclosures setup.program [] (Revelations.initial setup.context))
+    (deviation : (application setup timeouts leaks).Policy) :
     let players := Function.update
-      (serviceTurnPolicy setup setup.informationDependencies timeouts.duration
+      (serviceClientPolicy setup setup.informationDependencies timeouts.duration
         leaks bound turns (firstTurnTiming setup turns) profile) who deviation
     let boundary := physicalPrefix (graph := setup.dataflowGraph) timeouts leaks scheduler
       players (setup.initialDistribution.map setup.eventInputs) horizon
@@ -876,7 +876,7 @@ theorem Vegas.Paper.sourceService_deviation_preserves_prefix_and_readout_distrib
         (setup.run (Function.update profile who policy)).map some :=
   Vegas.sourceService_deviation_prefix_and_readout_distributions_eq setup timeouts leaks horizon
     scheduler delay
-    bound turns contract timely profile effective who deviation
+    bound turns contract timely profile who effective deviation
 
 /-- info: 'Vegas.Paper.sourceService_deviation_preserves_prefix_and_readout_distributions' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/

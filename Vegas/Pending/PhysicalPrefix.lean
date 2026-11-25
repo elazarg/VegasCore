@@ -163,6 +163,30 @@ theorem physicalPrefix_supported (scheduler : (app).Scheduler) (players : Player
         refine ⟨nextRank, advances, nextBoundary, within', recovery ▸ nativePrefix, ?_⟩
         rw [recovery, completed, native.drain_config_eq]
 
+/-- Every supported continuation of an actual stop preserves the stop's rank
+readout. The equality also holds when automatic service has passed that rank. -/
+theorem physicalPrefix_rankPrefix_eq_runToHorizon
+    (scheduler : (app).Scheduler) (players : Player → (app).Policy)
+    (inputs : PMF graph.sequentialize.Inputs) (horizon : Nat)
+    (completes : CompletesPlay timeouts leaks (inputs.map State.initial) horizon scheduler)
+    (rank : Nat) (bounded : rank ≤ graph.order.eventCount)
+    (stopped : (app).Execution)
+    (reached : stopped ∈ (physicalPrefix timeouts leaks scheduler players inputs horizon
+      rank).support)
+    (final : (app).Execution)
+    (continued : final ∈ ((app).runToHorizon scheduler players horizon stopped).support) :
+    Config.rankPrefix rank stopped.application.config =
+      Config.rankPrefix rank final.application.config := by
+  obtain ⟨_, _, _, _, ordered, drained⟩ := physicalPrefix_supported timeouts leaks scheduler
+    players inputs horizon completes rank bounded stopped reached
+  let checkpoint := Config.rankPrefix rank stopped.application.config
+  have toStop : Relation.ReflTransGen Config.Step checkpoint stopped.application.config := by
+    rw [drained]
+    exact (State.ofConfig checkpoint).drain_graph_steps
+  have toFinal := reactive_runRounds_graph_steps timeouts leaks scheduler players _ stopped final
+    continued
+  exact (Config.rankPrefix_of_path ordered (toStop.trans toFinal)).symm
+
 /-- Completing a stopped prefix through the remaining horizon recovers the
 entire physical execution law, for every rank. -/
 theorem physicalPrefix_bind_runToHorizon (scheduler : (app).Scheduler)

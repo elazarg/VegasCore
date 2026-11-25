@@ -31,9 +31,10 @@ private theorem sourceService_deviation_config_and_readout
       bound)
     (timely : AsyncTimely timeouts delay bound)
     (profile : BehavioralProfile setup.program)
-    (effective : ∀ player, (profile player).EffectiveDisclosures setup.program []
+    (who : Player)
+    (effective : ∀ player, player ≠ who → (profile player).EffectiveDisclosures setup.program []
       (Revelations.initial setup.context))
-    (who : Player) (deviation : (application setup timeouts leaks).Policy) :
+    (deviation : (application setup timeouts leaks).Policy) :
     let players := Function.update
       (serviceTurnPolicy setup setup.informationDependencies timeouts.duration
         leaks bound turns (firstTurnTiming setup turns) profile) who deviation
@@ -59,11 +60,11 @@ private theorem sourceService_deviation_config_and_readout
   let reference : setup.informationGraph.BehavioralProfile :=
     compileEventProfile setup.program profile
   have safe : SafeForeignPublications (g := setup.informationGraph) inputs reference who := by
-    intro event owner _ payload binding checks outputEq codeEq node
+    intro event owner foreign payload binding checks outputEq codeEq node
       input present config reachable ready _ action chosen disclose
     obtain ⟨value, success⟩ :=
-      compileEventProfile_supported_opening_succeeds effective input present config reachable
-        event ready (outputEq := outputEq) codeEq action chosen disclose
+      compileEventProfile_supported_opening_succeeds input present config reachable
+        event ready (effective owner foreign) (outputEq := outputEq) codeEq action chosen disclose
     simp [openingAccepted, node, success]
   have initialized :
       initialDistribution setup = inputs.map (EventGraphRuntime.State.initial
@@ -108,7 +109,67 @@ private theorem sourceService_deviation_config_and_readout
     refine graph.trans ?_
     simpa only [PMF.map_comp, Function.comp_def, compiled] using source
 
-/-- One source deviation realizes the terminal readout and every decoded physical rank. -/
+private theorem sourceService_deviation_physicalPrefix_eq
+    (setup : Setup (Player := Player) (L := L))
+    (timeouts : EventTimeouts setup.informationGraph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
+    (horizon : Nat) (scheduler : (application setup timeouts leaks).Scheduler)
+    (bound : setup.informationGraph.EventId → Nat) (turns : Nat)
+    (profile : BehavioralProfile setup.program) (who : Player)
+    (deviation : (application setup timeouts leaks).Policy)
+    (completes : CompletesPlay timeouts leaks
+      ((setup.initialDistribution.map setup.eventInputs).map EventGraphRuntime.State.initial)
+      horizon scheduler)
+    (rank : Nat) (bounded : rank ≤ eventCount setup.program) :
+    physicalPrefix (graph := setup.dataflowGraph) timeouts leaks scheduler
+      (Function.update (serviceClientPolicy setup setup.informationDependencies timeouts.duration
+        leaks bound turns (firstTurnTiming setup turns) profile) who deviation)
+      (setup.initialDistribution.map setup.eventInputs) horizon rank =
+    physicalPrefix (graph := setup.dataflowGraph) timeouts leaks scheduler
+      (Function.update (serviceTurnPolicy setup setup.informationDependencies timeouts.duration
+        leaks bound turns (firstTurnTiming setup turns) profile) who deviation)
+      (setup.initialDistribution.map setup.eventInputs) horizon rank := by
+  let app := application setup timeouts leaks
+  let players := Function.update (serviceTurnPolicy setup setup.informationDependencies
+    timeouts.duration leaks bound turns (firstTurnTiming setup turns) profile) who deviation
+  let recovery := Function.update (fun _ : Player => app.silentPolicy) who deviation
+  have shape : Function.update (serviceClientPolicy setup setup.informationDependencies
+      timeouts.duration leaks bound turns (firstTurnTiming setup turns) profile) who deviation =
+      fun player => (players player).recover (recovery player) := by
+    funext player
+    by_cases same : player = who
+    · subst player
+      simp only [players, recovery, Function.update_self]
+      funext past view
+      simp [ReactiveApplication.Policy.recover]
+    · simp only [players, recovery, Function.update_of_ne same]
+      rfl
+  rw [shape]
+  let inputs := setup.initialDistribution.map setup.eventInputs
+  induction rank with
+  | zero => rfl
+  | succ rank ih =>
+      have inside : rank < eventCount setup.program := by omega
+      let event : setup.informationGraph.EventId := ⟨rank, inside⟩
+      change physicalPrefix (graph := setup.dataflowGraph) timeouts leaks scheduler
+        (fun player => (players player).recover (recovery player)) inputs horizon (event.val + 1) =
+        physicalPrefix (graph := setup.dataflowGraph) timeouts leaks scheduler players inputs
+          horizon (event.val + 1)
+      rw [physicalPrefix_succ, physicalPrefix_succ, ih (by omega)]
+      apply bind_congr_on_support _
+      intro execution reached
+      obtain ⟨_, _, boundary, _, _, _⟩ := physicalPrefix_supported (graph := setup.dataflowGraph)
+        timeouts leaks scheduler players inputs horizon completes rank inside.le execution reached
+      obtain ⟨initial, _, visited⟩ := Set.mem_iUnion₂.mp
+        (PMF.support_bind .. ▸ boundary.supported)
+      unfold ReactiveApplication.runUntilHorizon
+      apply ReactiveApplication.Policy.recover_runUntil
+      exact (ReactiveApplication.consistentRecall_policyInvariant players).runRounds
+        scheduler _ (ReactiveApplication.Execution.initial app initial) _
+        (fun _ => .nil) visited
+
+/-- One source deviation realizes the terminal readout and every decoded physical rank
+against the recovered clients of the other players. -/
 theorem sourceService_deviation_prefix_and_readout_distributions_eq [Fintype Player]
     (setup : Setup (Player := Player) (L := L))
     (timeouts : EventTimeouts setup.informationGraph)
@@ -119,11 +180,12 @@ theorem sourceService_deviation_prefix_and_readout_distributions_eq [Fintype Pla
       bound)
     (timely : AsyncTimely timeouts delay bound)
     (profile : BehavioralProfile setup.program)
-    (effective : ∀ player, (profile player).EffectiveDisclosures setup.program []
+    (who : Player)
+    (effective : ∀ player, player ≠ who → (profile player).EffectiveDisclosures setup.program []
       (Revelations.initial setup.context))
-    (who : Player) (deviation : (application setup timeouts leaks).Policy) :
+    (deviation : (application setup timeouts leaks).Policy) :
     let players := Function.update
-      (serviceTurnPolicy setup setup.informationDependencies timeouts.duration
+      (serviceClientPolicy setup setup.informationDependencies timeouts.duration
         leaks bound turns (firstTurnTiming setup turns) profile) who deviation
     let boundary := physicalPrefix (graph := setup.dataflowGraph) timeouts leaks scheduler
       players (setup.initialDistribution.map setup.eventInputs) horizon
@@ -143,13 +205,25 @@ theorem sourceService_deviation_prefix_and_readout_distributions_eq [Fintype Pla
   intro players boundary
   obtain ⟨policy, prefixes, terminal⟩ :=
     sourceService_deviation_config_and_readout setup timeouts leaks horizon scheduler delay bound
-      turns contract timely profile effective who deviation
-  refine ⟨policy, ?_, terminal⟩
-  intro rank bounded
-  have decoded := congrArg (PMF.map (sourceServicePrefix? setup rank)) (prefixes rank bounded)
-  rw [PMF.map_comp, Function.comp_def] at decoded
-  exact decoded.trans (compileEventProfile_initial_prefix_distribution setup
-    (Function.update profile who policy) rank bounded)
+      turns contract timely profile who effective deviation
+  have initialized := serviceInitialDistribution_eq_inputs setup
+    (deps := setup.informationDependencies)
+  have completes := contract.completes
+  unfold initialDistribution at completes
+  rw [initialized] at completes
+  refine ⟨policy, ?_, ?_⟩
+  · intro rank bounded
+    dsimp only [boundary, players]
+    rw [sourceService_deviation_physicalPrefix_eq setup timeouts leaks horizon scheduler bound
+      turns profile who deviation completes rank bounded]
+    have decoded := congrArg (PMF.map (sourceServicePrefix? setup rank)) (prefixes rank bounded)
+    rw [PMF.map_comp, Function.comp_def] at decoded
+    exact decoded.trans (compileEventProfile_initial_prefix_distribution setup
+      (Function.update profile who policy) rank bounded)
+  · dsimp only [players]
+    rw [sourceServiceClientPolicy_deviation_roundsFrom scheduler bound turns
+      (firstTurnTiming setup turns) profile who deviation horizon]
+    exact terminal
 
 /-- Against first-turn clients, every physical policy of one player has exactly
 the terminal source-configuration law of one behavioral source deviation. -/
@@ -163,9 +237,10 @@ theorem sourceService_deviation_readout_distribution_eq
       bound)
     (timely : AsyncTimely timeouts delay bound)
     (profile : BehavioralProfile setup.program)
-    (effective : ∀ player, (profile player).EffectiveDisclosures setup.program []
+    (who : Player)
+    (effective : ∀ player, player ≠ who → (profile player).EffectiveDisclosures setup.program []
       (Revelations.initial setup.context))
-    (who : Player) (deviation : (application setup timeouts leaks).Policy) :
+    (deviation : (application setup timeouts leaks).Policy) :
     ∃ policy : BehavioralPolicy who setup.program,
       ((application setup timeouts leaks).roundsFrom (initialDistribution setup) scheduler
         (Function.update (serviceTurnPolicy setup setup.informationDependencies timeouts.duration
@@ -176,7 +251,7 @@ theorem sourceService_deviation_readout_distribution_eq
         (setup.run (Function.update profile who policy)).map some := by
   obtain ⟨policy, _, terminal⟩ :=
     sourceService_deviation_config_and_readout setup timeouts leaks horizon scheduler delay bound
-      turns contract timely profile effective who deviation
+      turns contract timely profile who effective deviation
   exact ⟨policy, terminal⟩
 
 end Vegas

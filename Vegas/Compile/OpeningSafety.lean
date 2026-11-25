@@ -22,9 +22,8 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 private theorem SourceResidual.supported_opening_succeeds {rank : Nat}
     {config : setup.informationGraph.Config}
     (residual : SourceResidual setup profile rank config)
-    (effective : residual.EffectiveDisclosures)
     (event : setup.informationGraph.EventId) (atRank : event.val = rank)
-    {owner : Player} {payload : L.Ty}
+    {owner : Player} (effective : residual.EffectiveDisclosures owner) {payload : L.Ty}
     {binding : FieldRef setup.informationGraph.layout (.binding owner payload)}
     {checks : List (GuardCheck setup.informationGraph.layout payload)}
     {outputEq : setup.informationGraph.outputLayout event = .publication payload}
@@ -128,7 +127,7 @@ private theorem SourceResidual.supported_opening_succeeds {rank : Nat}
         obtain ⟨flag, supported, rfl⟩ := PMF.support_map .. ▸ chosen
         simp only [cast_cast, cast_eq] at disclose
         subst flag
-        have safe := (effective author).1 rfl (source.view author) inactive true supported
+        have safe := effective.1 rfl (source.view author) inactive true supported
         rw [effectiveDisclosureView_observe] at safe
         have compiled := compiled_disclosure_result (graph := setup.informationGraph)
           published selected source refs config.store checkpoint.agrees true
@@ -139,17 +138,18 @@ private theorem SourceResidual.supported_opening_succeeds {rank : Nat}
         | success value =>
             exact ⟨value, by simpa only [result, guards] using compiled⟩
 
-/-- Every supported true resolution action of a compiled effective-disclosure
-profile publishes successfully. This holds at every reachable ready graph
+/-- Every supported true resolution action of a player whose source policy has
+effective disclosures publishes successfully. This holds at every reachable ready graph
 configuration, including configurations reached by arbitrary other actions. -/
 theorem compileEventProfile_supported_opening_succeeds
-    (effective : ∀ who, (profile who).EffectiveDisclosures setup.program []
-      (Revelations.initial setup.context))
     (inputs : setup.informationGraph.Inputs)
     (present : inputs ∈ (setup.initialDistribution.map setup.eventInputs).support)
     (config : setup.informationGraph.Config) (reachable : config.Reachable inputs)
     (event : setup.informationGraph.EventId) (ready : config.cut.Ready event)
-    {owner : Player} {payload : L.Ty}
+    {owner : Player}
+    (effective : (profile owner).EffectiveDisclosures setup.program []
+      (Revelations.initial setup.context))
+    {payload : L.Ty}
     {binding : FieldRef setup.informationGraph.layout (.binding owner payload)}
     {checks : List (GuardCheck setup.informationGraph.layout payload)}
     {outputEq : setup.informationGraph.outputLayout event = .publication payload}
@@ -163,7 +163,7 @@ theorem compileEventProfile_supported_opening_succeeds
       some (.success value) := by
   obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ present
   have existsResidual : ∃ rank, ∃ residual : SourceResidual setup profile rank config,
-      residual.EffectiveDisclosures := by
+      residual.EffectiveDisclosures owner := by
     clear ready chosen
     induction reachable with
     | initial => exact ⟨0, SourceResidual.initial setup profile initial, effective⟩
@@ -176,8 +176,8 @@ theorem compileEventProfile_supported_opening_succeeds
   obtain ⟨rank, residual, residualEffective⟩ := existsResidual
   have ordered : config.cut.IsPrefix event.val :=
     ⟨event.isLt.le, fun _ => config.cut.mem_completed_iff_lt_of_ready ready⟩
-  exact residual.supported_opening_succeeds residualEffective event
-    (ordered.unique residual.checkpoint.ordered) (outputEq := outputEq) codeEq action chosen
-    disclose
+  exact residual.supported_opening_succeeds event
+    (ordered.unique residual.checkpoint.ordered) residualEffective (outputEq := outputEq)
+    codeEq action chosen disclose
 
 end Vegas

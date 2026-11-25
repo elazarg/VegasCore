@@ -4,6 +4,7 @@ module
 
 public import Vegas.Game.SourceServiceFirstTurnCompletion
 public import Vegas.Pending.StoppedPrefixDistribution
+public import Vegas.Source.BehavioralPrefixReadout
 
 @[expose] public section
 
@@ -61,5 +62,45 @@ theorem sourceServiceClientPolicy_stopped_prefix_distribution
   refine Eq.trans ?_ (decoded.trans compiled)
   simp only [PMF.map_bind, PMF.map_comp, PMF.bind_map, Function.comp_def, inputs]
   rfl
+
+/-- The stopped clients preserve the original profile's typed cells and public defaults
+at the completed source instruction. -/
+theorem sourceServiceClientPolicy_stopped_prefix_readout_distribution
+    (timeouts : EventTimeouts setup.informationGraph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
+    {horizon turns : Nat} (scheduler : (application setup timeouts leaks).Scheduler)
+    (delay bound : setup.informationGraph.EventId → Nat)
+    (original : BehavioralProfile setup.program)
+    (contract : AsyncContract timeouts leaks (initialDistribution setup) horizon scheduler delay
+      bound)
+    (timely : AsyncTimely timeouts delay bound) (event : setup.informationGraph.EventId) :
+    let profile := normalizeDisclosureProfile setup.program original
+    let app := application setup timeouts leaks
+    let players := serviceClientPolicy setup setup.informationDependencies timeouts.duration leaks
+      bound turns (firstTurnTiming setup turns) profile
+    let rank := event.val + 1
+    (setup.initialDistribution.bind fun seed => (app.runUntilHorizon scheduler players
+      (fun final => event ∈ final.application.config.cut.completed) horizon
+      (ReactiveApplication.Execution.initial app (EventGraphRuntime.State.initial
+        (setup.eventInputs seed)))).map fun stopped =>
+          (sourceServicePrefix? setup rank (EventGraph.Config.rankPrefix rank
+            stopped.application.config)).map (ProtocolState.prefixReadout setup.program)) =
+      (setup.initialDistribution.bind fun seed =>
+        (fun law => law.bind (ProtocolState.behavioralStateStep setup.program original))^[rank]
+          (PMF.pure (ProtocolState.entry setup.program (Config.initial seed)))).map
+            (fun point => some (ProtocolState.prefixReadout setup.program point)) := by
+  intro profile app players rank
+  let read := ProtocolState.prefixReadout setup.program
+  let readTerminal := terminalPrefixReadout setup.program rank
+  have physical := congrArg (PMF.map (Option.map read))
+    (sourceServiceClientPolicy_stopped_prefix_distribution (turns := turns) timeouts leaks
+      scheduler delay bound original contract timely event)
+  have before := congrArg (PMF.map some) (setup.behavioralStatePrefix_readout_eq profile rank)
+  have after := congrArg (PMF.map some) (setup.behavioralStatePrefix_readout_eq original rank)
+  have terminal := congrArg (PMF.map (fun final => some (readTerminal final)))
+    (setup.run_normalizeDisclosures_eq original)
+  simp only [PMF.map_comp, Function.comp_def, Option.map_some] at physical before after terminal
+  simpa only [PMF.map_bind, PMF.map_comp, Function.comp_def] using
+    physical.trans (before.trans (terminal.trans after.symm))
 
 end Vegas

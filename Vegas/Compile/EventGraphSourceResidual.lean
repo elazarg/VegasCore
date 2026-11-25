@@ -123,10 +123,10 @@ def SourceResidual.initial (initial : State L setup.context) :
 
 variable {setup profile}
 
-/-- The residual policies disclose only bindings whose deferred checks succeed. -/
+/-- A player's residual policy discloses only bindings whose deferred checks succeed. -/
 def SourceResidual.EffectiveDisclosures {rank : Nat} {config : setup.informationGraph.Config}
-    (residual : SourceResidual setup profile rank config) : Prop :=
-  ∀ who, (residual.residualProfile who).EffectiveDisclosures residual.program
+    (residual : SourceResidual setup profile rank config) (who : Player) : Prop :=
+  (residual.residualProfile who).EffectiveDisclosures residual.program
     residual.source.registry residual.source.revelations
 
 /-- A fixed graph completion preserves its typed source residual and its
@@ -152,7 +152,7 @@ private theorem SourceResidual.step_mass_and_distribution {rank : Nat}
         (ProtocolState.step setup.program
           (residual.lift (ProtocolState.entry residual.program residual.source))
           (fun _ => decodeEventAction setup.program event action)).map some ∧
-      (residual.EffectiveDisclosures → next.EffectiveDisclosures) := by
+      (∀ who, residual.EffectiveDisclosures who → next.EffectiveDisclosures who) := by
   obtain ⟨Γ, names, program, residualProfile, source, refs, embedding, refsBefore, aligned,
     admitted, authentic, supports, disclosing, lift, commutes, steps, injective, transport,
     checkpoint⟩ := residual
@@ -280,8 +280,8 @@ private theorem SourceResidual.step_mass_and_distribution {rank : Nat}
         congr 1
         funext drawnValue
         exact (nextResidual drawnValue).decode
-      · intro effective who
-        exact effective who
+      · intro who effective
+        exact effective
   | @commit Γ openNames name owner payload fresh guard next =>
       let index : Fin (eventCount (.commit name owner fresh guard next)) :=
         ⟨0, by simp [eventCount]⟩
@@ -375,8 +375,8 @@ private theorem SourceResidual.step_mass_and_distribution {rank : Nat}
       · rw [stepLaw, PMF.pure_map, nextResidual.decode, steps, decoded]
         simp only [nextResidual, ProtocolState.step, ProtocolState.entry, Function.comp_apply,
           Sum.elim_inl, OwnAction.binding_commit, PMF.pure_map]
-      · intro effective who
-        exact effective who
+      · intro who effective
+        exact effective
   | @reveal Γ openNames published owner name payload fresh selected unresolved next =>
       let index : Fin (eventCount
           (.reveal published owner name fresh selected unresolved next)) :=
@@ -470,8 +470,8 @@ private theorem SourceResidual.step_mass_and_distribution {rank : Nat}
       · rw [stepLaw, PMF.pure_map, nextResidual.decode, steps, decoded]
         simp only [nextResidual, ProtocolState.step, ProtocolState.entry, Function.comp_apply,
           Sum.elim_inl, OwnAction.disclosure, PMF.pure_map]
-      · intro effective who
-        exact (effective who).2
+      · intro who effective
+        exact effective.2
 
 /-- A fixed graph completion preserves its typed source residual and its
 exact source-step atom. The successor witness supplies the same decoder and
@@ -525,18 +525,18 @@ theorem SourceResidual.step {rank : Nat} {before : setup.informationGraph.Config
   obtain ⟨next, reached, _mass⟩ := residual.step_mass event ready action after member
   exact ⟨next, reached⟩
 
-/-- A supported graph step retains a residual with effective disclosure
-policies, independently of the action that was taken. -/
+/-- A supported graph step retains a player's effective disclosure policy in the
+residual, independently of the action that was taken. -/
 theorem SourceResidual.step_effective {rank : Nat} {before : setup.informationGraph.Config}
     (residual : SourceResidual setup profile rank before)
-    (effective : residual.EffectiveDisclosures)
+    {who : Player} (effective : residual.EffectiveDisclosures who)
     (event : setup.informationGraph.EventId) (ready : before.cut.Ready event)
     (action : setup.informationGraph.Action event) (after : setup.informationGraph.Config)
     (member : after ∈ (before.step event ready action).support) :
-    ∃ next : SourceResidual setup profile (rank + 1) after, next.EffectiveDisclosures := by
+    ∃ next : SourceResidual setup profile (rank + 1) after, next.EffectiveDisclosures who := by
   obtain ⟨next, _, _, _, preserved⟩ :=
     residual.step_mass_and_distribution event ready action after member
-  exact ⟨next, preserved effective⟩
+  exact ⟨next, preserved who effective⟩
 
 /-- A finite path of actual graph steps retains a source residual at its
 actual endpoint. Each completion advances the source rank by one. -/
