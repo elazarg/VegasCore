@@ -14,6 +14,8 @@ public import Vegas.Pending.CanonicalKeyLaw
 public import Vegas.Pending.CanonicalKeyPublication
 public import Vegas.Pending.CanonicalOutcomePublication
 public import Vegas.Pending.CanonicalOutcomeHead
+public import Vegas.Pending.ChanceContinuation
+public import Vegas.Pending.ChanceCompletionConfig
 public import Vegas.Pending.LastKeyLaw
 public import Vegas.Pending.LastErasedKeyLaw
 public import Vegas.Pending.EffectiveOpening

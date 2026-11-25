@@ -5,7 +5,7 @@ module
 public import Vegas.EventGraph.ResolutionProvenance
 public import Vegas.Source.DisclosureBehavioral
 public import Vegas.Game.AsyncDeviationForeign
-public import Vegas.Game.SourceServiceChanceContinuation
+public import Vegas.Pending.ChanceContinuation
 public import Vegas.Game.SourceServiceDeviationChoice
 public import GameTheoryExtensions.Math.Probability.ObservedChoice
 

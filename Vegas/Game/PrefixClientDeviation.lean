@@ -46,7 +46,7 @@ public import Vegas.Game.AsyncDeviationChoice
 public import Vegas.EventGraph.PrefixPolicy
 public import Vegas.Game.SourceServiceContinuation
 public import Vegas.Game.ServiceDeviationTraffic
-public import Vegas.Game.SourceServiceChanceContinuation
+public import Vegas.Pending.ChanceContinuation
 public import Vegas.Pending.CanonicalOutcomeHead
 public import Vegas.Pending.ReactiveGraphSteps
 public import Vegas.EventGraph.CommutationRecall

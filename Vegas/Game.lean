@@ -378,7 +378,6 @@ public import Vegas.Game.SourceServiceCanonicalAcceptance
 public import Vegas.Game.SourceServiceCanonicalConformance
 public import Vegas.Game.SourceServiceCanonicalPolicy
 public import Vegas.Game.SourceServiceCanonicalSlots
-public import Vegas.Game.SourceServiceChanceContinuation
 public import Vegas.Game.SourceServiceCheckpoint
 public import Vegas.Game.SourceServiceChoiceSupport
 public import Vegas.Game.SourceServiceClientPolicy
