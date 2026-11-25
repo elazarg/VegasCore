@@ -103,6 +103,13 @@ shows that a fair coin maximizes Odd’s base payoff over every randomized
 successful commitment exactly when the probabilities of successful true and
 successful false are equal. Failure pays Odd 200 for either choice. This also
 covers certain failure, where conditioning on success would be undefined.
+There is also a [selective disclosure example](../VegasTests/RuntimeScenarios.lean).
+Even registers a fair bit and always requests a certificate for true on the
+same submission. The native commitment succeeds for either bit. Under this
+sender policy, conditioning on the complete Odd view without a certificate
+puts probability one on false. This calculation conditions on the specified
+deviation; sequential consistency instead requires a common perturbation of
+the candidate strategy profile.
 A consistency argument must justify the candidate's fair fallback, or identify
 ledger cases requiring a different response.
 

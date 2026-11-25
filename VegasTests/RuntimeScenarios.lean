@@ -545,4 +545,42 @@ example (bit : Bool) : ¬ CountPermits []
   have missing := permitted.2.1.2.1
   cases missing
 
+/-- Even registers a random bit but requests a certificate for true in both branches. -/
+def fixedTrueRequestIncluded (bit : Bool) : app.Execution :=
+  (initial.respond app even
+    ⟨some ⟨⟨.commitment (event 0) (candidate even), some (raw bit)⟩,
+      .owned ⟨candidate even, raw true⟩⟩⟩).includePending app (even, 0)
+
+def fixedTrueRequestView (bit : Bool) := (fixedTrueRequestIncluded bit).observe app odd
+
+private theorem fixedTrueRequest_read (bit : Bool) :
+    Vegas.Examples.OddsEvensLedgerClient.acceptedBit? (fixedTrueRequestView bit) =
+      if bit then some true else none := by
+  cases bit
+  · have state : (fixedTrueRequestIncluded false).application = bound false := by
+      change (app.handle (initial.respond app even (commit even 0 false)).application
+        ⟨(even, 0), ⟨.commitment (event 0) (candidate even), none, some ⟨event 0⟩⟩⟩).getD _ = _
+      rw [firstNativeAccepted]
+      rfl
+    simp only [fixedTrueRequestView, Vegas.Examples.OddsEvensLedgerClient.acceptedBit?,
+      ReactiveApplication.Execution.observe, state]
+    decide
+  · exact disclosed_known true
+
+/-- For this deviating sender, the view without a certificate identifies false
+even though the sender's bit was fair before inclusion. -/
+theorem fixedTrueRequest_posterior :
+    fiberPosterior (uniformLaw Bool) fixedTrueRequestView (fixedTrueRequestView false) =
+      PMF.pure false := by
+  have present := mem_support_map_of_exists_mem_fiber
+    (μ := uniformLaw Bool) (f := fixedTrueRequestView) ⟨false, rfl, mem_support_uniformLaw _⟩
+  apply pmf_eq_pure_of_support_subset_singleton
+  intro bit member
+  have observed := (mem_support_fiberPosterior present member).1
+  cases bit
+  · rfl
+  · have same := congrArg Vegas.Examples.OddsEvensLedgerClient.acceptedBit? observed
+    rw [fixedTrueRequest_read, fixedTrueRequest_read] at same
+    contradiction
+
 end VegasTests.RuntimeScenarios
