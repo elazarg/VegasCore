@@ -111,33 +111,6 @@ inductive Expr : CtxSimple → BaseTy → Type where
   | ite {Γ : CtxSimple} {b : BaseTy}
       (c : Expr Γ .bool) (t f : Expr Γ b) : Expr Γ b
 
-def evalExpr {Γ : CtxSimple} {b : BaseTy} : Expr Γ b → PlainEnv Γ → Val b
-  | .var _ h, env => env.get h
-  | .constInt i, _ => i
-  | .constBool b, _ => b
-  | .constWord w, _ => w
-  | .constRange v, _ => v
-  | .none, _ => none
-  | .some e, env => some (evalExpr e env)
-  | .isSome e, env => (evalExpr e env).isSome
-  | .isNone e, env => (evalExpr e env).isNone
-  | .getD e fallback, env => (evalExpr e env).getD (evalExpr fallback env)
-  | .failure, _ => .failure
-  | .success e, env => .success (evalExpr e env)
-  | .isSuccess e, env => (evalExpr e env).isSuccess
-  | .isFailure e, env => (evalExpr e env).isFailure
-  | .getResultD e fallback, env =>
-      (evalExpr e env).getD (evalExpr fallback env)
-  | .addInt l r, env => evalExpr l env + evalExpr r env
-  | .addWord l r, env => evalExpr l env + evalExpr r env
-  | .subWord l r, env => evalExpr l env - evalExpr r env
-  | .mulWord l r, env => evalExpr l env * evalExpr r env
-  | .ltWord l r, env => (evalExpr l env).ult (evalExpr r env)
-  | .eq l r, env => decide (evalExpr l env = evalExpr r env)
-  | .andBool l r, env => evalExpr l env && evalExpr r env
-  | .notBool e, env => !(evalExpr e env)
-  | .ite c t f, env => if evalExpr c env then evalExpr t env else evalExpr f env
-
 /-- Expression dependency set. -/
 def exprDeps {Γ : CtxSimple} {b : BaseTy} : Expr Γ b → Finset VarId
   | .var x _ => {x}
@@ -355,61 +328,16 @@ def evalExprDeps {Γ : CtxSimple} {b : BaseTy} : (e : Expr Γ b) →
         evalExprDeps f
           (fun x τ h hx => ρ x τ h (by simp [exprDeps, hx]))
 
+def evalExpr {Γ : CtxSimple} {b : BaseTy} (e : Expr Γ b) (env : PlainEnv Γ) : Val b :=
+  evalExprDeps e (fun x τ h _ => env x τ h)
+
 theorem evalExprDeps_eq_eval {Γ : CtxSimple} {b : BaseTy}
     (e : Expr Γ b) (ρ : PlainEnv Γ) :
-    evalExprDeps e (fun x τ h _ => ρ x τ h) = evalExpr e ρ := by
-  induction e with
-  | var x h => rfl
-  | constInt _ => rfl
-  | constBool _ => rfl
-  | constWord _ => rfl
-  | constRange _ => rfl
-  | none => rfl
-  | some e ih =>
-      simp [evalExprDeps, evalExpr, ih]
-  | isSome e ih =>
-      simp [evalExprDeps, evalExpr, ih]
-  | isNone e ih =>
-      simp [evalExprDeps, evalExpr, ih]
-  | getD e fallback ihe ihf =>
-      simp [evalExprDeps, evalExpr, ihe, ihf]
-  | failure => rfl
-  | success e ih =>
-      simp [evalExprDeps, evalExpr, ih]
-  | isSuccess e ih =>
-      simp [evalExprDeps, evalExpr, ih]
-  | isFailure e ih =>
-      simp [evalExprDeps, evalExpr, ih]
-  | getResultD e fallback ihe ihf =>
-      simp [evalExprDeps, evalExpr, ihe, ihf]
-  | addInt l r ihl ihr =>
-      simp [evalExprDeps, evalExpr, ihl, ihr]
-  | addWord l r ihl ihr =>
-      simp [evalExprDeps, evalExpr, ihl, ihr]
-  | subWord l r ihl ihr =>
-      simp [evalExprDeps, evalExpr, ihl, ihr]
-  | mulWord l r ihl ihr =>
-      simp [evalExprDeps, evalExpr, ihl, ihr]
-  | ltWord l r ihl ihr =>
-      simp [evalExprDeps, evalExpr, ihl, ihr]
-  | eq l r ihl ihr =>
-      simp [evalExprDeps, evalExpr, ihl, ihr]
-  | andBool l r ihl ihr =>
-      simp [evalExprDeps, evalExpr, ihl, ihr]
-  | notBool e ih =>
-      simp [evalExprDeps, evalExpr, ih]
-  | ite c t f ihc iht ihf =>
-      simp [evalExprDeps, evalExpr, ihc, iht, ihf]
+    evalExprDeps e (fun x τ h _ => ρ x τ h) = evalExpr e ρ := rfl
 
 inductive DistExpr (Γ : CtxSimple) (b : BaseTy) : Type where
   | weighted (law : RationalLaw (Val b)) : DistExpr Γ b
   | ite (c : Expr Γ .bool) (t f : DistExpr Γ b) : DistExpr Γ b
-
-def evalLawDistExpr {Γ : CtxSimple} {b : BaseTy} :
-    DistExpr Γ b → PlainEnv Γ → RationalLaw (Val b)
-  | .weighted law, _ => law
-  | .ite c t f, env =>
-      if evalExpr c env then evalLawDistExpr t env else evalLawDistExpr f env
 
 /-- Distribution expression dependency set. -/
 def distExprDeps {Γ : CtxSimple} {b : BaseTy} : DistExpr Γ b → Finset VarId
@@ -448,15 +376,13 @@ def evalLawDistExprDeps {Γ : CtxSimple} {b : BaseTy} : (d : DistExpr Γ b) →
         evalLawDistExprDeps f
           (fun x τ h hx => ρ x τ h (by simp [distExprDeps, hx]))
 
+def evalLawDistExpr {Γ : CtxSimple} {b : BaseTy}
+    (d : DistExpr Γ b) (env : PlainEnv Γ) : RationalLaw (Val b) :=
+  evalLawDistExprDeps d (fun x τ h _ => env x τ h)
+
 theorem evalLawDistExprDeps_eq_evalLaw {Γ : CtxSimple} {b : BaseTy}
     (d : DistExpr Γ b) (ρ : PlainEnv Γ) :
-    evalLawDistExprDeps d (fun x τ h _ => ρ x τ h) =
-      evalLawDistExpr d ρ := by
-  induction d with
-  | weighted _ => rfl
-  | ite c t f iht ihf =>
-      simp [evalLawDistExprDeps, evalLawDistExpr,
-        evalExprDeps_eq_eval, iht, ihf]
+    evalLawDistExprDeps d (fun x τ h _ => ρ x τ h) = evalLawDistExpr d ρ := rfl
 
 /-- The current concrete language, viewed as an instance of `IExpr`. -/
 @[reducible] def simpleExpr : Vegas.IExpr where

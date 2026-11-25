@@ -95,7 +95,8 @@ theorem eval_cashExpr {Γ : CtxSimple} (who : Player)
     (re ro : Expr Γ (.result .bool)) (env : PlainEnv Γ) :
     evalExpr (cashExpr who re ro) env = cash (evalExpr re env) (evalExpr ro env) who := by
   cases who <;> cases he : evalExpr re env <;> cases ho : evalExpr ro env <;>
-    simp [cashExpr, cash, evalExpr, he, ho, even, odd,
+    simp only [evalExpr] at he ho <;>
+    simp [cashExpr, cash, evalExpr, evalExprDeps, he, ho, even, odd,
       PublicationResult.isFailure, PublicationResult.getD]
 
 theorem publicPayoffs_eq (outcome : PublicOutcome program) :

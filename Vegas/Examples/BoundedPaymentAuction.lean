@@ -69,12 +69,13 @@ private theorem eval_tableExpr {α : Type} [DecidableEq α] {Γ : CtxSimple}
   induction keys with
   | nil => cases member
   | cons key rest ih =>
+      change (if evalExpr (test key) env then amount key
+        else evalExpr (tableExpr test amount rest) env) = amount actual
+      rw [correct key (by simp)]
       by_cases same : key = actual
-      · subst key
-        simp only [tableExpr, evalExpr, correct actual (by simp), decide_true, ↓reduceIte]
+      · simp [same]
       · have later : actual ∈ rest := (List.mem_cons.mp member).resolve_left (Ne.symm same)
-        simp only [tableExpr, evalExpr, correct key (by simp), same, decide_false,
-          Bool.false_eq_true, ↓reduceIte]
+        simp only [same, decide_false, Bool.false_eq_true, ↓reduceIte]
         exact ih (fun selected selectedMember => correct selected (by simp [selectedMember])) later
 
 /-- Signed receipts in an auction with an external seller; ties favor Alice. -/
@@ -103,7 +104,9 @@ theorem eval_cashExpr {Γ : CtxSimple} (penalty : Int) (who : Player)
   unfold cashExpr
   apply eval_tableExpr (actual := (evalExpr alice env, evalExpr bob env))
   · intro pair _
-    simp only [evalExpr, eval_publicLiteral]
+    change (decide (evalExpr (publicLiteral pair.1) env = evalExpr alice env) &&
+      decide (evalExpr (publicLiteral pair.2) env = evalExpr bob env)) = _
+    simp only [eval_publicLiteral]
     by_cases first : pair.1 = evalExpr alice env <;>
       by_cases second : pair.2 = evalExpr bob env <;> simp_all [Prod.ext_iff]
   · exact List.mem_product.mpr ⟨mem_publications _, mem_publications _⟩
