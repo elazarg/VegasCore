@@ -165,6 +165,154 @@ theorem defaulted_completed_config_law
     ReactiveApplication.runUntilHorizon,
     ReactiveApplication.runUntil_of_stop _ _ _ _ _ before completed, PMF.pure_map, aligned]
 
+private theorem active_owned_quiescent
+    (state : State graph) (event : graph.EventId) (owner : Player)
+    (owned : graph.actor? event = some owner) (solitary : graph.Solitary event)
+    (ready : state.config.cut.Ready event) (active : owner ∉ state.config.defaulted) :
+    ∀ other, ¬ state.AutomaticReady other := by
+  intro other eligible
+  obtain rfl := solitary _ eligible.1 ready
+  have inactive := eligible.2
+  rw [owned] at inactive
+  exact active inactive
+
+/-- At a solitary owned checkpoint, the stopped native traffic law depends
+only on the focal player's graph observation. Active events extract their
+action from native recall. At a defaulted head, every action has the same
+drained graph step and the physical run has already stopped. -/
+theorem focal_owned_checkpoint_traffic_law
+    (timeouts : EventTimeouts graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (scheduler : ((reactiveApplication timeouts) leaks).Scheduler)
+    (bound : graph.EventId → Nat) (turns : Nat) (timing : EventGraphRuntime.TurnTiming graph turns)
+    (reference : graph.BehavioralProfile)
+    (focal : Player) (deviation : ((reactiveApplication timeouts) leaks).Policy)
+    (event : graph.EventId) (owned : graph.actor? event = some focal)
+    (solitary : graph.Solitary event) (horizon : Nat)
+    {Seed : Type*} (prior : PMF Seed)
+    (execution : Seed → ((reactiveApplication timeouts) leaks).Execution)
+    (checkpoint : Seed → graph.Config) :
+    let app := (reactiveApplication timeouts) leaks
+    let traffic := (bindingTraffic timeouts) leaks focal
+    let observe := graph.playerObserve focal
+    let players := Function.update (turnPolicy timeouts leaks bound turns timing reference)
+      focal deviation
+    let phase := fun seed => app.runUntilHorizon scheduler players
+      (fun final => event ∈ final.application.config.cut.completed) horizon (execution seed)
+    ∀ (noise : graph.PlayerObservation focal → PMF _),
+      prior.map (fun seed => (checkpoint seed, traffic (execution seed))) =
+        (prior.map checkpoint).bind (fun before =>
+          (noise (observe before)).map fun extra => (before, extra)) →
+      (∀ seed ∈ prior.support, (checkpoint seed).cut.Ready event) →
+      (∀ seed ∈ prior.support,
+        (execution seed).application.config = State.drainConfig (checkpoint seed)) →
+      (∀ seed ∈ prior.support, ∀ final ∈ (phase seed).support,
+        event ∈ final.application.config.cut.completed) →
+      ∃ channel : graph.PlayerObservation focal → PMF (BindingTraffic timeouts leaks),
+        (prior.bind fun seed => (phase seed).map fun final =>
+          (final.application.config, traffic final)) =
+        prior.bind fun seed => (channel (observe (checkpoint seed))).bind fun extra =>
+          if ready : (checkpoint seed).cut.Ready event then
+            let action := (recalledAction event extra.2.2.2.2.1.observation).getD
+              ((graph.nodes event).failureAction focal owned)
+            ((checkpoint seed).step event ready action).map fun primary =>
+              (State.drainConfig primary, extra)
+          else PMF.pure (checkpoint seed, extra) := by
+  intro app traffic observe players phase noise factor ready aligned completed
+  have alone (cut : graph.order.Cut) (other : graph.EventId)
+      (ready : cut.Ready event) (otherReady : cut.Ready other) :
+      other = event := solitary cut otherReady ready
+  have activeAligned (seed : Seed) (supported : seed ∈ prior.support)
+      (active : focal ∉ (checkpoint seed).defaulted) :
+      (execution seed).application.config = checkpoint seed := by
+    rw [aligned seed supported]
+    exact State.drainConfig_of_quiescent (State.ofConfig (checkpoint seed))
+      (active_owned_quiescent _ event focal owned solitary (ready seed supported) active)
+  have inactiveStopped (seed : Seed) (supported : seed ∈ prior.support)
+      (inactive : focal ∈ (checkpoint seed).defaulted) :
+      event ∈ (execution seed).application.config.cut.completed := by
+    rw [aligned seed supported]
+    exact State.drainConfig_completed_of_defaulted (checkpoint seed) event
+      (ready seed supported) (fun other otherReady => solitary _ otherReady (ready seed supported))
+      focal owned inactive
+  have readyWhilePending (seed : Seed) (supported : seed ∈ prior.support)
+      (pending : event ∉ (execution seed).application.config.cut.completed) :
+      (execution seed).application.config.cut.Ready event := by
+    have active : focal ∉ (checkpoint seed).defaulted := fun inactive =>
+      pending (inactiveStopped seed supported inactive)
+    rw [activeAligned seed supported active]
+    exact ready seed supported
+  have phaseEq (seed : Seed) (supported : seed ∈ prior.support) :
+      phase seed = app.runUntilHorizon scheduler (focalPlayers timeouts leaks focal deviation)
+        (fun final => event ∈ final.application.config.cut.completed) horizon (execution seed) :=
+    runUntil_turnPolicy_focal (timeouts := timeouts) (leaks := leaks) scheduler bound turns
+      timing reference focal deviation event (Or.inr owned) solitary _ (execution seed)
+      (readyWhilePending seed supported)
+  obtain ⟨channel, channelLaw⟩ := exists_updated_observation_kernel_of_readout
+    prior checkpoint (fun seed => traffic (execution seed)) observe noise factor
+    (fun _ => PMF.pure ()) (fun before _ => before) observe
+    (fun seed _ => (phase seed).map traffic)
+    (fun _ _ _ _ _ _ _ _ same => same)
+    (fun left leftSupport _ _ right rightSupport _ _ _ same => by
+      have recalled := congrArg (fun value => value.2.2.1) same
+      change (execution left).environmentRecall = (execution right).environmentRecall at recalled
+      rw [phaseEq left leftSupport, phaseEq right rightSupport]
+      simp only [ReactiveApplication.runUntilHorizon, recalled]
+      exact focalPhase_traffic_congr scheduler focal deviation (Or.inr owned) alone
+        (horizon - (execution right).environmentRecall.length) (execution left) (execution right)
+        (readyWhilePending left leftSupport) (readyWhilePending right rightSupport) same)
+  have joint : (prior.bind fun seed => (phase seed).map fun final =>
+      (checkpoint seed, traffic final)) =
+      (prior.map checkpoint).bind fun before =>
+        (channel (observe before)).map fun extra => (before, extra) := by
+    simpa only [PMF.pure_bind, PMF.pure_map, PMF.bind_pure, PMF.map_comp, Function.comp_def]
+      using channelLaw
+  let pick := fun extra : BindingTraffic timeouts leaks =>
+    (recalledAction event extra.2.2.2.2.1.observation).getD
+      ((graph.nodes event).failureAction focal owned)
+  let advance := fun (before : graph.Config) (extra : BindingTraffic timeouts leaks) =>
+    if ready : before.cut.Ready event then
+      (before.step event ready (pick extra)).map fun primary => (State.drainConfig primary, extra)
+    else PMF.pure (before, extra)
+  refine ⟨channel, ?_⟩
+  calc
+    _ = (prior.bind fun seed => (phase seed).map fun final =>
+          (checkpoint seed, traffic final)).bind (fun pair => advance pair.1 pair.2) := by
+      simp only [PMF.bind_bind, PMF.bind_map, Function.comp_def]
+      apply bind_congr_on_support _
+      intro seed supported
+      have readyAt := ready seed supported
+      by_cases inactive : focal ∈ (checkpoint seed).defaulted
+      · have stopped := inactiveStopped seed supported inactive
+        change (phase seed).map (fun final => (final.application.config, traffic final)) =
+          (phase seed).bind fun final => advance (checkpoint seed) (traffic final)
+        have stoppedLaw : phase seed = PMF.pure (execution seed) :=
+          app.runUntil_of_stop scheduler players
+            (fun final => event ∈ final.application.config.cut.completed)
+            (horizon - (execution seed).environmentRecall.length) (execution seed) stopped
+        rw [stoppedLaw, PMF.pure_map, PMF.pure_bind]
+        simp only [advance, dite_eq_left readyAt]
+        have stepped := State.step_drainConfig_of_defaulted (checkpoint seed) event readyAt
+          (fun other otherReady => solitary _ otherReady readyAt) focal owned inactive
+          (pick (traffic (execution seed)))
+        have jointStep :=
+          congrArg (PMF.map (fun final => (final, traffic (execution seed)))) stepped
+        simpa only [PMF.map_comp, PMF.pure_map, Function.comp_def, aligned seed supported]
+          using jointStep.symm
+      · have same := activeAligned seed supported inactive
+        have beforeReady : (execution seed).application.config.cut.Ready event := same ▸ readyAt
+        have beforeActive : focal ∉ (execution seed).application.config.defaulted := same ▸ inactive
+        have stopped := owned_completed_config_law timeouts leaks scheduler players event focal
+          owned (horizon - (execution seed).environmentRecall.length) (execution seed)
+          beforeReady (fun _ otherReady => solitary _ otherReady beforeReady) beforeActive
+          (active_owned_quiescent _ event focal owned solitary beforeReady beforeActive) traffic
+          (completed seed supported)
+        simpa only [advance, dite_eq_left readyAt, phase, ReactiveApplication.runUntilHorizon,
+          pick, traffic, bindingTraffic, app, same] using stopped
+    _ = _ := by
+      rw [joint]
+      simp only [PMF.bind_bind, PMF.bind_map, Function.comp_def, advance, pick]
+
 /-- Sample final native traffic from the focal player's initial graph observation.
 Reading the owned action from this same traffic gives the exact joint law of
 the drained configuration and traffic, including their correlation. -/
@@ -206,64 +354,14 @@ theorem focal_owned_completed_traffic_law
               (State.drainConfig primary, extra)
           else PMF.pure (config seed, extra) := by
   intro app config traffic observe players phase noise factor ready active completed
-  have alone (cut : graph.order.Cut) (other : graph.EventId)
-      (ready : cut.Ready event) (otherReady : cut.Ready other) :
-      other = event := solitary cut otherReady ready
-  have phaseEq (seed : Seed) (supported : seed ∈ prior.support) :
-      phase seed = app.runUntilHorizon scheduler (focalPlayers timeouts leaks focal deviation)
-        (fun final => event ∈ final.application.config.cut.completed) horizon (execution seed) :=
-    runUntil_turnPolicy_focal (timeouts := timeouts) (leaks := leaks) scheduler bound turns
-      timing reference focal deviation event (Or.inr owned) solitary _ (execution seed)
-      (fun _ => ready seed supported)
-  obtain ⟨channel, channelLaw⟩ := exists_updated_observation_kernel_of_readout
-    prior config (fun seed => traffic (execution seed)) observe noise factor
-    (fun _ => PMF.pure ()) (fun before _ => before) observe
-    (fun seed _ => (phase seed).map traffic)
-    (fun _ _ _ _ _ _ _ _ same => same)
-    (fun left leftSupport _ _ right rightSupport _ _ _ same => by
-      have recalled := congrArg (fun value => value.2.2.1) same
-      change (execution left).environmentRecall = (execution right).environmentRecall at recalled
-      rw [phaseEq left leftSupport, phaseEq right rightSupport]
-      simp only [ReactiveApplication.runUntilHorizon, recalled]
-      exact focalPhase_traffic_congr scheduler focal deviation (Or.inr owned) alone
-        (horizon - (execution right).environmentRecall.length) (execution left) (execution right)
-        (fun _ => ready left leftSupport) (fun _ => ready right rightSupport) same)
-  have joint : (prior.bind fun seed => (phase seed).map fun final =>
-      (config seed, traffic final)) =
-      (prior.map config).bind fun before =>
-        (channel (observe before)).map fun extra => (before, extra) := by
-    simpa only [PMF.pure_bind, PMF.pure_map, PMF.bind_pure, PMF.map_comp, Function.comp_def]
-      using channelLaw
-  let pick := fun extra : BindingTraffic timeouts leaks =>
-    (recalledAction event extra.2.2.2.2.1.observation).getD
-      ((graph.nodes event).failureAction focal owned)
-  let advance := fun (before : graph.Config) (extra : BindingTraffic timeouts leaks) =>
-    if ready : before.cut.Ready event then
-      (before.step event ready (pick extra)).map fun primary => (State.drainConfig primary, extra)
-    else PMF.pure (before, extra)
-  refine ⟨channel, ?_⟩
-  calc
-    _ = (prior.bind fun seed => (phase seed).map fun final =>
-          (config seed, traffic final)).bind (fun pair => advance pair.1 pair.2) := by
-      simp only [PMF.bind_bind, PMF.bind_map, Function.comp_def]
-      apply bind_congr_on_support _
-      intro seed supported
-      have readyAt := ready seed supported
-      have clear (other : graph.EventId) (eligible : (execution seed).application.AutomaticReady
-          other) : False := by
-        obtain rfl := solitary _ eligible.1 readyAt
-        have inactive := eligible.2
-        rw [owned] at inactive
-        exact active seed supported inactive
-      have stopped := owned_completed_config_law timeouts leaks scheduler players event focal
-        owned (horizon - (execution seed).environmentRecall.length) (execution seed)
-        readyAt (fun _ otherReady => solitary _ otherReady readyAt)
-        (active seed supported) clear traffic (completed seed supported)
-      simpa only [advance, dite_eq_left readyAt, phase, ReactiveApplication.runUntilHorizon,
-        config, pick, traffic, bindingTraffic, app] using stopped
-    _ = _ := by
-      rw [joint]
-      simp only [PMF.bind_bind, PMF.bind_map, Function.comp_def, advance, pick]
+  have aligned (seed : Seed) (member : seed ∈ prior.support) :
+      (execution seed).application.config = State.drainConfig (config seed) :=
+    (State.drainConfig_of_quiescent (execution seed).application
+      (active_owned_quiescent _ event focal owned solitary (ready seed member)
+        (active seed member))).symm
+  exact focal_owned_checkpoint_traffic_law timeouts leaks scheduler bound turns timing reference
+    focal deviation event owned solitary horizon prior execution config noise factor ready aligned
+    completed
 
 /-- At a solitary active event of the focal player, actual native traffic
 induces an action law of its graph observation alone. The exact stopped

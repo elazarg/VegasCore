@@ -4,7 +4,8 @@ module
 
 public import Vegas.Pending.ChancePhaseTraffic
 public import Vegas.Pending.OwnedCompletionConfig
-public import Vegas.Pending.PrefixBoundary
+public import Vegas.Pending.FirstTurnSimulation
+public import Vegas.EventGraph.PolicyPatch
 
 @[expose] public section
 
@@ -19,10 +20,9 @@ open EventGraph Interaction GameTheory.Math.Probability
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {graph : Vegas.EventGraph Player L}
 
-/-- In a two-event sequential graph with a public chance event followed by one
-owned decision, every raw deviation has an observation-local graph realization
-with the exact full terminal configuration law. -/
-theorem focal_after_chance_config_law
+/-- Compose the initialized public chance phase, the focal decision, and the
+supplied local reference steps at every later rank. -/
+private theorem focal_after_chance_config_law_of_event_steps
     (timeouts : EventTimeouts graph.sequentialize)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph.sequentialize))
     (scheduler : (reactiveApplication timeouts leaks).Scheduler)
@@ -31,11 +31,24 @@ theorem focal_after_chance_config_law
     (inputs : PMF graph.sequentialize.Inputs) (reference : graph.sequentialize.BehavioralProfile)
     (focal : Player) (deviation : (reactiveApplication timeouts leaks).Policy)
     (sample decision : graph.sequentialize.EventId) (sampleRank : sample.val = 0)
-    (decisionRank : decision.val = 1) (count : graph.order.eventCount = 2)
+    (decisionRank : decision.val = 1)
     (ownerless : graph.sequentialize.actor? sample = none)
     (owned : graph.sequentialize.actor? decision = some focal)
+    (only : ∀ other, graph.sequentialize.actor? other = some focal → other = decision)
     (horizon : Nat)
-    (completes : CompletesPlay timeouts leaks (inputs.map State.initial) horizon scheduler) :
+    (completes : CompletesPlay timeouts leaks (inputs.map State.initial) horizon scheduler)
+    (localStep :
+      let app := reactiveApplication timeouts leaks
+      let players := Function.update (turnPolicy timeouts leaks bound turns timing reference)
+        focal deviation
+      ∀ (event : graph.sequentialize.EventId) (before : app.Execution)
+        (boundary : PrefixBoundary (inputs.map State.initial) scheduler players event.val before),
+        2 ≤ event.val → before.environmentRecall.length ≤ horizon →
+        (app.runUntilHorizon scheduler players
+          (fun final => event ∈ final.application.config.cut.completed) horizon before).map
+            (fun final => final.application.config) =
+          (eventStep reference before.application.config event
+            (boundary.ordered.ready event.isLt)).map State.drainConfig) :
     let app := reactiveApplication timeouts leaks
     let players := Function.update (turnPolicy timeouts leaks bound turns timing reference)
       focal deviation
@@ -59,6 +72,8 @@ theorem focal_after_chance_config_law
   let stopped := inputs.bind phaseSample
   let config := fun execution : app.Execution => execution.application.config
   let traffic := (bindingTraffic timeouts) leaks focal
+  let plan := G.policyPlan reference G.canonicalScheduler
+  let onward := fun current : G.Config => G.runPlan plan current.remaining current
   let action := EventCode.actionOfActorNone (G.nodes sample) ownerless
   have orderedSample : (EventOrder.Cut.empty G.order).IsPrefix sample.val :=
     sampleRank ▸ EventOrder.Cut.empty_isPrefix _
@@ -144,21 +159,28 @@ theorem focal_after_chance_config_law
       rw [(postSample before present).2]
       exact Finset.notMem_empty _)
     progressDecision
-  have allEvents (event : G.EventId) : event = sample ∨ event = decision := by
-    have inside := event.isLt
-    change event.val < graph.order.eventCount at inside
-    rcases show event.val = 0 ∨ event.val = 1 by omega with zero | one
-    · exact Or.inl (Fin.ext (zero.trans sampleRank.symm))
-    · exact Or.inr (Fin.ext (one.trans decisionRank.symm))
-  have terminal (final : G.Config) (sampleDone : sample ∈ final.cut.completed)
-      (decisionDone : decision ∈ final.cut.completed) : final.cut.Terminal := by
-    apply Finset.eq_univ_iff_forall.mpr
-    intro event
-    rcases allEvents event with rfl | rfl <;> assumption
+  have suffixLaw := eventCompletionLaw_of_event_steps (scheduler := scheduler)
+    (players := players) inputs reference 2 localStep
+  have sampleBoundary (seed : G.Inputs) (present : seed ∈ inputs.support) :
+      PrefixBoundary (inputs.map State.initial) scheduler players sample.val (start seed) := by
+    rw [sampleRank]
+    exact initialBoundary seed present
+  have boundaryDecision (seed : G.Inputs) (present : seed ∈ inputs.support)
+      (before : app.Execution) (member : before ∈ (phaseSample seed).support) :
+      PrefixBoundary (inputs.map State.initial) scheduler players decision.val before := by
+    obtain ⟨_, rank, _, boundary⟩ := PrefixBoundary.stopped timeouts leaks
+      sample (start seed) (sampleBoundary seed present) (Nat.zero_le _) before member
+      (sampleProgress seed present before member).2.2
+    have supported : before ∈ stopped.support :=
+      (PMF.mem_support_bind_iff _ _ _).mpr ⟨seed, present, member⟩
+    have rankEq := boundary.ordered.unique (postSample before supported).1
+    rwa [rankEq, ← decisionRank] at boundary
+  let stoppedDecision := stopped.bind (fun before => (phaseDecision before).map config)
   have native :
       (app.roundsFrom (inputs.map State.initial) scheduler players horizon).map config =
-        stopped.bind (fun before => (phaseDecision before).map config) := by
-    rw [ReactiveApplication.roundsFrom, PMF.map_bind, PMF.bind_map, PMF.bind_bind]
+        stoppedDecision.bind onward := by
+    unfold stoppedDecision stopped
+    rw [ReactiveApplication.roundsFrom, PMF.map_bind, PMF.bind_map, PMF.bind_bind, PMF.bind_bind]
     apply bind_congr_on_support _
     intro seed present
     change (app.runToHorizon scheduler players horizon (start seed)).map config = _
@@ -168,75 +190,177 @@ theorem focal_after_chance_config_law
     have beforeSupport : before ∈ stopped.support :=
       (PMF.mem_support_bind_iff _ _ _).mpr ⟨seed, present, stoppedMember⟩
     rw [app.runToHorizon_eq_runUntilHorizon_bind scheduler players stopDecision, PMF.map_bind,
-      ← PMF.bind_pure_comp]
+      PMF.bind_map]
     apply bind_congr_on_support _
     intro final reached
-    have afterDecision := progressDecision before beforeSupport final reached
-    have retained := EventGraph.Config.Step.path_completed_mono
-      (reactive_runUntil_graph_steps timeouts leaks scheduler players stopDecision
-        (horizon - before.environmentRecall.length) before final reached)
-      (sampleProgress seed present before stoppedMember).2.2
-    have finished := terminal _ retained afterDecision
-    change (app.runRounds scheduler players _ final).map config = PMF.pure (config final)
-    rw [map_congr_on_support _ (g := fun _ => config final) (fun last reached =>
-      Config.Step.path_eq_of_terminal
-        (reactive_runRounds_graph_steps timeouts leaks scheduler players _ final last reached)
-          finished), pmf_map_fun_const]
+    have done := progressDecision before beforeSupport final reached
+    have bounded := (sampleProgress seed present before stoppedMember).2.1
+    obtain ⟨within, rank, later, nextBoundary⟩ := PrefixBoundary.stopped timeouts leaks
+      decision before (boundaryDecision seed present before stoppedMember) bounded final
+      reached done
+    have above : 2 ≤ rank := by omega
+    have tail := suffixLaw.runToHorizon completes final ⟨rank, above, nextBoundary⟩
+      nextBoundary.supported within
+    simpa only [Function.comp_def, id_eq, PMF.map_id] using tail
   let policy : G.BehavioralPolicy focal := fun event actor view _ =>
-    cast (congrArg (fun current => PMF (G.Action current)) (by
-      rcases allEvents event with same | same
-      · rw [same, ownerless] at actor
-        cases actor
-      · exact same.symm)) (law view)
+    cast (congrArg (fun current => PMF (G.Action current)) (only event actor).symm) (law view)
   refine ⟨policy, ?_⟩
   let updated := Function.update reference focal policy
-  let plan := G.policyPlan updated G.canonicalScheduler
-  have ideal : inputs.bind (G.runPolicies G.canonicalScheduler updated) =
-      chance.bind (fun before =>
-        if ready : before.cut.Ready decision then
-          (law (G.playerObserve focal before)).bind fun chosen =>
-            (before.step decision ready chosen).map State.drainConfig
-        else PMF.pure before) := by
-    rw [PMF.bind_bind]
-    apply bind_congr_on_support _
-    intro seed present
-    change G.runPlan plan graph.order.eventCount (initial seed) = _
-    have leastSample (other : G.EventId) (_ : (initial seed).cut.Ready other) : sample ≤ other :=
-      Fin.le_iff_val_le_val.mpr (by rw [sampleRank]; exact Nat.zero_le _)
-    rw [count, show 2 = 1 + 1 from rfl, runPlan_canonical_succ _ 1 (initial seed)
-      readySample.not_terminal sample readySample leastSample,
-      eventStep, actionLaw_of_ownerless _ _ ownerless, PMF.pure_bind]
-    apply bind_congr_on_support _
-    intro before member
-    have beforeSupport : before ∈ chance.support :=
-      (PMF.mem_support_bind_iff _ _ _).mpr ⟨seed, present, member⟩
-    have ordered : before.cut.IsPrefix decision.val :=
-      decisionRank ▸ (chanceSupport before beforeSupport).1
-    have ready : before.cut.Ready decision := ordered.ready decision.isLt
-    have active : focal ∉ before.defaulted := by
-      rw [(chanceSupport before beforeSupport).2]; exact Finset.notMem_empty _
-    have leastDecision (other : G.EventId) (enabled : before.cut.Ready other) :
-        decision ≤ other :=
-      Fin.le_iff_val_le_val.mpr (Nat.le_of_not_gt fun earlier =>
-        enabled.1 ((ordered.2 other).mpr earlier))
-    rw [runPlan_canonical_succ _ 0 before ready.not_terminal decision ready leastDecision,
-      eventStep, actionLaw_of_actor _ _ owned, dite_eq_right active, dite_eq_left ready]
-    simp only [EventGraph.runPlan, PMF.bind_pure, updated, Function.update_self, policy, cast_eq]
-    apply bind_congr_on_support _
-    intro chosen _
-    symm
-    rw [map_congr_on_support _ (g := id) ?_, PMF.map_id]
-    intro final moved
-    apply State.drainConfig_of_quiescent (State.ofConfig final)
-    intro event automatic
-    have orderedFinal : final.cut.IsPrefix graph.order.eventCount := by
-      have finalPrefix := ordered.complete_at decision ready rfl
-      rw [before.step_cut decision ready chosen final moved]
-      simpa only [decisionRank, count] using finalPrefix
-    exact automatic.1.not_terminal orderedFinal.terminal
-  rw [native, ideal]
-  change stopped.bind (fun before => (phaseDecision before).map config) = _
-  rw [← marginal, PMF.bind_map]
-  exact decisionLaw
+  let updatedPlan := G.policyPlan updated G.canonicalScheduler
+  have tails (current : G.Config) (done : decision ∈ current.cut.completed) :
+      G.runPlan updatedPlan current.remaining current = onward current := by
+    have agree (config : G.Config) (event : G.EventId) (different : event ≠ decision) :
+        actionLaw updated config event = actionLaw reference config event := by
+      change actionLaw (Function.update reference focal policy) config event =
+        actionLaw reference config event
+      cases actor : G.actor? event with
+      | none => rw [actionLaw_of_ownerless _ _ actor, actionLaw_of_ownerless _ _ actor]
+      | some owner =>
+          have unfocal : owner ≠ focal := fun same => different (only event (same ▸ actor))
+          rw [actionLaw_of_actor _ _ actor, actionLaw_of_actor _ _ actor]
+          by_cases inactive : owner ∈ config.defaulted
+          · rw [dite_eq_left inactive, dite_eq_left inactive]
+          · rw [dite_eq_right inactive, dite_eq_right inactive,
+              Function.update_of_ne unfocal]
+    exact runPlan_congr_of_actionLaw G.canonicalScheduler (fun event => event = decision)
+      agree current.remaining current (fun _ same => same.symm ▸ done)
+  let finish (before : G.Config) :=
+    if ready : before.cut.Ready decision then
+      (law (G.playerObserve focal before)).bind fun chosen =>
+        (before.step decision ready chosen).map State.drainConfig
+    else PMF.pure before
+  have focalLaw : stoppedDecision = chance.bind finish := by
+    change stoppedDecision = chance.bind _
+    rw [← marginal, PMF.bind_map]
+    exact decisionLaw
+  rw [native, focalLaw, PMF.bind_bind]
+  unfold chance
+  rw [PMF.bind_bind]
+  apply bind_congr_on_support _
+  intro seed present
+  change ((initial seed).step sample readySample action).bind
+      (fun before => (finish before).bind onward) =
+    G.runPlan updatedPlan (initial seed).remaining (initial seed)
+  have leastSample (other : G.EventId) (_ : (initial seed).cut.Ready other) : sample ≤ other :=
+    Fin.le_iff_val_le_val.mpr (by rw [sampleRank]; exact Nat.zero_le _)
+  rw [runPlan_remaining_canonical_step _ (initial seed) sample readySample leastSample,
+    eventStep, actionLaw_of_ownerless _ _ ownerless, PMF.pure_bind]
+  apply bind_congr_on_support _
+  intro before member
+  have beforeSupport : before ∈ chance.support :=
+    (PMF.mem_support_bind_iff _ _ _).mpr ⟨seed, present, member⟩
+  have ordered : before.cut.IsPrefix decision.val :=
+    decisionRank ▸ (chanceSupport before beforeSupport).1
+  have ready : before.cut.Ready decision := ordered.ready decision.isLt
+  have active : focal ∉ before.defaulted := by
+    rw [(chanceSupport before beforeSupport).2]
+    exact Finset.notMem_empty _
+  have leastDecision (other : G.EventId) (enabled : before.cut.Ready other) :
+      decision ≤ other :=
+    Fin.le_iff_val_le_val.mpr (Nat.le_of_not_gt fun earlier =>
+      enabled.1 ((ordered.2 other).mpr earlier))
+  rw [runPlan_remaining_canonical_step _ before decision ready leastDecision,
+    eventStep, actionLaw_of_actor _ _ owned, dite_eq_right active]
+  simp only [finish, dite_eq_left ready, updated, Function.update_self, policy, cast_eq,
+    PMF.bind_bind]
+  apply bind_congr_on_support _
+  intro chosen _
+  rw [PMF.bind_map]
+  apply bind_congr_on_support _
+  intro after moved
+  have done : decision ∈ after.cut.completed := by
+    rw [before.step_cut decision ready chosen after moved, EventOrder.Cut.mem_complete]
+    exact Or.inl rfl
+  have drained : onward (State.drainConfig after) = onward after :=
+    (State.drain_runPlan_canonical graph reference (State.ofConfig after)).symm
+  exact drained.trans (tails after done).symm
+
+/-- In a two-event sequential graph with a public chance event followed by one
+owned decision, every raw deviation has an observation-local graph realization
+with the exact full terminal configuration law. -/
+theorem focal_after_chance_config_law
+    (timeouts : EventTimeouts graph.sequentialize)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph.sequentialize))
+    (scheduler : (reactiveApplication timeouts leaks).Scheduler)
+    (bound : graph.EventId → Nat) (turns : Nat)
+    (timing : EventGraphRuntime.TurnTiming graph.sequentialize turns)
+    (inputs : PMF graph.sequentialize.Inputs) (reference : graph.sequentialize.BehavioralProfile)
+    (focal : Player) (deviation : (reactiveApplication timeouts leaks).Policy)
+    (sample decision : graph.sequentialize.EventId) (sampleRank : sample.val = 0)
+    (decisionRank : decision.val = 1) (count : graph.order.eventCount = 2)
+    (ownerless : graph.sequentialize.actor? sample = none)
+    (owned : graph.sequentialize.actor? decision = some focal)
+    (horizon : Nat)
+    (completes : CompletesPlay timeouts leaks (inputs.map State.initial) horizon scheduler) :
+    let app := reactiveApplication timeouts leaks
+    let players := Function.update (turnPolicy timeouts leaks bound turns timing reference)
+      focal deviation
+    ∃ policy : graph.sequentialize.BehavioralPolicy focal,
+      (app.roundsFrom (inputs.map State.initial) scheduler players horizon).map
+        (fun final => final.application.config) =
+      inputs.bind (graph.sequentialize.runPolicies graph.sequentialize.canonicalScheduler
+        (Function.update reference focal policy)) := by
+  apply focal_after_chance_config_law_of_event_steps timeouts leaks scheduler bound turns timing
+    inputs reference focal deviation sample decision sampleRank decisionRank ownerless owned
+    ?_ horizon completes ?_
+  · intro other actor
+    have inside := other.isLt
+    change other.val < graph.order.eventCount at inside
+    have nonzero : other.val ≠ 0 := by
+      intro zero
+      have same : other = sample := Fin.ext (zero.trans sampleRank.symm)
+      rw [same, ownerless] at actor
+      cases actor
+    exact Fin.ext (by omega)
+  · intro _ _ event _ _ later _
+    have inside := event.isLt
+    change event.val < graph.order.eventCount at inside
+    omega
+
+/-- If public chance precedes the focal player's sole decision, all subsequent
+foreign and chance events retain their canonical continuation law. -/
+theorem focal_after_chance_config_law_with_suffix
+    (timeouts : EventTimeouts graph.sequentialize)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph.sequentialize))
+    (scheduler : (reactiveApplication timeouts leaks).Scheduler)
+    (bound : graph.EventId → Nat) (turns : Nat)
+    (delay : graph.sequentialize.EventId → Nat)
+    (inputs : PMF graph.sequentialize.Inputs) (reference : graph.sequentialize.BehavioralProfile)
+    (focal : Player) (deviation : (reactiveApplication timeouts leaks).Policy)
+    (sample decision : graph.sequentialize.EventId) (sampleRank : sample.val = 0)
+    (decisionRank : decision.val = 1)
+    (ownerless : graph.sequentialize.actor? sample = none)
+    (owned : graph.sequentialize.actor? decision = some focal)
+    (only : ∀ other, graph.sequentialize.actor? other = some focal → other = decision)
+    (horizon : Nat)
+    (contract : AsyncContract timeouts leaks (inputs.map State.initial) horizon scheduler
+      delay bound)
+    (timely : AsyncTimely timeouts delay bound)
+    (realizable : RealizableProfile (graph := graph.sequentialize) inputs reference) :
+    let app := reactiveApplication timeouts leaks
+    let players := Function.update (turnPolicy timeouts leaks bound turns
+      (EventGraphRuntime.firstTurnTiming graph.sequentialize turns) reference)
+      focal deviation
+    ∃ policy : graph.sequentialize.BehavioralPolicy focal,
+      (app.roundsFrom (inputs.map State.initial) scheduler players horizon).map
+        (fun final => final.application.config) =
+      inputs.bind (graph.sequentialize.runPolicies graph.sequentialize.canonicalScheduler
+        (Function.update reference focal policy)) := by
+  intro app players
+  let timing := EventGraphRuntime.firstTurnTiming graph.sequentialize turns
+  refine focal_after_chance_config_law_of_event_steps timeouts leaks scheduler bound turns timing
+    inputs reference focal deviation sample decision sampleRank decisionRank ownerless owned only
+    horizon contract.completes ?_
+  intro _ _ event before boundary later within
+  refine firstTurn_event_config_law_of_owner_follows timeouts leaks (turns := turns)
+    scheduler delay bound inputs reference contract timely realizable event players
+    ?_ before boundary within
+  intro who actor
+  have unfocal : who ≠ focal := by
+    rintro rfl
+    have equal := only event actor
+    rw [equal, decisionRank] at later
+    omega
+  exact Function.update_of_ne unfocal _ _
 
 end Vegas.EventGraphRuntime

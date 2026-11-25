@@ -35,7 +35,7 @@ def RunTurnFacts (who : Player)
   ActivationsAnswered setup leaks execution ∧ ResponsesActivated setup leaks execution ∧
     ∀ owner, owner ≠ who → OwnSubmissionsAtTurn
       (serviceTimeouts setup deps duration) leaks execution owner ∧
-      CanonicalSlotsUsed setup leaks execution owner
+      CanonicalSlotsUsed (serviceTimeouts setup deps duration) leaks execution owner
 
 /-- The recall facts hold on the support of rounds from initialization. -/
 theorem runTurnFacts_roundsFrom
@@ -82,7 +82,7 @@ theorem RunTurnFacts.round
         (firstTurnTiming setup turns deps) reference owner := Function.update_of_ne different _ _
   obtain ⟨atTurn, valid⟩ := honest owner different
   exact canonicalSlots_round serial
-    (follows ▸ serviceTurnPolicy_submitsCanonically_reference bound turns
+    (follows ▸ turnPolicy_submitsCanonically (serviceTimeouts setup deps duration) leaks bound turns
       (firstTurnTiming setup turns deps) reference owner)
     (follows ▸ sourceServiceTurnPolicy_submitsAtTurn_reference setup leaks bound turns
       (firstTurnTiming setup turns deps) reference owner) trace atTurn valid reached

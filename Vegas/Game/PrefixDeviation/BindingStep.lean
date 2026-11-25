@@ -1567,7 +1567,7 @@ private theorem nativeBindingContinuation_owned_good
     (∀ seed ∈ prior.support, (anchor seed).application.config.defaulted = ∅) →
     (∀ seed ∈ prior.support, ∀ owner, owner ≠ focal →
       OwnSubmissionsAtTurn (serviceTimeouts setup deps duration) leaks (anchor seed) owner ∧
-        CanonicalSlotsUsed setup leaks (anchor seed) owner ∧
+        CanonicalSlotsUsed (serviceTimeouts setup deps duration) leaks (anchor seed) owner ∧
         OwnFreshCalls setup leaks bound (anchor seed) owner ∧
         OneCallPerEvent setup leaks (anchor seed) owner) →
     (∀ seed ∈ prior.support, ActivationsAnswered setup leaks (anchor seed)) →
@@ -2235,7 +2235,7 @@ private theorem nativeBindingContinuation_owned_expected
     (∀ seed ∈ prior.support, (anchor seed).application.config.defaulted = ∅) →
     (∀ seed ∈ prior.support, ∀ owner, owner ≠ focal →
       OwnSubmissionsAtTurn (serviceTimeouts setup deps duration) leaks (anchor seed) owner ∧
-        CanonicalSlotsUsed setup leaks (anchor seed) owner ∧
+        CanonicalSlotsUsed (serviceTimeouts setup deps duration) leaks (anchor seed) owner ∧
         OwnFreshCalls setup leaks bound (anchor seed) owner ∧
         OneCallPerEvent setup leaks (anchor seed) owner) →
     (∀ seed ∈ prior.support, ActivationsAnswered setup leaks (anchor seed)) →
@@ -2381,7 +2381,7 @@ private theorem nativeBindingContinuation_owned_expected
   have canonical (seed : Seed) (member : seed ∈ prior.support) (owner : Player)
       (foreign : owner ≠ focal) : OwnSubmissionsAtTurn
         (serviceTimeouts setup deps duration) leaks (execution seed) owner ∧
-        CanonicalSlotsUsed setup leaks (execution seed) owner := by
+        CanonicalSlotsUsed (serviceTimeouts setup deps duration) leaks (execution seed) owner := by
     have follows : players seed owner = turnPolicy (serviceTimeouts setup deps duration) leaks bound
         turns (firstTurnTiming setup turns deps) (effectiveOpening (G.prefixProfile (members seed)))
         owner := Function.update_of_ne foreign _ _

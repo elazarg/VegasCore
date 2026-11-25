@@ -4,6 +4,7 @@ module
 
 public import Vegas.Expr.Simple
 public import Vegas.Pending.ReadyRosterService
+public import Vegas.Pending.SingleOwnerSimulation
 public import Interaction.MessageNetworkObservation
 
 @[expose] public section
@@ -79,5 +80,29 @@ theorem contract (input : PMF graph.Inputs) :
       (fun event => event.val) (fun _ => 0) := by
   rw [← calendarLength]
   exact readyRoster_owner_contract graph leaks input network
+
+/-- One policy realizes all six physical prefixes for any raw deviation of the
+owner of the five bindings, including deviations after seeing the coin. -/
+theorem deviation_prefix_law (inputs : PMF graph.Inputs)
+    (reference : graph.sequentialize.BehavioralProfile)
+    (deviation : (rosterApplication graph leaks).Policy) :
+    let scheduler := readyRosterScheduler graph leaks (ownerRoster graph) network
+    let players := Function.update (turnPolicy (rosterTimeouts graph) leaks (fun _ => 0) 1
+      (EventGraphRuntime.firstTurnTiming graph.sequentialize 1) reference) false deviation
+    ∃ policy : graph.sequentialize.BehavioralPolicy false,
+      ∀ rank, rank ≤ 6 →
+        (physicalPrefix (rosterTimeouts graph) leaks scheduler players inputs 38 rank).map
+          (fun execution => Config.rankPrefix rank execution.application.config) =
+        inputs.bind fun seed => graph.sequentialize.runPlan
+          (graph.sequentialize.policyPlan (Function.update reference false policy)
+            graph.sequentialize.canonicalScheduler) rank (Config.initial seed) := by
+  intro scheduler players
+  have actors : ∀ event : graph.sequentialize.EventId,
+      graph.sequentialize.actor? event = none ∨ graph.sequentialize.actor? event = some false := by
+    decide
+  obtain ⟨policy, prefixes, _⟩ := singleOwner_deviation_config_law (rosterTimeouts graph) leaks
+    scheduler (fun _ => 0) 1 (EventGraphRuntime.firstTurnTiming graph.sequentialize 1) reference
+    false deviation inputs 38 (contract inputs).completes actors
+  exact ⟨policy, prefixes⟩
 
 end VegasTests.GraphReadyRoster

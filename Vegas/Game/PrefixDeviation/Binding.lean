@@ -211,7 +211,7 @@ private theorem nativeBindingContinuation_finish
     omega
   have canonical : ∀ seed ∈ prior.support, ∀ owner, owner ≠ focal →
       OwnSubmissionsAtTurn (serviceTimeouts setup deps duration) leaks (execution seed) owner ∧
-        CanonicalSlotsUsed setup leaks (execution seed) owner := by
+        CanonicalSlotsUsed (serviceTimeouts setup deps duration) leaks (execution seed) owner := by
     intro seed member owner different
     exact canonicalSlots_roundsFrom_reference relaxed.actorSerial scheduler (players seed) owner
       (firstTurnTiming setup turns deps) (effectiveOpening (G.prefixProfile (members seed)))
@@ -661,7 +661,7 @@ theorem nativeSourceContinuation_of_binding_interval
             focal deviation) current.environmentRecall.length).support) :
       ∀ owner, owner ≠ focal → OwnSubmissionsAtTurn
         (serviceTimeouts setup deps duration) leaks current owner ∧
-        CanonicalSlotsUsed setup leaks current owner ∧
+        CanonicalSlotsUsed (serviceTimeouts setup deps duration) leaks current owner ∧
           OwnFreshCalls setup leaks bound current owner ∧
           OneCallPerEvent setup leaks current owner := by
     intro owner foreign

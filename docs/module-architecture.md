@@ -142,31 +142,38 @@ round. When the selected owner follows the first-turn reference, the
 configuration step and automatic completion law also holds with arbitrary
 policies for the other players.
 
-[TrafficPolicy](../Vegas/EventGraph/TrafficPolicy.lean) combines conditionally
-sampled action kernels into a single unilateral graph policy at the canonical
-prefixes. Applying it to a full native run requires the joint law of the
-primary graph prefix and stopped native traffic at every event, including
-foreign actions and public samples and any ranks passed by automatic service.
-[FocalCompletionTraffic](../Vegas/Pending/FocalCompletionTraffic.lean) proves
-the joint factor at an active solitary focal event. The successor graph
-observation recovers the previous observation and the action from the player's
-recall. This supplies a conditional law for the stopped traffic.
-[ChancePhaseTraffic](../Vegas/Pending/ChancePhaseTraffic.lean) proves the
-corresponding factor for a solitary public sample, using the visible sample
-value. [CompletionTraffic](../Vegas/Pending/CompletionTraffic.lean) transports
-the factor over a defaulted graph rank already completed by the ledger.
-The general iteration still needs the corresponding physical evidence for
-foreign strategic events. A realizable opening may transmit a private value that the
-guard rejects, leaving the graph publication failed. In the two-event witness,
-the canonical client sends an initially bound Boolean despite an always-failing
-guard. The next actor sees the bit in the included packet even with pending
-observation disabled. Both bits yield the same graph view at that actor's
-binding. Every graph profile is realizable under any law on the initial bit,
-and every response based on the shared graph view has the same action law in
-the two cases. [GuardRejectedTraffic](../VegasTests/GuardRejectedTraffic.lean)
+[EffectiveOpeningSimulation](../Vegas/Pending/EffectiveOpeningSimulation.lean)
+proves a direct deviation law between the native ledger and the canonical
+execution of a sequentialized event graph. Against first-turn effective-opening
+clients, one graph behavioral policy realizes any raw unilateral ledger policy
+at every graph rank and on the full terminal configuration. The inputs can have
+any joint distribution. The hypotheses are the asynchronous service contract
+and its timing budget. The other clients use their supplied binding policies
+and disclose precisely when their opening will succeed.
+[SingleOwnerSimulation](../Vegas/Pending/SingleOwnerSimulation.lean) needs only
+completion when every decision belongs to the deviator. It allows arbitrary
+client timing and interleaved public samples.
 
-The foreign traffic factor therefore requires an additional information
-hypothesis. The source deviation theorem uses effective disclosures.
+[PhysicalPrefix](../Vegas/Pending/PhysicalPrefix.lean) stops the actual
+initialized execution at successive graph events. Several events can share
+one physical stop when service automatically completes a defaulted owner's
+instructions. Restricting the cut, store and chronological history to the
+requested rank recovers the primary graph checkpoint. At each rank the proof
+factors the joint law of this checkpoint and the deviator's observed traffic
+through the deviator's graph observation. Own decisions use recalled actions,
+public samples use their visible value, foreign bindings expose admission, and
+foreign publications expose their result.
+[PhysicalPrefixPolicy](../Vegas/Pending/PhysicalPrefixPolicy.lean) assembles
+the resulting observation-local choices into one graph policy for the entire run.
+The [source prefix law](../Vegas/Game/SourceClientPrefixLaw.lean) also reads the
+entire typed protocol state at any such stop for the recovered first-turn
+source clients with normalized disclosures.
+
+Realizability alone permits a client to transmit a private value that its
+publication guard rejects. In the two-event witness, the next actor sees the
+initial Boolean in the included packet even with pending observation disabled.
+Both values give that actor the same graph view and hence the same graph
+response law. [GuardRejectedTraffic](../VegasTests/GuardRejectedTraffic.lean)
 
 The full honest native law in
 [PrefixClientOutcomeLaw](../Vegas/Game/PrefixClientOutcomeLaw.lean) needs no

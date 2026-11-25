@@ -144,7 +144,7 @@ theorem freshCallsConform_round_reference
         ((serviceApplication setup deps duration leaks).protocol (serviceInitialLaw setup deps)
         horizon scheduler).Trace (some ⟨remaining + 1, none, execution⟩))
     (atTurn : OwnSubmissionsAtTurn (serviceTimeouts setup deps duration) leaks execution who)
-    (valid : CanonicalSlotsUsed setup leaks execution who)
+    (valid : CanonicalSlotsUsed (serviceTimeouts setup deps duration) leaks execution who)
     (conform : FreshCallsConform setup leaks execution who)
     (reached : next ∈
         ((serviceApplication setup deps duration leaks).round scheduler players
@@ -161,7 +161,8 @@ theorem freshCallsConform_round_reference
     unfold EventGraphRuntime.OwnSubmissionsAtTurn
     rw [recallEq]
     exact atTurn
-  have validMiddle := canonicalSlotsUsed_environment moved who valid
+  have validMiddle := canonicalSlotsUsed_environment (serviceTimeouts setup deps duration) leaks
+    moved who valid
   rcases cases with ⟨_, rfl⟩ | ⟨responder, active, response, chosen, rfl⟩
   · exact conformMiddle
   · obtain ⟨middleTrace⟩ := app.raw_trace_environment (serviceInitialLaw setup deps) horizon
@@ -179,7 +180,8 @@ theorem freshCallsConform_round_reference
         subst new
         change response.transmission = some material at submitted
         obtain ⟨event, action, turn, unrecorded, fits, decided⟩ :=
-          sourceServiceTurnPolicy_submission_reference chosen submitted
+          turnPolicy_canonical_transmission (serviceTimeouts setup deps duration) leaks
+            chosen submitted
         have responseEq : response = ⟨some material⟩ := by
           rcases response with ⟨transmission⟩
           change transmission = _ at submitted
@@ -224,7 +226,7 @@ theorem freshCallsConform_round
         ((serviceApplication setup deps duration leaks).protocol (serviceInitialLaw setup deps)
         horizon scheduler).Trace (some ⟨remaining + 1, none, execution⟩))
     (atTurn : OwnSubmissionsAtTurn (serviceTimeouts setup deps duration) leaks execution who)
-    (valid : CanonicalSlotsUsed setup leaks execution who)
+    (valid : CanonicalSlotsUsed (serviceTimeouts setup deps duration) leaks execution who)
     (conform : FreshCallsConform setup leaks execution who)
     (reached : next ∈
         ((serviceApplication setup deps duration leaks).round scheduler players

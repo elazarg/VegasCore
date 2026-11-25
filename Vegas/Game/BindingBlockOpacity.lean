@@ -64,10 +64,10 @@ theorem bindingBlock_stopped_traffic_congr
     (rightInside : InBlock start finish rightStart.application.config)
     (leftCanonical : ∀ actor, actor ≠ focal →
       OwnSubmissionsAtTurn (serviceTimeouts setup deps duration) leaks leftStart actor ∧
-        CanonicalSlotsUsed setup leaks leftStart actor)
+        CanonicalSlotsUsed (serviceTimeouts setup deps duration) leaks leftStart actor)
     (rightCanonical : ∀ actor, actor ≠ focal →
       OwnSubmissionsAtTurn (serviceTimeouts setup deps duration) leaks rightStart actor ∧
-        CanonicalSlotsUsed setup leaks rightStart actor) :
+        CanonicalSlotsUsed (serviceTimeouts setup deps duration) leaks rightStart actor) :
     let app := serviceApplication setup deps duration leaks
     let players := fun reference => Function.update
       (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
@@ -89,7 +89,7 @@ theorem bindingBlock_stopped_traffic_congr
     ∀ actor, actor ≠ focal →
       OwnSubmissionsAtTurn
         (serviceTimeouts setup deps duration) leaks current actor ∧
-          CanonicalSlotsUsed setup leaks current actor
+          CanonicalSlotsUsed (serviceTimeouts setup deps duration) leaks current actor
   have advance (reference : (serviceGraph setup deps).BehavioralProfile) (n : Nat)
       (current : app.Execution) (valid : invariant (n + 1) current)
       (running : ¬ BlockDone finish current.application.config)
@@ -111,7 +111,7 @@ theorem bindingBlock_stopped_traffic_congr
       obtain ⟨own, slots⟩ := canonical actor foreign
       exact canonicalSlots_round relaxed.actorSerial (by
         simpa only [players, Function.update_of_ne foreign] using
-          (serviceTurnPolicy_submitsCanonically_reference bound turns
+          (turnPolicy_submitsCanonically (serviceTimeouts setup deps duration) leaks bound turns
             (firstTurnTiming setup turns deps) reference actor)) (by
         simpa only [players, Function.update_of_ne foreign] using
           (sourceServiceTurnPolicy_submitsAtTurn_reference setup leaks bound turns

@@ -170,7 +170,7 @@ theorem reference_binding_traffic_congr (serial : (serviceGraph setup deps).Acto
       Nonempty ((app.protocol (serviceInitialLaw setup deps) horizon scheduler).Trace
         (some ⟨horizon - current.environmentRecall.length, none, current⟩)) ∧
       OwnSubmissionsAtTurn (serviceTimeouts setup deps duration) leaks current owner ∧
-      CanonicalSlotsUsed setup leaks current owner ∧
+      CanonicalSlotsUsed (serviceTimeouts setup deps duration) leaks current owner ∧
       ownerTurns owner event current = 0 ∧
       (eventRecorded (serviceTimeouts setup deps duration)) leaks (current.logs owner) event =
         false := by

@@ -319,9 +319,9 @@ private theorem reference_binding_first_invoke_congr
     (leftReady : left.application.config.cut.Ready event)
     (rightReady : right.application.config.cut.Ready event)
     (leftOwn : OwnSubmissionsAtTurn (serviceTimeouts setup deps duration) leaks left owner)
-    (leftSlots : CanonicalSlotsUsed setup leaks left owner)
+    (leftSlots : CanonicalSlotsUsed (serviceTimeouts setup deps duration) leaks left owner)
     (rightOwn : OwnSubmissionsAtTurn (serviceTimeouts setup deps duration) leaks right owner)
-    (rightSlots : CanonicalSlotsUsed setup leaks right owner)
+    (rightSlots : CanonicalSlotsUsed (serviceTimeouts setup deps duration) leaks right owner)
     (selected : (.activate owner : (serviceApplication setup deps duration leaks).Command) ∈
       (scheduler left.environmentRecall
         (left.observeEnvironment (serviceApplication setup deps duration leaks))).support)
@@ -563,11 +563,11 @@ private theorem bindingWindow_round_readout
     (leftCanonical : ∀ actor, actor ≠ focal →
       OwnSubmissionsAtTurn
         (serviceTimeouts setup deps duration) leaks left actor ∧
-          CanonicalSlotsUsed setup leaks left actor)
+          CanonicalSlotsUsed (serviceTimeouts setup deps duration) leaks left actor)
     (rightCanonical : ∀ actor, actor ≠ focal →
       OwnSubmissionsAtTurn
         (serviceTimeouts setup deps duration) leaks right actor ∧
-          CanonicalSlotsUsed setup leaks right actor) :
+          CanonicalSlotsUsed (serviceTimeouts setup deps duration) leaks right actor) :
     let app := serviceApplication setup deps duration leaks
     let players := fun reference => Function.update
       (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
@@ -690,10 +690,10 @@ private theorem bindingWindow_stopped_readout
     (rightReady : rightStart.application.config.cut.Ready event)
     (leftCanonical : ∀ actor, actor ≠ focal →
       OwnSubmissionsAtTurn (serviceTimeouts setup deps duration) leaks leftStart actor ∧
-        CanonicalSlotsUsed setup leaks leftStart actor)
+        CanonicalSlotsUsed (serviceTimeouts setup deps duration) leaks leftStart actor)
     (rightCanonical : ∀ actor, actor ≠ focal →
       OwnSubmissionsAtTurn (serviceTimeouts setup deps duration) leaks rightStart actor ∧
-        CanonicalSlotsUsed setup leaks rightStart actor) :
+        CanonicalSlotsUsed (serviceTimeouts setup deps duration) leaks rightStart actor) :
     let app := serviceApplication setup deps duration leaks
     let players := fun reference => Function.update
       (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
@@ -713,7 +713,7 @@ private theorem bindingWindow_stopped_readout
     ∀ actor, actor ≠ focal →
       OwnSubmissionsAtTurn
         (serviceTimeouts setup deps duration) leaks current actor ∧
-          CanonicalSlotsUsed setup leaks current actor
+          CanonicalSlotsUsed (serviceTimeouts setup deps duration) leaks current actor
   have advance (reference : (serviceGraph setup deps).BehavioralProfile) (n : Nat)
       (current : app.Execution) (valid : invariant (n + 1) current)
       (running : event ∉ current.application.config.cut.completed)
@@ -733,7 +733,7 @@ private theorem bindingWindow_stopped_readout
     obtain ⟨own, slots⟩ := canonical actor foreign
     exact canonicalSlots_round relaxed.actorSerial (by
       simpa only [players, Function.update_of_ne foreign] using
-        (serviceTurnPolicy_submitsCanonically_reference bound turns
+        (turnPolicy_submitsCanonically (serviceTimeouts setup deps duration) leaks bound turns
           (firstTurnTiming setup turns deps) reference actor)) (by
       simpa only [players, Function.update_of_ne foreign] using
         (sourceServiceTurnPolicy_submitsAtTurn_reference setup leaks bound turns
@@ -1049,11 +1049,11 @@ theorem bindingWindow_round_opacity
     (leftCanonical : ∀ actor, actor ≠ focal →
       OwnSubmissionsAtTurn
         (serviceTimeouts setup deps duration) leaks left actor ∧
-          CanonicalSlotsUsed setup leaks left actor)
+          CanonicalSlotsUsed (serviceTimeouts setup deps duration) leaks left actor)
     (rightCanonical : ∀ actor, actor ≠ focal →
       OwnSubmissionsAtTurn
         (serviceTimeouts setup deps duration) leaks right actor ∧
-          CanonicalSlotsUsed setup leaks right actor) :
+          CanonicalSlotsUsed (serviceTimeouts setup deps duration) leaks right actor) :
     let app := serviceApplication setup deps duration leaks
     let players := fun reference => Function.update
       (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
@@ -1094,10 +1094,10 @@ theorem bindingWindow_stopped_opacity
     (rightReady : rightStart.application.config.cut.Ready event)
     (leftCanonical : ∀ actor, actor ≠ focal →
       OwnSubmissionsAtTurn (serviceTimeouts setup deps duration) leaks leftStart actor ∧
-        CanonicalSlotsUsed setup leaks leftStart actor)
+        CanonicalSlotsUsed (serviceTimeouts setup deps duration) leaks leftStart actor)
     (rightCanonical : ∀ actor, actor ≠ focal →
       OwnSubmissionsAtTurn (serviceTimeouts setup deps duration) leaks rightStart actor ∧
-        CanonicalSlotsUsed setup leaks rightStart actor) :
+        CanonicalSlotsUsed (serviceTimeouts setup deps duration) leaks rightStart actor) :
     let app := serviceApplication setup deps duration leaks
     let players := fun reference => Function.update
       (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns

@@ -759,7 +759,7 @@ theorem native_focal_binding_graph_runUntil
     (inside : ∀ seed ∈ prior.support, InBlock start finish (execution seed).application.config)
     (canonical : ∀ seed ∈ prior.support, ∀ actor, actor ≠ focal →
       OwnSubmissionsAtTurn (serviceTimeouts setup deps duration) leaks (execution seed) actor ∧
-        CanonicalSlotsUsed setup leaks (execution seed) actor)
+        CanonicalSlotsUsed (serviceTimeouts setup deps duration) leaks (execution seed) actor)
     (lower : start ≤ event.val)
     (completes : CompletesPlay (serviceTimeouts setup deps duration) leaks
       (serviceInitialLaw setup deps) horizon scheduler)
@@ -1225,7 +1225,7 @@ def nativeBindingContinuation
   (∀ seed ∈ prior.support, (anchor seed).application.config.defaulted = ∅) →
   (∀ seed ∈ prior.support, ∀ owner, owner ≠ focal →
     OwnSubmissionsAtTurn (serviceTimeouts setup deps duration) leaks (anchor seed) owner ∧
-      CanonicalSlotsUsed setup leaks (anchor seed) owner ∧
+      CanonicalSlotsUsed (serviceTimeouts setup deps duration) leaks (anchor seed) owner ∧
       OwnFreshCalls setup leaks bound (anchor seed) owner ∧
       OneCallPerEvent setup leaks (anchor seed) owner) →
   (∀ seed ∈ prior.support, ActivationsAnswered setup leaks (anchor seed)) →
