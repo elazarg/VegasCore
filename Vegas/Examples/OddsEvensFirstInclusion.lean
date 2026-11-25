@@ -163,11 +163,12 @@ private theorem pending_expiry (state : EventGraphRuntime.State compiled)
       PMF.pure_map, state.drain_eq_of_clear clear]
 
 private theorem scheduled_environment_round (execution : app.Execution)
+    (players : Player → app.Policy)
     (command : EnvironmentCommand compiled) (application : EventGraphRuntime.State compiled)
     (selected : schedule execution.environmentRecall (execution.observeEnvironment app) =
       PMF.pure (.application command))
     (result : app.environment execution.application command = PMF.pure application) :
-    app.round schedule policy execution =
+    app.round schedule players execution =
       PMF.pure { withCommand execution (.application command) with application } := by
   simp only [ReactiveApplication.round, selected, PMF.pure_bind, ReactiveApplication.dispatch,
     ReactiveApplication.Execution.environmentStep, result, PMF.pure_map,
@@ -180,13 +181,14 @@ private theorem pending_bookkeeping (origin : app.Execution)
     (activated : origin.application.activatedAt = startingApplication.activatedAt)
     (clock : origin.application.clock = 1)
     (count : Nat) (bound : count ≤ 5) :
-    ∃ execution, app.runRounds schedule policy count origin = PMF.pure execution ∧
+    ∃ execution,
+      (∀ players, app.runRounds schedule players count origin = PMF.pure execution) ∧
       execution.environmentRecall.length = 137 + count ∧
       execution.application = {origin.application with clock := if count = 5 then 2 else 1} ∧
       execution.network = origin.network ∧ execution.logs = origin.logs := by
   induction count with
   | zero =>
-    refine ⟨origin, rfl, cursor, ?_, rfl, rfl⟩
+    refine ⟨origin, fun _ => rfl, cursor, ?_, rfl, rfl⟩
     rw [ite_eq_right (by decide : ¬ 0 = 5), ← clock]
     rfl
   | succ count ih =>
@@ -194,9 +196,10 @@ private theorem pending_bookkeeping (origin : app.Execution)
     have old : execution.application = origin.application := by
       rw [application, ite_eq_right (by omega : count ≠ 5), ← clock]
       rfl
-    have step : app.runRounds schedule policy (count + 1) origin =
-        app.round schedule policy execution := by
-      rw [app.runRounds_add schedule policy count 1 origin, law, PMF.pure_bind]
+    have step (players : Player → app.Policy) :
+        app.runRounds schedule players (count + 1) origin =
+          app.round schedule players execution := by
+      rw [app.runRounds_add schedule players count 1 origin, law players, PMF.pure_bind]
       simp only [ReactiveApplication.runRounds, PMF.bind_pure]
     by_cases going : count < 4
     · let event : compiled.EventId := ⟨count, going⟩
@@ -214,7 +217,8 @@ private theorem pending_bookkeeping (origin : app.Execution)
           PMF.pure execution.application := pending_expiry execution.application
         (old ▸ config) (old ▸ activated) (old ▸ clock) event
       refine ⟨withCommand execution (.application (.expire event)), ?_, ?_, ?_, network, logs⟩
-      · rw [step, scheduled_environment_round _ _ _ chosen unchanged]
+      · intro players
+        rw [step, scheduled_environment_round _ _ _ _ chosen unchanged]
         rfl
       · rw [withCommand_length, length]
         omega
@@ -237,7 +241,8 @@ private theorem pending_bookkeeping (origin : app.Execution)
         simp only [clock]
       refine ⟨{withCommand execution (.application .advanceClock) with
         application := {origin.application with clock := 2}}, ?_, ?_, rfl, network, logs⟩
-      · rw [step, scheduled_environment_round _ _ _ chosen changed]
+      · intro players
+        rw [step, scheduled_environment_round _ _ _ _ chosen changed]
       · exact (withCommand_length _ _).trans (congrArg (· + 1) length)
 
 private def firstPacket : Message Player (WitnessedPacket compiled) :=
@@ -289,6 +294,25 @@ private theorem first_admission_tables (before : app.Execution)
   exact ⟨congrArg PublicView.accepted same, congrArg PublicView.activatedAt same,
     congrArg PublicView.clock same⟩
 
+private theorem first_recall_no_odd_turn (before : app.Execution)
+    (application : before.application = { startingApplication with clock := 1 })
+    (beforeRecall : before.logs odd = []) (bit : Bool) :
+    ∀ entry ∈ (firstOddIdleResponse before bit).logs odd,
+      entry.beforeView.application.publicView.ownTurn? odd = none := by
+  let evenSent := (withCommand before (.activate even)).respond app even (firstAction bit)
+  have beforeOdd : evenSent.logs odd = [] := by
+    exact (app.respond_recall_other (withCommand before (.activate even)) even odd
+      (by decide) (firstAction bit)).trans beforeRecall
+  let actualEntry : app.PlayerEntry := ⟨evenSent.observe app odd, ⟨none⟩, none⟩
+  have only : (firstOddIdleResponse before bit).logs odd = [actualEntry] := by
+    change evenSent.logs odd ++ [actualEntry] = _
+    rw [beforeOdd]
+    rfl
+  intro entry member
+  rw [only, List.mem_singleton] at member
+  subst entry
+  exact no_turn_odd_initial evenSent.application (first_cut before application bit)
+
 private theorem first_handle (execution : app.Execution)
     (config : execution.application.config = startingApplication.config)
     (accepted : execution.application.accepted = startingApplication.accepted)
@@ -296,7 +320,8 @@ private theorem first_handle (execution : app.Execution)
     (clock : execution.application.clock = 2) (bit : Bool)
     (result : execution.application.bindingResult (even, .prepared 0) BaseTy.bool = .success bit) :
     ∃ next, app.handle execution.application firstPacket = some next ∧
-      next.config.outputs (eventId 0) = some (PublicationResult.success bit) := by
+      next.config.outputs (eventId 0) = some (PublicationResult.success bit) ∧
+      next.clock = 2 ∧ next.activatedAt (eventId 1) = some 2 := by
   let state := execution.application
   have ready : state.config.cut.Ready (eventId 0) := by
     change _ at config
@@ -331,7 +356,8 @@ private theorem first_handle (execution : app.Execution)
   change _ = some _ at native
   change ∃ next, (EventGraphRuntime.handle limits state
     ⟨(even, 0), .commitment (eventId 0) (even, .prepared 0)⟩).map State.drain = some next ∧
-      next.config.outputs (eventId 0) = some (PublicationResult.success bit)
+      next.config.outputs (eventId 0) = some (PublicationResult.success bit) ∧
+      next.clock = 2 ∧ next.activatedAt (eventId 1) = some 2
   rw [native, Option.map_some]
   refine ⟨_, rfl, ?_⟩
   have decoded : state.bindingResult (even, .prepared 0) BaseTy.bool = .success bit := result
@@ -340,7 +366,8 @@ private theorem first_handle (execution : app.Execution)
       (PublicationResult.success bit) with
     accepted := Function.update state.accepted (.inr (eventId 0)) (some (even, .prepared 0))
     candidates := state.candidates.freeze (even, .prepared 0)}
-  change admitted.drain.config.outputs (eventId 0) = _
+  change admitted.drain.config.outputs (eventId 0) = _ ∧
+    admitted.drain.clock = 2 ∧ admitted.drain.activatedAt (eventId 1) = some 2
   have clear : ∀ event, ¬ admitted.AutomaticReady event := by
     intro event automatic
     obtain ⟨_, _, defaulted⟩ := automatic.owned
@@ -360,32 +387,48 @@ private theorem first_handle (execution : app.Execution)
     rw [original] at defaulted
     exact Finset.notMem_empty _ defaulted
   rw [admitted.drain_eq_of_clear clear]
-  exact Config.complete_output_same ..
+  refine ⟨Config.complete_output_same .., clock, ?_⟩
+  have firstCut : admitted.config.cut.completed = {eventId 0} := by
+    change insert (eventId 0) execution.application.config.cut.completed = _
+    rw [config]
+    rfl
+  have secondReady : admitted.config.cut.Ready (eventId 1) := by
+    change eventId 1 ∉ admitted.config.cut.completed ∧
+      compiled.order.predecessors (eventId 1) ⊆ admitted.config.cut.completed
+    rw [firstCut]
+    decide
+  change State.refreshActivated admitted.config state.clock state.activatedAt (eventId 1) = some 2
+  unfold State.refreshActivated
+  rw [dite_eq_left secondReady]
+  change (execution.application.activatedAt (eventId 1)).orElse
+    (fun _ => some execution.application.clock) = _
+  rw [activated, clock]
+  rfl
 
-/-- Each fair bit branch is included by the periodic scheduler at its first
-queue-processing command, and is recorded as the actual commitment value. -/
-theorem periodic_first_commitment_supported (bit : Bool) :
-    ∃ execution ∈ (app.roundsFrom startLaw schedule policy 143).support,
-      execution.environmentRecall.length = 143 ∧
-      execution.application.config.outputs (eventId 0) = some (PublicationResult.success bit) := by
-  obtain ⟨before, prior, roundLaw⟩ := periodic_first_odd_activation
-  obtain ⟨length, application, empty, _, _⟩ := periodic_before_first_activation before prior
+private theorem first_inclusion_branch (before : app.Execution)
+    (prior : app.roundsFrom startLaw schedule policy 135 = PMF.pure before) (bit : Bool) :
+    ∃ current included : app.Execution,
+      (∀ players, app.runRounds schedule players 5 (firstOddIdleResponse before bit) =
+        PMF.pure current) ∧
+      (∀ players, app.round schedule players current = PMF.pure included) ∧
+      eventId 0 ∉ current.application.config.cut.completed ∧
+      included.environmentRecall.length = 143 ∧
+      included.application.config.outputs (eventId 0) = some (PublicationResult.success bit) ∧
+      included.application.clock = 2 ∧ included.application.activatedAt (eventId 1) = some 2 ∧
+      included.network.pending = [] ∧
+      (∀ entry ∈ included.logs odd,
+        entry.beforeView.application.publicView.ownTurn? odd = none) := by
+  obtain ⟨length, application, empty, _, initialRecall⟩ :=
+    periodic_before_first_activation before prior
   let origin := firstOddIdleResponse before bit
   have originLength : origin.environmentRecall.length = 137 := by
     change (withCommand ((withCommand before (.activate even)).respond app even (firstAction bit))
       (.activate odd)).environmentRecall.length = _
     rw [withCommand_length, firstAction_recall, withCommand_length, length]
-  have originSupported : origin ∈ (app.roundsFrom startLaw schedule policy 137).support := by
-    rw [roundLaw, PMF.support_map]
-    exact ⟨bit, mem_support_uniformLaw bit, rfl⟩
   have config := first_cut before application bit
   obtain ⟨accepted, activated, clock⟩ := first_admission_tables before application bit
-  obtain ⟨current, bookkeeping, currentLength, currentState, currentNetwork, _⟩ :=
+  obtain ⟨current, bookkeeping, currentLength, currentState, currentNetwork, currentRecall⟩ :=
     pending_bookkeeping origin originLength config activated clock 5 (by decide)
-  have currentSupported : current ∈ (app.roundsFrom startLaw schedule policy 142).support :=
-    app.roundsFrom_runRounds schedule policy startLaw 137 5 origin current originSupported (by
-      rw [bookkeeping]
-      exact (PMF.mem_support_pure_iff _ _).mpr rfl)
   have pending : current.network.pending = [firstPacket] := by
     rw [currentNetwork]
     exact first_pending before empty bit
@@ -396,14 +439,9 @@ theorem periodic_first_commitment_supported (bit : Bool) :
       current.environmentRecall.length (current.observeEnvironment app)) = _
     rw [currentLength]
     rfl
-  have step : app.round schedule policy current = PMF.pure included := by
+  have step (players : Player → app.Policy) :
+      app.round schedule players current = PMF.pure included := by
     rw [ReactiveApplication.round, chosen, PMF.pure_bind, app.processPendingHead_dispatch]
-  have nextSupported : included ∈ (app.roundsFrom startLaw schedule policy 143).support := by
-    change included ∈ (app.roundsFrom startLaw schedule policy (142 + 1)).support
-    rw [ReactiveApplication.roundsFrom_succ, PMF.support_bind]
-    exact Set.mem_iUnion₂.mpr ⟨current, currentSupported, by
-      rw [step]
-      exact (PMF.mem_support_pure_iff _ _).mpr rfl⟩
   have afterConfig : current.application.config = startingApplication.config := by
     rw [currentState]
     exact config
@@ -420,16 +458,92 @@ theorem periodic_first_commitment_supported (bit : Bool) :
       .success bit := by
     rw [currentState]
     exact first_bindingResult before application bit
-  obtain ⟨next, handled, value⟩ := first_handle current afterConfig afterAccepted afterActivated
+  obtain ⟨next, handled, value, nextClock, nextActivated⟩ :=
+    first_handle current afterConfig afterAccepted afterActivated
     afterClock bit afterResult
   have found : current.network.lookup firstPacket.id = some firstPacket := by
     simp [MessageNetwork.lookup, pending]
-  refine ⟨included, nextSupported, ?_, ?_⟩
+  have includedState : included.application = next := by
+    simp only [included, ReactiveApplication.processPendingHead, pending, List.head?_cons,
+      ReactiveApplication.Execution.includePending, MessageNetwork.includePending, found, handled,
+      Option.getD_some]
+  refine ⟨current, included, bookkeeping, step, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+  · rw [afterConfig]
+    exact Finset.notMem_empty _
   · simp [included, ReactiveApplication.processPendingHead, pending, currentLength,
       ReactiveApplication.Execution.includePending, MessageNetwork.includePending, found]
-  · simp only [included, ReactiveApplication.processPendingHead, pending, List.head?_cons,
-      ReactiveApplication.Execution.includePending, MessageNetwork.includePending, found]
-    rw [handled]
+  · rw [includedState]
     exact value
+  · rw [includedState]
+    exact nextClock
+  · rw [includedState]
+    exact nextActivated
+  · have empty := (app.includePending_head current firstPacket [] pending).1
+    simpa only [included, ReactiveApplication.processPendingHead, pending, List.head?_cons]
+      using empty
+  · have sameLogs : included.logs = origin.logs := by
+      simp only [included, ReactiveApplication.processPendingHead, pending, List.head?_cons,
+        ReactiveApplication.Execution.includePending, MessageNetwork.includePending, found,
+        currentRecall]
+    intro entry member
+    rw [sameLogs] at member
+    exact first_recall_no_odd_turn before application (initialRecall odd) bit entry member
+
+/-- Both first bit branches are included in the actual run. The same native
+endpoint is obtained by a policy whose run has the prescribed first
+commitment and first silent Odd callback. -/
+theorem periodic_first_commitment_distribution :
+    ∃ before : app.Execution, ∃ included : Bool → app.Execution,
+      app.roundsFrom startLaw schedule policy 135 = PMF.pure before ∧
+      app.roundsFrom startLaw schedule policy 143 = (uniformLaw Bool).map included ∧
+      (∀ bit, (included bit).environmentRecall.length = 143 ∧
+        (included bit).application.config.outputs (eventId 0) =
+          some (PublicationResult.success bit) ∧ (included bit).application.clock = 2 ∧
+          (included bit).application.activatedAt (eventId 1) = some 2 ∧
+          (included bit).network.pending = [] ∧
+          (∀ entry ∈ (included bit).logs odd,
+            entry.beforeView.application.publicView.ownTurn? odd = none)) ∧
+      ∀ (players : Player → app.Policy) (bit : Bool),
+        app.roundsFrom startLaw schedule players 137 =
+          PMF.pure (firstOddIdleResponse before bit) →
+        ∃ current : app.Execution,
+          app.roundsFrom startLaw schedule players 142 = PMF.pure current ∧
+          eventId 0 ∉ current.application.config.cut.completed ∧
+          app.roundsFrom startLaw schedule players 143 = PMF.pure (included bit) := by
+  obtain ⟨before, prior, first⟩ := periodic_first_odd_activation
+  choose current included bookkeeping inclusion incomplete length value clock entered pending
+    logTurn using first_inclusion_branch before prior
+  have add (players : Player → app.Policy) (count more : Nat) :
+      app.roundsFrom startLaw schedule players (count + more) =
+        (app.roundsFrom startLaw schedule players count).bind
+          (app.runRounds schedule players more) := by
+    simp only [ReactiveApplication.roundsFrom, ReactiveApplication.runRounds_add, PMF.bind_bind]
+  refine ⟨before, included, prior, ?_,
+    fun bit => ⟨length bit, value bit, clock bit, entered bit, pending bit, logTurn bit⟩, ?_⟩
+  · change app.roundsFrom startLaw schedule policy (137 + 5 + 1) = _
+    rw [ReactiveApplication.roundsFrom_succ, add, first, PMF.bind_map, PMF.bind_bind, PMF.map]
+    apply bind_congr_on_support _
+    intro bit _
+    change (app.runRounds schedule policy 5 (firstOddIdleResponse before bit)).bind _ = _
+    rw [bookkeeping bit policy, PMF.pure_bind, inclusion bit policy]
+    rfl
+  · intro players bit early
+    refine ⟨current bit, ?_, incomplete bit, ?_⟩
+    · change app.roundsFrom startLaw schedule players (137 + 5) = _
+      rw [add, early, PMF.pure_bind, bookkeeping bit players]
+    · change app.roundsFrom startLaw schedule players (137 + 5 + 1) = _
+      rw [ReactiveApplication.roundsFrom_succ, add, early, PMF.pure_bind,
+        bookkeeping bit players, PMF.pure_bind, inclusion bit players]
+
+/-- Each fair bit branch is included by the periodic scheduler at its first
+queue-processing command, and is recorded as the actual commitment value. -/
+theorem periodic_first_commitment_supported (bit : Bool) :
+    ∃ execution ∈ (app.roundsFrom startLaw schedule policy 143).support,
+      execution.environmentRecall.length = 143 ∧
+      execution.application.config.outputs (eventId 0) = some (PublicationResult.success bit) := by
+  obtain ⟨_, included, _, law, value, _⟩ := periodic_first_commitment_distribution
+  refine ⟨included bit, ?_, (value bit).1, (value bit).2.1⟩
+  rw [law, PMF.support_map]
+  exact ⟨bit, mem_support_uniformLaw bit, rfl⟩
 
 end Vegas.Examples.OddsEvensLedgerClient

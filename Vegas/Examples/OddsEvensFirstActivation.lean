@@ -101,14 +101,16 @@ private theorem initial_commands (execution : app.Execution) (cursor : Nat)
     rwa [show 71 + (cursor - 71) = cursor by omega, wait] at selected
 
 private theorem idle_prefix (cursor : Nat) (bound : cursor ≤ 135) :
-    ∃ execution, app.roundsFrom startLaw schedule policy cursor = PMF.pure execution ∧
+    ∃ execution,
+      (∀ players, app.roundsFrom startLaw schedule players cursor = PMF.pure execution) ∧
       execution.environmentRecall.length = cursor ∧
       execution.application = {initialState with clock := if 70 < cursor then 1 else 0} ∧
       execution.network = .empty ∧ execution.receipts = [] ∧ ∀ who, execution.logs who = [] := by
   induction cursor with
   | zero =>
     refine ⟨ReactiveApplication.Execution.initial app initialState, ?_, rfl, rfl, rfl, rfl, ?_⟩
-    · simp only [ReactiveApplication.roundsFrom, startLaw_eq, PMF.pure_bind,
+    · intro players
+      simp only [ReactiveApplication.roundsFrom, startLaw_eq, PMF.pure_bind,
         ReactiveApplication.runRounds]
     · intro who
       rfl
@@ -123,7 +125,8 @@ private theorem idle_prefix (cursor : Nat) (bound : cursor ≤ 135) :
     refine ⟨next, ?_, ?_, rfl, network, receipts, logs⟩
     swap
     · simp [next, record, length]
-    rw [ReactiveApplication.roundsFrom_succ, law, PMF.pure_bind,
+    intro players
+    rw [ReactiveApplication.roundsFrom_succ, law players, PMF.pure_bind,
       ReactiveApplication.round, selected, PMF.pure_bind]
     rcases shape with ⟨rfl, beforeTick⟩ | ⟨event, rfl, expiry⟩ | ⟨rfl, rfl⟩
     · have clock : (70 < cursor + 1) = (70 < cursor) := by
@@ -169,7 +172,8 @@ theorem periodic_first_activation :
             [⟨before.observeEnvironment app, .activate even⟩]} : app.Execution).respond
               app even (reactiveBinding limits leakRule even (eventId 0) BaseTy.bool
                 (.success bit) 0)) := by
-  obtain ⟨before, prior, length, state, empty, _, logs⟩ := idle_prefix 135 (by decide)
+  obtain ⟨before, allPrior, length, state, empty, _, logs⟩ := idle_prefix 135 (by decide)
+  have prior := allPrior policy
   let activated : app.Execution := {before with environmentRecall := before.environmentRecall ++
     [⟨before.observeEnvironment app, .activate even⟩]}
   refine ⟨before, prior, ?_, empty, logs, ?_⟩
@@ -250,12 +254,22 @@ theorem periodic_before_first_activation (execution : app.Execution)
           (setup.eventInputs (Env.empty (CellVal simpleExpr))) with clock := 1} ∧
       execution.network = .empty ∧ execution.receipts = [] ∧
       ∀ who, execution.logs who = [] := by
-  obtain ⟨before, prior, length, state, empty, receipts, logs⟩ := idle_prefix 135 (by decide)
+  obtain ⟨before, allPrior, length, state, empty, receipts, logs⟩ := idle_prefix 135 (by decide)
+  have prior := allPrior policy
   have support : execution ∈ (PMF.pure execution).support :=
     (PMF.mem_support_pure_iff _ _).mpr rfl
   have same : execution = before := (PMF.mem_support_pure_iff _ _).mp
     (prior ▸ law.symm ▸ support)
   subst execution
   exact ⟨length, state, empty, receipts, logs⟩
+
+/-- Before the first scheduled callback, the initialized run is independent
+of the players' response policies. -/
+theorem periodic_first_activation_prior (players : Player → app.Policy)
+    (execution : app.Execution)
+    (prior : app.roundsFrom startLaw schedule policy 135 = PMF.pure execution) :
+    app.roundsFrom startLaw schedule players 135 = PMF.pure execution := by
+  obtain ⟨before, laws, _⟩ := idle_prefix 135 (by decide)
+  exact (laws players).trans ((laws policy).symm.trans prior)
 
 end Vegas.Examples.OddsEvensLedgerClient
