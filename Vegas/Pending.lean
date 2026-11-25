@@ -153,6 +153,8 @@ public import Vegas.Pending.ReactiveUnusableBinding
 public import Vegas.Pending.ReactiveValueSwap
 public import Vegas.Pending.RevealTranscript
 public import Vegas.Pending.ServicePlan
+public import Vegas.Pending.SilentAction
+public import Vegas.Pending.SilentContinuation
 public import Vegas.Pending.ThinnedCountCollection
 public import Vegas.Pending.ValueSwapPairs
 

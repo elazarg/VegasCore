@@ -479,7 +479,7 @@ theorem counted_firstActivation_honest_sourceLaw
         intro owner payload outputEq _codeEq _node
         exact encodeEventAction?_commitsValue setup.program event action success.1 graphAction
           encoded owner payload outputEq
-      have loud : ¬ SilentAction (setup := setup) (deps := setup.informationDependencies) event
+      have loud : ¬ SilentAction (graph := setup.informationGraph) event
         graphAction := by
         cases node : nodeView (setup.informationGraph) event with
         | sample => simp only [SilentAction, node, not_false_eq_true]

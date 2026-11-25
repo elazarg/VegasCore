@@ -2,6 +2,7 @@ module
 
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
+public import Vegas.Pending.SilentAction
 public import Vegas.Game.SourceServiceReachedDecoding
 public import Vegas.Game.SourceServiceTurnPolicy
 public import Vegas.Source.DisclosureBehavioral
@@ -79,50 +80,7 @@ def EffectiveAction (config : (serviceGraph setup deps).Config)
         ∃ value, binding.get? config.store = some (.success value)
   | _ => True
 
-/-- Silence realizes public binding omission or a disclosure of `false`. -/
-def SilentAction (event : (serviceGraph setup deps).EventId)
-    (action : (serviceGraph setup deps).Action event) : Prop :=
-  match nodeView (serviceGraph setup deps) event with
-  | .bind _ _ outputEq _ =>
-      (cast (congrArg EventGraph.EventField.Action outputEq) action) = none
-  | .resolve _ _ _ _ outputEq _ =>
-      (cast (congrArg EventGraph.EventField.Action outputEq) action : Bool) = false
-  | _ => False
-
-
 variable {leaks}
-
-/-- Public binding omission and false disclosure compile to silence at every view. -/
-theorem canonicalServiceDecision_silent (who : Player)
-    (past : List (serviceApplication setup deps duration leaks).PlayerEntry)
-    (view : (serviceApplication setup deps duration leaks).PlayerView)
-    (event : (serviceGraph setup deps).EventId)
-    (action : (serviceGraph setup deps).Action event) (silent : SilentAction event action) :
-    ((canonicalServiceDecision (serviceTimeouts setup deps duration)) leaks who past view event
-        action).transmission = none := by
-  cases node : nodeView (serviceGraph setup deps) event with
-  | sample payload law outputEq codeEq =>
-      simp only [SilentAction, node] at silent
-  | bind owner payload outputEq codeEq =>
-      have withheld : cast (congrArg EventGraph.EventField.Action outputEq) action = none := by
-        simpa only [SilentAction, node] using silent
-      have castBack :=
-        congrArg (cast (congrArg EventGraph.EventField.Action outputEq.symm)) withheld
-      simp only [cast_cast, cast_eq] at castBack
-      rw [castBack]
-      exact congrArg ReactiveApplication.Action.transmission
-        ((canonicalServiceDecision_binding_none (serviceTimeouts setup deps duration)) leaks who
-          past view event owner payload outputEq codeEq node)
-  | resolve owner payload binding checks outputEq codeEq =>
-      have withheld : cast (congrArg EventGraph.EventField.Action outputEq) action = false := by
-        simpa only [SilentAction, node] using silent
-      have castBack :=
-        congrArg (cast (congrArg EventGraph.EventField.Action outputEq.symm)) withheld
-      simp only [cast_cast, cast_eq] at castBack
-      rw [castBack]
-      exact congrArg ReactiveApplication.Action.transmission
-        ((canonicalServiceDecision_resolution_false (serviceTimeouts setup deps duration)) leaks who
-          past view event owner payload binding checks outputEq codeEq node)
 
 /-- An opportunity whose canonical response is silent is silent at the same input. -/
 theorem decidedOpportunity_silent {bound : (serviceGraph setup deps).EventId → Nat}
