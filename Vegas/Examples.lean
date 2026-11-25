@@ -32,6 +32,7 @@ public import Vegas.Examples.OddsEvensFairValue
 public import Vegas.Examples.OddsEvensFullSource
 public import Vegas.Examples.OddsEvensLedgerClient
 public import Vegas.Examples.OddsEvensClientPosterior
+public import Vegas.Examples.OddsEvensClientInput
 public import Vegas.Examples.OddsEvensCommitmentObservation
 public import Vegas.Examples.OddsEvensCommitmentPayoff
 public import Vegas.Examples.OddsEvensExecutableClient

@@ -155,8 +155,9 @@ force a forbidden revealing packet onto the ledger before that decision.
 The [executable Odds–Evens decision](../Vegas/Examples/OddsEvensExecutableClient.lean)
 takes a decoded turn, an optional authenticated bit and a coin. Feeding it a
 fair coin and encoding its decision gives exactly the candidate’s packet law
-at every callback and recall. The decoder and packet encoder in this equality
-use the typed graph model. For the allocator, a
+at every callback and recall. An [executable raw decoder](../Vegas/Examples/OddsEvensClientInput.lean)
+reads these inputs from the actual typed callback and own recall, with
+pointwise equality to the model decoder on every input. For the allocator, a
 [bounded search](../Vegas/Pending/BoundedCanonicalSlot.lean) using a player's
 recall length agrees with the canonical slot at every initialized service
 history. Execution of the complete typed packet path remains open.
