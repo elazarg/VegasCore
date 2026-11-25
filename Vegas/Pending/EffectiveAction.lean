@@ -3,7 +3,7 @@ module
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 public import Vegas.Pending.ReactiveCanonicalDecision
-public import Vegas.EventGraph.SchedulerErasure
+public import Vegas.EventGraph.Semantics
 
 @[expose] public section
 

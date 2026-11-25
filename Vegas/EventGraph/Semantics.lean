@@ -85,6 +85,60 @@ theorem action_eq_of_actor_none {Field : Type} [DecidableEq Field]
 
 end EventCode
 
+section
+
+variable {graph : Vegas.EventGraph Player L}
+
+/-- The action law a profile supplies at one event: a defaulted owner's forced
+failure, the owner's policy at its actual observation, or a chance node's unit
+action. -/
+def actionLaw (profile : graph.BehavioralProfile) (config : graph.Config)
+    (event : graph.EventId) : PMF (graph.Action event) :=
+  match ownerEq : (graph.nodes event).actor with
+  | some owner =>
+      if inactive : owner ∈ config.defaulted then
+        PMF.pure ((graph.nodes event).failureAction owner ownerEq)
+      else profile owner event ownerEq (graph.playerObserve owner config) inactive
+  | none => PMF.pure (EventCode.actionOfActorNone (graph.nodes event) ownerEq)
+
+/-- The action law at an owned event. -/
+theorem actionLaw_of_actor (profile : graph.BehavioralProfile) (config : graph.Config)
+    {event : graph.EventId} {owner : Player} (ownerEq : (graph.nodes event).actor = some owner) :
+    actionLaw profile config event =
+      if inactive : owner ∈ config.defaulted then
+        PMF.pure ((graph.nodes event).failureAction owner ownerEq)
+      else profile owner event ownerEq (graph.playerObserve owner config) inactive := by
+  unfold actionLaw
+  split
+  · next same sameEq =>
+      obtain rfl : same = owner := Option.some.inj (sameEq.symm.trans ownerEq)
+      rfl
+  · next noneEq => exact absurd (noneEq.symm.trans ownerEq) (by simp)
+
+/-- The action law at an ownerless event. -/
+theorem actionLaw_of_ownerless (profile : graph.BehavioralProfile) (config : graph.Config)
+    {event : graph.EventId} (ownerless : (graph.nodes event).actor = none) :
+    actionLaw profile config event =
+      PMF.pure (EventCode.actionOfActorNone (graph.nodes event) ownerless) := by
+  unfold actionLaw
+  split
+  · next same sameEq => exact absurd (sameEq.symm.trans ownerless) (by simp)
+  · rfl
+
+/-- One event's action drawn from the profile and then executed. -/
+def eventStep (profile : graph.BehavioralProfile) (config : graph.Config)
+    (event : graph.EventId) (ready : config.cut.Ready event) : PMF graph.Config :=
+  (actionLaw profile config event).bind (config.step event ready)
+
+theorem eventStep_congr_event (profile : graph.BehavioralProfile) (config : graph.Config)
+    {event other : graph.EventId} (same : event = other) (ready : config.cut.Ready event)
+    (otherReady : config.cut.Ready other) :
+    eventStep profile config event ready = eventStep profile config other otherReady := by
+  subst same
+  rfl
+
+end
+
 omit [DecidableEq Player] in
 /-- A nonterminal cut has a nonempty executable enabled set. -/
 theorem enabled_nonempty_of_not_terminal
@@ -104,21 +158,40 @@ def policyPlan (graph : Vegas.EventGraph Player L)
     let enabledNonempty := enabled_nonempty_of_not_terminal config notTerminal
     (scheduler (graph.publicObserve config) config.cut.enabled enabledNonempty).bind
       fun selected =>
-        have ready : config.cut.Ready selected.1 :=
-          (EventOrder.Cut.mem_enabled _ _).mp selected.2
-        let readyEvent : {event : graph.EventId // config.cut.Ready event} :=
-          ⟨selected.1, ready⟩
-        match ownerEq : (graph.nodes selected.1).actor with
-        | some owner =>
-            if inactive : owner ∈ config.defaulted then
-              PMF.pure ⟨readyEvent,
-                (graph.nodes selected.1).failureAction owner ownerEq⟩
-            else
-              (profile owner selected.1 ownerEq (graph.playerObserve owner config)
-                inactive).map fun action => ⟨readyEvent, action⟩
-        | none =>
-            PMF.pure ⟨readyEvent,
-              EventCode.actionOfActorNone (graph.nodes selected.1) ownerEq⟩
+        (actionLaw profile config selected.1).map fun action =>
+          ⟨⟨selected.1, (EventOrder.Cut.mem_enabled _ _).mp selected.2⟩, action⟩
+
+section
+
+variable {graph : Vegas.EventGraph Player L}
+
+/-- The policy plan selects an enabled event publicly and then draws the action
+law of that event. -/
+theorem policyPlan_eq (profile : graph.BehavioralProfile) (scheduler : graph.PublicScheduler)
+    (config : graph.Config) (notTerminal : ¬ config.cut.Terminal) :
+    graph.policyPlan profile scheduler config notTerminal =
+      (scheduler (graph.publicObserve config) config.cut.enabled
+        (enabled_nonempty_of_not_terminal config notTerminal)).bind fun selected =>
+          (actionLaw profile config selected.1).map fun action =>
+            ⟨⟨selected.1, (EventOrder.Cut.mem_enabled _ _).mp selected.2⟩, action⟩ := rfl
+
+/-- One step of the runner under a policy plan. -/
+theorem runPlan_policyPlan_succ (profile : graph.BehavioralProfile)
+    (scheduler : graph.PublicScheduler) (fuel : Nat) (config : graph.Config)
+    (notTerminal : ¬ config.cut.Terminal) :
+    graph.runPlan (graph.policyPlan profile scheduler) (fuel + 1) config =
+      (scheduler (graph.publicObserve config) config.cut.enabled
+        (enabled_nonempty_of_not_terminal config notTerminal)).bind fun selected =>
+          (eventStep profile config selected.1
+            ((EventOrder.Cut.mem_enabled _ _).mp selected.2)).bind
+              (graph.runPlan (graph.policyPlan profile scheduler) fuel) := by
+  rw [EventGraph.runPlan, dite_eq_right notTerminal, policyPlan_eq, PMF.bind_bind]
+  congr 1
+  funext selected
+  rw [PMF.bind_map, eventStep, PMF.bind_bind]
+  rfl
+
+end
 
 /-- Execute a behavioral profile from one concrete input environment under a
 public scheduler. -/
@@ -137,13 +210,14 @@ theorem policyPlan_support_finite (graph : Vegas.EventGraph Player L)
   unfold policyPlan
   rw [PMF.support_bind]
   refine (Set.toFinite _).biUnion fun selected _ => ?_
-  dsimp only
-  split
-  · split
-    · simp
-    · rw [PMF.support_map]
-      exact (finiteProfile _ _ _ _ _).image _
-  · simp
+  rw [PMF.support_map]
+  cases actor : (graph.nodes selected.1).actor with
+  | none => simp [actionLaw_of_ownerless profile config actor]
+  | some owner =>
+      rw [actionLaw_of_actor profile config actor]
+      split
+      · simp
+      · exact (finiteProfile _ _ _ _ _).image _
 
 theorem runPolicies_support_finite (graph : Vegas.EventGraph Player L)
     (scheduler : PublicScheduler graph) (profile : BehavioralProfile graph)
@@ -223,6 +297,36 @@ It ignores public store contents but remains an ordinary scheduler specializatio
 def canonicalScheduler (graph : Vegas.EventGraph Player L) : PublicScheduler graph :=
   fun _ enabled nonempty =>
     PMF.pure ⟨enabled.min' nonempty, Finset.min'_mem enabled nonempty⟩
+
+section
+
+variable {graph : Vegas.EventGraph Player L}
+
+/-- The canonical runner completes the least ready event. -/
+theorem runPlan_canonical_succ (profile : graph.BehavioralProfile) (fuel : Nat)
+    (config : graph.Config) (notTerminal : ¬ config.cut.Terminal) (event : graph.EventId)
+    (ready : config.cut.Ready event) (least : ∀ other, config.cut.Ready other → event ≤ other) :
+    graph.runPlan (graph.policyPlan profile graph.canonicalScheduler) (fuel + 1) config =
+      (eventStep profile config event ready).bind
+        (graph.runPlan (graph.policyPlan profile graph.canonicalScheduler) fuel) := by
+  rw [runPlan_policyPlan_succ profile _ fuel config notTerminal]
+  simp only [EventGraph.canonicalScheduler, PMF.pure_bind]
+  congr 1
+  apply eventStep_congr_event
+  apply le_antisymm
+  · exact Finset.min'_le _ _ ((EventOrder.Cut.mem_enabled _ _).mpr ready)
+  · exact least _ ((EventOrder.Cut.mem_enabled _ _).mp (Finset.min'_mem _ _))
+
+omit [DecidableEq Player] in
+/-- A nonterminal cut has a least ready event. -/
+theorem exists_least_ready (config : graph.Config) (notTerminal : ¬ config.cut.Terminal) :
+    ∃ event, config.cut.Ready event ∧ ∀ other, config.cut.Ready other → event ≤ other := by
+  let nonempty := enabled_nonempty_of_not_terminal config notTerminal
+  refine ⟨config.cut.enabled.min' nonempty,
+    (EventOrder.Cut.mem_enabled _ _).mp (Finset.min'_mem _ _), fun other ready => ?_⟩
+  exact Finset.min'_le _ _ ((EventOrder.Cut.mem_enabled _ _).mpr ready)
+
+end
 
 omit [DecidableEq Player] in
 /-- The canonical selector is not merely least among ready events: it is the

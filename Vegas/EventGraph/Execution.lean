@@ -528,6 +528,35 @@ theorem Config.remaining_step {graph : Vegas.EventGraph Player L}
     simpa using Finset.card_lt_card proper
   omega
 
+/-- Fuel beyond the number of unfinished events changes no run. -/
+theorem runPlan_fuel_eq {graph : Vegas.EventGraph Player L} (plan : graph.EventPlan) :
+    ∀ fuel (config : graph.Config), config.remaining ≤ fuel →
+      graph.runPlan plan fuel config = graph.runPlan plan config.remaining config := by
+  intro fuel
+  induction fuel with
+  | zero =>
+      intro config enough
+      have zero : config.remaining = 0 := by omega
+      rw [zero]
+  | succ fuel ih =>
+      intro config enough
+      by_cases terminal : config.cut.Terminal
+      · have zero : config.remaining = 0 := (config.terminal_iff_remaining_zero).mp terminal
+        rw [zero]
+        cases fuel <;> simp only [EventGraph.runPlan, dite_eq_left terminal]
+      · obtain ⟨rest, restEq⟩ : ∃ rest, config.remaining = rest + 1 := by
+          have positive : config.remaining ≠ 0 :=
+            fun zero => terminal ((config.terminal_iff_remaining_zero).mpr zero)
+          exact ⟨config.remaining - 1, by omega⟩
+        rw [restEq]
+        simp only [EventGraph.runPlan, dite_eq_right terminal]
+        congr 1
+        funext choice
+        apply bind_congr_on_support _
+        intro next member
+        have consumed := config.remaining_step choice.1.1 choice.1.2 choice.2 next member
+        rw [ih next (by omega), (by omega : next.remaining = rest)]
+
 /-- Enough fuel completes every supported execution, independently of which
 ready events and actions the randomized plan selects. -/
 theorem runPlan_terminal (graph : Vegas.EventGraph Player L) (plan : graph.EventPlan) :

@@ -140,22 +140,9 @@ theorem runPlan_canonical_actor_cases (profile : graph.BehavioralProfile)
       else profile who event actor (graph.playerObserve who config) inactive).bind fun action =>
         (config.step event ready action).bind
           (graph.runPlan (graph.policyPlan profile graph.canonicalScheduler) fuel) := by
-  rw [runPlan, dite_eq_right ready.not_terminal]
-  conv_lhs =>
-    arg 1
-    unfold policyPlan
-    dsimp only
-    rw [canonicalScheduler_eq_pure config event ready least, PMF.pure_bind]
-  split
-  · rename_i selectedOwner selectedActor
-    have same : selectedOwner = who := Option.some.inj (selectedActor.symm.trans actor)
-    subst selectedOwner
-    by_cases inactive : who ∈ config.defaulted
-    · simp only [dite_eq_left inactive, PMF.pure_bind]
-    · simp only [dite_eq_right inactive, PMF.bind_map, Function.comp_def]
-  · rename_i selectedActor
-    have impossible : (none : Option Player) = some who := selectedActor.symm.trans actor
-    cases impossible
+  rw [runPlan_policyPlan_succ profile _ fuel config ready.not_terminal,
+    canonicalScheduler_eq_pure config event ready least, PMF.pure_bind, eventStep,
+    actionLaw_of_actor profile config actor, PMF.bind_bind]
 
 /-- At an active canonical owned event, the shared executor runs the actual
 observation-local callback and then that event's semantic step. -/
@@ -199,18 +186,9 @@ theorem runPlan_canonical_ownerless (profile : graph.BehavioralProfile)
       (config.step event ready
         (EventCode.actionOfActorNone (graph.nodes event) ownerless)).bind
           (graph.runPlan (graph.policyPlan profile graph.canonicalScheduler) fuel) := by
-  rw [runPlan, dite_eq_right ready.not_terminal]
-  conv_lhs =>
-    arg 1
-    unfold policyPlan
-    dsimp only
-    rw [canonicalScheduler_eq_pure config event ready least, PMF.pure_bind]
-  split
-  · rename_i selectedOwner selectedActor
-    have impossible : (some selectedOwner : Option Player) = none :=
-      selectedActor.symm.trans ownerless
-    cases impossible
-  · rw [PMF.pure_bind]
+  rw [runPlan_policyPlan_succ profile _ fuel config ready.not_terminal,
+    canonicalScheduler_eq_pure config event ready least, PMF.pure_bind, eventStep,
+    actionLaw_of_ownerless profile config ownerless, PMF.pure_bind]
 
 /-- A bounded canonical run advances its completed source prefix by its execution count. -/
 theorem runPlan_canonical_isPrefix
