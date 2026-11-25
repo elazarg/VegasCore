@@ -37,6 +37,7 @@ public import Vegas.Examples.OddsEvensCommitmentObservation
 public import Vegas.Examples.OddsEvensCommitmentPayoff
 public import Vegas.Examples.OddsEvensExecutableClient
 public import Vegas.Examples.OddsEvensFirstActivation
+public import Vegas.Examples.OddsEvensFirstInclusion
 public import Vegas.Examples.OddsEvensHonestCommitment
 public import Vegas.Examples.OddsEvensRawEquilibrium
 public import Vegas.Examples.OddsEvensService

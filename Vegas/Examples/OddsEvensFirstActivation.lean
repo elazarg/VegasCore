@@ -240,4 +240,22 @@ theorem periodic_first_activation :
   exact canonicalServiceDecision_binding limits leakRule even past view (eventId 0)
     BaseTy.bool rfl rfl rfl inactive 0 canonical (.success bit)
 
+/-- The execution immediately before the first callback has advanced the
+clock once while retaining the initial graph state and network. -/
+theorem periodic_before_first_activation (execution : app.Execution)
+    (law : app.roundsFrom startLaw schedule policy 135 = PMF.pure execution) :
+    execution.environmentRecall.length = 135 ∧
+      execution.application =
+        {State.initial (graph := compiled)
+          (setup.eventInputs (Env.empty (CellVal simpleExpr))) with clock := 1} ∧
+      execution.network = .empty ∧ execution.receipts = [] ∧
+      ∀ who, execution.logs who = [] := by
+  obtain ⟨before, prior, length, state, empty, receipts, logs⟩ := idle_prefix 135 (by decide)
+  have support : execution ∈ (PMF.pure execution).support :=
+    (PMF.mem_support_pure_iff _ _).mpr rfl
+  have same : execution = before := (PMF.mem_support_pure_iff _ _).mp
+    (prior ▸ law.symm ▸ support)
+  subst execution
+  exact ⟨length, state, empty, receipts, logs⟩
+
 end Vegas.Examples.OddsEvensLedgerClient
