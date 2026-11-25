@@ -87,22 +87,6 @@ private theorem round_policyMixture {Result : Type} (scheduler : app.Scheduler)
   exact app.resume_policyMixture initial policies who players rest restMixture current
     (command.actor? app)
 
-/-- A behavioral mixture runs as the posterior mixture of its members' runs. -/
-theorem runRounds_policyMixture (scheduler : app.Scheduler) (initial : PMF Index)
-    (policies : Index → app.Policy) (who : Principal) (players : Principal → app.Policy)
-    (count : Nat) (execution : app.Execution) :
-    ((app.policyMixture initial policies).posterior (execution.logs who)).bind
-        (fun index => app.runRounds scheduler (Function.update players who (policies index))
-          count execution) =
-      app.runRounds scheduler
-        (Function.update players who (app.policyMixture initial policies).policy) count
-          execution := by
-  induction count generalizing execution with
-  | zero => simp only [runRounds, PMF.bind_const]
-  | succ count ih =>
-      exact app.round_policyMixture scheduler initial policies who players
-        (fun profile => app.runRounds scheduler profile count) ih execution
-
 /-- A behavioral mixture runs as the posterior mixture of its members' runs,
 stopped at a predicate. -/
 theorem runUntil_policyMixture (scheduler : app.Scheduler) (initial : PMF Index)
@@ -123,6 +107,20 @@ theorem runUntil_policyMixture (scheduler : app.Scheduler) (initial : PMF Index)
       · simp only [runUntil, halt, ↓reduceIte]
         exact app.round_policyMixture scheduler initial policies who players
           (fun profile => app.runUntil scheduler profile stop count) ih execution
+
+/-- A behavioral mixture runs as the posterior mixture of its members' runs. -/
+theorem runRounds_policyMixture (scheduler : app.Scheduler) (initial : PMF Index)
+    (policies : Index → app.Policy) (who : Principal) (players : Principal → app.Policy)
+    (count : Nat) (execution : app.Execution) :
+    ((app.policyMixture initial policies).posterior (execution.logs who)).bind
+        (fun index => app.runRounds scheduler (Function.update players who (policies index))
+          count execution) =
+      app.runRounds scheduler
+        (Function.update players who (app.policyMixture initial policies).policy) count
+          execution := by
+  simpa only [runUntil_false_eq_runRounds] using
+    app.runUntil_policyMixture scheduler initial policies who players (fun _ => False) count
+      execution
 
 /-- Two profiles that agree at every input queried before stopping, along runs
 that keep an invariant, give the same stopped run. -/

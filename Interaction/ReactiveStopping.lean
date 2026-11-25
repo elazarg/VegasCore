@@ -34,6 +34,17 @@ def runUntil (scheduler : app.Scheduler) (players : Principal → app.Policy)
       if stop execution then PMF.pure execution
       else (app.round scheduler players execution).bind (runUntil scheduler players stop count)
 
+/-- With an unreachable stop, the stopped evaluator executes its full round budget. -/
+theorem runUntil_false_eq_runRounds (scheduler : app.Scheduler) (players : Principal → app.Policy)
+    (count : Nat) (execution : app.Execution) :
+    app.runUntil scheduler players (fun _ => False) count execution =
+      app.runRounds scheduler players count execution := by
+  induction count generalizing execution with
+  | zero => rfl
+  | succ count ih =>
+      simp only [runUntil, ite_false, runRounds]
+      exact congrArg (PMF.bind _) (funext ih)
+
 /-- The scheduler rounds left before `horizon`, counted from the environment
 recall. -/
 def runToHorizon (scheduler : app.Scheduler) (players : Principal → app.Policy)
