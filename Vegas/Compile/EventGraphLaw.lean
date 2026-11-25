@@ -94,7 +94,7 @@ theorem commit_head_policy_eq
       decodedObservation] at policyLaw
   exact policyLaw
 
-private theorem reveal_head_policy_eq
+theorem reveal_head_policy_eq
     {wholeΓ : SourceCtx Player L} {wholeOpen : Finset VarId}
     (whole : SourceProgram Player L wholeΓ wholeOpen)
     (wholeProfile : BehavioralProfile whole)
