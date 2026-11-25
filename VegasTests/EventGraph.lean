@@ -319,7 +319,8 @@ example :
     refine (Finset.min'_eq_iff _ _ _).2 ⟨by simp, ?_⟩
     intro event _
     omega
-  simp [Vegas.EventGraph.policyPlan, Vegas.EventGraph.canonicalScheduler, pairProfile,
+  simp [Vegas.EventGraph.policyPlan, Vegas.EventGraph.actionLaw,
+    Vegas.EventGraph.canonicalScheduler, pairProfile,
     Vegas.EventGraph.EventCode.actor,
     pairInitial, Vegas.EventGraph.Config.initial, pairGraph, pairOrder,
     EventOrder.Cut.enabled, EventOrder.Cut.empty, EventOrder.Cut.Ready, minUniv,
@@ -334,7 +335,8 @@ example :
     refine (Finset.max'_eq_iff _ _ _).2 ⟨by simp, ?_⟩
     intro event _
     omega
-  simp [Vegas.EventGraph.policyPlan, Vegas.EventGraph.greatestScheduler, pairProfile,
+  simp [Vegas.EventGraph.policyPlan, Vegas.EventGraph.actionLaw,
+    Vegas.EventGraph.greatestScheduler, pairProfile,
     Vegas.EventGraph.EventCode.actor,
     pairInitial, Vegas.EventGraph.Config.initial, pairGraph, pairOrder,
     EventOrder.Cut.enabled, EventOrder.Cut.empty, EventOrder.Cut.Ready, maxUniv,
