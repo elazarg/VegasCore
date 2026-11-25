@@ -92,6 +92,12 @@ shows that a matching read determines the stored bit on every initialized
 service history. At any Odd decision site with such a read, the posterior
 on the stored commitment is a point mass for every assessment, including
 at sites reached only after deviations.
+More generally, fix the distribution of Even’s publication across Odd’s
+choices and allow Even to fail. The [payoff criterion](../Vegas/Examples/OddsEvensCommitmentPayoff.lean)
+shows that a fair coin maximizes Odd’s base payoff over every randomized
+successful commitment exactly when the probabilities of successful true and
+successful false are equal. Failure pays Odd 200 for either choice. This also
+covers certain failure, where conditioning on success would be undefined.
 A consistency argument must justify the candidate's fair fallback, or identify
 ledger cases requiring a different response.
 
