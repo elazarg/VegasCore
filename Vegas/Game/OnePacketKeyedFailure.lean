@@ -23,12 +23,12 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
   (bounds : MessageBounds setup.informationGraph) (horizon : Nat)
   (scheduler : (application setup timeouts leaks).Scheduler)
-  [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
-  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup)
+  [(application setup timeouts leaks).FiniteNature (initialDistribution setup) scheduler]
+  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialDistribution setup)
     horizon scheduler).InfoState who)]
   [Finite setup.intendedProtocol.History]
 
-local notation "N" => onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+local notation "N" => onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon
   scheduler
 
 open Classical in
@@ -46,7 +46,7 @@ theorem keyed_failure_bounds_of_assembled
     (covers : bounds.CoversOutputValues) (coversInputs : bounds.CoversInputValues)
     (capacity : ∀ who, bindingEventCount setup.informationGraph who < bounds.candidateCount)
     (slots_pos : 0 < bounds.candidateCount)
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialDistribution setup)
       horizon scheduler bounds.candidateCount p))
     (targetSequence : ℕ → (N).BehavioralAssessment)
     (assembled : OnePacketAssembled setup timeouts leaks bounds horizon scheduler sequence scale
@@ -54,17 +54,19 @@ theorem keyed_failure_bounds_of_assembled
     (mixed : ∀ n, (targetSequence n).IsFullyMixed)
     (bayes : ∀ n, BehavioralAssessment.IsBayesConsistent (N) (targetSequence n)
       ((bounds.onePacketMenu timeouts leaks).decisionRecall
-        (initialLaw setup) horizon scheduler).decisionInformationAntichain) :
+        (initialDistribution setup) horizon scheduler).decisionInformationAntichain) :
     ∃ (failureScore : ℕ → LateKey setup timeouts leaks → LateOption bounds.candidateCount → ℝ)
       (drift : ℕ → ℝ), Tendsto drift atTop (nhds 0) ∧
       (∀ n key option, 0 ≤ failureScore n key option ∧ failureScore n key option ≤ 1) ∧
       ∀ n who (site : (N).InformationSite who),
-        ¬ FreeAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+        ¬ FreeAgent setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
           ((N).agentAt site) →
-        ¬ OwingAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+        ¬ OwingAgent setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
           ((N).agentAt site) →
-        ownedKeyed (FreeAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler)
-          (LateDeliveryAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler)
+        ownedKeyed (FreeAgent setup timeouts leaks bounds (initialDistribution setup) horizon
+          scheduler)
+          (LateDeliveryAgent setup timeouts leaks bounds (initialDistribution setup) horizon
+            scheduler)
           ((N).agentAt site) →
         ∀ key, lateKey setup timeouts leaks who site.1 = some key → ∀ option,
         |localFailure (2 * horizon + 1) (targetSequence n) site

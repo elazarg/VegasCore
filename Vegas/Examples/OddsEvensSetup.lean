@@ -60,7 +60,7 @@ def program : SourceProgram Player simpleExpr [] ∅ :=
 def setup : Setup (Player := Player) (L := simpleExpr) where
   context := []
   namesNodup := by decide
-  initialLaw := PMF.pure (Env.empty (CellVal simpleExpr))
+  initialDistribution := PMF.pure (Env.empty (CellVal simpleExpr))
   obligations := ∅
   program := program
   accounts := rfl
@@ -113,7 +113,7 @@ theorem sourceUtility_eq_programTransfer (result : Unit × PublicOutcome program
   rw [publicPayoffs_eq]
   cases who <;> simp [transferAmount, even, odd, sourceUtility]
 
-instance : setup.FiniteInitialLaw where
+instance : setup.FiniteInitialSupport where
   support_finite := by change (PMF.pure _).support.Finite; simp
 
 theorem finiteBindingTypes : program.FiniteBindingTypes :=

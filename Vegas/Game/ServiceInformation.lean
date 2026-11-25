@@ -4,7 +4,7 @@ module
 
 public import Vegas.Game.RevealService
 public import Vegas.Compile.EventGraphHistory
-public import Vegas.EventGraph.SequentialLaw
+public import Vegas.EventGraph.SequentialDistribution
 
 @[expose] public section
 

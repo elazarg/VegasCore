@@ -543,7 +543,7 @@ theorem asIfHonest_bind_step_eq_behavioralStateStep [Fintype Player]
       who) :=
     setup.intendedSourceProfile_disclosing (CommitmentInterface.values setup.program)
       source.strategy who
-  have actionLaw : (setup.intendedOpeningProfile source.strategy who).protocolAction
+  have actionDistribution : (setup.intendedOpeningProfile source.strategy who).protocolAction
       setup.program (ProtocolState.observe who setup.program point) =
       (source.strategy who (setup.protocolObserve who (some point))).map Subtype.val := by
     change (((setup.decodeBehavioralProfile (CommitmentInterface.values setup.program)
@@ -564,7 +564,8 @@ theorem asIfHonest_bind_step_eq_behavioralStateStep [Fintype Player]
     rw [PMF.map_comp]
     rfl
   rw [ProtocolState.behavioralStateStep_eq_bind_of_actor setup.program _ point who acts,
-    actionLaw, asIfHonestProfile_observe setup timeouts leaks source who execution rank ordered
+    actionDistribution, asIfHonestProfile_observe setup timeouts leaks source who execution rank
+      ordered
       point
       decoded past]
 

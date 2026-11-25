@@ -28,10 +28,10 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (bounds : MessageBounds setup.informationGraph) (horizon : Nat)
   (scheduler : (application setup timeouts leaks).Scheduler)
 
-local notation "N" => onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+local notation "N" => onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon
   scheduler
 local notation "NP" => ReactiveApplication.ResponseMenu.protocol
-  (bounds.onePacketMenu timeouts leaks) (initialLaw setup) horizon scheduler
+  (bounds.onePacketMenu timeouts leaks) (initialDistribution setup) horizon scheduler
 local notation "Menu" => bounds.onePacketMenu timeouts leaks
 local notation "Clear" => ReactiveApplication.stateInvariant
   (app := application setup timeouts leaks)
@@ -72,7 +72,7 @@ open Classical in
 /-- Every intended keyed commitment compares with its same-slot option and a
 success-weighted deviation in the original source assessment. -/
 theorem assembled_keyed_commitment_comparisons
-    [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
+    [(application setup timeouts leaks).FiniteNature (initialDistribution setup) scheduler]
     [Finite setup.intendedProtocol.History]
     [∀ who, DecidableEq ((N).InfoState who)]
     (wellFormed : setup.WellFormed)
@@ -88,14 +88,15 @@ theorem assembled_keyed_commitment_comparisons
     (scaleEq : ∀ n, scale n = trembleScale
       (combinedFloor setup timeouts leaks bounds horizon scheduler (sequence n))
       (2 * horizon + 2) n)
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialDistribution setup)
       horizon scheduler bounds.candidateCount p))
     (targetSequence : ℕ → (N).BehavioralAssessment)
     (assembled : OnePacketAssembled setup timeouts leaks bounds horizon scheduler sequence scale
       positive le_one weights targetSequence)
     (mixed : ∀ n, (targetSequence n).IsFullyMixed)
     (bayes : ∀ n, BehavioralAssessment.IsBayesConsistent (N) (targetSequence n)
-      ((Menu).decisionRecall (initialLaw setup) horizon scheduler).decisionInformationAntichain)
+      ((Menu).decisionRecall (initialDistribution setup) horizon
+        scheduler).decisionInformationAntichain)
     {delay bound : setup.informationGraph.EventId → Nat}
     (opportunity : ∀ control : (application setup timeouts leaks).Control,
       (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some
@@ -123,13 +124,13 @@ theorem assembled_keyed_commitment_comparisons
     (excludedBounded : ∀ who, |excludedPayoff who| ≤ payoffBound) :
     ∃ error : ℕ → ℝ, Tendsto error atTop (nhds 0) ∧
       ∀ n who (site : (N).InformationSite who) (choice : (N).Choice who site.1),
-        ¬ Vegas.FreeAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+        ¬ Vegas.FreeAgent setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
         ((N).agentAt site) →
-        ¬ Vegas.OwingAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+        ¬ Vegas.OwingAgent setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
         ((N).agentAt site) →
-        ownedKeyed (Vegas.FreeAgent setup timeouts leaks bounds (initialLaw setup) horizon
+        ownedKeyed (Vegas.FreeAgent setup timeouts leaks bounds (initialDistribution setup) horizon
           scheduler)
-          (LateDeliveryAgent setup timeouts leaks bounds (initialLaw setup) horizon
+          (LateDeliveryAgent setup timeouts leaks bounds (initialDistribution setup) horizon
             scheduler)
           ((N).agentAt site) →
         CommitsAtTurn setup timeouts leaks bounds horizon scheduler who site choice →
@@ -138,7 +139,7 @@ theorem assembled_keyed_commitment_comparisons
           (sourceDeviation : setup.intendedModel.AssessmentDeviation who) (success : ℝ),
           0 ≤ success ∧ success ≤ 1 ∧
           let common := (targetSequence n).strategy
-          let certificate := ((Menu).bounded (initialLaw setup) horizon
+          let certificate := ((Menu).bounded (initialDistribution setup) horizon
             scheduler).wellFoundedHistories
           let stopped := fun final : (NP).History => ¬ Clear final.state ∨
             DecodedState setup timeouts leaks (failureProfile setup.program)
@@ -225,7 +226,8 @@ theorem assembled_keyed_commitment_comparisons
       (failureLimit.const_mul (2 * payoffBound))).add transportLimit
   intro n who site choice notFree notOwing keyed atTurn intendedChoice
   obtain ⟨past, view, turnResponse, turnEvent, atSite, turnSelected, turnSubmitted, turn⟩ := atTurn
-  have forced := forcedAgent_of_not_free setup timeouts leaks bounds (initialLaw setup) horizon
+  have forced := forcedAgent_of_not_free setup timeouts leaks bounds
+    (initialDistribution setup) horizon
         scheduler
     notFree
   have debtFree := siteDebtFree_of_not_owing setup timeouts leaks bounds horizon scheduler

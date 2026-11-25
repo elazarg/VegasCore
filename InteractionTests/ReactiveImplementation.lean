@@ -83,14 +83,14 @@ theorem correlated_packets (bit : Bool) :
     (twice bit).network.pending = [⟨(false, 0), bit⟩, ⟨(false, 1), bit⟩] ∧
       ((twice bit).logs false).length = 2 := ⟨rfl, rfl⟩
 
-def counter (initialLaw : PMF Nat) : app.Implementation Nat where
-  initial := initialLaw
+def counter (initialDistribution : PMF Nat) : app.Implementation Nat where
+  initial := initialDistribution
   respond value _ := PMF.pure (⟨none⟩, value + 1)
 
 /-- Arbitrarily represented private counters add no choices to any game menu,
 and give the same behavioral policy even at off-path information states. -/
-theorem counter_policy (initialLaw : PMF Nat) (past : List app.PlayerEntry)
-    (view : app.PlayerView) : (counter initialLaw).policy past view = PMF.pure ⟨none⟩ := by
+theorem counter_policy (initialDistribution : PMF Nat) (past : List app.PlayerEntry)
+    (view : app.PlayerView) : (counter initialDistribution).policy past view = PMF.pure ⟨none⟩ := by
   rw [ReactiveApplication.Implementation.policy_eq]
   simp only [counter, PMF.map_bind, PMF.pure_map, PMF.bind_const]
 

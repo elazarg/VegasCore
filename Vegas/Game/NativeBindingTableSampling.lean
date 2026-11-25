@@ -91,7 +91,7 @@ theorem native_binding_subfamily_mixture
       start ≤ event.val → event.val < start + bindingCount →
       (serviceGraph setup deps).actor? event = some owner → Untouched setup leaks event execution)
     (trace : ((serviceApplication setup deps duration leaks).protocol
-      (serviceInitialLaw setup deps) horizon scheduler).Trace
+      (serviceInitialDistribution setup deps) horizon scheduler).Trace
         (some ⟨remaining + nativeCount, none, execution⟩)) :
     let G := serviceGraph setup deps
     let app := serviceApplication setup deps duration leaks
@@ -148,12 +148,12 @@ theorem native_binding_subfamily_mixture
         have owned : G.actor? event = some owner :=
           EventCode.actor_eq_of_binding (G.nodes event) binding
         have active : owner ∉ ghost.defaulted := by rw [ghostClear]; simp
-        let kernel := actionLaw reference ghost event
+        let kernel := actionDistribution reference ghost event
         have firstLaw (fuel : Nat) : sourceRun (fuel + 1) ghost = kernel.bind fun action =>
             (ghost.step event ready action).bind (sourceRun fuel) := by
           dsimp only [sourceRun, kernel]
           rw [runPlan_canonical_actor reference fuel ghost event ready least owner owned active,
-            actionLaw_of_actor reference ghost owned, dite_eq_right active]
+            actionDistribution_of_actor reference ghost owned, dite_eq_right active]
         have nextSupported (action : G.Action event) (selected : action ∈ kernel.support)
             (next : G.Config) (moved : next ∈ (ghost.step event ready action).support) :
             next ∈ (sourceRun (past + 1) execution.application.config).support := by
@@ -265,11 +265,11 @@ theorem native_binding_subfamily_mixture
             change frozen rank ghost owner prior actor _ _ = _
             exact freezeBindingsBefore_binding profile start rank ghost owner prior actor _ _
               ⟨lower, earlier⟩ kind value (optional_value_cast_native_table kind _ value output)
-          have sourceKernel : actionLaw (G.prefixProfile (frozen rank ghost)) ghost event =
+          have sourceKernel : actionDistribution (G.prefixProfile (frozen rank ghost)) ghost event =
               kernel := by
-            change actionLaw (G.prefixProfile (frozen rank ghost)) ghost event =
-              actionLaw reference ghost event
-            rw [actionLaw_of_actor _ _ owned, actionLaw_of_actor _ _ owned,
+            change actionDistribution (G.prefixProfile (frozen rank ghost)) ghost event =
+              actionDistribution reference ghost event
+            rw [actionDistribution_of_actor _ _ owned, actionDistribution_of_actor _ _ owned,
               dite_eq_right active, dite_eq_right active]
             change frozen rank ghost owner event owned _ _ = profile owner event owned _ _
             exact freezeBindingsBefore_at_rank profile start rank ghost owner event owned _ _ rfl
@@ -287,7 +287,8 @@ theorem native_binding_subfamily_mixture
               (fun prior lower upper actor => untouched owner isSelected prior lower
                 (by dsimp only [event, rank] at *; omega) actor) trace
             change native rank ghost =
-              (actionLaw (G.prefixProfile (frozen rank ghost)) ghost event).bind memberRun at mixed
+              (actionDistribution (G.prefixProfile (frozen rank ghost)) ghost event).bind memberRun
+                at mixed
             rwa [sourceKernel] at mixed
           have memberLaw (action : G.Action event) (selected : action ∈ kernel.support)
               (next : G.Config) (moved : next ∈ (ghost.step event ready action).support) :
@@ -296,8 +297,9 @@ theorem native_binding_subfamily_mixture
               step_submitted_binding_frame ghost ghostClear event ready
                 owner payload binding action (by
                   have played := selected
-                  change action ∈ (actionLaw reference ghost event).support at played
-                  rw [actionLaw_of_actor reference ghost owned, dite_eq_right active] at played
+                  change action ∈ (actionDistribution reference ghost event).support at played
+                  rw [actionDistribution_of_actor reference ghost owned, dite_eq_right active]
+                    at played
                   exact sourceSubmits owner event owned (G.playerObserve owner ghost) active
                     action played) next moved
             let head := G.prefixPolicy owner (frozen (rank + 1) next owner)
@@ -390,7 +392,7 @@ theorem native_binding_unilateral_source_mixture
       start ≤ event.val → event.val < start + bindingCount →
       (serviceGraph setup deps).actor? event = some owner → Untouched setup leaks event execution)
     (trace : ((serviceApplication setup deps duration leaks).protocol
-      (serviceInitialLaw setup deps) horizon scheduler).Trace
+      (serviceInitialDistribution setup deps) horizon scheduler).Trace
         (some ⟨remaining + nativeCount, none, execution⟩)) :
     let G := serviceGraph setup deps
     let app := serviceApplication setup deps duration leaks
@@ -529,7 +531,7 @@ theorem native_binding_unilateral_effective_source_mixture
       start ≤ event.val → event.val < start + bindingCount →
       (serviceGraph setup deps).actor? event = some owner → Untouched setup leaks event execution)
     (trace : ((serviceApplication setup deps duration leaks).protocol
-      (serviceInitialLaw setup deps) horizon scheduler).Trace
+      (serviceInitialDistribution setup deps) horizon scheduler).Trace
         (some ⟨remaining + nativeCount, none, execution⟩)) :
     let G := serviceGraph setup deps
     let app := serviceApplication setup deps duration leaks
@@ -550,7 +552,7 @@ theorem native_binding_unilateral_effective_source_mixture
       initialReach sourceOrigin same start bindingCount ordered clear bounded bindings truthful
         untouched trace
   dsimp only at law
-  have sourceLaw : setup.informationGraph.runPlan (setup.informationGraph.policyPlan
+  have sourceDistribution : setup.informationGraph.runPlan (setup.informationGraph.policyPlan
       (setup.informationGraph.prefixProfile
         (Function.update (effectiveOpening (graph := G) profile) focal
           (submittedFailurePolicy (graph := setup.informationGraph) focal)))
@@ -569,7 +571,7 @@ theorem native_binding_unilateral_effective_source_mixture
     · simp only [Function.update_of_ne own]
       obtain ⟨owner, payload, outputEq⟩ := bindings event lower upper
       exact effectiveOpening_of_not_publication profile (by rw [outputEq]; exact id) actor _ _
-  rw [sourceLaw] at law
+  rw [sourceDistribution] at law
   have frozen (ghost : setup.informationGraph.Config) :
       setup.informationGraph.freezeBindingsBefore (effectiveOpening (graph := G) profile)
           start (start + bindingCount) ghost =

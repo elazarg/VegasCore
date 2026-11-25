@@ -84,7 +84,7 @@ theorem retained_beliefs_converge_unclocked
       (limit.map (restriction.informationHistory who site)) := by
   classical
   let : Fintype ι := Fintype.ofFinite ι
-  let sourceLaw (n : ℕ) := (M.runBehavioralTerminalFrom sourceCertificate
+  let sourceDistribution (n : ℕ) := (M.runBehavioralTerminalFrom sourceCertificate
     (sourceSequence n).strategy E.initHistory).map restriction.history
   let targetLaw (n : ℕ) :=
     N.runBehavioralTerminalFrom targetCertificate (targetSequence n).strategy T.initHistory
@@ -94,14 +94,14 @@ theorem retained_beliefs_converge_unclocked
     M.informationMass_pos_of_fullSupport _ (sourceMixed n) who site
   have targetMass (n : ℕ) :=
     N.informationMass_pos_of_fullSupport _ (targetMixed n) who (restriction.site who site)
-  have sourcePassage (n : ℕ) : (sourceLaw n).toOuterMeasure passage =
+  have sourcePassage (n : ℕ) : (sourceDistribution n).toOuterMeasure passage =
       M.informationMass (sourceSequence n).strategy who site := by
     rw [PMF.toOuterMeasure_map_apply, restriction.passage_preimage,
       M.informationMass_eq_passage sourceCertificate _ who site (sourceAntichain who site)]
   have targetPassage (n : ℕ) : (targetLaw n).toOuterMeasure passage =
       N.informationMass (targetSequence n).strategy who (restriction.site who site) :=
     (N.informationMass_eq_passage targetCertificate _ who _ (targetAntichain who _)).symm
-  have sourcePositive (n : ℕ) : 0 < ((sourceLaw n).toOuterMeasure passage).toReal := by
+  have sourcePositive (n : ℕ) : 0 < ((sourceDistribution n).toOuterMeasure passage).toReal := by
     rw [sourcePassage]
     exact ENNReal.toReal_pos (sourceMass n).ne' (ne_top_of_le_ne_top ENNReal.one_ne_top
       (M.informationMass_le_one _ who site (sourceAntichain who site)))
@@ -115,8 +115,8 @@ theorem retained_beliefs_converge_unclocked
     rw [bayes_belief_eq (targetSequence n) who _ (targetAntichain who _) (targetMass n)
       (targetBayes n who _ (targetMass n)), N.bayesBelief_apply_eq_passage targetCertificate,
       ENNReal.toReal_div]
-  have sourceLimit : Tendsto (fun n => ((sourceLaw n).toOuterMeasure cone).toReal /
-      ((sourceLaw n).toOuterMeasure passage).toReal) atTop
+  have sourceLimit : Tendsto (fun n => ((sourceDistribution n).toOuterMeasure cone).toReal /
+      ((sourceDistribution n).toOuterMeasure passage).toReal) atTop
         (nhds ((limit.map (restriction.informationHistory who site)) history).toReal) := by
     by_cases embedded : history ∈ Set.range (restriction.informationHistory who site)
     · obtain ⟨original, rfl⟩ := embedded
@@ -135,7 +135,7 @@ theorem retained_beliefs_converge_unclocked
       refine tendsto_const_nhds.congr fun n => ?_
       rw [PMF.toOuterMeasure_map_apply, restriction.cone_preimage_eq_empty who site history
         embedded, MeasureTheory.measure_empty, ENNReal.toReal_zero, zero_div]
-  exact (conditional_domination_converges_of_subset sourceLaw targetLaw passage cone inside
+  exact (conditional_domination_converges_of_subset sourceDistribution targetLaw passage cone inside
     sourcePositive factor positive atMostOne lower
     (by simpa only [sourcePassage] using negligible) _ sourceLimit).congr targetRatio
 

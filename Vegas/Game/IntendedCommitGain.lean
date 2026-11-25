@@ -54,7 +54,7 @@ theorem intended_expect_readout_runFrom (wellFormed : setup.WellFormed)
     expect ((setup.intendedModel.runBehavioralFrom policies fuel history).map
         (intendedReadoutExclusion setup parameter utility excludedPayoff))
         (payoffComponent setup · who) =
-      expect ((setup.continuationLaw (setup.intendedOpeningProfile policies)
+      expect ((setup.continuationDistribution (setup.intendedOpeningProfile policies)
           history.state).map some)
         (fun readout => exclusionReadoutUtility setup parameter utility excludedPayoff readout
           who) := by
@@ -152,7 +152,7 @@ theorem intendedCommit_historyGain (wellFormed : setup.WellFormed)
       expect (M.runBehavioralFrom assessment.strategy fuel later) (fun final =>
         payoffComponent setup (intendedReadoutExclusion setup parameter utility excludedPayoff
           final) who) =
-        expect ((setup.continuationLaw (setup.intendedOpeningProfile assessment.strategy)
+        expect ((setup.continuationDistribution (setup.intendedOpeningProfile assessment.strategy)
           later.state).map some) value := fun later enoughLater =>
     (expect_map _ _ _).symm.trans (intended_expect_readout_runFrom setup parameter utility
       excludedPayoff wellFormed assessment.strategy fuel later enoughLater who)
@@ -161,7 +161,7 @@ theorem intendedCommit_historyGain (wellFormed : setup.WellFormed)
       expect (M.runBehavioralFrom committed fuel (current.extend draw.2 realized)) (fun final =>
         payoffComponent setup (intendedReadoutExclusion setup parameter utility excludedPayoff
           final) who) =
-        expect ((setup.continuationLaw (setup.intendedOpeningProfile assessment.strategy)
+        expect ((setup.continuationDistribution (setup.intendedOpeningProfile assessment.strategy)
           target).map some) value := by
     intro draw target realized
     rw [after]
@@ -189,7 +189,7 @@ theorem intendedCommit_historyGain (wellFormed : setup.WellFormed)
     rw [joint, committedWho, PMF.pure_map, expect_pure]
     rw [expect_bindOnSupport_tower_on_support _ _ _
       (payoffIntegrable_of_bounded _ _ readoutBounded')
-      (fun target => expect ((setup.continuationLaw
+      (fun target => expect ((setup.continuationDistribution
         (setup.intendedOpeningProfile assessment.strategy) target).map some) value)
       (fun target realized => ?_)]
     · change expect (setup.protocolStep current.state (E.singletonJoint who choice.1)) _ = _

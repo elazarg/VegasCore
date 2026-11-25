@@ -106,7 +106,7 @@ theorem environment_trace (frame : DirectedBindingFrame (timeouts := timeouts) m
       ((onePacketProtocol setup timeouts leaks bounds horizon scheduler).step
         (some ⟨remaining + 1, none, repaired⟩) ⟨joint, legal⟩).support := by
     exact environment_step_supported (application setup timeouts leaks)
-      (bounds.onePacketMenu timeouts leaks) (initialLaw setup) horizon scheduler remaining
+      (bounds.onePacketMenu timeouts leaks) (initialDistribution setup) horizon scheduler remaining
       repaired nextRepaired command joint legal chosenRepair right
   refine ⟨imagePrior.extend joint legal realized, ?_⟩
   change operationalState setup timeouts leaks

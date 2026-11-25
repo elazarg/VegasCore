@@ -23,10 +23,10 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (bounds : MessageBounds setup.informationGraph) (horizon : Nat)
   (scheduler : (application setup timeouts leaks).Scheduler)
 
-local notation "N" => onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+local notation "N" => onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon
   scheduler
 local notation "NP" => ReactiveApplication.ResponseMenu.protocol
-  (bounds.onePacketMenu timeouts leaks) (initialLaw setup) horizon scheduler
+  (bounds.onePacketMenu timeouts leaks) (initialDistribution setup) horizon scheduler
 local notation "Clear" => ReactiveApplication.stateInvariant
   (app := application setup timeouts leaks)
     (fun native : EventGraphRuntime.State setup.informationGraph =>
@@ -36,14 +36,14 @@ open Classical in
 /-- At a genuine first callback, the original common continuation is at least
 the source value up to its current tremble and honest future retention errors. -/
 theorem assembled_firstActivation_value_lower
-    [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
+    [(application setup timeouts leaks).FiniteNature (initialDistribution setup) scheduler]
     [∀ who, DecidableEq ((N).InfoState who)]
     (wellFormed : setup.WellFormed) (covers : bounds.CoversOutputValues)
     (capacity : ∀ player, bindingEventCount setup.informationGraph player < bounds.candidateCount)
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (scale : ℕ → ℝ) (positive : ∀ n, 0 < scale n) (le_one : ∀ n, scale n ≤ 1)
     {slots : Nat}
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialDistribution setup)
       horizon scheduler slots p))
     (targetSequence : ℕ → (N).BehavioralAssessment)
     (assembled : OnePacketAssembled setup timeouts leaks bounds horizon scheduler sequence scale
@@ -98,7 +98,7 @@ theorem assembled_firstActivation_value_lower
   intro stopped
   let common := (targetSequence n).strategy
   let info := (N).infoOf who history.trace
-  let main := honestChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+  let main := honestChoice setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
     (sequence n) who info
   let installed := Profile.update (sig := (N).behavioralSignature) common who
     ((common who).withLaw info main)
@@ -169,8 +169,8 @@ theorem assembled_firstActivation_value_lower
         covers capacity
         (sequence n) certificate common history current clear event pending never ordered decoded
         intended info rfl final member
-    have after := runUntil_after_localLaw_eq certificate
-      ((bounds.onePacketMenu timeouts leaks).decisionRecall (initialLaw setup) horizon
+    have after := runUntil_after_localDistribution_eq certificate
+      ((bounds.onePacketMenu timeouts leaks).decisionRecall (initialDistribution setup) horizon
         scheduler).actsOnceWhereItMatters common who info main phase stopped history rfl
       active running going final member
     have targetDecoded : nativeDecodedState setup timeouts leaks final.state = some target := by
@@ -182,9 +182,9 @@ theorem assembled_firstActivation_value_lower
       boundary target atRank targetIntended parameter utility excludedPayoff who boundNonneg
       baseBounded excludedBounded
     have depth : (application setup timeouts leaks).rank horizon final.state ≤ 2 * horizon + 1 := by
-      have := (application setup timeouts leaks).trace_bound (initialLaw setup) horizon
+      have := (application setup timeouts leaks).trace_bound (initialDistribution setup) horizon
         scheduler
-        ((bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon
+        ((bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup) horizon
           scheduler final.trace)
       omega
     dsimp only [later, value]
@@ -192,7 +192,8 @@ theorem assembled_firstActivation_value_lower
     exact near.trans (mul_le_mul_of_nonneg_left (by exact_mod_cast depth) (by
       have := slotRetention_le_one (positive n).le (le_one n)
       positivity))
-  have sourceLaw := counted_firstActivation_honest_sourceLaw (timeouts := timeouts) opportunity
+  have sourceDistribution := counted_firstActivation_honest_sourceDistribution
+    (timeouts := timeouts) opportunity
     inclusion timely completes
     covers capacity
     (sequence n) certificate common history current clear event pending never ordered decoded
@@ -201,7 +202,8 @@ theorem assembled_firstActivation_value_lower
       (setup.intendedOpeningProfile (sequence n).strategy) who point := by
     have mean := congrArg (fun law : PMF (Option (ProtocolState setup.program)) =>
       expect law (fun decoded => decoded.elim 0 (sourcePointValue setup parameter utility
-        excludedPayoff (setup.intendedOpeningProfile (sequence n).strategy) who))) sourceLaw
+        excludedPayoff (setup.intendedOpeningProfile (sequence n).strategy) who)))
+          sourceDistribution
     rw [expect_map, expect_map] at mean
     exact mean.trans (expect_sourcePointValue_behavioralStateStep setup parameter utility
       excludedPayoff _ who readoutBounded point)
@@ -224,12 +226,12 @@ theorem assembled_firstActivation_value_lower
     exact abs_le.mpr ⟨lower, upper⟩
   have infoEq : info = some (execution.logs who,
       execution.observe (application setup timeouts leaks) who) := by
-    change ((bounds.onePacketMenu timeouts leaks).signals (initialLaw setup) horizon
+    change ((bounds.onePacketMenu timeouts leaks).signals (initialDistribution setup) horizon
       scheduler).infoOf who history.trace = _
     rw [ReactiveApplication.ResponseMenu.info, current]
     simp only [ReactiveApplication.observe, ite_true]
   have forced : Vegas.forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks)
-    (initialLaw setup)
+    (initialDistribution setup)
       horizon scheduler who info := by
     apply forcedAgent_of_history (timeouts := timeouts) history
     rw [current]
@@ -263,8 +265,8 @@ theorem assembled_firstActivation_value_lower
     fun _ => expect_abs_le_of_bounded boundNonneg payoffBounded
   have estimate := close.expect_sub_le selectedValue (-payoffBound) (2 * payoffBound)
     (fun choice _ => by have := abs_le.mp (selectedBounded choice); constructor <;> linarith)
-  have affine := fun law => (N).runBehavioralUntil_update_withLaw_eq_bind certificate
-    ((bounds.onePacketMenu timeouts leaks).decisionRecall (initialLaw setup) horizon
+  have affine := fun law => (N).runBehavioralUntil_update_withDistribution_eq_bind certificate
+    ((bounds.onePacketMenu timeouts leaks).decisionRecall (initialDistribution setup) horizon
       scheduler).actsOnceWhereItMatters common who (common who) info law stopped history
         rfl safe running active
   have baseline := affine (common who info)

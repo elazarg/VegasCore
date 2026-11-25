@@ -17,7 +17,7 @@ operational state and the handle: the new envelope joins the network and is
 the only pending commitment, with a successful status
 (`Vegas.committed_bindingImage`). So if the owner's decoded response, sorted
 into silence, such a commitment at each handle, and the rest, is close to a
-keyed law of moves (`Vegas.OwnerBindingLaw`), the owner's step is close to the
+keyed law of moves (`Vegas.OwnerBindingWithinTV`), the owner's step is close to the
 kernel of that law (`Vegas.ownerBindingStep_close`).
 -/
 
@@ -77,10 +77,10 @@ theorem emittedEnvelope_of_commitment {horizon : Nat}
     cases silent
   rw [sent] at sentMaterial
   cases sentMaterial
-  have trace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+  have trace : ((application setup timeouts leaks).protocol (initialDistribution setup) horizon
     scheduler).Trace
       (some control) :=
-    current ▸ (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon
+    current ▸ (bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup) horizon
       scheduler history.trace
   obtain ⟨inputRecall, serialRecall, _⟩ := (countRecall_history timeouts) leaks trace
   have local_ := (localEnvelope_eq_of_recall timeouts) leaks control.execution inputRecall
@@ -267,11 +267,12 @@ theorem ownerBindingStep_close {horizon : Nat} {scheduler : (application setup t
     (pending : event ∉ execution.application.config.cut.completed)
     (moves : PMF (Option (Handle setup.informationGraph))) {δ : ℝ}
     (close : PMF.WithinTV δ (((bounds.onePacketMenu timeouts leaks).decodeProfile
-        (initialLaw setup) horizon scheduler profile owner (execution.logs owner)
+        (initialDistribution setup) horizon scheduler profile owner (execution.logs owner)
         (execution.observe (application setup timeouts leaks) owner)).map
           (commitMove (timeouts := timeouts) event owner payload execution)) (moves.map some)) :
-    PMF.WithinTV δ (((application setup timeouts leaks).controlStep (initialLaw setup) horizon
-        scheduler ((bounds.onePacketMenu timeouts leaks).decodeProfile (initialLaw setup)
+    PMF.WithinTV δ (((application setup timeouts leaks).controlStep
+      (initialDistribution setup) horizon
+        scheduler ((bounds.onePacketMenu timeouts leaks).decodeProfile (initialDistribution setup)
           horizon scheduler profile) (some ⟨remaining, some owner, execution⟩)).map
           (bindingImage (timeouts := timeouts) event owner payload))
       (moves.map (moveImage (timeouts := timeouts) event owner
@@ -294,7 +295,7 @@ theorem ownerBindingStep_close {horizon : Nat} {scheduler : (application setup t
       cases classified
       obtain ⟨sent, call, succeeds, empty⟩ := committed.choose_spec.choose_spec
       have member := (bounds.onePacketMenu timeouts leaks).decodeProfile_support
-        (initialLaw setup) horizon scheduler profile owner _ _ action supported
+        (initialDistribution setup) horizon scheduler profile owner _ _ action supported
       rw [committed_bindingImage (timeouts := timeouts) bounds history current pending empty action
         member sent call
         succeeds]

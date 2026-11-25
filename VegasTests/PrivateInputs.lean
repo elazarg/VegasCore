@@ -27,7 +27,7 @@ def inputOnly (types : Player → Int) : SourceProgram.Setup
     (Player := Player) (L := simpleExpr) where
   context := context
   namesNodup := by decide
-  initialLaw := PMF.pure (initial types)
+  initialDistribution := PMF.pure (initial types)
   obligations := ∅
   program := .ret []
   accounts := rfl

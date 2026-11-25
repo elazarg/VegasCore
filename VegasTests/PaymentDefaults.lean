@@ -50,7 +50,7 @@ abbrev cashRosterService (exit : Int) : SourceServiceSpec Player simpleExpr wher
   values := Vegas.Examples.ProgramPaymentsRuntime.binding_values_covered 5
   initialValues := by
     intro state supported
-    change state ∈ ((cashSetup exit).initialLaw.map
+    change state ∈ ((cashSetup exit).initialDistribution.map
       (fun initial => EventGraphRuntime.State.initial (graph := (cashSetup exit).informationGraph)
         ((cashSetup exit).eventInputs initial))).support at supported
     obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ supported
@@ -168,12 +168,12 @@ example :
         (fun outcome => (cashSetup 6).eventTransfers outcome .alice) = PMF.pure 6 := by
   simp_rw [Setup.eventTransfers_eq_transfers]
   change (((cashSetup 6).informationGraph.canonicalGame
-      ((cashSetup 6).initialLaw.map (cashSetup 6).eventInputs)).play
+      ((cashSetup 6).initialDistribution.map (cashSetup 6).eventInputs)).play
         (compileEventProfile cashProgram (profile none false))).map
       ((fun terminal => (cashSetup 6).transfers (cashProgram.publicOutcome terminal) .alice) ∘
         terminalConfig cashProgram) = _
   rw [← PMF.map_comp]
-  erw [canonical_setup_law (cashSetup 6) (profile none false)]
+  erw [canonical_setup_distribution (cashSetup 6) (profile none false)]
   change ((PMF.pure initial).bind _).map _ = _
   erw [PMF.pure_bind, run_profile, PMF.pure_map]
   exact congrArg PMF.pure (omission_transfers 6)
@@ -189,7 +189,8 @@ example : (cashSetup 0).transfers
 
 /-- The ordinary compiler realizes that exact exit receipt on the actual bounded ledger. -/
 example (exit : Int) :
-    ((((cashService exit).rawMenu.information (serviceInitialLaw (cashSetup exit) (cashSetup
+    ((((cashService exit).rawMenu.information (serviceInitialDistribution (cashSetup exit)
+      (cashSetup
       exit).informationDependencies)
         (cashService exit).horizon (cashService exit).scheduler).runBehavioral
       ((cashService exit).clientProfile admission (cashService exit).rawMenu
@@ -198,7 +199,7 @@ example (exit : Int) :
       (2 * (cashService exit).horizon + 1)).bind fun final =>
         ((cashService exit).paymentSettlement (auditSample exit) (fun _ => 0) final.state).map
           (fun receipts => receipts .alice)) = PMF.pure (exit : ℝ) := by
-  have law := (cashService exit).payment_firstTurnClientProfile_settlement_law admission
+  have law := (cashService exit).payment_firstTurnClientProfile_settlement_distribution_eq admission
     (auditSample exit) (authentic exit)
     (fun _ => 0) 1 (omissionSource exit)
   have cash := congrArg (PMF.map (fun realized => realized.2 Player.alice)) law

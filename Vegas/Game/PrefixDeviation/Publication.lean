@@ -346,7 +346,7 @@ private theorem publication_surviving_endpoint_boundary
     (relaxed : (serviceGraph setup deps).RevealRelaxedOrdered)
     {delay : (serviceGraph setup deps).EventId → Nat}
     (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
-      (serviceInitialLaw setup deps) horizon scheduler delay bound)
+      (serviceInitialDistribution setup deps) horizon scheduler delay bound)
     (timely : AsyncTimely (serviceTimeouts setup deps duration) delay bound)
     (profile reference : (serviceGraph setup deps).BehavioralProfile)
     (independent : ReadyIndependent profile) (opens : OpensPublications profile)
@@ -358,8 +358,9 @@ private theorem publication_surviving_endpoint_boundary
         (firstTurnTiming setup turns deps) (effectiveOpening reference)) focal deviation)
       horizon start origin)
     (donor : (serviceGraph setup deps).Config) (ordered : donor.cut.IsPrefix finish)
-    (law : outcomeLaw profile Config.defaulted donor = PMF.pure ∅)
-    (potential : canonicalLaw profile origin.application.config = canonicalLaw profile donor)
+    (law : outcomeDistribution profile Config.defaulted donor = PMF.pure ∅)
+    (potential : canonicalDistribution profile origin.application.config = canonicalDistribution
+      profile donor)
     (final : (serviceApplication setup deps duration leaks).Execution)
     (reached : final ∈ ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
       (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
@@ -383,11 +384,12 @@ private theorem publication_surviving_endpoint_boundary
     exact ordered
   obtain ⟨finalSupport, finalBound⟩ := runUntilHorizon_bounded boundary.supported boundary.bounded
     reached
-  have originLaw : outcomeLaw profile Config.defaulted origin.application.config = PMF.pure ∅ :=
-    (outcomeLaw_eq_of_canonicalLaw_eq Config.defaulted
+  have originLaw : outcomeDistribution profile Config.defaulted origin.application.config =
+    PMF.pure ∅ :=
+    (outcomeDistribution_eq_of_canonicalDistribution_eq Config.defaulted
       (fun _ _ equal => defaulted_eq_of_completionOf_eq (congrArg (fun key => key.2.2) equal))
       potential).trans law
-  have originClear := defaulted_eq_empty_of_outcomeLaw profile _ originLaw
+  have originClear := defaulted_eq_empty_of_outcomeDistribution profile _ originLaw
   have originInside : InBlock start finish origin.application.config := by
     refine ⟨boundary.earlier, ?_⟩
     intro event later completed
@@ -409,7 +411,7 @@ private theorem publication_surviving_phase_posterior
     (relaxed : (serviceGraph setup deps).RevealRelaxedOrdered)
     {delay : (serviceGraph setup deps).EventId → Nat}
     (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
-      (serviceInitialLaw setup deps) horizon scheduler delay bound)
+      (serviceInitialDistribution setup deps) horizon scheduler delay bound)
     (timely : AsyncTimely (serviceTimeouts setup deps duration) delay bound)
     (profile : (serviceGraph setup deps).BehavioralProfile)
     (reference : Seed → (serviceGraph setup deps).BehavioralProfile)
@@ -438,10 +440,10 @@ private theorem publication_surviving_phase_posterior
       ∃ inputs, (donor (advance (source seed))).Reachable inputs)
     (ordered : ∀ seed ∈ prior.support, (donor (advance (source seed))).cut.IsPrefix finish)
     (defaultLaw : ∀ seed ∈ prior.support,
-      outcomeLaw profile Config.defaulted (donor (advance (source seed))) = PMF.pure ∅)
+      outcomeDistribution profile Config.defaulted (donor (advance (source seed))) = PMF.pure ∅)
     (potential : ∀ seed ∈ prior.support,
-      canonicalLaw profile (execution seed).application.config =
-        canonicalLaw profile (donor (advance (source seed))))
+      canonicalDistribution profile (execution seed).application.config =
+        canonicalDistribution profile (donor (advance (source seed))))
     (reflects : ∀ left ∈ (prior.map source).support, ∀ right ∈ (prior.map source).support,
       nextView (advance left) = nextView (advance right) → observe left = observe right)
     (visible : ∀ left ∈ prior.support, ∀ right ∈ prior.support,
@@ -528,7 +530,7 @@ private theorem native_block_expected_comparison
     (bound : (serviceGraph setup deps).EventId → Nat)
     {delay : (serviceGraph setup deps).EventId → Nat}
     (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
-      (serviceInitialLaw setup deps) horizon scheduler delay bound)
+      (serviceInitialDistribution setup deps) horizon scheduler delay bound)
     (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ) {forfeit : ℝ}
     (range : ∀ high low who, utility high who - utility low who ≤ forfeit)
@@ -671,7 +673,8 @@ private theorem native_block_expected_comparison
     ((setup.informationGraph.prefixProfile reference) focal) tailPolicy start (finish - start)
     tailCount (by omega)
   refine ⟨policy, ?_⟩
-  have nativeLaw : (staged.bind fun entry => app.runToHorizon scheduler (players entry.1) horizon
+  have nativeDistribution : (staged.bind fun entry => app.runToHorizon scheduler
+    (players entry.1) horizon
       entry.2) = prior.bind fun seed => app.runToHorizon scheduler (players seed) horizon
         (execution seed) := by
     simp only [staged, PMF.bind_bind, PMF.bind_map, Function.comp_def]
@@ -679,7 +682,7 @@ private theorem native_block_expected_comparison
     intro seed _
     exact (app.runToHorizon_eq_runUntilHorizon_bind scheduler (players seed)
       (fun current => BlockDone finish current.application.config) horizon (execution seed)).symm
-  have sourceLaw : (prior.bind fun seed => setup.informationGraph.runPlan
+  have sourceDistribution : (prior.bind fun seed => setup.informationGraph.runPlan
       (setup.informationGraph.policyPlan (Function.update
         (setup.informationGraph.prefixProfile reference) focal policy)
         setup.informationGraph.canonicalScheduler) (finish - start + tailCount) (before seed)) =
@@ -692,7 +695,7 @@ private theorem native_block_expected_comparison
     intro seed supported
     rw [splice (before seed) (prefixAt seed supported), Function.update_eq_self,
       headLaw seed supported, PMF.pure_bind]
-  rw [← nativeTower, nativeLaw, ← sourceTower, ← sourceLaw] at compare
+  rw [← nativeTower, nativeDistribution, ← sourceTower, ← sourceDistribution] at compare
   exact compare
 
 private theorem native_publication_expected_continuation
@@ -702,7 +705,7 @@ private theorem native_publication_expected_continuation
     (relaxed : (serviceGraph setup deps).RevealRelaxedOrdered)
     {delay : (serviceGraph setup deps).EventId → Nat}
     (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
-      (serviceInitialLaw setup deps) horizon scheduler delay bound)
+      (serviceInitialDistribution setup deps) horizon scheduler delay bound)
     (timely : AsyncTimely (serviceTimeouts setup deps duration) delay bound)
     (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ) {forfeit : ℝ}
@@ -758,10 +761,11 @@ private theorem native_publication_expected_continuation
     (history : ∀ seed ∈ prior.support, ∃ intended : setup.intendedProtocol.History,
       intended.state = some (tailFrame.lift
         (ProtocolState.entry tailFrame.program (advance (source seed)).1)))
-    (defaultLaw : ∀ seed ∈ prior.support, outcomeLaw profile Config.defaulted
+    (defaultLaw : ∀ seed ∈ prior.support, outcomeDistribution profile Config.defaulted
       ((serviceGraph setup deps).fromSequentialConfig (advance (source seed)).2) = PMF.pure ∅)
     (potential : ∀ seed ∈ prior.support,
-      canonicalLaw profile (execution seed).application.config = canonicalLaw profile
+      canonicalDistribution profile (execution seed).application.config = canonicalDistribution
+        profile
         ((serviceGraph setup deps).fromSequentialConfig (advance (source seed)).2))
     (reflects : ∀ left ∈ (prior.map source).support, ∀ right ∈ (prior.map source).support,
       (advance left).1.view focal = (advance right).1.view focal → observe left = observe right)
@@ -873,18 +877,18 @@ private theorem phaseBoundary_of_completionBoundary
     rw [clear] at defaulted
     simp at defaulted
 
-private theorem canonicalLaw_eq_of_pure_prefix {graph : EventGraph Player L}
+private theorem canonicalDistribution_eq_of_pure_prefix {graph : EventGraph Player L}
     (profile : graph.BehavioralProfile) (before after : graph.Config) (start finish : Nat)
     (lower : start ≤ finish) (beforeOrdered : before.cut.IsPrefix start)
     (afterOrdered : after.cut.IsPrefix finish)
     (head : graph.runPlan (graph.policyPlan profile graph.canonicalScheduler)
       (finish - start) before = PMF.pure after) :
-    canonicalLaw profile before = canonicalLaw profile after := by
+    canonicalDistribution profile before = canonicalDistribution profile after := by
   have remaining : before.remaining = finish - start + after.remaining := by
     have finishBound := afterOrdered.1
     simp only [Config.remaining, beforeOrdered.card, afterOrdered.card]
     omega
-  unfold canonicalLaw
+  unfold canonicalDistribution
   rw [remaining, graph.runPlan_add, head, PMF.pure_bind]
 
 theorem nativeSourceContinuation_public [Finite Player]
@@ -894,7 +898,7 @@ theorem nativeSourceContinuation_public [Finite Player]
     (relaxed : (serviceGraph setup deps).RevealRelaxedOrdered)
     {delay : (serviceGraph setup deps).EventId → Nat}
     (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
-      (serviceInitialLaw setup deps) horizon scheduler delay bound)
+      (serviceInitialDistribution setup deps) horizon scheduler delay bound)
     (timely : AsyncTimely (serviceTimeouts setup deps duration) delay bound)
     (wellFormed : setup.WellFormed)
     (intended : GameTheory.Profile setup.intendedModel.behavioralSignature)
@@ -1029,13 +1033,13 @@ theorem nativeSourceContinuation_public [Finite Player]
     exact actual.clear_of_intended_history wellFormed intendedHistory
       (atHistory.trans actual.decode.symm)
   have endLaw (seed : Seed) (supported : seed ∈ prior.support) :
-      outcomeLaw profile Config.defaulted
+      outcomeDistribution profile Config.defaulted
         (G.fromSequentialConfig (advance (source seed, ghost seed)).2) = PMF.pure ∅ := by
     obtain ⟨reveals, names, check, ⟨inputs, reach⟩, ⟨intendedHistory, atHistory⟩, _law⟩ :=
       endFacts seed supported
     let actual := residualAt tail (advance (source seed, ghost seed)).1 reveals names
       (advance (source seed, ghost seed)).2 check
-    exact actual.prescribed_defaultLaw_fromSequential deps wellFormed
+    exact actual.prescribed_defaultDistribution_fromSequential deps wellFormed
       (CommitmentInterface.forfeiture setup.program) intended target agrees submits reach
       intendedHistory (atHistory.trans actual.decode.symm)
   have phaseBoundary (seed : Seed) (supported : seed ∈ prior.support) :
@@ -1051,8 +1055,9 @@ theorem nativeSourceContinuation_public [Finite Player]
     exact phaseBoundary_of_completionBoundary scheduler (players seed) (execution seed)
       (boundary seed supported) (budget seed supported) clear
   have potential (seed : Seed) (supported : seed ∈ prior.support) :
-      canonicalLaw profile (execution seed).application.config =
-        canonicalLaw profile (G.fromSequentialConfig (advance (source seed, ghost seed)).2) := by
+      canonicalDistribution profile (execution seed).application.config =
+        canonicalDistribution profile (G.fromSequentialConfig (advance
+          (source seed, ghost seed)).2) := by
     have headLaw := G.runPlan_canonical_fromSequential
       (setup.informationGraph.prefixProfile reference) (finish - start) (ghost seed)
     change (setup.informationGraph.runPlan
@@ -1062,8 +1067,8 @@ theorem nativeSourceContinuation_public [Finite Player]
         G.runPlan (G.policyPlan profile G.canonicalScheduler) (finish - start)
           (G.fromSequentialConfig (ghost seed)) at headLaw
     rw [(endFacts seed supported).2.2.2.2.2, PMF.pure_map] at headLaw
-    exact (independent.canonicalLaw_congr _ _ _ rfl (keys seed supported)).trans
-      (canonicalLaw_eq_of_pure_prefix profile _ _ start finish (Nat.le_of_lt run.nonempty)
+    exact (independent.canonicalDistribution_congr _ _ _ rfl (keys seed supported)).trans
+      (canonicalDistribution_eq_of_pure_prefix profile _ _ start finish (Nat.le_of_lt run.nonempty)
         (checkpoint seed supported).ordered (endFacts seed supported).2.2.1.ordered
         headLaw.symm)
   have reflects : ∀ left ∈ (prior.map (fun seed => (source seed, ghost seed))).support,

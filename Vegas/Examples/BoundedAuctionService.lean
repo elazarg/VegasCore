@@ -32,7 +32,7 @@ def timeouts : EventTimeouts graph := PeriodicService.timeouts graph
 
 abbrev app := (reactiveApplication timeouts) leaks
 
-def initialLaw : PMF app.State := Vegas.initialLaw game
+def initialDistribution : PMF app.State := Vegas.initialDistribution game
 
 abbrev horizon := PeriodicService.horizon
 
@@ -41,21 +41,23 @@ def scheduler : app.Scheduler := PeriodicService.scheduler graph roster leaks
 instance : leaks.FiniteSupport := inferInstanceAs
   MessageNetwork.ObservationRule.allPending.FiniteSupport
 
-instance : app.FiniteNature initialLaw scheduler where
+instance : app.FiniteNature initialDistribution scheduler where
   toFiniteEnvironment := inferInstance
-  initial_finite := serviceInitialLaw_support_finite game game.informationDependencies
+  initial_finite := serviceInitialDistribution_support_finite game game.informationDependencies
   scheduler_finite _ _ := by
     rw [scheduler, PeriodicService.scheduler, PMF.support_pure]
     exact Set.finite_singleton _
 
 /-- The actual builder meets its contract on all raw histories. -/
 theorem contract :
-    AsyncContract timeouts leaks initialLaw horizon scheduler (fun _ => 3) (fun _ => 2) := by
+    AsyncContract timeouts leaks initialDistribution horizon scheduler (fun _ => 3)
+      (fun _ => 2) := by
   have supplied := PeriodicService.contract (graph := graph) (roster := roster) (leaks := leaks)
-    (inputLaw := game.initialLaw.map game.eventInputs)
+    (inputLaw := game.initialDistribution.map game.eventInputs)
     (by decide) (by intro event; fin_cases event <;> rfl)
-  simpa only [timeouts, initialLaw, PeriodicService.initial, scheduler, Vegas.initialLaw,
-    serviceInitialLaw, PMF.map_comp, Function.comp_def] using supplied
+  simpa only [timeouts, initialDistribution, PeriodicService.initial, scheduler,
+    Vegas.initialDistribution,
+    serviceInitialDistribution, PMF.map_comp, Function.comp_def] using supplied
 
 def halfRate : Set.Icc (0 : ℝ) 1 := ⟨1 / 2, by norm_num⟩
 
@@ -77,9 +79,11 @@ theorem collection_probability (actual : List (CountEvidence graph))
 serve every joint valuation prior and every builder meeting the stated timing conditions. -/
 def fundedSpecification (prior : PMF (Player → Bid)) (rt : EventTimeouts graph)
     (steps : Nat) (builder : ((reactiveApplication rt) leaks).Scheduler)
-    (finiteNature : ((reactiveApplication rt) leaks).FiniteNature (Vegas.initialLaw (setup prior))
+    (finiteNature : ((reactiveApplication rt) leaks).FiniteNature (Vegas.initialDistribution
+      (setup prior))
       builder) (delay bound : graph.EventId → Nat)
-    (service : AsyncContract rt leaks (Vegas.initialLaw (setup prior)) steps builder delay bound)
+    (service : AsyncContract rt leaks (Vegas.initialDistribution
+      (setup prior)) steps builder delay bound)
     (timely : AsyncTimely rt delay bound)
     (priors : SequentialPriorCondition (setup prior) rt leaks bounds steps builder) :
     ClientSpec (setup prior) rt leaks bounds steps builder values utility (fun _ => -6) where
@@ -114,7 +118,7 @@ def fundedSpecification (prior : PMF (Player → Bid)) (rt : EventTimeouts graph
 def specification : ClientSpec game timeouts leaks bounds horizon scheduler
     values utility (fun _ => -6) :=
   fundedSpecification uniformPrior timeouts horizon scheduler
-    (inferInstanceAs (app.FiniteNature initialLaw scheduler)) _ _ contract
+    (inferInstanceAs (app.FiniteNature initialDistribution scheduler)) _ _ contract
     (PeriodicService.timely (graph := graph)) (.independent signal independent observable)
 
 /-- One selected raw assessment retains the truthful source assessment and its physical clients. -/
@@ -124,24 +128,26 @@ def compilation : ClientCompilation specification (truthfulAssessment uniformPri
 
 abbrev raw := bounds.rawMenu timeouts leaks
 
-abbrev model := raw.information initialLaw horizon scheduler
+abbrev model := raw.information initialDistribution horizon scheduler
 
-def jointLaw : PMF (Option (Config Player simpleExpr program.terminalCtx) × (Player → ℝ)) :=
+def jointDistribution :
+    PMF (Option (Config Player simpleExpr program.terminalCtx) × (Player → ℝ)) :=
   uniformPrior.map (fun types =>
     (some (finalConfig types (types .alice) (types .bob)),
       surplus types (types .alice) (types .bob)))
 
-def rawJointLaw : PMF (Option (Config Player simpleExpr program.terminalCtx) × (Player → ℝ)) :=
-  (raw.run initialLaw horizon scheduler compilation.assessment.strategy).bind
+def rawJointDistribution :
+    PMF (Option (Config Player simpleExpr program.terminalCtx) × (Player → ℝ)) :=
+  (raw.run initialDistribution horizon scheduler compilation.assessment.strategy).bind
     (fun final => specification.observation final.state)
 
-private theorem intended_jointLaw (prior : PMF (Player → Bid)) :
+private theorem intended_jointDistribution (prior : PMF (Player → Bid)) :
     (((setup prior).intendedModel.runBehavioral (truthfulAssessment prior).strategy
       (instructionCount program + 1)).map
       (intendedReadoutExclusion (setup prior) values utility (fun _ => -6))) =
         prior.map (fun types => (some (finalConfig types (types .alice) (types .bob)),
           surplus types (types .alice) (types .bob))) := by
-  have law := truthfulAssessment_joint_law prior
+  have law := truthfulAssessment_joint_distribution prior
   refine Eq.trans ?_ law
   apply map_congr_on_support _
   intro final _supported
@@ -153,15 +159,17 @@ private theorem intended_jointLaw (prior : PMF (Player → Bid)) :
 a timely single-opportunity service realizes the truthful auction's exact joint law. -/
 theorem truthful_single_opportunity (prior : PMF (Player → Bid)) (rt : EventTimeouts graph)
     (steps : Nat) (builder : ((reactiveApplication rt) leaks).Scheduler)
-    (finiteNature : ((reactiveApplication rt) leaks).FiniteNature (Vegas.initialLaw (setup prior))
+    (finiteNature : ((reactiveApplication rt) leaks).FiniteNature (Vegas.initialDistribution
+      (setup prior))
       builder) (delay bound : graph.EventId → Nat)
-    (service : AsyncContract rt leaks (Vegas.initialLaw (setup prior)) steps builder delay bound)
+    (service : AsyncContract rt leaks (Vegas.initialDistribution
+      (setup prior)) steps builder delay bound)
     (timely : AsyncTimely rt delay bound)
     (once : SingleSubmissionOpportunity (setup prior) rt leaks bounds steps builder) :
     let spec := fundedSpecification prior rt steps builder finiteNature delay bound service timely
       (.singleOpportunity (by decide) once)
     ∃ compiled : ClientCompilation spec (truthfulAssessment prior),
-      (((bounds.rawMenu rt leaks).run (Vegas.initialLaw (setup prior)) steps builder
+      (((bounds.rawMenu rt leaks).run (Vegas.initialDistribution (setup prior)) steps builder
         compiled.assessment.strategy).bind (fun final => spec.observation final.state)) =
           prior.map (fun types => (some (finalConfig types (types .alice) (types .bob)),
             surplus types (types .alice) (types .bob))) := by
@@ -169,23 +177,23 @@ theorem truthful_single_opportunity (prior : PMF (Player → Bid)) (rt : EventTi
   let spec := fundedSpecification prior rt steps builder finiteNature delay bound service timely
     (.singleOpportunity (by decide) once)
   let compiled := spec.compile (truthfulAssessment prior) (truthfulAssessment_equilibrium prior)
-  exact ⟨compiled, compiled.outcomeLaw.trans (intended_jointLaw prior)⟩
+  exact ⟨compiled, compiled.outcomeDistribution_eq.trans (intended_jointDistribution prior)⟩
 
-private theorem raw_jointLaw : rawJointLaw = jointLaw :=
-  compilation.outcomeLaw.trans (intended_jointLaw uniformPrior)
+private theorem raw_jointDistribution : rawJointDistribution = jointDistribution :=
+  compilation.outcomeDistribution_eq.trans (intended_jointDistribution uniformPrior)
 
-private theorem physical_jointLaw :
-    ((app.finish initialLaw horizon scheduler compilation.clients none).bind
-      specification.observation) = jointLaw :=
-  compilation.clients_outcomeLaw.trans (intended_jointLaw uniformPrior)
+private theorem physical_jointDistribution :
+    ((app.finish initialDistribution horizon scheduler compilation.clients none).bind
+      specification.observation) = jointDistribution :=
+  compilation.clients_outcomeDistribution.trans (intended_jointDistribution uniformPrior)
 
-private theorem raw_readout_law :
-    (raw.run initialLaw horizon scheduler compilation.assessment.strategy).map
+private theorem raw_readout_distribution :
+    (raw.run initialDistribution horizon scheduler compilation.assessment.strategy).map
       (fun final => sourceReadout game timeouts leaks final.state) =
     (game.intendedModel.runBehavioral (truthfulAssessment uniformPrior).strategy
       (instructionCount program + 1)).map (fun final => game.protocolReadout final.state) := by
-  have projected := congrArg (PMF.map Prod.fst) compilation.outcomeLaw
-  have constant (final : (raw.protocol initialLaw horizon scheduler).History) :
+  have projected := congrArg (PMF.map Prod.fst) compilation.outcomeDistribution_eq
+  have constant (final : (raw.protocol initialDistribution horizon scheduler).History) :
       (specification.settlement final.state).map
         (fun _ => sourceReadout game timeouts leaks final.state) =
       PMF.pure (sourceReadout game timeouts leaks final.state) := PMF.map_const _ _
@@ -195,8 +203,8 @@ private theorem raw_readout_law :
   exact projected
 
 private theorem raw_clean
-    (final : (raw.protocol initialLaw horizon scheduler).History)
-    (supported : final ∈ (raw.run initialLaw horizon scheduler
+    (final : (raw.protocol initialDistribution horizon scheduler).History)
+    (supported : final ∈ (raw.run initialDistribution horizon scheduler
       compilation.assessment.strategy).support) :
     ∃ (control : app.Control) (terminal : Config Player simpleExpr program.terminalCtx),
       final.state = some control ∧ control.execution.application.config.cut.Terminal ∧
@@ -209,10 +217,10 @@ private theorem raw_clean
       ((game.intendedModel.runBehavioral (truthfulAssessment uniformPrior).strategy
         (instructionCount program + 1)).map
         (fun history => game.protocolReadout history.state)).support := by
-    rw [← raw_readout_law]
+    rw [← raw_readout_distribution]
     exact (PMF.mem_support_map_iff _ _ _).mpr ⟨final, supported, rfl⟩
   have explicit := observed
-  rw [truthfulAssessment_readout_law] at explicit
+  rw [truthfulAssessment_readout_distribution] at explicit
   obtain ⟨types, _present, same⟩ := (PMF.mem_support_map_iff _ _ _).mp explicit
   have read := same.symm
   obtain ⟨source, _reached, sourceRead⟩ := (PMF.mem_support_map_iff _ _ _).mp observed
@@ -239,7 +247,7 @@ private theorem raw_clean
 
 private theorem physical_clean (state : app.ProtocolState)
     (supported : state ∈
-      (app.finish initialLaw horizon scheduler compilation.clients none).support) :
+      (app.finish initialDistribution horizon scheduler compilation.clients none).support) :
     ∃ (control : app.Control) (terminal : Config Player simpleExpr program.terminalCtx),
       state = some control ∧ control.execution.application.config.cut.Terminal ∧
       sourceReadout game timeouts leaks state = some terminal ∧
@@ -247,19 +255,20 @@ private theorem physical_clean (state : app.ProtocolState)
       (∀ who, failedReveals program who (publicOutcome program terminal) = 0) ∧
       ∀ who, TerminalAudit.charge app.stateTraffic
         ((countAudit timeouts) leaks evidenceService.sample) state who = 0 := by
-  have same : (raw.run initialLaw horizon scheduler compilation.assessment.strategy).map
+  have same : (raw.run initialDistribution horizon scheduler compilation.assessment.strategy).map
       (fun final => final.state) =
-      app.finish initialLaw horizon scheduler compilation.clients none :=
-    compilation.clients_stateLaw
-  have transported : state ∈ ((raw.run initialLaw horizon scheduler
+      app.finish initialDistribution horizon scheduler compilation.clients none :=
+    compilation.clients_stateDistribution
+  have transported : state ∈ ((raw.run initialDistribution horizon scheduler
       compilation.assessment.strategy).map (fun final => final.state)).support :=
     same.symm ▸ supported
   obtain ⟨final, present, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp transported
   exact raw_clean final present
 
-private theorem jointLaw_expected (who : Player) :
-    expect jointLaw (fun realized => realized.2 who) = 8 / 7 := by
-  simpa only [jointLaw, expect_map, Function.comp_def] using truthful_joint_law_expected who
+private theorem jointDistribution_expected (who : Player) :
+    expect jointDistribution (fun realized => realized.2 who) = 8 / 7 := by
+  simpa only [jointDistribution, expect_map, Function.comp_def] using
+    truthful_joint_distribution_expected who
 
 /-- The selected raw equilibrium retains the intended assessment and its complete
 truthful law under full pending observation; supported play is clean and funded. -/
@@ -267,12 +276,13 @@ theorem native_equilibrium :
     Nonempty (ClientAssessmentRefinement game timeouts leaks bounds horizon scheduler
       (truthfulAssessment uniformPrior) compilation.assessment) ∧
     compilation.assessment.IsSequentialEquilibrium
-      (raw.decisionInformationAntichain initialLaw horizon scheduler)
-      (raw.bounded initialLaw horizon scheduler).wellFoundedHistories
+      (raw.decisionInformationAntichain initialDistribution horizon scheduler)
+      (raw.bounded initialDistribution horizon scheduler).wellFoundedHistories
       (fun who final => specification.payoff who final.state) ∧
-    (∀ who, raw.restrictPolicy initialLaw horizon scheduler who (compilation.clients who) =
+    (∀ who, raw.restrictPolicy initialDistribution horizon scheduler who (compilation.clients who) =
       compilation.assessment.strategy who) ∧
-    (∀ final ∈ (raw.run initialLaw horizon scheduler compilation.assessment.strategy).support,
+    (∀ final ∈ (raw.run initialDistribution horizon scheduler
+      compilation.assessment.strategy).support,
       ∃ (control : app.Control) (terminal : Config Player simpleExpr program.terminalCtx),
         final.state = some control ∧ control.execution.application.config.cut.Terminal ∧
         sourceReadout game timeouts leaks final.state = some terminal ∧
@@ -280,7 +290,7 @@ theorem native_equilibrium :
         (∀ who, failedReveals program who (publicOutcome program terminal) = 0) ∧
         ∀ who, TerminalAudit.charge app.stateTraffic
           ((countAudit timeouts) leaks evidenceService.sample) final.state who = 0) ∧
-    (∀ state ∈ (app.finish initialLaw horizon scheduler compilation.clients none).support,
+    (∀ state ∈ (app.finish initialDistribution horizon scheduler compilation.clients none).support,
       ∃ (control : app.Control) (terminal : Config Player simpleExpr program.terminalCtx),
         state = some control ∧ control.execution.application.config.cut.Terminal ∧
         sourceReadout game timeouts leaks state = some terminal ∧
@@ -288,29 +298,29 @@ theorem native_equilibrium :
         (∀ who, failedReveals program who (publicOutcome program terminal) = 0) ∧
         ∀ who, TerminalAudit.charge app.stateTraffic
           ((countAudit timeouts) leaks evidenceService.sample) state who = 0) ∧
-    rawJointLaw = jointLaw ∧
-    ((app.finish initialLaw horizon scheduler compilation.clients none).bind
-      specification.observation) = jointLaw ∧
-    ∀ who, expect rawJointLaw (fun realized => realized.2 who) = 8 / 7 ∧
-      expect ((app.finish initialLaw horizon scheduler compilation.clients none).bind
+    rawJointDistribution = jointDistribution ∧
+    ((app.finish initialDistribution horizon scheduler compilation.clients none).bind
+      specification.observation) = jointDistribution ∧
+    ∀ who, expect rawJointDistribution (fun realized => realized.2 who) = 8 / 7 ∧
+      expect ((app.finish initialDistribution horizon scheduler compilation.clients none).bind
         specification.observation) (fun realized => realized.2 who) = 8 / 7 := by
   refine ⟨⟨compilation.refinement⟩, compilation.equilibrium, compilation.clients_strategy,
-    raw_clean, physical_clean, raw_jointLaw, physical_jointLaw, ?_⟩
+    raw_clean, physical_clean, raw_jointDistribution, physical_jointDistribution, ?_⟩
   intro who
   constructor
-  · rw [raw_jointLaw]
-    exact jointLaw_expected who
-  · rw [physical_jointLaw]
-    exact jointLaw_expected who
+  · rw [raw_jointDistribution]
+    exact jointDistribution_expected who
+  · rw [physical_jointDistribution]
+    exact jointDistribution_expected who
 
 /-- The same selected assessment and physical clients retain the executable cash law. -/
 theorem program_payments_preserved :
-    ((raw.run initialLaw horizon scheduler compilation.assessment.strategy).bind
+    ((raw.run initialDistribution horizon scheduler compilation.assessment.strategy).bind
       (fun final => specification.programPaymentObservation final.state)) =
-        game.intendedPaymentLaw (truthfulAssessment uniformPrior) ∧
-    ((app.finish initialLaw horizon scheduler compilation.clients none).bind
+        game.intendedPaymentDistribution (truthfulAssessment uniformPrior) ∧
+    ((app.finish initialDistribution horizon scheduler compilation.clients none).bind
       specification.programPaymentObservation) =
-        game.intendedPaymentLaw (truthfulAssessment uniformPrior) := by
+        game.intendedPaymentDistribution (truthfulAssessment uniformPrior) := by
   exact ⟨intended_raw_programPayments_preserved game timeouts leaks bounds horizon scheduler
       values utility (fun _ => -6) specification (truthfulAssessment uniformPrior) compilation,
     compilation.clients_programPayments_preserved game timeouts leaks bounds horizon scheduler

@@ -38,18 +38,20 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
   (bounds : MessageBounds setup.informationGraph) (horizon : Nat)
   (scheduler : (application setup timeouts leaks).Scheduler)
-  [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
+  [(application setup timeouts leaks).FiniteNature (initialDistribution setup) scheduler]
   {Parameter : Type} (parameter : State L setup.context → Parameter)
   (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
   (excludedPayoff : Player → ℝ)
-  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds
+    (initialDistribution setup) horizon
     scheduler).InfoState who)]
 
 local notation "onePacketN" =>
-  onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+  onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
 
-omit [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
-  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+omit [(application setup timeouts leaks).FiniteNature (initialDistribution setup) scheduler]
+  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds
+    (initialDistribution setup) horizon
     scheduler).InfoState who)] in
 open Classical in
 /-- **Committing at a forced history is a source gain.** For a well-formed setup,
@@ -129,9 +131,9 @@ theorem decodedCommitValue_sub_eq_historyGain (wellFormed : setup.WellFormed)
     timeouts leaks decision)
     atSite rfl ⟨⟨_, trace⟩, seen⟩ replayed
   -- The site's rank is the configuration's completed prefix.
-  have rawTrace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+  have rawTrace : ((application setup timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some ⟨remaining, some who, execution⟩) :=
-    (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon
+    (bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup) horizon
       scheduler trace
   obtain ⟨rank, ordered, _⟩ := pendingAt_history (timeouts := timeouts) rawTrace
   have rankEq : siteRank (timeouts := timeouts) site.1 = rank := by
@@ -161,14 +163,15 @@ theorem decodedCommitValue_sub_eq_historyGain (wellFormed : setup.WellFormed)
   unfold decodedCommitValue decodedPointValue
   simp only [prefixEq, reached, ↓reduceIte]
 
-omit [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
-  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+omit [(application setup timeouts leaks).FiniteNature (initialDistribution setup) scheduler]
+  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds
+    (initialDistribution setup) horizon
     scheduler).InfoState who)] in
 /-- The value of committing a choice at a site history is bounded by a bound on
 the exclusion payoff and the readout utility. -/
 theorem abs_decodedCommitValue_le (profile : BehavioralProfile setup.program) (who : Player)
     (rank : Nat) (choice : Option (OwnAction Player L))
-    (history : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup)
+    (history : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup)
       horizon scheduler).History) {bound : ℝ}
     (readoutBounded : ∀ readout,
       |exclusionReadoutUtility setup parameter utility excludedPayoff readout who| ≤ bound)
@@ -189,14 +192,15 @@ theorem abs_decodedCommitValue_le (profile : BehavioralProfile setup.program) (w
       · exact expect_abs_le_of_bounded boundNonneg pointBound
       · exact excludedBounded
 
-omit [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
-  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+omit [(application setup timeouts leaks).FiniteNature (initialDistribution setup) scheduler]
+  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds
+    (initialDistribution setup) horizon
     scheduler).InfoState who)] in
 /-- The value at the decoded point of a site history is bounded by a bound on the
 exclusion payoff and the readout utility. -/
 theorem abs_decodedPointValue_le (profile : BehavioralProfile setup.program) (who : Player)
     (rank : Nat)
-    (history : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup)
+    (history : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup)
       horizon scheduler).History) {bound : ℝ}
     (readoutBounded : ∀ readout,
       |exclusionReadoutUtility setup parameter utility excludedPayoff readout who| ≤ bound)
@@ -215,7 +219,8 @@ theorem abs_decodedPointValue_le (profile : BehavioralProfile setup.program) (wh
       · exact expect_abs_le_of_bounded boundNonneg readoutBounded
       · exact excludedBounded
 
-omit [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+omit [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds
+    (initialDistribution setup) horizon
     scheduler).InfoState who)] in
 open Classical in
 /-- **The value of committing at a site is a source gain.** For a well-formed
@@ -354,8 +359,9 @@ theorem abs_siteCommitValue_sub_le [Finite setup.intendedProtocol.History]
   have bounds := abs_le.mp transport
   exact abs_le.mpr ⟨by linarith [bounds.1], by linarith [bounds.2]⟩
 
-omit [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
-  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+omit [(application setup timeouts leaks).FiniteNature (initialDistribution setup) scheduler]
+  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds
+    (initialDistribution setup) horizon
     scheduler).InfoState who)] in
 /-- **One-packet commitments use the bounded slots.** A transmitting response of
 the one-packet menu committing an event to a prepared slot commits to one of

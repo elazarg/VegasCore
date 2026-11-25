@@ -36,15 +36,17 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
   (bounds : MessageBounds setup.informationGraph) (horizon : Nat)
   (scheduler : (application setup timeouts leaks).Scheduler)
-  [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
-  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+  [(application setup timeouts leaks).FiniteNature (initialDistribution setup) scheduler]
+  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds
+    (initialDistribution setup) horizon
     scheduler).InfoState who)]
 
 local notation "onePacketN" =>
-  onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+  onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
 
-omit [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
-  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+omit [(application setup timeouts leaks).FiniteNature (initialDistribution setup) scheduler]
+  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds
+    (initialDistribution setup) horizon
     scheduler).InfoState who)] in
 /-- At a history of a decision site of `who`, the state is a decision of `who`
 whose recall and view are the site's. -/
@@ -58,7 +60,7 @@ theorem state_of_site {who : Player} {site : (onePacketN).InformationSite who}
   obtain ⟨fullHistory, infoEq⟩ := history
   have observed : (application setup timeouts leaks).observe who fullHistory.state = some (past,
     view) :=
-    ((bounds.onePacketMenu timeouts leaks).info (initialLaw setup) horizon scheduler who
+    ((bounds.onePacketMenu timeouts leaks).info (initialDistribution setup) horizon scheduler who
       fullHistory.trace).symm.trans (infoEq.trans atSite)
   cases state : fullHistory.state with
   | none =>
@@ -75,8 +77,9 @@ theorem state_of_site {who : Player} {site : (onePacketN).InformationSite who}
       · simp only [acting, ↓reduceIte] at observed
         cases observed
 
-omit [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
-  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+omit [(application setup timeouts leaks).FiniteNature (initialDistribution setup) scheduler]
+  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds
+    (initialDistribution setup) horizon
     scheduler).InfoState who)] in
 /-- Every history of a decision site of `who` with a pending event is a prefix of
 the site's rank. -/
@@ -90,9 +93,9 @@ theorem ordered_of_site {who : Player} {site : (onePacketN).InformationSite who}
   obtain ⟨remaining, execution, current, recallEq, observeEq⟩ :=
     state_of_site setup timeouts leaks bounds horizon scheduler atSite history
   refine ⟨remaining, execution, current, recallEq, observeEq, ?_⟩
-  have rawTrace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+  have rawTrace : ((application setup timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some ⟨remaining, some who, execution⟩) :=
-    (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon scheduler
+    (bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup) horizon scheduler
       (current ▸ history.1.trace)
   obtain ⟨found, foundOrdered, _⟩ := pendingAt_history (timeouts := timeouts) rawTrace
   have rankEq : siteRank (timeouts := timeouts) site.1 = found := by
@@ -102,7 +105,7 @@ theorem ordered_of_site {who : Player} {site : (onePacketN).InformationSite who}
     exact EventGraph.Config.history_length_of_isPrefix _ foundOrdered
   exact rankEq ▸ foundOrdered
 
-omit [Fintype Player] [(application setup timeouts leaks).FiniteNature (initialLaw setup)
+omit [Fintype Player] [(application setup timeouts leaks).FiniteNature (initialDistribution setup)
   scheduler] in
 /-- The key of a late delivery of a binding with nothing sent decides that
 binding: it is no publication turn, its binding turn is the event, and its
@@ -111,7 +114,7 @@ theorem lateKey_decides_binding {who : Player} {past : List (application setup t
   leaks).PlayerEntry}
     {view : (application setup timeouts leaks).PlayerView} {control : (application setup timeouts
       leaks).Control}
-    (trace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((application setup timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace
       (some control))
     (recallEq : control.execution.logs who = past) {key : LateKey setup timeouts leaks}
@@ -156,8 +159,9 @@ section
 
 variable {setup timeouts leaks bounds horizon scheduler}
 
-omit [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
-  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+omit [(application setup timeouts leaks).FiniteNature (initialDistribution setup) scheduler]
+  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds
+    (initialDistribution setup) horizon
     scheduler).InfoState who)] in
 open Classical in
 /-- **Value-free success after a late commitment.** Let a one-step lumping of
@@ -172,24 +176,24 @@ an as-if-honest source choice at a permitted slot within the capacity, the
 completion mass of play of `installed` until the event completes depends, up
 to the horizon times `δ`, on the slot alone. -/
 theorem lateBinding_successFree
-    [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
+    [(application setup timeouts leaks).FiniteNature (initialDistribution setup) scheduler]
     (covers : bounds.CoversOutputValues)
     (assessment : setup.intendedModel.BehavioralAssessment)
-    {target : (onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+    {target : (onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon
       scheduler).BehavioralAssessment}
     {who : Player}
-    {relevant : (onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+    {relevant : (onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon
       scheduler).InformationSite who →
       Prop} {LateOption' : Type}
-    {profileOf : (onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+    {profileOf : (onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon
       scheduler).InformationSite who →
       LateOption' → ∀ player,
-        (onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+        (onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon
           scheduler).BehavioralPolicy player}
     {δ : ℝ} {Y : Type}
     (lumping : PendingLumpingOn (timeouts := timeouts) target who relevant profileOf
       (DecisionFailed (timeouts := timeouts)) δ Y)
-    (site : (onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+    (site : (onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon
       scheduler).InformationSite who)
     (isRelevant : relevant site) {key : LateKey setup timeouts leaks}
     (siteKey : lateKey setup timeouts leaks who site.1 = some key)
@@ -198,12 +202,12 @@ theorem lateBinding_successFree
     (imageOfBinding : BindingImage (timeouts := timeouts) (setup := setup) (leaks := leaks) → Y)
     (imageBinding : ∀ state, lumping.image key state =
       imageOfBinding (bindingImage (timeouts := timeouts) event who payload state))
-    (start : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (start : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).History)
     {remaining : Nat} {execution : (application setup timeouts leaks).Execution}
     (current : start.state = some ⟨remaining, some who, execution⟩)
     (keptOf : ∀ (history : ((bounds.onePacketMenu timeouts leaks).protocol
-        (initialLaw setup) horizon scheduler).History)
+        (initialDistribution setup) horizon scheduler).History)
         (control : (application setup timeouts leaks).Control),
       history.state = some control → ForcedState setup timeouts leaks who (some control) →
       control.execution.application.config.cut.Ready event →
@@ -211,18 +215,19 @@ theorem lateBinding_successFree
       (∃ entry rest, control.execution.logs who = execution.logs who ++ entry :: rest ∧
         entry.beforeView = execution.observe (application setup timeouts leaks) who) →
       history.state ∈ lumping.keep site key)
-    (installed : ∀ player, (onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+    (installed : ∀ player, (onePacketModel setup timeouts leaks bounds
+      (initialDistribution setup) horizon
       scheduler).BehavioralPolicy player)
     (agreeLonger : ∀ history : ((bounds.onePacketMenu timeouts leaks).protocol
-        (initialLaw setup) horizon scheduler).History,
+        (initialDistribution setup) horizon scheduler).History,
       (∀ control, history.state = some control →
         (execution.logs who).length < (control.execution.logs who).length) →
       ∀ player, installed player
-          ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+          ((onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon
             scheduler).infoOf player
             history.trace) =
         profileOf site option player
-          ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+          ((onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon
             scheduler).infoOf player
             history.trace))
     {outputEq : setup.informationGraph.outputLayout event = .binding who payload}
@@ -234,7 +239,7 @@ theorem lateBinding_successFree
     {point : ProtocolState setup.program}
     (decoded : sourceServicePrefix? setup rank execution.application.config = some point)
     (terminalCompleted : ∀ (final : (application setup timeouts leaks).Control),
-      ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+      ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
         scheduler).Trace (some final) →
       (application setup timeouts leaks).terminal (some final) →
       final.execution.application.config = execution.application.config →
@@ -245,7 +250,7 @@ theorem lateBinding_successFree
     (freshIff : ∀ control, fresh control ↔
       ¬ StoreEventFailed control.execution.application.config.store event) :
     ∀ (history : ((bounds.onePacketMenu timeouts leaks).protocol
-        (initialLaw setup) horizon scheduler).History) (later : Nat)
+        (initialDistribution setup) horizon scheduler).History) (later : Nat)
         (reached : (application setup timeouts leaks).Execution),
       history.state = some ⟨later, some who, reached⟩ →
       LateUnsent setup timeouts leaks who event execution.application.config (execution.logs who)
@@ -263,25 +268,25 @@ theorem lateBinding_successFree
         ∃ factor : ℝ, ∀ choice ∈ (asIfHonestProfile setup timeouts leaks assessment who
             (some (reached.logs who, reached.observe (application setup timeouts leaks)
               who))).support,
-          ∀ next : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup)
+          ∀ next : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup)
               horizon scheduler).History,
             next.state = some ⟨later, none, reached.respond (application setup timeouts leaks) who
               (slotResponse setup timeouts leaks who (reached.logs who)
                 (reached.observe (application setup timeouts leaks) who) event slot choice)⟩ →
-            |expect ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+            |expect ((onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon
                 scheduler).runBehavioralUntil
-                ((bounds.onePacketMenu timeouts leaks).bounded (initialLaw setup) horizon
+                ((bounds.onePacketMenu timeouts leaks).bounded (initialDistribution setup) horizon
                   scheduler).wellFoundedHistories installed
                 (LateStopped setup timeouts leaks bounds horizon scheduler rank) next)
                 (completionIndicator setup timeouts leaks bounds horizon scheduler rank fresh) -
               factor| ≤ (2 * horizon + 1 : ℕ) * δ := by
   intro history later reached state holds sameView extended slot below permitted
   let menu := bounds.onePacketMenu timeouts leaks
-  let model := menu.information (initialLaw setup) horizon scheduler
+  let model := menu.information (initialDistribution setup) horizon scheduler
   obtain ⟨atSent, extends_, _⟩ := (by simpa only [state] using holds :
     LateUnsent setup timeouts leaks who event execution.application.config (execution.logs who)
       (some ⟨later, some who, reached⟩))
-  have traceHere : (menu.protocol (initialLaw setup) horizon scheduler).Trace
+  have traceHere : (menu.protocol (initialDistribution setup) horizon scheduler).Trace
       (some ⟨later, some who, reached⟩) := state ▸ history.trace
   have readySent : execution.application.config.cut.Ready event :=
     (execution.application.publicView_eventReady event).mp
@@ -353,7 +358,7 @@ theorem lateBinding_successFree
   have owned : setup.informationGraph.actor? event = some who := nodeView_bind_actor outputEq codeEq
   have pointDecoded : decodedPoint setup reached.application.config = some point :=
     (decodedPoint_eq_of_isPrefix orderedHere).trans decodedHere
-  have rawTrace := menu.toRawTrace (initialLaw setup) horizon scheduler traceHere
+  have rawTrace := menu.toRawTrace (initialDistribution setup) horizon scheduler traceHere
   have active := reached.application.active_of_ready_owned
     (legalFacts setup leaks horizon scheduler _ rawTrace).quiescent readyHere owned
   have acts : ∀ player, ProtocolView.actor player setup.program
@@ -400,12 +405,14 @@ theorem lateBinding_successFree
     intro later' path _ player
     apply agreeLonger later'
     intro control laterState
-    have rawPath := menu.reaches_raw (initialLaw setup) horizon scheduler path
-    have grown := (application setup timeouts leaks).reaches_recall_prefix (initialLaw setup)
+    have rawPath := menu.reaches_raw (initialDistribution setup) horizon scheduler path
+    have grown := (application setup timeouts leaks).reaches_recall_prefix
+      (initialDistribution setup)
       horizon
       scheduler rawPath _ control nextState laterState who
     exact lt_of_lt_of_le nextRecall grown.length_le
-  have failedEq : (fun final : (menu.protocol (initialLaw setup) horizon scheduler).History =>
+  have failedEq : (fun final : (menu.protocol (initialDistribution setup) horizon
+    scheduler).History =>
       if EventFailedState setup timeouts leaks event final.state then (1 : ℝ) else 0) =
       fun final => if DecisionFailed (timeouts := timeouts) key final.state then 1 else 0 := by
     funext final
@@ -526,7 +533,7 @@ up to the horizon times twice the cube of the scale. -/
 theorem certificate_lateSuccessFree (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (scale : ℕ → ℝ) (scale_pos : ∀ n, 0 < scale n) (scale_le_one : ∀ n, scale n ≤ 1)
     {slots : Nat}
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialDistribution setup)
       horizon scheduler slots p))
     (targetSequence : ℕ → (onePacketN).BehavioralAssessment)
     (assembled : OnePacketAssembled setup timeouts leaks bounds horizon scheduler sequence scale
@@ -560,14 +567,14 @@ theorem certificate_lateSuccessFree (sequence : ℕ → setup.intendedModel.Beha
       execution.application.config =
       some point)
     (terminalCompleted : ∀ (final : (application setup timeouts leaks).Control),
-      ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+      ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
         scheduler).Trace (some final) →
       (application setup timeouts leaks).terminal (some final) →
       final.execution.application.config = execution.application.config →
       event ∈ final.execution.application.config.cut.completed)
     (intendedPoint : ProtocolState.Intended setup.program point) :
     ∀ (later : ((bounds.onePacketMenu timeouts leaks).protocol
-        (initialLaw setup) horizon scheduler).History) (laterRemaining : Nat)
+        (initialDistribution setup) horizon scheduler).History) (laterRemaining : Nat)
         (reached : (application setup timeouts leaks).Execution),
       later.state = some ⟨laterRemaining, some who, reached⟩ →
       LateUnsent setup timeouts leaks who event execution.application.config (execution.logs who)
@@ -585,14 +592,14 @@ theorem certificate_lateSuccessFree (sequence : ℕ → setup.intendedModel.Beha
         ∃ factor : ℝ, ∀ choice ∈ (asIfHonestProfile setup timeouts leaks (sequence n) who
             (some (reached.logs who, reached.observe (application setup timeouts leaks)
               who))).support,
-          ∀ next : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup)
+          ∀ next : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup)
               horizon scheduler).History,
             next.state = some ⟨laterRemaining, none, reached.respond (application setup timeouts
               leaks)
               who (slotResponse setup timeouts leaks who (reached.logs who)
                 (reached.observe (application setup timeouts leaks) who) event slot choice)⟩ →
             |expect ((onePacketN).runBehavioralUntil
-                ((bounds.onePacketMenu timeouts leaks).bounded (initialLaw setup) horizon
+                ((bounds.onePacketMenu timeouts leaks).bounded (initialDistribution setup) horizon
                   scheduler).wellFoundedHistories
                 (Profile.update (sig := (onePacketN).behavioralSignature)
                   (targetSequence n).strategy who
@@ -603,10 +610,10 @@ theorem certificate_lateSuccessFree (sequence : ℕ → setup.intendedModel.Beha
                   (timeouts := timeouts) site.1)
                   (siteFresh (timeouts := timeouts) who site.1)) - factor| ≤
               (2 * horizon + 1 : ℕ) * (scale n ^ 3 + scale n ^ 3) := by
-  have rawTrace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+  have rawTrace : ((application setup timeouts leaks).protocol (initialDistribution setup) horizon
     scheduler).Trace
       (some ⟨remaining, some who, execution⟩) :=
-    (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon scheduler
+    (bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup) horizon scheduler
       (current ▸ history.1.trace)
   have pendingHere := pending
   rw [atSite] at pendingHere
@@ -671,9 +678,9 @@ theorem certificate_lateSuccessFree (sequence : ℕ → setup.intendedModel.Beha
       simp only [Profile.update_same]
       have different : (onePacketN).infoOf player later.trace ≠ site.1 := by
         rw [atSite]
-        change ((bounds.onePacketMenu timeouts leaks).signals (initialLaw setup) horizon
+        change ((bounds.onePacketMenu timeouts leaks).signals (initialDistribution setup) horizon
           scheduler).infoOf player later.trace ≠ _
-        rw [(bounds.onePacketMenu timeouts leaks).info (initialLaw setup) horizon
+        rw [(bounds.onePacketMenu timeouts leaks).info (initialDistribution setup) horizon
           scheduler player later.trace]
         cases laterState : later.state with
         | none => simp [ReactiveApplication.observe]

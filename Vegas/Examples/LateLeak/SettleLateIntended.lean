@@ -36,10 +36,11 @@ variable {G : SettleLateParameters}
 /-- In the intended game the sender opens at the protected turn. -/
 theorem settleLate_intended_opening (profile : SettleLateProfile G false)
     (secret : LateLeakType) :
-    settleLateSenderLaw profile (.protectedTurn secret) = PMF.pure (some (.emit .opening)) := by
+    settleLateSenderDistribution profile (.protectedTurn secret) = PMF.pure (some
+      (.emit .opening)) := by
   apply pmf_eq_pure_of_support_subset_singleton
   intro choice supported
-  obtain ⟨packet, rfl, allowed⟩ := settleLateSenderLaw_support profile _ choice supported
+  obtain ⟨packet, rfl, allowed⟩ := settleLateSenderDistribution_support profile _ choice supported
   rcases allowed with impossible | rfl
   · cases impossible
   · rfl
@@ -47,10 +48,11 @@ theorem settleLate_intended_opening (profile : SettleLateProfile G false)
 /-- In the intended game the sender emits nothing after the protected
 opening. -/
 theorem settleLate_intended_quiet (profile : SettleLateProfile G false) (secret : LateLeakType) :
-    settleLateSenderLaw profile (.afterProtected secret) = PMF.pure (some (.emit .silent)) := by
+    settleLateSenderDistribution profile (.afterProtected secret) = PMF.pure (some
+      (.emit .silent)) := by
   apply pmf_eq_pure_of_support_subset_singleton
   intro choice supported
-  obtain ⟨word, rfl, allowed⟩ := settleLateSenderLaw_support profile _ choice supported
+  obtain ⟨word, rfl, allowed⟩ := settleLateSenderDistribution_support profile _ choice supported
   rcases allowed with impossible | rfl
   · cases impossible
   · rfl
@@ -165,10 +167,10 @@ theorem settleLate_weight_opened {late : Bool} (profile : SettleLateProfile G la
     (secret : LateLeakType) :
     (settleLateModel G late).historyReachWeight profile (settleLateOpenedHistory G late secret) =
       lateLeakPrior secret *
-        settleLateSenderLaw profile (.protectedTurn secret) (some (.emit .opening)) := by
+        settleLateSenderDistribution profile (.protectedTurn secret) (some (.emit .opening)) := by
   rw [settleLateOpenedHistory, settleLateExtend_weight, settleLate_weight_type]
   congr 1
-  change settleLateSenderLaw profile (.protectedTurn secret) (some (.emit .opening)) *
+  change settleLateSenderDistribution profile (.protectedTurn secret) (some (.emit .opening)) *
     (settleLateAdvance G (.protectedTurn secret) (some (.emit .opening)))
       (.afterProtected secret) = _
   simp [settleLateAdvance, settleLatePacketOf]
@@ -178,8 +180,8 @@ theorem settleLate_intended_weight_answer (profile : SettleLateProfile G false)
     (settleLateModel G false).historyReachWeight profile
         (settleLateProtectedAnswerHistory G false secret) = lateLeakPrior secret := by
   rw [settleLateProtectedAnswerHistory, settleLateExtend_weight, settleLate_weight_opened]
-  change lateLeakPrior secret * settleLateSenderLaw profile (.protectedTurn secret)
-      (some (.emit .opening)) * (settleLateSenderLaw profile (.afterProtected secret)
+  change lateLeakPrior secret * settleLateSenderDistribution profile (.protectedTurn secret)
+      (some (.emit .opening)) * (settleLateSenderDistribution profile (.afterProtected secret)
       (some (.emit .silent)) * (settleLateAdvance G (.afterProtected secret)
         (some (.emit .silent))) (.protectedAnswer secret none)) = _
   rw [settleLate_intended_opening, settleLate_intended_quiet]
@@ -315,31 +317,33 @@ theorem settleLateFlow_iterate_protectedDone (profile : SettleLateProfile G fals
 
 /-- A profile answering safely after every protected opening has the intended
 outcome law. -/
-theorem settleLateOutcomeLaw_of_safe (profile : SettleLateProfile G false)
-    (safe : ∀ bit, settleLateListenerLaw profile (.protectedAsked bit none) =
+theorem settleLateOutcomeDistribution_of_safe (profile : SettleLateProfile G false)
+    (safe : ∀ bit, settleLateListenerDistribution profile (.protectedAsked bit none) =
       PMF.pure (some (.reply .safe))) :
-    settleLateOutcomeLaw G false profile = settleLateIntendedOutcome := by
-  rw [settleLateOutcomeLaw_eq, Function.iterate_succ_apply, settleLateFlow_pure,
+    settleLateOutcomeDistribution G false profile = settleLateIntendedOutcome := by
+  rw [settleLateOutcomeDistribution_eq, Function.iterate_succ_apply, settleLateFlow_pure,
     settleLateFlow_iterate_eq_bind]
-  change ((settleLateMoveLaw profile .initial).bind
+  change ((settleLateMoveDistribution profile .initial).bind
     fun _ => lateLeakPrior.map SettleLateState.protectedTurn).bind _ = _
   rw [PMF.bind_const, PMF.bind_map, settleLateIntendedOutcome, ← PMF.bind_pure_comp]
   congr 1
   funext secret
   simp only [Function.comp_apply]
   rw [Function.iterate_succ_apply, settleLateFlow_pure]
-  change (settleLateFlow profile)^[4] ((settleLateSenderLaw profile (.protectedTurn secret)).bind
+  change (settleLateFlow profile)^[4] ((settleLateSenderDistribution profile
+    (.protectedTurn secret)).bind
     (settleLateAdvance G (.protectedTurn secret))) = _
   rw [settleLate_intended_opening, PMF.pure_bind]
   simp only [settleLateAdvance, settleLatePacketOf, ite_true]
   rw [Function.iterate_succ_apply, settleLateFlow_pure]
-  change (settleLateFlow profile)^[3] ((settleLateSenderLaw profile (.afterProtected secret)).bind
+  change (settleLateFlow profile)^[3] ((settleLateSenderDistribution profile
+    (.afterProtected secret)).bind
     (settleLateAdvance G (.afterProtected secret))) = _
   rw [settleLate_intended_quiet, PMF.pure_bind]
   simp only [settleLateAdvance, settleLatePacketOf, SettleLatePacket.word]
   rw [Function.iterate_succ_apply, settleLateFlow_pure]
   change (settleLateFlow profile)^[2]
-    ((settleLateListenerLaw profile (.protectedAsked secret.1 none)).bind
+    ((settleLateListenerDistribution profile (.protectedAsked secret.1 none)).bind
       (settleLateAdvance G (.protectedAnswer secret none))) = _
   rw [safe, PMF.pure_bind]
   simp only [settleLateAdvance, settleLateReplyOf]
@@ -394,7 +398,7 @@ theorem settleLateKernel_update_listener (profile : SettleLateProfile G false)
     (mover : state.mover = .sender) :
     settleLateKernel (settleLateUpdate profile .listener policy) state =
       settleLateKernel profile state := by
-  unfold settleLateKernel settleLateMoveLaw
+  unfold settleLateKernel settleLateMoveDistribution
   rw [mover]
   simp only [settleLateUpdate, Profile.update_of_ne _ _ (by decide :
     LateLeakRole.sender ≠ LateLeakRole.listener)]
@@ -445,9 +449,10 @@ def settleLateIntendedAssessment (G : SettleLateParameters) :
       (settleLateUniformProfile_mixed G false) (settleLate_antichain G false)).belief⟩
 
 theorem settleLateIntendedAssessment_safe (bit : Bool) :
-    settleLateListenerLaw (settleLateIntendedAssessment G).strategy (.protectedAsked bit none) =
+    settleLateListenerDistribution (settleLateIntendedAssessment G).strategy
+      (.protectedAsked bit none) =
       PMF.pure (some (.reply .safe)) := by
-  simp [settleLateListenerLaw, settleLateIntendedAssessment, settleLateUpdate,
+  simp [settleLateListenerDistribution, settleLateIntendedAssessment, settleLateUpdate,
     settleLateSafePolicy, PMF.pure_map]
 
 theorem settleLateIntendedAssessment_isSequentialEquilibrium :
@@ -470,14 +475,15 @@ theorem settleLateIntendedAssessment_isSequentialEquilibrium :
             settleLate_intended_opening, settleLate_intended_opening, expect_pure, expect_pure]
           simp only [settleLatePacketOf, settleLateProtectedEmitValue, ite_true,
             settleLateAfterValue, settleLate_intended_quiet, expect_pure,
-            settleLateProtectedAnswerValue, settleLateListenerLaw_update_sender, le_refl]
+            settleLateProtectedAnswerValue, settleLateListenerDistribution_update_sender, le_refl]
         · apply settleLate_rational_at_state_of_values _ _ site (state := .afterProtected secret)
             (fun history => settleLate_afterProtected_fiber ⟨history.1, history.2.trans at_view⟩)
           intro alternative
           rw [show (6 : ℕ) = 4 + 2 from rfl, settleLateValue_afterProtected,
             settleLateValue_afterProtected, settleLateAfterValue, settleLateAfterValue,
             settleLate_intended_quiet, settleLate_intended_quiet, expect_pure, expect_pure]
-          simp only [settleLateProtectedAnswerValue, settleLateListenerLaw_update_sender, le_refl]
+          simp only [settleLateProtectedAnswerValue, settleLateListenerDistribution_update_sender,
+            le_refl]
     | listener =>
         obtain ⟨bit, at_view⟩ := settleLate_intended_listener_site site
         rcases site with ⟨info, decision⟩
@@ -529,9 +535,9 @@ law. -/
 theorem settleLate_intended_outcome (A : (settleLateModel G false).BehavioralAssessment)
     (equilibrium : A.IsSequentialEquilibrium (settleLate_antichain G false)
       (settleLate_terminates G false) (settleLatePayoff G false)) :
-    settleLateOutcomeLaw G false A.strategy = settleLateIntendedOutcome := by
+    settleLateOutcomeDistribution G false A.strategy = settleLateIntendedOutcome := by
   obtain ⟨rational, sequence, approximate, converges⟩ := equilibrium
-  apply settleLateOutcomeLaw_of_safe
+  apply settleLateOutcomeDistribution_of_safe
   intro bit
   have decision : (settleLateModel G false).IsDecisionInfo .listener
       (.protectedAsked bit none) :=
@@ -554,7 +560,7 @@ theorem settleLate_intended_outcome (A : (settleLateModel G false).BehavioralAss
     (Or.inr ⟨bit, none, rfl⟩)
   apply pmf_eq_pure_of_support_subset_singleton
   intro choice supported
-  obtain ⟨answer, rfl, fits⟩ := settleLateListenerLaw_support A.strategy _ choice supported
+  obtain ⟨answer, rfl, fits⟩ := settleLateListenerDistribution_support A.strategy _ choice supported
   cases answer with
   | safe => rfl
   | guess label =>
@@ -574,7 +580,7 @@ theorem settleLate_intended_equilibria (G : SettleLateParameters) :
     ∀ A : (settleLateModel G false).BehavioralAssessment,
       A.IsSequentialEquilibrium (settleLate_antichain G false) (settleLate_terminates G false)
           (settleLatePayoff G false) →
-        settleLateOutcomeLaw G false A.strategy = settleLateIntendedOutcome :=
+        settleLateOutcomeDistribution G false A.strategy = settleLateIntendedOutcome :=
   ⟨⟨settleLateIntendedAssessment G, settleLateIntendedAssessment_isSequentialEquilibrium⟩,
     settleLate_intended_outcome⟩
 

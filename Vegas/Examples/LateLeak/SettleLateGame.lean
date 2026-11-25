@@ -333,7 +333,7 @@ def settleLateExposure (G : SettleLateParameters) (pending : Bool) : PMF Bool :=
 
 /-- The Luce law of two competing late openings: each is included with
 probability `q / (1 + q)`. -/
-def settleLateRetryLaw (G : SettleLateParameters) : PMF (Option SettleLateSlot) :=
+def settleLateRetryDistribution (G : SettleLateParameters) : PMF (Option SettleLateSlot) :=
   PMF.ofFintype (fun included => ENNReal.ofReal (match included with
       | some _ => lateLeakInclusionProb G.toLateLeakParameters /
           (1 + lateLeakInclusionProb G.toLateLeakParameters)
@@ -357,17 +357,17 @@ def settleLateRetryLaw (G : SettleLateParameters) : PMF (Option SettleLateSlot) 
       ring)
 
 /-- What the observe-only activation records of the first late turn. -/
-def settleLateFirstLaw (G : SettleLateParameters) : SettleLatePacket → PMF SettleLateFirst
+def settleLateFirstDistribution (G : SettleLateParameters) : SettleLatePacket → PMF SettleLateFirst
   | .silent => PMF.pure .silent
   | .signal word => PMF.pure (.signal word)
   | .opening => (settleLateLeakCoin G).map SettleLateFirst.opening
 
 /-- The inclusion step and the leak at the answer. -/
-def settleLateFateLaw (G : SettleLateParameters) (first : SettleLateFirst)
+def settleLateFateDistribution (G : SettleLateParameters) (first : SettleLateFirst)
     (second : SettleLatePacket) : PMF SettleLateFate :=
   match first.opened, second.isOpening with
   | true, true =>
-      (settleLateRetryLaw G).bind fun included =>
+      (settleLateRetryDistribution G).bind fun included =>
         (settleLateExposure G (included != some .first && !first.seen)).bind fun firstExposed =>
           (settleLateExposure G (included != some .second)).map fun secondExposed =>
             ⟨included, firstExposed, secondExposed⟩
@@ -396,11 +396,11 @@ def settleLateAdvance (G : SettleLateParameters) :
       PMF.pure (.protectedDone secret talk (settleLateReplyOf choice))
   | .protectedDone secret talk answer, _ => PMF.pure (.protectedDone secret talk answer)
   | .firstLate secret early, choice =>
-      (settleLateFirstLaw G (settleLatePacketOf choice)).map (.watching secret early)
+      (settleLateFirstDistribution G (settleLatePacketOf choice)).map (.watching secret early)
   | .watching secret early first, choice =>
       PMF.pure (.secondLate secret early first (settleLatePingOf choice))
   | .secondLate secret early first ping, choice =>
-      (settleLateFateLaw G first (settleLatePacketOf choice)).map fun fate =>
+      (settleLateFateDistribution G first (settleLatePacketOf choice)).map fun fate =>
         .answering ⟨secret, early, first, ping, settleLatePacketOf choice, fate⟩
   | .answering record, choice => PMF.pure (.finished record (settleLateReplyOf choice))
   | .finished record answer, _ => PMF.pure (.finished record answer)
@@ -628,19 +628,20 @@ theorem settleLateTalkPacket_of_ne_opening {packet : SettleLatePacket}
   · rfl
   · exact (closed rfl).elim
 
-theorem settleLateFirstLaw_support {packet : SettleLatePacket} {first : SettleLateFirst}
-    (supported : first ∈ (settleLateFirstLaw G packet).support) : first.packet = packet := by
+theorem settleLateFirstDistribution_support {packet : SettleLatePacket} {first : SettleLateFirst}
+    (supported : first ∈ (settleLateFirstDistribution G packet).support) :
+    first.packet = packet := by
   cases packet with
   | silent =>
-      rw [settleLateFirstLaw, PMF.mem_support_pure_iff] at supported
+      rw [settleLateFirstDistribution, PMF.mem_support_pure_iff] at supported
       subst supported
       rfl
   | signal word =>
-      rw [settleLateFirstLaw, PMF.mem_support_pure_iff] at supported
+      rw [settleLateFirstDistribution, PMF.mem_support_pure_iff] at supported
       subst supported
       rfl
   | opening =>
-      rw [settleLateFirstLaw, PMF.support_map] at supported
+      rw [settleLateFirstDistribution, PMF.support_map] at supported
       obtain ⟨seen, _, rfl⟩ := supported
       rfl
 
@@ -738,7 +739,7 @@ theorem settleLate_step_parent {late : Bool} {source target : SettleLateState}
       simp only [SettleLateState.mover, SettleLateState.actor, Option.getD_some, chosen,
         settleLateAdvance, settleLatePacketOf, PMF.support_map] at realized
       obtain ⟨first, supported, rfl⟩ := realized
-      have packet_eq := settleLateFirstLaw_support supported
+      have packet_eq := settleLateFirstDistribution_support supported
       rw [shape]
       exact ⟨rfl, by
         funext who

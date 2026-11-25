@@ -82,11 +82,11 @@ theorem eventStep_support_finite (profile : graph.BehavioralProfile)
     (eventStep profile config event ready).support.Finite := by
   unfold eventStep
   rw [PMF.support_bind]
-  have actions : (actionLaw profile config event).support.Finite := by
+  have actions : (actionDistribution profile config event).support.Finite := by
     cases ownerEq : (graph.nodes event).actor with
-    | none => rw [actionLaw_of_ownerless _ _ ownerEq]; simp
+    | none => rw [actionDistribution_of_ownerless _ _ ownerEq]; simp
     | some owner =>
-        rw [actionLaw_of_actor _ _ ownerEq]
+        rw [actionDistribution_of_actor _ _ ownerEq]
         by_cases inactive : owner ∈ config.defaulted
         · rw [dite_eq_left inactive]; simp
         · rw [dite_eq_right inactive]; exact finiteProfile _ _ _ _ _
@@ -181,17 +181,17 @@ def schedulerOf (laws : graph.ScheduleSite → PMF (Option graph.EventId)) :
     (laws (observation, enabled)).map (selectAt enabled nonempty)
 
 /-- A scheduler's own laws, one per site. -/
-def schedulerLaws (scheduler : graph.PublicScheduler) (site : graph.ScheduleSite) :
+def schedulerDistributions (scheduler : graph.PublicScheduler) (site : graph.ScheduleSite) :
     PMF (Option graph.EventId) :=
   if nonempty : site.2.Nonempty then
     (scheduler site.1 site.2 nonempty).map fun selected => some selected.1
   else PMF.pure none
 
 omit [DecidableEq Player] in
-theorem schedulerOf_schedulerLaws (scheduler : graph.PublicScheduler) :
-    schedulerOf (schedulerLaws scheduler) = scheduler := by
+theorem schedulerOf_schedulerDistributions (scheduler : graph.PublicScheduler) :
+    schedulerOf (schedulerDistributions scheduler) = scheduler := by
   funext observation enabled nonempty
-  simp only [schedulerOf, schedulerLaws, dite_eq_left nonempty, PMF.map_comp]
+  simp only [schedulerOf, schedulerDistributions, dite_eq_left nonempty, PMF.map_comp]
   conv_rhs => rw [← PMF.map_id (scheduler observation enabled nonempty)]
   congr 1
   funext selected
@@ -340,12 +340,12 @@ theorem exists_scheduler_mixture (profile : graph.BehavioralProfile)
   have reachedFinite : reached.Finite :=
     finiteInputs.biUnion fun initial _ =>
       (planReachable_finite profile finiteProfile scheduler _ _ (initialRemaining initial)).image _
-  refine ⟨FiniteAssignment.sampleOn (schedulerLaws scheduler) reachedFinite.toFinset
+  refine ⟨FiniteAssignment.sampleOn (schedulerDistributions scheduler) reachedFinite.toFinset
     (fun _ => none), fun initial supported => ?_⟩
   unfold EventGraph.runPolicies EventGraph.run
   have law := sampleOn_bind_runPlan profile reachedFinite.toFinset (fun _ => none)
-    _ _ (schedulerLaws scheduler) (initialRemaining initial)
-  rw [schedulerOf_schedulerLaws] at law
+    _ _ (schedulerDistributions scheduler) (initialRemaining initial)
+  rw [schedulerOf_schedulerDistributions] at law
   exact law fun next reach _ => (Set.Finite.mem_toFinset _).mpr
     (Set.mem_biUnion supported ⟨next, reach, rfl⟩)
 

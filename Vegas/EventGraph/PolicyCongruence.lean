@@ -98,7 +98,7 @@ theorem runPolicies_canonical_eq_of_reachable
 /-- Keyed action laws preserve key equality through any canonical partial run. -/
 theorem runPlan_canonical_map_runKey_congr (profile : graph.BehavioralProfile)
     (keyed : ∀ {left right : graph.Config}, runKey left = runKey right →
-      ∀ event, actionLaw profile left event = actionLaw profile right event) :
+      ∀ event, actionDistribution profile left event = actionDistribution profile right event) :
     ∀ count (left right : graph.Config), runKey left = runKey right →
       (graph.runPlan (graph.policyPlan profile graph.canonicalScheduler) count left).map
         runKey =

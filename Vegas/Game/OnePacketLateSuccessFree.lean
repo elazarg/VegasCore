@@ -2,7 +2,7 @@ module
 
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-public import Vegas.Game.OnePacketLateCompletionLaw
+public import Vegas.Game.OnePacketLateCompletionDistribution
 
 @[expose] public section
 
@@ -58,7 +58,7 @@ theorem completionPoint_of_mem_step {rank : Nat} {profile : BehavioralProfile se
     (stepEq : ProtocolState.step setup.program point
       (fun _ => decodeEventAction setup.program event action) = PMF.pure target)
     {fresh : (application setup timeouts leaks).Control → Prop}
-    {stop : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    {stop : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).History} {final : (application setup timeouts leaks).Control}
     (state : stop.state = some final)
     (inStep : final.execution.application.config ∈ (sent.step event ready action).support) :
@@ -115,7 +115,7 @@ history fails the event, for every property `fresh` of controls that holds
 exactly when the event has not failed. -/
 theorem expect_completionIndicator_of_openableCommitment
     (players : ∀ player, ((bounds.onePacketMenu timeouts leaks).information
-      (initialLaw setup) horizon scheduler).BehavioralPolicy player)
+      (initialDistribution setup) horizon scheduler).BehavioralPolicy player)
     {who : Player} {entry : (application setup timeouts leaks).PlayerEntry}
     {message : Message Player (WitnessedPacket setup.informationGraph)} {event :
       setup.informationGraph.EventId}
@@ -131,7 +131,7 @@ theorem expect_completionIndicator_of_openableCommitment
     (residual : SourceResidual setup profile rank sent) {point : ProtocolState setup.program}
     (decoded : sourceServicePrefix? setup rank sent = some point)
     (terminalCompleted : ∀ (final : (application setup timeouts leaks).Control),
-      ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+      ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
         scheduler).Trace (some final) →
       (application setup timeouts leaks).terminal (some final) →
       final.execution.application.config = sent →
@@ -143,27 +143,28 @@ theorem expect_completionIndicator_of_openableCommitment
     {fresh : (application setup timeouts leaks).Control → Prop}
     (freshIff : ∀ control, fresh control ↔
       ¬ StoreEventFailed control.execution.application.config.store event)
-    (start : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (start : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).History)
     (holds : OpenableCommitmentInvariant setup timeouts leaks bounds horizon scheduler who entry
       message
       event candidate outputEq value sent ready action start.state) :
-    expect (((bounds.onePacketMenu timeouts leaks).information (initialLaw setup)
+    expect (((bounds.onePacketMenu timeouts leaks).information (initialDistribution setup)
         horizon scheduler).runBehavioralUntil
-        ((bounds.onePacketMenu timeouts leaks).bounded (initialLaw setup) horizon
+        ((bounds.onePacketMenu timeouts leaks).bounded (initialDistribution setup) horizon
           scheduler).wellFoundedHistories players
         (LateStopped setup timeouts leaks bounds horizon scheduler rank) start)
         (completionIndicator setup timeouts leaks bounds horizon scheduler rank fresh) =
-      1 - expect (((bounds.onePacketMenu timeouts leaks).information (initialLaw setup)
+      1 - expect (((bounds.onePacketMenu timeouts leaks).information (initialDistribution setup)
         horizon scheduler).runBehavioralFrom players (2 * horizon + 1) start)
         (fun final => if EventFailedState setup timeouts leaks event final.state then 1 else 0)
           := by
   let menu := bounds.onePacketMenu timeouts leaks
-  let model := menu.information (initialLaw setup) horizon scheduler
-  have horizonBound := menu.bounded (initialLaw setup) horizon scheduler
+  let model := menu.information (initialDistribution setup) horizon scheduler
+  have horizonBound := menu.bounded (initialDistribution setup) horizon scheduler
   let certificate := horizonBound.wellFoundedHistories
   let stopped := LateStopped setup timeouts leaks bounds horizon scheduler rank
-  let failure := fun final : (menu.protocol (initialLaw setup) horizon scheduler).History =>
+  let failure := fun final : (menu.protocol (initialDistribution setup) horizon scheduler).History
+    =>
     if EventFailedState setup timeouts leaks event final.state then (1 : ℝ) else 0
   have failureBounded : ∀ final, |failure final| ≤ 1 := by
     intro final
@@ -171,7 +172,7 @@ theorem expect_completionIndicator_of_openableCommitment
     split <;> norm_num
   have ordered := residual.checkpoint.ordered
   -- The event's output stays on the store along terminal play.
-  have kept : ∀ stop : (menu.protocol (initialLaw setup) horizon scheduler).History,
+  have kept : ∀ stop : (menu.protocol (initialDistribution setup) horizon scheduler).History,
       ∀ control, stop.state = some control →
       ∀ final ∈ (model.runBehavioralTerminalFrom certificate players stop).support,
         ∃ finalControl, final.state = some finalControl ∧
@@ -185,9 +186,9 @@ theorem expect_completionIndicator_of_openableCommitment
       (fun state joint legal target holds reached => by
         obtain ⟨reachedControl, rfl, keeps⟩ := holds
         obtain ⟨next, rfl, _⟩ := (application setup timeouts leaks).transition_recall_prefix
-          (initialLaw setup) horizon scheduler reachedControl target joint reached
+          (initialDistribution setup) horizon scheduler reachedControl target joint reached
         have keptStore := (keepsStore_step timeouts leaks).transition
-          (initialLaw setup) horizon scheduler reachedControl next joint reached
+          (initialDistribution setup) horizon scheduler reachedControl next joint reached
         exact ⟨next, rfl, fun stored storedEq =>
           keptStore (.inr event) stored (keeps stored storedEq)⟩)
       stop ⟨control, state, fun _ storedEq => storedEq⟩

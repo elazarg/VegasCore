@@ -58,7 +58,7 @@ def Settles (reference : graph.BehavioralProfile) (who : Player) (config : graph
     (event : graph.EventId) : Prop :=
   config.cut.Ready event ∧ ClosureKind config event ∧ Movable who config event ∧
     ∃ (action : graph.Action event) (value : (graph.outputLayout event).Value),
-      actionLaw reference config event = PMF.pure action ∧
+      actionDistribution reference config event = PMF.pure action ∧
         (graph.nodes event).eval? (config.effectiveAction event action) config.store =
           some (PMF.pure value)
 
@@ -72,7 +72,7 @@ def settled {reference : graph.BehavioralProfile} {who : Player} (config : graph
 theorem settled_eq {reference : graph.BehavioralProfile} {who : Player} {config : graph.Config}
     {event : graph.EventId} (settles : Settles reference who config event)
     {action : graph.Action event} {value : (graph.outputLayout event).Value}
-    (acting : actionLaw reference config event = PMF.pure action)
+    (acting : actionDistribution reference config event = PMF.pure action)
     (evaluates : (graph.nodes event).eval? (config.effectiveAction event action) config.store =
       some (PMF.pure value)) :
     settled config event settles = config.complete event settles.1 action value := by
@@ -230,7 +230,7 @@ section Keys
 are. -/
 theorem Settles.congr {reference : graph.BehavioralProfile} {who : Player}
     (keyed : ∀ {left right : graph.Config}, runKey left = runKey right →
-      ∀ event, actionLaw reference left event = actionLaw reference right event)
+      ∀ event, actionDistribution reference left event = actionDistribution reference right event)
     {left right : graph.Config} (same : runKey left = runKey right) {event : graph.EventId}
     (settles : Settles reference who left event) : Settles reference who right event := by
   have cut : left.cut = right.cut := congrArg Prod.fst same
@@ -251,7 +251,7 @@ theorem Settles.congr {reference : graph.BehavioralProfile} {who : Player}
 /-- Settling configurations with one key settle to configurations with one key. -/
 theorem settled_runKey_congr {reference : graph.BehavioralProfile} {who : Player}
     (keyed : ∀ {left right : graph.Config}, runKey left = runKey right →
-      ∀ event, actionLaw reference left event = actionLaw reference right event)
+      ∀ event, actionDistribution reference left event = actionDistribution reference right event)
     {left right : graph.Config} (same : runKey left = runKey right)
     {leftEvent rightEvent : graph.EventId} (events : leftEvent = rightEvent)
     (leftSettles : Settles reference who left leftEvent)
@@ -279,7 +279,7 @@ theorem settled_runKey_congr {reference : graph.BehavioralProfile} {who : Player
 /-- The step is read from the order-free key. -/
 theorem settleStep_runKey_congr {reference : graph.BehavioralProfile} {who : Player}
     (keyed : ∀ {left right : graph.Config}, runKey left = runKey right →
-      ∀ event, actionLaw reference left event = actionLaw reference right event)
+      ∀ event, actionDistribution reference left event = actionDistribution reference right event)
     {left right : graph.Config} (same : runKey left = runKey right) :
     runKey (settleStep reference who left) = runKey (settleStep reference who right) := by
   classical
@@ -306,7 +306,7 @@ theorem settleStep_runKey_congr {reference : graph.BehavioralProfile} {who : Pla
 /-- **The closure is read from the order-free key.** -/
 theorem closure_runKey_congr {reference : graph.BehavioralProfile} {who : Player}
     (keyed : ∀ {left right : graph.Config}, runKey left = runKey right →
-      ∀ event, actionLaw reference left event = actionLaw reference right event) :
+      ∀ event, actionDistribution reference left event = actionDistribution reference right event) :
     ∀ (fuel : Nat) (left right : graph.Config), left.remaining = fuel →
       runKey left = runKey right →
         runKey (closure reference who left) = runKey (closure reference who right) := by
@@ -341,17 +341,17 @@ theorem Settles.after {config : graph.Config} {event other : graph.EventId}
     (settles : Settles reference who config event)
     (otherSettles : Settles reference who config other) (different : event ≠ other)
     {action : graph.Action event} {value : (graph.outputLayout event).Value}
-    (acting : actionLaw reference config event = PMF.pure action)
+    (acting : actionDistribution reference config event = PMF.pure action)
     (evaluates : (graph.nodes event).eval? (config.effectiveAction event action) config.store =
       some (PMF.pure value)) :
     ∃ after : Settles reference who (settled config other otherSettles) event,
-      actionLaw reference (settled config other otherSettles) event = PMF.pure action ∧
+      actionDistribution reference (settled config other otherSettles) event = PMF.pure action ∧
       (graph.nodes event).eval? ((settled config other otherSettles).effectiveAction event action)
         (settled config other otherSettles).store = some (PMF.pure value) ∧
       settled (settled config other otherSettles) event after =
         (settled config other otherSettles).complete event after.1 action value := by
   have differ := independent.actorsDiffer config otherSettles.1 settles.1 (Ne.symm different)
-  have afterActing : actionLaw reference (settled config other otherSettles) event =
+  have afterActing : actionDistribution reference (settled config other otherSettles) event =
       PMF.pure action := by
     unfold settled
     rw [independent.stable config settles.1 otherSettles.1 (Ne.symm different)]
@@ -437,13 +437,13 @@ section Law
 /-- **The closure keeps the last-served law.** A profile that is ready
 independent away from `who` and agrees with the reference at settling events
 has the same last-served erased-key law at a configuration and at its closure. -/
-theorem lastErasedLaw_closure {reference profile : graph.BehavioralProfile} {who : Player}
+theorem lastErasedDistribution_closure {reference profile : graph.BehavioralProfile} {who : Player}
     (independent : LastIndependent profile who)
     (agree : ∀ config event, Settles reference who config event →
-      actionLaw profile config event = actionLaw reference config event) :
+      actionDistribution profile config event = actionDistribution reference config event) :
     ∀ (fuel : Nat) (config : graph.Config), config.remaining = fuel →
-      lastErasedLaw profile who (closure reference who config) =
-        lastErasedLaw profile who config := by
+      lastErasedDistribution profile who (closure reference who config) =
+        lastErasedDistribution profile who config := by
   intro fuel
   induction fuel using Nat.strong_induction_on with
   | _ fuel ih =>
@@ -453,8 +453,8 @@ theorem lastErasedLaw_closure {reference profile : graph.BehavioralProfile} {who
     obtain ⟨least, leastSettles, stepEq⟩ := settleStep_of_settles settles
     have consumed := settled_remaining leastSettles
     rw [closure_of_settles settles, stepEq, ih _ (by omega) _ rfl]
-    apply lastErasedLaw_eq_of_lastLaw_eq
-    have taken := independent.eventStep_bind_lastLaw config.remaining config rfl least
+    apply lastErasedDistribution_eq_of_lastDistribution_eq
+    have taken := independent.eventStep_bind_lastDistribution config.remaining config rfl least
       leastSettles.1 leastSettles.2.2.1
     have stepped : eventStep profile config least leastSettles.1 =
         PMF.pure (settled config least leastSettles) := by
@@ -523,7 +523,7 @@ theorem Settles.of_step {reference : graph.BehavioralProfile} {who : Player}
     {config : graph.Config} {event : graph.EventId} (ready : config.cut.Ready event)
     (kind : ClosureKind config event) (movable : Movable who config event)
     {action : graph.Action event} {value : (graph.outputLayout event).Value}
-    (acting : actionLaw reference config event = PMF.pure action)
+    (acting : actionDistribution reference config event = PMF.pure action)
     (stepped : config.step event ready action =
       PMF.pure (config.complete event ready action value)) :
     Settles reference who config event :=
@@ -543,7 +543,7 @@ theorem Settles.after_complete {config : graph.Config} {event other : graph.Even
     (different : event ≠ other) (otherAction : graph.Action other)
     (otherValue : (graph.outputLayout other).Value)
     {action : graph.Action event} {value : (graph.outputLayout event).Value}
-    (acting : actionLaw reference config event = PMF.pure action)
+    (acting : actionDistribution reference config event = PMF.pure action)
     (evaluates : (graph.nodes event).eval? (config.effectiveAction event action) config.store =
       some (PMF.pure value)) :
     ∃ after : Settles reference who (config.complete other otherReady otherAction otherValue)
@@ -552,7 +552,8 @@ theorem Settles.after_complete {config : graph.Config} {event other : graph.Even
         (config.complete other otherReady otherAction otherValue).complete event after.1
           action value := by
   have differ := independent.actorsDiffer config otherReady settles.1 (Ne.symm different)
-  have afterActing : actionLaw reference (config.complete other otherReady otherAction otherValue)
+  have afterActing : actionDistribution reference (config.complete other otherReady otherAction
+    otherValue)
       event = PMF.pure action := by
     rw [independent.stable config settles.1 otherReady (Ne.symm different)]
     exact acting
@@ -684,7 +685,7 @@ theorem settles_of_defaulted {config : graph.Config} {event : graph.EventId}
     config.store (fun _ read => config.read_available ready read)
   refine ⟨ready, Or.inr ⟨owner, owned, inactive⟩, movable,
     (graph.nodes event).failureAction owner owned, value, ?_, ?_⟩
-  · rw [actionLaw_of_actor reference config owned, dite_eq_left inactive]
+  · rw [actionDistribution_of_actor reference config owned, dite_eq_left inactive]
   · rw [effective]
     exact evaluates
 
@@ -828,7 +829,7 @@ theorem closure_settles_record (independent : ReadyIndependent reference) :
       ∀ (event : graph.EventId) (action : graph.Action event)
         (value : (graph.outputLayout event).Value),
         Settles reference who config event →
-        actionLaw reference config event = PMF.pure action →
+        actionDistribution reference config event = PMF.pure action →
         (graph.nodes event).eval? (config.effectiveAction event action) config.store =
           some (PMF.pure value) →
         (closure reference who config).outputs event = some value ∧
@@ -857,7 +858,7 @@ theorem closure_settles_record (independent : ReadyIndependent reference) :
     have differ := independent.actorsDiffer config leastSettles.1 settles.1 (Ne.symm same)
     obtain ⟨after, _⟩ := Settles.after_complete independent settles leastSettles.1 same
       leastSettles.2.2.2.choose leastSettles.2.2.2.choose_spec.choose acting evaluates
-    have afterActing : actionLaw reference (config.complete least leastSettles.1
+    have afterActing : actionDistribution reference (config.complete least leastSettles.1
         leastSettles.2.2.2.choose leastSettles.2.2.2.choose_spec.choose) event =
           PMF.pure action := by
       rw [independent.stable config settles.1 leastSettles.1 (Ne.symm same)]

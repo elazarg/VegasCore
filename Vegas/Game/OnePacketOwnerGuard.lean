@@ -156,7 +156,7 @@ the initial slot of each binding input is the candidate of the input value. -/
 theorem initialSlots_of_trace {state}
     (trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace state) :
     ∀ control : (application setup timeouts leaks).Control, state = some control →
-      ∃ initial ∈ setup.initialLaw.support,
+      ∃ initial ∈ setup.initialDistribution.support,
         control.execution.application.config.inputs = setup.eventInputs initial ∧
         ∀ input owner payload, setup.informationGraph.inputLayout input = .binding owner payload →
           control.execution.application.candidates.lookup (owner, .initial input) =
@@ -169,22 +169,24 @@ theorem initialSlots_of_trace {state}
       subst initialized
       cases before with
       | none =>
-          change some control ∈ ((application setup timeouts leaks).transition (initialLaw setup)
+          change some control ∈ ((application setup timeouts leaks).transition
+            (initialDistribution setup)
             horizon scheduler none joint).support at realized
           rw [ReactiveApplication.transition, PMF.support_map] at realized
           obtain ⟨drawn, drawnMember, drawnEq⟩ := realized
           cases Option.some.inj drawnEq
-          have drawnSupport : drawn ∈ (initialLaw setup).support := drawnMember
-          rw [initialLaw, serviceInitialLaw, PMF.support_map] at drawnSupport
+          have drawnSupport : drawn ∈ (initialDistribution setup).support := drawnMember
+          rw [initialDistribution, serviceInitialDistribution, PMF.support_map] at drawnSupport
           obtain ⟨initial, member, rfl⟩ := drawnSupport
           refine ⟨initial, member, rfl, fun input owner payload _ => ?_⟩
           exact State.initial_candidate _ owner (.initial input)
       | some current =>
           obtain ⟨initial, member, inputsEq, candidates⟩ := ih current rfl
-          have path := reactive_protocol_graph_steps timeouts leaks (initialLaw setup) horizon
+          have path := reactive_protocol_graph_steps timeouts leaks
+            (initialDistribution setup) horizon
             scheduler current control joint realized
           have kept := (keepsFixedCandidates_step timeouts leaks).transition
-            (initialLaw setup) horizon scheduler current control joint realized
+            (initialDistribution setup) horizon scheduler current control joint realized
           have sameInputs := EventGraph.Config.Step.path_inputs_eq path
           refine ⟨initial, member, sameInputs.trans inputsEq, fun input owner payload
             layoutEq => ?_⟩
@@ -214,11 +216,11 @@ private theorem bindingInvariant_of_trace {control : (application setup timeouts
     (trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some
       control)) :
     control.execution.application.BindingInvariant :=
-  ((reactiveBindingInvariant timeouts) leaks).history (initialLaw setup) horizon scheduler
+  ((reactiveBindingInvariant timeouts) leaks).history (initialDistribution setup) horizon scheduler
     (fun state member => by
       obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ member
       exact State.initial_bindingInvariant _)
-    ((bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon
+    ((bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup) horizon
       scheduler trace)
 
 /-- **Accepted bindings of a debt-free owner hold the candidates of their
@@ -270,7 +272,7 @@ theorem ownBinding_candidate {who : Player} {control : (application setup timeou
           rw [result] at read
           obtain ⟨rank, ⟨residual⟩, record⟩ := failedBindingRecord_history (timeouts := timeouts)
             (failureProfile setup.program) horizon scheduler
-            ((bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon
+            ((bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup) horizon
               scheduler trace)
           have done := valid.accepted_complete event handle accepted
           have owes := record event done who payload layoutEq read _ residual.decode
@@ -303,18 +305,19 @@ omit [Fintype Player] in
 or the source failure recorded by its failed output. -/
 theorem revealRecord_history (profile : BehavioralProfile setup.program)
     {control : (application setup timeouts leaks).Control}
-    (trace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((application setup timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace
       (some control)) :
     RevealRecord setup timeouts leaks profile control.execution := by
   obtain ⟨rank, ⟨residual⟩, _record⟩ := SourceFailureRecord.history profile horizon scheduler trace
   have native := trace
-  change (((reactiveApplication timeouts) leaks).protocol (initialLaw setup)
+  change (((reactiveApplication timeouts) leaks).protocol (initialDistribution setup)
     horizon scheduler).Trace (some control) at native
-  rw [initialLaw, serviceInitialLaw_eq_inputs (deps := setup.informationDependencies) setup]
+  rw [initialDistribution, serviceInitialDistribution_eq_inputs
+    (deps := setup.informationDependencies) setup]
     at native
   obtain ⟨inputs, _supported, invariant⟩ := (reactive_history_invariant timeouts) leaks
-    (setup.initialLaw.map setup.eventInputs) horizon scheduler native
+    (setup.initialDistribution.map setup.eventInputs) horizon scheduler native
   refine ⟨rank, ⟨residual⟩, ?_⟩
   intro event completed owner payload binding checks outputEq codeEq _view result read
   cases result with
@@ -418,7 +421,7 @@ theorem ownedRequestsOwn_history
         rw [(application setup timeouts leaks).environmentStep_recall execution next command
           reached] at member
         exact valid observer recalled member }).history
-    (initialLaw setup) horizon (fun _ _ _ _ member => (List.not_mem_nil member).elim) trace
+    (initialDistribution setup) horizon (fun _ _ _ _ member => (List.not_mem_nil member).elim) trace
 
 end Requests
 
@@ -568,13 +571,13 @@ theorem ownerSwap_guard {who : Player}
         scheduler).InformationHistory who site₂.1, ∀ point,
       nativeDecodedState setup timeouts leaks history.1.state = some point →
         ¬ ProtocolState.OwesFailure who setup.program point)
-    (priorClosed : ∀ initial ∈ setup.initialLaw.support,
+    (priorClosed : ∀ initial ∈ setup.initialDistribution.support,
       (∃ history : (onePacketInformation setup timeouts leaks bounds horizon
           scheduler).InformationHistory who site₁.1, ∃ control : (application setup timeouts
             leaks).Control,
         history.1.state = some control ∧
           control.execution.application.config.inputs = setup.eventInputs initial) →
-      ∃ other ∈ setup.initialLaw.support, setup.eventInputs other =
+      ∃ other ∈ setup.initialDistribution.support, setup.eventInputs other =
         (ownerSwap who view₁.application view₂.application).inputs (setup.eventInputs initial))
     (history : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).History)
     (member : (onePacketInformation setup timeouts leaks bounds horizon scheduler).infoOf who
@@ -620,10 +623,10 @@ theorem ownerSwap_guard {who : Player}
       have acceptedEq : control₁.execution.application.accepted =
           control₂.execution.application.accepted := congrArg PublicView.accepted publicEq
       have valid₁ := bindingInvariant_of_trace (timeouts := timeouts) trace₁
-      have firstRaw := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup)
+      have firstRaw := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup)
         horizon scheduler trace₁
       have secondRaw := (bounds.onePacketMenu timeouts leaks).toRawTrace
-        (initialLaw setup) horizon scheduler trace₂
+        (initialDistribution setup) horizon scheduler trace₂
       change SwapGuard setup timeouts (ownerSwap who (control₁.execution.application.playerView who)
         (control₂.execution.application.playerView who))
         (swapAllowed (ownerSwap who (control₁.execution.application.playerView who)
@@ -632,11 +635,11 @@ theorem ownerSwap_guard {who : Player}
       · -- The inputs: initial handles are compatible, and the prior is closed.
         obtain ⟨initial, initialMember, inputsEq, -⟩ := initialSlots_of_trace (timeouts := timeouts)
           trace₁ control₁ rfl
-        have drawnMember : ∀ draw ∈ setup.initialLaw.support,
+        have drawnMember : ∀ draw ∈ setup.initialDistribution.support,
             EventGraphRuntime.State.initial (graph := setup.informationGraph) (setup.eventInputs
               draw) ∈
-              (initialLaw setup).support := fun draw drawMember => by
-          rw [initialLaw, serviceInitialLaw, PMF.support_map]
+              (initialDistribution setup).support := fun draw drawMember => by
+          rw [initialDistribution, serviceInitialDistribution, PMF.support_map]
           exact ⟨draw, drawMember, rfl⟩
         have compatible : (ownerSwap who (control₁.execution.application.playerView who)
             (control₂.execution.application.playerView who)).InitialHandlesCompatible := by
@@ -823,7 +826,7 @@ theorem ownerSwap_guard {who : Player}
                 message
                 (List.mem_filterMap.mpr ⟨recalled, recalledMember, emitted⟩)
               have firstSound : ((packetEvidence timeouts) leaks).Sound control₁.execution :=
-                ((packetEvidence timeouts) leaks).history_sound (initialLaw setup) horizon
+                ((packetEvidence timeouts) leaks).history_sound (initialDistribution setup) horizon
                   scheduler firstRaw
               have firstHolds : fact.Holds control₁.execution.application :=
                 firstSound.inputs message firstInput fact decoded
@@ -839,7 +842,7 @@ theorem ownerSwap_guard {who : Player}
                 (List.mem_filterMap.mpr ⟨entry, entryMember, entryEmitted⟩)
               have secondSound : ((packetEvidence timeouts) leaks).Sound
                   control₂.execution :=
-                ((packetEvidence timeouts) leaks).history_sound (initialLaw setup) horizon
+                ((packetEvidence timeouts) leaks).history_sound (initialDistribution setup) horizon
                   scheduler secondRaw
               have secondHolds : fact.Holds control₂.execution.application :=
                 secondSound.inputs message secondInput fact decoded

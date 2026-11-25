@@ -64,13 +64,14 @@ theorem completed_accepted_of_tracePrefix
             subst sourceEq
             obtain ⟨next, targetEq, _⟩ := (application setup timeouts
               leaks).transition_recall_prefix
-              (initialLaw setup) horizon scheduler middle target joint realized
+              (initialDistribution setup) horizon scheduler middle target joint realized
             refine ⟨next, targetEq, ?_, ?_⟩
             · subst targetEq
               exact completed_transition (timeouts := timeouts) (horizon := horizon) leaks joint
                 realized completedMiddle
             · subst targetEq
-              rcases acceptedKept_transition (timeouts := timeouts) leaks (initialLaw setup) horizon
+              rcases acceptedKept_transition (timeouts := timeouts) leaks
+                (initialDistribution setup) horizon
                 scheduler middle
                   next joint realized event with unchanged | ⟨ready, _, _⟩
               · exact unchanged.trans table

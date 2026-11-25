@@ -97,7 +97,8 @@ nobody owes one at the decoded point before it. -/
 theorem debtFree_of_transition {before after : (application setup timeouts leaks).Control}
     (prior : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some before))
     (joint : Player → Option (application setup timeouts leaks).Action)
-    (realized : some after ∈ ((application setup timeouts leaks).transition (initialLaw setup)
+    (realized : some after ∈ ((application setup timeouts leaks).transition
+      (initialDistribution setup)
       horizon
       scheduler (some before) joint).support)
     (free : ∀ point, decodedPoint setup after.execution.application.config = some point →
@@ -123,13 +124,14 @@ theorem intendedHistory?_isSome_of_debtFree (wellFormed : setup.WellFormed) : �
       have recursive := fun next same freeNext =>
         intendedHistory?_isSome_of_debtFree wellFormed prior next same freeNext
       subst current
-      have realizedRaw : some control ∈ ((application setup timeouts leaks).transition (initialLaw
+      have realizedRaw : some control ∈ ((application setup timeouts leaks).transition
+        (initialDistribution
         setup)
           horizon scheduler before joint).support := realized
       cases before with
       | none =>
           obtain rfl := trace_eq_start_of_none (timeouts := timeouts) prior
-          change some control ∈ ((initialLaw setup).map fun state => some
+          change some control ∈ ((initialDistribution setup).map fun state => some
             (⟨horizon, none, ReactiveApplication.Execution.initial (application setup timeouts
               leaks)
               state⟩ : (application setup timeouts leaks).Control)).support at realizedRaw
@@ -145,7 +147,7 @@ theorem intendedHistory?_isSome_of_debtFree (wellFormed : setup.WellFormed) : �
               (setup.intendedProtocol.step setup.intendedProtocol.initHistory.state
                 ⟨_, legalStart⟩).support := by
             rw [decodedPoint_initial]
-            change _ ∈ (setup.initialLaw.map fun initial =>
+            change _ ∈ (setup.initialDistribution.map fun initial =>
               some (ProtocolState.entry setup.program (Config.initial initial))).support
             exact (PMF.mem_support_map_iff _ _ _).mpr ⟨initial, initialSupported, rfl⟩
           exact extendIntended?_isSome legalStart reachedStart
@@ -167,7 +169,8 @@ theorem intendedHistory?_isSome_of_debtFree (wellFormed : setup.WellFormed) : �
           have priorClear : current.execution.application.config.defaulted = ∅ := by
             apply Finset.eq_empty_iff_forall_notMem.mpr
             intro player present
-            have later := (reactive_protocol_defaulted_mono timeouts) leaks (initialLaw setup)
+            have later := (reactive_protocol_defaulted_mono timeouts) leaks
+              (initialDistribution setup)
               horizon scheduler current control joint realizedRaw present
             rw [clear] at later
             exact Finset.notMem_empty player later
@@ -206,7 +209,8 @@ theorem intendedHistory?_isSome_of_debtFree (wellFormed : setup.WellFormed) : �
               have previousState : previous.state =
                   decodedPoint setup current.execution.application.config :=
                 intendedHistory?_state (timeouts := timeouts) prior previousReplay
-              rcases (reactive_protocol_config_eq_or_step_of_clear timeouts) leaks (initialLaw
+              rcases (reactive_protocol_config_eq_or_step_of_clear timeouts) leaks
+                (initialDistribution
                 setup)
                   horizon scheduler current control joint realizedRaw clear with
                     same | ⟨event, ready, action, member⟩
@@ -334,9 +338,9 @@ theorem projectedDecision_of_debtFree (wellFormed : setup.WellFormed) {who : Pla
   obtain ⟨publicReady, owned⟩ := PublicView.ownTurn?_spec _ who event turn
   have ready : control.execution.application.config.cut.Ready event :=
     (State.publicView_eventReady _ event).mp publicReady
-  have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup)
+  have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup)
     horizon scheduler native.1.trace
-  have atControl : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+  have atControl : ((application setup timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some control) := stateEq ▸ rawTrace
   have facts := legalFacts setup leaks horizon scheduler control atControl
   have active := control.execution.application.active_of_ready_owned facts.quiescent ready owned
@@ -369,7 +373,8 @@ projected view is a decision site of the intended game. By
 `Vegas.owesFailure_iff_of_infoOf` one history suffices. -/
 theorem projectedDecision_of_forcedAgent (wellFormed : setup.WellFormed) {who : Player}
     {info : (onePacketInformation setup timeouts leaks bounds horizon scheduler).InfoState who}
-    (forced : forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks) (initialLaw
+    (forced : forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks)
+      (initialDistribution
       setup) horizon
       scheduler who info)
     {past : List (application setup timeouts leaks).PlayerEntry}

@@ -237,15 +237,16 @@ theorem periodInvariant (assessment : setup.intendedModel.BehavioralAssessment) 
       have recursive := fun next same forcedNext =>
         periodInvariant assessment who prior next same forcedNext
       subst current
-      change some control ∈ ((application setup timeouts leaks).transition (initialLaw setup)
+      change some control ∈ ((application setup timeouts leaks).transition
+        (initialDistribution setup)
         horizon
         scheduler before joint).support at realized
-      have kept := (keepsFixedCandidates_step timeouts leaks).transition (initialLaw setup)
+      have kept := (keepsFixedCandidates_step timeouts leaks).transition (initialDistribution setup)
         horizon scheduler
       cases before with
       | none =>
           obtain rfl := trace_eq_start_of_none (timeouts := timeouts) prior
-          change some control ∈ ((initialLaw setup).map fun state => some
+          change some control ∈ ((initialDistribution setup).map fun state => some
             (⟨horizon, none, ReactiveApplication.Execution.initial (application setup timeouts
               leaks)
               state⟩ : (application setup timeouts leaks).Control)).support at realized
@@ -333,7 +334,7 @@ theorem periodInvariant (assessment : setup.intendedModel.BehavioralAssessment) 
                       onePacket_named_of_forcedObserver (timeouts := timeouts) bounds
                         horizon scheduler who prior forcedBefore actor own member
                     have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace
-                      (initialLaw setup) horizon scheduler prior
+                      (initialDistribution setup) horizon scheduler prior
                     obtain ⟨inputRecall, _, _⟩ := (countRecall_history timeouts) leaks
                       rawTrace
                     rcases earlier.settled event ready actor acts own with
@@ -459,10 +460,11 @@ theorem periodInvariant (assessment : setup.intendedModel.BehavioralAssessment) 
                           messageNamed⟩) _ member
                       cases silent
           | none =>
-              have inputsEq := transition_idle_inputs (timeouts := timeouts) (initialLaw setup)
+              have inputsEq := transition_idle_inputs (timeouts := timeouts)
+                (initialDistribution setup)
                 horizon scheduler current
                 acting joint realized
-              have path := reactive_protocol_graph_steps timeouts leaks (initialLaw setup)
+              have path := reactive_protocol_graph_steps timeouts leaks (initialDistribution setup)
                 horizon scheduler current control joint realized
               rcases path.cases_head with same | ⟨middle, moved, rest⟩
               · have same := same.symm

@@ -30,18 +30,19 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
   {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
-  [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
-  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+  [(application setup timeouts leaks).FiniteNature (initialDistribution setup) scheduler]
+  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds
+    (initialDistribution setup) horizon
     scheduler).InfoState who)]
   [Finite setup.intendedProtocol.History]
 
 local instance bindingRepairAssemblyHistoryFintype :
     Fintype ((bounds.onePacketMenu timeouts leaks).protocol
-    (initialLaw setup) horizon scheduler).History :=
-  (bounds.onePacketMenu timeouts leaks).historyFintype (initialLaw setup) horizon scheduler
+    (initialDistribution setup) horizon scheduler).History :=
+  (bounds.onePacketMenu timeouts leaks).historyFintype (initialDistribution setup) horizon scheduler
 
 local notation "onePacketN" =>
-  onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+  onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
 
 omit [Finite setup.intendedProtocol.History] in
 /-- At every debt-free forced own-turn site, actual repairs give the
@@ -57,15 +58,15 @@ theorem exists_counterpart_certificate_of_repairs (wellFormed : setup.WellFormed
     (covers : bounds.CoversOutputValues)
     (capacity : ∀ who, bindingEventCount setup.informationGraph who < bounds.candidateCount)
     {slots : Nat}
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialDistribution setup)
       horizon scheduler slots p))
     (error_tendsto : Tendsto (fun n => slotError (scale n) (floor n)
       (trembleSlots setup bounds).card) atTop (nhds 0))
     (n : ℕ) (mixed : (sequence n).IsFullyMixed)
     {who : Player} {site : (onePacketN).InformationSite who}
-    (forced : ¬ FreeAgent setup timeouts leaks bounds (initialLaw setup)
+    (forced : ¬ FreeAgent setup timeouts leaks bounds (initialDistribution setup)
       horizon scheduler ((onePacketN).agentAt site))
-    (notOwing : ¬ OwingAgent setup timeouts leaks bounds (initialLaw setup)
+    (notOwing : ¬ OwingAgent setup timeouts leaks bounds (initialDistribution setup)
       horizon scheduler ((onePacketN).agentAt
       site))
     {past : List (application setup timeouts leaks).PlayerEntry}
@@ -110,7 +111,7 @@ theorem exists_counterpart_certificate_of_repairs (wellFormed : setup.WellFormed
     wellFormed priors covered sequence scale scale_pos scale_le_one small floor
     floor_pos
     floored covers capacity weights error_tendsto n mixed atSite
-    (forcedAgent_of_not_free setup timeouts leaks bounds (initialLaw setup)
+    (forcedAgent_of_not_free setup timeouts leaks bounds (initialDistribution setup)
       horizon scheduler forced) turn
     (toDecision history)
     (toDecision witness) historyState witnessState decodedP decodedW freeW
@@ -131,7 +132,7 @@ def OnePacketCounterpartInputs.ofBindingRepairs (wellFormed : setup.WellFormed)
     (covers : bounds.CoversOutputValues) (coversInputs : bounds.CoversInputValues)
     (capacity : ∀ who, bindingEventCount setup.informationGraph who < bounds.candidateCount)
     {slots : Nat}
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialDistribution setup)
       horizon scheduler slots p))
     {targetSequence : ℕ → (onePacketN).BehavioralAssessment}
     (assembled : OnePacketAssembled setup timeouts leaks bounds horizon scheduler sequence scale
@@ -139,9 +140,9 @@ def OnePacketCounterpartInputs.ofBindingRepairs (wellFormed : setup.WellFormed)
       scale_le_one weights targetSequence)
     (mixed : ∀ n, (targetSequence n).IsFullyMixed)
     {who : Player} {site : (onePacketN).InformationSite who}
-    (forced : ¬ FreeAgent setup timeouts leaks bounds (initialLaw setup)
+    (forced : ¬ FreeAgent setup timeouts leaks bounds (initialDistribution setup)
       horizon scheduler ((onePacketN).agentAt site))
-    (notOwing : ¬ OwingAgent setup timeouts leaks bounds (initialLaw setup)
+    (notOwing : ¬ OwingAgent setup timeouts leaks bounds (initialDistribution setup)
       horizon scheduler ((onePacketN).agentAt
       site))
     {past : List (application setup timeouts leaks).PlayerEntry}

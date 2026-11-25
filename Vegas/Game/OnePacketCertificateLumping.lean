@@ -3,7 +3,7 @@ module
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 public import Vegas.Game.OnePacketBaseAssembly
-public import Vegas.Game.OnePacketSlotLawDischarge
+public import Vegas.Game.OnePacketSlotDistributionDischarge
 public import Vegas.Game.OnePacketRelevantLumping
 
 @[expose] public section
@@ -25,19 +25,20 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
   (bounds : MessageBounds setup.informationGraph) (horizon : Nat)
   (scheduler : (application setup timeouts leaks).Scheduler)
-  [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
+  [(application setup timeouts leaks).FiniteNature (initialDistribution setup) scheduler]
   [Finite setup.intendedProtocol.History]
-  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds
+    (initialDistribution setup) horizon
     scheduler).InfoState who)]
 
 local notation "onePacketN" =>
-  onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+  onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
 
 open Classical in
 /-- The options of the certificate's lumping at a late key: the installed option
 at the key, and the key's weights at every other key. -/
 def certificateOptions {slots : Nat}
-    (weights : ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
+    (weights : ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialDistribution setup)
       horizon scheduler slots p))
     (key : LateKey setup timeouts leaks) (option : LateOption slots) (other : LateKey setup timeouts
       leaks) :
@@ -54,7 +55,7 @@ the slot-trembled prescribed component once it has. -/
 theorem certificate_strategyShape (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (scale : ℕ → ℝ) (scale_pos : ∀ n, 0 < scale n) (scale_le_one : ∀ n, scale n ≤ 1)
     {slots : Nat}
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialDistribution setup)
       horizon scheduler slots p))
     (targetSequence : ℕ → (onePacketN).BehavioralAssessment)
     (assembled : OnePacketAssembled setup timeouts leaks bounds horizon scheduler sequence scale
@@ -70,53 +71,60 @@ theorem certificate_strategyShape (sequence : ℕ → setup.intendedModel.Behavi
     ((eventRecorded timeouts) leaks (execution.logs who) event = false →
       (targetSequence n).strategy who
           (some (execution.logs who, execution.observe (application setup timeouts leaks) who)) =
-        slotTrembledChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+        slotTrembledChoice setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
           (scale n)
           (scale_pos n).le (scale_le_one n) who
           (some (execution.logs who, execution.observe (application setup timeouts leaks) who))
           ((keyWeights setup timeouts leaks bounds horizon scheduler (weights n)
               (some (LateKey.ofView setup timeouts leaks who (execution.logs who)
                 (execution.observe (application setup timeouts leaks) who)))).bind
-            (lateChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler (sequence
+            (lateChoice setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
+              (sequence
               n) who
               (some (execution.logs who, execution.observe (application setup timeouts leaks)
                 who))))
-          (PMF.pure (silenceChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+          (PMF.pure (silenceChoice setup timeouts leaks bounds
+            (initialDistribution setup) horizon scheduler
             who
             (some (execution.logs who, execution.observe (application setup timeouts leaks) who))))
-          (slotChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler (sequence n)
+          (slotChoice setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
+            (sequence n)
             who
             (some (execution.logs who, execution.observe (application setup timeouts leaks)
               who)))) ∧
     ((eventRecorded timeouts) leaks (execution.logs who) event = true →
-      ∃ main : PMF ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+      ∃ main : PMF ((onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon
           scheduler).Choice who (some (execution.logs who,
             execution.observe (application setup timeouts leaks) who))),
-        (main = honestChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+        (main = honestChoice setup timeouts leaks bounds (initialDistribution setup) horizon
+          scheduler
             (sequence n) who (some (execution.logs who,
               execution.observe (application setup timeouts leaks) who)) ∨
           ∃ others : PMF (LateOption slots), main = others.bind
-            (lateChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler (sequence
+            (lateChoice setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
+              (sequence
               n) who
               (some (execution.logs who,
                 execution.observe (application setup timeouts leaks) who)))) ∧
         (targetSequence n).strategy who (some (execution.logs who,
             execution.observe (application setup timeouts leaks) who)) =
-          slotTrembledChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+          slotTrembledChoice setup timeouts leaks bounds (initialDistribution setup) horizon
+            scheduler
             (scale n)
             (scale_pos n).le (scale_le_one n) who (some (execution.logs who,
               execution.observe (application setup timeouts leaks) who)) main
-            (PMF.pure (silenceChoice setup timeouts leaks bounds (initialLaw setup) horizon
+            (PMF.pure (silenceChoice setup timeouts leaks bounds (initialDistribution setup) horizon
               scheduler
               who (some (execution.logs who,
                 execution.observe (application setup timeouts leaks) who))))
-            (slotChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler (sequence
+            (slotChoice setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
+              (sequence
               n) who
               (some (execution.logs who,
                 execution.observe (application setup timeouts leaks) who)))) := by
   have observed : (onePacketN).infoOf who history.trace =
       some (execution.logs who, execution.observe (application setup timeouts leaks) who) := by
-    refine ((bounds.onePacketMenu timeouts leaks).info (initialLaw setup) horizon
+    refine ((bounds.onePacketMenu timeouts leaks).info (initialDistribution setup) horizon
       scheduler who history.trace).trans ?_
     rw [current]
     simp [ReactiveApplication.observe]
@@ -127,7 +135,8 @@ theorem certificate_strategyShape (sequence : ℕ → setup.intendedModel.Behavi
     cases actorNone
   have played := (onePacketN).mem_playedInformation (who := who) running
   rw [observed] at played
-  have forced : forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks) (initialLaw
+  have forced : forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks)
+    (initialDistribution
     setup)
       horizon scheduler who (some (execution.logs who,
         execution.observe (application setup timeouts leaks) who)) :=
@@ -137,19 +146,20 @@ theorem certificate_strategyShape (sequence : ℕ → setup.intendedModel.Behavi
   have readyOwned : setup.informationGraph.actor? event = some who := by
     obtain ⟨entry, _member, recalled⟩ := activated
     exact (PublicView.ownTurn?_spec _ who event recalled).2
-  have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon
+  have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace
+    (initialDistribution setup) horizon
     scheduler (current ▸ history.trace)
   have facts := legalFacts setup leaks horizon scheduler _ rawTrace
   have active := execution.application.active_of_ready_owned facts.quiescent ready readyOwned
   obtain ⟨rank, point, ordered, decoded, forcedPoint⟩ := current ▸ forcedState
   have clear := defaulted_eq_empty_of_decodedForced
     ((decodedPoint_eq_of_isPrefix ordered).trans decoded) forcedPoint active
-  have notFree : ¬ FreeAgent setup timeouts leaks bounds (initialLaw setup)
+  have notFree : ¬ FreeAgent setup timeouts leaks bounds (initialDistribution setup)
       horizon scheduler agent :=
     fun unforced => unforced ⟨⟨_, _, rfl, clear⟩, forced⟩
   have atAgent := (onePacketN).agentBehavior_at (onePacketN).playedInformation
     (onePacketFallback setup timeouts leaks bounds horizon scheduler)
-    (fun agent => (weights n (onePacketPool setup timeouts leaks bounds (initialLaw setup)
+    (fun agent => (weights n (onePacketPool setup timeouts leaks bounds (initialDistribution setup)
       horizon scheduler
       agent)).bind
       (freeKeyedComponent
@@ -170,30 +180,34 @@ theorem certificate_strategyShape (sequence : ℕ → setup.intendedModel.Behavi
         execution.observe (application setup timeouts leaks) who)) :=
       ⟨_, _, event, rfl, pendingEvent_of_spec (timeouts := timeouts) turn unrecorded, entry, member,
         activatedAt⟩
-    have keyed : ownedKeyed (FreeAgent setup timeouts leaks bounds (initialLaw setup)
+    have keyed : ownedKeyed (FreeAgent setup timeouts leaks bounds (initialDistribution setup)
       horizon scheduler)
-        (LateDeliveryAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler)
+        (LateDeliveryAgent setup timeouts leaks bounds (initialDistribution setup) horizon
+          scheduler)
           agent :=
       ⟨late, notFree⟩
     have weightsEq : keyWeights setup timeouts leaks bounds horizon scheduler (weights n)
         (some (LateKey.ofView setup timeouts leaks who (execution.logs who)
           (execution.observe (application setup timeouts leaks) who))) =
-        weights n (.inr (some ⟨agentLateKey setup timeouts leaks bounds (initialLaw setup) horizon
+        weights n (.inr (some ⟨agentLateKey setup timeouts leaks bounds
+          (initialDistribution setup) horizon
           scheduler agent, ⟨agent, keyed⟩, rfl⟩)) := by
       have present : some (LateKey.ofView setup timeouts leaks who (execution.logs who)
           (execution.observe (application setup timeouts leaks) who)) ∈ Set.range
             fun agent : {agent : (onePacketN).InformationAgent (onePacketN).playedInformation //
-              ownedKeyed (FreeAgent setup timeouts leaks bounds (initialLaw setup) horizon
+              ownedKeyed (FreeAgent setup timeouts leaks bounds (initialDistribution setup) horizon
                 scheduler)
-                (LateDeliveryAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler)
+                (LateDeliveryAgent setup timeouts leaks bounds
+                  (initialDistribution setup) horizon scheduler)
                   agent} =>
-            agentLateKey setup timeouts leaks bounds (initialLaw setup) horizon scheduler agent.1 :=
+            agentLateKey setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
+              agent.1 :=
         ⟨⟨agent, keyed⟩, rfl⟩
       unfold keyWeights
       rw [dite_eq_left_of_eq_true (eq_true present)]
       rfl
     have mixture := freeKeyedMixture_of_keyed (key := agentLateKey setup timeouts leaks bounds
-      (initialLaw setup) horizon scheduler) (weights n)
+      (initialDistribution setup) horizon scheduler) (weights n)
       (onePacketUnforced setup timeouts leaks bounds horizon scheduler scale scale_pos scale_le_one
         n)
       (onePacketPrescribed setup timeouts leaks bounds horizon scheduler sequence scale scale_pos
@@ -203,7 +217,8 @@ theorem certificate_strategyShape (sequence : ℕ → setup.intendedModel.Behavi
     rw [assembled n]
     change (onePacketN).agentBehavior _ _ _ agent.1 agent.2.1 = _
     rw [atAgent, mixture, weightsEq]
-    exact bind_lateComponent setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+    exact bind_lateComponent setup timeouts leaks bounds (initialDistribution setup) horizon
+      scheduler
       (sequence n) _ (scale n) (scale_pos n).le (scale_le_one n) who _
   · intro recorded
     have notLate : ¬ LateDelivery setup timeouts leaks who (some (execution.logs who,
@@ -215,13 +230,14 @@ theorem certificate_strategyShape (sequence : ℕ → setup.intendedModel.Behavi
       subst sameEvent
       rw [recorded] at unrecorded
       cases unrecorded
-    have unkeyed : ¬ ownedKeyed (FreeAgent setup timeouts leaks bounds (initialLaw setup)
+    have unkeyed : ¬ ownedKeyed (FreeAgent setup timeouts leaks bounds (initialDistribution setup)
       horizon scheduler)
-        (LateDeliveryAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler)
+        (LateDeliveryAgent setup timeouts leaks bounds (initialDistribution setup) horizon
+          scheduler)
           agent :=
       fun keyed => notLate keyed.1
     have mixture := freeKeyedMixture_of_not_keyed (key := agentLateKey setup timeouts leaks bounds
-      (initialLaw setup) horizon scheduler) (weights n)
+      (initialDistribution setup) horizon scheduler) (weights n)
       (onePacketUnforced setup timeouts leaks bounds horizon scheduler scale scale_pos scale_le_one
         n)
       (onePacketPrescribed setup timeouts leaks bounds horizon scheduler sequence scale scale_pos
@@ -274,16 +290,19 @@ def ActivationTracked (who : Player) (info : (application setup timeouts leaks).
     (state : (application setup timeouts leaks).ProtocolState) : Prop :=
   LateDelivery setup timeouts leaks who info ∨ SiteActivated setup timeouts leaks who info state
 
-omit [Fintype Player] [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
+omit [Fintype Player] [(application setup timeouts leaks).FiniteNature
+    (initialDistribution setup) scheduler]
   [Finite setup.intendedProtocol.History]
-  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds
+    (initialDistribution setup) horizon
     scheduler).InfoState who)] in
 /-- The control step appends to the recall of an acting player one entry taken at
 its current view, and keeps every other player's recall. -/
 theorem controlStep_recall_entry (players : Player → (application setup timeouts leaks).Policy)
     (control : (application setup timeouts leaks).Control) {next : (application setup timeouts
       leaks).ProtocolState}
-    (member : next ∈ ((application setup timeouts leaks).controlStep (initialLaw setup) horizon
+    (member : next ∈ ((application setup timeouts leaks).controlStep
+      (initialDistribution setup) horizon
       scheduler
       players (some control)).support) (who : Player) :
     ∃ control', next = some control' ∧
@@ -323,9 +342,11 @@ theorem controlStep_recall_entry (players : Player → (application setup timeou
         exact (application setup timeouts leaks).respond_recall_other execution actor who
           different _
 
-omit [Fintype Player] [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
+omit [Fintype Player] [(application setup timeouts leaks).FiniteNature
+    (initialDistribution setup) scheduler]
   [Finite setup.intendedProtocol.History]
-  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds
+    (initialDistribution setup) horizon
     scheduler).InfoState who)] in
 /-- **The activation stays tracked along play.** A control step from a state
 consistent with a site keeps the activation of its pending event tracked: the
@@ -336,7 +357,8 @@ theorem activationTracked_step (players : Player → (application setup timeouts
       (timeouts := timeouts) who info state)
     (tracked : ActivationTracked setup timeouts leaks who info state)
     {next : (application setup timeouts leaks).ProtocolState}
-    (member : next ∈ ((application setup timeouts leaks).controlStep (initialLaw setup) horizon
+    (member : next ∈ ((application setup timeouts leaks).controlStep
+      (initialDistribution setup) horizon
       scheduler
       players state).support) :
     ActivationTracked setup timeouts leaks who info next := by
@@ -377,9 +399,10 @@ theorem activationTracked_step (players : Player → (application setup timeouts
           obtain ⟨rfl, -⟩ := List.cons.inj (List.append_cancel_left recallEq)
           exact activatedFirst
 
-omit [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
+omit [(application setup timeouts leaks).FiniteNature (initialDistribution setup) scheduler]
   [Finite setup.intendedProtocol.History]
-  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds
+    (initialDistribution setup) horizon
     scheduler).InfoState who)] in
 /-- The histories of a site track the activation of its pending event: their
 owner's recall is the site's. -/
@@ -405,9 +428,11 @@ theorem siteActivated_of_history {who : Player} {site : (onePacketN).Information
     rw [← seen] at pending
     cases pending
 
-omit [Fintype Player] [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
+omit [Fintype Player] [(application setup timeouts leaks).FiniteNature
+    (initialDistribution setup) scheduler]
   [Finite setup.intendedProtocol.History]
-  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds
+    (initialDistribution setup) horizon
     scheduler).InfoState who)] in
 /-- **Debt stays clear along play.** A control step from an initialized state
 keeps the owner's debt clear at an event: its native graph path either completes
@@ -417,7 +442,8 @@ theorem debtClear_step (players : Player → (application setup timeouts leaks).
       leaks).Control}
     (clear : DebtClear setup timeouts leaks who event (some control))
     {next : (application setup timeouts leaks).ProtocolState}
-    (member : next ∈ ((application setup timeouts leaks).controlStep (initialLaw setup) horizon
+    (member : next ∈ ((application setup timeouts leaks).controlStep
+      (initialDistribution setup) horizon
       scheduler
       players (some control)).support) :
     DebtClear setup timeouts leaks who event next := by
@@ -435,9 +461,10 @@ theorem debtClear_step (players : Player → (application setup timeouts leaks).
     exact clear
 
 open Classical in
-omit [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
+omit [(application setup timeouts leaks).FiniteNature (initialDistribution setup) scheduler]
   [Finite setup.intendedProtocol.History]
-  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds
+    (initialDistribution setup) horizon
     scheduler).InfoState who)] in
 /-- **The site shape of an installed late component, through the site.** Let a
 predicate of states refine consistency with a site, and let the activation of
@@ -461,14 +488,17 @@ theorem siteComponentShape_of_installed_within
     (allowed : (application setup timeouts leaks).ProtocolState → Prop)
     (within : ∀ state, allowed state → SiteConsistent (timeouts := timeouts) who site.1 state)
     (installed : profile who site.1 =
-      slotTrembledChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler scale
+      slotTrembledChoice setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
+        scale
         nonnegative le_one who site.1
-        ((PMF.pure option).bind (lateChoice setup timeouts leaks bounds (initialLaw setup) horizon
+        ((PMF.pure option).bind (lateChoice setup timeouts leaks bounds
+          (initialDistribution setup) horizon
           scheduler assessment who site.1))
-        (PMF.pure (silenceChoice setup timeouts leaks bounds (initialLaw setup) horizon
+        (PMF.pure (silenceChoice setup timeouts leaks bounds (initialDistribution setup) horizon
           scheduler who
           site.1))
-        (slotChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler assessment who
+        (slotChoice setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
+          assessment who
           site.1))
     (away : ∀ info, info ≠ site.1 → profile who info = strategy info)
     (activated : ∀ event, (PublicationTurn (timeouts := timeouts) key event ∨ ∃ payload, BindingTurn
@@ -492,46 +522,52 @@ theorem siteComponentShape_of_installed_within
       ((eventRecorded timeouts) leaks (execution.logs who) event = false →
         strategy (some (execution.logs who, execution.observe (application setup timeouts leaks)
           who)) =
-          slotTrembledChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler scale
+          slotTrembledChoice setup timeouts leaks bounds (initialDistribution setup) horizon
+            scheduler scale
             nonnegative le_one who (some (execution.logs who,
               execution.observe (application setup timeouts leaks) who))
             ((weights (LateKey.ofView setup timeouts leaks who (execution.logs who)
                 (execution.observe (application setup timeouts leaks) who))).bind
-              (lateChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+              (lateChoice setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
                 assessment who
                 (some (execution.logs who, execution.observe (application setup timeouts leaks)
                   who))))
-            (PMF.pure (silenceChoice setup timeouts leaks bounds (initialLaw setup) horizon
+            (PMF.pure (silenceChoice setup timeouts leaks bounds (initialDistribution setup) horizon
               scheduler who
               (some (execution.logs who, execution.observe (application setup timeouts leaks)
                 who))))
-            (slotChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler assessment
+            (slotChoice setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
+              assessment
               who
               (some (execution.logs who, execution.observe (application setup timeouts leaks)
                 who)))) ∧
       ((eventRecorded timeouts) leaks (execution.logs who) event = true →
-        ∃ main : PMF ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+        ∃ main : PMF ((onePacketModel setup timeouts leaks bounds
+          (initialDistribution setup) horizon
             scheduler).Choice who (some (execution.logs who,
               execution.observe (application setup timeouts leaks) who))),
-          (main = honestChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+          (main = honestChoice setup timeouts leaks bounds
+            (initialDistribution setup) horizon scheduler
               assessment who (some (execution.logs who,
                 execution.observe (application setup timeouts leaks) who)) ∨
             ∃ others : PMF (LateOption slots), main = others.bind
-              (lateChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+              (lateChoice setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
                 assessment who
                 (some (execution.logs who,
                   execution.observe (application setup timeouts leaks) who)))) ∧
           strategy (some (execution.logs who,
               execution.observe (application setup timeouts leaks) who)) =
-            slotTrembledChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+            slotTrembledChoice setup timeouts leaks bounds
+              (initialDistribution setup) horizon scheduler
               scale
               nonnegative le_one who (some (execution.logs who,
                 execution.observe (application setup timeouts leaks) who)) main
-              (PMF.pure (silenceChoice setup timeouts leaks bounds (initialLaw setup) horizon
+              (PMF.pure (silenceChoice setup timeouts leaks bounds
+                (initialDistribution setup) horizon
                 scheduler
                 who (some (execution.logs who,
                   execution.observe (application setup timeouts leaks) who))))
-              (slotChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+              (slotChoice setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
                 assessment who
                 (some (execution.logs who,
                   execution.observe (application setup timeouts leaks) who))))) :
@@ -602,7 +638,7 @@ theorem certificate_siteComponentShape_of_pending
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (scale : ℕ → ℝ) (scale_pos : ∀ n, 0 < scale n) (scale_le_one : ∀ n, scale n ≤ 1)
     {slots : Nat}
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialDistribution setup)
       horizon scheduler slots p))
     (targetSequence : ℕ → (onePacketN).BehavioralAssessment)
     (assembled : OnePacketAssembled setup timeouts leaks bounds horizon scheduler sequence scale
@@ -670,9 +706,10 @@ theorem certificate_siteComponentShape_of_pending
       scale_le_one weights targetSequence assembled n who history remaining execution event
       current forcedState ready activated
 
-omit [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
+omit [(application setup timeouts leaks).FiniteNature (initialDistribution setup) scheduler]
   [Finite setup.intendedProtocol.History]
-  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds
+    (initialDistribution setup) horizon
     scheduler).InfoState who)] in
 /-- **The histories of a debt-free pending site pass through it.** At a late
 delivery or first activation whose owner owes no failure, every history of the
@@ -720,9 +757,10 @@ theorem siteThrough_of_pendingHistory {who : Player} {site : (onePacketN).Inform
   exact Or.inr ⟨(State.publicView_eventReady _ pending').mp readyView, notOwed⟩
 
 
-omit [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
+omit [(application setup timeouts leaks).FiniteNature (initialDistribution setup) scheduler]
   [Finite setup.intendedProtocol.History]
-  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds
+    (initialDistribution setup) horizon
     scheduler).InfoState who)] in
 /-- **The histories of a debt-free late delivery pass through it**
 (`Vegas.siteThrough_of_pendingHistory`). -/
@@ -750,7 +788,7 @@ def certificateLumping (sequence : ℕ → setup.intendedModel.BehavioralAssessm
     (scale : ℕ → ℝ) (scale_pos : ∀ n, 0 < scale n) (scale_le_one : ∀ n, scale n ≤ 1)
     {slots : Nat} (covers : bounds.CoversOutputValues) (capacity : 1 ≤ bounds.candidateCount)
     (slotsLe : slots ≤ bounds.candidateCount)
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialDistribution setup)
       horizon scheduler slots p))
     (targetSequence : ℕ → (onePacketN).BehavioralAssessment)
     (assembled : OnePacketAssembled setup timeouts leaks bounds horizon scheduler sequence scale
@@ -801,9 +839,11 @@ def certificateLumping (sequence : ℕ → setup.intendedModel.BehavioralAssessm
             event siteTurn =>
             debtClear_step setup timeouts leaks horizon scheduler _ who event
               (through.1.2 event siteTurn) member⟩)
-    (fun site relevant key siteKey option => ownerStepClose_of_openingLaw (timeouts := timeouts)
+    (fun site relevant key siteKey option => ownerStepClose_of_openingDistribution
+      (timeouts := timeouts)
       bounds _ key option _
-      (ownerOpeningLaw_of_siteComponents (timeouts := timeouts) (sequence n) covers (scale n)
+      (OwnerOpeningWithinBounds_of_siteComponents (timeouts := timeouts) (sequence n) covers
+        (scale n)
         nonnegative
         (scale_le_one n) (certificateOptions setup timeouts leaks bounds horizon scheduler (weights
           n))
@@ -811,7 +851,7 @@ def certificateLumping (sequence : ℕ → setup.intendedModel.BehavioralAssessm
           horizon
           scheduler sequence scale scale_pos scale_le_one weights targetSequence assembled n site
           relevant.1 siteKey option _ (fun _ through => through.1.1) fun _ through => through.2)))
-    (fun site relevant key siteKey option => ownerBindingLaw_of_siteComponents (timeouts :=
+    (fun site relevant key siteKey option => OwnerBindingWithinTV_of_siteComponents (timeouts :=
       timeouts) (sequence n)
       covers capacity slotsLe (scale n) nonnegative (scale_le_one n)
       (certificateOptions setup timeouts leaks bounds horizon scheduler (weights n)) key option _ _

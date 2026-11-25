@@ -43,7 +43,7 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   (scheduler : (application setup timeouts leaks).Scheduler)
 
 local notation "onePacketN" =>
-  onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+  onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
 
 variable {setup timeouts leaks bounds horizon scheduler} in
 open Classical in
@@ -91,7 +91,7 @@ laws of operational records give every unit payoff of the record expectations
 within `2 ρ / (1 + ρ) + 2 ε / (1 - ε)`, where `ρ` is the sum of the sites'
 irregular ratios and `ε` is the factorization error. -/
 theorem keyedRecord_near
-    [Finite ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    [Finite ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).History]
     (wellFormed : setup.WellFormed)
     (priors : SequentialPriorCondition setup timeouts leaks bounds horizon scheduler)
@@ -141,14 +141,16 @@ theorem keyedRecord_near
       (show (1 : ℝ) ≤ 1 + steps.error n by linarith [steps.error_nonneg n])
     simp only [ε]
     linarith
-  let reach := fun history : (menu.protocol (initialLaw setup) horizon scheduler).History =>
+  let reach := fun history : (menu.protocol (initialDistribution setup) horizon scheduler).History
+    =>
     ((onePacketN).historyReachWeight (targetSequence n).strategy history).toReal
-  let base := fun history : (menu.protocol (initialLaw setup) horizon scheduler).History =>
+  let base := fun history : (menu.protocol (initialDistribution setup) horizon scheduler).History =>
     othersSourceWeight setup timeouts leaks bounds horizon scheduler (sequence n) who
       history.trace *
       operationalWeight setup timeouts leaks who (steps.mass n)
         (operationalRecord setup timeouts leaks bounds horizon scheduler history.trace)
-  let regular := fun history : (menu.protocol (initialLaw setup) horizon scheduler).History =>
+  let regular := fun history : (menu.protocol (initialDistribution setup) horizon
+    scheduler).History =>
     RegularTrace setup timeouts leaks bounds horizon scheduler (sequence n) who history.trace
   have baseNonneg : ∀ history, 0 ≤ base history := fun history =>
     mul_nonneg (othersSourceWeight_nonneg (timeouts := timeouts) _ _ history.trace)
@@ -298,13 +300,15 @@ theorem keyedRecord_near
     intro site ratio le bound
     refine bound.trans (mul_le_mul_of_nonneg_right le ?_)
     exact tsum_nonneg fun history => by split_ifs <;> simp [reach]
-  have agree := ownerSwap_baseLawAgrees_late (timeouts := timeouts) signal wellFormed independent
+  have agree := ownerSwap_BaseExpectationAgrees_late (timeouts := timeouts) signal wellFormed
+    independent
     observable
     coversInputs (sequence n)
     (operationalWeight setup timeouts leaks who (steps.mass n)) firstSite
       secondSite
     sameKey firstDebtFree secondDebtFree firstLate secondLate payoff
-  exact recordLaw_near_of_baseLaw (timeouts := timeouts) (targetSequence n) site₁ site₂ reach base
+  exact record_expectations_close_of_baseExpectationAgrees (timeouts := timeouts)
+    (targetSequence n) site₁ site₂ reach base
     regular
     (fun _ => ENNReal.toReal_nonneg) (fun history _ => baseNonneg history) bayesAt
     (scaleOf past₁) (scaleOf past₂) ε (ρ₁ + ρ₂) scale₁Pos scale₂Pos small
@@ -312,8 +316,9 @@ theorem keyedRecord_near
     (widen site₁ ρ₁ (by linarith) (irregularAt site₁ first))
     (widen site₂ ρ₂ (by linarith) (irregularAt site₂ second)) payoff unit base₁Pos base₂Pos agree
 
-variable [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
-  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+variable [(application setup timeouts leaks).FiniteNature (initialDistribution setup) scheduler]
+  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds
+    (initialDistribution setup) horizon
     scheduler).InfoState who)]
 
 open Classical in
@@ -324,7 +329,7 @@ theorem OnePacketBaseInputs.lateRecords_of_keyed
     (inputs : OnePacketBaseInputs setup timeouts leaks bounds horizon scheduler sequence slots)
     (wellFormed : setup.WellFormed)
     (priors : SequentialPriorCondition setup timeouts leaks bounds horizon scheduler)
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialDistribution setup)
       horizon scheduler slots p))
     (targetSequence : ℕ → (onePacketN).BehavioralAssessment)
     (assembled : OnePacketAssembled setup timeouts leaks bounds horizon scheduler sequence
@@ -334,17 +339,19 @@ theorem OnePacketBaseInputs.lateRecords_of_keyed
     (mixed : ∀ n, (targetSequence n).IsFullyMixed)
     (bayes : ∀ n, BehavioralAssessment.IsBayesConsistent (onePacketN) (targetSequence n)
       ((bounds.onePacketMenu timeouts leaks).decisionRecall
-        (initialLaw setup) horizon scheduler).decisionInformationAntichain) :
+        (initialDistribution setup) horizon scheduler).decisionInformationAntichain) :
     ∃ beliefDrift : ℕ → ℝ, Tendsto beliefDrift atTop (nhds 0) ∧
       ∀ n who, ∃ recordLaw : LateKey setup timeouts leaks →
           PMF (List (Option (OperationalState setup timeouts leaks))),
         ∀ (site : (onePacketN).InformationSite who),
-          ¬ FreeAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+          ¬ FreeAgent setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
             ((onePacketN).agentAt site) →
-          ¬ OwingAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+          ¬ OwingAgent setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
             ((onePacketN).agentAt site) →
-          ownedKeyed (FreeAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler)
-            (LateDeliveryAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler)
+          ownedKeyed (FreeAgent setup timeouts leaks bounds
+            (initialDistribution setup) horizon scheduler)
+            (LateDeliveryAgent setup timeouts leaks bounds
+              (initialDistribution setup) horizon scheduler)
             ((onePacketN).agentAt site) →
           ∀ key, lateKey setup timeouts leaks who site.1 = some key →
           ∀ payoff : List (Option (OperationalState setup timeouts leaks)) → ℝ,
@@ -353,13 +360,14 @@ theorem OnePacketBaseInputs.lateRecords_of_keyed
                 operationalRecord setup timeouts leaks bounds horizon scheduler history.1.trace)
                 payoff - expect (recordLaw key) payoff| ≤ beliefDrift n := by
   let LateSite := fun {who : Player} (site : (onePacketN).InformationSite who) =>
-    ¬ FreeAgent setup timeouts leaks bounds (initialLaw setup)
+    ¬ FreeAgent setup timeouts leaks bounds (initialDistribution setup)
       horizon scheduler ((onePacketN).agentAt site) ∧
-      ¬ OwingAgent setup timeouts leaks bounds (initialLaw setup)
+      ¬ OwingAgent setup timeouts leaks bounds (initialDistribution setup)
       horizon scheduler ((onePacketN).agentAt site) ∧
-      ownedKeyed (FreeAgent setup timeouts leaks bounds (initialLaw setup)
+      ownedKeyed (FreeAgent setup timeouts leaks bounds (initialDistribution setup)
       horizon scheduler)
-        (LateDeliveryAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler)
+        (LateDeliveryAgent setup timeouts leaks bounds (initialDistribution setup) horizon
+          scheduler)
         ((onePacketN).agentAt site)
   -- One site of each key.
   let recordLaw := fun (n : ℕ) (who : Player) (key : LateKey setup timeouts leaks) =>
@@ -383,7 +391,7 @@ theorem OnePacketBaseInputs.lateRecords_of_keyed
     (fun who site late => by
       obtain ⟨notFree, notOwing, keyed⟩ := late
       obtain ⟨⟨past, view⟩, atSite, event, turn⟩ := lateDelivery_input setup timeouts leaks keyed.1
-      have forced := forcedAgent_of_not_free setup timeouts leaks bounds (initialLaw setup)
+      have forced := forcedAgent_of_not_free setup timeouts leaks bounds (initialDistribution setup)
         horizon scheduler notFree
       have debtFree := siteDebtFree_of_not_owing setup timeouts leaks bounds horizon scheduler
         notOwing

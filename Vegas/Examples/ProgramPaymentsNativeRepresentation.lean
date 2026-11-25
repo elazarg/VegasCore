@@ -35,7 +35,7 @@ def activate (execution : app.Execution) : app.Execution :=
   { execution with environmentRecall := execution.environmentRecall ++
       [⟨execution.observeEnvironment app, .activate .alice⟩] }
 
-theorem activate_law (execution : app.Execution) :
+theorem activate_distribution (execution : app.Execution) :
     execution.environmentStep app (.activate .alice) = PMF.pure (activate execution) := by
   have observation : app.observePending = leaks 2 := rfl
   simp only [ReactiveApplication.Execution.environmentStep, observation, leaks,
@@ -47,7 +47,7 @@ def includePacket (execution : app.Execution) (identity : MessageId Player) : ap
     environmentRecall := execution.environmentRecall ++
       [⟨execution.observeEnvironment app, .include identity⟩] }
 
-theorem include_law (execution : app.Execution) (identity : MessageId Player) :
+theorem include_distribution (execution : app.Execution) (identity : MessageId Player) :
     execution.environmentStep app (.include identity) =
       PMF.pure (includePacket execution identity) := by
   simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map]
@@ -161,11 +161,11 @@ theorem included_handle (serial : Fin 2) :
   simp [accepted]
 
 abbrev menu := (bounds 2).rawMenu (timeouts (setup 2)) (leaks 2)
-abbrev protocol := menu.protocol (Vegas.initialLaw (setup 2)) 9 (service 2).scheduler
+abbrev protocol := menu.protocol (Vegas.initialDistribution (setup 2)) 9 (service 2).scheduler
 
-theorem initial_law : Vegas.initialLaw (setup 2) = PMF.pure initial := by
-  unfold Vegas.initialLaw serviceInitialLaw
-  rw [show (setup 2).initialLaw = PMF.pure ProgramPayments.initial from rfl]
+theorem initial_distribution : Vegas.initialDistribution (setup 2) = PMF.pure initial := by
+  unfold Vegas.initialDistribution serviceInitialDistribution
+  rw [show (setup 2).initialDistribution = PMF.pure ProgramPayments.initial from rfl]
   rw [PMF.pure_map]
   rfl
 
@@ -174,9 +174,9 @@ def startTrace : protocol.Trace (some ⟨9, none, start⟩) :=
     change ¬ False ∧ ∀ who, ¬ ((none : Option Player) = some who)
     simp) (by
       change some ⟨9, none, start⟩ ∈
-        ((Vegas.initialLaw (setup 2)).map
+        ((Vegas.initialDistribution (setup 2)).map
           (fun state => some (⟨9, none, .initial app state⟩ : app.Control))).support
-      rw [initial_law, PMF.pure_map]
+      rw [initial_distribution, PMF.pure_map]
       simp [start])
 
 def environmentTrace (remaining : Nat) (execution next : app.Execution)
@@ -190,7 +190,7 @@ def environmentTrace (remaining : Nat) (execution next : app.Execution)
       ∀ who, ¬ ((none : Option Player) = some who)
     simp) (by
       change some ⟨remaining, command.actor? app, next⟩ ∈
-        (app.transition (Vegas.initialLaw (setup 2)) 9 (service 2).scheduler
+        (app.transition (Vegas.initialDistribution (setup 2)) 9 (service 2).scheduler
           (some ⟨remaining + 1, none, execution⟩) (fun _ => none)).support
       simp only [ReactiveApplication.transition, scheduled, PMF.pure_bind, realized,
         PMF.pure_map]
@@ -198,7 +198,7 @@ def environmentTrace (remaining : Nat) (execution next : app.Execution)
 
 def activatedTrace : protocol.Trace (some ⟨8, some .alice, activate start⟩) :=
   environmentTrace 8 start (activate start) (.activate .alice) startTrace rfl
-    (activate_law start)
+    (activate_distribution start)
 
 theorem binding_legal (serial : Fin 2) (past : List app.PlayerEntry) (view : app.PlayerView) :
     bindingAction serial ∈ menu.actions .alice past view := by
@@ -218,7 +218,7 @@ def submittedTrace (serial : Fin 2) : protocol.Trace (some ⟨8, none, submitted
     cases who
     exact ⟨rfl, binding_legal serial _ _⟩) (by
       change some ⟨8, none, submitted serial⟩ ∈
-        (app.transition (Vegas.initialLaw (setup 2)) 9 (service 2).scheduler
+        (app.transition (Vegas.initialDistribution (setup 2)) 9 (service 2).scheduler
           (some ⟨8, some .alice, activate start⟩) (fun _ => some (bindingAction serial))).support
       simp [ReactiveApplication.transition, submitted])
 
@@ -228,7 +228,7 @@ theorem include_scheduled (serial : Fin 2) :
 
 def includedTrace (serial : Fin 2) : protocol.Trace (some ⟨7, none, included serial⟩) :=
   environmentTrace 7 (submitted serial) (included serial) (.include (.alice, 0))
-    (submittedTrace serial) (include_scheduled serial) (include_law _ _)
+    (submittedTrace serial) (include_scheduled serial) (include_distribution _ _)
 
 def tick (execution : app.Execution) : app.Execution :=
   { execution with
@@ -236,7 +236,7 @@ def tick (execution : app.Execution) : app.Execution :=
     environmentRecall := execution.environmentRecall ++
       [⟨execution.observeEnvironment app, .application .advanceClock⟩] }
 
-theorem tick_law (serial : Fin 2) :
+theorem tick_distribution (serial : Fin 2) :
     (included serial).environmentStep app (.application .advanceClock) =
       PMF.pure (tick (included serial)) := by
   have clear : ({ (included serial).application with
@@ -255,7 +255,7 @@ def expireCompleted (execution : app.Execution) : app.Execution :=
   { execution with environmentRecall := execution.environmentRecall ++
       [⟨execution.observeEnvironment app, .application (.expire 0)⟩] }
 
-theorem expireCompleted_law (serial : Fin 2) :
+theorem expireCompleted_distribution (serial : Fin 2) :
     (tick (included serial)).environmentStep app (.application (.expire 0)) =
       PMF.pure (expireCompleted (tick (included serial))) := by
   have notReady : ¬ (tick (included serial)).application.config.cut.Ready 0 := by
@@ -281,10 +281,12 @@ def secondActivation (serial : Fin 2) : app.Execution :=
 def secondActivationTrace (serial : Fin 2) :
     protocol.Trace (some ⟨4, some .alice, secondActivation serial⟩) := by
   have ticking : protocol.Trace (some ⟨6, none, tick (included serial)⟩) :=
-    environmentTrace 6 _ _ (.application .advanceClock) (includedTrace serial) rfl (tick_law _)
+    environmentTrace 6 _ _ (.application .advanceClock) (includedTrace serial) rfl
+      (tick_distribution _)
   have expired : protocol.Trace (some ⟨5, none, expireCompleted (tick (included serial))⟩) :=
-    environmentTrace 5 _ _ (.application (.expire 0)) ticking rfl (expireCompleted_law serial)
-  exact environmentTrace 4 _ _ (.activate .alice) expired rfl (activate_law _)
+    environmentTrace 5 _ _ (.application (.expire 0)) ticking rfl
+      (expireCompleted_distribution serial)
+  exact environmentTrace 4 _ _ (.activate .alice) expired rfl (activate_distribution _)
 
 theorem secondActivation_config (serial : Fin 2) :
     (secondActivation serial).application.config = boundConfig := included_config serial
@@ -486,7 +488,7 @@ def openingSubmittedTrace (serial : Fin 2) :
     cases who
     exact ⟨rfl, opening_legal _ _⟩) (by
       change some ⟨4, none, openingSubmitted serial⟩ ∈
-        (app.transition (Vegas.initialLaw (setup 2)) 9 (service 2).scheduler
+        (app.transition (Vegas.initialDistribution (setup 2)) 9 (service 2).scheduler
           (some ⟨4, some .alice, secondActivation serial⟩) (fun _ => some openingAction)).support
       simp [ReactiveApplication.transition, openingSubmitted])
 
@@ -496,7 +498,7 @@ theorem opening_include_scheduled :
 
 def completedTrace : protocol.Trace (some ⟨3, none, completed⟩) :=
   environmentTrace 3 (openingSubmitted 0) completed (.include (.alice, 1))
-    (openingSubmittedTrace 0) opening_include_scheduled (include_law _ _)
+    (openingSubmittedTrace 0) opening_include_scheduled (include_distribution _ _)
 
 theorem completed_config_terminal : completed.application.config.cut.Terminal := by
   rw [completed_application]

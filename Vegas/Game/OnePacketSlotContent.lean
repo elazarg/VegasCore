@@ -46,7 +46,7 @@ choice. -/
 theorem contentFactor_slotResponse_bind
     (assessment : setup.intendedModel.BehavioralAssessment)
     {control : (application setup timeouts leaks).Control}
-    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some control))
     (who : Player) (event : setup.informationGraph.EventId) {payload : L.Ty}
     {outputEq : setup.informationGraph.outputLayout event = .binding who payload}
@@ -67,10 +67,10 @@ theorem contentFactor_slotResponse_bind
           (control.execution.observe (application setup timeouts leaks) who) event slot choice) =
       (asIfHonestProfile setup timeouts leaks assessment who (some (control.execution.logs who,
         control.execution.observe (application setup timeouts leaks) who)) choice).toReal := by
-  have rawTrace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+  have rawTrace : ((application setup timeouts leaks).protocol (initialDistribution setup) horizon
     scheduler).Trace
       (some control) :=
-    (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon scheduler
+    (bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup) horizon scheduler
       trace
   have recalled := (countRecall_history timeouts) leaks rawTrace
   obtain ⟨action, encoded, values⟩ := covered
@@ -163,7 +163,7 @@ as-if-honest play supports, at any slot. -/
 theorem slotChoiceOf_ne_of_zeroContent
     (assessment : setup.intendedModel.BehavioralAssessment)
     {control : (application setup timeouts leaks).Control}
-    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some control))
     (who : Player) (event : setup.informationGraph.EventId) {payload : L.Ty}
     {outputEq : setup.informationGraph.outputLayout event = .binding who payload}
@@ -177,7 +177,7 @@ theorem slotChoiceOf_ne_of_zeroContent
       none)
     (zero : contentFactor setup timeouts leaks assessment who control.execution
       (control.execution.respond (application setup timeouts leaks) who response) response = 0)
-    (choice : (onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+    (choice : (onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon
       scheduler).Choice who
       (some (control.execution.logs who,
         control.execution.observe (application setup timeouts leaks) who)))
@@ -185,7 +185,7 @@ theorem slotChoiceOf_ne_of_zeroContent
     (supported : source ∈ (asIfHonestProfile setup timeouts leaks assessment who
       (some (control.execution.logs who,
         control.execution.observe (application setup timeouts leaks) who))).support) :
-    slotChoiceOf setup timeouts leaks bounds (initialLaw setup) horizon scheduler who
+    slotChoiceOf setup timeouts leaks bounds (initialDistribution setup) horizon scheduler who
       (control.execution.logs who) (control.execution.observe (application setup timeouts leaks)
         who)
       event slot source ≠ choice := by
@@ -196,7 +196,8 @@ theorem slotChoiceOf_ne_of_zeroContent
       (control.execution.observe (application setup timeouts leaks) who) event slot source ∈
       bounds.onePacketActions timeouts leaks who (control.execution.logs who)
         (control.execution.observe (application setup timeouts leaks) who)
-  · have offeredValue : (slotChoiceOf setup timeouts leaks bounds (initialLaw setup) horizon
+  · have offeredValue : (slotChoiceOf setup timeouts leaks bounds
+      (initialDistribution setup) horizon
       scheduler who
         (control.execution.logs who) (control.execution.observe (application setup timeouts
           leaks) who)
@@ -213,7 +214,7 @@ theorem slotChoiceOf_ne_of_zeroContent
     have positive := (PMF.mem_support_iff _ _).mp supported
     exact positive ((ENNReal.toReal_eq_zero_iff _).mp zero |>.resolve_right
       (PMF.apply_ne_top _ _))
-  · have silentValue : (slotChoiceOf setup timeouts leaks bounds (initialLaw setup) horizon
+  · have silentValue : (slotChoiceOf setup timeouts leaks bounds (initialDistribution setup) horizon
       scheduler who
         (control.execution.logs who) (control.execution.observe (application setup timeouts
           leaks) who)
@@ -231,7 +232,7 @@ silence. -/
 theorem tierMasses_of_zeroContent
     (assessment : setup.intendedModel.BehavioralAssessment)
     {control : (application setup timeouts leaks).Control}
-    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some control))
     (who : Player) (event : setup.informationGraph.EventId) {payload : L.Ty}
     {outputEq : setup.informationGraph.outputLayout event = .binding who payload}
@@ -245,35 +246,40 @@ theorem tierMasses_of_zeroContent
       none)
     (zero : contentFactor setup timeouts leaks assessment who control.execution
       (control.execution.respond (application setup timeouts leaks) who response) response = 0)
-    (choice : (onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+    (choice : (onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon
       scheduler).Choice who
       (some (control.execution.logs who,
         control.execution.observe (application setup timeouts leaks) who)))
     (chosen : choice.1 = some response) :
-    honestChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler assessment who _
+    honestChoice setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
+      assessment who _
       choice =
         0 ∧
-      slotChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler assessment who _
+      slotChoice setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
+        assessment who _
         choice =
         0 ∧
       (∀ {slots : Nat} (option : LateOption slots),
-        lateChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler assessment who
+        lateChoice setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
+          assessment who
           _ option
           choice = 0) ∧
-      PMF.pure (silenceChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+      PMF.pure (silenceChoice setup timeouts leaks bounds (initialDistribution setup) horizon
+        scheduler
         who _)
         choice = 0 := by
   have avoided := slotChoiceOf_ne_of_zeroContent (timeouts := timeouts) assessment trace who event
     site response
     transmits zero choice chosen
-  have silenceNe : silenceChoice setup timeouts leaks bounds (initialLaw setup) horizon
+  have silenceNe : silenceChoice setup timeouts leaks bounds (initialDistribution setup) horizon
     scheduler who
       (some (control.execution.logs who,
         control.execution.observe (application setup timeouts leaks) who)) ≠ choice := by
     intro equal
     have values := congrArg Subtype.val equal
     rw [chosen] at values
-    have silentValue : (silenceChoice setup timeouts leaks bounds (initialLaw setup) horizon
+    have silentValue : (silenceChoice setup timeouts leaks bounds
+      (initialDistribution setup) horizon
       scheduler who
         (some (control.execution.logs who,
           control.execution.observe (application setup timeouts leaks) who))).1 = some ⟨none⟩ := by
@@ -292,7 +298,8 @@ theorem tierMasses_of_zeroContent
       canonical site.active selected, PMF.map_comp]
     exact map_apply_eq_zero_of_forall_ne _ _ _ fun source supported =>
       avoided canonical source supported
-  · rw [slotChoice_eq_map (timeouts := timeouts) (initialLaw setup) horizon scheduler site.turn]
+  · rw [slotChoice_eq_map (timeouts := timeouts) (initialDistribution setup) horizon scheduler
+      site.turn]
     refine map_apply_eq_zero_of_forall_ne _ _ _ fun pair pairSupported => ?_
     obtain ⟨pairSlot, _, inner⟩ := (PMF.mem_support_bind_iff _ _ _).mp pairSupported
     obtain ⟨pairSource, sourceSupported, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp inner

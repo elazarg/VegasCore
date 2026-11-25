@@ -65,14 +65,14 @@ example : ¬ Disclosing openPays withholdOpen := by
 example : Disclosing openPays (BehavioralPolicy.forceDisclose openPays withholdOpen) :=
   disclosing_forceDisclose openPays withholdOpen
 
-def payoffLaw {p : SourceProgram Unit simpleExpr [] ∅}
+def payoffDistribution {p : SourceProgram Unit simpleExpr [] ∅}
     (policy : BehavioralPolicy (who := ()) p) : PMF (List (Unit × Int)) :=
   (p.run (fun _ => policy) (Env.empty (CellVal simpleExpr))).map
     (fun terminal => p.evaluatePayoffs terminal.state)
 
 /-- Withholding where opening pays is worth nothing. -/
-example : payoffLaw withholdOpen = PMF.pure [((), 0)] := by
-  simp [payoffLaw, SourceProgram.run, openPays, withholdOpen, SourceProgram.runFrom,
+example : payoffDistribution withholdOpen = PMF.pure [((), 0)] := by
+  simp [payoffDistribution, SourceProgram.run, openPays, withholdOpen, SourceProgram.runFrom,
     SourceProgram.commitKernel, SourceProgram.revealKernel, SourceProgram.afterCommit,
     Config.initial, Config.defaulted, DefaultHistory.defaulted, DefaultHistory.record,
     commitSuccessor, PMF.pure_map]
@@ -80,8 +80,9 @@ example : payoffLaw withholdOpen = PMF.pure [((), 0)] := by
 
 /-- Forcing the owner to open collects the payoff it was refusing. -/
 example :
-    payoffLaw (BehavioralPolicy.forceDisclose openPays withholdOpen) = PMF.pure [((), 1)] := by
-  simp [payoffLaw, SourceProgram.run, openPays, withholdOpen,
+    payoffDistribution (BehavioralPolicy.forceDisclose openPays withholdOpen) = PMF.pure
+      [((), 1)] := by
+  simp [payoffDistribution, SourceProgram.run, openPays, withholdOpen,
     BehavioralPolicy.forceDisclose, SourceProgram.runFrom, SourceProgram.commitKernel,
     SourceProgram.revealKernel, SourceProgram.afterCommit, Config.initial, Config.defaulted,
     DefaultHistory.defaulted, DefaultHistory.record, commitSuccessor, PMF.pure_map]
@@ -89,17 +90,17 @@ example :
 
 /-- Where refusing is what pays, the same forcing destroys the payoff, so the
 premise cannot hold there. -/
-example : payoffLaw withholdRefusal = PMF.pure [((), 1)] := by
-  simp [payoffLaw, SourceProgram.run, refusalPays, withholdRefusal, SourceProgram.runFrom,
+example : payoffDistribution withholdRefusal = PMF.pure [((), 1)] := by
+  simp [payoffDistribution, SourceProgram.run, refusalPays, withholdRefusal, SourceProgram.runFrom,
     SourceProgram.commitKernel, SourceProgram.revealKernel, SourceProgram.afterCommit,
     Config.initial, Config.defaulted, DefaultHistory.defaulted, DefaultHistory.record,
     commitSuccessor, PMF.pure_map]
   rfl
 
 example :
-    payoffLaw (BehavioralPolicy.forceDisclose refusalPays withholdRefusal) =
+    payoffDistribution (BehavioralPolicy.forceDisclose refusalPays withholdRefusal) =
       PMF.pure [((), 0)] := by
-  simp [payoffLaw, SourceProgram.run, refusalPays, withholdRefusal,
+  simp [payoffDistribution, SourceProgram.run, refusalPays, withholdRefusal,
     BehavioralPolicy.forceDisclose, SourceProgram.runFrom, SourceProgram.commitKernel,
     SourceProgram.revealKernel, SourceProgram.afterCommit, Config.initial, Config.defaulted,
     DefaultHistory.defaulted, DefaultHistory.record, commitSuccessor, PMF.pure_map]

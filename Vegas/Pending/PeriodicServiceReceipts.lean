@@ -85,7 +85,7 @@ private theorem old_response_mem_before (inputs : graph.Inputs)
 
 /-- During a processing segment no player is activated, even under arbitrary
 raw response policies. The resulting execution is the deterministic batch. -/
-theorem processing_segment_law (players : Player → (app).Policy)
+theorem processing_segment_distribution (players : Player → (app).Policy)
     (cycle slot count : Nat) (execution : (app).Execution)
     (inside : slot + count ≤ packetBudget)
     (cursor : execution.environmentRecall.length = cycle * width + slot) :
@@ -122,7 +122,7 @@ theorem processing_segment (players : Player → (app).Policy)
         execution.network.pending.length ∧
       ∀ message ∈ execution.network.pending,
         ∃ accepted, (message.id, accepted) ∈ next.receipts := by
-  rw [processing_segment_law players cycle slot _ execution inside cursor,
+  rw [processing_segment_distribution players cycle slot _ execution inside cursor,
     PMF.mem_support_pure_iff] at reached
   subst next
   refine ⟨?_, ?_, (app).processPendingBatch_recall _ _,
@@ -143,7 +143,7 @@ theorem processing_covers_inputs (remaining cycle : Nat) (before after : (app).E
     (message : Message Player (app).Payload) (submitted : message ∈ before.network.inputs) :
     ∃ accepted, (message.id, accepted) ∈ after.receipts := by
   have capacity := pending_le_budget ⟨remaining, none, before⟩ trace
-  rw [processing_segment_law players cycle 0 packetBudget before (by omega) (by omega),
+  rw [processing_segment_distribution players cycle 0 packetBudget before (by omega) (by omega),
     PMF.mem_support_pure_iff] at reached
   subst after
   have retained := (app).pendingOrPublished_history schedule startLaw horizon trace

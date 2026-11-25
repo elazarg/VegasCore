@@ -3,7 +3,7 @@ module
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 public import Interaction.ReactiveConditionedMenu
-public import Vegas.Game.ConditionedCompilationLaw
+public import Vegas.Game.ConditionedCompilationDistribution
 
 @[expose] public section
 
@@ -27,13 +27,13 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr} [IExp
 
 local notation "app" => application setup timeouts leaks
 local notation "raw" => bounds.rawMenu timeouts leaks
-local notation "initial" => Vegas.initialLaw setup
+local notation "initial" => Vegas.initialDistribution setup
 
 /-- The original ledger and funding hypotheses give a compiler specification on every supported
 component satisfying the prior condition. Payoff bounds are needed only at the original
 legal histories. The specification uses exactly the supplied audit, deposit and exit utility. -/
 def conditionInitial_clientSpec
-    (key : Signal) (supported : key ∈ (setup.initialLaw.map signal).support)
+    (key : Signal) (supported : key ∈ (setup.initialDistribution.map signal).support)
     (prior : SequentialPriorCondition (setup.conditionInitial signal key) timeouts leaks
       bounds horizon scheduler)
     (nature : (app).FiniteNature initial scheduler) [Finite setup.intendedProtocol.History]

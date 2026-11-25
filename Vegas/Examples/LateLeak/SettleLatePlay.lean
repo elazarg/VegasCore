@@ -45,14 +45,14 @@ theorem settleLate_model_infoOf (G : SettleLateParameters) (late : Bool) (who : 
 /-! ## The state kernel -/
 
 /-- The mover's law over its own options at a state. -/
-def settleLateMoveLaw (profile : SettleLateProfile G late) (state : SettleLateState) :
+def settleLateMoveDistribution (profile : SettleLateProfile G late) (state : SettleLateState) :
     PMF (Option SettleLateMove) :=
   (profile state.mover (settleLateView state.mover state)).map Subtype.val
 
 /-- One step of play from a state. -/
 def settleLateKernel (profile : SettleLateProfile G late) (state : SettleLateState) :
     PMF SettleLateState :=
-  (settleLateMoveLaw profile state).bind (settleLateAdvance G state)
+  (settleLateMoveDistribution profile state).bind (settleLateAdvance G state)
 
 /-- One step of play from a law over states. -/
 def settleLateFlow (profile : SettleLateProfile G late) (law : PMF SettleLateState) :
@@ -91,7 +91,7 @@ theorem settleLate_joint_bind_step (profile : SettleLateProfile G late)
             history.state.mover) = _
         rw [ExecutionProtocol.singletonJoint_self]
     _ = _ := by
-        rw [settleLate_model_infoOf, settleLateKernel, settleLateMoveLaw, PMF.bind_map]
+        rw [settleLate_model_infoOf, settleLateKernel, settleLateMoveDistribution, PMF.bind_map]
         rfl
 
 theorem settleLateKernel_of_finished (profile : SettleLateProfile G late)
@@ -99,10 +99,10 @@ theorem settleLateKernel_of_finished (profile : SettleLateProfile G late)
     settleLateKernel profile state = PMF.pure state := by
   cases state with
   | protectedDone secret talk answer =>
-      change (settleLateMoveLaw profile _).bind (fun _ => PMF.pure _) = _
+      change (settleLateMoveDistribution profile _).bind (fun _ => PMF.pure _) = _
       exact PMF.bind_const _ _
   | finished record answer =>
-      change (settleLateMoveLaw profile _).bind (fun _ => PMF.pure _) = _
+      change (settleLateMoveDistribution profile _).bind (fun _ => PMF.pure _) = _
       exact PMF.bind_const _ _
   | _ => exact stopped.elim
 
@@ -166,62 +166,64 @@ theorem settleLateValue_of_finished (profile : SettleLateProfile G late)
       rw [settleLateValue_succ, settleLateKernel_of_finished profile stopped, expect_pure, ih]
 
 /-- The sender's law over its options at one of its views. -/
-def settleLateSenderLaw (profile : SettleLateProfile G late) (view : SettleLateView) :
+def settleLateSenderDistribution (profile : SettleLateProfile G late) (view : SettleLateView) :
     PMF (Option SettleLateMove) :=
   (profile .sender view).map Subtype.val
 
 /-- The listener's law over its options at one of its views. -/
-def settleLateListenerLaw (profile : SettleLateProfile G late) (view : SettleLateView) :
+def settleLateListenerDistribution (profile : SettleLateProfile G late) (view : SettleLateView) :
     PMF (Option SettleLateMove) :=
   (profile .listener view).map Subtype.val
 
 /-- The value of an answering state. -/
 def settleLateAnswerValue (profile : SettleLateProfile G late) (payoff : SettleLateState → ℝ)
     (record : SettleLateRecord) : ℝ :=
-  expect (settleLateListenerLaw profile (.asked record.report)) fun choice =>
+  expect (settleLateListenerDistribution profile (.asked record.report)) fun choice =>
     payoff (.finished record (settleLateReplyOf choice))
 
 /-- The value of the inclusion step after the second late packet. -/
 def settleLateSettleValue (profile : SettleLateProfile G late) (payoff : SettleLateState → ℝ)
     (secret : LateLeakType) (early : Option Bool) (first : SettleLateFirst) (ping : Bool)
     (second : SettleLatePacket) : ℝ :=
-  expect (settleLateFateLaw G first second) fun fate =>
+  expect (settleLateFateDistribution G first second) fun fate =>
     settleLateAnswerValue profile payoff ⟨secret, early, first, ping, second, fate⟩
 
 /-- The value at the second late turn. -/
 def settleLateSecondValue (profile : SettleLateProfile G late) (payoff : SettleLateState → ℝ)
     (secret : LateLeakType) (early : Option Bool) (first : SettleLateFirst) (ping : Bool) : ℝ :=
-  expect (settleLateSenderLaw profile (.secondTurn secret early first.packet ping)) fun choice =>
+  expect (settleLateSenderDistribution profile (.secondTurn secret early first.packet ping))
+    fun choice =>
     settleLateSettleValue profile payoff secret early first ping (settleLatePacketOf choice)
 
 /-- The value at the listener's observe-only activation. -/
 def settleLateWatchValue (profile : SettleLateProfile G late) (payoff : SettleLateState → ℝ)
     (secret : LateLeakType) (early : Option Bool) (first : SettleLateFirst) : ℝ :=
-  expect (settleLateListenerLaw profile (.watching early (first.glimpse secret.1))) fun choice =>
+  expect (settleLateListenerDistribution profile (.watching early (first.glimpse secret.1)))
+    fun choice =>
     settleLateSecondValue profile payoff secret early first (settleLatePingOf choice)
 
 /-- The value after the first late packet. -/
 def settleLateEmitValue (profile : SettleLateProfile G late) (payoff : SettleLateState → ℝ)
     (secret : LateLeakType) (early : Option Bool) (packet : SettleLatePacket) : ℝ :=
-  expect (settleLateFirstLaw G packet) fun first =>
+  expect (settleLateFirstDistribution G packet) fun first =>
     settleLateWatchValue profile payoff secret early first
 
 /-- The value at the first late turn. -/
 def settleLateFirstValue (profile : SettleLateProfile G late) (payoff : SettleLateState → ℝ)
     (secret : LateLeakType) (early : Option Bool) : ℝ :=
-  expect (settleLateSenderLaw profile (.firstTurn secret early)) fun choice =>
+  expect (settleLateSenderDistribution profile (.firstTurn secret early)) fun choice =>
     settleLateEmitValue profile payoff secret early (settleLatePacketOf choice)
 
 /-- The value of the listener's answer after a protected opening. -/
 def settleLateProtectedAnswerValue (profile : SettleLateProfile G late)
     (payoff : SettleLateState → ℝ) (secret : LateLeakType) (talk : Option Bool) : ℝ :=
-  expect (settleLateListenerLaw profile (.protectedAsked secret.1 talk)) fun choice =>
+  expect (settleLateListenerDistribution profile (.protectedAsked secret.1 talk)) fun choice =>
     payoff (.protectedDone secret talk (settleLateReplyOf choice))
 
 /-- The value of the sender's activation after a protected opening. -/
 def settleLateAfterValue (profile : SettleLateProfile G late) (payoff : SettleLateState → ℝ)
     (secret : LateLeakType) : ℝ :=
-  expect (settleLateSenderLaw profile (.afterProtected secret)) fun choice =>
+  expect (settleLateSenderDistribution profile (.afterProtected secret)) fun choice =>
     settleLateProtectedAnswerValue profile payoff secret (settleLatePacketOf choice).word
 
 /-- The value of what the sender emits at the protected turn. -/
@@ -233,7 +235,7 @@ def settleLateProtectedEmitValue (profile : SettleLateProfile G late)
 /-- The value at the protected turn. -/
 def settleLateProtectedValue (profile : SettleLateProfile G late) (payoff : SettleLateState → ℝ)
     (secret : LateLeakType) : ℝ :=
-  expect (settleLateSenderLaw profile (.protectedTurn secret)) fun choice =>
+  expect (settleLateSenderDistribution profile (.protectedTurn secret)) fun choice =>
     settleLateProtectedEmitValue profile payoff secret (settleLatePacketOf choice)
 
 theorem settleLateValue_answering (profile : SettleLateProfile G late)
@@ -241,7 +243,7 @@ theorem settleLateValue_answering (profile : SettleLateProfile G late)
     settleLateValue profile payoff (fuel + 1) (.answering record) =
       settleLateAnswerValue profile payoff record := by
   rw [settleLateValue_succ]
-  change expect ((settleLateListenerLaw profile (.asked record.report)).bind
+  change expect ((settleLateListenerDistribution profile (.asked record.report)).bind
     (settleLateAdvance G (.answering record))) _ = _
   rw [expect_bind_of_finite]
   simp only [settleLateAdvance, expect_pure]
@@ -252,7 +254,7 @@ theorem settleLateValue_protectedAnswer (profile : SettleLateProfile G late)
     settleLateValue profile payoff (fuel + 1) (.protectedAnswer secret talk) =
       settleLateProtectedAnswerValue profile payoff secret talk := by
   rw [settleLateValue_succ]
-  change expect ((settleLateListenerLaw profile (.protectedAsked secret.1 talk)).bind
+  change expect ((settleLateListenerDistribution profile (.protectedAsked secret.1 talk)).bind
     (settleLateAdvance G (.protectedAnswer secret talk))) _ = _
   rw [expect_bind_of_finite]
   simp only [settleLateAdvance, expect_pure]
@@ -264,7 +266,8 @@ theorem settleLateValue_secondLate (profile : SettleLateProfile G late)
     settleLateValue profile payoff (fuel + 2) (.secondLate secret early first ping) =
       settleLateSecondValue profile payoff secret early first ping := by
   rw [settleLateValue_succ]
-  change expect ((settleLateSenderLaw profile (.secondTurn secret early first.packet ping)).bind
+  change expect ((settleLateSenderDistribution profile (.secondTurn secret early first.packet
+    ping)).bind
     (settleLateAdvance G (.secondLate secret early first ping))) _ = _
   rw [expect_bind_of_finite]
   simp only [settleLateAdvance, expect_map, Function.comp_def, settleLateValue_answering,
@@ -276,7 +279,8 @@ theorem settleLateValue_watching (profile : SettleLateProfile G late)
     settleLateValue profile payoff (fuel + 3) (.watching secret early first) =
       settleLateWatchValue profile payoff secret early first := by
   rw [settleLateValue_succ]
-  change expect ((settleLateListenerLaw profile (.watching early (first.glimpse secret.1))).bind
+  change expect ((settleLateListenerDistribution profile (.watching early
+    (first.glimpse secret.1))).bind
     (settleLateAdvance G (.watching secret early first))) _ = _
   rw [expect_bind_of_finite]
   simp only [settleLateAdvance, expect_pure, settleLateValue_secondLate, settleLateWatchValue]
@@ -286,7 +290,7 @@ theorem settleLateValue_firstLate (profile : SettleLateProfile G late)
     settleLateValue profile payoff (fuel + 4) (.firstLate secret early) =
       settleLateFirstValue profile payoff secret early := by
   rw [settleLateValue_succ]
-  change expect ((settleLateSenderLaw profile (.firstTurn secret early)).bind
+  change expect ((settleLateSenderDistribution profile (.firstTurn secret early)).bind
     (settleLateAdvance G (.firstLate secret early))) _ = _
   rw [expect_bind_of_finite]
   simp only [settleLateAdvance, expect_map, Function.comp_def, settleLateValue_watching,
@@ -297,7 +301,7 @@ theorem settleLateValue_afterProtected (profile : SettleLateProfile G late)
     settleLateValue profile payoff (fuel + 2) (.afterProtected secret) =
       settleLateAfterValue profile payoff secret := by
   rw [settleLateValue_succ]
-  change expect ((settleLateSenderLaw profile (.afterProtected secret)).bind
+  change expect ((settleLateSenderDistribution profile (.afterProtected secret)).bind
     (settleLateAdvance G (.afterProtected secret))) _ = _
   rw [expect_bind_of_finite]
   simp only [settleLateAdvance, expect_pure, settleLateValue_protectedAnswer,
@@ -308,7 +312,7 @@ theorem settleLateValue_protectedTurn (profile : SettleLateProfile G late)
     settleLateValue profile payoff (fuel + 5) (.protectedTurn secret) =
       settleLateProtectedValue profile payoff secret := by
   rw [settleLateValue_succ]
-  change expect ((settleLateSenderLaw profile (.protectedTurn secret)).bind
+  change expect ((settleLateSenderDistribution profile (.protectedTurn secret)).bind
     (settleLateAdvance G (.protectedTurn secret))) _ = _
   rw [expect_bind_of_finite]
   simp only [settleLateAdvance, expect_pure, settleLateProtectedValue,
@@ -324,39 +328,39 @@ theorem settleLateValue_initial (profile : SettleLateProfile G late)
     settleLateValue profile payoff (fuel + 6) .initial =
       expect lateLeakPrior fun secret => settleLateProtectedValue profile payoff secret := by
   rw [settleLateValue_succ]
-  change expect ((settleLateMoveLaw profile .initial).bind
+  change expect ((settleLateMoveDistribution profile .initial).bind
     fun _ => lateLeakPrior.map SettleLateState.protectedTurn) _ = _
   rw [PMF.bind_const, expect_map]
   simp only [Function.comp_def, settleLateValue_protectedTurn]
 
 /-! ## Updating one player -/
 
-theorem settleLateListenerLaw_update_sender (profile : SettleLateProfile G late)
+theorem settleLateListenerDistribution_update_sender (profile : SettleLateProfile G late)
     (policy : (settleLateModel G late).BehavioralPolicy .sender) (view : SettleLateView) :
-    settleLateListenerLaw (settleLateUpdate profile .sender policy) view =
-      settleLateListenerLaw profile view := by
-  simp only [settleLateListenerLaw, settleLateUpdate, Profile.update_of_ne _ _ (by decide :
+    settleLateListenerDistribution (settleLateUpdate profile .sender policy) view =
+      settleLateListenerDistribution profile view := by
+  simp only [settleLateListenerDistribution, settleLateUpdate, Profile.update_of_ne _ _ (by decide :
     LateLeakRole.listener ≠ LateLeakRole.sender)]
 
-theorem settleLateSenderLaw_update_listener (profile : SettleLateProfile G late)
+theorem settleLateSenderDistribution_update_listener (profile : SettleLateProfile G late)
     (policy : (settleLateModel G late).BehavioralPolicy .listener) (view : SettleLateView) :
-    settleLateSenderLaw (settleLateUpdate profile .listener policy) view =
-      settleLateSenderLaw profile view := by
-  simp only [settleLateSenderLaw, settleLateUpdate, Profile.update_of_ne _ _ (by decide :
+    settleLateSenderDistribution (settleLateUpdate profile .listener policy) view =
+      settleLateSenderDistribution profile view := by
+  simp only [settleLateSenderDistribution, settleLateUpdate, Profile.update_of_ne _ _ (by decide :
     LateLeakRole.sender ≠ LateLeakRole.listener)]
 
-theorem settleLateSenderLaw_update_sender (profile : SettleLateProfile G late)
+theorem settleLateSenderDistribution_update_sender (profile : SettleLateProfile G late)
     (policy : (settleLateModel G late).BehavioralPolicy .sender) (view : SettleLateView) :
-    settleLateSenderLaw (settleLateUpdate profile .sender policy) view =
+    settleLateSenderDistribution (settleLateUpdate profile .sender policy) view =
       (policy view).map Subtype.val := by
-  simp only [settleLateSenderLaw, settleLateUpdate, Profile.update_same]
+  simp only [settleLateSenderDistribution, settleLateUpdate, Profile.update_same]
 
 theorem settleLateAnswerValue_update_sender (profile : SettleLateProfile G late)
     (policy : (settleLateModel G late).BehavioralPolicy .sender) (payoff : SettleLateState → ℝ)
     (record : SettleLateRecord) :
     settleLateAnswerValue (settleLateUpdate profile .sender policy) payoff record =
       settleLateAnswerValue profile payoff record := by
-  simp only [settleLateAnswerValue, settleLateListenerLaw_update_sender]
+  simp only [settleLateAnswerValue, settleLateListenerDistribution_update_sender]
 
 theorem settleLateSettleValue_update_sender (profile : SettleLateProfile G late)
     (policy : (settleLateModel G late).BehavioralPolicy .sender) (payoff : SettleLateState → ℝ)
@@ -394,11 +398,12 @@ theorem settleLateLastJoint_parent_mover (target : SettleLateState) :
   cases target <;> simp [settleLateLastJoint, settleLateParent, SettleLateState.mover,
     SettleLateState.actor, settleLateLastMove]
 
-theorem settleLateMoveLaw_menu (profile : SettleLateProfile G late) (state : SettleLateState)
+theorem settleLateMoveDistribution_menu (profile : SettleLateProfile G late)
+    (state : SettleLateState)
     (choice : Option SettleLateMove)
-    (supported : choice ∈ (settleLateMoveLaw profile state).support) :
+    (supported : choice ∈ (settleLateMoveDistribution profile state).support) :
     choice ∈ settleLateMenu late (settleLateView state.mover state) := by
-  rw [settleLateMoveLaw, PMF.mem_support_map_iff] at supported
+  rw [settleLateMoveDistribution, PMF.mem_support_map_iff] at supported
   obtain ⟨option, _, rfl⟩ := supported
   exact option.2
 
@@ -407,16 +412,16 @@ times the transition mass. -/
 theorem settleLateKernel_apply (profile : SettleLateProfile G late) {state : SettleLateState}
     (running : ¬ state.IsFinished) (target : SettleLateState) :
     settleLateKernel profile state target =
-      settleLateMoveLaw profile state (settleLateLastMove target) *
+      settleLateMoveDistribution profile state (settleLateLastMove target) *
         settleLateAdvance G state (settleLateLastMove target) target := by
   rw [settleLateKernel, PMF.bind_apply, tsum_eq_single (settleLateLastMove target)]
   intro choice different
-  by_cases supported : choice ∈ (settleLateMoveLaw profile state).support
+  by_cases supported : choice ∈ (settleLateMoveDistribution profile state).support
   · by_cases reached : settleLateAdvance G state choice target = 0
     · rw [reached, mul_zero]
     · exfalso
       have legal := settleLate_moverJoint_legal (G := G) running
-        (settleLateMoveLaw_menu profile state choice supported)
+        (settleLateMoveDistribution_menu profile state choice supported)
       have realized : target ∈ ((settleLateExecution G late).step state ⟨_, legal⟩).support := by
         change target ∈ (settleLateAdvance G state
           (settleLateMoverJoint state choice state.mover)).support
@@ -479,7 +484,7 @@ theorem settleLateExtend_weight (profile : SettleLateProfile G late)
     (settleLateModel G late).historyReachWeight profile
         (settleLateExtend history choice running menu target realized) =
       (settleLateModel G late).historyReachWeight profile history *
-        (settleLateMoveLaw profile history.state (settleLateLastMove target) *
+        (settleLateMoveDistribution profile history.state (settleLateLastMove target) *
           settleLateAdvance G history.state (settleLateLastMove target) target) := by
   rw [settleLate_reachWeight_step profile (settleLateExtend history choice running menu target
     realized) (Nat.succ_pos _), ← settleLateKernel_apply profile running target]
@@ -513,13 +518,14 @@ theorem settleLate_weight_type (profile : SettleLateProfile G late) (secret : La
     (settleLateModel G late).historyReachWeight profile (settleLateTypeHistory G late secret) =
       lateLeakPrior secret := by
   rw [settleLateTypeHistory, settleLateExtend_weight, settleLate_reachWeight_init, one_mul]
-  change settleLateMoveLaw profile .initial none *
+  change settleLateMoveDistribution profile .initial none *
     (lateLeakPrior.map SettleLateState.protectedTurn) (.protectedTurn secret) = _
-  have total : settleLateMoveLaw profile .initial none = 1 := by
+  have total : settleLateMoveDistribution profile .initial none = 1 := by
     have only (choice : Option SettleLateMove)
-        (supported : choice ∈ (settleLateMoveLaw profile .initial).support) : choice = none :=
-      settleLateMoveLaw_menu profile .initial choice supported
-    obtain ⟨choice, supported⟩ := (settleLateMoveLaw profile .initial).support_nonempty
+        (supported : choice ∈ (settleLateMoveDistribution profile .initial).support) : choice =
+          none :=
+      settleLateMoveDistribution_menu profile .initial choice supported
+    obtain ⟨choice, supported⟩ := (settleLateMoveDistribution profile .initial).support_nonempty
     obtain rfl := only choice supported
     exact (PMF.apply_eq_one_iff _ _).mpr (Set.eq_singleton_iff_unique_mem.mpr ⟨supported, only⟩)
   rw [total, one_mul]
@@ -664,7 +670,7 @@ theorem settleLateValue_answers (profile : SettleLateProfile G late)
     (payoff : SettleLateState → ℝ) (fuel : ℕ) {state : SettleLateState}
     (answers : state.answers = true) :
     settleLateValue profile payoff (fuel + 1) state =
-      expect (settleLateListenerLaw profile (settleLateView .listener state)) fun choice =>
+      expect (settleLateListenerDistribution profile (settleLateView .listener state)) fun choice =>
         payoff (settleLateAnswered state choice) := by
   cases state with
   | answering record =>
@@ -698,7 +704,7 @@ def settleLateListenerDecision (G : SettleLateParameters) (late : Bool)
       ← expect_map, mapped]
     change settleLateValue profile (settleLateStatePayoff G .listener) (5 + 1)
       history.1.state = _
-    rw [settleLateValue_answers profile _ 5 (answers history), settleLateListenerLaw,
+    rw [settleLateValue_answers profile _ 5 (answers history), settleLateListenerDistribution,
       settleLate_fiber_view history, expect_map]
     rfl
   realize profile choice := by

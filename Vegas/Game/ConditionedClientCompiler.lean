@@ -2,7 +2,7 @@ module
 
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-public import Vegas.Game.ConditionedCompilationLaw
+public import Vegas.Game.ConditionedCompilationDistribution
 public import Vegas.Game.ConditionedSourceRationality
 
 @[expose] public section
@@ -18,7 +18,7 @@ open GameTheory.Protocol Interaction EventGraphRuntime
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr} [IExpr.ResultTypes L]
     {setup : Setup (Player := Player) (L := L)}
     {Signal : Type*} (signal : State L setup.context → Signal)
-    (supported : ∀ key, key ∈ (setup.initialLaw.map signal).support)
+    (supported : ∀ key, key ∈ (setup.initialDistribution.map signal).support)
     (inside : ∀ key who (site : (setup.conditionInitial signal key).intendedModel.InformationSite
       who) (history : setup.intendedModel.InformationHistory who site.1),
       setup.initialComponent signal key history.1.state)
@@ -45,24 +45,26 @@ def compileComponent (key : Signal) :
 
 /-- The compiled, locally selected clients preserve the full joint configuration and
 settled-payoff law of the original intended equilibrium with the original joint prior. -/
-theorem compileComponent_outcomeLaw
+theorem compileComponent_outcomeDistribution
     (read : Player → (app).PlayerView → Signal)
-    (observed : ∀ draw ∈ setup.initialLaw.support, ∀ execution : (app).Execution,
+    (observed : ∀ draw ∈ setup.initialDistribution.support, ∀ execution : (app).Execution,
       EventGraphRuntime.State.Invariant (graph := setup.informationGraph) (setup.eventInputs draw)
         execution.application → ∀ who, read who (execution.observe app who) = signal draw)
     (formed : setup.WellFormed)
     (observation : (app).ProtocolState →
       PMF (Option (Config Player L setup.program.terminalCtx) × (Player → ℝ)))
     (same : ∀ key, (spec key).observation = observation) :
-    ((app).finish (Vegas.initialLaw setup) horizon scheduler (signalClients read fun key =>
+    ((app).finish (Vegas.initialDistribution setup) horizon scheduler (signalClients read fun key =>
       (compileComponent signal supported inside spec intended equilibrium key).clients) none).bind
         observation =
       (setup.intendedModel.runBehavioral intended.strategy (instructionCount setup.program + 1)).map
         (intendedReadoutExclusion setup parameter utility exit) := by
-  apply setup.signalClients_intendedLaw signal horizon read observed _ formed intended.strategy
+  apply setup.signalClients_intendedDistribution signal horizon read observed _ formed
+    intended.strategy
     parameter utility exit observation
   intro key _
   rw [← same key]
-  exact (compileComponent signal supported inside spec intended equilibrium key).clients_outcomeLaw
+  exact (compileComponent signal supported inside spec intended equilibrium
+    key).clients_outcomeDistribution
 
 end Vegas.SourceProgram.Setup

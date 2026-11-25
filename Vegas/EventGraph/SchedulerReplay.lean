@@ -388,7 +388,7 @@ theorem runPlan_congr_profile (left right : graph.BehavioralProfile)
     (scheduler : graph.PublicScheduler) :
     ∀ fuel (config : graph.Config),
       (∀ next, PlanReachable left scheduler config next → ∀ event, next.cut.Ready event →
-        actionLaw left next event = actionLaw right next event) →
+        actionDistribution left next event = actionDistribution right next event) →
       graph.runPlan (graph.policyPlan left scheduler) fuel config =
         graph.runPlan (graph.policyPlan right scheduler) fuel config := by
   intro fuel
@@ -451,9 +451,10 @@ theorem runPolicies_replay (profile : graph.BehavioralProfile)
   apply runPlan_congr_profile
   intro config reach event _
   cases ownerEq : (graph.nodes event).actor with
-  | none => rw [actionLaw_of_ownerless _ _ ownerEq, actionLaw_of_ownerless _ _ ownerEq]
+  | none => rw [actionDistribution_of_ownerless _ _ ownerEq, actionDistribution_of_ownerless _ _
+    ownerEq]
   | some owner =>
-      rw [actionLaw_of_actor _ _ ownerEq, actionLaw_of_actor _ _ ownerEq]
+      rw [actionDistribution_of_actor _ _ ownerEq, actionDistribution_of_actor _ _ ownerEq]
       by_cases inactive : owner ∈ config.defaulted
       · rw [dite_eq_left inactive, dite_eq_left inactive]
       rw [dite_eq_right inactive, dite_eq_right inactive]

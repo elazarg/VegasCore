@@ -48,7 +48,7 @@ theorem onePacket_binding_transmission_masses
     (covers : bounds.CoversOutputValues)
     (capacity : ∀ who, bindingEventCount setup.informationGraph who < bounds.candidateCount)
     {control : (application setup timeouts leaks).Control}
-    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some control))
     (who : Player) (event : setup.informationGraph.EventId)
     (turn : control.execution.application.publicView.ownTurn? who = some event)
@@ -64,7 +64,7 @@ theorem onePacket_binding_transmission_masses
     (sends : response.transmission = some material)
     (positive : 0 < contentFactor setup timeouts leaks assessment who control.execution
       (control.execution.respond (application setup timeouts leaks) who response) response)
-    (choice : (onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+    (choice : (onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon
       scheduler).Choice who
       (some (control.execution.logs who,
         control.execution.observe (application setup timeouts leaks) who)))
@@ -76,17 +76,20 @@ theorem onePacket_binding_transmission_masses
       (∃ value, response = slotResponse setup timeouts leaks who (control.execution.logs who)
         (control.execution.observe (application setup timeouts leaks) who) event serial
         (sourceOfValue setup event outputEq value)) ∧
-      (honestChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler assessment who
+      (honestChoice setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
+        assessment who
           _ choice).toReal =
         contentFactor setup timeouts leaks assessment who control.execution
           (control.execution.respond (application setup timeouts leaks) who response) response *
           (if serial = canonical then 1 else 0) ∧
-      (slotChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler assessment who
+      (slotChoice setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
+        assessment who
           _ choice).toReal =
         contentFactor setup timeouts leaks assessment who control.execution
           (control.execution.respond (application setup timeouts leaks) who response) response *
           (1 / ((trembleSlots setup bounds).card : ℝ)) ∧
-      (PMF.pure (silenceChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler who
+      (PMF.pure (silenceChoice setup timeouts leaks bounds
+        (initialDistribution setup) horizon scheduler who
         _)
           choice).toReal =
         contentFactor setup timeouts leaks assessment who control.execution
@@ -117,7 +120,8 @@ theorem onePacket_binding_transmission_masses
         who (control.execution.logs who)
         (control.execution.observe (application setup timeouts leaks) who) :=
     responseEq ▸ member
-  have choiceEq : choice = slotChoiceOf setup timeouts leaks bounds (initialLaw setup) horizon
+  have choiceEq : choice = slotChoiceOf setup timeouts leaks bounds
+    (initialDistribution setup) horizon
     scheduler
       who (control.execution.logs who) (control.execution.observe (application setup timeouts
         leaks) who)
@@ -127,19 +131,22 @@ theorem onePacket_binding_transmission_masses
     simp only [slotChoiceOf, responseChoice, offered, ↓reduceDIte]
   subst choiceEq
   refine ⟨serial, canonical, slotCapacity, selected, ⟨value, responseEq⟩, ?_, ?_, ?_⟩
-  · rw [honestChoice_slotChoiceOf_apply (timeouts := timeouts) (initialLaw setup) horizon scheduler
+  · rw [honestChoice_slotChoiceOf_apply (timeouts := timeouts)
+      (initialDistribution setup) horizon scheduler
       site selected
       supported slotCapacity offered, contentEq]
     split
     · rw [mul_one]
     · rw [ENNReal.toReal_zero, mul_zero]
-  · rw [slotChoice_slotChoiceOf_apply (timeouts := timeouts) (initialLaw setup) horizon scheduler
+  · rw [slotChoice_slotChoiceOf_apply (timeouts := timeouts)
+      (initialDistribution setup) horizon scheduler
       site supported
       slotCapacity offered, contentEq,
       uniformOn_apply_of_mem (trembleSlots_nonempty setup bounds)
         ((mem_trembleSlots_iff setup bounds capacityOne serial).mpr slotCapacity),
       ENNReal.toReal_mul, ENNReal.toReal_inv, ENNReal.toReal_natCast, mul_comm, one_div]
-  · rw [silence_slotChoiceOf_apply (timeouts := timeouts) (initialLaw setup) horizon scheduler site
+  · rw [silence_slotChoiceOf_apply (timeouts := timeouts) (initialDistribution setup) horizon
+      scheduler site
       supported offered,
       ENNReal.toReal_zero, mul_zero]
 

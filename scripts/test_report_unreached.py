@@ -13,8 +13,8 @@ SPEC.loader.exec_module(REPORT)
 class MentionTests(unittest.TestCase):
     def test_example_uses_are_mentions(self):
         text = ("example : True :=\n"
-                "  scheduled_terminalState_law program scheduler profile\n")
-        self.assertIn("scheduled_terminalState_law", REPORT.mentions_in(text))
+                "  scheduled_terminalState_distribution program scheduler profile\n")
+        self.assertIn("scheduled_terminalState_distribution", REPORT.mentions_in(text))
 
     def test_qualified_name_does_not_root_other_suffix_owners(self):
         names = REPORT.mentions_in("EventGraphRuntime.State.initial_privateInput_candidate _\n")
@@ -37,7 +37,7 @@ class MentionTests(unittest.TestCase):
 
     def test_comments_and_strings_are_not_mentions(self):
         text = ('/-- See `forceDisclose_expect_le`. -/\n'
-                '-- scheduled_terminalState_law\n'
+                '-- scheduled_terminalState_distribution\n'
                 'def note := "openingCompiled_eq_intended"\n')
         self.assertEqual(REPORT.mentions_in(text), set())
 

@@ -40,7 +40,7 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
   (excludedPayoff : Player → ℝ)
 
-local notation "Initial" => initialLaw setup
+local notation "Initial" => initialDistribution setup
 local notation "app" => application setup timeouts leaks
 local notation "raw" => bounds.rawMenu timeouts leaks
 local notation "one" => bounds.onePacketMenu timeouts leaks
@@ -197,7 +197,8 @@ def ClientContinuationCorrectness
           ∀ who, failedReveals setup.program who (publicOutcome setup.program terminal) = 0) ∧
       ((raw).runFrom Initial horizon scheduler assessment.strategy rawStart).bind
           (fun final => spec.observation final.state) =
-        (setup.continuationLaw (setup.intendedOpeningProfile intended.strategy) (some point)).map
+        (setup.continuationDistribution (setup.intendedOpeningProfile intended.strategy)
+          (some point)).map
           (fun terminal => (some terminal, utility (setup.parameterOutcome parameter terminal)))
 
 /-- A semantic artifact retaining the intended assessment at source decisions,
@@ -222,7 +223,7 @@ structure ClientCompilation (intended : setup.intendedModel.BehavioralAssessment
   noCharges : ∀ final ∈ ((raw).run Initial horizon scheduler assessment.strategy).support,
     ∀ who, TerminalAudit.charge (app).stateTraffic
       ((countAudit timeouts) leaks spec.evidenceService.sample) final.state who = 0
-  outcomeLaw : ((raw).run Initial horizon scheduler assessment.strategy).bind
+  outcomeDistribution_eq : ((raw).run Initial horizon scheduler assessment.strategy).bind
       (fun final => spec.observation final.state) =
     (setup.intendedModel.runBehavioral intended.strategy
       (instructionCount setup.program + 1)).map

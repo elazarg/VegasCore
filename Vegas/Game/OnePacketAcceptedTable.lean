@@ -97,13 +97,15 @@ omit [Fintype Player] in
 /-- Completed events stay completed along a transition. -/
 theorem completed_transition {before after : (application setup timeouts leaks).Control}
     (joint : Player → Option (application setup timeouts leaks).Action)
-    (reached : some after ∈ ((application setup timeouts leaks).transition (initialLaw setup)
+    (reached : some after ∈ ((application setup timeouts leaks).transition
+      (initialDistribution setup)
       horizon
       scheduler (some before) joint).support) {event : setup.informationGraph.EventId}
     (completed : event ∈ before.execution.application.config.cut.completed) :
     event ∈ after.execution.application.config.cut.completed := by
   exact EventGraph.Config.Step.path_completed_mono
-    ((reactive_protocol_graph_steps timeouts) leaks (initialLaw setup) horizon scheduler before
+    ((reactive_protocol_graph_steps timeouts) leaks (initialDistribution setup) horizon scheduler
+      before
       after joint reached) completed
 
 /-- **Accepted events have completed** along every history of the one-packet
@@ -116,9 +118,9 @@ theorem accepted_completed {state}
     event ∈ control.execution.application.config.cut.completed := by
   subst current
   have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace
-    (initialLaw setup) horizon scheduler trace
+    (initialDistribution setup) horizon scheduler trace
   have valid : control.execution.application.BindingInvariant :=
-    ((reactiveBindingInvariant timeouts) leaks).history (initialLaw setup) horizon
+    ((reactiveBindingInvariant timeouts) leaks).history (initialDistribution setup) horizon
       scheduler (fun state member => by
         obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ member
         exact State.initial_bindingInvariant _) rawTrace

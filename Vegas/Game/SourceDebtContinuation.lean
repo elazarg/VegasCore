@@ -36,7 +36,7 @@ theorem decoded_owesFailure_exclusionBase_of_complete {Parameter : Type}
     (excludedPayoff : Player → ℝ)
     {menu : (application setup timeouts leaks).ResponseMenu} {horizon : Nat}
     {scheduler : (application setup timeouts leaks).Scheduler}
-    (who : Player) (history : (menu.protocol (initialLaw setup) horizon scheduler).History)
+    (who : Player) (history : (menu.protocol (initialDistribution setup) horizon scheduler).History)
     (owed : DecodedState setup timeouts leaks profile (ProtocolState.OwesFailure
       who setup.program) history.state)
     (control : (application setup timeouts leaks).Control) (current : history.state = some control)
@@ -59,32 +59,37 @@ theorem exclusionBase_continuation_of_owesFailure {Parameter : Type}
     (excludedPayoff : Player → ℝ)
     (menu : (application setup timeouts leaks).ResponseMenu) (horizon : Nat)
     (scheduler : (application setup timeouts leaks).Scheduler)
-    (completes : CompletesPlay timeouts leaks (initialLaw setup) horizon scheduler)
-    (certificate : (menu.protocol (initialLaw setup) horizon scheduler).WellFoundedHistories)
-    (players : ∀ who, (menu.information (initialLaw setup) horizon scheduler).BehavioralPolicy who)
-    (who : Player) (history : (menu.protocol (initialLaw setup) horizon scheduler).History)
+    (completes : CompletesPlay timeouts leaks (initialDistribution setup) horizon scheduler)
+    (certificate : (menu.protocol (initialDistribution setup) horizon
+      scheduler).WellFoundedHistories)
+    (players : ∀ who, (menu.information (initialDistribution setup) horizon
+      scheduler).BehavioralPolicy who)
+    (who : Player) (history : (menu.protocol (initialDistribution setup) horizon scheduler).History)
     (owed : DecodedState setup timeouts leaks profile (ProtocolState.OwesFailure
       who setup.program) history.state) :
-    ∀ final ∈ ((menu.information (initialLaw setup) horizon scheduler).runBehavioralTerminalFrom
+    ∀ final ∈ ((menu.information (initialDistribution setup) horizon
+      scheduler).runBehavioralTerminalFrom
         certificate players history).support,
       exclusionBase setup timeouts parameter utility excludedPayoff leaks final.state who =
         excludedPayoff who := by
-  have preserved := (menu.information (initialLaw setup) horizon
+  have preserved := (menu.information (initialDistribution setup) horizon
     scheduler).runBehavioralTerminalFrom_support_closed certificate players
     (DecodedState setup timeouts leaks profile (ProtocolState.OwesFailure who setup.program))
     (fun before joint _legal after holds reached =>
-      decodedHolds_transition (owesFailure_stepClosed who) (initialLaw setup) horizon scheduler
+      decodedHolds_transition (owesFailure_stepClosed who)
+        (initialDistribution setup) horizon scheduler
         before after joint holds reached) history owed
   intro final supported
   have remains := preserved final supported
-  have stopped := (menu.information (initialLaw setup) horizon
+  have stopped := (menu.information (initialDistribution setup) horizon
     scheduler).runBehavioralTerminalFrom_support_terminal certificate players history final
       supported
   cases current : final.state with
   | none => rw [current] at remains; exact remains.elim
   | some control =>
       rw [current] at stopped
-      have trace := current ▸ menu.toRawTrace (initialLaw setup) horizon scheduler final.trace
+      have trace := current ▸ menu.toRawTrace (initialDistribution setup) horizon scheduler
+        final.trace
       simpa only [current] using decoded_owesFailure_exclusionBase_of_complete parameter utility
         excludedPayoff who final remains control current (completes control trace stopped)
 
@@ -96,13 +101,16 @@ theorem exclusionBase_expect_of_owesFailure {Parameter : Type}
     (excludedPayoff : Player → ℝ)
     (menu : (application setup timeouts leaks).ResponseMenu) (horizon : Nat)
     (scheduler : (application setup timeouts leaks).Scheduler)
-    (completes : CompletesPlay timeouts leaks (initialLaw setup) horizon scheduler)
-    (certificate : (menu.protocol (initialLaw setup) horizon scheduler).WellFoundedHistories)
-    (players : ∀ who, (menu.information (initialLaw setup) horizon scheduler).BehavioralPolicy who)
-    (who : Player) (history : (menu.protocol (initialLaw setup) horizon scheduler).History)
+    (completes : CompletesPlay timeouts leaks (initialDistribution setup) horizon scheduler)
+    (certificate : (menu.protocol (initialDistribution setup) horizon
+      scheduler).WellFoundedHistories)
+    (players : ∀ who, (menu.information (initialDistribution setup) horizon
+      scheduler).BehavioralPolicy who)
+    (who : Player) (history : (menu.protocol (initialDistribution setup) horizon scheduler).History)
     (owed : DecodedState setup timeouts leaks profile (ProtocolState.OwesFailure
       who setup.program) history.state) :
-    let law := (menu.information (initialLaw setup) horizon scheduler).runBehavioralTerminalFrom
+    let law := (menu.information (initialDistribution setup) horizon
+      scheduler).runBehavioralTerminalFrom
       certificate players history
     PayoffIntegrable law (fun final =>
       exclusionBase setup timeouts parameter utility excludedPayoff leaks final.state who) ∧
@@ -123,28 +131,33 @@ theorem exclusionBase_gain_eq_zero_of_owesFailure {Parameter : Type}
     (excludedPayoff : Player → ℝ)
     (menu : (application setup timeouts leaks).ResponseMenu) (horizon : Nat)
     (scheduler : (application setup timeouts leaks).Scheduler)
-    [Finite (menu.protocol (initialLaw setup) horizon scheduler).History]
-    (completes : CompletesPlay timeouts leaks (initialLaw setup) horizon scheduler)
-    (certificate : (menu.protocol (initialLaw setup) horizon scheduler).WellFoundedHistories)
-    (assessment : (menu.information (initialLaw setup) horizon scheduler).BehavioralAssessment)
+    [Finite (menu.protocol (initialDistribution setup) horizon scheduler).History]
+    (completes : CompletesPlay timeouts leaks (initialDistribution setup) horizon scheduler)
+    (certificate : (menu.protocol (initialDistribution setup) horizon
+      scheduler).WellFoundedHistories)
+    (assessment : (menu.information (initialDistribution setup) horizon
+      scheduler).BehavioralAssessment)
     {who : Player}
-    (deviation : (menu.information (initialLaw setup) horizon scheduler).AssessmentDeviation who)
+    (deviation : (menu.information (initialDistribution setup) horizon
+      scheduler).AssessmentDeviation who)
     (owed : ∀ history ∈ (assessment.belief who deviation.1).support,
       DecodedState setup timeouts leaks profile (ProtocolState.OwesFailure
         who setup.program) history.1.state) :
-    expect ((menu.information (initialLaw setup) horizon scheduler).assessmentComparisonWith
-      ((menu.information (initialLaw setup) horizon scheduler).runBehavioralTerminalFrom
+    expect ((menu.information (initialDistribution setup) horizon
+      scheduler).assessmentComparisonWith
+      ((menu.information (initialDistribution setup) horizon scheduler).runBehavioralTerminalFrom
         certificate)
       (fun final => final.state) assessment who deviation).alternative
         (fun state => exclusionBase setup timeouts parameter utility excludedPayoff leaks
           state who) -
-    expect ((menu.information (initialLaw setup) horizon scheduler).assessmentComparisonWith
-      ((menu.information (initialLaw setup) horizon scheduler).runBehavioralTerminalFrom
+    expect ((menu.information (initialDistribution setup) horizon
+      scheduler).assessmentComparisonWith
+      ((menu.information (initialDistribution setup) horizon scheduler).runBehavioralTerminalFrom
         certificate)
       (fun final => final.state) assessment who deviation).prescribed
         (fun state => exclusionBase setup timeouts parameter utility excludedPayoff leaks
           state who) = 0 := by
-  let model := menu.information (initialLaw setup) horizon scheduler
+  let model := menu.information (initialDistribution setup) horizon scheduler
   apply model.gain_eq_zero_of_constant_continuations
     (model.runBehavioralTerminalFrom certificate) (fun final => final.state)
     (exclusionBase setup timeouts parameter utility excludedPayoff leaks) assessment deviation

@@ -20,7 +20,7 @@ nonnegative masses this says the law factors as a function of the player's
 hidden cells times a function of the other cells. Then exchanging a player's
 hidden cells for fixed ones
 changes the mass of every state sharing those cells by the same ratio
-(`Vegas.SourceProgram.Setup.initialLaw_splice_mul`), and splices of supported
+(`Vegas.SourceProgram.Setup.initialDistribution_splice_mul`), and splices of supported
 states are supported (`Vegas.SourceProgram.Setup.splice_mem_support`).
 
 The condition is a device of the argument that compares two late deliveries of
@@ -99,8 +99,9 @@ player: the player's hidden initial cells are independent of all the other
 cells. -/
 def PrivateInputsIndependent (setup : Setup (Player := Player) (L := L)) : Prop :=
   ∀ (who : Player) (first second : State L setup.context),
-    setup.initialLaw (splice who first second) * setup.initialLaw (splice who second first) =
-      setup.initialLaw first * setup.initialLaw second
+    setup.initialDistribution (splice who first second) * setup.initialDistribution
+      (splice who second first) =
+      setup.initialDistribution first * setup.initialDistribution second
 
 variable {Public : Type*}
 
@@ -111,20 +112,21 @@ No identity across different signal values is required. -/
 def PrivateInputsIndependentGiven (setup : Setup (Player := Player) (L := L))
     (signal : State L setup.context → Public) : Prop :=
   ∀ (who : Player) (first second : State L setup.context), signal first = signal second →
-    setup.initialLaw (splice who first second) * setup.initialLaw (splice who second first) =
-      setup.initialLaw first * setup.initialLaw second
+    setup.initialDistribution (splice who first second) * setup.initialDistribution
+      (splice who second first) =
+      setup.initialDistribution first * setup.initialDistribution second
 
 /-- Within a signal fiber, replacing equal hidden cells changes prior masses
 by a common ratio when private splicing preserves the signal. -/
-theorem initialLaw_splice_mul (setup : Setup (Player := Player) (L := L))
+theorem initialDistribution_splice_mul (setup : Setup (Player := Player) (L := L))
     (signal : State L setup.context → Public)
     (independent : setup.PrivateInputsIndependentGiven signal)
     (preserves : ∀ (who : Player) (mine others : State L setup.context),
       signal (splice who mine others) = signal others)
     (who : Player) (source : State L setup.context) {first second : State L setup.context}
     (agree : HiddenAgree who second first) (sameSignal : signal first = signal second) :
-    setup.initialLaw (splice who source first) * setup.initialLaw second =
-      setup.initialLaw (splice who source second) * setup.initialLaw first := by
+    setup.initialDistribution (splice who source first) * setup.initialDistribution second =
+      setup.initialDistribution (splice who source second) * setup.initialDistribution first := by
   have product := independent who (splice who source first) second
     ((preserves who source first).trans sameSignal)
   rw [splice_splice_left, splice_splice_right, splice_of_hiddenAgree agree] at product
@@ -134,12 +136,13 @@ theorem initialLaw_splice_mul (setup : Setup (Player := Player) (L := L))
 theorem splice_mem_support (setup : Setup (Player := Player) (L := L))
     (signal : State L setup.context → Public)
     (independent : setup.PrivateInputsIndependentGiven signal) (who : Player)
-    {first second : State L setup.context} (firstMember : first ∈ setup.initialLaw.support)
-    (secondMember : second ∈ setup.initialLaw.support) (sameSignal : signal first = signal second) :
-    splice who first second ∈ setup.initialLaw.support := by
+    {first second : State L setup.context} (firstMember : first ∈ setup.initialDistribution.support)
+    (secondMember : second ∈ setup.initialDistribution.support)
+      (sameSignal : signal first = signal second) :
+    splice who first second ∈ setup.initialDistribution.support := by
   rw [PMF.mem_support_iff] at firstMember secondMember ⊢
   have product := independent who first second sameSignal
-  have nonzero : setup.initialLaw first * setup.initialLaw second ≠ 0 :=
+  have nonzero : setup.initialDistribution first * setup.initialDistribution second ≠ 0 :=
     mul_ne_zero firstMember secondMember
   rw [← product] at nonzero
   exact left_ne_zero_of_mul nonzero

@@ -252,14 +252,14 @@ private theorem policy_congr {who : Player} (policy : graph.BehavioralPolicy who
   rfl
 
 /-- Every action law ignores the decisions of defaulted players. -/
-theorem actionLaw_erase (profile : graph.BehavioralProfile) (config : graph.Config)
+theorem actionDistribution_erase (profile : graph.BehavioralProfile) (config : graph.Config)
     (event : graph.EventId) :
-    actionLaw profile config.erase event = actionLaw profile config event := by
+    actionDistribution profile config.erase event = actionDistribution profile config event := by
   cases ownerEq : (graph.nodes event).actor with
   | none =>
-      rw [actionLaw_of_ownerless _ _ ownerEq, actionLaw_of_ownerless _ _ ownerEq]
+      rw [actionDistribution_of_ownerless _ _ ownerEq, actionDistribution_of_ownerless _ _ ownerEq]
   | some owner =>
-      rw [actionLaw_of_actor _ _ ownerEq, actionLaw_of_actor _ _ ownerEq]
+      rw [actionDistribution_of_actor _ _ ownerEq, actionDistribution_of_actor _ _ ownerEq]
       by_cases inactive : owner ∈ config.defaulted
       · rw [dite_eq_left (by rw [Config.erase_defaulted]; exact inactive), dite_eq_left inactive]
       · rw [dite_eq_right (by rw [Config.erase_defaulted]; exact inactive),
@@ -294,7 +294,7 @@ theorem runPlan_map_erase (profile : graph.BehavioralProfile) (scheduler : graph
         change ((eventStep profile config selected.1 ready).bind _).map Config.erase =
           ((eventStep profile config.erase selected.1 ready).bind _).map Config.erase
         unfold eventStep
-        rw [actionLaw_erase, PMF.bind_bind, PMF.bind_bind, PMF.map_bind, PMF.map_bind]
+        rw [actionDistribution_erase, PMF.bind_bind, PMF.bind_bind, PMF.map_bind, PMF.map_bind]
         refine congrArg₂ PMF.bind rfl (funext fun action => ?_)
         obtain ⟨law, stepEq, erasedEq⟩ := config.erase_step selected.1 ready action
         rw [stepEq, erasedEq, PMF.bind_map, PMF.bind_map, PMF.map_bind, PMF.map_bind]

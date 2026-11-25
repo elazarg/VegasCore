@@ -63,12 +63,13 @@ theorem slotEnvelope_permitted_of_commitment {who : Player}
 
 section Certificate
 
-variable [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
-  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+variable [(application setup timeouts leaks).FiniteNature (initialDistribution setup) scheduler]
+  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds
+    (initialDistribution setup) horizon
     scheduler).InfoState who)]
 
 local notation "onePacketN" =>
-  onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+  onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
 
 /-- A choice's failure differs from a mixture's by at most `A + weight` when
 the mixture keeps `1 - weight` of a main law on whose support every choice
@@ -76,7 +77,7 @@ fails within `A` of the choice. -/
 theorem abs_localFailure_pure_sub_le_of_mass
     (assessment : (onePacketN).BehavioralAssessment) {who : Player}
     (site : (onePacketN).InformationSite who)
-    (failed : Set ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup)
+    (failed : Set ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup)
       horizon scheduler).History)
     (choice : (onePacketN).Choice who site.1) (law main : PMF ((onePacketN).Choice who site.1))
     {weight A : ℝ} (weightNonneg : 0 ≤ weight) (nonnegative : 0 ≤ A)
@@ -89,10 +90,10 @@ theorem abs_localFailure_pure_sub_le_of_mass
   have finiteChoice : Finite ((onePacketN).Choice who site.1) :=
     (onePacketN).finite_choice_of_played ((onePacketN).site_mem_playedInformation site)
   let := Fintype.ofFinite ((onePacketN).Choice who site.1)
-  have bounded := (bounds.onePacketMenu timeouts leaks).bounded (initialLaw setup)
+  have bounded := (bounds.onePacketMenu timeouts leaks).bounded (initialDistribution setup)
     horizon scheduler
   have actsOnce := ((bounds.onePacketMenu timeouts leaks).decisionRecall
-    (initialLaw setup) horizon scheduler).actsOnceWhereItMatters
+    (initialDistribution setup) horizon scheduler).actsOnceWhereItMatters
   let failure := fun other : (onePacketN).Choice who site.1 =>
     localFailure (2 * horizon + 1) assessment site failed (PMF.pure other)
   have unit : ∀ other, 0 ≤ failure other ∧ failure other ≤ 1 := fun other =>
@@ -179,12 +180,12 @@ open Classical in
 have nearly the same primitive decision-failure probability. The estimate uses
 actual forced-history certificate kernels and no global native completion service. -/
 theorem certificate_lateCommit_siteDecisionFailure
-    [Finite ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    [Finite ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).History]
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (scale : ℕ → ℝ) (scale_pos : ∀ n, 0 < scale n) (scale_le_one : ∀ n, scale n ≤ 1)
     {slots : Nat}
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialDistribution setup)
       horizon scheduler slots p))
     (targetSequence : ℕ → (onePacketN).BehavioralAssessment)
     (assembled : OnePacketAssembled setup timeouts leaks bounds horizon scheduler sequence scale
@@ -250,7 +251,8 @@ theorem certificate_lateCommit_siteDecisionFailure
       (Profile.update (sig := (onePacketN).behavioralSignature) (targetSequence n).strategy who
         (((targetSequence n).strategy who).withLaw site.1 law)) (2 * horizon + 1) history.1)
       (fun final => if DecisionFailed (timeouts := timeouts) key final.state then (1 : ℝ) else 0)
-  let main := lateChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler (sequence
+  let main := lateChoice setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
+    (sequence
     n) who
     (some (past, view)) (some ⟨serial, inRange⟩ : LateOption slots)
   -- From every forced history, the choice fails like the lumped failure of its slot.
@@ -277,7 +279,7 @@ theorem certificate_lateCommit_siteDecisionFailure
       state_of_site setup timeouts leaks bounds horizon scheduler (site := site) rfl history
     subst recallEq
     subst observeEq
-    have traceHere : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup)
+    have traceHere : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup)
         horizon scheduler).Trace (some ⟨remaining, some who, execution⟩) :=
       current ▸ history.1.trace
     have covered := onePacket_honest_covered (timeouts := timeouts) (sequence n) covers traceHere
@@ -287,7 +289,8 @@ theorem certificate_lateCommit_siteDecisionFailure
       (execution.logs who)
       (execution.observe (application setup timeouts leaks) who) event node serial
       (lt_of_lt_of_le inRange slotsLe) source covered).mpr permitted
-    have otherSelected : (responseChoice setup timeouts leaks bounds (initialLaw setup) horizon
+    have otherSelected : (responseChoice setup timeouts leaks bounds
+      (initialDistribution setup) horizon
       scheduler
         who (some (execution.logs who, execution.observe (application setup timeouts leaks) who))
         (slotResponse setup timeouts leaks who (execution.logs who)
@@ -394,7 +397,8 @@ theorem certificate_lateCommit_siteDecisionFailure
       ((onePacketLate setup timeouts leaks bounds horizon scheduler sequence scale scale_pos
         scale_le_one (slots := slots) n ((onePacketN).agentAt site)
         (some ⟨serial, inRange⟩)) other).toReal := fun other =>
-    lateComponent_ge setup timeouts leaks bounds (initialLaw setup) horizon scheduler (sequence n)
+    lateComponent_ge setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
+      (sequence n)
       (scale_pos n).le (scale_le_one n) who (some (past, view)) (some ⟨serial, inRange⟩) other
   have mixed := abs_localFailure_pure_sub_le_of_mass (timeouts := timeouts) (targetSequence n) site
     {final | DecisionFailed (timeouts := timeouts) key final.state} choice

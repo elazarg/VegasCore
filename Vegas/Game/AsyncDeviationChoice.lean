@@ -25,7 +25,7 @@ namespace Vegas
 open SourceProgram EventGraph Interaction GameTheory.Math.Probability EventGraphRuntime
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
-private theorem chance_completed_value_law
+private theorem chance_completed_value_distribution
     {setup : Setup (Player := Player) (L := L)} (timeouts : EventTimeouts setup.informationGraph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
     (scheduler : (application setup timeouts leaks).Scheduler)
@@ -48,7 +48,7 @@ private theorem chance_completed_value_law
       (fun final => event ∈ final.application.config.cut.completed) count execution).map
         (fun final => sampledValue event outputEq final.application.config) =
       L.evalDist distribution (sourcePublicEnv source) := by
-  have raw := chance_completed_output_law timeouts leaks
+  have raw := chance_completed_output_distribution timeouts leaks
     (fun other => (setup.dataflowGraph.sequentialize_solitary other).ownerSolitary) scheduler
     players
     event ownerless (setup.dataflowGraph.sequentialize_solitary event) count execution ready
@@ -225,12 +225,12 @@ private theorem path_store_value {compiled : Vegas.EventGraph Player L}
 
 /-- Public chance has its source successor law jointly with the focal native
 traffic. Each stopped endpoint is a typed primary checkpoint followed by drain. -/
-theorem sourceService_chance_law
+theorem sourceService_chance_distribution
     {setup : Setup (Player := Player) (L := L)}
     (timeouts : EventTimeouts setup.informationGraph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
     {horizon : Nat} {scheduler : (application setup timeouts leaks).Scheduler}
-    (complete : CompletesPlay timeouts leaks (initialLaw setup) horizon scheduler)
+    (complete : CompletesPlay timeouts leaks (initialDistribution setup) horizon scheduler)
     (bound : setup.informationGraph.EventId → Nat) (turns : Nat)
     (wholeProfile : BehavioralProfile setup.program)
     (focal : Player) (deviation : (application setup timeouts leaks).Policy)
@@ -337,7 +337,8 @@ theorem sourceService_chance_law
       (reached : final ∈ (app.runUntilHorizon scheduler players
         (fun current => event ∈ current.application.config.cut.completed) horizon
         (execution seed)).support) : event ∈ final.application.config.cut.completed := by
-    obtain ⟨trace⟩ := app.raw_trace_roundsFrom (initialLaw setup) horizon scheduler players _
+    obtain ⟨trace⟩ := app.raw_trace_roundsFrom (initialDistribution setup) horizon scheduler
+      players _
       (bounded seed supported) _ (boundary seed supported).supported
     let remaining := horizon - (execution seed).environmentRecall.length
     change final ∈ (app.runUntil scheduler players
@@ -348,7 +349,8 @@ theorem sourceService_chance_law
     · exact done
     · obtain ⟨used, enough, rounds, _lengthEq⟩ := app.runUntil_runRounds scheduler players _
         remaining (execution seed) final reached
-      obtain ⟨finalTrace⟩ := app.raw_trace_runRounds (initialLaw setup) horizon scheduler players
+      obtain ⟨finalTrace⟩ := app.raw_trace_runRounds (initialDistribution setup) horizon scheduler
+        players
         (remaining - used) used (execution seed) final
         (by simpa only [Nat.sub_add_cancel enough] using trace) rounds
       have terminal := complete _ finalTrace (by
@@ -373,7 +375,7 @@ theorem sourceService_chance_law
         timeouts.duration)
         leaks focal event outputEq final
     simp_rw [pointwise]
-    exact chance_completed_value_law timeouts leaks scheduler players event ownerless _
+    exact chance_completed_value_distribution timeouts leaks scheduler players event ownerless _
       (execution seed) (readyAt seed supported) outputEq refs
       distribution (codeEq seed) (source seed).state (checkpoint seed).agrees
       (completed seed supported)
@@ -547,7 +549,8 @@ private theorem foreign_binding_fixed_endpoint
     (active : owner ∉ source.defaulted)
     {horizon : Nat} (scheduler : (application setup timeouts leaks).Scheduler)
     (delay bound : setup.informationGraph.EventId → Nat) (turns : Nat)
-    (contract : AsyncContract timeouts leaks (initialLaw setup) horizon scheduler delay bound)
+    (contract : AsyncContract timeouts leaks (initialDistribution setup) horizon scheduler delay
+      bound)
     (timely : AsyncTimely timeouts delay bound)
     (focal : Player) (deviation : (application setup timeouts leaks).Policy)
     (foreign : owner ≠ focal)
@@ -637,7 +640,8 @@ private theorem foreign_binding_fixed_endpoint
         (fun config => setup.informationGraph.runPlan plan config.remaining config) := by
     rw [← runEq]
     exact continuation
-  obtain ⟨trace⟩ := app.raw_trace_roundsFrom (initialLaw setup) horizon scheduler background _
+  obtain ⟨trace⟩ := app.raw_trace_roundsFrom (initialDistribution setup) horizon scheduler
+    background _
     bounded execution boundaryAt.supported
   have quiescent := (legalFacts setup leaks horizon scheduler _ trace).quiescent
   have completeAfter : ∀ final ∈ (app.runUntilHorizon scheduler fixed
@@ -653,7 +657,8 @@ private theorem foreign_binding_fixed_endpoint
     · exact done
     · obtain ⟨used, enough, rounds, _length⟩ := app.runUntil_runRounds scheduler fixed _
         remaining execution final reached
-      obtain ⟨finalTrace⟩ := app.raw_trace_runRounds (initialLaw setup) horizon scheduler fixed
+      obtain ⟨finalTrace⟩ := app.raw_trace_runRounds (initialDistribution setup) horizon scheduler
+        fixed
         (remaining - used) used execution final
         (by simpa only [Nat.sub_add_cancel enough] using trace) rounds
       have terminal := contract.completes _ finalTrace (by
@@ -787,12 +792,13 @@ private theorem binding_joint_mixed
 
 /-- An honest foreign binding retains its prescribed source kernel jointly with
 actual focal traffic, including source heads already passed by automatic service. -/
-theorem sourceService_foreign_commit_law
+theorem sourceService_foreign_commit_distribution
     (timeouts : EventTimeouts setup.informationGraph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
     {horizon : Nat} {scheduler : (application setup timeouts leaks).Scheduler}
     (delay bound : setup.informationGraph.EventId → Nat) (turns : Nat)
-    (contract : AsyncContract timeouts leaks (initialLaw setup) horizon scheduler delay bound)
+    (contract : AsyncContract timeouts leaks (initialDistribution setup) horizon scheduler delay
+      bound)
     (timely : AsyncTimely timeouts delay bound)
     (wholeProfile : BehavioralProfile setup.program) (focal owner : Player)
     (deviation : (application setup timeouts leaks).Policy) (foreign : owner ≠ focal)
@@ -900,10 +906,10 @@ theorem sourceService_foreign_commit_law
     rw [← eventRank] at ordered
     exact ordered.ready event.isLt
   have traceAt (seed : Seed) (supported : seed ∈ prior.support) :
-      Nonempty ((app.protocol (initialLaw setup) horizon scheduler).Trace
+      Nonempty ((app.protocol (initialDistribution setup) horizon scheduler).Trace
         (some ⟨horizon - (execution seed).environmentRecall.length, none, execution seed⟩)) := by
     obtain ⟨physicalRank, physical⟩ := boundary seed supported
-    exact app.raw_trace_roundsFrom (initialLaw setup) horizon scheduler players _
+    exact app.raw_trace_roundsFrom (initialDistribution setup) horizon scheduler players _
       (bounded seed supported) _ physical.supported
   have quiescentAt (seed : Seed) (supported : seed ∈ prior.support) :
       ∀ query, ¬ (execution seed).application.AutomaticReady query := by
@@ -1189,7 +1195,8 @@ private theorem foreign_reveal_fixed_endpoint
       source.revelations)
     {horizon : Nat} (scheduler : (application setup timeouts leaks).Scheduler)
     (delay bound : setup.informationGraph.EventId → Nat) (turns : Nat)
-    (contract : AsyncContract timeouts leaks (initialLaw setup) horizon scheduler delay bound)
+    (contract : AsyncContract timeouts leaks (initialDistribution setup) horizon scheduler delay
+      bound)
     (timely : AsyncTimely timeouts delay bound)
     (focal : Player) (deviation : (application setup timeouts leaks).Policy)
     (foreign : owner ≠ focal)
@@ -1324,7 +1331,8 @@ private theorem foreign_reveal_fixed_endpoint
         (fun config => setup.informationGraph.runPlan plan config.remaining config) := by
     rw [← runEq]
     exact continuation
-  obtain ⟨trace⟩ := app.raw_trace_roundsFrom (initialLaw setup) horizon scheduler background _
+  obtain ⟨trace⟩ := app.raw_trace_roundsFrom (initialDistribution setup) horizon scheduler
+    background _
     bounded execution boundaryAt.supported
   have quiescent := (legalFacts setup leaks horizon scheduler _ trace).quiescent
   have completeAfter : ∀ final ∈ (app.runUntilHorizon scheduler fixed
@@ -1340,7 +1348,8 @@ private theorem foreign_reveal_fixed_endpoint
     · exact done
     · obtain ⟨used, enough, rounds, _length⟩ := app.runUntil_runRounds scheduler fixed _
         remaining execution final reached
-      obtain ⟨finalTrace⟩ := app.raw_trace_runRounds (initialLaw setup) horizon scheduler fixed
+      obtain ⟨finalTrace⟩ := app.raw_trace_runRounds (initialDistribution setup) horizon scheduler
+        fixed
         (remaining - used) used execution final
         (by simpa only [Nat.sub_add_cancel enough] using trace) rounds
       have terminal := contract.completes _ finalTrace (by
@@ -1521,12 +1530,13 @@ private theorem reveal_joint_mixed
 
 /-- An honest foreign disclosure retains its prescribed source kernel jointly with
 actual focal traffic, including source heads already passed by automatic service. -/
-theorem sourceService_foreign_reveal_law
+theorem sourceService_foreign_reveal_distribution
     (timeouts : EventTimeouts setup.informationGraph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
     {horizon : Nat} {scheduler : (application setup timeouts leaks).Scheduler}
     (delay bound : setup.informationGraph.EventId → Nat) (turns : Nat)
-    (contract : AsyncContract timeouts leaks (initialLaw setup) horizon scheduler delay bound)
+    (contract : AsyncContract timeouts leaks (initialDistribution setup) horizon scheduler delay
+      bound)
     (timely : AsyncTimely timeouts delay bound)
     (wholeProfile : BehavioralProfile setup.program) (focal owner : Player)
     (deviation : (application setup timeouts leaks).Policy) (foreign : owner ≠ focal)
@@ -1639,10 +1649,10 @@ theorem sourceService_foreign_reveal_law
     rw [← eventRank] at ordered
     exact ordered.ready event.isLt
   have traceAt (seed : Seed) (supported : seed ∈ prior.support) :
-      Nonempty ((app.protocol (initialLaw setup) horizon scheduler).Trace
+      Nonempty ((app.protocol (initialDistribution setup) horizon scheduler).Trace
         (some ⟨horizon - (execution seed).environmentRecall.length, none, execution seed⟩)) := by
     obtain ⟨physicalRank, physical⟩ := boundary seed supported
-    exact app.raw_trace_roundsFrom (initialLaw setup) horizon scheduler players _
+    exact app.raw_trace_roundsFrom (initialDistribution setup) horizon scheduler players _
       (bounded seed supported) _ physical.supported
   have quiescentAt (seed : Seed) (supported : seed ∈ prior.support) :
       ∀ query, ¬ (execution seed).application.AutomaticReady query := by

@@ -126,7 +126,7 @@ theorem sourceTerminal_readout_stable (menu : (application setup timeouts
 /-- Stopping at actual source completion preserves the exact terminal law of
 the full source readout. Every legal profile is covered; no final-law equality is
 assumed, and ancillary histories or receipts are not projected into this law. -/
-theorem sourceTerminal_readout_law (menu : (application setup timeouts
+theorem sourceTerminal_readout_distribution (menu : (application setup timeouts
   leaks).ResponseMenu)
     (initial : PMF (application setup timeouts leaks).State) (horizon : Nat)
     (scheduler : (application setup timeouts leaks).Scheduler)
@@ -147,7 +147,7 @@ theorem sourceTerminal_readout_law (menu : (application setup timeouts
 /-- Every finite native continuation from a completed source cut has the pure
 source continuation law. The response menu, initial law and player policies
 are arbitrary, and all source configuration fields are retained. -/
-theorem terminalPrefix_readout_law (menu : (application setup timeouts leaks).ResponseMenu)
+theorem terminalPrefix_readout_distribution (menu : (application setup timeouts leaks).ResponseMenu)
     (initial : PMF (application setup timeouts leaks).State) (horizon : Nat)
     (scheduler : (application setup timeouts leaks).Scheduler)
     (certificate : (menu.protocol initial horizon scheduler).WellFoundedHistories)

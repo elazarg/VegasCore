@@ -31,7 +31,7 @@ the existing asynchronous service and timeliness contracts. There is no source
 disclosure, independent-prior, audit, deposit or finite raw-menu premise.
 The graph result uses every disclosing extension and every public scheduler.
 
-The [honest native law](../Vegas/Game/PrefixClientOutcomeLaw.lean) separately
+The [honest native law](../Vegas/Game/PrefixClientOutcomeDistribution.lean) separately
 preserves the full configuration/payoff law and clean terminal play of every
 intended extension without equilibrium, finite binding catalogue, finite initial
 support, source disclosure or utility-bound premises.

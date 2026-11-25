@@ -192,7 +192,8 @@ theorem firstActivation_response_prefix_of_recall
         simpa only [sameRecall] using quiet
       have afterEq : after = some ⟨before.remaining, none,
           before.execution.respond (application setup timeouts leaks) owner entry.action⟩ := by
-        change after ∈ ((application setup timeouts leaks).transition (initialLaw setup) horizon
+        change after ∈ ((application setup timeouts leaks).transition
+          (initialDistribution setup) horizon
           scheduler
           (some before) joint).support at realized
         rw [transition_respond (timeouts := timeouts) before acting joint, chosen, Option.getD_some,

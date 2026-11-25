@@ -46,15 +46,16 @@ def PhysicalPrefixPolicyStep (scheduler : (app).Scheduler) (players : Player →
           ((G).policyPlan (Function.update reference focal policy) (G).canonicalScheduler) 1)).bind
             fun primary => (nextNoise (observe primary)).map fun extra => (primary, extra)
 
-private theorem actionLaw_diagonal {g : Vegas.EventGraph Player L}
+private theorem actionDistribution_diagonal {g : Vegas.EventGraph Player L}
     (reference : g.BehavioralProfile) (focal : Player)
     (sites : g.EventId → g.BehavioralPolicy focal) (event : g.EventId) (config : g.Config) :
-    actionLaw (Function.update reference focal (sites event)) config event =
-      actionLaw (Function.update reference focal (fun e => sites e e)) config event := by
+    actionDistribution (Function.update reference focal (sites event)) config event =
+      actionDistribution (Function.update reference focal (fun e => sites e e)) config event := by
   cases actor : g.actor? event with
-  | none => rw [actionLaw_of_ownerless _ _ actor, actionLaw_of_ownerless _ _ actor]
+  | none => rw [actionDistribution_of_ownerless _ _ actor, actionDistribution_of_ownerless _ _
+    actor]
   | some owner =>
-    rw [actionLaw_of_actor _ _ actor, actionLaw_of_actor _ _ actor]
+    rw [actionDistribution_of_actor _ _ actor, actionDistribution_of_actor _ _ actor]
     by_cases inactive : owner ∈ config.defaulted
     · simp only [dite_eq_left inactive]
     · simp only [dite_eq_right inactive]
@@ -166,7 +167,8 @@ theorem physicalPrefix_policy_of_steps
         change (G).runPlan _ 1 (config rank execution) = (G).runPlan _ 1 (config rank execution)
         rw [runPlan_one_at_prefix _ _ event ordered, runPlan_one_at_prefix _ _ event ordered]
         unfold eventStep
-        exact congrArg (fun law => PMF.bind law _) (actionLaw_diagonal reference focal sites
+        exact congrArg (fun law => PMF.bind law _) (actionDistribution_diagonal reference focal
+          sites
           event (config rank execution))
       rw [same, ih (by omega), PMF.bind_bind]
       apply bind_congr_on_support _

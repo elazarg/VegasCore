@@ -97,7 +97,7 @@ def UnintendedCommitmentInvariant (profile : BehavioralProfile setup.program) (w
     (application setup timeouts leaks).ProtocolState → Prop
   | none => False
   | some control =>
-      Nonempty (((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup)
+      Nonempty (((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup)
         horizon scheduler).Trace (some control)) ∧
       RecordsEntry setup timeouts leaks who entry (some control) ∧ entry.emitted = some message ∧
       message.sender = who ∧ message.payload.call = .commitment event candidate ∧
@@ -154,13 +154,13 @@ theorem unintendedCommitmentInvariant_transition (profile : BehavioralProfile se
     (startReady : start.cut.Ready event)
     (before after : (application setup timeouts leaks).ProtocolState)
     (joint : Player → Option (application setup timeouts leaks).Action)
-    (legal : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (legal : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Legal before joint)
     (holds : UnintendedCommitmentInvariant setup timeouts leaks bounds horizon scheduler profile
       who entry
       message event candidate outputEq start point before)
     (reached : after ∈ (((bounds.onePacketMenu timeouts leaks).protocol
-      (initialLaw setup) horizon scheduler).step before ⟨joint, legal⟩).support) :
+      (initialDistribution setup) horizon scheduler).step before ⟨joint, legal⟩).support) :
     UnintendedCommitmentInvariant setup timeouts leaks bounds horizon scheduler profile who entry
       message
       event candidate outputEq start point after := by
@@ -168,28 +168,30 @@ theorem unintendedCommitmentInvariant_transition (profile : BehavioralProfile se
   | none => exact holds.elim
   | some control =>
       obtain ⟨⟨trace⟩, records, emitted, sender, call, fixed, unintended, pending, settled⟩ := holds
-      have afterRecords := recordsEntry_transition (timeouts := timeouts) who entry (initialLaw
+      have afterRecords := recordsEntry_transition (timeouts := timeouts) who entry
+        (initialDistribution
         setup)
         horizon scheduler _ after joint records reached
       cases after with
       | none => exact afterRecords.elim
       | some next =>
           have nextTrace : ((bounds.onePacketMenu timeouts leaks).protocol
-              (initialLaw setup) horizon scheduler).Trace (some next) :=
+              (initialDistribution setup) horizon scheduler).Trace (some next) :=
             .extend trace joint legal reached
           have kept := (keepsFixedCandidates_step timeouts leaks).transition
-            (initialLaw setup) horizon scheduler control next joint reached
+            (initialDistribution setup) horizon scheduler control next joint reached
           have lookupEq := kept candidate fixed
           have owned : setup.informationGraph.actor? event = some who := nodeView_bind_actor
             outputEq codeEq
-          have path := reactive_protocol_graph_steps timeouts leaks (initialLaw setup) horizon
+          have path := reactive_protocol_graph_steps timeouts leaks
+            (initialDistribution setup) horizon
             scheduler control next joint reached
           by_cases old : event ∈ control.execution.application.config.cut.completed
           · have stillDone := EventGraph.Config.Step.path_completed_mono path old
             refine ⟨⟨nextTrace⟩, afterRecords, emitted, sender, call, by rw [lookupEq]; exact fixed,
               fun value act opened => unintended value act (by rw [← lookupEq]; exact opened),
               fun notDone => (notDone stillDone).elim, fun _ => ?_⟩
-            exact decodedHolds_transition (owesFailure_stepClosed who) (initialLaw setup)
+            exact decodedHolds_transition (owesFailure_stepClosed who) (initialDistribution setup)
               horizon scheduler (some control) (some next) joint (settled old) reached
           · have atStart := pending old
             rcases path.cases_head with same | ⟨middle, moved, rest⟩
@@ -215,14 +217,16 @@ theorem unintendedCommitmentInvariant_transition (profile : BehavioralProfile se
                 by rw [lookupEq]; exact fixed,
                 fun value act opened => unintended value act (by rw [← lookupEq]; exact opened),
                 fun notDone => (notDone done).elim, fun _ => ?_⟩
-              have rawTrace : ((application setup timeouts leaks).protocol (initialLaw setup)
+              have rawTrace : ((application setup timeouts leaks).protocol
+                (initialDistribution setup)
                 horizon
                   scheduler).Trace (some control) :=
-                (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon
+                (bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup) horizon
                   scheduler trace
-              have nextRawTrace : ((application setup timeouts leaks).protocol (initialLaw setup)
+              have nextRawTrace : ((application setup timeouts leaks).protocol
+                (initialDistribution setup)
                   horizon scheduler).Trace (some next) :=
-                (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon
+                (bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup) horizon
                   scheduler nextTrace
               have facts := legalFacts setup leaks horizon scheduler _ rawTrace
               have nextFacts := legalFacts setup leaks horizon scheduler _ nextRawTrace

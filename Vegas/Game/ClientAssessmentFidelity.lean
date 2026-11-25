@@ -27,7 +27,7 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {spec : ClientSpec setup timeouts leaks bounds horizon scheduler parameter utility excludedPayoff}
   {intended : setup.intendedModel.BehavioralAssessment} (compiled : ClientCompilation spec intended)
 
-local notation "Initial" => initialLaw setup
+local notation "Initial" => initialDistribution setup
 local notation "app" => application setup timeouts leaks
 local notation "raw" => bounds.rawMenu timeouts leaks
 local notation "one" => bounds.onePacketMenu timeouts leaks
@@ -117,7 +117,8 @@ theorem clients_continuation_at_sourceBoundary
     (pointIntended : ProtocolState.Intended setup.program point) :
     ((app).finish Initial horizon scheduler compiled.clients rawStart.state).bind
         spec.observation =
-      (setup.continuationLaw (setup.intendedOpeningProfile intended.strategy) (some point)).map
+      (setup.continuationDistribution (setup.intendedOpeningProfile intended.strategy)
+        (some point)).map
         (fun terminal => (some terminal, utility (setup.parameterOutcome parameter terminal))) ∧
     ∀ outcome ∈ ((app).finish Initial horizon scheduler compiled.clients rawStart.state).support,
       ∃ (control : (app).Control) (terminal : Config Player L setup.program.terminalCtx),

@@ -121,9 +121,9 @@ theorem honest_closure_output (base : (serviceGraph setup deps).BehavioralProfil
     rw [outputEq]
     trivial
   have settles := honest_settles base decides who ready publication foreign
-  have acting : actionLaw R config event = PMF.pure (cast (congrArg EventField.Action
+  have acting : actionDistribution R config event = PMF.pure (cast (congrArg EventField.Action
       outputEq.symm) (openingAccepted event config.store)) := by
-    rw [actionLaw_of_actor _ _ ownedNode, dite_eq_right active]
+    rw [actionDistribution_of_actor _ _ ownedNode, dite_eq_right active]
     exact decides config event owner payload binding checks outputEq codeEq node owned active
   refine ⟨fun accepted => ?_, fun rejected => ?_⟩
   · obtain ⟨opened, resolved⟩ := resolveOutput_of_accepted node accepted

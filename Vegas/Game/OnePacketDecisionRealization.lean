@@ -25,10 +25,10 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
-local notation "N" => onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+local notation "N" => onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon
   scheduler
 local notation "E" => ReactiveApplication.ResponseMenu.protocol
-  (bounds.onePacketMenu timeouts leaks) (initialLaw setup) horizon scheduler
+  (bounds.onePacketMenu timeouts leaks) (initialDistribution setup) horizon scheduler
 
 /-- A reached source boundary at an intended decision admits a genuine first
 native activation at that same source point, with no fallback replay premise. -/
@@ -84,7 +84,8 @@ theorem exists_sourceDecisionRealization_of_boundary
   have ready := (ready_iff_rank setup _ rank boundary.ordered event).mpr rfl
   have actual : decodedPoint setup anchor.application.config = some point :=
     (decodedPoint_eq_of_isPrefix boundary.ordered).trans decoded
-  have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon
+  have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace
+    (initialDistribution setup) horizon
     scheduler (state ▸ start.trace)
   have owned : setup.informationGraph.actor? event = some who :=
     (decodedPoint_actor_of_history who rawTrace ready actual).symm.trans sourceActive
@@ -100,7 +101,7 @@ theorem exists_sourceDecisionRealization_of_boundary
   have observed : (N).infoOf who callback.trace = info := by
     have nativeInfo : (N).infoOf who callback.trace =
         (application setup timeouts leaks).observe who callback.state :=
-      (bounds.onePacketMenu timeouts leaks).info (initialLaw setup) horizon scheduler who
+      (bounds.onePacketMenu timeouts leaks).info (initialDistribution setup) horizon scheduler who
         callback.trace
     rw [nativeInfo, current]
     simp only [ReactiveApplication.observe, ↓reduceIte, info]

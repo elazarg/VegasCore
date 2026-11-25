@@ -56,7 +56,7 @@ with their full typed output and executable payout on the bounded raw interface.
 example (bonus : Int) (binding : Option (PublicationResult Bool)) (disclose : Bool) :
     let source := (setup bonus).encodeBehavioralProfile (fullAdmission bonus)
       (chosenProfile bonus binding disclose) (permitted bonus binding disclose)
-    ((service bonus).rawMenu.information (serviceInitialLaw (setup bonus) (setup
+    ((service bonus).rawMenu.information (serviceInitialDistribution (setup bonus) (setup
       bonus).informationDependencies)
       (service bonus).horizon (service bonus).scheduler).runBehavioral
       ((service bonus).clientProfile (fullAdmission bonus) (service bonus).rawMenu
@@ -68,7 +68,7 @@ example (bonus : Int) (binding : Option (PublicationResult Bool)) (disclose : Bo
       PMF.pure (some (terminal bonus binding disclose,
         (program bonus).evaluatePayoffs (terminal bonus binding disclose).1)) := by
   dsimp only
-  have law := (service bonus).firstTurnClientProfile_outcome_law (fullAdmission bonus)
+  have law := (service bonus).firstTurnClientProfile_outcome_distribution (fullAdmission bonus)
     1
     ((setup bonus).encodeBehavioralProfile (fullAdmission bonus)
       (chosenProfile bonus binding disclose) (permitted bonus binding disclose))

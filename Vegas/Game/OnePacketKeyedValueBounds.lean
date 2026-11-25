@@ -27,10 +27,10 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (bounds : MessageBounds setup.informationGraph) (horizon : Nat)
   (scheduler : (application setup timeouts leaks).Scheduler)
 
-local notation "N" => onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+local notation "N" => onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon
   scheduler
 local notation "NP" => ReactiveApplication.ResponseMenu.protocol
-  (bounds.onePacketMenu timeouts leaks) (initialLaw setup) horizon scheduler
+  (bounds.onePacketMenu timeouts leaks) (initialDistribution setup) horizon scheduler
 local notation "Menu" => bounds.onePacketMenu timeouts leaks
 local notation "Clear" => ReactiveApplication.stateInvariant
   (app := application setup timeouts leaks)
@@ -41,13 +41,13 @@ open Classical in
 /-- The same native comparison posterior factors the pending-event failure and
 source continuation value, given the concrete forced-history affine estimate. -/
 private theorem keyed_value_sub_le_of_pending
-    [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
+    [(application setup timeouts leaks).FiniteNature (initialDistribution setup) scheduler]
     [∀ who, DecidableEq ((N).InfoState who)]
     (covers : bounds.CoversOutputValues)
     (capacity : ∀ player, bindingEventCount setup.informationGraph player < bounds.candidateCount)
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (scale : ℕ → ℝ) (positive : ∀ n, 0 < scale n) (le_one : ∀ n, scale n ≤ 1)
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialDistribution setup)
       horizon scheduler bounds.candidateCount p))
     (targetSequence : ℕ → (N).BehavioralAssessment)
     (assembled : OnePacketAssembled setup timeouts leaks bounds horizon scheduler sequence scale
@@ -77,7 +77,7 @@ private theorem keyed_value_sub_le_of_pending
     (boundaryError : ℝ) (boundaryErrorNonneg : 0 ≤ boundaryError) :
     let target := targetSequence n
     let common := target.strategy
-    let certificate := ((Menu).bounded (initialLaw setup) horizon
+    let certificate := ((Menu).bounded (initialDistribution setup) horizon
       scheduler).wellFoundedHistories
     let law := onePacketLate setup timeouts leaks bounds horizon scheduler sequence scale
       positive
@@ -270,13 +270,13 @@ private theorem keyed_value_sub_le_of_pending
 
 open Classical in
 theorem assembled_keyed_value_sub_le
-    [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
+    [(application setup timeouts leaks).FiniteNature (initialDistribution setup) scheduler]
     [∀ who, DecidableEq ((N).InfoState who)]
     (wellFormed : setup.WellFormed) (covers : bounds.CoversOutputValues)
     (capacity : ∀ player, bindingEventCount setup.informationGraph player < bounds.candidateCount)
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (scale : ℕ → ℝ) (positive : ∀ n, 0 < scale n) (le_one : ∀ n, scale n ≤ 1)
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialDistribution setup)
       horizon scheduler bounds.candidateCount p))
     (targetSequence : ℕ → (N).BehavioralAssessment)
     (assembled : OnePacketAssembled setup timeouts leaks bounds horizon scheduler sequence scale
@@ -326,7 +326,7 @@ theorem assembled_keyed_value_sub_le
     (excludedBounded : |excludedPayoff who| ≤ payoffBound) :
     let target := targetSequence n
     let common := target.strategy
-    let certificate := ((Menu).bounded (initialLaw setup) horizon
+    let certificate := ((Menu).bounded (initialDistribution setup) horizon
       scheduler).wellFoundedHistories
     let law := onePacketLate setup timeouts leaks bounds horizon scheduler sequence scale
       positive
@@ -375,7 +375,7 @@ theorem assembled_keyed_value_sub_le
 open Classical in
 /-- The original common posterior has a uniformly vanishing affine keyed-value error. -/
 theorem assembled_keyed_value_bounds
-    [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
+    [(application setup timeouts leaks).FiniteNature (initialDistribution setup) scheduler]
     [∀ who, DecidableEq ((N).InfoState who)]
     [Finite setup.intendedProtocol.History]
     (wellFormed : setup.WellFormed)
@@ -389,14 +389,15 @@ theorem assembled_keyed_value_bounds
     (covers : bounds.CoversOutputValues) (coversInputs : bounds.CoversInputValues)
     (capacity : ∀ who, bindingEventCount setup.informationGraph who < bounds.candidateCount)
     (slots_pos : 0 < bounds.candidateCount)
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialDistribution setup)
       horizon scheduler bounds.candidateCount p))
     (targetSequence : ℕ → (N).BehavioralAssessment)
     (assembled : OnePacketAssembled setup timeouts leaks bounds horizon scheduler sequence scale
       positive le_one weights targetSequence)
     (mixed : ∀ n, (targetSequence n).IsFullyMixed)
     (bayes : ∀ n, BehavioralAssessment.IsBayesConsistent (N) (targetSequence n)
-      ((Menu).decisionRecall (initialLaw setup) horizon scheduler).decisionInformationAntichain)
+      ((Menu).decisionRecall (initialDistribution setup) horizon
+        scheduler).decisionInformationAntichain)
     {delay bound : setup.informationGraph.EventId → Nat}
     (opportunity : ∀ control : (application setup timeouts leaks).Control,
       (NP).Trace (some control) → control.execution.application.config.defaulted = ∅ →
@@ -419,18 +420,18 @@ theorem assembled_keyed_value_bounds
       (error : ℕ → ℝ), Tendsto error atTop (nhds 0) ∧
       (∀ n key option, 0 ≤ failureScore n key option ∧ failureScore n key option ≤ 1) ∧
       ∀ n who (site : (N).InformationSite who),
-        ¬ Vegas.FreeAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+        ¬ Vegas.FreeAgent setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
           ((N).agentAt site) →
-        ¬ Vegas.OwingAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+        ¬ Vegas.OwingAgent setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
           ((N).agentAt site) →
-        ownedKeyed (Vegas.FreeAgent setup timeouts leaks bounds (initialLaw setup) horizon
+        ownedKeyed (Vegas.FreeAgent setup timeouts leaks bounds (initialDistribution setup) horizon
           scheduler)
-          (LateDeliveryAgent setup timeouts leaks bounds (initialLaw setup) horizon
+          (LateDeliveryAgent setup timeouts leaks bounds (initialDistribution setup) horizon
             scheduler)
           ((N).agentAt site) →
         ∀ key, lateKey setup timeouts leaks who site.1 = some key → ∀ option,
         let target := targetSequence n
-        let certificate := ((Menu).bounded (initialLaw setup) horizon
+        let certificate := ((Menu).bounded (initialDistribution setup) horizon
           scheduler).wellFoundedHistories
         let law := onePacketLate setup timeouts leaks bounds horizon scheduler sequence scale
           positive

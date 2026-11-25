@@ -134,10 +134,10 @@ theorem block_stopped_readoutOn_congr {horizon : Nat}
     ∀ (count leftRemaining rightRemaining : Nat)
       (left right : (serviceApplication setup deps duration leaks).Execution),
       ((serviceApplication setup deps duration leaks).protocol
-        (serviceInitialLaw setup deps) horizon scheduler).Trace
+        (serviceInitialDistribution setup deps) horizon scheduler).Trace
           (some ⟨leftRemaining + count, none, left⟩) →
       ((serviceApplication setup deps duration leaks).protocol
-        (serviceInitialLaw setup deps) horizon scheduler).Trace
+        (serviceInitialDistribution setup deps) horizon scheduler).Trace
           (some ⟨rightRemaining + count, none, right⟩) →
       (¬ BlockDone finish left.application.config →
         InBlock start finish left.application.config) →
@@ -165,7 +165,8 @@ theorem block_stopped_readoutOn_congr {horizon : Nat}
     turns (firstTurnTiming setup turns deps) reference) who deviation
   let window := blockWindow (setup := setup) (deps := deps) start finish
   let invariant := fun (origin : app.Execution) (count : Nat) (current : app.Execution) =>
-    (∃ remaining, Nonempty ((app.protocol (serviceInitialLaw setup deps) horizon scheduler).Trace
+    (∃ remaining, Nonempty ((app.protocol (serviceInitialDistribution setup deps) horizon
+      scheduler).Trace
       (some ⟨remaining + count, none, current⟩))) ∧
     (¬ BlockDone finish current.application.config →
       InBlock start finish current.application.config) ∧
@@ -177,10 +178,11 @@ theorem block_stopped_readoutOn_congr {horizon : Nat}
       (next : app.Execution) (reached : next ∈ (app.round scheduler players current).support) :
       invariant origin n next := by
     obtain ⟨⟨remaining, ⟨trace⟩⟩, inside, walked, submitted⟩ := valid
-    have before : (app.protocol (serviceInitialLaw setup deps) horizon scheduler).Trace
+    have before : (app.protocol (serviceInitialDistribution setup deps) horizon scheduler).Trace
         (some ⟨(remaining + n) + 1, none, current⟩) := by
       simpa only [Nat.add_assoc] using trace
-    obtain ⟨nextTrace⟩ := app.raw_trace_round (serviceInitialLaw setup deps) horizon scheduler
+    obtain ⟨nextTrace⟩ := app.raw_trace_round (serviceInitialDistribution setup deps) horizon
+      scheduler
       players (remaining + n) current next before reached
     have path := reactive_round_graph_steps (serviceTimeouts setup deps duration) leaks scheduler
       players current next reached
@@ -200,10 +202,12 @@ theorem block_stopped_readoutOn_congr {horizon : Nat}
     obtain ⟨⟨currentRest, ⟨currentTrace⟩⟩, currentInside, currentPath, currentSubmitted⟩ :=
       currentValid
     obtain ⟨⟨otherRest, ⟨otherTrace⟩⟩, _, otherPath, _⟩ := otherValid
-    have currentBefore : (app.protocol (serviceInitialLaw setup deps) horizon scheduler).Trace
+    have currentBefore : (app.protocol (serviceInitialDistribution setup deps) horizon
+      scheduler).Trace
         (some ⟨(currentRest + n) + 1, none, current⟩) := by
       simpa only [Nat.add_assoc] using currentTrace
-    have otherBefore : (app.protocol (serviceInitialLaw setup deps) horizon scheduler).Trace
+    have otherBefore : (app.protocol (serviceInitialDistribution setup deps) horizon
+      scheduler).Trace
         (some ⟨(otherRest + n) + 1, none, other⟩) := by
       simpa only [Nat.add_assoc] using otherTrace
     have inside := currentInside running
@@ -211,7 +215,7 @@ theorem block_stopped_readoutOn_congr {horizon : Nat}
     have currentFacts := legalFacts setup leaks horizon scheduler _ currentBefore
     have otherFacts := legalFacts setup leaks horizon scheduler _ otherBefore
     have signed := signedCommitments_history (serviceTimeouts setup deps duration) leaks
-      (serviceInitialLaw setup deps) (fun state supported => by
+      (serviceInitialDistribution setup deps) (fun state supported => by
         obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ supported
         exact ⟨_, rfl⟩) horizon scheduler currentBefore
     have sameTraffic : (bindingTraffic (serviceTimeouts setup deps duration)) leaks who current =

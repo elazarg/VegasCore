@@ -18,7 +18,7 @@ open SourceProgram EventGraphRuntime Interaction GameTheory.Protocol
 private abbrev event : graph.EventId := ⟨0, by decide⟩
 private abbrev roster := Equiv.refl Bool
 private abbrev menu := bounds.onePacketMenu timeouts leaks
-private abbrev initial := Vegas.initialLaw setup
+private abbrev initial := Vegas.initialDistribution setup
 private abbrev cmd := PeriodicService.command graph roster leaks
 
 private theorem command_not_sample (n : Nat) (view : app.EnvironmentView) (i : graph.EventId) :
@@ -91,10 +91,10 @@ private structure Prefix (n : Nat) (execution : app.Execution) : Prop where
     event entry
 
 private theorem initial_prefix : ∃ execution, Prefix 0 execution := by
-  have member : sourceInitial false ∈ setup.initialLaw.support := by
+  have member : sourceInitial false ∈ setup.initialDistribution.support := by
     apply (PMF.mem_support_iff _ _).mpr
-    change setup.initialLaw (sourceState false false) ≠ 0
-    rw [initialLaw_apply]
+    change setup.initialDistribution (sourceState false false) ≠ 0
+    rw [initialDistribution_apply]
     norm_num
   have initialized : start ∈ initial.support := (PMF.mem_support_map_iff _ _ _).mpr
     ⟨sourceInitial false, member, rfl⟩

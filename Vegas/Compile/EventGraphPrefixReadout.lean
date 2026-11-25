@@ -489,7 +489,7 @@ def sourceContinuation (setup : Setup (Player := Player) (L := L))
       Nat)
     (config : (setup.dataflowGraph.withDependencies deps).Config) :
     PMF (Option (Config Player L setup.program.terminalCtx)) :=
-  (setup.continuationLaw profile (serviceSourcePrefix? setup deps rank config)).map some
+  (setup.continuationDistribution profile (serviceSourcePrefix? setup deps rank config)).map some
 
 theorem serviceSourcePrefix?_initial (setup : Setup (Player := Player) (L := L))
     {deps : setup.dataflowGraph.Dependencies} (initial : State L setup.context) :
@@ -705,7 +705,7 @@ theorem sourceContinuation_terminal
       PMF.pure (setup.protocolReadout
         (serviceSourcePrefix? setup deps (eventCount setup.program) config)) := by
   obtain ⟨point, decoded, stopped⟩ := serviceSourcePrefix?_terminal setup deps config terminal
-  exact setup.continuationLaw_terminal profile _ (by rw [decoded]; exact stopped)
+  exact setup.continuationDistribution_terminal profile _ (by rw [decoded]; exact stopped)
 
 /-- The full terminal prefix is the return point of its retained configuration. -/
 theorem decodeSourcePrefix?_terminal_state

@@ -5,8 +5,8 @@ module
 public import Vegas.Game.OnePacketBoundaryWaiting
 public import Vegas.Game.SourceTerminalReadout
 public import Vegas.Game.OnePacketDecodedActor
-public import Vegas.Game.OnePacketChanceStoppedLaw
-public import Vegas.Game.OnePacketLawApproximation
+public import Vegas.Game.OnePacketChanceStoppedDistribution
+public import Vegas.Game.OnePacketDistributionApproximation
 
 @[expose] public section
 
@@ -29,27 +29,28 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {scheduler : (application setup timeouts leaks).Scheduler}
   {delay bound : setup.informationGraph.EventId → Nat}
   (opportunity : ∀ control : (application setup timeouts leaks).Control,
-    ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some control) →
     control.execution.application.config.defaulted = ∅ →
     OpportunityAt timeouts leaks control.execution delay)
   (inclusion : ∀ control : (application setup timeouts leaks).Control,
-    ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some control) →
     control.execution.application.config.defaulted = ∅ →
     ProtectedInclusionAt timeouts leaks control.execution bound)
   (timely : (AsyncTimely timeouts) delay bound)
   (completes : ∀ control : (application setup timeouts leaks).Control,
-    ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some control) →
     control.execution.application.config.defaulted = ∅ →
     (application setup timeouts leaks).terminal (some control) →
     control.execution.application.config.cut.Terminal)
 
 local notation "menu" => bounds.onePacketMenu timeouts leaks
-local notation "N" => onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+local notation "N" => onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon
   scheduler
-local notation "E" => ReactiveApplication.ResponseMenu.protocol menu (initialLaw setup) horizon
+local notation "E" =>
+  ReactiveApplication.ResponseMenu.protocol menu (initialDistribution setup) horizon
   scheduler
 local notation "Clear" => ReactiveApplication.stateInvariant
   (app := application setup timeouts leaks)
@@ -59,7 +60,7 @@ local notation "Clear" => ReactiveApplication.stateInvariant
 include opportunity inclusion timely completes in
 /-- Honest finite-menu play from an intended source boundary has the source
 continuation law under counted native service and completion. -/
-theorem counted_honest_boundary_readout_law
+theorem counted_honest_boundary_readout_distribution
     (covers : bounds.CoversOutputValues)
     (capacity : ∀ player, bindingEventCount setup.informationGraph player < bounds.candidateCount)
     (source : setup.intendedModel.BehavioralAssessment)
@@ -70,17 +71,19 @@ theorem counted_honest_boundary_readout_law
       ∀ point, sourceServicePrefix? setup rank execution.application.config = some point →
         ProtocolState.Intended setup.program point →
       ((N).runBehavioralTerminalFrom certificate
-        (honestProfile setup timeouts leaks bounds (initialLaw setup) horizon scheduler source)
+        (honestProfile setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
+          source)
           start).map
           (fun final => sourceReadout setup timeouts leaks final.state) =
         sourceContinuation setup (setup.intendedOpeningProfile source.strategy) rank
           execution.application.config := by
   classical
-  let players := honestProfile setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+  let players := honestProfile setup timeouts leaks bounds
+    (initialDistribution setup) horizon scheduler
     source
   let profile := setup.intendedOpeningProfile source.strategy
   let continuation := fun state : Option (ProtocolState setup.program) =>
-    (setup.continuationLaw profile state).map some
+    (setup.continuationDistribution profile state).map some
   suffices remaining : ∀ gap rank (start : (E).History)
       (execution : (application setup timeouts leaks).Execution),
       setup.informationGraph.order.eventCount - rank = gap →
@@ -102,7 +105,8 @@ theorem counted_honest_boundary_readout_law
         change rank ≤ setup.informationGraph.order.eventCount at within
         omega
       subst rank
-      exact terminalPrefix_readout_law (timeouts := timeouts) (menu) (initialLaw setup) horizon
+      exact terminalPrefix_readout_distribution (timeouts := timeouts) (menu)
+        (initialDistribution setup) horizon
         scheduler certificate players start _ state boundary.ordered.terminal profile
   | succ gap ih =>
       intro rank start execution gapEq state boundary point decoded intended
@@ -125,7 +129,8 @@ theorem counted_honest_boundary_readout_law
           let stopping := fun history : (E).History =>
             LateStopped setup timeouts leaks bounds horizon scheduler rank history ∨
               ¬ Clear history.state
-          have configLaw := counted_chance_stopped_configLaw (timeouts := timeouts) completes
+          have configLaw := counted_chance_stopped_configDistribution
+            (timeouts := timeouts) completes
             certificate players start state boundary.ordered event ready owned action decoded
             intended
           rw [(N).runBehavioralTerminalFrom_eq_bind_runBehavioralUntil certificate players stopping,
@@ -208,20 +213,22 @@ theorem counted_honest_boundary_readout_law
                   ¬ Clear history.state
               have installed : Profile.update (sig := (N).behavioralSignature) players owner
                   ((players owner).withLaw ((N).infoOf owner callback.trace)
-                    (honestChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+                    (honestChoice setup timeouts leaks bounds
+                      (initialDistribution setup) horizon scheduler
                       source
                       owner ((N).infoOf owner callback.trace))) = players := by
                 change Profile.update (sig := (N).behavioralSignature) players owner
                   ((players owner).withLaw ((N).infoOf owner callback.trace)
                     (players owner ((N).infoOf owner callback.trace))) = players
                 rw [BehavioralPolicy.withLaw_eq_self, Profile.update_eq_self]
-              have sourceLaw := counted_firstActivation_honest_sourceLaw (timeouts := timeouts)
+              have sourceDistribution := counted_firstActivation_honest_sourceDistribution
+                (timeouts := timeouts)
                 opportunity
                 inclusion timely completes covers capacity source
                 certificate
                 players callback current callbackClear event pending never (same ▸ boundary.ordered)
                 (same ▸ decoded) intended _ rfl
-              rw [installed] at sourceLaw
+              rw [installed] at sourceDistribution
               rw [(N).runBehavioralTerminalFrom_eq_bind_runBehavioralUntil certificate players
                 stopping, PMF.map_bind]
               calc
@@ -232,7 +239,8 @@ theorem counted_honest_boundary_readout_law
                   have supportedInstalled : final ∈ ((N).runBehavioralUntil certificate
                       (Profile.update (sig := (N).behavioralSignature) players owner
                         ((players owner).withLaw ((N).infoOf owner callback.trace)
-                          (honestChoice setup timeouts leaks bounds (initialLaw setup) horizon
+                          (honestChoice setup timeouts leaks bounds
+                            (initialDistribution setup) horizon
                             scheduler
                             source owner ((N).infoOf owner callback.trace))))
                       stopping callback).support := by
@@ -260,12 +268,13 @@ theorem counted_honest_boundary_readout_law
                     (congrArg continuation decodedFinal).symm
                 _ = ((ProtocolState.behavioralStateStep setup.program profile point).map
                     some).bind continuation := by
-                  rw [← sourceLaw, PMF.bind_map]
+                  rw [← sourceDistribution, PMF.bind_map]
                   rfl
                 _ = sourceContinuation setup profile rank execution.application.config := by
                   rw [PMF.bind_map]
                   change (ProtocolState.behavioralStateStep setup.program profile point).bind
-                    (fun next => (ProtocolState.continuationLaw setup.program profile next).map
+                    (fun next => (ProtocolState.continuationDistribution setup.program profile
+                      next).map
                       some) = sourceContinuation setup profile rank execution.application.config
                   rw [← PMF.map_bind, ProtocolState.behavioralStateStep_continuation]
                   change continuation (some point) = continuation

@@ -60,13 +60,14 @@ theorem onePacket_response_step {before after : (application setup timeouts leak
   | some response =>
       rw [chosen] at localLegal
       refine ⟨response, rfl, localLegal.2, ?_, ?_⟩
-      · change some next ∈ ((application setup timeouts leaks).transition (initialLaw setup) horizon
+      · change some next ∈ ((application setup timeouts leaks).transition
+          (initialDistribution setup) horizon
           scheduler (some control) joint).support at realized
         rw [transition_respond (timeouts := timeouts) control acting joint] at realized
         have same := Option.some.inj ((PMF.mem_support_pure_iff _ _).mp realized)
         rw [same, chosen]
         rfl
-      · change ((bounds.onePacketMenu timeouts leaks).signals (initialLaw setup) horizon
+      · change ((bounds.onePacketMenu timeouts leaks).signals (initialDistribution setup) horizon
           scheduler).infoOf actor prior = _
         rw [ReactiveApplication.ResponseMenu.info]
         change (if control.actor = some actor then some _ else none) = _

@@ -5,7 +5,7 @@ module
 public import Vegas.Game.SourceServiceFailureReadout
 public import Vegas.Game.IntendedOpeningContinuation
 public import Vegas.Game.OnePacketIntendedProjection
-public import Vegas.Game.OnePacketLawApproximation
+public import Vegas.Game.OnePacketDistributionApproximation
 public import Vegas.Game.OnePacketHonestForced
 
 @[expose] public section
@@ -27,32 +27,33 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
 
 /-- An honest source continuation law rules out latent debt at every reached
 native history, without a global native completion assumption. -/
-theorem honest_reached_intended_of_readout_law
+theorem honest_reached_intended_of_readout_distribution
     (bounds : MessageBounds setup.informationGraph) (wellFormed : setup.WellFormed)
     {horizon : Nat} {scheduler : (application setup timeouts leaks).Scheduler}
     (assessment : setup.intendedModel.BehavioralAssessment)
-    (certificate : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup)
+    (certificate : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup)
       horizon scheduler).WellFoundedHistories)
-    (start : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup)
+    (start : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup)
       horizon scheduler).History)
     (point : ProtocolState setup.program)
     (static : ProtocolState.StaticAt setup.program [] (Revelations.initial setup.context) point)
     (intended : ProtocolState.Intended setup.program point)
     (law : (InformationModel.runBehavioralTerminalFrom
-      (onePacketModel (timeouts := timeouts) setup leaks bounds (initialLaw setup) horizon
+      (onePacketModel (timeouts := timeouts) setup leaks bounds (initialDistribution setup) horizon
         scheduler) certificate
-        (honestProfile (timeouts := timeouts) setup leaks bounds (initialLaw setup) horizon
+        (honestProfile (timeouts := timeouts) setup leaks bounds (initialDistribution setup) horizon
           scheduler assessment)
         start).map (fun final => sourceReadout setup timeouts leaks final.state) =
-          (setup.continuationLaw (setup.intendedOpeningProfile assessment.strategy)
+          (setup.continuationDistribution (setup.intendedOpeningProfile assessment.strategy)
             (some point)).map some)
     (fuel : Nat)
-    (history : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup)
+    (history : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup)
       horizon scheduler).History)
-    (reached : history ∈ ((onePacketModel (timeouts := timeouts) setup leaks bounds (initialLaw
+    (reached : history ∈ ((onePacketModel (timeouts := timeouts) setup leaks bounds
+      (initialDistribution
       setup) horizon
       scheduler).runBehavioralFrom
-        (honestProfile (timeouts := timeouts) setup leaks bounds (initialLaw setup) horizon
+        (honestProfile (timeouts := timeouts) setup leaks bounds (initialDistribution setup) horizon
           scheduler assessment)
         fuel start).support)
     (control : (application setup timeouts leaks).Control) (current : history.state = some
@@ -60,9 +61,9 @@ theorem honest_reached_intended_of_readout_law
     ∃ decoded, decodedPoint setup control.execution.application.config = some decoded ∧
       ProtocolState.Intended setup.program decoded := by
   let menu := bounds.onePacketMenu timeouts leaks
-  let model := onePacketModel (timeouts := timeouts) setup leaks bounds (initialLaw setup)
+  let model := onePacketModel (timeouts := timeouts) setup leaks bounds (initialDistribution setup)
     horizon scheduler
-  let honest := honestProfile (timeouts := timeouts) setup leaks bounds (initialLaw setup)
+  let honest := honestProfile (timeouts := timeouts) setup leaks bounds (initialDistribution setup)
     horizon scheduler assessment
   let opening := setup.intendedOpeningProfile assessment.strategy
   obtain ⟨rank, ⟨residual⟩, holds⟩ := decodedState_intended_or_owes (timeouts := timeouts)
@@ -84,7 +85,7 @@ theorem honest_reached_intended_of_readout_law
       rw [model.runBehavioralTerminalFrom_eq_bind_runBehavioralFrom certificate honest fuel start]
       exact (PMF.mem_support_bind_iff _ _ _).mpr ⟨history, reached, supported⟩
     have readInLaw : sourceReadout setup timeouts leaks final.state ∈
-        ((setup.continuationLaw opening (some point)).map some).support := by
+        ((setup.continuationDistribution opening (some point)).map some).support := by
       rw [← law]
       exact (PMF.mem_support_map_iff _ _ _).mpr ⟨final, inLaw, rfl⟩
     obtain ⟨terminal, sourceMem, read⟩ := (PMF.mem_support_map_iff _ _ _).mp readInLaw
@@ -92,7 +93,7 @@ theorem honest_reached_intended_of_readout_law
       (DecodedState setup timeouts leaks opening (ProtocolState.OwesFailure player setup.program))
       (fun before joint _ after holds member =>
         decodedHolds_transition (timeouts := timeouts) (owesFailure_stepClosed player)
-          (initialLaw setup) horizon
+          (initialDistribution setup) horizon
           scheduler before after joint holds member)
       history owing final supported
     have failed := decoded_owesFailure_failedReveals_of_readout player final.state reachedOwing

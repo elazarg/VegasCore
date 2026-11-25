@@ -43,19 +43,19 @@ theorem publication_round_clear_or_focal_default
     (relaxed : (serviceGraph setup deps).RevealRelaxedOrdered)
     {delay : (serviceGraph setup deps).EventId → Nat}
     (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
-      (serviceInitialLaw setup deps) horizon scheduler delay bound)
+      (serviceInitialDistribution setup deps) horizon scheduler delay bound)
     (timely : AsyncTimely (serviceTimeouts setup deps duration) delay bound)
     (profile reference : (serviceGraph setup deps).BehavioralProfile)
     (independent : ReadyIndependent profile) (opens : OpensPublications profile)
     (focal : Player) (deviation : (serviceApplication setup deps duration leaks).Policy)
     (current next : (serviceApplication setup deps duration leaks).Execution)
     (supported : current ∈ ((serviceApplication setup deps duration leaks).roundsFrom
-      (serviceInitialLaw setup deps) scheduler
+      (serviceInitialDistribution setup deps) scheduler
       (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps) (effectiveOpening reference)) focal deviation)
       current.environmentRecall.length).support)
     (bounded : current.environmentRecall.length ≤ horizon)
-    (law : outcomeLaw profile Config.defaulted current.application.config = PMF.pure ∅)
+    (law : outcomeDistribution profile Config.defaulted current.application.config = PMF.pure ∅)
     (publications : ∀ event, current.application.config.cut.Ready event →
       ((serviceGraph setup deps).outputLayout event).IsPublication)
     (moved : next ∈ ((serviceApplication setup deps duration leaks).round scheduler
@@ -63,8 +63,9 @@ theorem publication_round_clear_or_focal_default
         (firstTurnTiming setup turns deps) (effectiveOpening reference)) focal deviation)
       current).support) :
     focal ∈ next.application.config.defaulted ∨
-      (next.application.config.defaulted = ∅ ∧ canonicalLaw profile next.application.config =
-        canonicalLaw profile current.application.config) := by
+      (next.application.config.defaulted = ∅ ∧ canonicalDistribution profile
+        next.application.config =
+        canonicalDistribution profile current.application.config) := by
   let G := serviceGraph setup deps
   let players := Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
     (firstTurnTiming setup turns deps) (effectiveOpening reference)) focal deviation
@@ -95,7 +96,8 @@ theorem publication_round_clear_or_focal_default
     (effectiveOpening reference) decides follows current.environmentRecall.length bounded
     current supported event
     (relaxed.actorSerial event) actor ready (publications event ready)
-    (openingAccepted_of_defaultLaw independent opens current.application.config law event ready
+    (openingAccepted_of_defaultDistribution independent opens current.application.config law event
+      ready
       (publications event ready))
 
 /-- A complete native public run retains the ordinary-opening potential on
@@ -107,7 +109,7 @@ theorem publication_run_survives
     (relaxed : (serviceGraph setup deps).RevealRelaxedOrdered)
     {delay : (serviceGraph setup deps).EventId → Nat}
     (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
-      (serviceInitialLaw setup deps) horizon scheduler delay bound)
+      (serviceInitialDistribution setup deps) horizon scheduler delay bound)
     (timely : AsyncTimely (serviceTimeouts setup deps duration) delay bound)
     (profile reference : (serviceGraph setup deps).BehavioralProfile)
     (independent : ReadyIndependent profile) (opens : OpensPublications profile)
@@ -115,13 +117,13 @@ theorem publication_run_survives
     {start finish : Nat} (run : RevealRun (serviceGraph setup deps) start finish)
     (origin : (serviceApplication setup deps duration leaks).Execution)
     (supported : origin ∈ ((serviceApplication setup deps duration leaks).roundsFrom
-      (serviceInitialLaw setup deps) scheduler
+      (serviceInitialDistribution setup deps) scheduler
       (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps) (effectiveOpening reference)) focal deviation)
       origin.environmentRecall.length).support)
     (bounded : origin.environmentRecall.length ≤ horizon)
     (inside : InBlock start finish origin.application.config)
-    (law : outcomeLaw profile Config.defaulted origin.application.config = PMF.pure ∅)
+    (law : outcomeDistribution profile Config.defaulted origin.application.config = PMF.pure ∅)
     (final : (serviceApplication setup deps duration leaks).Execution)
     (reached : final ∈ ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
       (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
@@ -129,21 +131,22 @@ theorem publication_run_survives
       (fun current => BlockDone finish current.application.config) horizon origin).support) :
     BlockDone finish final.application.config ∧
       (focal ∈ final.application.config.defaulted ∨
-        (final.application.config.defaulted = ∅ ∧ canonicalLaw profile final.application.config =
-          canonicalLaw profile origin.application.config)) := by
+        (final.application.config.defaulted = ∅ ∧ canonicalDistribution profile
+          final.application.config =
+          canonicalDistribution profile origin.application.config)) := by
   classical
   let app := serviceApplication setup deps duration leaks
   let players := Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
     (firstTurnTiming setup turns deps) (effectiveOpening reference)) focal deviation
   let stop := fun current : app.Execution => BlockDone finish current.application.config
   let holds := fun (remaining : Nat) (current : app.Execution) =>
-    current ∈ (app.roundsFrom (serviceInitialLaw setup deps) scheduler players
+    current ∈ (app.roundsFrom (serviceInitialDistribution setup deps) scheduler players
       current.environmentRecall.length).support ∧
     current.environmentRecall.length + remaining ≤ horizon ∧
     (¬ stop current → InBlock start finish current.application.config) ∧
     (focal ∈ current.application.config.defaulted ∨
-      canonicalLaw profile current.application.config =
-        canonicalLaw profile origin.application.config)
+      canonicalDistribution profile current.application.config =
+        canonicalDistribution profile origin.application.config)
   have preserved : ∀ remaining current, holds (remaining + 1) current → ¬ stop current →
       ∀ next ∈ (app.round scheduler players current).support, holds remaining next := by
     intro remaining current valid running next moved
@@ -157,9 +160,9 @@ theorem publication_run_survives
       exact (PMF.mem_support_bind_iff _ _ _).mpr ⟨current, currentSupport, moved⟩
     · rcases potential with failed | same
       · exact Or.inl (Config.Step.path_defaulted_mono path failed)
-      have currentLaw : outcomeLaw profile Config.defaulted current.application.config =
+      have currentLaw : outcomeDistribution profile Config.defaulted current.application.config =
           PMF.pure ∅ :=
-        (outcomeLaw_eq_of_canonicalLaw_eq Config.defaulted
+        (outcomeDistribution_eq_of_canonicalDistribution_eq Config.defaulted
           (fun _ _ equal => defaulted_eq_of_completionOf_eq (congrArg (fun key => key.2.2) equal))
           same).trans law
       have publications (event : (serviceGraph setup deps).EventId)
@@ -181,8 +184,8 @@ theorem publication_run_survives
     (fun current terminal event _ => by rw [terminal]; exact Finset.mem_univ event)
     origin supported bounded final reached
   refine ⟨done, result.elim Or.inl (fun same => Or.inr ⟨?_, same⟩)⟩
-  exact EventGraphRuntime.defaulted_eq_empty_of_outcomeLaw profile final.application.config
-    ((outcomeLaw_eq_of_canonicalLaw_eq Config.defaulted
+  exact EventGraphRuntime.defaulted_eq_empty_of_outcomeDistribution profile final.application.config
+    ((outcomeDistribution_eq_of_canonicalDistribution_eq Config.defaulted
       (fun _ _ equal => defaulted_eq_of_completionOf_eq (congrArg (fun key => key.2.2) equal))
       same).trans law)
 
@@ -383,7 +386,7 @@ theorem publication_first_failure_traffic_congr
     (relaxed : (serviceGraph setup deps).RevealRelaxedOrdered)
     {delay : (serviceGraph setup deps).EventId → Nat}
     (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
-      (serviceInitialLaw setup deps) horizon scheduler delay bound)
+      (serviceInitialDistribution setup deps) horizon scheduler delay bound)
     (timely : AsyncTimely (serviceTimeouts setup deps duration) delay bound)
     (profile leftReference rightReference : (serviceGraph setup deps).BehavioralProfile)
     (independent : ReadyIndependent profile) (opens : OpensPublications profile)
@@ -402,11 +405,12 @@ theorem publication_first_failure_traffic_congr
     {leftInputs rightInputs : (serviceGraph setup deps).Inputs}
     (leftReach : leftDonor.Reachable leftInputs) (rightReach : rightDonor.Reachable rightInputs)
     (leftPrefix : leftDonor.cut.IsPrefix finish) (rightPrefix : rightDonor.cut.IsPrefix finish)
-    (leftLaw : outcomeLaw profile Config.defaulted leftDonor = PMF.pure ∅)
-    (rightLaw : outcomeLaw profile Config.defaulted rightDonor = PMF.pure ∅)
-    (leftPotential : canonicalLaw profile left.application.config = canonicalLaw profile leftDonor)
-    (rightPotential : canonicalLaw profile right.application.config =
-      canonicalLaw profile rightDonor)
+    (leftLaw : outcomeDistribution profile Config.defaulted leftDonor = PMF.pure ∅)
+    (rightLaw : outcomeDistribution profile Config.defaulted rightDonor = PMF.pure ∅)
+    (leftPotential : canonicalDistribution profile left.application.config = canonicalDistribution
+      profile leftDonor)
+    (rightPotential : canonicalDistribution profile right.application.config =
+      canonicalDistribution profile rightDonor)
     (postViews : keyView focal (runKey leftDonor) = keyView focal (runKey rightDonor))
     (sameTraffic : (bindingTraffic (serviceTimeouts setup deps duration)) leaks focal left =
       (bindingTraffic (serviceTimeouts setup deps duration)) leaks focal right) :
@@ -432,10 +436,10 @@ theorem publication_first_failure_traffic_congr
   let stop := fun current : app.Execution => BlockDone finish current.application.config ∨
     focal ∈ current.application.config.defaulted
   have lawOf {current donor : G.Config}
-      (potential : canonicalLaw profile current = canonicalLaw profile donor)
-      (law : outcomeLaw profile Config.defaulted donor = PMF.pure ∅) :
-      outcomeLaw profile Config.defaulted current = PMF.pure ∅ :=
-    (outcomeLaw_eq_of_canonicalLaw_eq Config.defaulted
+      (potential : canonicalDistribution profile current = canonicalDistribution profile donor)
+      (law : outcomeDistribution profile Config.defaulted donor = PMF.pure ∅) :
+      outcomeDistribution profile Config.defaulted current = PMF.pure ∅ :=
+    (outcomeDistribution_eq_of_canonicalDistribution_eq Config.defaulted
       (fun _ _ equal => defaulted_eq_of_completionOf_eq (congrArg (fun key => key.2.2) equal))
       potential).trans law
   have decides : ∀ (config : G.Config) (event : G.EventId) (owner : Player) (payload : L.Ty)
@@ -469,14 +473,15 @@ theorem publication_first_failure_traffic_congr
     simp only [BlockDone, cuts, defaults]
   let good := fun (reference : G.BehavioralProfile) (origin : app.Execution) (donor : G.Config)
       (remaining : Nat) (current : app.Execution) =>
-    current ∈ (app.roundsFrom (serviceInitialLaw setup deps) scheduler (players reference)
+    current ∈ (app.roundsFrom (serviceInitialDistribution setup deps) scheduler (players reference)
       current.environmentRecall.length).support ∧
     current.environmentRecall.length + remaining ≤ horizon ∧
     Relation.ReflTransGen Config.Step origin.application.config current.application.config ∧
     (focal ∈ current.application.config.defaulted ∨
-      canonicalLaw profile current.application.config = canonicalLaw profile donor)
+      canonicalDistribution profile current.application.config = canonicalDistribution profile
+        donor)
   have goodRound (reference : G.BehavioralProfile) (donor : G.Config)
-      (donorLaw : outcomeLaw profile Config.defaulted donor = PMF.pure ∅)
+      (donorLaw : outcomeDistribution profile Config.defaulted donor = PMF.pure ∅)
       (origin : app.Execution)
       (originBoundary : PhaseBoundary scheduler (players reference) horizon start origin) :
       ∀ n current, good reference origin donor (n + 1) current → ¬ stop current →
@@ -551,10 +556,12 @@ theorem publication_first_failure_traffic_congr
     have currentLaw := lawOf currentPotential leftLaw
     have otherLaw := lawOf otherPotential rightLaw
     have publication : (G.outputLayout event).IsPublication := by rw [outputEq]; trivial
-    have accepted := openingAccepted_of_defaultLaw independent opens current.application.config
+    have accepted := openingAccepted_of_defaultDistribution independent opens
+      current.application.config
       currentLaw event ready publication
     have otherReady : other.application.config.cut.Ready event := by rwa [← cuts]
-    have otherAccepted := openingAccepted_of_defaultLaw independent opens other.application.config
+    have otherAccepted := openingAccepted_of_defaultDistribution independent opens
+      other.application.config
       otherLaw event otherReady publication
     refine ⟨fun _ => accepted.trans otherAccepted.symm, fun _ => ?_⟩
     have currentInside : InBlock start finish current.application.config :=
@@ -564,10 +571,10 @@ theorem publication_first_failure_traffic_congr
     have beforeFinish : event.val < finish := ((run.shaped relaxed) current.application.config
       currentInside (fun done => running (Or.inl done)) event ready).2
     have ownerActive : owner ∉ leftDonor.defaulted := by
-      rw [EventGraphRuntime.defaulted_eq_empty_of_outcomeLaw profile leftDonor leftLaw]
+      rw [EventGraphRuntime.defaulted_eq_empty_of_outcomeDistribution profile leftDonor leftLaw]
       simp
     have ownerActiveOther : owner ∉ rightDonor.defaulted := by
-      rw [EventGraphRuntime.defaulted_eq_empty_of_outcomeLaw profile rightDonor rightLaw]
+      rw [EventGraphRuntime.defaulted_eq_empty_of_outcomeDistribution profile rightDonor rightLaw]
       simp
     obtain ⟨value, stored⟩ := publication_success_of_active leftReach event
       ((leftPrefix.2 event).mpr beforeFinish) owner (nodeView_resolve_actor outputEq codeEq)
@@ -588,29 +595,33 @@ theorem publication_first_failure_traffic_congr
         some (.success value) := by
       simpa only [values] using otherStored
     have reachableOf (reference : G.BehavioralProfile) (execution : app.Execution)
-        (support : execution ∈ (app.roundsFrom (serviceInitialLaw setup deps) scheduler
+        (support : execution ∈ (app.roundsFrom (serviceInitialDistribution setup deps) scheduler
           (players reference)
           execution.environmentRecall.length).support)
         (bounded : execution.environmentRecall.length ≤ horizon) :
         ∃ inputs, execution.application.config.Reachable inputs := by
-      obtain ⟨trace⟩ := app.raw_trace_roundsFrom (serviceInitialLaw setup deps) horizon scheduler
+      obtain ⟨trace⟩ := app.raw_trace_roundsFrom (serviceInitialDistribution setup deps) horizon
+        scheduler
         (players reference) _ bounded _ support
-      rw [serviceInitialLaw_eq_inputs setup] at trace
+      rw [serviceInitialDistribution_eq_inputs setup] at trace
       obtain ⟨inputs, _, valid⟩ := reactive_history_invariant (serviceTimeouts setup deps duration)
-        leaks (setup.initialLaw.map setup.eventInputs) horizon scheduler trace
+        leaks (setup.initialDistribution.map setup.eventInputs) horizon scheduler trace
       exact ⟨inputs, valid.reachable⟩
     obtain ⟨inputs, currentReach⟩ := reachableOf leftReference current currentSupport (by omega)
     obtain ⟨otherInputs, otherReach⟩ := reachableOf rightReference other otherSupport (by omega)
-    exact ((currentReach.ready_publication_of_canonicalLaw_eq profile profile leftDonor
+    exact ((currentReach.ready_publication_of_canonicalDistribution_eq profile profile leftDonor
       currentPotential event ready owner payload binding checks outputEq codeEq value
       stored).1).trans
-      ((otherReach.ready_publication_of_canonicalLaw_eq profile profile rightDonor otherPotential
+      ((otherReach.ready_publication_of_canonicalDistribution_eq profile profile rightDonor
+        otherPotential
         event otherReady owner payload binding checks outputEq codeEq value storedOther).1).symm
   have lengths : left.environmentRecall.length = right.environmentRecall.length :=
     congrArg (fun value => value.2.2.1.length) sameTraffic
-  obtain ⟨leftTrace⟩ := app.raw_trace_roundsFrom (serviceInitialLaw setup deps) horizon scheduler
+  obtain ⟨leftTrace⟩ := app.raw_trace_roundsFrom (serviceInitialDistribution setup deps) horizon
+    scheduler
     (players leftReference) _ leftBoundary.bounded _ leftBoundary.supported
-  obtain ⟨rightTrace⟩ := app.raw_trace_roundsFrom (serviceInitialLaw setup deps) horizon scheduler
+  obtain ⟨rightTrace⟩ := app.raw_trace_roundsFrom (serviceInitialDistribution setup deps) horizon
+    scheduler
     (players rightReference) _ rightBoundary.bounded _ rightBoundary.supported
   have rightPublic : ∀ n current, good rightReference right rightDonor (n + 1) current →
       ¬ stop current → ∀ event : G.EventId, current.application.config.cut.Ready event →
@@ -676,7 +687,7 @@ theorem publication_surviving_traffic_congr
     (relaxed : (serviceGraph setup deps).RevealRelaxedOrdered)
     {delay : (serviceGraph setup deps).EventId → Nat}
     (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
-      (serviceInitialLaw setup deps) horizon scheduler delay bound)
+      (serviceInitialDistribution setup deps) horizon scheduler delay bound)
     (timely : AsyncTimely (serviceTimeouts setup deps duration) delay bound)
     (profile leftReference rightReference : (serviceGraph setup deps).BehavioralProfile)
     (independent : ReadyIndependent profile) (opens : OpensPublications profile)
@@ -695,11 +706,12 @@ theorem publication_surviving_traffic_congr
     {leftInputs rightInputs : (serviceGraph setup deps).Inputs}
     (leftReach : leftDonor.Reachable leftInputs) (rightReach : rightDonor.Reachable rightInputs)
     (leftPrefix : leftDonor.cut.IsPrefix finish) (rightPrefix : rightDonor.cut.IsPrefix finish)
-    (leftLaw : outcomeLaw profile Config.defaulted leftDonor = PMF.pure ∅)
-    (rightLaw : outcomeLaw profile Config.defaulted rightDonor = PMF.pure ∅)
-    (leftPotential : canonicalLaw profile left.application.config = canonicalLaw profile leftDonor)
-    (rightPotential : canonicalLaw profile right.application.config =
-      canonicalLaw profile rightDonor)
+    (leftLaw : outcomeDistribution profile Config.defaulted leftDonor = PMF.pure ∅)
+    (rightLaw : outcomeDistribution profile Config.defaulted rightDonor = PMF.pure ∅)
+    (leftPotential : canonicalDistribution profile left.application.config = canonicalDistribution
+      profile leftDonor)
+    (rightPotential : canonicalDistribution profile right.application.config =
+      canonicalDistribution profile rightDonor)
     (postViews : keyView focal (runKey leftDonor) = keyView focal (runKey rightDonor))
     (sameTraffic : (bindingTraffic (serviceTimeouts setup deps duration)) leaks focal left =
       (bindingTraffic (serviceTimeouts setup deps duration)) leaks focal right) :
@@ -761,7 +773,7 @@ theorem publication_surviving_endpoint_key
     (relaxed : (serviceGraph setup deps).RevealRelaxedOrdered)
     {delay : (serviceGraph setup deps).EventId → Nat}
     (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
-      (serviceInitialLaw setup deps) horizon scheduler delay bound)
+      (serviceInitialDistribution setup deps) horizon scheduler delay bound)
     (timely : AsyncTimely (serviceTimeouts setup deps duration) delay bound)
     (profile reference : (serviceGraph setup deps).BehavioralProfile)
     (independent : ReadyIndependent profile) (opens : OpensPublications profile)
@@ -773,8 +785,9 @@ theorem publication_surviving_endpoint_key
         (firstTurnTiming setup turns deps) (effectiveOpening reference)) focal deviation)
       horizon start origin)
     (donor : (serviceGraph setup deps).Config) (ordered : donor.cut.IsPrefix finish)
-    (law : outcomeLaw profile Config.defaulted donor = PMF.pure ∅)
-    (potential : canonicalLaw profile origin.application.config = canonicalLaw profile donor)
+    (law : outcomeDistribution profile Config.defaulted donor = PMF.pure ∅)
+    (potential : canonicalDistribution profile origin.application.config = canonicalDistribution
+      profile donor)
     (final : (serviceApplication setup deps duration leaks).Execution)
     (reached : final ∈ ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
       (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
@@ -786,11 +799,13 @@ theorem publication_surviving_endpoint_key
   let G := serviceGraph setup deps
   let players := Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
     (firstTurnTiming setup turns deps) (effectiveOpening reference)) focal deviation
-  have originLaw : outcomeLaw profile Config.defaulted origin.application.config = PMF.pure ∅ :=
-    (outcomeLaw_eq_of_canonicalLaw_eq Config.defaulted
+  have originLaw : outcomeDistribution profile Config.defaulted origin.application.config =
+    PMF.pure ∅ :=
+    (outcomeDistribution_eq_of_canonicalDistribution_eq Config.defaulted
       (fun _ _ equal => defaulted_eq_of_completionOf_eq (congrArg (fun key => key.2.2) equal))
       potential).trans law
-  have originClear := EventGraphRuntime.defaulted_eq_empty_of_outcomeLaw profile _ originLaw
+  have originClear := EventGraphRuntime.defaulted_eq_empty_of_outcomeDistribution profile _
+    originLaw
   have within : origin.application.config.cut.Within start finish := by
     refine ⟨boundary.earlier, fun event done => ?_⟩
     by_contra late
@@ -805,7 +820,7 @@ theorem publication_surviving_endpoint_key
         reference independent opens focal deviation run origin boundary.supported
     boundary.bounded inside originLaw final reached
   · exact (survived failed).elim
-  refine ⟨clear, Config.runKey_eq_of_canonicalLaw_eq profile profile
+  refine ⟨clear, Config.runKey_eq_of_canonicalDistribution_eq profile profile
     final.application.config donor ?_ (same.trans potential)⟩
   have finalWithin := blockRun_within_of_clear (serviceTimeouts setup deps duration) leaks
     scheduler players (fun current => BlockDone finish current.application.config)
@@ -824,7 +839,7 @@ theorem publication_surviving_joint
     (relaxed : (serviceGraph setup deps).RevealRelaxedOrdered)
     {delay : (serviceGraph setup deps).EventId → Nat}
     (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
-      (serviceInitialLaw setup deps) horizon scheduler delay bound)
+      (serviceInitialDistribution setup deps) horizon scheduler delay bound)
     (timely : AsyncTimely (serviceTimeouts setup deps duration) delay bound)
     (profile : (serviceGraph setup deps).BehavioralProfile)
     (reference : Seed → (serviceGraph setup deps).BehavioralProfile)
@@ -853,10 +868,10 @@ theorem publication_surviving_joint
       ∃ inputs, (donor (advance (source seed))).Reachable inputs)
     (ordered : ∀ seed ∈ prior.support, (donor (advance (source seed))).cut.IsPrefix finish)
     (defaultLaw : ∀ seed ∈ prior.support,
-      outcomeLaw profile Config.defaulted (donor (advance (source seed))) = PMF.pure ∅)
+      outcomeDistribution profile Config.defaulted (donor (advance (source seed))) = PMF.pure ∅)
     (potential : ∀ seed ∈ prior.support,
-      canonicalLaw profile (execution seed).application.config =
-        canonicalLaw profile (donor (advance (source seed))))
+      canonicalDistribution profile (execution seed).application.config =
+        canonicalDistribution profile (donor (advance (source seed))))
     (reflects : ∀ left ∈ (prior.map source).support, ∀ right ∈ (prior.map source).support,
       nextView (advance left) = nextView (advance right) → observe left = observe right)
     (visible : ∀ left ∈ prior.support, ∀ right ∈ prior.support,

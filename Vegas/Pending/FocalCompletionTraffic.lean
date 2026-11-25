@@ -63,7 +63,8 @@ theorem focal_checkpoint_successor_traffic_factor
                 (nextNoise (observe primary)).map fun extra => (State.drainConfig primary, extra)
           else PMF.pure (config seed, traffic (execution seed)) := by
   intro app traffic observe players phase noise factor ready aligned completed
-  obtain ⟨channel, joint⟩ := focal_owned_checkpoint_traffic_law timeouts leaks scheduler bound
+  obtain ⟨channel, joint⟩ := focal_owned_checkpoint_traffic_distribution timeouts leaks scheduler
+    bound
     turns timing reference focal deviation event owned solitary horizon prior execution config noise
     factor ready aligned completed
   let read := fun observation : graph.PlayerObservation focal =>

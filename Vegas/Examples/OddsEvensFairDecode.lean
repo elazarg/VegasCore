@@ -112,30 +112,30 @@ theorem second_binding_success (choice : setup.intendedModel.Choice odd secondIn
     some (.commit odd 1 .bool (some (.success bit))) from rfl, OwnAction.binding_commit]
   rfl
 
-def firstBitLaw (profile : ∀ who, setup.intendedModel.BehavioralPolicy who) : PMF Bool :=
+def firstBitDistribution (profile : ∀ who, setup.intendedModel.BehavioralPolicy who) : PMF Bool :=
   (profile even firstInfo).map
     (fun choice =>
       ((OwnAction.binding (L := simpleExpr) even 0 .bool choice.1).getD .failure).getD false)
 
-def secondBitLaw (profile : ∀ who, setup.intendedModel.BehavioralPolicy who) : PMF Bool :=
+def secondBitDistribution (profile : ∀ who, setup.intendedModel.BehavioralPolicy who) : PMF Bool :=
   (profile odd secondInfo).map
     (fun choice =>
       ((OwnAction.binding (L := simpleExpr) odd 1 .bool choice.1).getD .failure).getD false)
 
-theorem first_commit_bitLaw (profile : ∀ who, setup.intendedModel.BehavioralPolicy who) :
+theorem first_commit_bitDistribution (profile : ∀ who, setup.intendedModel.BehavioralPolicy who) :
     commitKernel (sourceDecoded profile) firstCommitView (by decide) =
-      (firstBitLaw profile).map (some ∘ PublicationResult.success) := by
-  rw [first_commit_decoded, firstBitLaw, PMF.map_comp]
+      (firstBitDistribution profile).map (some ∘ PublicationResult.success) := by
+  rw [first_commit_decoded, firstBitDistribution, PMF.map_comp]
   exact map_congr_on_support _ (fun choice _ => (first_binding_success choice).symm)
 
-theorem second_commit_bitLaw (profile : ∀ who, setup.intendedModel.BehavioralPolicy who) :
+theorem second_commit_bitDistribution (profile : ∀ who, setup.intendedModel.BehavioralPolicy who) :
     commitKernel (afterCommit (sourceDecoded profile)) secondCommitView (by decide) =
-      (secondBitLaw profile).map (some ∘ PublicationResult.success) := by
-  rw [second_commit_decoded, secondBitLaw, PMF.map_comp]
+      (secondBitDistribution profile).map (some ∘ PublicationResult.success) := by
+  rw [second_commit_decoded, secondBitDistribution, PMF.map_comp]
   exact map_congr_on_support _ (fun choice _ => (second_binding_success choice).symm)
 
-theorem firstBitLaw_uniform : firstBitLaw uniformProfile = uniformLaw Bool := by
-  rw [firstBitLaw, uniformProfile, PMF.map_comp]
+theorem firstBitDistribution_uniform : firstBitDistribution uniformProfile = uniformLaw Bool := by
+  rw [firstBitDistribution, uniformProfile, PMF.map_comp]
   have simplified : (fun bit =>
       ((OwnAction.binding (L := simpleExpr) even 0 .bool
         (intendedBitChoice bit even firstInfo).1).getD .failure).getD false) = id := by
@@ -146,8 +146,8 @@ theorem firstBitLaw_uniform : firstBitLaw uniformProfile = uniformLaw Bool := by
   exact (congrArg (fun action : Bool → Bool => (uniformLaw Bool).map action)
     simplified).trans (PMF.map_id _)
 
-theorem secondBitLaw_uniform : secondBitLaw uniformProfile = uniformLaw Bool := by
-  rw [secondBitLaw, uniformProfile, PMF.map_comp]
+theorem secondBitDistribution_uniform : secondBitDistribution uniformProfile = uniformLaw Bool := by
+  rw [secondBitDistribution, uniformProfile, PMF.map_comp]
   have simplified : (fun bit =>
       ((OwnAction.binding (L := simpleExpr) odd 1 .bool
         (intendedBitChoice bit odd secondInfo).1).getD .failure).getD false) = id := by

@@ -24,17 +24,17 @@ variable {Player : Type} [DecidableEq Player] [Finite Player] {L : IExpr} [IExpr
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
   {horizon : Nat} {scheduler : (application setup timeouts leaks).Scheduler}
   (menu : (application setup timeouts leaks).ResponseMenu)
-  (allSupported : ∀ key, key ∈ (setup.initialLaw.map signal).support)
+  (allSupported : ∀ key, key ∈ (setup.initialDistribution.map signal).support)
   (read : Player → (application setup timeouts leaks).Info → Signal)
-  (observed : ∀ draw ∈ setup.initialLaw.support,
+  (observed : ∀ draw ∈ setup.initialDistribution.support,
     ∀ execution : (application setup timeouts leaks).Execution,
     State.Invariant (graph := setup.informationGraph) (setup.eventInputs draw)
       execution.application → ∀ who,
       read who (some (execution.logs who,
         execution.observe (application setup timeouts leaks) who)) = signal draw)
 
-local notation "law" k => Vegas.initialLaw (setup.conditionInitial signal k)
-local notation "globalModel" => menu.information (Vegas.initialLaw setup) horizon scheduler
+local notation "law" k => Vegas.initialDistribution (setup.conditionInitial signal k)
+local notation "globalModel" => menu.information (Vegas.initialDistribution setup) horizon scheduler
 local notation "C" k => menu.information (law k) horizon scheduler
 local notation "A" => ledger_componentAssessment menu allSupported read observed
 local notation "cs" => ledger_componentSite menu allSupported read observed
@@ -44,7 +44,7 @@ private theorem ledger_componentAssessment_bayes
     (bayes : ∀ key, InformationModel.BehavioralAssessment.IsBayesConsistent (C key)
       (components key) (menu.decisionInformationAntichain (law key) horizon scheduler)) :
     InformationModel.BehavioralAssessment.IsBayesConsistent (globalModel) (A components)
-      (menu.decisionInformationAntichain (Vegas.initialLaw setup) horizon scheduler) := by
+      (menu.decisionInformationAntichain (Vegas.initialDistribution setup) horizon scheduler) := by
   classical
   intro who site positive
   let key := read who site.1
@@ -56,7 +56,7 @@ private theorem ledger_componentAssessment_bayes
       ledgerInfoHistory_component_surjective menu allSupported read observed who site⟩
   have reach (h : (C key).InformationHistory who site.1) :
       (globalModel).historyReachWeight (A components).strategy (e h).1 =
-        (setup.initialLaw.map signal) key * (C key).historyReachWeight
+        (setup.initialDistribution.map signal) key * (C key).historyReachWeight
           (components key).strategy h.1 := by
     obtain ⟨⟨state, trace⟩, view⟩ := h
     cases state with
@@ -68,7 +68,7 @@ private theorem ledger_componentAssessment_bayes
       exact ledger_component_historyReachWeight menu read observed (allSupported key)
         (fun k => (components k).strategy) trace
   have mass : (globalModel).informationMass (A components).strategy who site =
-      (setup.initialLaw.map signal) key *
+      (setup.initialDistribution.map signal) key *
         (C key).informationMass (components key).strategy who localSite := by
     unfold InformationModel.informationMass
     rw [← e.tsum_eq, ← ENNReal.tsum_mul_left]
@@ -92,7 +92,7 @@ theorem ledger_componentAssessment_consistent
     (consistent : ∀ key, (components key).IsSequentiallyConsistent
       (menu.decisionInformationAntichain (law key) horizon scheduler)) :
     (A components).IsSequentiallyConsistent
-      (menu.decisionInformationAntichain (Vegas.initialLaw setup) horizon scheduler) := by
+      (menu.decisionInformationAntichain (Vegas.initialDistribution setup) horizon scheduler) := by
   classical
   choose approximation regular converges using fun key => (consistent key).exists_sequence
   refine ⟨fun n => A (fun key => approximation key n), ?_, ?_, ?_⟩

@@ -106,7 +106,7 @@ variable (timeouts : EventTimeouts setup.informationGraph) [Fintype Player]
 /-- **The event-level failed histories** of the one-packet game: those whose
 typed readout records a failure of `event` and a failed reveal of `who`. -/
 def EventFailedHistory (who : Player) (event : setup.informationGraph.EventId) :
-    Set ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    Set ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).History :=
   {history | sourceReadout setup timeouts leaks history.state ∈ EventFailedReadout setup who event}
 

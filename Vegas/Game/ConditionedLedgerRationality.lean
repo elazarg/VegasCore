@@ -29,10 +29,11 @@ variable {Player : Type} [DecidableEq Player] [Finite Player] {L : IExpr} [IExpr
 variable (menu : (application setup timeouts leaks).ResponseMenu)
 
 local notation "App" => application setup timeouts leaks
-local notation "GlobalLaw" => Vegas.initialLaw setup
-local notation "componentLaw" => fun key => Vegas.initialLaw (setup.conditionInitial signal key)
+local notation "GlobalLaw" => Vegas.initialDistribution setup
+local notation "componentLaw" =>
+  fun key => Vegas.initialDistribution (setup.conditionInitial signal key)
 
-private theorem context_state_law {init : PMF (App).State}
+private theorem context_state_distribution {init : PMF (App).State}
     (A : (menu.information init horizon scheduler).BehavioralAssessment)
     (who : Player) (site : (menu.information init horizon scheduler).InformationSite who)
     (payoff : (App).ProtocolState → ℝ)
@@ -52,12 +53,12 @@ private theorem context_state_law {init : PMF (App).State}
   rw [PMF.map_bind, PMF.bind_map]
   apply bind_congr_on_support
   intro h _
-  exact (menu.runFrom_stateLaw init horizon scheduler _ h.1).trans
+  exact (menu.runFrom_stateDistribution init horizon scheduler _ h.1).trans
     (congrArg (fun p => (App).finish init horizon scheduler p h.1.state)
       (menu.decodeProfile_update init horizon scheduler A.strategy who alternative))
 
 variable (read : Player → (application setup timeouts leaks).PlayerView → Signal)
-    (observed : ∀ draw ∈ setup.initialLaw.support,
+    (observed : ∀ draw ∈ setup.initialDistribution.support,
       ∀ execution : (application setup timeouts leaks).Execution,
       EventGraphRuntime.State.Invariant (graph := setup.informationGraph)
         (setup.eventInputs draw) execution.application → ∀ who,
@@ -65,13 +66,13 @@ variable (read : Player → (application setup timeouts leaks).PlayerView → Si
 
 omit [Finite Player] in
 private theorem component_decision_invariant (key : Signal)
-    (supported : key ∈ (setup.initialLaw.map signal).support)
+    (supported : key ∈ (setup.initialDistribution.map signal).support)
     (who : Player)
     (site : (menu.information (componentLaw key) horizon scheduler).InformationSite who)
     (history : (menu.information (componentLaw key) horizon scheduler).InformationHistory
       who site.1) :
     ∃ (control : (App).Control) (draw : State L setup.context), history.1.state = some control ∧
-      draw ∈ setup.initialLaw.support ∧
+      draw ∈ setup.initialDistribution.support ∧
       signal draw = key ∧ EventGraphRuntime.State.Invariant (graph := setup.informationGraph)
         (setup.eventInputs draw) control.execution.application := by
   have active := InformationModel.InformationSite.active
@@ -81,26 +82,28 @@ private theorem component_decision_invariant (key : Signal)
   | some control =>
     have trace := menu.toRawTrace (componentLaw key) horizon scheduler history.1.trace
     rw [eq] at trace
-    change ((App).protocol (serviceInitialLaw (setup.conditionInitial signal key)
+    change ((App).protocol (serviceInitialDistribution (setup.conditionInitial signal key)
       setup.informationDependencies) horizon scheduler).Trace (some control) at trace
-    rw [serviceInitialLaw_eq_inputs (setup.conditionInitial signal key)] at trace
+    rw [serviceInitialDistribution_eq_inputs (setup.conditionInitial signal key)] at trace
     have valid := reactive_history_invariant timeouts leaks
-      ((setup.conditionInitial signal key).initialLaw.map setup.eventInputs) horizon scheduler trace
+      ((setup.conditionInitial signal key).initialDistribution.map setup.eventInputs) horizon
+        scheduler trace
     obtain ⟨inputs, member, valid⟩ := valid
     obtain ⟨draw, present, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp member
     have part := mem_support_fiberPosterior supported present
     exact ⟨control, draw, rfl, part.2, part.1, valid⟩
 
 variable (components : ∀ k,
-    (menu.information (Vegas.initialLaw (setup.conditionInitial signal k))
+    (menu.information (Vegas.initialDistribution (setup.conditionInitial signal k))
       horizon scheduler).BehavioralAssessment)
-    (global : (menu.information (Vegas.initialLaw setup) horizon scheduler).BehavioralAssessment)
+    (global : (menu.information (Vegas.initialDistribution setup) horizon
+      scheduler).BehavioralAssessment)
 
 include observed in
 /-- Matching decoded profiles and beliefs on controls give identical terminal state laws
 for whole-policy changes at a supported component's decision site. -/
-private theorem signal_context_stateLaw
-    {key : Signal} (supported : key ∈ (setup.initialLaw.map signal).support)
+private theorem signal_context_stateDistribution
+    {key : Signal} (supported : key ∈ (setup.initialDistribution.map signal).support)
     (who : Player) (site : (menu.information GlobalLaw horizon scheduler).InformationSite who)
     (localSite : (menu.information (componentLaw key) horizon scheduler).InformationSite who)
     (belief : ((global.belief who site).map (fun h => h.1.state)) =
@@ -117,7 +120,8 @@ private theorem signal_context_stateLaw
       (2 * horizon + 1)).outcome a).map History.state) =
     ((((components key).truncatedContinuationContext localSite (fun h => payoff h.state)
       (2 * horizon + 1)).outcome (b key)).map History.state) := by
-  rw [context_state_law, context_state_law, belief, clients, PMF.bind_map, PMF.bind_map]
+  rw [context_state_distribution, context_state_distribution, belief, clients, PMF.bind_map,
+    PMF.bind_map]
   apply bind_congr_on_support
   intro h _
   obtain ⟨control, draw, same, member, component, valid⟩ :=
@@ -139,7 +143,7 @@ theorem signalAssessment_rational
       signalClients (setup := setup) (timeouts := timeouts) (leaks := leaks) read (fun k =>
         menu.decodeProfile (componentLaw k) horizon scheduler (components k).strategy))
     (beliefs : ∀ who (site : (menu.information GlobalLaw horizon scheduler).InformationSite who),
-      ∃ (key : Signal) (_supported : key ∈ (setup.initialLaw.map signal).support)
+      ∃ (key : Signal) (_supported : key ∈ (setup.initialDistribution.map signal).support)
         (localSite : (menu.information (componentLaw key) horizon scheduler).InformationSite who),
         ((global.belief who site).map (fun h => h.1.state)) =
           ((components key).belief who localSite).map (fun h => h.1.state))
@@ -161,7 +165,8 @@ theorem signalAssessment_rational
     (menu.bounded (componentLaw key) horizon scheduler) _).mp (rational key) who localSite
   have baseline : ((original.outcome (global.strategy who)).map History.state) =
       (part.outcome ((components key).strategy who)).map History.state := by
-    apply signal_context_stateLaw menu read observed components global supported who site localSite
+    apply signal_context_stateDistribution menu read observed components global supported who site
+      localSite
       belief (payoff who) _ (fun k => (components k).strategy who)
     have unchanged (law : PMF (App).State)
         (strategy : ∀ p, (menu.information law horizon scheduler).BehavioralPolicy p) :
@@ -176,7 +181,8 @@ theorem signalAssessment_rational
           ((App).decodePolicy (menu.embedPolicy GlobalLaw horizon scheduler who a))
   have alternative (a) : ((original.outcome a).map History.state) =
       (part.outcome (transfer key a)).map History.state := by
-    apply signal_context_stateLaw menu read observed components global supported who site localSite
+    apply signal_context_stateDistribution menu read observed components global supported who site
+      localSite
       belief (payoff who) _ (fun k => transfer k a)
     rw [clients, ← signalClients_update]
     congr 1
@@ -197,9 +203,9 @@ theorem signalAssessment_rational
 /-- A locally selected ledger assessment is rational at every global information site
 when each component assessment is rational for the same state-dependent utilities. -/
 theorem ledger_componentAssessment_rational
-    (supported : ∀ key, key ∈ (setup.initialLaw.map signal).support)
+    (supported : ∀ key, key ∈ (setup.initialDistribution.map signal).support)
     (infoRead : Player → (App).Info → Signal)
-    (infoObserved : ∀ draw ∈ setup.initialLaw.support, ∀ execution : (App).Execution,
+    (infoObserved : ∀ draw ∈ setup.initialDistribution.support, ∀ execution : (App).Execution,
       State.Invariant (graph := setup.informationGraph) (setup.eventInputs draw)
         execution.application → ∀ who,
         infoRead who (some (execution.logs who, execution.observe (App) who)) = signal draw)

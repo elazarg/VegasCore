@@ -60,7 +60,7 @@ private theorem ActorSerial.readyIndependent_recordedProfile
     (serial : graph.ActorSerial) (final : graph.Config) :
     ReadyIndependent (graph.recordedProfile final) := by
   classical
-  exact serial.readyIndependent_of_eventLaws (fun owner event actor =>
+  exact serial.readyIndependent_of_eventDistributions (fun owner event actor =>
     if found : ∃ action : graph.Action event, ∃ default : Option Player,
         (⟨event, some action, default⟩ : graph.Completion) ∈ final.history then
       PMF.pure found.choose
@@ -78,12 +78,12 @@ private theorem recordedProfile_eventStep_of_step (final before after : graph.Co
   cases owned : (graph.nodes event).actor with
   | none =>
       refine ⟨EventCode.actionOfActorNone (graph.nodes event) owned, ?_, ?_⟩
-      · rw [actionLaw_of_ownerless _ _ owned]
+      · rw [actionDistribution_of_ownerless _ _ owned]
         simp
       · simpa only [(graph.nodes event).action_eq_of_actor_none owned
           (EventCode.actionOfActorNone (graph.nodes event) owned) action] using moved
   | some owner =>
-      rw [actionLaw_of_actor _ _ owned]
+      rw [actionDistribution_of_actor _ _ owned]
       by_cases inactive : owner ∈ before.defaulted
       · rw [dite_eq_left inactive]
         refine ⟨(graph.nodes event).failureAction owner owned, by simp, ?_⟩
@@ -101,29 +101,30 @@ private theorem recordedProfile_eventStep_of_step (final before after : graph.Co
         rw [policy]
         exact ⟨action, by simp, moved⟩
 
-private theorem ReadyIndependent.canonicalLaw_mem_of_eventStep {profile : graph.BehavioralProfile}
+private theorem ReadyIndependent.canonicalDistribution_mem_of_eventStep
+    {profile : graph.BehavioralProfile}
     (independent : ReadyIndependent profile) (before after : graph.Config)
     (event : graph.EventId) (ready : before.cut.Ready event)
     (moved : after ∈ (eventStep profile before event ready).support)
     (key : graph.order.Cut × Store graph.layout × (graph.EventId → Option graph.Completion))
-    (member : key ∈ (canonicalLaw profile after).support) :
-    key ∈ (canonicalLaw profile before).support := by
-  rw [← independent.eventStep_bind_canonicalLaw before.remaining before rfl event ready,
+    (member : key ∈ (canonicalDistribution profile after).support) :
+    key ∈ (canonicalDistribution profile before).support := by
+  rw [← independent.eventStep_bind_canonicalDistribution before.remaining before rfl event ready,
     PMF.support_bind]
   exact Set.mem_iUnion.mpr ⟨after, Set.mem_iUnion.mpr ⟨moved, member⟩⟩
 
-private theorem ActorSerial.runKey_mem_recorded_canonicalLaw
+private theorem ActorSerial.runKey_mem_recorded_canonicalDistribution
     (serial : graph.ActorSerial) (before final : graph.Config)
     (path : Relation.ReflTransGen Config.Step before final) (terminal : final.cut.Terminal) :
-    runKey final ∈ (canonicalLaw (graph.recordedProfile final) before).support := by
+    runKey final ∈ (canonicalDistribution (graph.recordedProfile final) before).support := by
   have independent := serial.readyIndependent_recordedProfile final
   induction path using Relation.ReflTransGen.head_induction_on with
   | refl =>
       have empty := (final.terminal_iff_remaining_zero).mp terminal
-      simp [canonicalLaw, empty, EventGraph.runPlan]
+      simp [canonicalDistribution, empty, EventGraph.runPlan]
   | @head before middle moved rest ih =>
       obtain ⟨event, ready, action, supported⟩ := moved
-      apply independent.canonicalLaw_mem_of_eventStep before middle event ready
+      apply independent.canonicalDistribution_mem_of_eventStep before middle event ready
         (recordedProfile_eventStep_of_step final before middle
           (Config.Step.path_history_prefix rest) event ready action supported) (runKey final) ih
 
@@ -140,12 +141,12 @@ private theorem ActorSerial.rankedConfig_mem_canonical
     | initial => exact .refl
     | step previous event ready action next member ih =>
         exact ih.tail ⟨event, ready, action, member⟩
-  have supported := serial.runKey_mem_recorded_canonicalLaw
+  have supported := serial.runKey_mem_recorded_canonicalDistribution
     (Config.initial inputs) final path terminal
   change runKey final ∈
     ((graph.runPolicies graph.canonicalScheduler (graph.recordedProfile final) inputs).map
       runKey).support at supported
-  rw [← canonical_fromSequential_config_law graph (graph.recordedProfile final) inputs,
+  rw [← canonical_fromSequential_config_distribution graph (graph.recordedProfile final) inputs,
     PMF.map_comp, PMF.support_map] at supported
   obtain ⟨ordered, orderedSupported, same⟩ := supported
   have orderedReach := graph.sequentialize.run_reachable inputs

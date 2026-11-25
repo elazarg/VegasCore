@@ -20,7 +20,7 @@ sites, moves values within the bounds, keeps regularity, and multiplies the
 others' source weight of every history of the first site by a common positive
 ratio; when it also sends the first site's information state to the second's,
 the base laws of the two sites agree on every payoff of the operational record
-(`Vegas.ownerSwap_baseLawAgrees`).
+(`Vegas.ownerSwap_BaseExpectationAgrees`).
 -/
 
 noncomputable section
@@ -57,7 +57,7 @@ theorem regularTrace_of_alone (assessment : setup.intendedModel.BehavioralAssess
             | some _ => exact fun actor _ different => (different (alone actor)).elim⟩
 
 /-- **Agreeing base laws at two sites with one late key.** -/
-theorem ownerSwap_baseLawAgrees
+theorem ownerSwap_BaseExpectationAgrees
     {Public : Type*} (signal : State L setup.context → Public)
     [Finite (onePacketProtocol setup timeouts leaks bounds horizon scheduler).History]
     (wellFormed : setup.WellFormed) (independent : setup.PrivateInputsIndependentGiven signal)
@@ -82,7 +82,7 @@ theorem ownerSwap_baseLawAgrees
     (infoEq : (ownerSwap who view₁.application view₂.application).info
       site₁.1 = site₂.1)
     (payoff : List (Option (OperationalState setup timeouts leaks)) → ℝ) :
-    BaseLawAgrees (timeouts := timeouts)
+    BaseExpectationAgrees (timeouts := timeouts)
       (fun history => othersSourceWeight setup timeouts leaks bounds horizon scheduler
         assessment who
         history.trace * weight (operationalRecord setup timeouts leaks bounds horizon scheduler
@@ -124,8 +124,8 @@ theorem ownerSwap_baseLawAgrees
     (fun input publicField => same_key_public_initial_inputs (timeouts := timeouts) secondSite
       firstSite sameKey.symm
       history₂ history₁ state₂ state₁ inputs₂ inputs₁ input publicField)
-  set ratio := (setup.initialLaw (splice who other base)).toReal /
-    (setup.initialLaw base).toReal with ratioEq
+  set ratio := (setup.initialDistribution (splice who other base)).toReal /
+    (setup.initialDistribution base).toReal with ratioEq
   have ratioPos : 0 < ratio := by
     have spliceMember := setup.splice_mem_support signal independent who otherMember
       baseMember sameSignal
@@ -133,28 +133,31 @@ theorem ownerSwap_baseLawAgrees
       (ENNReal.toReal_pos ((PMF.mem_support_iff _ _).mp spliceMember) (PMF.apply_ne_top _ _))
       (ENNReal.toReal_pos ((PMF.mem_support_iff _ _).mp baseMember) (PMF.apply_ne_top _ _))
   let shared : Set setup.informationGraph.Inputs := hiddenPublicFiberInputs signal who base
-  have sharedClosed : ∀ state ∈ (initialLaw setup).support,
+  have sharedClosed : ∀ state ∈ (initialDistribution setup).support,
       state.config.inputs ∈ swapAllowed swap ∩ shared →
-        state.swap swap ∈ (initialLaw setup).support :=
+        state.swap swap ∈ (initialDistribution setup).support :=
     fun state member inside => initialClosed_swapAllowed swap state member inside.1
   have scaled := ownerSwap_priorScaled (timeouts := timeouts) signal wellFormed independent
     (public_signal_preserved
     signal observable)
     (view₁ := view₁) (view₂ := view₂) baseMember otherMember baseStore otherStore
-  refine baseLawAgrees_of_swap_scaled (timeouts := timeouts) _ _ site₁ site₂ swap (swapAllowed swap)
+  refine BaseExpectationAgrees_of_swap_scaled (timeouts := timeouts) _ _ site₁ site₂ swap
+    (swapAllowed swap)
     (initialClosed_swapAllowed swap) bounded failures (swapAllowed_closed swap) guardedFirst
       guardedSecond
     (fun history member => ?_) (fun history member => ?_) (fun history member => ?_) ratio
     ratioPos.ne' (fun history member => ?_) payoff
   · change (onePacketInformation setup timeouts leaks bounds horizon scheduler).infoOf who
-      ((onePacketSwapSymmetry (timeouts := timeouts) bounds (initialLaw setup) horizon scheduler
+      ((onePacketSwapSymmetry (timeouts := timeouts) bounds
+        (initialDistribution setup) horizon scheduler
         swap
         (initialClosed_swapAllowed swap) bounded failures).mapTrace history.trace
           (guardedFirst history member)) = site₂.1
     rw [infoOf_mapTrace, member]
     exact infoEq
   · change (onePacketInformation setup timeouts leaks bounds horizon scheduler).infoOf who
-      ((onePacketSwapSymmetry (timeouts := timeouts) bounds (initialLaw setup) horizon scheduler
+      ((onePacketSwapSymmetry (timeouts := timeouts) bounds
+        (initialDistribution setup) horizon scheduler
         swap
         (initialClosed_swapAllowed swap) bounded failures).mapTrace history.trace
           (guardedSecond history member)) = site₁.1
@@ -195,12 +198,14 @@ theorem ownerSwap_baseLawAgrees
       bounded failures assessment who
       fixesOthers ratio scaled trace restricted
     change othersSourceWeight setup timeouts leaks bounds horizon scheduler assessment who
-        ((onePacketSwapSymmetry (timeouts := timeouts) bounds (initialLaw setup) horizon scheduler
+        ((onePacketSwapSymmetry (timeouts := timeouts) bounds
+          (initialDistribution setup) horizon scheduler
           swap
           (initialClosed_swapAllowed swap) bounded failures).mapTrace trace
             (guardedFirst ⟨some control, trace⟩ member)) *
         weight (operationalRecord setup timeouts leaks bounds horizon scheduler
-          ((onePacketSwapSymmetry (timeouts := timeouts) bounds (initialLaw setup) horizon scheduler
+          ((onePacketSwapSymmetry (timeouts := timeouts) bounds
+            (initialDistribution setup) horizon scheduler
             swap
             (initialClosed_swapAllowed swap) bounded failures).mapTrace trace
               (guardedFirst ⟨some control, trace⟩ member))) =

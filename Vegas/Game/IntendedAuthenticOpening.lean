@@ -58,7 +58,7 @@ theorem staticState_trace :
       have earlier := staticState_trace prior
       cases before with
       | none =>
-          change _ ∈ (setup.initialLaw.map fun initial =>
+          change _ ∈ (setup.initialDistribution.map fun initial =>
             some (ProtocolState.entry setup.program (Config.initial initial))).support
               at realized
           rw [PMF.support_map] at realized
@@ -155,7 +155,8 @@ theorem intendedOpeningProfile_runFrom [Finite Player] (wellFormed : setup.WellF
     (enough : setup.protocolRemaining history.state ≤ fuel) :
     (setup.intendedModel.runBehavioralFrom intended fuel history).map
         (fun final => setup.protocolReadout final.state) =
-      (setup.continuationLaw (setup.intendedOpeningProfile intended) history.state).map some := by
+      (setup.continuationDistribution (setup.intendedOpeningProfile intended) history.state).map
+        some := by
   let restriction := setup.intendedRestriction (CommitmentInterface.values setup.program)
   have law := restriction.runFrom_law intended _ (setup.intendedOpeningProfile_extends wellFormed
     intended) fuel history
@@ -168,15 +169,15 @@ theorem intendedOpeningProfile_runFrom [Finite Player] (wellFormed : setup.WellF
 
 /-- Every extension has the same full source continuation from any genuine
 intended history, including histories with zero probability under the profile. -/
-theorem continuationLaw_eq_of_intended_extension [Finite Player]
+theorem continuationDistribution_eq_of_intended_extension [Finite Player]
     (wellFormed : setup.WellFormed)
     (admission : CommitmentInterface setup.program)
     (intended : Profile setup.intendedModel.behavioralSignature)
     (target : Profile (setup.informationModel admission).behavioralSignature)
     (agrees : (setup.intendedRestriction admission).ExtendsProfile intended target)
     (history : setup.intendedProtocol.History) :
-    setup.continuationLaw (setup.decodeBehavioralProfile admission target) history.state =
-      setup.continuationLaw (setup.intendedOpeningProfile intended) history.state := by
+    setup.continuationDistribution (setup.decodeBehavioralProfile admission target) history.state =
+      setup.continuationDistribution (setup.intendedOpeningProfile intended) history.state := by
   let restriction := setup.intendedRestriction admission
   let fuel := setup.protocolRemaining history.state
   have histories := restriction.runFrom_law intended target agrees fuel history
@@ -184,9 +185,10 @@ theorem continuationLaw_eq_of_intended_extension [Finite Player]
   have targetLaw := setup.runBehavioralFrom_readout admission target fuel
     (restriction.history history) (by rfl)
   have intendedLaw := setup.intendedOpeningProfile_runFrom wellFormed intended fuel history le_rfl
-  have equal : (setup.continuationLaw (setup.decodeBehavioralProfile admission target)
+  have equal : (setup.continuationDistribution (setup.decodeBehavioralProfile admission target)
       history.state).map some =
-      (setup.continuationLaw (setup.intendedOpeningProfile intended) history.state).map some := by
+      (setup.continuationDistribution (setup.intendedOpeningProfile intended) history.state).map
+        some := by
     rw [PMF.map_comp] at readouts
     exact targetLaw.symm.trans (readouts.symm.trans intendedLaw)
   exact pmf_map_injective (Option.some_injective _) equal
@@ -201,15 +203,15 @@ theorem continuation_clean_of_intended_extension [Finite Player]
     (agrees : (setup.intendedRestriction admission).ExtendsProfile intended target)
     (history : setup.intendedProtocol.History)
     (terminal : Config Player L setup.program.terminalCtx)
-    (supported : terminal ∈ (setup.continuationLaw
+    (supported : terminal ∈ (setup.continuationDistribution
       (setup.decodeBehavioralProfile admission target) history.state).support) :
     terminal.defaulted = ∅ ∧
       ∀ who, failedReveals setup.program who (publicOutcome setup.program terminal) = 0 := by
-  rw [setup.continuationLaw_eq_of_intended_extension wellFormed admission intended target
+  rw [setup.continuationDistribution_eq_of_intended_extension wellFormed admission intended target
     agrees history] at supported
   let fuel := setup.protocolRemaining history.state
   have intendedLaw := setup.intendedOpeningProfile_runFrom wellFormed intended fuel history le_rfl
-  have chosen : some terminal ∈ ((setup.continuationLaw
+  have chosen : some terminal ∈ ((setup.continuationDistribution
       (setup.intendedOpeningProfile intended) history.state).map some).support :=
     (PMF.mem_support_map_iff _ _ _).mpr ⟨terminal, supported, rfl⟩
   rw [← intendedLaw] at chosen

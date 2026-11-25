@@ -34,13 +34,14 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
   {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
-  [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
-  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+  [(application setup timeouts leaks).FiniteNature (initialDistribution setup) scheduler]
+  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds
+    (initialDistribution setup) horizon
     scheduler).InfoState who)]
   [Finite setup.intendedProtocol.History]
 
 local notation "onePacketN" =>
-  onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+  onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
 
 /-- **The honest-counterpart inputs from the certificate.** At the tremble scale
 over the combined floor of the source sequence to a depth, the floors are the
@@ -112,7 +113,7 @@ def OnePacketOwnInputs.ofCertificate (wellFormed : setup.WellFormed)
     (covers : bounds.CoversOutputValues)
     (capacity : ∀ who, bindingEventCount setup.informationGraph who < bounds.candidateCount)
     {slots : Nat}
-    {weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
+    {weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialDistribution setup)
       horizon scheduler slots p)}
     {targetSequence : ℕ → (onePacketN).BehavioralAssessment}
     (assembled : OnePacketAssembled setup timeouts leaks bounds horizon scheduler sequence scale

@@ -64,7 +64,7 @@ theorem no_single_source_prescribed (branch : Bool) :
   change coin.map id = PMF.pure branch at projected
   rw [PMF.map_id] at projected
   have mass := congrArg (fun law => (law (!branch)).toReal) projected
-  cases branch <;> norm_num [coin, toReal_uniformLaw_apply,
+  cases branch <;> norm_num [coin, toReal_uniformDistribution_apply,
     toReal_pure_apply] at mass
 
 /-- Matching these law pairs transports every utility satisfying both source
@@ -96,7 +96,7 @@ def crossed : IncentiveComparison Bool := ⟨PMF.pure false, PMF.pure true⟩
 /-- Matching prescribed and deviating laws by unrelated source mixtures is
 unsound: every source comparison is an indifference, while the target has a
 strictly profitable deviation. Shared weights are essential to the rule. -/
-theorem separate_law_matching_insufficient :
+theorem separate_distribution_matching_insufficient :
     (∃ weights : PMF Bool,
       crossed.prescribed = weights.bind (fun branch => (neutral branch).prescribed)) ∧
     (∃ weights : PMF Bool,

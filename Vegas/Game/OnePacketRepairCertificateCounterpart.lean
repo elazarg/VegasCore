@@ -44,8 +44,9 @@ private theorem repair_operationalState_eq_of_record_eq
   exact (List.cons.inj records).1
 
 variable
-  [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
-  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+  [(application setup timeouts leaks).FiniteNature (initialDistribution setup) scheduler]
+  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds
+    (initialDistribution setup) horizon
     scheduler).InfoState who)]
 
 /-- Actual repairs yield the certificate reach comparison at a forced decision. -/
@@ -61,7 +62,7 @@ theorem reach_le_counterpart_certificate_of_repairs (wellFormed : setup.WellForm
     (covers : bounds.CoversOutputValues)
     (capacity : ∀ who, bindingEventCount setup.informationGraph who < bounds.candidateCount)
     {slots : Nat}
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialDistribution setup)
       horizon scheduler slots p))
     (error_tendsto : Tendsto (fun n => slotError (scale n) (floor n)
       (trembleSlots setup bounds).card) atTop (nhds 0))
@@ -71,7 +72,8 @@ theorem reach_le_counterpart_certificate_of_repairs (wellFormed : setup.WellForm
     {site : (onePacketInformation setup timeouts leaks bounds horizon scheduler).InformationSite
       who}
     (decision : site.1 = some (past, view))
-    (forced : forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks) (initialLaw
+    (forced : forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks)
+      (initialDistribution
       setup)
       horizon scheduler who site.1)
     {event : setup.informationGraph.EventId} (turn : view.application.publicView.ownTurn? who =
@@ -215,7 +217,8 @@ theorem reach_le_counterpart_certificate_of_repairs (wellFormed : setup.WellForm
         canonical ?_ beforeEq afterEq imageStep
       intro response named responseEq submitted
       have moved := realized
-      change some next ∈ ((application setup timeouts leaks).transition (initialLaw setup) horizon
+      change some next ∈ ((application setup timeouts leaks).transition
+        (initialDistribution setup) horizon
         scheduler
         (some control) joint).support at moved
       rw [transition_respond (timeouts := timeouts) control acting joint, PMF.mem_support_pure_iff]
@@ -260,7 +263,8 @@ theorem reach_le_counterpart_certificate_of_repairs (wellFormed : setup.WellForm
         scale_pos scale_le_one small floor floor_pos floored covers capacity weights who n prior
         joint legal realized imagePrior imageJoint imageLegal imageRealized acting imageActing other
         (forcedAll who)
-        ⟨⟨some control, prior⟩, (bounds.onePacketMenu timeouts leaks).info (initialLaw setup)
+        ⟨⟨some control, prior⟩, (bounds.onePacketMenu timeouts leaks).info
+          (initialDistribution setup)
           horizon scheduler actor prior, forcedAll actor⟩
         irregularStep beforeEq afterEq imageStep)
   have upper := weight.2 irregularHistory

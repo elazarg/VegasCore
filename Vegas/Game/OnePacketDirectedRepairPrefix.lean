@@ -66,11 +66,12 @@ theorem readyOrCompleted_of_tracePrefix {before : (application setup timeouts le
             subst sourceEq
             obtain ⟨next, targetEq, _⟩ := (application setup timeouts
               leaks).transition_recall_prefix
-              (initialLaw setup) horizon scheduler middle target joint realized
+              (initialDistribution setup) horizon scheduler middle target joint realized
             refine ⟨next, targetEq, ?_⟩
             subst targetEq
             have retained := EventGraph.Config.Step.path_completed_mono
-              (reactive_protocol_graph_steps timeouts leaks (initialLaw setup) horizon scheduler
+              (reactive_protocol_graph_steps timeouts leaks
+                (initialDistribution setup) horizon scheduler
                 middle next joint realized)
             rcases activeMiddle with ready | completed
             · by_cases completed : event ∈ next.execution.application.config.cut.completed
@@ -119,10 +120,11 @@ theorem storedValue_of_tracePrefix {before after : (application setup timeouts l
             subst sourceEq
             obtain ⟨next, targetEq, _⟩ := (application setup timeouts
               leaks).transition_recall_prefix
-              (initialLaw setup) horizon scheduler middle target joint realized
+              (initialDistribution setup) horizon scheduler middle target joint realized
             refine ⟨next, targetEq, ?_⟩
             subst targetEq
-            have path := reactive_protocol_graph_steps timeouts leaks (initialLaw setup) horizon
+            have path := reactive_protocol_graph_steps timeouts leaks
+              (initialDistribution setup) horizon
               scheduler middle next joint realized
             exact retain path storedMiddle
   obtain ⟨next, same, present⟩ := carry prior trace isPrefix before rfl stored

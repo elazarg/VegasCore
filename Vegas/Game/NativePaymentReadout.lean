@@ -86,7 +86,7 @@ theorem exclusionBase_valuation_factors
 
 /-- Inverting the joint utility law retains the full source configuration and
 all cash and audit correlations. -/
-theorem jointCashLaw_of_utility_law {Observation : Type}
+theorem jointCashDistribution_of_utility_distribution_eq {Observation : Type}
     (valuation transfer : Parameter × PublicOutcome setup.program → Player → ℝ)
     (exitValuation exitTransfer : Player → ℝ)
     (law : PMF (application setup timeouts leaks).ProtocolState)
@@ -119,7 +119,7 @@ theorem jointCashLaw_of_utility_law {Observation : Type}
     funext state who
     exact exclusionBase_add parameter valuation transfer exitValuation exitTransfer state who
   rw [baseAdd] at utilityLaw
-  exact TerminalAudit.jointSettlement_readout_eq_of_utility_law law
+  exact TerminalAudit.jointSettlement_readout_eq_of_utility_distribution_eq law
     (exclusionBase setup timeouts parameter valuation exitValuation leaks) _
     (sourceReadout setup timeouts leaks) _ factors observe audit deposit reference utilityLaw
 

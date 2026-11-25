@@ -41,7 +41,7 @@ private theorem exists_graph_binding_head
     ∃ head : (serviceGraph setup deps).BehavioralPolicy owner,
       ∀ (source : Config Player L Γ) (config : (serviceGraph setup deps).Config),
         SourceCheckpoint setup source refs event.val config → owner ∉ source.defaulted →
-        actionLaw (Function.update reference owner head) config event =
+        actionDistribution (Function.update reference owner head) config event =
           (kernel (source.view owner)).map
             (fun choice => cast (congrArg EventField.Action binding.symm) choice) := by
   let chosen : BehavioralPolicy owner (.commit name owner fresh guard next) :=
@@ -68,7 +68,7 @@ private theorem exists_graph_binding_head
       ((serviceGraph setup deps).playerObserve owner config).ownActions = source.history owner := by
     change decodeHistory setup.program config.history owner = source.history owner
     exact congrFun checkpoint.history owner
-  rw [actionLaw_of_actor _ _ owned, dite_eq_right graphActive, Function.update_self]
+  rw [actionDistribution_of_actor _ _ owned, dite_eq_right graphActive, Function.update_self]
   simp only [head, Function.update_self]
   change atEvent owned ((serviceGraph setup deps).playerObserve owner config) graphActive = _
   change (compilePolicyTable (.commit name owner fresh guard next) refs embedding.ref owner chosen
@@ -95,7 +95,7 @@ private theorem source_binding_honest_suffix_reset
     (event : graph.EventId) (ready : config.cut.Ready event)
     (ordered : config.cut.IsPrefix event.val) (focal : Player) (payload : L.Ty)
     (binding : graph.outputLayout event = .binding focal payload)
-    (head : actionLaw profile config event =
+    (head : actionDistribution profile config event =
       PMF.pure (cast (congrArg EventField.Action binding.symm)
         (some (.failure : PublicationResult (L.Val payload)))))
     (count : Nat) (bounded : event.val + 1 + count ≤ graph.order.eventCount)
@@ -176,7 +176,7 @@ theorem focal_source_successor_noise_reset
     (prior : PMF ({source : Config Player L Γ // focal ∉ source.defaulted} ×
       {ghost : graph.Config // ghost.cut.Ready event ∧
         ghost.cut.IsPrefix event.val ∧ ghost.defaulted = ∅}))
-    (head : ∀ hidden ∈ prior.support, actionLaw profile hidden.2.1 event =
+    (head : ∀ hidden ∈ prior.support, actionDistribution profile hidden.2.1 event =
       PMF.pure (cast (congrArg EventField.Action binding.symm)
         (some (.failure : PublicationResult (L.Val payload)))))
     (kernel : DecisionView focal Γ → PMF (Option (PublicationResult (L.Val payload))))
@@ -270,7 +270,7 @@ theorem focal_source_successor_noise_reset
           intro action _
           cases action <;> rfl
 
-theorem binding_good_successor_law
+theorem binding_good_successor_distribution
     (profile : graph.BehavioralProfile) (count : Nat) (focal : Player)
     {Γ : SourceCtx Player L} {Traffic Seed : Type}
     (choices : PMF ((Config Player L Γ × graph.Config) × Bool))
@@ -390,7 +390,7 @@ private theorem source_binding_graph_marginal
     (prior : PMF ({source : Config Player L Γ // focal ∉ source.defaulted} ×
       {ghost : graph.Config // ghost.cut.Ready event ∧ ghost.defaulted = ∅}))
     (kernel : DecisionView focal Γ → PMF (Option (PublicationResult (L.Val payload))))
-    (head : ∀ hidden ∈ prior.support, actionLaw profile hidden.2.1 event =
+    (head : ∀ hidden ∈ prior.support, actionDistribution profile hidden.2.1 event =
       (kernel (hidden.1.1.view focal)).map
         (fun choice => cast (congrArg EventField.Action binding.symm) choice))
     (next : PMF (Config Player L ((name, .commitment focal payload) :: Γ) ×
@@ -446,7 +446,7 @@ theorem canonical_honest_binding_head_joint
     (ordered : config.cut.IsPrefix event.val) (ready : config.cut.Ready event)
     (owner focal : Player) (different : owner ≠ focal) (payload : L.Ty)
     (binding : graph.outputLayout event = .binding owner payload)
-    (submits : ∀ action ∈ (actionLaw profile config event).support,
+    (submits : ∀ action ∈ (actionDistribution profile config event).support,
       (graph.outputLayout event).Submitted action) (count : Nat) :
     let after := fun result => config.complete event ready
       (cast (congrArg EventField.Action binding.symm) (some result))
@@ -459,7 +459,8 @@ theorem canonical_honest_binding_head_joint
         (fun final =>
           ((chosen (bindingObservers focal final), after (chosen (bindingObservers focal final))),
             bindingObservers focal final)) =
-      (actionLaw profile config event).bind fun action => (config.step event ready action).bind
+      (actionDistribution profile config event).bind fun action =>
+        (config.step event ready action).bind
         fun next =>
           (graph.runPlan (graph.policyPlan profile graph.canonicalScheduler) count next).map
             (fun final => (((cast (congrArg EventField.Action binding) action).getD .failure,
@@ -528,12 +529,12 @@ theorem canonical_foreign_source_head_joint
     (ordered : config.cut.IsPrefix event.val) (ready : config.cut.Ready event)
     (owner focal : Player) (different : owner ≠ focal) (payload : L.Ty)
     (binding : graph.outputLayout event = .binding owner payload)
-    (submits : ∀ action ∈ (actionLaw profile config event).support,
+    (submits : ∀ action ∈ (actionDistribution profile config event).support,
       (graph.outputLayout event).Submitted action)
     {Γ : SourceCtx Player L} {name : VarId}
     (guard : SourceGuard L Γ owner name payload) (source : Config Player L Γ)
     (sourceHead : PMF (Option (PublicationResult (L.Val payload))))
-    (head : actionLaw profile config event =
+    (head : actionDistribution profile config event =
       sourceHead.map (fun action => cast (congrArg EventField.Action binding.symm) action))
     (count : Nat) :
     let after := fun result => config.complete event ready
@@ -566,7 +567,7 @@ theorem canonical_foreign_source_head_joint
       apply bind_congr_on_support _
       intro action supported
       have selected : cast (congrArg EventField.Action binding.symm) action ∈
-          (actionLaw profile config event).support := by
+          (actionDistribution profile config event).support := by
         rw [head, PMF.mem_support_map_iff]
         exact ⟨action, supported, rfl⟩
       have submitted := EventField.submitted_cast binding _ (submits _ selected)
@@ -612,7 +613,7 @@ theorem foreign_binding_source_head
         exact (embedding.layout_eq index).trans (by rfl)
     let reference :=
       setup.informationGraph.submitProfile (compileEventProfile setup.program wholeProfile)
-    actionLaw (setup.informationGraph.prefixProfile (Function.update reference focal
+    actionDistribution (setup.informationGraph.prefixProfile (Function.update reference focal
       (submittedFailurePolicy (graph := setup.informationGraph) focal))) config event =
       (commitKernel profile (source.view owner) (by
         change owner ∉ source.defaulted
@@ -652,7 +653,7 @@ theorem foreign_binding_source_head
       (compileEventProfile setup.program wholeProfile owner) event actor _ _ = _
     exact compileEventPolicy_submit_eq_of_prefix setup.program owner (wholeProfile owner)
       (submits owner) event config (eventRank ▸ checkpoint.ordered) actor active
-  rw [actionLaw_of_actor _ _ actor, dite_eq_right active]
+  rw [actionDistribution_of_actor _ _ actor, dite_eq_right active]
   change (Function.update reference focal (submittedFailurePolicy focal) owner) event actor
     (setup.informationGraph.prefixObservation owner event
       (setup.informationGraph.playerObserve owner config)) _ = _
@@ -754,7 +755,7 @@ theorem native_focal_binding_graph_runUntil
       (serviceGraph setup deps).SubmitsBindings (memberReference seed))
     (trace : ∀ seed ∈ prior.support, ∃ remaining,
       Nonempty (((serviceApplication setup deps duration leaks).protocol
-        (serviceInitialLaw setup deps) horizon scheduler).Trace
+        (serviceInitialDistribution setup deps) horizon scheduler).Trace
           (some ⟨remaining, none, execution seed⟩)))
     (inside : ∀ seed ∈ prior.support, InBlock start finish (execution seed).application.config)
     (canonical : ∀ seed ∈ prior.support, ∀ actor, actor ≠ focal →
@@ -762,7 +763,7 @@ theorem native_focal_binding_graph_runUntil
         CanonicalSlotsUsed (serviceTimeouts setup deps duration) leaks (execution seed) actor)
     (lower : start ≤ event.val)
     (completes : CompletesPlay (serviceTimeouts setup deps duration) leaks
-      (serviceInitialLaw setup deps) horizon scheduler)
+      (serviceInitialDistribution setup deps) horizon scheduler)
     (origin nativeGhost : Seed → (serviceGraph setup deps).Config)
     (originReach : ∀ seed ∈ prior.support, ∃ inputs, (origin seed).Reachable inputs)
     (originOrdered : ∀ seed ∈ prior.support, (origin seed).cut.IsPrefix start)
@@ -848,9 +849,9 @@ theorem native_focal_binding_graph_runUntil
     change (execution left).environmentRecall = (execution right).environmentRecall at sameRecall
     have sameLength := congrArg List.length sameRecall
     have leftBudget := (serviceApplication setup deps duration leaks).raw_trace_horizon
-      (serviceInitialLaw setup deps) horizon scheduler leftTrace
+      (serviceInitialDistribution setup deps) horizon scheduler leftTrace
     have rightBudget := (serviceApplication setup deps duration leaks).raw_trace_horizon
-      (serviceInitialLaw setup deps) horizon scheduler rightTrace
+      (serviceInitialDistribution setup deps) horizon scheduler rightTrace
     have rounds : leftRemaining = rightRemaining := by dsimp only at leftBudget rightBudget; omega
     have leftCount : horizon - (execution left).environmentRecall.length = leftRemaining := by
       dsimp only at leftBudget
@@ -866,10 +867,12 @@ theorem native_focal_binding_graph_runUntil
       focal deviation stop (fun _ complete => complete event targetLate) _
       (memberReference left) (memberReference right) (memberSubmits left leftSupported)
       (memberSubmits right rightSupported) (execution left) (execution right) same
-      (show ((serviceApplication setup deps duration leaks).protocol (serviceInitialLaw setup deps)
+      (show ((serviceApplication setup deps duration leaks).protocol
+        (serviceInitialDistribution setup deps)
         horizon scheduler).Trace (some ⟨0 + leftRemaining, none, execution left⟩) by
           simpa only [Nat.zero_add] using leftTrace)
-      (show ((serviceApplication setup deps duration leaks).protocol (serviceInitialLaw setup deps)
+      (show ((serviceApplication setup deps duration leaks).protocol
+        (serviceInitialDistribution setup deps)
         horizon scheduler).Trace (some ⟨0 + leftRemaining, none, execution right⟩) from
           by simpa only [Nat.zero_add, rounds] using rightTrace)
       (inside left leftSupported) (inside right rightSupported)
@@ -892,7 +895,7 @@ theorem native_focal_binding_graph_runUntil
     have reached' : final ∈ (app.runUntil scheduler (players seed) stop rounds
         (execution seed)).support := reached
     obtain ⟨remaining, ⟨currentTrace⟩⟩ := trace seed supported
-    have budget := app.raw_trace_horizon (serviceInitialLaw setup deps) horizon scheduler
+    have budget := app.raw_trace_horizon (serviceInitialDistribution setup deps) horizon scheduler
       currentTrace
     have remainingEq : remaining = rounds := by dsimp only [rounds] at *; omega
     have phasePath := reactive_runUntil_graph_steps (serviceTimeouts setup deps duration) leaks
@@ -904,10 +907,10 @@ theorem native_focal_binding_graph_runUntil
       obtain ⟨used, within, history, counted⟩ := app.runUntil_runRounds scheduler (players seed)
         stop rounds (execution seed) final reached'
       have usedEq : used = rounds := by omega
-      have traced : (app.protocol (serviceInitialLaw setup deps) horizon scheduler).Trace
+      have traced : (app.protocol (serviceInitialDistribution setup deps) horizon scheduler).Trace
           (some ⟨0 + used, none, execution seed⟩) := by
         simpa only [remainingEq, usedEq, Nat.zero_add] using currentTrace
-      obtain ⟨finalTrace⟩ := app.raw_trace_runRounds (serviceInitialLaw setup deps) horizon
+      obtain ⟨finalTrace⟩ := app.raw_trace_runRounds (serviceInitialDistribution setup deps) horizon
         scheduler (players seed) 0 used (execution seed) final traced history
       have terminal := completes _ finalTrace (by exact ⟨rfl, rfl⟩)
       rw [terminal]
@@ -976,7 +979,7 @@ theorem native_focal_binding_graph_runUntil
       Function.comp_def, pmf_map_fun_const, PMF.bind_pure, PMF.pure_bind, PMF.map,
       PMF.bind_const] using projected
   have currentHead : ∀ hidden ∈ before.support,
-      actionLaw (Function.update reference focal head) hidden.2.1 event =
+      actionDistribution (Function.update reference focal head) hidden.2.1 event =
         (kernel (hidden.1.1.view focal)).map
           (fun action => cast (congrArg EventField.Action binding.symm) action) := by
     intro hidden member
@@ -1217,9 +1220,9 @@ def nativeBindingContinuation
           (EventCode.actor_eq_of_binding (G.nodes event) binding) observation active =
             PMF.pure (cast (congrArg EventField.Action binding.symm) (some result))) →
   (∀ seed ∈ prior.support, anchor seed ∈
-    (app.roundsFrom (serviceInitialLaw setup deps) scheduler (players seed)
+    (app.roundsFrom (serviceInitialDistribution setup deps) scheduler (players seed)
       (anchor seed).environmentRecall.length).support) →
-  (∀ seed ∈ prior.support, Nonempty ((app.protocol (serviceInitialLaw setup deps) horizon
+  (∀ seed ∈ prior.support, Nonempty ((app.protocol (serviceInitialDistribution setup deps) horizon
     scheduler).Trace (some ⟨budget seed, none, anchor seed⟩))) →
   (∀ seed ∈ prior.support, (anchor seed).application.config.cut.IsPrefix start) →
   (∀ seed ∈ prior.support, (anchor seed).application.config.defaulted = ∅) →

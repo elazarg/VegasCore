@@ -80,7 +80,7 @@ theorem intendedOpening_continuation_failedReveals [Finite Player]
       ProtocolState.remaining setup.program state ≤ bound →
       ProtocolState.StaticAt setup.program [] (Revelations.initial setup.context) state →
       ProtocolState.Intended setup.program state →
-      ∀ terminal ∈ (ProtocolState.continuationLaw setup.program
+      ∀ terminal ∈ (ProtocolState.continuationDistribution setup.program
           (setup.intendedOpeningProfile intended) state).support,
         ∀ who, failedReveals setup.program who (publicOutcome setup.program terminal) = 0 := by
   have := Fintype.ofFinite Player
@@ -90,7 +90,7 @@ theorem intendedOpening_continuation_failedReveals [Finite Player]
       intro state short _ intendedState terminal member who
       have stopped := (ProtocolState.remaining_zero_iff_terminal setup.program state).mp
         (by omega)
-      have law := ProtocolState.continuationLaw_terminal setup.program
+      have law := ProtocolState.continuationDistribution_terminal setup.program
         (setup.intendedOpeningProfile intended) state stopped
       have readout : some terminal ∈ (PMF.pure (ProtocolState.readout setup.program state)).support
         := by
@@ -101,7 +101,7 @@ theorem intendedOpening_continuation_failedReveals [Finite Player]
   | succ bound ih =>
       intro state short static intendedState terminal member who
       by_cases stopped : ProtocolState.terminal setup.program state
-      · have law := ProtocolState.continuationLaw_terminal setup.program
+      · have law := ProtocolState.continuationDistribution_terminal setup.program
           (setup.intendedOpeningProfile intended) state stopped
         have readout : some terminal ∈
             (PMF.pure (ProtocolState.readout setup.program state)).support := by

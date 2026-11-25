@@ -61,13 +61,13 @@ theorem physicalPrefix_policyStep_of_focal_or_chance
   rw [dite_eq_left ready, runPlan_one_at_prefix _ before event ordered]
   unfold eventStep
   rcases owner with chance | owned
-  · rw [actionLaw_of_ownerless _ _ chance, PMF.pure_bind]
+  · rw [actionDistribution_of_ownerless _ _ chance, PMF.pure_bind]
     refine Eq.trans ?_ (PMF.bind_const (rule ((G).playerObserve focal before)) _)
     apply bind_congr_on_support _
     intro chosen _
     rw [((G).nodes event).action_eq_of_actor_none chance chosen
       (EventCode.actionOfActorNone ((G).nodes event) chance)]
-  · rw [actionLaw_of_actor _ _ owned]
+  · rw [actionDistribution_of_actor _ _ owned]
     by_cases inactive : focal ∈ before.defaulted
     · rw [dite_eq_left inactive, PMF.pure_bind]
       refine Eq.trans ?_ (PMF.bind_const (rule ((G).playerObserve focal before)) _)
@@ -80,7 +80,7 @@ theorem physicalPrefix_policyStep_of_focal_or_chance
 policy is realized by one graph behavioral policy at every rank and at the
 terminal configuration. Public samples, repeated decisions, arbitrary input
 laws, timing policies, and observations are allowed. -/
-theorem singleOwner_deviation_config_law
+theorem singleOwner_deviation_config_distribution
     (scheduler : (app).Scheduler) (bound : (G).EventId → Nat) (turns : Nat)
     (timing : EventGraphRuntime.TurnTiming G turns) (reference : (G).BehavioralProfile)
     (focal : Player) (deviation : (app).Policy) (inputs : PMF (G).Inputs) (horizon : Nat)

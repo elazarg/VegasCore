@@ -32,7 +32,7 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr} [IExp
   (scheduler : (application setup timeouts leaks).Scheduler)
 
 local notation "N" =>
-  onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+  onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
 
 /-- Canonical native realization is continuous at every genuine projected
 source decision site. -/
@@ -44,9 +44,10 @@ theorem honestChoice_convergesPointwise_of_projected_site
     (sourceSite : setup.intendedModel.InformationSite who)
     (projected : sourceSite.1 = projectView setup timeouts leaks who info) :
     PMFConvergesPointwise
-      (fun n => honestChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+      (fun n => honestChoice setup timeouts leaks bounds (initialDistribution setup) horizon
+        scheduler
         (sequence n) who info)
-      (honestChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+      (honestChoice setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
         intended who info) := by
   have sourceConverges := sourceLimit.strategy who sourceSite
   rw [projected] at sourceConverges
@@ -65,8 +66,9 @@ theorem honestChoice_convergesPointwise_of_projected_site
       apply PMFConvergesPointwise.map
       exact asIfConverges
 
-variable [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
-  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+variable [(application setup timeouts leaks).FiniteNature (initialDistribution setup) scheduler]
+  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds
+    (initialDistribution setup) horizon
     scheduler).InfoState who)]
 
 /-- Away from late deliveries, every clear forced native site in a common
@@ -76,7 +78,7 @@ theorem onePacketAssembled_limit_strategy_of_not_late
     (scale : ℕ → ℝ) (scale_pos : ∀ n, 0 < scale n) (scale_le_one : ∀ n, scale n ≤ 1)
     (vanishing : Tendsto scale atTop (nhds 0))
     {slots : Nat}
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialDistribution setup)
       horizon scheduler slots p))
     (targetSequence : ℕ → (N).BehavioralAssessment)
     (assembled : OnePacketAssembled setup timeouts leaks bounds horizon scheduler sourceSequence
@@ -89,12 +91,13 @@ theorem onePacketAssembled_limit_strategy_of_not_late
     (projected : sourceSite.1 = projectView setup timeouts leaks who site.1)
     (notLate : ¬ LateDelivery setup timeouts leaks who site.1)
     (forced : forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks)
-      (initialLaw setup) horizon scheduler who site.1)
+      (initialDistribution setup) horizon scheduler who site.1)
     (clear : site.1.isSome → ClearInput timeouts leaks site.1) :
     target.strategy who site.1 =
-      honestChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+      honestChoice setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
         intended who site.1 := by
-  have occurs : ∃ history : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup)
+  have occurs : ∃ history : ((bounds.onePacketMenu timeouts leaks).protocol
+    (initialDistribution setup)
       horizon scheduler).History, (N).infoOf who history.trace = site.1 := by
     obtain ⟨history, _, _⟩ := site.2
     exact ⟨history.1, history.2⟩
@@ -113,7 +116,7 @@ theorem onePacketAssembled_subsequence_limit_strategy_of_not_late
     (scale : ℕ → ℝ) (scale_pos : ∀ n, 0 < scale n) (scale_le_one : ∀ n, scale n ≤ 1)
     (vanishing : Tendsto scale atTop (nhds 0))
     {slots : Nat}
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialDistribution setup)
       horizon scheduler slots p))
     (targetSequence : ℕ → (N).BehavioralAssessment)
     (assembled : OnePacketAssembled setup timeouts leaks bounds horizon scheduler sourceSequence
@@ -128,10 +131,10 @@ theorem onePacketAssembled_subsequence_limit_strategy_of_not_late
     (projected : sourceSite.1 = projectView setup timeouts leaks who site.1)
     (notLate : ¬ LateDelivery setup timeouts leaks who site.1)
     (forced : forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks)
-      (initialLaw setup) horizon scheduler who site.1)
+      (initialDistribution setup) horizon scheduler who site.1)
     (clear : site.1.isSome → ClearInput timeouts leaks site.1) :
     target.strategy who site.1 =
-      honestChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+      honestChoice setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
         intended who site.1 := by
   have sourceSubsequence : BehavioralAssessmentConvergesPointwise
       (fun n => sourceSequence (index n)) intended := by
@@ -154,7 +157,7 @@ theorem onePacketAssembled_limit_strategy_of_firstActivation
     (scale : ℕ → ℝ) (scale_pos : ∀ n, 0 < scale n) (scale_le_one : ∀ n, scale n ≤ 1)
     (vanishing : Tendsto scale atTop (nhds 0))
     {slots : Nat}
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialDistribution setup)
       horizon scheduler slots p))
     (targetSequence : ℕ → (N).BehavioralAssessment)
     (assembled : OnePacketAssembled setup timeouts leaks bounds horizon scheduler sourceSequence
@@ -169,10 +172,10 @@ theorem onePacketAssembled_limit_strategy_of_firstActivation
     (projected : sourceSite.1 = projectView setup timeouts leaks who site.1)
     (first : FirstActivation setup timeouts leaks who site.1)
     (forced : forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks)
-      (initialLaw setup) horizon scheduler who site.1)
+      (initialDistribution setup) horizon scheduler who site.1)
     (clear : ClearInput timeouts leaks site.1) :
     target.strategy who site.1 =
-      honestChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+      honestChoice setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
         intended who site.1 := by
   exact onePacketAssembled_subsequence_limit_strategy_of_not_late setup timeouts leaks bounds
     horizon scheduler sourceSequence scale scale_pos scale_le_one vanishing weights targetSequence

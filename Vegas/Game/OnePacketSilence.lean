@@ -60,8 +60,9 @@ theorem onePacket_silent_of_forcedObserver (horizon : Nat)
     silent | ⟨material, _, permitted⟩
   · exact silent
   exfalso
-  have rawTrace : (app.protocol (initialLaw setup) horizon scheduler).Trace (some control) :=
-    (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon
+  have rawTrace : (app.protocol (initialDistribution setup) horizon scheduler).Trace
+    (some control) :=
+    (bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup) horizon
       scheduler trace
   obtain ⟨rank, point, ordered, decoded, forcedPoint⟩ := forced
   obtain ⟨inputRecall, serialRecall, _⟩ := (countRecall_history timeouts) leaks rawTrace
@@ -146,8 +147,9 @@ theorem onePacket_named_of_forcedObserver (horizon : Nat)
     silent | ⟨material', transmitted, permitted⟩
   · cases silent
   cases transmitted
-  have rawTrace : (app.protocol (initialLaw setup) horizon scheduler).Trace (some control) :=
-    (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon
+  have rawTrace : (app.protocol (initialDistribution setup) horizon scheduler).Trace
+    (some control) :=
+    (bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup) horizon
       scheduler trace
   obtain ⟨rank, point, ordered, decoded, forcedPoint⟩ := forced
   obtain ⟨inputRecall, serialRecall, _⟩ := (countRecall_history timeouts) leaks rawTrace

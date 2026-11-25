@@ -43,7 +43,7 @@ def protocolMenu (setup : Setup (Player := Player) (L := L))
 
 def protocolStep (setup : Setup (Player := Player) (L := L)) :
     setup.ProtocolState → (Player → Option (OwnAction Player L)) → PMF setup.ProtocolState
-  | none, _ => setup.initialLaw.map
+  | none, _ => setup.initialDistribution.map
       (fun initial => some (SourceProgram.ProtocolState.entry setup.program
         (Config.initial initial)))
   | some state, joint => (SourceProgram.ProtocolState.step setup.program state joint).map some
@@ -156,13 +156,13 @@ theorem protocol_bounded (setup : Setup (Player := Player) (L := L))
 /-- Only the initial draw and chance steps randomize; with a finitely supported
 initial law every protocol step is finitely supported. -/
 theorem protocolStep_support_finite (setup : Setup (Player := Player) (L := L))
-    [setup.FiniteInitialLaw] (state : setup.ProtocolState)
+    [setup.FiniteInitialSupport] (state : setup.ProtocolState)
     (joint : Player → Option (OwnAction Player L)) :
     (setup.protocolStep state joint).support.Finite := by
   cases state with
   | none =>
       rw [protocolStep, PMF.support_map]
-      exact setup.initialLaw_support_finite.image _
+      exact setup.initialDistribution_support_finite.image _
   | some state =>
       rw [protocolStep, PMF.support_map]
       exact (SourceProgram.ProtocolState.step_support_finite _ state joint).image _

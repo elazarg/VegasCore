@@ -37,7 +37,7 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
 commitment or an owned opening carrying its exact certificate for a ready event. -/
 theorem onePacket_pending_of_forced (horizon : Nat)
     (scheduler : (application setup timeouts leaks).Scheduler) (who : Player)
-    (history : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (history : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).History)
     (forced : ForcedState setup timeouts leaks who history.state)
     {control : (application setup timeouts leaks).Control} (current : history.state = some control)
@@ -50,17 +50,18 @@ theorem onePacket_pending_of_forced (horizon : Nat)
         control.execution.application.config.cut.Ready event ∧
         setup.informationGraph.actor? event = some message.sender := by
   let app := application setup timeouts leaks
-  have trace : (app.protocol (initialLaw setup) horizon scheduler).Trace (some control) :=
-    current ▸ (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon
+  have trace : (app.protocol (initialDistribution setup) horizon scheduler).Trace (some control) :=
+    current ▸ (bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup) horizon
       scheduler history.trace
   have clean := (bounds.onePacketMenu_countClean timeouts leaks scheduler).history
-    (initialLaw setup) horizon (fun state _ => (countClean_initial timeouts) leaks state)
+    (initialDistribution setup) horizon (fun state _ => (countClean_initial timeouts) leaks state)
     history.trace
   rw [current] at clean forced
   change (CountClean timeouts) leaks control.execution at clean
   have facts := settledFacts_history ((toInformationGraph_barrierOrdered
-    setup.program).revealRelaxedOrdered.actorSerial) (initialLaw setup) horizon scheduler trace
-  have distinct := app.idsDistinct_history scheduler (initialLaw setup) horizon trace
+    setup.program).revealRelaxedOrdered.actorSerial) (initialDistribution setup) horizon scheduler
+      trace
+  have distinct := app.idsDistinct_history scheduler (initialDistribution setup) horizon trace
   change control.execution.network.IdsDistinct at distinct
   unfold MessageNetwork.IdsDistinct at distinct
   rw [List.map_append, List.nodup_append] at distinct

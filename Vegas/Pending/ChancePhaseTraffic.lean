@@ -150,7 +150,8 @@ theorem chance_primary_traffic_factor
       funext fun final => graph.playerStore_of_visible focal _ _ visible
     rw [same]
     simp only [choice, step, dite_eq_left (readyAt seed)]
-    exact chance_completed_output_law timeouts leaks serial scheduler players event ownerless
+    exact chance_completed_output_distribution timeouts leaks serial scheduler players event
+      ownerless
       solitary (horizon - (execution seed).environmentRecall.length) (execution seed)
       (readyAt seed) (completed seed member)
   obtain ⟨nextNoise, law⟩ := exists_updated_observation_kernel_of_readout

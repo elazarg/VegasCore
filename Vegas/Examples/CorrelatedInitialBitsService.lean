@@ -30,20 +30,21 @@ def scheduler : app.Scheduler := PeriodicService.scheduler graph (Equiv.refl Boo
 instance : leaks.FiniteSupport := inferInstanceAs
   MessageNetwork.ObservationRule.allPending.FiniteSupport
 
-instance : app.FiniteNature (Vegas.initialLaw setup) scheduler where
+instance : app.FiniteNature (Vegas.initialDistribution setup) scheduler where
   toFiniteEnvironment := inferInstance
-  initial_finite := serviceInitialLaw_support_finite setup setup.informationDependencies
+  initial_finite := serviceInitialDistribution_support_finite setup setup.informationDependencies
   scheduler_finite _ _ := by
     rw [scheduler, PeriodicService.scheduler, PMF.support_pure]
     exact Set.finite_singleton _
 
 theorem contract :
-    AsyncContract timeouts leaks (Vegas.initialLaw setup) horizon scheduler (fun _ => 3)
+    AsyncContract timeouts leaks (Vegas.initialDistribution setup) horizon scheduler (fun _ => 3)
       (fun _ => 2) := by
   have service := PeriodicService.contract (graph := graph) (roster := Equiv.refl Bool)
-    (leaks := leaks) (inputLaw := setup.initialLaw.map setup.eventInputs)
+    (leaks := leaks) (inputLaw := setup.initialDistribution.map setup.eventInputs)
     (by decide) (by intro event; fin_cases event <;> rfl)
-  simpa only [scheduler, PeriodicService.initial, Vegas.initialLaw, serviceInitialLaw,
+  simpa only [scheduler, PeriodicService.initial, Vegas.initialDistribution,
+    serviceInitialDistribution,
     PMF.map_comp, Function.comp_def] using service
 
 def bounds : MessageBounds graph where
@@ -68,7 +69,7 @@ def specification (bit : Bool) : ClientSpec (component bit) timeouts leaks bound
   Setup.conditionInitial_clientSpec (setup := setup) signal (fun _ => ()) utility (fun _ => 0)
     bit (signal_supported bit)
     (.independent (fun _ => ()) (conditioned_independent bit) (conditioned_observable bit))
-    (inferInstance : app.FiniteNature (Vegas.initialLaw setup) scheduler)
+    (inferInstance : app.FiniteNature (Vegas.initialDistribution setup) scheduler)
     wellFormed contract (PeriodicService.timely (graph := graph))
     (fun _ => 0) (fun _ => 200)
     (fun _ terminal _ who => utility_bounds (setup.parameterOutcome (fun _ => ()) terminal) who)
@@ -93,15 +94,16 @@ abbrev compiled (intended : setup.intendedModel.BehavioralAssessment)
 
 /-- A periodically scheduled ledger realizes every intended sequential equilibrium's
 configuration and payoff law in the correlated-bit game through locally selected clients. -/
-theorem clients_outcomeLaw (intended : setup.intendedModel.BehavioralAssessment)
+theorem clients_outcomeDistribution (intended : setup.intendedModel.BehavioralAssessment)
     (equilibrium : setup.IntendedSequentialEquilibrium (fun _ => ()) utility intended) :
-    (app.finish (Vegas.initialLaw setup) horizon scheduler
+    (app.finish (Vegas.initialDistribution setup) horizon scheduler
         (Setup.signalClients (setup := setup) (timeouts := timeouts) (leaks := leaks) ledgerBit
           (fun key => (compiled intended equilibrium key).clients))
         none).bind (specification false).observation =
       (setup.intendedModel.runBehavioral intended.strategy (instructionCount program + 1)).map
         (intendedReadoutExclusion setup (fun _ => ()) utility (fun _ => 0)) :=
-  Setup.compileComponent_outcomeLaw (setup := setup) (bounds := bounds) (timeouts := timeouts)
+  Setup.compileComponent_outcomeDistribution (setup := setup) (bounds := bounds)
+    (timeouts := timeouts)
     (leaks := leaks) (scheduler := scheduler) (horizon := horizon) (parameter := fun _ => ())
     (utility := utility) (exit := fun _ => 0) signal signal_supported informationFiber_component
     specification intended equilibrium ledgerBit ledgerBit_observe wellFormed

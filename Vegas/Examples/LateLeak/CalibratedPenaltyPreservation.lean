@@ -153,9 +153,9 @@ theorem lateLeak_outcome_preserved_of_rational_bayes (reward : 0 ≤ G.reward)
     (rational : A.IsSequentiallyRational (lateLeak_terminates G true) (lateLeakPayoff G true))
     (bayes : InformationModel.BehavioralAssessment.IsBayesConsistent
       (lateLeakModel G true) A (lateLeak_antichain G true)) :
-    lateLeakOutcomeLaw G true A.strategy = lateLeakIntendedOutcome := by
+    lateLeakOutcomeDistribution G true A.strategy = lateLeakIntendedOutcome := by
   have opens := lateLeak_rational_protected_opens_of_half_reward reward never attempt rational
-  exact lateLeak_intended_law_of_protected A.strategy opens
+  exact lateLeak_intended_distribution_of_protected A.strategy opens
     (lateLeak_rational_bayes_protected_safe rational bayes opens)
 
 /-- Costs above half the reward force the intended law in every sequential equilibrium. -/
@@ -166,7 +166,7 @@ theorem lateLeak_outcome_preserved_of_half_reward_costs (reward : 0 ≤ G.reward
     (A : (lateLeakModel G true).BehavioralAssessment)
     (equilibrium : A.IsSequentialEquilibrium (lateLeak_antichain G true)
       (lateLeak_terminates G true) (lateLeakPayoff G true)) :
-    lateLeakOutcomeLaw G true A.strategy = lateLeakIntendedOutcome := by
+    lateLeakOutcomeDistribution G true A.strategy = lateLeakIntendedOutcome := by
   exact lateLeak_outcome_preserved_of_rational_bayes reward never attempt A equilibrium.1
     (equilibrium.2.isBayesConsistent (lateLeak_antichain G true))
 
@@ -178,7 +178,7 @@ theorem lateLeak_preserving_equilibrium_of_half_reward_costs (reward : 0 ≤ G.r
     ∃ A : (lateLeakModel G true).BehavioralAssessment,
       A.IsSequentialEquilibrium (lateLeak_antichain G true)
         (lateLeak_terminates G true) (lateLeakPayoff G true) ∧
-      lateLeakOutcomeLaw G true A.strategy = lateLeakIntendedOutcome := by
+      lateLeakOutcomeDistribution G true A.strategy = lateLeakIntendedOutcome := by
   obtain ⟨A, equilibrium⟩ := lateLeak_exists_sequentialEquilibrium G true
   exact ⟨A, equilibrium,
     lateLeak_outcome_preserved_of_half_reward_costs reward never attempt A equilibrium⟩
@@ -195,7 +195,8 @@ theorem lateLeak_sequentialEquilibrium_preserved_of_half_reward_costs
     ∃ target : (lateLeakModel G true).BehavioralAssessment,
       target.IsSequentialEquilibrium (lateLeak_antichain G true)
         (lateLeak_terminates G true) (lateLeakPayoff G true) ∧
-      lateLeakOutcomeLaw G true target.strategy = lateLeakOutcomeLaw G false source.strategy := by
+      lateLeakOutcomeDistribution G true target.strategy = lateLeakOutcomeDistribution G false
+        source.strategy := by
   obtain ⟨target, targetEquilibrium, outcome⟩ :=
     lateLeak_preserving_equilibrium_of_half_reward_costs reward never attempt
   exact ⟨target, targetEquilibrium,
@@ -208,7 +209,7 @@ theorem lateLeak_preserving_equilibrium_of_half_reward_dropCharge_bound
     ∃ A : (lateLeakModel G true).BehavioralAssessment,
       A.IsSequentialEquilibrium (lateLeak_antichain G true)
         (lateLeak_terminates G true) (lateLeakPayoff G true) ∧
-      lateLeakOutcomeLaw G true A.strategy = lateLeakIntendedOutcome := by
+      lateLeakOutcomeDistribution G true A.strategy = lateLeakIntendedOutcome := by
   have delta : 0 < 1 - lateLeakInclusionProb G := sub_pos.mpr (lateLeakInclusionProb_lt_one G)
   have collected : G.reward / 2 ≤ (1 - lateLeakInclusionProb G) * G.dropCharge := by
     have bound := (div_le_iff₀ delta).mp charge
@@ -224,7 +225,7 @@ theorem lateLeak_exists_preserving_dropCharge_of_half_reward (G : LateLeakParame
         A.IsSequentialEquilibrium (lateLeak_antichain { G with dropCharge := charge } true)
           (lateLeak_terminates { G with dropCharge := charge } true)
           (lateLeakPayoff { G with dropCharge := charge } true) ∧
-        lateLeakOutcomeLaw { G with dropCharge := charge } true A.strategy =
+        lateLeakOutcomeDistribution { G with dropCharge := charge } true A.strategy =
           lateLeakIntendedOutcome := by
   refine ⟨(G.reward / 2) / (1 - lateLeakInclusionProb G), div_nonneg (by linarith)
     (sub_pos.mpr (lateLeakInclusionProb_lt_one G)).le, ?_⟩
@@ -242,7 +243,7 @@ theorem lateLeak_exists_preserving_forfeit_without_dropCharge (G : LateLeakParam
           (lateLeak_antichain { G with forfeit := forfeit, dropCharge := 0 } true)
           (lateLeak_terminates { G with forfeit := forfeit, dropCharge := 0 } true)
           (lateLeakPayoff { G with forfeit := forfeit, dropCharge := 0 } true) ∧
-        lateLeakOutcomeLaw { G with forfeit := forfeit, dropCharge := 0 } true A.strategy =
+        lateLeakOutcomeDistribution { G with forfeit := forfeit, dropCharge := 0 } true A.strategy =
           lateLeakIntendedOutcome := by
   let delta := 1 - lateLeakInclusionProb G
   have delta_pos : 0 < delta := sub_pos.mpr (lateLeakInclusionProb_lt_one G)

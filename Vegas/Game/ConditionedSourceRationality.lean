@@ -18,7 +18,7 @@ open GameTheory GameTheory.Protocol GameTheory.Math.Probability
 variable {Player : Type} [DecidableEq Player] [Finite Player] {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
   {Signal : Type*} (signal : State L setup.context → Signal) (value : Signal)
-  (supported : value ∈ (setup.initialLaw.map signal).support)
+  (supported : value ∈ (setup.initialDistribution.map signal).support)
   (inside : ∀ who (site : (setup.conditionInitial signal value).intendedModel.InformationSite who)
     (history : setup.intendedModel.InformationHistory who site.1),
     setup.initialComponent signal value history.1.state)

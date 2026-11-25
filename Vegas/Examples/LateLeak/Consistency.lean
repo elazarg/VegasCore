@@ -43,7 +43,7 @@ theorem lateLeak_weight_opened (G : LateLeakParameters) (late : Bool)
     (secret : LateLeakType) :
     (lateLeakModel G late).historyReachWeight profile (lateLeakOpenedHistory G late secret) =
       lateLeakPrior secret *
-        lateLeakOpeningLaw profile (.protectedTurn secret) (some (.opening true)) := by
+        lateLeakOpeningDistribution profile (.protectedTurn secret) (some (.opening true)) := by
   rw [lateLeak_reachWeight_step profile (lateLeakOpenedHistory G late secret) (Nat.succ_pos _)]
   change (lateLeakModel G late).historyReachWeight profile (lateLeakTypeHistory G late secret) *
     lateLeakKernel profile (.protectedTurn secret) (.answering secret .protectedOpen) = _
@@ -52,7 +52,7 @@ theorem lateLeak_weight_opened (G : LateLeakParameters) (late : Bool)
 theorem lateLeak_weight_first (profile : LateLeakProfile G true) (secret : LateLeakType) :
     (lateLeakModel G true).historyReachWeight profile (lateLeakFirstHistory G secret) =
       lateLeakPrior secret *
-        lateLeakOpeningLaw profile (.protectedTurn secret) (some (.opening false)) := by
+        lateLeakOpeningDistribution profile (.protectedTurn secret) (some (.opening false)) := by
   rw [lateLeak_reachWeight_step profile (lateLeakFirstHistory G secret) (Nat.succ_pos _)]
   change (lateLeakModel G true).historyReachWeight profile (lateLeakTypeHistory G true secret) *
     lateLeakKernel profile (.protectedTurn secret) (.firstLate secret) = _
@@ -62,8 +62,8 @@ theorem lateLeak_weight_first_sent (profile : LateLeakProfile G true) (secret : 
     (included : Bool) :
     (lateLeakModel G true).historyReachWeight profile (lateLeakFirstSentHistory G secret included) =
       lateLeakPrior secret *
-          lateLeakOpeningLaw profile (.protectedTurn secret) (some (.opening false)) *
-        (lateLeakOpeningLaw profile (.firstLate secret) (some (.opening true)) *
+          lateLeakOpeningDistribution profile (.protectedTurn secret) (some (.opening false)) *
+        (lateLeakOpeningDistribution profile (.firstLate secret) (some (.opening true)) *
           lateLeakInclusion G included) := by
   rw [lateLeak_reachWeight_step profile (lateLeakFirstSentHistory G secret included)
     (Nat.succ_pos _)]
@@ -75,8 +75,8 @@ theorem lateLeak_weight_first_sent (profile : LateLeakProfile G true) (secret : 
 theorem lateLeak_weight_second (profile : LateLeakProfile G true) (secret : LateLeakType) :
     (lateLeakModel G true).historyReachWeight profile (lateLeakSecondHistory G secret) =
       lateLeakPrior secret *
-          lateLeakOpeningLaw profile (.protectedTurn secret) (some (.opening false)) *
-        lateLeakOpeningLaw profile (.firstLate secret) (some (.opening false)) := by
+          lateLeakOpeningDistribution profile (.protectedTurn secret) (some (.opening false)) *
+        lateLeakOpeningDistribution profile (.firstLate secret) (some (.opening false)) := by
   rw [lateLeak_reachWeight_step profile (lateLeakSecondHistory G secret) (Nat.succ_pos _)]
   change (lateLeakModel G true).historyReachWeight profile (lateLeakFirstHistory G secret) *
     lateLeakKernel profile (.firstLate secret) (.secondLate secret) = _
@@ -87,9 +87,9 @@ theorem lateLeak_weight_second_sent (profile : LateLeakProfile G true) (secret :
     (lateLeakModel G true).historyReachWeight profile
       (lateLeakSecondSentHistory G secret included) =
       lateLeakPrior secret *
-          lateLeakOpeningLaw profile (.protectedTurn secret) (some (.opening false)) *
-          lateLeakOpeningLaw profile (.firstLate secret) (some (.opening false)) *
-        (lateLeakOpeningLaw profile (.secondLate secret) (some (.opening true)) *
+          lateLeakOpeningDistribution profile (.protectedTurn secret) (some (.opening false)) *
+          lateLeakOpeningDistribution profile (.firstLate secret) (some (.opening false)) *
+        (lateLeakOpeningDistribution profile (.secondLate secret) (some (.opening true)) *
           lateLeakInclusion G included) := by
   rw [lateLeak_reachWeight_step profile (lateLeakSecondSentHistory G secret included)
     (Nat.succ_pos _)]
@@ -151,8 +151,8 @@ private theorem opening_ne_zero {A : (lateLeakModel G true).BehavioralAssessment
     (mixed : A.IsFullyMixed) (history : (lateLeakExecution G true).History)
     (acting : history.state.actor = some .sender) (now : Bool)
     (allowed : some (LateLeakMove.opening now) ∈ lateLeakMenu true (.full history.state)) :
-    lateLeakOpeningLaw A.strategy history.state (some (.opening now)) ≠ 0 := by
-  rw [lateLeakOpeningLaw_apply _ _ _ allowed]
+    lateLeakOpeningDistribution A.strategy history.state (some (.opening now)) ≠ 0 := by
+  rw [lateLeakOpeningDistribution_apply _ _ _ allowed]
   exact (PMF.mem_support_iff _ _).mp
     (mixed .sender (lateLeakSenderSite G true history acting) ⟨_, allowed⟩)
 
@@ -163,11 +163,13 @@ private theorem opening_tendsto {sequence : ℕ → (lateLeakModel G true).Behav
     (now : Bool)
     (allowed : some (LateLeakMove.opening now) ∈ lateLeakMenu true (.full history.state)) :
     Tendsto (fun n =>
-        (lateLeakOpeningLaw (sequence n).strategy history.state (some (.opening now))).toReal)
-      atTop (nhds (lateLeakOpeningLaw A.strategy history.state (some (.opening now))).toReal) := by
+        (lateLeakOpeningDistribution (sequence n).strategy history.state (some
+          (.opening now))).toReal)
+      atTop (nhds (lateLeakOpeningDistribution A.strategy history.state (some
+        (.opening now))).toReal) := by
   have limit := (converges.strategy .sender (lateLeakSenderSite G true history acting)).toReal
     ⟨_, allowed⟩
-  simp only [lateLeakOpeningLaw_apply _ _ _ allowed]
+  simp only [lateLeakOpeningDistribution_apply _ _ _ allowed]
   exact limit
 
 /-- **Cross ratio.** If one type of a class sends at the first late turn and
@@ -200,7 +202,7 @@ theorem lateLeak_consistent_face {A : (lateLeakModel G true).BehavioralAssessmen
       rfl
   /- Opening probabilities along the sequence. -/
   let opening (n : ℕ) (state : LateLeakState) (now : Bool) : ℝ≥0∞ :=
-    lateLeakOpeningLaw (sequence n).strategy state (some (.opening now))
+    lateLeakOpeningDistribution (sequence n).strategy state (some (.opening now))
   have identity (n : ℕ) :
       (sequence n).belief .listener first (firstMember holder) *
           (sequence n).belief .listener second (secondMember sender) *
@@ -214,7 +216,7 @@ theorem lateLeak_consistent_face {A : (lateLeakModel G true).BehavioralAssessmen
     have ne (history : (lateLeakExecution G true).History)
         (acting : history.state.actor = some .sender) (now : Bool)
         (allowed : some (LateLeakMove.opening now) ∈ lateLeakMenu true (.full history.state)) :
-        lateLeakOpeningLaw (sequence n).strategy history.state (some (.opening now)) ≠ 0 :=
+        lateLeakOpeningDistribution (sequence n).strategy history.state (some (.opening now)) ≠ 0 :=
       opening_ne_zero mixed history acting now allowed
     have firstMass : 0 < (lateLeakModel G true).informationMass (sequence n).strategy .listener
         first := by
@@ -272,25 +274,25 @@ theorem lateLeak_consistent_face {A : (lateLeakModel G true).BehavioralAssessmen
     (converges.belief .listener second).toReal (secondMember label)
   have openFirst (label : LateLeakLabel) (now : Bool) :
       Tendsto (fun n => (opening n (.firstLate (bit, label)) now).toReal) atTop
-        (nhds (lateLeakOpeningLaw A.strategy (.firstLate (bit, label))
+        (nhds (lateLeakOpeningDistribution A.strategy (.firstLate (bit, label))
           (some (.opening now))).toReal) :=
     opening_tendsto converges (lateLeakFirstHistory G (bit, label)) rfl now ⟨now, rfl⟩
   have openSecond (label : LateLeakLabel) :
       Tendsto (fun n => (opening n (.secondLate (bit, label)) true).toReal) atTop
-        (nhds (lateLeakOpeningLaw A.strategy (.secondLate (bit, label))
+        (nhds (lateLeakOpeningDistribution A.strategy (.secondLate (bit, label))
           (some (.opening true))).toReal) :=
     opening_tendsto converges (lateLeakSecondHistory G (bit, label)) rfl true ⟨true, rfl⟩
-  have senderOpen : (lateLeakOpeningLaw A.strategy (.firstLate (bit, sender))
+  have senderOpen : (lateLeakOpeningDistribution A.strategy (.firstLate (bit, sender))
       (some (.opening true))).toReal = 1 := sends
-  have senderWait : (lateLeakOpeningLaw A.strategy (.firstLate (bit, sender))
+  have senderWait : (lateLeakOpeningDistribution A.strategy (.firstLate (bit, sender))
       (some (.opening false))).toReal = 0 := by
-    rw [lateLeakOpeningLaw_wait _ _ rfl, sends, sub_self]
-  have holderOpen : (lateLeakOpeningLaw A.strategy (.firstLate (bit, holder))
+    rw [lateLeakOpeningDistribution_wait _ _ rfl, sends, sub_self]
+  have holderOpen : (lateLeakOpeningDistribution A.strategy (.firstLate (bit, holder))
       (some (.opening true))).toReal = 0 := holds
-  have holderWait : (lateLeakOpeningLaw A.strategy (.firstLate (bit, holder))
+  have holderWait : (lateLeakOpeningDistribution A.strategy (.firstLate (bit, holder))
       (some (.opening false))).toReal = 1 := by
-    rw [lateLeakOpeningLaw_wait _ _ rfl, holds, sub_zero]
-  have holderSecond : (lateLeakOpeningLaw A.strategy (.secondLate (bit, holder))
+    rw [lateLeakOpeningDistribution_wait _ _ rfl, holds, sub_zero]
+  have holderSecond : (lateLeakOpeningDistribution A.strategy (.secondLate (bit, holder))
       (some (.opening true))).toReal = 1 := holderSends
   have left := ((beliefFirst holder).mul (beliefSecond sender)).mul
     (((openFirst sender true).mul (openFirst holder false)).mul (openSecond holder))

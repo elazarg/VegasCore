@@ -401,7 +401,7 @@ theorem onePacket_raw_sequentialEquilibrium
   have truncated := (effectiveTarget.isSequentialEquilibrium_iff_truncated_of_bounded _ _
     (effective.bounded initial horizon scheduler).wellFoundedHistories
     (effective.bounded initial horizon scheduler) _).mp effectiveSE
-  obtain ⟨target, canonical, targetSE, rawBeliefs, stateLaw⟩ :=
+  obtain ⟨target, canonical, targetSE, rawBeliefs, stateDistribution⟩ :=
     bounds.exists_canonicalRaw_sequentialEquilibrium timeouts leaks initial horizon scheduler
       effectiveTarget (fun who state => payoff state who) truncated
   have observation (state : ((reactiveApplication timeouts) leaks).ProtocolState) :
@@ -416,7 +416,7 @@ theorem onePacket_raw_sequentialEquilibrium
     (effective.information initial horizon scheduler)
     (effective.bounded initial horizon scheduler).wellFoundedHistories effectiveTarget.strategy
     (effective.bounded initial horizon scheduler)
-  have sourceLaw := InformationModel.runBehavioralTerminalFrom_initHistory
+  have sourceDistribution := InformationModel.runBehavioralTerminalFrom_initHistory
     (onePacket.information initial horizon scheduler)
     (onePacket.bounded initial horizon scheduler).wellFoundedHistories source.strategy
     (onePacket.bounded initial horizon scheduler)
@@ -424,24 +424,24 @@ theorem onePacket_raw_sequentialEquilibrium
       effectiveTarget.strategy (2 * horizon + 1)).map History.state =
       ((onePacket.information initial horizon scheduler).runBehavioral source.strategy
         (2 * horizon + 1)).map History.state := by
-    rw [← effectiveLaw, ← laws, sourceLaw, PMF.map_comp]
+    rw [← effectiveLaw, ← laws, sourceDistribution, PMF.map_comp]
     rfl
   obtain ⟨rawClean, rawSettlement⟩ :=
-    TerminalAudit.settlement_transport_of_normalized_law
+    TerminalAudit.settlement_transport_of_normalized_distribution
       (((effective.information initial horizon scheduler).runBehavioral
         effectiveTarget.strategy (2 * horizon + 1)).map
           (fun final : (effective.protocol initial horizon scheduler).History => final.state))
       (((raw.information initial horizon scheduler).runBehavioral target.strategy
         (2 * horizon + 1)).map
           (fun final : (raw.protocol initial horizon scheduler).History => final.state))
-      normalize (by simpa only [PMF.map_comp, Function.comp_def] using stateLaw)
+      normalize (by simpa only [PMF.map_comp, Function.comp_def] using stateDistribution)
       utility observe audit deposit normalized observation
       (fun state supported who => by
         rw [PMF.support_map, ← effectiveLaw] at supported
         obtain ⟨original, reached, rfl⟩ := supported
         exact clean original reached who)
   refine ⟨target, ⟨effectiveTarget, strategies, beliefs, canonical, rawBeliefs⟩,
-    ?_, ?_, stateLaw.trans effectiveStates, ?_⟩
+    ?_, ?_, stateDistribution.trans effectiveStates, ?_⟩
   · simpa only [payoffInvariant] using targetSE
   · intro final reached who
     exact rawClean final.state (by

@@ -27,7 +27,7 @@ def timeouts : EventTimeouts OddsEvens.compiled :=
 
 abbrev app := (reactiveApplication timeouts) leaks
 
-def initial : PMF app.State := Vegas.initialLaw OddsEvens.setup
+def initial : PMF app.State := Vegas.initialDistribution OddsEvens.setup
 
 abbrev horizon := PeriodicService.horizon
 
@@ -39,7 +39,7 @@ instance : leaks.FiniteSupport where
 
 instance : app.FiniteNature initial scheduler where
   toFiniteEnvironment := inferInstance
-  initial_finite := serviceInitialLaw_support_finite OddsEvens.setup
+  initial_finite := serviceInitialDistribution_support_finite OddsEvens.setup
     OddsEvens.setup.informationDependencies
   scheduler_finite _ _ := by
     rw [scheduler, PeriodicService.scheduler, PMF.support_pure]
@@ -50,9 +50,9 @@ theorem contract :
     AsyncContract timeouts leaks initial horizon scheduler (fun _ => 3) (fun _ => 2) := by
   have service := PeriodicService.contract (graph := OddsEvens.compiled)
     (roster := Equiv.refl Bool) (leaks := leaks)
-    (inputLaw := OddsEvens.setup.initialLaw.map OddsEvens.setup.eventInputs)
+    (inputLaw := OddsEvens.setup.initialDistribution.map OddsEvens.setup.eventInputs)
     (by decide) (by intro event; fin_cases event <;> rfl)
-  simpa only [timeouts, initial, scheduler, PeriodicService.initial, Vegas.initialLaw,
-    serviceInitialLaw, PMF.map_comp, Function.comp_def] using service
+  simpa only [timeouts, initial, scheduler, PeriodicService.initial, Vegas.initialDistribution,
+    serviceInitialDistribution, PMF.map_comp, Function.comp_def] using service
 
 end Vegas.Examples.OddsEvensService

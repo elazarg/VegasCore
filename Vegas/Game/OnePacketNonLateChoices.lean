@@ -26,19 +26,21 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
   {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
-  [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
-  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+  [(application setup timeouts leaks).FiniteNature (initialDistribution setup) scheduler]
+  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds
+    (initialDistribution setup) horizon
     scheduler).InfoState who)]
 
-local notation "N" => onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+local notation "N" => onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon
   scheduler
 
 section MenuChoices
 
 variable (setup timeouts leaks bounds horizon scheduler)
 
-omit [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
-  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+omit [(application setup timeouts leaks).FiniteNature (initialDistribution setup) scheduler]
+  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds
+    (initialDistribution setup) horizon
       scheduler).InfoState who)] in
 /-- At a decision input, every choice is some response of the one-packet menu. -/
 theorem choice_response {who : Player} (site : (N).InformationSite who)
@@ -53,8 +55,9 @@ theorem choice_response {who : Player} (site : (N).InformationSite who)
   obtain ⟨action, member, actionEq⟩ := choice.2
   exact ⟨action, actionEq, member⟩
 
-omit [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
-  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+omit [(application setup timeouts leaks).FiniteNature (initialDistribution setup) scheduler]
+  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds
+    (initialDistribution setup) horizon
       scheduler).InfoState who)] in
 /-- A transmitting response of the one-packet menu names an event. -/
 theorem submittedEvent_of_transmits {who : Player}
@@ -81,8 +84,9 @@ def CommitsAtTurn (who : Player) (site : (N).InformationSite who)
     (submittedEvent? timeouts) leaks response = some event ∧
     view.application.publicView.ownTurn? who = some event
 
-omit [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
-  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+omit [(application setup timeouts leaks).FiniteNature (initialDistribution setup) scheduler]
+  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds
+    (initialDistribution setup) horizon
       scheduler).InfoState who)] in
 /-- **Commitments away from the turn are owed failures.** For a well-formed
 setup, at every history of a site, a choice transmitting a packet for an event
@@ -103,7 +107,8 @@ theorem owes_of_not_commitsAtTurn (wellFormed : setup.WellFormed)
   let menu := bounds.onePacketMenu timeouts leaks
   obtain ⟨fullHistory, infoEq⟩ := history
   have observed : app.observe who fullHistory.state = site.1 :=
-    (menu.info (initialLaw setup) horizon scheduler who fullHistory.trace).symm.trans infoEq
+    (menu.info (initialDistribution setup) horizon scheduler who fullHistory.trace).symm.trans
+      infoEq
   have menuTrace := fullHistory.trace
   change DecodedState setup timeouts leaks profile _ fullHistory.state
   generalize fullHistory.state = state at observed menuTrace
@@ -140,7 +145,8 @@ theorem owes_of_not_commitsAtTurn (wellFormed : setup.WellFormed)
   rw [chosen] at actionEq
   cases Option.some.inj actionEq
   rcases onePacket_submission_atTurn (timeouts := timeouts) bounds profile
-      (menu.toRawTrace (initialLaw setup) horizon scheduler menuTrace) residual response member
+      (menu.toRawTrace (initialDistribution setup) horizon scheduler menuTrace) residual response
+        member
       event submitted with turn | owes
   · exact (offTurn ⟨_, _, response, event, rfl, chosen, submitted, turn⟩).elim
   · exact ⟨rank, ⟨residual⟩, owes⟩
@@ -151,7 +157,8 @@ end MenuChoices
 the event at its author's current source turn. No continuation contract is used. -/
 theorem commitsAtTurn_of_notOwing (wellFormed : setup.WellFormed)
     {who : Player} (site : (N).InformationSite who)
-    (notOwing : ¬ OwingAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+    (notOwing : ¬ OwingAgent setup timeouts leaks bounds (initialDistribution setup) horizon
+      scheduler
       ((N).agentAt site))
     (choice : (N).Choice who site.1) {response : (application setup timeouts leaks).Action}
     (chosen : choice.1 = some response) {event : setup.informationGraph.EventId}
@@ -179,7 +186,8 @@ theorem commitsAtTurn_of_notOwing (wellFormed : setup.WellFormed)
 foreign current event and a packet already recorded for the player's event. -/
 theorem choice_eq_silence_of_unpending_notOwing (wellFormed : setup.WellFormed)
     {who : Player} (site : (N).InformationSite who)
-    (notOwing : ¬ OwingAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+    (notOwing : ¬ OwingAgent setup timeouts leaks bounds (initialDistribution setup) horizon
+      scheduler
       ((N).agentAt site))
     {past : List (application setup timeouts leaks).PlayerEntry}
     {view : (application setup timeouts leaks).PlayerView} (atSite : site.1 = some (past, view))
@@ -223,9 +231,10 @@ theorem choice_eq_silence_of_unpending_notOwing (wellFormed : setup.WellFormed)
 
 /-- At an unpending debt-free input every local probability law is the same
 point mass; no random or pure local replacement changes the policy. -/
-theorem withLaw_eq_self_of_unpending_notOwing (wellFormed : setup.WellFormed)
+theorem withDistribution_eq_self_of_unpending_notOwing (wellFormed : setup.WellFormed)
     {who : Player} (site : (N).InformationSite who)
-    (notOwing : ¬ OwingAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+    (notOwing : ¬ OwingAgent setup timeouts leaks bounds (initialDistribution setup) horizon
+      scheduler
       ((N).agentAt site))
     {past : List (application setup timeouts leaks).PlayerEntry}
     {view : (application setup timeouts leaks).PlayerView} (atSite : site.1 = some (past, view))

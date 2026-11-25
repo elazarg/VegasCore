@@ -6,7 +6,7 @@ public import Vegas.Game.OnePacketBeliefWiring
 public import Vegas.Game.OnePacketNonLateChoices
 public import Vegas.Game.OnePacketUnintendedCommitment
 public import Vegas.Game.OnePacketLateSuccess
-public import Vegas.Game.OnePacketEventPhaseLaw
+public import Vegas.Game.OnePacketEventPhaseDistribution
 public import Vegas.Game.OnePacketComparisonContinuationValue
 public import GameTheoryExtensions.Math.Probability.ExpectationContraction
 
@@ -28,10 +28,10 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (bounds : MessageBounds setup.informationGraph) (horizon : Nat)
   (scheduler : (application setup timeouts leaks).Scheduler)
 
-local notation "N" => onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+local notation "N" => onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon
   scheduler
 local notation "NP" => ReactiveApplication.ResponseMenu.protocol
-  (bounds.onePacketMenu timeouts leaks) (initialLaw setup) horizon scheduler
+  (bounds.onePacketMenu timeouts leaks) (initialDistribution setup) horizon scheduler
 local notation "Menu" => bounds.onePacketMenu timeouts leaks
 local notation "Clear" => ReactiveApplication.stateInvariant
   (app := application setup timeouts leaks)
@@ -71,11 +71,11 @@ theorem unintendedCommitment_phase_owes
           (some (PublicationResult.success value))) = some act →
       act ∉ ProtocolView.intendedAvailable who setup.program
         (ProtocolState.observe who setup.program point))
-    (certificate : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup)
+    (certificate : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup)
       horizon scheduler).WellFoundedHistories)
     (players : ∀ player, ((bounds.onePacketMenu timeouts leaks).information
-      (initialLaw setup) horizon scheduler).BehavioralPolicy player)
-    (history : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup)
+      (initialDistribution setup) horizon scheduler).BehavioralPolicy player)
+    (history : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup)
       horizon scheduler).History)
     (current : history.state = some ⟨remaining, none,
       execution.respond (application setup timeouts leaks) who response⟩) :
@@ -85,8 +85,8 @@ theorem unintendedCommitment_phase_owes
         final.state
         := by
   let menu := bounds.onePacketMenu timeouts leaks
-  let model := menu.information (initialLaw setup) horizon scheduler
-  have afterTrace : (menu.protocol (initialLaw setup) horizon scheduler).Trace
+  let model := menu.information (initialDistribution setup) horizon scheduler
+  have afterTrace : (menu.protocol (initialDistribution setup) horizon scheduler).Trace
       (some ⟨remaining, none, execution.respond (application setup timeouts leaks) who response⟩) :=
     current ▸ history.trace
   have ready : execution.application.config.cut.Ready event :=
@@ -138,7 +138,7 @@ theorem unintendedCommitment_phase_owes
 
 open Classical in
 theorem unintendedCommitment_stopped_value
-    [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
+    [(application setup timeouts leaks).FiniteNature (initialDistribution setup) scheduler]
     [∀ who, DecidableEq ((N).InfoState who)]
     (wellFormed : setup.WellFormed)
     (terminalCompletes : ∀ control : (application setup timeouts leaks).Control,
@@ -149,7 +149,8 @@ theorem unintendedCommitment_stopped_value
       control.execution.application.config.cut.Terminal)
     (common : ∀ player, (N).BehavioralPolicy player)
     {who : Player} (site : (N).InformationSite who) (choice : (N).Choice who site.1)
-    (notOwing : ¬ Vegas.OwingAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+    (notOwing : ¬ Vegas.OwingAgent setup timeouts leaks bounds
+      (initialDistribution setup) horizon scheduler
       ((N).agentAt site))
     (atTurn : CommitsAtTurn setup timeouts leaks bounds horizon scheduler who site choice)
     (unintendedChoice : ¬ IntendedCommitment setup timeouts leaks bounds horizon scheduler
@@ -169,7 +170,7 @@ theorem unintendedCommitment_stopped_value
     (excludedBounded : |excludedPayoff who| ≤ payoffBound)
     (history : (N).InformationHistory who site.1)
     (forced : ForcedState setup timeouts leaks who history.1.state) :
-    let certificate := ((Menu).bounded (initialLaw setup) horizon
+    let certificate := ((Menu).bounded (initialDistribution setup) horizon
       scheduler).wellFoundedHistories
     let stopped := fun final : (NP).History => ¬ Clear final.state ∨
       DecodedState setup timeouts leaks (failureProfile setup.program)
@@ -210,7 +211,7 @@ theorem unintendedCommitment_stopped_value
     obtain ⟨fullHistory, infoEq⟩ := history
     have observed : (application setup timeouts leaks).observe who fullHistory.state =
         some (past, view) :=
-      ((Menu).info (initialLaw setup) horizon scheduler who fullHistory.trace).symm.trans
+      ((Menu).info (initialDistribution setup) horizon scheduler who fullHistory.trace).symm.trans
         (infoEq.trans atSite)
     cases state : fullHistory.state with
     | none =>
@@ -228,7 +229,7 @@ theorem unintendedCommitment_stopped_value
           cases observed
   have trace : (NP).Trace (some ⟨remaining, some who, execution⟩) := current ▸ history.1.trace
   obtain ⟨found, foundOrdered, _⟩ := pendingAt_history (timeouts := timeouts)
-    ((Menu).toRawTrace (initialLaw setup) horizon scheduler trace)
+    ((Menu).toRawTrace (initialDistribution setup) horizon scheduler trace)
   have siteRankEq : siteRank (timeouts := timeouts) site.1 = found := by
     rw [atSite, ← viewEq]
     change (execution.application.config.history.map EventCompletion.event).length = found
@@ -326,7 +327,7 @@ theorem unintendedCommitment_stopped_value
   have oneStep : ((N).runBehavioralFrom installed 1 history.1).map History.state =
       PMF.pure (some ⟨remaining, none,
         execution.respond (application setup timeouts leaks) who response⟩) := by
-    rw [(Menu).run_one_response (initialLaw setup) horizon scheduler installed history.1
+    rw [(Menu).run_one_response (initialDistribution setup) horizon scheduler installed history.1
       who
       remaining execution current]
     dsimp only [installed]
@@ -401,7 +402,7 @@ theorem unintendedCommitment_stopped_value
 
 open Classical in
 theorem unintendedCommitment_value_sub_le
-    [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
+    [(application setup timeouts leaks).FiniteNature (initialDistribution setup) scheduler]
     [∀ who, DecidableEq ((N).InfoState who)]
     (wellFormed : setup.WellFormed)
     (terminalCompletes : ∀ control : (application setup timeouts leaks).Control,
@@ -412,7 +413,8 @@ theorem unintendedCommitment_value_sub_le
       control.execution.application.config.cut.Terminal)
     (assessment : (N).BehavioralAssessment)
     {who : Player} (site : (N).InformationSite who) (choice : (N).Choice who site.1)
-    (notOwing : ¬ Vegas.OwingAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+    (notOwing : ¬ Vegas.OwingAgent setup timeouts leaks bounds
+      (initialDistribution setup) horizon scheduler
       ((N).agentAt site))
     (atTurn : CommitsAtTurn setup timeouts leaks bounds horizon scheduler who site choice)
     (unintendedChoice : ¬ IntendedCommitment setup timeouts leaks bounds horizon scheduler
@@ -433,7 +435,7 @@ theorem unintendedCommitment_value_sub_le
     {unforced : ℝ}
     (unforcedMass : expect (assessment.belief who site) (fun history =>
       if ForcedState setup timeouts leaks who history.1.state then (0 : ℝ) else 1) ≤ unforced) :
-    let certificate := ((Menu).bounded (initialLaw setup) horizon
+    let certificate := ((Menu).bounded (initialDistribution setup) horizon
       scheduler).wellFoundedHistories
     let stopped := fun final : (NP).History => ¬ Clear final.state ∨
       DecodedState setup timeouts leaks (failureProfile setup.program)

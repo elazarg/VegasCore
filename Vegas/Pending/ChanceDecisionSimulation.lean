@@ -22,7 +22,7 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
 /-- Compose the initialized public chance phase, the focal decision, and the
 supplied local reference steps at every later rank. -/
-private theorem focal_after_chance_config_law_of_event_steps
+private theorem focal_after_chance_config_distribution_of_event_steps
     (timeouts : EventTimeouts graph.sequentialize)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph.sequentialize))
     (scheduler : (reactiveApplication timeouts leaks).Scheduler)
@@ -150,7 +150,8 @@ private theorem focal_after_chance_config_law_of_event_steps
     obtain ⟨seen, bounded, _⟩ := sampleProgress seed supported before stoppedMember
     exact (runUntilHorizon_event_progress completes decision before final seen bounded
       (readyDecision before present).1 member).2.2.1
-  obtain ⟨law, decisionLaw⟩ := focal_owned_completed_config_law timeouts leaks scheduler bound
+  obtain ⟨law, decisionLaw⟩ := focal_owned_completed_config_distribution timeouts leaks scheduler
+    bound
     turns timing reference focal deviation decision owned (graph.sequentialize_solitary decision)
     horizon stopped id nextNoise (factor.trans (by rw [← marginal]; rfl))
     readyDecision
@@ -159,7 +160,7 @@ private theorem focal_after_chance_config_law_of_event_steps
       rw [(postSample before present).2]
       exact Finset.notMem_empty _)
     progressDecision
-  have suffixLaw := eventCompletionLaw_of_event_steps (scheduler := scheduler)
+  have suffixLaw := eventCompletionPreservesReadout_of_event_steps (scheduler := scheduler)
     (players := players) inputs reference 2 localStep
   have sampleBoundary (seed : G.Inputs) (present : seed ∈ inputs.support) :
       PrefixBoundary (inputs.map State.initial) scheduler players sample.val (start seed) := by
@@ -210,19 +211,20 @@ private theorem focal_after_chance_config_law_of_event_steps
   have tails (current : G.Config) (done : decision ∈ current.cut.completed) :
       G.runPlan updatedPlan current.remaining current = onward current := by
     have agree (config : G.Config) (event : G.EventId) (different : event ≠ decision) :
-        actionLaw updated config event = actionLaw reference config event := by
-      change actionLaw (Function.update reference focal policy) config event =
-        actionLaw reference config event
+        actionDistribution updated config event = actionDistribution reference config event := by
+      change actionDistribution (Function.update reference focal policy) config event =
+        actionDistribution reference config event
       cases actor : G.actor? event with
-      | none => rw [actionLaw_of_ownerless _ _ actor, actionLaw_of_ownerless _ _ actor]
+      | none => rw [actionDistribution_of_ownerless _ _ actor, actionDistribution_of_ownerless _ _
+        actor]
       | some owner =>
           have unfocal : owner ≠ focal := fun same => different (only event (same ▸ actor))
-          rw [actionLaw_of_actor _ _ actor, actionLaw_of_actor _ _ actor]
+          rw [actionDistribution_of_actor _ _ actor, actionDistribution_of_actor _ _ actor]
           by_cases inactive : owner ∈ config.defaulted
           · rw [dite_eq_left inactive, dite_eq_left inactive]
           · rw [dite_eq_right inactive, dite_eq_right inactive,
               Function.update_of_ne unfocal]
-    exact runPlan_congr_of_actionLaw G.canonicalScheduler (fun event => event = decision)
+    exact runPlan_congr_of_actionDistribution G.canonicalScheduler (fun event => event = decision)
       agree current.remaining current (fun _ same => same.symm ▸ done)
   let finish (before : G.Config) :=
     if ready : before.cut.Ready decision then
@@ -244,7 +246,7 @@ private theorem focal_after_chance_config_law_of_event_steps
   have leastSample (other : G.EventId) (_ : (initial seed).cut.Ready other) : sample ≤ other :=
     Fin.le_iff_val_le_val.mpr (by rw [sampleRank]; exact Nat.zero_le _)
   rw [runPlan_remaining_canonical_step _ (initial seed) sample readySample leastSample,
-    eventStep, actionLaw_of_ownerless _ _ ownerless, PMF.pure_bind]
+    eventStep, actionDistribution_of_ownerless _ _ ownerless, PMF.pure_bind]
   apply bind_congr_on_support _
   intro before member
   have beforeSupport : before ∈ chance.support :=
@@ -260,7 +262,7 @@ private theorem focal_after_chance_config_law_of_event_steps
     Fin.le_iff_val_le_val.mpr (Nat.le_of_not_gt fun earlier =>
       enabled.1 ((ordered.2 other).mpr earlier))
   rw [runPlan_remaining_canonical_step _ before decision ready leastDecision,
-    eventStep, actionLaw_of_actor _ _ owned, dite_eq_right active]
+    eventStep, actionDistribution_of_actor _ _ owned, dite_eq_right active]
   simp only [finish, dite_eq_left ready, updated, Function.update_self, policy, cast_eq,
     PMF.bind_bind]
   apply bind_congr_on_support _
@@ -278,7 +280,7 @@ private theorem focal_after_chance_config_law_of_event_steps
 /-- In a two-event sequential graph with a public chance event followed by one
 owned decision, every raw deviation has an observation-local graph realization
 with the exact full terminal configuration law. -/
-theorem focal_after_chance_config_law
+theorem focal_after_chance_config_distribution
     (timeouts : EventTimeouts graph.sequentialize)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph.sequentialize))
     (scheduler : (reactiveApplication timeouts leaks).Scheduler)
@@ -300,7 +302,8 @@ theorem focal_after_chance_config_law
         (fun final => final.application.config) =
       inputs.bind (graph.sequentialize.runPolicies graph.sequentialize.canonicalScheduler
         (Function.update reference focal policy)) := by
-  apply focal_after_chance_config_law_of_event_steps timeouts leaks scheduler bound turns timing
+  apply focal_after_chance_config_distribution_of_event_steps timeouts leaks scheduler bound turns
+    timing
     inputs reference focal deviation sample decision sampleRank decisionRank ownerless owned
     ?_ horizon completes ?_
   · intro other actor
@@ -319,7 +322,7 @@ theorem focal_after_chance_config_law
 
 /-- If public chance precedes the focal player's sole decision, all subsequent
 foreign and chance events retain their canonical continuation law. -/
-theorem focal_after_chance_config_law_with_suffix
+theorem focal_after_chance_config_distribution_with_suffix
     (timeouts : EventTimeouts graph.sequentialize)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph.sequentialize))
     (scheduler : (reactiveApplication timeouts leaks).Scheduler)
@@ -348,11 +351,12 @@ theorem focal_after_chance_config_law_with_suffix
         (Function.update reference focal policy)) := by
   intro app players
   let timing := EventGraphRuntime.firstTurnTiming graph.sequentialize turns
-  refine focal_after_chance_config_law_of_event_steps timeouts leaks scheduler bound turns timing
+  refine focal_after_chance_config_distribution_of_event_steps timeouts leaks scheduler bound turns
+    timing
     inputs reference focal deviation sample decision sampleRank decisionRank ownerless owned only
     horizon contract.completes ?_
   intro _ _ event before boundary later within
-  refine firstTurn_event_config_law_of_owner_follows timeouts leaks (turns := turns)
+  refine firstTurn_event_config_distribution_of_owner_follows timeouts leaks (turns := turns)
     scheduler delay bound inputs reference contract timely realizable event players
     ?_ before boundary within
   intro who actor

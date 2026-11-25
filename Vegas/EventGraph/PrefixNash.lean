@@ -315,7 +315,7 @@ theorem RevealRelaxedOrdered.gameForm_prefixProfile_map_eq_canonical
 
 /-- The joint law retains the complete terminal configuration in source rank
 and every player's payoff, with the same arbitrary correlated initial law. -/
-theorem RevealRelaxedOrdered.prefixProfile_ranked_payoff_law
+theorem RevealRelaxedOrdered.prefixProfile_ranked_payoff_distribution
     (relaxed : graph.RevealRelaxedOrdered) (profile : graph.BehavioralProfile)
     (submits : graph.SubmitsBindings profile)
     (oblivious : graph.ObliviousAtPublications profile)

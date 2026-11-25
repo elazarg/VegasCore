@@ -44,7 +44,7 @@ def RunStepHolds (scheduler : (serviceApplication setup deps duration leaks).Sch
     (origin : (serviceGraph setup deps).Config) (n : Nat)
     (current : (serviceApplication setup deps duration leaks).Execution) : Prop :=
     current ∈ ((serviceApplication setup deps duration leaks).roundsFrom
-      (serviceInitialLaw setup deps) scheduler
+      (serviceInitialDistribution setup deps) scheduler
       (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps) reference) who deviation)
       current.environmentRecall.length).support ∧
@@ -65,7 +65,7 @@ theorem runStep_round
     {delay : (serviceGraph setup deps).EventId → Nat}
     (bound : (serviceGraph setup deps).EventId → Nat) (turns : Nat)
     (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
-        (serviceInitialLaw setup deps) horizon scheduler delay bound)
+        (serviceInitialDistribution setup deps) horizon scheduler delay bound)
     (timely : AsyncTimely (serviceTimeouts setup deps duration) delay bound)
     (reference : (serviceGraph setup deps).BehavioralProfile)
     (decides : ∀ (config : (serviceGraph setup deps).Config)
@@ -120,7 +120,8 @@ theorem runStep_round
   have lengths := app.round_environmentRecall_length scheduler players current next moved
   have path := reactive_round_graph_steps (serviceTimeouts setup deps duration) leaks scheduler
     players current next moved
-  obtain ⟨trace⟩ := app.raw_trace_roundsFrom (serviceInitialLaw setup deps) horizon scheduler
+  obtain ⟨trace⟩ := app.raw_trace_roundsFrom (serviceInitialDistribution setup deps) horizon
+    scheduler
     players current.environmentRecall.length (by omega) current currentSupported
   have remaining : horizon - current.environmentRecall.length =
       (horizon - current.environmentRecall.length - 1) + 1 := by omega
@@ -136,7 +137,7 @@ theorem runStep_round
     blockRecordsSound_round serial bound turns contract timely reference decides who deviation start
       finish shaped publications origin current next currentSupported
       (by omega) (currentInside unfinished) unfinished currentSubmissions sound moved, ?_⟩
-  · apply app.roundsFrom_runUntil scheduler players (serviceInitialLaw setup deps)
+  · apply app.roundsFrom_runUntil scheduler players (serviceInitialDistribution setup deps)
       (fun current => stop current.application.config.cut) 1 current next currentSupported
     change next ∈ (if stop current.application.config.cut then PMF.pure current
       else (app.round scheduler players current).bind (app.runUntil scheduler players
@@ -176,7 +177,7 @@ theorem runStep_facts
     {delay : (serviceGraph setup deps).EventId → Nat}
     (bound : (serviceGraph setup deps).EventId → Nat) (turns : Nat)
     (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
-        (serviceInitialLaw setup deps) horizon scheduler delay bound)
+        (serviceInitialDistribution setup deps) horizon scheduler delay bound)
     (timely : AsyncTimely (serviceTimeouts setup deps duration) delay bound)
     (reference : (serviceGraph setup deps).BehavioralProfile)
     (decides : ∀ (config : (serviceGraph setup deps).Config)
@@ -208,7 +209,7 @@ theorem runStep_facts
       ¬ stop config.cut → ∀ event, config.cut.Ready event →
         (serviceGraph setup deps).actor? event = some who → allowed event)
     (supported : execution ∈ ((serviceApplication setup deps duration leaks).roundsFrom
-      (serviceInitialLaw setup deps) scheduler
+      (serviceInitialDistribution setup deps) scheduler
       (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps) reference) who deviation)
       execution.environmentRecall.length).support)

@@ -223,11 +223,11 @@ variable (setup : Setup (Player := Player) (L := L))
 /-- A well-formed setup: the initial law binds a value in every commitment cell,
 and every guard is satisfiable at every commit the intended game reaches. -/
 structure WellFormed : Prop where
-  initialValues : ∀ initial ∈ setup.initialLaw.support,
+  initialValues : ∀ initial ∈ setup.initialDistribution.support,
     ∀ {x : VarId} {owner : Player} {payload : L.Ty}
       (cell : HasVar setup.context x (.commitment owner payload)),
       ∃ value, initial.get cell = .success value
-  guardsSatisfiable : ∀ initial ∈ setup.initialLaw.support,
+  guardsSatisfiable : ∀ initial ∈ setup.initialDistribution.support,
     GuardsSatisfiableFrom setup.program (Config.initial initial)
 
 /-- The intended actions at a setup protocol state. -/

@@ -291,7 +291,7 @@ theorem intended_firstTurnClientProfile_isεNash {Parameter : Type}
 /-- Every commitment interface preserves the exact joint law of typed terminal
 store and realized settlement when clients act at their first opportunities.
 Every admitted binding choice incurs no audit charge on the prescribed execution. -/
-theorem firstTurnClientProfile_settlement_law {Parameter : Type}
+theorem firstTurnClientProfile_settlement_distribution {Parameter : Type}
     (parameter : State L service.setup.context → Parameter)
     (utility : Parameter × PublicOutcome service.setup.program → Player → ℝ)
     (sample : List (SettledEvidence service.setup service.setup.informationDependencies) →
@@ -321,13 +321,13 @@ theorem firstTurnClientProfile_settlement_law {Parameter : Type}
         (fun config => (some (config.state, config.defaults),
           utility (service.setup.parameterOutcome parameter config))) := by
   intro base settle
-  have close := sourceServiceClients_clientPolicy_settlement_lawError
+  have close := sourceServiceClients_clientPolicy_settlement_distributionError
     (fun event => (service.setup.dataflowGraph.sequentialize_solitary event).ownerSolitary)
     service.contract
     (firstTurnTiming service.setup turns service.setup.informationDependencies)
     (service.setup.decodeBehavioralProfile admission
       source)
-    (firstTurn_readout_law service.setup service.leaks service.contract service.timely
+    (firstTurn_readout_distribution service.setup service.leaks service.contract service.timely
       turns _ (fun _ => BehavioralPolicy.normalizeDisclosures_authentic _ _))
     service.rawMenu
     (service.rawMenu_admits admission (firstTurnTiming service.setup turns

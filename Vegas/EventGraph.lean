@@ -29,7 +29,7 @@ public import Vegas.EventGraph.LastSchedulerErasure
 public import Vegas.EventGraph.PolicyPatch
 public import Vegas.EventGraph.DeviationContinuation
 public import Vegas.EventGraph.TrafficPolicy
-public import Vegas.EventGraph.LastErasedLaw
+public import Vegas.EventGraph.LastErasedDistribution
 public import Vegas.EventGraph.NormalizedRestriction
 public import Vegas.EventGraph.LastKeyTarget
 public import Vegas.EventGraph.HonestClosure
@@ -63,7 +63,7 @@ public import Vegas.EventGraph.ResolutionProvenance
 public import Vegas.EventGraph.RevealRelaxation
 public import Vegas.EventGraph.Semantics
 public import Vegas.EventGraph.Sequential
-public import Vegas.EventGraph.SequentialLaw
+public import Vegas.EventGraph.SequentialDistribution
 public import Vegas.EventGraph.Validation
 
 public import Vegas.EventGraph.RecordedReplay

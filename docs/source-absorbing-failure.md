@@ -82,7 +82,7 @@ of defaulted owners, records every completion and retains the exact public
 history. [Information](../Vegas/EventGraph/Information.lean) records public
 default timing; own-action recall excludes automatic completions.
 
-[EventGraphLaw](../Vegas/Compile/EventGraphLaw.lean) proves the complete source
+[EventGraphDistribution](../Vegas/Compile/EventGraphDistribution.lean) proves the complete source
 configuration law. [EventGraphScheduling](../Vegas/Compile/EventGraphScheduling.lean)
 extends it to every permitted public scheduler: the compiled order has a unique
 ready event. These laws need no finite payload catalogue, independent initial
@@ -143,7 +143,7 @@ These full-source interfaces use the source information graph.
 The [dependency design](event-graph-dependencies.md) also supports genuinely
 nonordered executions; their raw reveal-order laws can
 differ, as checked in
-[ConcurrentRevealOrderLaw](../Vegas/Examples/ConcurrentRevealOrderLaw.lean).
+[ConcurrentRevealOrderDistribution](../Vegas/Examples/ConcurrentRevealOrderDistribution.lean).
 [AsyncDeviationReadout](../Vegas/Game/AsyncDeviationReadout.lean)
 backtranslates every unilateral physical policy against first-turn opponents to
 one behavioral source deviation with the same joint typed-state/default law.

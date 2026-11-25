@@ -141,11 +141,11 @@ holds at the decoding of every initialized menu history, for any scheduler. -/
 theorem decodedState_history_of_stepClosed
     {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
     {property : ProtocolState setup.program → Prop} (closed : StepClosed setup property)
-    (initialized : ∀ initial ∈ setup.initialLaw.support,
+    (initialized : ∀ initial ∈ setup.initialDistribution.support,
       property (ProtocolState.entry setup.program (Config.initial initial)))
     (menu : (application setup timeouts leaks).ResponseMenu) (horizon : Nat)
     (scheduler : (application setup timeouts leaks).Scheduler) :
-    ∀ {state} (_trace : (menu.protocol (initialLaw setup) horizon scheduler).Trace state)
+    ∀ {state} (_trace : (menu.protocol (initialDistribution setup) horizon scheduler).Trace state)
       (control : (application setup timeouts leaks).Control), state = some control →
       DecodedState setup timeouts leaks profile property (some control) := by
   intro state trace
@@ -156,7 +156,7 @@ theorem decodedState_history_of_stepClosed
       subst current
       cases before with
       | none =>
-          change some control ∈ ((initialLaw setup).map fun state =>
+          change some control ∈ ((initialDistribution setup).map fun state =>
             some ⟨horizon, none, ReactiveApplication.Execution.initial
               (application setup timeouts leaks) state⟩).support at realized
           obtain ⟨state, supported, same⟩ := PMF.support_map .. ▸ realized
@@ -171,7 +171,7 @@ theorem decodedState_history_of_stepClosed
           subst decoded
           exact initialized initial member
       | some previous =>
-          exact decodedHolds_transition closed (initialLaw setup) horizon scheduler
+          exact decodedHolds_transition closed (initialDistribution setup) horizon scheduler
             (some previous) (some control) joint (ih previous rfl) realized
 
 /-- A terminal cut is a prefix only of the full event count. -/

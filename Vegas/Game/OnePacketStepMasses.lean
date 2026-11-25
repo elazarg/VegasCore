@@ -54,7 +54,7 @@ variable {horizon : Nat} {scheduler : (application setup timeouts leaks).Schedul
 /-- Along every history, the key's pending event is the player's pending
 event. -/
 theorem LateKey.ofView_pending
-    (trace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((application setup timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace
       (some control))
     (who : Player) :
@@ -76,7 +76,7 @@ theorem LateKey.ofView_pending
 /-- Along every history, the key is a late delivery exactly when the
 information state is. -/
 theorem LateKey.ofView_isLate
-    (trace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((application setup timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace
       (some control))
     (who : Player) :
@@ -106,16 +106,17 @@ variable [Fintype Player] {bounds : MessageBounds setup.informationGraph} {horiz
 one-packet game, without a pending event, every late option is silence. -/
 theorem onePacket_settled_lateChoice (assessment : setup.intendedModel.BehavioralAssessment)
     {slots : Nat} {control : (application setup timeouts leaks).Control}
-    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some control))
     (who : Player)
     (settled : pendingEvent setup timeouts leaks who (some (control.execution.logs who,
       control.execution.observe (application setup timeouts leaks) who)) = none)
     (option : LateOption slots) :
-    lateChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler assessment who
+    lateChoice setup timeouts leaks bounds (initialDistribution setup) horizon scheduler assessment
+      who
         (some (control.execution.logs who,
           control.execution.observe (application setup timeouts leaks) who)) option
-        (silenceChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler who
+        (silenceChoice setup timeouts leaks bounds (initialDistribution setup) horizon scheduler who
           (some (control.execution.logs who,
             control.execution.observe (application setup timeouts leaks) who))) = 1 := by
   cases option with
@@ -142,7 +143,8 @@ theorem onePacket_settled_lateChoice (assessment : setup.intendedModel.Behaviora
             by_contra unrecorded
             simp [unrecorded] at settled
           rw [lateChoice_some_eq_map (timeouts := timeouts) assessment who _ _ event turn slot,
-            map_congr_support (g := fun _ => silenceChoice setup timeouts leaks bounds (initialLaw
+            map_congr_support (g := fun _ => silenceChoice setup timeouts leaks bounds
+              (initialDistribution
               setup)
               horizon scheduler who (some (control.execution.logs who,
                 control.execution.observe (application setup timeouts leaks) who))) _
@@ -162,7 +164,7 @@ theorem onePacket_pendingBinding_lateChoice
     (covers : bounds.CoversOutputValues)
     (capacity : ∀ who, bindingEventCount setup.informationGraph who < bounds.candidateCount)
     {control : (application setup timeouts leaks).Control}
-    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some control))
     (who : Player) (event : setup.informationGraph.EventId)
     (turn : control.execution.application.publicView.ownTurn? who = some event)
@@ -177,12 +179,13 @@ theorem onePacket_pendingBinding_lateChoice
         who))
     (positive : 0 < contentFactor setup timeouts leaks assessment who control.execution
       (control.execution.respond (application setup timeouts leaks) who response) response)
-    (choice : (onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+    (choice : (onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon
       scheduler).Choice who
       (some (control.execution.logs who,
         control.execution.observe (application setup timeouts leaks) who)))
     (chosen : choice.1 = some response) {slots : Nat} (option : LateOption slots) :
-    (lateChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler assessment who _
+    (lateChoice setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
+      assessment who _
       option
         choice).toReal =
       contentFactor setup timeouts leaks assessment who control.execution
@@ -194,10 +197,10 @@ theorem onePacket_pendingBinding_lateChoice
             ((control.execution.respond (application setup timeouts leaks) who response).logs who)
             ((control.execution.respond (application setup timeouts leaks) who response).observe
               (application setup timeouts leaks) who)) option := by
-  have rawTrace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+  have rawTrace : ((application setup timeouts leaks).protocol (initialDistribution setup) horizon
     scheduler).Trace
       (some control) :=
-    (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon scheduler
+    (bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup) horizon scheduler
       trace
   have capacityOne : 1 ≤ bounds.candidateCount :=
     Nat.one_le_iff_ne_zero.mpr fun zero => by
@@ -280,7 +283,7 @@ theorem onePacket_pendingBinding_lateChoice
             cases silent
           · simp only [open_, ↓reduceIte]
             rw [map_congr_support (g := fun _ => silenceChoice setup timeouts leaks bounds
-                (initialLaw setup) horizon scheduler who (some (control.execution.logs who,
+                (initialDistribution setup) horizon scheduler who (some (control.execution.logs who,
                   control.execution.observe (application setup timeouts leaks) who))) _
                 fun other supported => by
                   apply responseChoice_of_not_offered (timeouts := timeouts)
@@ -328,7 +331,8 @@ theorem onePacket_pendingBinding_lateChoice
                 timeouts leaks who (control.execution.logs who)
                 (control.execution.observe (application setup timeouts leaks) who) :=
             responseEq ▸ member
-          have choiceEq : choice = slotChoiceOf setup timeouts leaks bounds (initialLaw setup)
+          have choiceEq : choice = slotChoiceOf setup timeouts leaks bounds
+            (initialDistribution setup)
             horizon
               scheduler who (control.execution.logs who)
               (control.execution.observe (application setup timeouts leaks) who) event serial

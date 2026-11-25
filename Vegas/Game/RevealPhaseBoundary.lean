@@ -7,7 +7,7 @@ public import Vegas.Game.SourceServiceCompletion
 public import Vegas.Game.RevealPhasing
 public import Vegas.Game.LastForeignPhase
 public import Vegas.Game.LastChancePhase
-public import Vegas.Game.RevealServiceHonestLaw
+public import Vegas.Game.RevealServiceHonestDistribution
 
 @[expose] public section
 
@@ -38,7 +38,8 @@ structure PhaseBoundary (scheduler : (serviceApplication setup deps duration lea
     (rank : Nat) (execution : (serviceApplication setup deps duration leaks).Execution) :
     Prop where
   supported : execution ∈ ((serviceApplication setup deps duration leaks).roundsFrom
-    (serviceInitialLaw setup deps) scheduler players execution.environmentRecall.length).support
+    (serviceInitialDistribution setup deps) scheduler players
+      execution.environmentRecall.length).support
   bounded : execution.environmentRecall.length ≤ horizon
   earlier : ∀ event : (serviceGraph setup deps).EventId, event.val < rank →
     event ∈ execution.application.config.cut.completed
@@ -59,7 +60,7 @@ theorem PhaseBoundary.quiescent
     (boundary : PhaseBoundary scheduler players horizon rank execution) :
     ∀ event, ¬ execution.application.AutomaticReady event := by
   obtain ⟨trace⟩ := (serviceApplication setup deps duration leaks).raw_trace_roundsFrom
-    (serviceInitialLaw setup deps) horizon scheduler players
+    (serviceInitialDistribution setup deps) horizon scheduler players
     execution.environmentRecall.length boundary.bounded execution boundary.supported
   exact (legalFacts setup leaks horizon scheduler _ trace).quiescent
 
@@ -150,15 +151,17 @@ theorem runUntilHorizon_bounded {horizon : Nat}
     {stop : (serviceApplication setup deps duration leaks).Execution → Prop} [DecidablePred stop]
     {execution final : (serviceApplication setup deps duration leaks).Execution}
     (supported : execution ∈ ((serviceApplication setup deps duration leaks).roundsFrom
-      (serviceInitialLaw setup deps) scheduler players execution.environmentRecall.length).support)
+      (serviceInitialDistribution setup deps) scheduler players
+        execution.environmentRecall.length).support)
     (bounded : execution.environmentRecall.length ≤ horizon)
     (reached : final ∈ ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
       players stop horizon execution).support) :
     final ∈ ((serviceApplication setup deps duration leaks).roundsFrom
-      (serviceInitialLaw setup deps) scheduler players final.environmentRecall.length).support ∧
+      (serviceInitialDistribution setup deps) scheduler players
+        final.environmentRecall.length).support ∧
     final.environmentRecall.length ≤ horizon := by
   let app := serviceApplication setup deps duration leaks
-  refine ⟨app.roundsFrom_runUntil scheduler players (serviceInitialLaw setup deps) stop _
+  refine ⟨app.roundsFrom_runUntil scheduler players (serviceInitialDistribution setup deps) stop _
     execution final supported reached, ?_⟩
   obtain ⟨used, enough, _, lengths⟩ := app.runUntil_runRounds scheduler players stop _
     execution final reached
@@ -186,7 +189,7 @@ theorem blockPhase_endpoint {horizon : Nat}
     {delay : (serviceGraph setup deps).EventId → Nat}
     (bound : (serviceGraph setup deps).EventId → Nat) (turns : Nat)
     (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
-        (serviceInitialLaw setup deps) horizon scheduler delay bound)
+        (serviceInitialDistribution setup deps) horizon scheduler delay bound)
     (timely : AsyncTimely (serviceTimeouts setup deps duration) delay bound)
     (reference : (serviceGraph setup deps).BehavioralProfile)
     (decides : ∀ (config : (serviceGraph setup deps).Config)
@@ -272,7 +275,7 @@ theorem solitaryPhase_endpoint {horizon : Nat}
     {scheduler : (serviceApplication setup deps duration leaks).Scheduler}
     {delay bound : (serviceGraph setup deps).EventId → Nat}
     (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
-        (serviceInitialLaw setup deps) horizon scheduler delay bound)
+        (serviceInitialDistribution setup deps) horizon scheduler delay bound)
     (players : Player → (serviceApplication setup deps duration leaks).Policy)
     (concurrent : (serviceGraph setup deps).RevealsOnlyConcurrent)
     (event : (serviceGraph setup deps).EventId)

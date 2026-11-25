@@ -2,7 +2,7 @@ module
 
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-public import Vegas.Pending.CanonicalKeyLaw
+public import Vegas.Pending.CanonicalKeyDistribution
 public import Vegas.Pending.ReactiveGraphSteps
 public import Vegas.EventGraph.PublicationDecision
 
@@ -64,14 +64,14 @@ def OpensPublications (profile : graph.BehavioralProfile) : Prop :=
 
 /-- An accepted call at a publication-only configuration preserves the
 canonical key law of a ready-independent opening profile. -/
-theorem handle_canonicalLaw_of_publications {profile : graph.BehavioralProfile}
+theorem handle_canonicalDistribution_of_publications {profile : graph.BehavioralProfile}
     (independent : ReadyIndependent profile) (opens : OpensPublications profile)
     (timeouts : EventTimeouts graph) (state next : State graph)
     (message : Message Player (Payload graph))
     (publications : ∀ event, state.config.cut.Ready event →
       (graph.outputLayout event).IsPublication)
     (accepted : handle timeouts state message = some next) :
-    canonicalLaw profile next.config = canonicalLaw profile state.config := by
+    canonicalDistribution profile next.config = canonicalDistribution profile state.config := by
   rcases message with ⟨id, packet⟩
   cases packet with
   | malformed raw => simp [handle] at accepted
@@ -86,18 +86,18 @@ theorem handle_canonicalLaw_of_publications {profile : graph.BehavioralProfile}
         actionEq⟩ := handle_opening_config_step timeouts state next id event candidate raw accepted
       have acting := nodeView_resolve_actor outputEq codeEq
       by_cases inactive : owner ∈ state.config.defaulted
-      · exact State.canonicalLaw_of_mem_step_defaulted independent _ _ event ready owner acting
-          inactive action stepped
-      · apply State.canonicalLaw_of_mem_step_of_actionLaw independent _ _ event ready owner acting
-          action _ stepped
-        rw [actionLaw_of_actor profile state.config acting, dite_eq_right inactive,
+      · exact State.canonicalDistribution_of_mem_step_defaulted independent _ _ event ready
+          owner acting inactive action stepped
+      · apply State.canonicalDistribution_of_mem_step_of_actionDistribution independent _ _ event
+          ready owner acting action _ stepped
+        rw [actionDistribution_of_actor profile state.config acting, dite_eq_right inactive,
           opens state.config event owner acting (publications event ready) inactive, actionEq,
           openAction_eq_cast_true outputEq]
 
 /-- A native environment command at a publication-only configuration preserves
 the canonical key law of a ready-independent profile at every supported
 successor, when no active owner's ready publication is due. -/
-theorem environmentStep_canonicalLaw_of_publications {profile : graph.BehavioralProfile}
+theorem environmentStep_canonicalDistribution_of_publications {profile : graph.BehavioralProfile}
     (independent : ReadyIndependent profile) (timeouts : EventTimeouts graph)
     (state next : State graph) (command : EnvironmentCommand graph)
     (publications : ∀ event, state.config.cut.Ready event →
@@ -105,7 +105,7 @@ theorem environmentStep_canonicalLaw_of_publications {profile : graph.Behavioral
     (timely : ∀ event owner, state.config.cut.Ready event → graph.actor? event = some owner →
       owner ∉ state.config.defaulted → state.WithinDeadline timeouts event)
     (moved : next ∈ (environmentStep timeouts state command).support) :
-    canonicalLaw profile next.config = canonicalLaw profile state.config := by
+    canonicalDistribution profile next.config = canonicalDistribution profile state.config := by
   cases command with
   | advanceClock =>
       simp only [environmentStep, PMF.mem_support_pure_iff] at moved
@@ -140,8 +140,8 @@ theorem environmentStep_canonicalLaw_of_publications {profile : graph.Behavioral
       · rw [same]
       · obtain ⟨owner, acting⟩ := actor_of_publication (publications event ready)
         by_cases inactive : owner ∈ state.config.defaulted
-        · exact State.canonicalLaw_of_mem_step_defaulted independent _ _ event ready owner acting
-            inactive action stepped
+        · exact State.canonicalDistribution_of_mem_step_defaulted independent _ _ event ready
+            owner acting inactive action stepped
         · have within := timely event owner ready acting inactive
           unfold State.WithinDeadline at within
           cases activated : state.activatedAt event with
@@ -158,7 +158,7 @@ theorem environmentStep_canonicalLaw_of_publications {profile : graph.Behavioral
 /-- A ledger environment step at a publication-only configuration preserves the
 canonical key law of a ready-independent opening profile at every supported
 successor, when no active owner's ready publication is due. -/
-theorem reactive_environmentStep_canonicalLaw_of_publications
+theorem reactive_environmentStep_canonicalDistribution_of_publications
     {profile : graph.BehavioralProfile}
     (independent : ReadyIndependent profile) (opens : OpensPublications profile)
     (timeouts : EventTimeouts graph)
@@ -172,8 +172,8 @@ theorem reactive_environmentStep_canonicalLaw_of_publications
       execution.application.WithinDeadline timeouts event)
     (moved : next ∈
       (execution.environmentStep ((reactiveApplication timeouts) leaks) command).support) :
-    canonicalLaw profile next.application.config =
-      canonicalLaw profile execution.application.config := by
+    canonicalDistribution profile next.application.config =
+      canonicalDistribution profile execution.application.config := by
   unfold ReactiveApplication.Execution.environmentStep at moved
   rw [PMF.support_map] at moved
   obtain ⟨updated, supported, rfl⟩ := moved
@@ -201,8 +201,8 @@ theorem reactive_environmentStep_canonicalLaw_of_publications
               simp only [ReactiveApplication.Execution.includePending,
                 MessageNetwork.includePending, found, result, Option.getD_some]
               obtain ⟨native, handled, drained⟩ := reactiveHandle_call result
-              rw [← drained, State.drain_canonicalLaw independent]
-              exact handle_canonicalLaw_of_publications independent opens timeouts _ _ _
+              rw [← drained, State.drain_canonicalDistribution independent]
+              exact handle_canonicalDistribution_of_publications independent opens timeouts _ _ _
                 publications handled
   | application operation =>
       rw [PMF.support_map] at supported
@@ -210,8 +210,8 @@ theorem reactive_environmentStep_canonicalLaw_of_publications
       change state ∈ ((environmentStep timeouts execution.application operation).map
         State.drain).support at changed
       obtain ⟨native, nativeMoved, rfl⟩ := PMF.support_map .. ▸ changed
-      exact (State.drain_canonicalLaw independent native).trans
-        (environmentStep_canonicalLaw_of_publications independent timeouts _ _ operation
+      exact (State.drain_canonicalDistribution independent native).trans
+        (environmentStep_canonicalDistribution_of_publications independent timeouts _ _ operation
           publications timely nativeMoved)
 
 /-- **Publication rounds preserve the canonical key law.** A ledger round at a
@@ -219,7 +219,7 @@ publication-only configuration preserves the canonical key law of a
 ready-independent opening profile at every supported successor, whatever the
 scheduler and player policies, when no active owner's ready publication is
 due. -/
-theorem reactive_round_canonicalLaw_of_publications {profile : graph.BehavioralProfile}
+theorem reactive_round_canonicalDistribution_of_publications {profile : graph.BehavioralProfile}
     (independent : ReadyIndependent profile) (opens : OpensPublications profile)
     (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
@@ -233,12 +233,12 @@ theorem reactive_round_canonicalLaw_of_publications {profile : graph.BehavioralP
       execution.application.WithinDeadline timeouts event)
     (reached : next ∈
       (((reactiveApplication timeouts) leaks).round scheduler players execution).support) :
-    canonicalLaw profile next.application.config =
-      canonicalLaw profile execution.application.config := by
+    canonicalDistribution profile next.application.config =
+      canonicalDistribution profile execution.application.config := by
   let app := (reactiveApplication timeouts) leaks
   obtain ⟨command, _, dispatched⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
   obtain ⟨middle, moved, resumed⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ dispatched)
-  have middleLaw := reactive_environmentStep_canonicalLaw_of_publications independent opens
+  have middleLaw := reactive_environmentStep_canonicalDistribution_of_publications independent opens
     timeouts leaks execution middle command publications timely moved
   change next ∈ (app.resume players (command.actor? app) middle).support at resumed
   cases actor : command.actor? app with
@@ -268,7 +268,7 @@ theorem exists_publication_prefix
       ∃ donor, graph.runPlan (graph.policyPlan profile graph.canonicalScheduler) count origin =
           PMF.pure donor ∧ donor.cut.IsPrefix (start + count) ∧
         Relation.ReflTransGen Config.Step origin donor ∧
-        canonicalLaw profile donor = canonicalLaw profile origin := by
+        canonicalDistribution profile donor = canonicalDistribution profile origin := by
   intro count
   induction count with
   | zero =>
@@ -286,12 +286,13 @@ theorem exists_publication_prefix
       exact pending.1 ((ordered.2 other).mpr (by omega))
     have publication := publications event le_rfl (by dsimp only [event]; omega)
     obtain ⟨owner, owned⟩ := actor_of_publication publication
-    obtain ⟨action, acting⟩ : ∃ action, actionLaw profile origin event = PMF.pure action := by
+    obtain ⟨action, acting⟩ : ∃ action, actionDistribution profile origin event =
+      PMF.pure action := by
       by_cases inactive : owner ∈ origin.defaulted
       · exact ⟨(graph.nodes event).failureAction owner owned, by
-          rw [actionLaw_of_actor profile origin owned, dite_eq_left inactive]⟩
+          rw [actionDistribution_of_actor profile origin owned, dite_eq_left inactive]⟩
       · exact ⟨EventField.openAction _ publication, by
-          rw [actionLaw_of_actor profile origin owned, dite_eq_right inactive]
+          rw [actionDistribution_of_actor profile origin owned, dite_eq_right inactive]
           exact opens origin event owner owned publication inactive⟩
     obtain ⟨next, stepLaw⟩ := origin.step_eq_pure_of_actor event ready action owner owned
     have moved : next ∈ (origin.step event ready action).support := by
@@ -304,7 +305,8 @@ theorem exists_publication_prefix
       exact ordered.complete inside
     obtain ⟨donor, law, donorOrdered, path, potential⟩ := ih (start + 1) next nextOrdered (by omega)
       (fun other lower upper => publications other (by omega) (by omega))
-    have firstPotential := State.canonicalLaw_of_mem_step_of_actionLaw independent origin next
+    have firstPotential := State.canonicalDistribution_of_mem_step_of_actionDistribution
+      independent origin next
       event ready owner owned action acting moved
     refine ⟨donor, ?_, ?_, (Relation.ReflTransGen.single ⟨event, ready, action, moved⟩).trans
       path, potential.trans firstPotential⟩
@@ -324,14 +326,14 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
 /-- A publication step that keeps all owners active executes the unique opening
 prescribed by an ordinary opening profile, even when the actor is arbitrary. -/
-theorem canonicalLaw_eq_of_clear_publication_step
+theorem canonicalDistribution_eq_of_clear_publication_step
     {profile : graph.BehavioralProfile} (independent : ReadyIndependent profile)
     (opens : EventGraphRuntime.OpensPublications profile)
     (before after : graph.Config) (event : graph.EventId) (ready : before.cut.Ready event)
     (publication : (graph.outputLayout event).IsPublication) (action : graph.Action event)
     (moved : after ∈ (before.step event ready action).support)
     (clear : after.defaulted = ∅) :
-    canonicalLaw profile after = canonicalLaw profile before := by
+    canonicalDistribution profile after = canonicalDistribution profile before := by
   obtain ⟨owner, owned⟩ := EventGraphRuntime.actor_of_publication publication
   have active : owner ∉ before.defaulted := by
     intro inactive
@@ -347,21 +349,21 @@ theorem canonicalLaw_eq_of_clear_publication_step
     have inactive := defaults action different after moved
     rw [clear] at inactive
     simp at inactive
-  apply EventGraphRuntime.State.canonicalLaw_of_mem_step_of_actionLaw independent
+  apply EventGraphRuntime.State.canonicalDistribution_of_mem_step_of_actionDistribution independent
     before after event ready owner owned action _ moved
-  rw [actionLaw_of_actor profile before owned, dite_eq_right active, actionEq]
+  rw [actionDistribution_of_actor profile before owned, dite_eq_right active, actionEq]
   exact prescribed
 
 /-- On a clear public-only graph path, ordinary-opening continuation law is
 unchanged by every actual action along the path. -/
-theorem canonicalLaw_eq_of_clear_publication_path
+theorem canonicalDistribution_eq_of_clear_publication_path
     {profile : graph.BehavioralProfile} (independent : ReadyIndependent profile)
     (opens : EventGraphRuntime.OpensPublications profile)
     {before after : graph.Config} (path : Relation.ReflTransGen Config.Step before after)
     (clear : after.defaulted = ∅)
     (publications : ∀ event : graph.EventId, event ∉ before.cut.completed →
       event ∈ after.cut.completed → (graph.outputLayout event).IsPublication) :
-    canonicalLaw profile after = canonicalLaw profile before := by
+    canonicalDistribution profile after = canonicalDistribution profile before := by
   revert clear publications
   induction path with
   | refl => intro _ _; rfl
@@ -378,7 +380,8 @@ theorem canonicalLaw_eq_of_clear_publication_path
       (fun old => ready.1 (Config.Step.path_completed_mono walked old))
       (by rw [current.step_cut event ready action next member];
           simp only [EventOrder.Cut.mem_complete]; exact Or.inl trivial)
-    have stepLaw := canonicalLaw_eq_of_clear_publication_step independent opens current next
+    have stepLaw := canonicalDistribution_eq_of_clear_publication_step independent opens current
+      next
       event ready publication action member clear
     apply stepLaw.trans (ih currentClear _)
     intro prior fresh done

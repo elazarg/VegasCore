@@ -2,7 +2,7 @@ module
 
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-public import Vegas.Game.OnePacketLawApproximation
+public import Vegas.Game.OnePacketDistributionApproximation
 public import Vegas.Source.IntendedDeparture
 
 @[expose] public section
@@ -55,7 +55,7 @@ theorem decodedState_intended_or_owes (wellFormed : setup.WellFormed)
     (profile : BehavioralProfile setup.program)
     (menu : (application setup timeouts leaks).ResponseMenu) (horizon : Nat)
     (scheduler : (application setup timeouts leaks).Scheduler) :
-    ∀ {state} (_ : (menu.protocol (initialLaw setup) horizon scheduler).Trace state)
+    ∀ {state} (_ : (menu.protocol (initialDistribution setup) horizon scheduler).Trace state)
       (control : (application setup timeouts leaks).Control), state = some control →
       DecodedState setup timeouts leaks profile (IntendedOrOwed setup) (some control) := by
   intro state trace control current

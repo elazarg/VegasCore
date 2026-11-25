@@ -34,12 +34,12 @@ def builder : ((reactiveApplication rt) leaks).Scheduler :=
   readyRosterScheduler (setup uniformPrior).dataflowGraph leaks rosters network
 
 theorem contract (prior : PMF (Player → Bid)) :
-    AsyncContract rt leaks (Vegas.initialLaw (setup prior)) steps builder
+    AsyncContract rt leaks (Vegas.initialDistribution (setup prior)) steps builder
       (fun event => event.val) (fun _ => 0) := by
-  let inputs := (setup prior).initialLaw.map (setup prior).eventInputs
-  have initial : Vegas.initialLaw (setup prior) =
-      rosterInitialLaw (setup prior).dataflowGraph inputs :=
-    serviceInitialLaw_eq_inputs (setup prior)
+  let inputs := (setup prior).initialDistribution.map (setup prior).eventInputs
+  have initial : Vegas.initialDistribution (setup prior) =
+      rosterInitialDistribution (setup prior).dataflowGraph inputs :=
+    serviceInitialDistribution_eq_inputs (setup prior)
   rw [initial]
   exact readyRoster_owner_contract (setup prior).dataflowGraph leaks inputs network
 
@@ -49,16 +49,17 @@ theorem singleOpportunity (prior : PMF (Player → Bid)) :
     bounds (ownerRoster_length_le_one (setup prior).dataflowGraph)
 
 instance finiteNature (prior : PMF (Player → Bid)) :
-    ((reactiveApplication rt) leaks).FiniteNature (Vegas.initialLaw (setup prior)) builder := by
-  let inputs := (setup prior).initialLaw.map (setup prior).eventInputs
-  have initial : Vegas.initialLaw (setup prior) =
-      rosterInitialLaw (setup prior).dataflowGraph inputs :=
-    serviceInitialLaw_eq_inputs (setup prior)
+    ((reactiveApplication rt) leaks).FiniteNature (Vegas.initialDistribution
+      (setup prior)) builder := by
+  let inputs := (setup prior).initialDistribution.map (setup prior).eventInputs
+  have initial : Vegas.initialDistribution (setup prior) =
+      rosterInitialDistribution (setup prior).dataflowGraph inputs :=
+    serviceInitialDistribution_eq_inputs (setup prior)
   rw [initial]
   let : Fact inputs.support.Finite := ⟨by
-    rw [show inputs = (setup prior).initialLaw.map (setup prior).eventInputs from rfl,
+    rw [show inputs = (setup prior).initialDistribution.map (setup prior).eventInputs from rfl,
       PMF.support_map]
-    exact (setup prior).initialLaw_support_finite.image _⟩
+    exact (setup prior).initialDistribution_support_finite.image _⟩
   let finiteLeaks : leaks.FiniteSupport :=
     inferInstanceAs (MessageNetwork.ObservationRule.allPending
       (Principal := Player) (Payload := WitnessedPacket graph)).FiniteSupport
@@ -74,7 +75,7 @@ def specification (prior : PMF (Player → Bid)) :=
 joint law of truthful terminal configurations and bidder surplus for every joint prior. -/
 theorem native_equilibrium (prior : PMF (Player → Bid)) :
     ∃ compiled : ClientCompilation (specification prior) (truthfulAssessment prior),
-      ((bounds.rawMenu rt leaks).run (Vegas.initialLaw (setup prior)) steps builder
+      ((bounds.rawMenu rt leaks).run (Vegas.initialDistribution (setup prior)) steps builder
         compiled.assessment.strategy).bind (fun final =>
           (specification prior).observation final.state) =
           prior.map (fun types => (some (finalConfig types (types .alice) (types .bob)),

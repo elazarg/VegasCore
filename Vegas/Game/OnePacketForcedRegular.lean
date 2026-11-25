@@ -166,12 +166,14 @@ omit [Fintype Player] in
 theorem publicRecord_of_transition {who : Player}
     {current next : (application setup timeouts leaks).Control}
     (joint : Player → Option (application setup timeouts leaks).Action)
-    (realized : some next ∈ ((application setup timeouts leaks).transition (initialLaw setup)
+    (realized : some next ∈ ((application setup timeouts leaks).transition
+      (initialDistribution setup)
       horizon
       scheduler (some current) joint).support)
     (record : PublicRecord setup timeouts who next) : PublicRecord setup timeouts who current := by
   intro other different excluded
-  exact record other different ((reactive_protocol_defaulted_mono timeouts) leaks (initialLaw setup)
+  exact record other different ((reactive_protocol_defaulted_mono timeouts) leaks
+    (initialDistribution setup)
     horizon scheduler current next joint realized excluded)
 
 omit [Fintype Player] in
@@ -199,13 +201,14 @@ theorem PublicRecord.bindingAccepted {who : Player}
       control.execution.application.config.cut.completed) :
     control.execution.application.accepted (.inr event) ≠ none := by
   intro missing
-  have raw := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup)
+  have raw := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup)
     horizon scheduler trace
-  change (((reactiveApplication timeouts) leaks).protocol (initialLaw setup)
+  change (((reactiveApplication timeouts) leaks).protocol (initialDistribution setup)
     horizon scheduler).Trace (some control) at raw
-  rw [initialLaw, serviceInitialLaw_eq_inputs (deps := setup.informationDependencies) setup] at raw
+  rw [initialDistribution, serviceInitialDistribution_eq_inputs
+    (deps := setup.informationDependencies) setup] at raw
   have valid := ExclusionEvidence.history timeouts leaks
-    (setup.initialLaw.map setup.eventInputs) horizon scheduler raw
+    (setup.initialDistribution.map setup.eventInputs) horizon scheduler raw
   apply record owner different
   exact (valid.defaulted_zero owner).mpr ⟨event, actor_of_binding layout,
     Or.inl ((control.execution.application.publicView_missedBinding event owner payload layout).mpr
@@ -259,10 +262,10 @@ theorem intended_of_regular (wellFormed : setup.WellFormed)
           ownPrior
       subst current
       have realizedRaw : some control ∈ ((application setup timeouts leaks).transition
-        (initialLaw setup) horizon scheduler before joint).support := realized
+        (initialDistribution setup) horizon scheduler before joint).support := realized
       cases before with
       | none =>
-          change some control ∈ ((initialLaw setup).map fun state => some
+          change some control ∈ ((initialDistribution setup).map fun state => some
             (⟨horizon, none, ReactiveApplication.Execution.initial (application setup timeouts
               leaks)
               state⟩ : (application setup timeouts leaks).Control)).support at realizedRaw
@@ -296,7 +299,8 @@ theorem intended_of_regular (wellFormed : setup.WellFormed)
           have priorClear : current.execution.application.config.defaulted = ∅ := by
             apply Finset.eq_empty_iff_forall_notMem.mpr
             intro player excluded
-            have later := (reactive_protocol_defaulted_mono timeouts) leaks (initialLaw setup)
+            have later := (reactive_protocol_defaulted_mono timeouts) leaks
+              (initialDistribution setup)
               horizon scheduler current control joint realizedRaw excluded
             rw [clear] at later
             exact Finset.notMem_empty player later
@@ -316,7 +320,8 @@ theorem intended_of_regular (wellFormed : setup.WellFormed)
               obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (timeouts := timeouts)
                 (failureProfile setup.program) (bounds.onePacketMenu timeouts leaks)
                   horizon scheduler prior current rfl
-              rcases (reactive_protocol_config_eq_or_step_of_clear timeouts) leaks (initialLaw
+              rcases (reactive_protocol_config_eq_or_step_of_clear timeouts) leaks
+                (initialDistribution
                 setup)
                   horizon scheduler current control joint realizedRaw clear with
                     same | ⟨event, ready, action, member⟩
@@ -328,7 +333,7 @@ theorem intended_of_regular (wellFormed : setup.WellFormed)
               refine ⟨target, afterEq, ProtocolState.intended_step_of_actors setup.program
                 point _ target intended (fun player acts => ?_) reached⟩
               have rawPrior := (bounds.onePacketMenu timeouts leaks).toRawTrace
-                (initialLaw setup) horizon scheduler prior
+                (initialDistribution setup) horizon scheduler prior
               rw [decodedPoint_actor_of_history player rawPrior ready decodedCurrent] at acts
               by_cases own : player = who
               · subst player
@@ -338,7 +343,8 @@ theorem intended_of_regular (wellFormed : setup.WellFormed)
                   (ownPrior.current current rfl point decodedCurrent)
                   ((eventOwner?_eq_actor setup.program event).trans acts) reached
                   (ownIntended.current control rfl target afterEq)
-              rcases transition_idle_cases (timeouts := timeouts) (initialLaw setup) horizon
+              rcases transition_idle_cases (timeouts := timeouts)
+                (initialDistribution setup) horizon
                   scheduler current acting joint realizedRaw with sameExecution | ⟨command, moved⟩
               · exact (config_ne_of_step member (by rw [sameExecution])).elim
               have active : player ∉ current.execution.application.config.defaulted := by
@@ -372,9 +378,10 @@ theorem intended_of_regular (wellFormed : setup.WellFormed)
                 have positive := unsettledContent_pos (timeouts := timeouts) assessment who prior
                   regularPrior
                 have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace
-                  (initialLaw setup) horizon scheduler (prior.extend joint legal realized)
+                  (initialDistribution setup) horizon scheduler (prior.extend joint legal realized)
                 have facts := legalFacts setup leaks horizon scheduler control rawTrace
-                have inputsEq := transition_idle_inputs (timeouts := timeouts) (initialLaw setup)
+                have inputsEq := transition_idle_inputs (timeouts := timeouts)
+                  (initialDistribution setup)
                   horizon scheduler current acting joint realizedRaw
                 have carried : message ∈ current.execution.network.inputs := by
                   rw [← inputsEq]
@@ -454,7 +461,8 @@ theorem forcedState_of_regular (wellFormed : setup.WellFormed)
       who}
     {past : List (application setup timeouts leaks).PlayerEntry}
     {view : (application setup timeouts leaks).PlayerView} (decision : site.1 = some (past, view))
-    (forced : forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks) (initialLaw
+    (forced : forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks)
+      (initialDistribution
       setup) horizon
       scheduler who site.1)
     (history : (onePacketInformation setup timeouts leaks bounds horizon
@@ -525,7 +533,8 @@ def ForcedBeliefInputs.ofRegularHistories
       site.1)]
     [DecidableEq (setup.intendedModel.InformationHistory who sourceSite.1)]
     {scale floors : ℕ → ℝ} {depth : ℕ} {slack : ℝ} {n : ℕ} (wellFormed : setup.WellFormed)
-    (forced : forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks) (initialLaw
+    (forced : forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks)
+      (initialDistribution
       setup) horizon
       scheduler who site.1)
     (decision : site.1 = some (past, view)) {event : setup.informationGraph.EventId}

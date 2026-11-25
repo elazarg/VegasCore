@@ -52,7 +52,7 @@ theorem ownCompletionsIntended_and_publicRecord_of_tracePrefix
       refine ih own.1 fun control same => ?_
       subst same
       obtain ⟨next, rfl, _⟩ := (application setup timeouts leaks).transition_recall_prefix
-        (initialLaw setup)
+        (initialDistribution setup)
         horizon scheduler control target joint realized
       exact publicRecord_of_transition (timeouts := timeouts) (horizon := horizon)
         joint realized (record next rfl)

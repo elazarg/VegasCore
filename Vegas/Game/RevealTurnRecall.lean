@@ -97,7 +97,8 @@ theorem roundsFrom_responsesActivated
     {players : Player → (serviceApplication setup deps duration leaks).Policy} (count : Nat)
     (execution : (serviceApplication setup deps duration leaks).Execution)
     (supported : execution ∈
-        ((serviceApplication setup deps duration leaks).roundsFrom (serviceInitialLaw setup deps)
+        ((serviceApplication setup deps duration leaks).roundsFrom
+          (serviceInitialDistribution setup deps)
         scheduler players count).support) :
     ResponsesActivated setup leaks execution := by
   let app := serviceApplication setup deps duration leaks
@@ -108,7 +109,8 @@ theorem roundsFrom_responsesActivated
       intro who answer member
       cases member
   | succ count ih =>
-      rw [app.roundsFrom_succ (serviceInitialLaw setup deps) scheduler players count] at supported
+      rw [app.roundsFrom_succ (serviceInitialDistribution setup deps) scheduler players count]
+        at supported
       obtain ⟨prior, priorMem, moved⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
       exact round_responsesActivated setup leaks (ih prior priorMem) moved
 

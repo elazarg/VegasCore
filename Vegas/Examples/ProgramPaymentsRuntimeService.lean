@@ -53,9 +53,10 @@ theorem binding_values_covered (bonus : Int) : (bounds bonus).CoversBindingValue
   · trivial
 
 theorem initial_values_covered (bonus : Int) :
-    ∀ state ∈ (initialLaw (setup bonus)).support, (bounds bonus).CandidateValues state := by
+    ∀ state ∈ (initialDistribution (setup bonus)).support,
+      (bounds bonus).CandidateValues state := by
   intro state supported
-  change state ∈ ((setup bonus).initialLaw.map
+  change state ∈ ((setup bonus).initialDistribution.map
     (fun initial => EventGraphRuntime.State.initial (graph := (setup bonus).informationGraph)
       ((setup bonus).eventInputs initial))).support
     at supported

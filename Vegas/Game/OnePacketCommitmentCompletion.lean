@@ -42,7 +42,7 @@ game, a transmission of the one-packet menu committing an event to a prepared
 slot of the player carries no evidence, and the slot is fresh before the
 response. -/
 theorem onePacket_commitment_fresh {control : (application setup timeouts leaks).Control}
-    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some control))
     (who : Player) (response : (application setup timeouts leaks).Action)
     (member : response ∈ bounds.onePacketActions timeouts leaks who
@@ -53,10 +53,10 @@ theorem onePacket_commitment_fresh {control : (application setup timeouts leaks)
     {serial : Nat} (packet : material.call.packet = .commitment event (who, .prepared serial)) :
     control.execution.application.candidates.lookup (who, .prepared serial) = .fresh ∧
       material.evidence = .none := by
-  have rawTrace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+  have rawTrace : ((application setup timeouts leaks).protocol (initialDistribution setup) horizon
     scheduler).Trace
       (some control) :=
-    (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon scheduler
+    (bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup) horizon scheduler
       trace
   have recalled := (countRecall_history timeouts) leaks rawTrace
   obtain ⟨effective, permitted⟩ := (bounds.mem_onePacketActions timeouts leaks who _ _
@@ -127,7 +127,7 @@ after the submission is a successful value leaves the acceptance invariant at
 the state it reaches, and the slot's meaning there is that value. -/
 theorem acceptanceInvariant_respond_commitment {remaining : Nat} {who : Player}
     {execution : (application setup timeouts leaks).Execution}
-    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some ⟨remaining, some who, execution⟩))
     (event : setup.informationGraph.EventId)
     (turn : execution.application.publicView.ownTurn? who = some event)
@@ -142,7 +142,7 @@ theorem acceptanceInvariant_respond_commitment {remaining : Nat} {who : Player}
     (after : material.call.candidateAfter who
       (execution.observe (application setup timeouts leaks) who).application.candidates
       (.prepared serial) = .openable ⟨payload, value⟩)
-    (afterTrace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup)
+    (afterTrace : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup)
       horizon scheduler).Trace (some ⟨remaining, none,
         execution.respond (application setup timeouts leaks) who response⟩)) :
     AcceptanceInvariant setup timeouts leaks bounds horizon scheduler who
@@ -156,10 +156,10 @@ theorem acceptanceInvariant_respond_commitment {remaining : Nat} {who : Player}
       (execution.respond (application setup timeouts leaks) who
         response).application.candidates.lookup
         (who, .prepared serial) = .openable ⟨payload, value⟩ := by
-  have rawTrace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+  have rawTrace : ((application setup timeouts leaks).protocol (initialDistribution setup) horizon
     scheduler).Trace
       (some ⟨remaining, some who, execution⟩) :=
-    (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon scheduler
+    (bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup) horizon scheduler
       trace
   have ready := (execution.application.publicView_eventReady event).mp
     (PublicView.ownTurn?_spec _ who event turn).1
@@ -192,9 +192,9 @@ theorem acceptanceInvariant_respond_commitment {remaining : Nat} {who : Player}
       response).application.bindingResult (who, .prepared serial) payload = .success value := by
     simp only [State.bindingResult, lookupAfter, Raw.as?_mk, Option.elim_some]
   have serials := (application setup timeouts leaks).serialsBeforeNext_history scheduler
-    (initialLaw setup) horizon rawTrace
+    (initialDistribution setup) horizon rawTrace
   have identifiers := (application setup timeouts leaks).receipt_identifiers_history
-    (initialLaw setup) horizon scheduler _ rawTrace
+    (initialDistribution setup) horizon scheduler _ rawTrace
   have callEq : (sentEnvelope timeouts leaks execution who material).payload.call =
       .commitment event (who, .prepared serial) := by
     rcases material with ⟨call, evidence⟩
@@ -237,7 +237,7 @@ theorem acceptanceInvariant_respond_commitment {remaining : Nat} {who : Player}
 is recorded as a fresh call. Only the actual window is needed. -/
 theorem onePacket_commitment_freshCall {bound : setup.informationGraph.EventId → Nat}
     {remaining : Nat} {who : Player} {execution : (application setup timeouts leaks).Execution}
-    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some ⟨remaining, some who, execution⟩))
     (event : setup.informationGraph.EventId)
     (turn : execution.application.publicView.ownTurn? who = some event)
@@ -254,10 +254,10 @@ theorem onePacket_commitment_freshCall {bound : setup.informationGraph.EventId �
     (packet : material.call.packet = .commitment event (who, .prepared serial)) :
     FreshCall timeouts leaks who event bound (respondEntry timeouts leaks execution who response)
       (sentEnvelope timeouts leaks execution who material) := by
-  have rawTrace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+  have rawTrace : ((application setup timeouts leaks).protocol (initialDistribution setup) horizon
     scheduler).Trace
       (some ⟨remaining, some who, execution⟩) :=
-    (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon scheduler
+    (bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup) horizon scheduler
       trace
   have facts := legalFacts setup leaks horizon scheduler _ rawTrace
   have readyView := (PublicView.ownTurn?_spec _ who event turn).1

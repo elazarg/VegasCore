@@ -16,7 +16,7 @@ whose phase it lies in, that event's readiness, and that it is the only ready
 event (`Vegas.ReadySite`). No plan position, roster or calendar is involved.
 
 The source continuation from the initial boundary, averaged over the native
-prior, is the source law (`Vegas.initialLaw_bind_sourceContinuation`).
+prior, is the source law (`Vegas.initialDistribution_bind_sourceContinuation`).
 -/
 
 noncomputable section
@@ -49,16 +49,17 @@ variable (setup : Setup (Player := Player) (L := L))
 
 /-- The source continuation from the initial boundary, averaged over the
 native prior, is the source law. -/
-theorem initialLaw_bind_sourceContinuation (profile : BehavioralProfile setup.program) :
-    (initialLaw setup).bind (fun state => sourceContinuation setup profile 0 state.config) =
+theorem initialDistribution_bind_sourceContinuation (profile : BehavioralProfile setup.program) :
+    (initialDistribution setup).bind (fun state => sourceContinuation setup profile 0 state.config)
+      =
       (setup.run profile).map some := by
-  rw [initialLaw, serviceInitialLaw, PMF.bind_map, Setup.run, PMF.map_bind]
+  rw [initialDistribution, serviceInitialDistribution, PMF.bind_map, Setup.run, PMF.map_bind]
   congr 1
   funext initial
   change sourceContinuation setup profile 0
     (EventGraph.Config.initial (graph := setup.informationGraph) (setup.eventInputs initial)) = _
-  simp only [sourceContinuation, serviceSourcePrefix?_initial, Setup.continuationLaw,
-    ProtocolState.continuationLaw_entry]
+  simp only [sourceContinuation, serviceSourcePrefix?_initial, Setup.continuationDistribution,
+    ProtocolState.continuationDistribution_entry]
   rfl
 
 variable {setup leaks} [Fintype Player]
@@ -67,18 +68,19 @@ end Initialized
 
 /-- The complete clients preserve every observation of the original source's
 typed state and public defaults once their first-turn source law holds. -/
-theorem sourceServiceClientPolicy_outcome_law_of_firstTurn
+theorem sourceServiceClientPolicy_source_observation_distribution_eq_of_firstTurn
     {setup : Setup (Player := Player) (L := L)} {deps : setup.dataflowGraph.Dependencies}
     {duration : (serviceGraph setup deps).EventId → Nat}
     {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup deps))}
     {horizon turns : Nat} {scheduler : (serviceApplication setup deps duration leaks).Scheduler}
     {bound : (serviceGraph setup deps).EventId → Nat}
     (original : BehavioralProfile setup.program)
-    (terminal : FirstTurnSourceLaw setup deps duration leaks horizon scheduler bound turns
+    (terminal : FirstTurnSourceAgreement setup deps duration leaks horizon scheduler bound turns
       (normalizeDisclosureProfile setup.program original))
     {Outcome : Type*}
     (read : State L setup.program.terminalCtx × DefaultHistory Player → Outcome) :
-    ((serviceApplication setup deps duration leaks).roundsFrom (serviceInitialLaw setup deps)
+    ((serviceApplication setup deps duration leaks).roundsFrom
+      (serviceInitialDistribution setup deps)
       scheduler (serviceClientPolicy setup deps duration leaks bound turns
         (firstTurnTiming setup turns deps) (normalizeDisclosureProfile setup.program original))
       horizon).map (fun execution =>
@@ -102,18 +104,21 @@ variable (setup : Setup (Player := Player) (L := L))
 
 /-- Project a full ledger-to-graph configuration law through the typed terminal decoder.
 The ledger clients and the reference graph profile can be arbitrary. -/
-theorem sourceReadout_law_of_config_law
+theorem sourceReadout_distribution_of_config_distribution
     {horizon : Nat} {scheduler : (application setup timeouts leaks).Scheduler}
     {players : Player → (application setup timeouts leaks).Policy}
     (reference : setup.informationGraph.BehavioralProfile)
-    (law : ((application setup timeouts leaks).roundsFrom (initialLaw setup) scheduler players
+    (law : ((application setup timeouts leaks).roundsFrom (initialDistribution setup) scheduler
+      players
       horizon).map (fun final => final.application.config) =
-        ((setup.informationGraph.canonicalGame (setup.initialLaw.map setup.eventInputs)).play
+        ((setup.informationGraph.canonicalGame (setup.initialDistribution.map
+          setup.eventInputs)).play
           reference).map Subtype.val) :
-    ((application setup timeouts leaks).roundsFrom (initialLaw setup) scheduler players horizon).map
+    ((application setup timeouts leaks).roundsFrom (initialDistribution setup) scheduler players
+      horizon).map
         (fun final => sourceReadout setup timeouts leaks
           ((application setup timeouts leaks).finished final)) =
-      ((setup.informationGraph.canonicalGame (setup.initialLaw.map setup.eventInputs)).play
+      ((setup.informationGraph.canonicalGame (setup.initialDistribution.map setup.eventInputs)).play
         reference).map (fun final => some (terminalConfig setup.program final)) := by
   let read := fun config : setup.informationGraph.Config => decodeConfig? setup.program
     setup.program (ContextRefs.initial setup.context (outputLayout setup.program))
@@ -128,7 +133,7 @@ theorem sourceReadout_law_of_config_law
   have mapped := congrArg (PMF.map read) law
   simp only [PMF.map_comp, Function.comp_def] at mapped
   refine (map_congr_on_support _ fun final _ => native final).trans (mapped.trans ?_)
-  let graphLaw := (setup.informationGraph.canonicalGame (setup.initialLaw.map
+  let graphLaw := (setup.informationGraph.canonicalGame (setup.initialDistribution.map
     setup.eventInputs)).play reference
   exact map_congr_on_support graphLaw fun final _ => decodeConfig?_terminal setup.program final
 

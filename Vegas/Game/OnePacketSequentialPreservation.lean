@@ -3,9 +3,9 @@ module
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 public import Vegas.Game.OnePacketComponents
-public import Vegas.Game.OnePacketSlotLaw
+public import Vegas.Game.OnePacketSlotDistribution
 public import Vegas.Game.OnePacketExtension
-public import Vegas.Game.OnePacketLawApproximation
+public import Vegas.Game.OnePacketDistributionApproximation
 public import GameTheoryExtensions.Analysis.Protocol.FreeKeyedPools
 public import Vegas.Game.OnePacketDelivery
 public import Vegas.Game.OnePacketIntendedProjection
@@ -47,17 +47,18 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr} [IExp
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
   (bounds : MessageBounds setup.informationGraph) (horizon : Nat)
   (scheduler : (application setup timeouts leaks).Scheduler)
-  [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
+  [(application setup timeouts leaks).FiniteNature (initialDistribution setup) scheduler]
   [Finite setup.intendedProtocol.History]
 
-local notation "Initial" => initialLaw setup
+local notation "Initial" => initialDistribution setup
 
 section Certificate
 
 local notation "onePacketN" =>
-  onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+  onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
 
-variable [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+variable [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds
+    (initialDistribution setup) horizon
   scheduler).InfoState who)]
 
 /-- The fallback of the one-packet certificate: some choice at every information
@@ -72,7 +73,8 @@ def onePacketUnforced (scale : ℕ → ℝ) (scale_pos : ∀ n, 0 < scale n)
     (scale_le_one : ∀ n, scale n ≤ 1) (n : ℕ)
     (agent : (onePacketN).InformationAgent (onePacketN).playedInformation) :
     (onePacketN).Choice agent.1 agent.2.1 → PMF ((onePacketN).Choice agent.1 agent.2.1) :=
-  unforcedLaw setup timeouts leaks bounds Initial horizon scheduler (scale n) (scale_pos n).le
+  unforcedDistribution setup timeouts leaks bounds Initial horizon scheduler (scale n)
+    (scale_pos n).le
     (scale_le_one n) agent
 
 open Classical in
@@ -115,22 +117,26 @@ theorem onePacketMixture_ge_honest_of_not_late
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (scale : ℕ → ℝ) (scale_pos : ∀ n, 0 < scale n) (scale_le_one : ∀ n, scale n ≤ 1)
     {slots : Nat} (n : ℕ)
-    (weights : ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
+    (weights : ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialDistribution setup)
       horizon scheduler slots p))
     {who : Player} {info : (application setup timeouts leaks).Info}
     (notLate : ¬ LateDelivery setup timeouts leaks who info)
-    (occurs : ∃ history : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup)
+    (occurs : ∃ history : ((bounds.onePacketMenu timeouts leaks).protocol
+      (initialDistribution setup)
       horizon scheduler).History, (onePacketN).infoOf who history.trace = info)
-    (forced : forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks) (initialLaw
+    (forced : forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks)
+      (initialDistribution
       setup) horizon
       scheduler who info)
     (clear : info.isSome → (ClearInput timeouts) leaks info)
     (choice : (onePacketN).Choice who info) :
-    slotRetention (scale n) * ((honestProfile setup timeouts leaks bounds (initialLaw setup) horizon
+    slotRetention (scale n) * ((honestProfile setup timeouts leaks bounds
+      (initialDistribution setup) horizon
         scheduler (sequence n) who info) choice).toReal ≤
       (((onePacketN).agentBehavior (onePacketN).playedInformation
         (onePacketFallback setup timeouts leaks bounds horizon scheduler)
-        (fun agent => (weights (onePacketPool setup timeouts leaks bounds (initialLaw setup)
+        (fun agent => (weights (onePacketPool setup timeouts leaks bounds
+          (initialDistribution setup)
           horizon scheduler
           agent)).bind
           (freeKeyedComponent
@@ -157,16 +163,18 @@ theorem onePacketMixture_ge_honest_of_not_late
   by_cases present : info ∈ (onePacketN).playedInformation who
   · let agent : (onePacketN).InformationAgent (onePacketN).playedInformation :=
       ⟨who, ⟨info, present⟩⟩
-    have notFree : ¬ FreeAgent setup timeouts leaks bounds (initialLaw setup)
+    have notFree : ¬ FreeAgent setup timeouts leaks bounds (initialDistribution setup)
       horizon scheduler agent :=
       fun unforced => unforced ⟨actualClear, forced⟩
-    have notKeyed : ¬ ownedKeyed (FreeAgent setup timeouts leaks bounds (initialLaw setup)
+    have notKeyed : ¬ ownedKeyed (FreeAgent setup timeouts leaks bounds (initialDistribution setup)
       horizon scheduler)
-        (LateDeliveryAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler)
+        (LateDeliveryAgent setup timeouts leaks bounds (initialDistribution setup) horizon
+          scheduler)
           agent :=
       fun keyed => notLate keyed.1
     obtain ⟨identify, componentEq⟩ := freeKeyedComponent_of_not_free
-      (key := agentLateKey setup timeouts leaks bounds (initialLaw setup) horizon scheduler)
+      (key := agentLateKey setup timeouts leaks bounds (initialDistribution setup) horizon
+        scheduler)
       (onePacketUnforced setup timeouts leaks bounds horizon scheduler scale scale_pos scale_le_one
         n)
       (onePacketPrescribed setup timeouts leaks bounds horizon scheduler sequence scale scale_pos
@@ -186,7 +194,7 @@ theorem onePacketMixture_ge_honest_of_not_late
       exact keyedComponent_of_not_keyed _ _ notKeyed _
     have atAgent := (onePacketN).agentBehavior_at (onePacketN).playedInformation
       (onePacketFallback setup timeouts leaks bounds horizon scheduler)
-      (fun agent => (weights (onePacketPool setup timeouts leaks bounds (initialLaw setup)
+      (fun agent => (weights (onePacketPool setup timeouts leaks bounds (initialDistribution setup)
         horizon scheduler
         agent)).bind
         (freeKeyedComponent
@@ -198,7 +206,7 @@ theorem onePacketMixture_ge_honest_of_not_late
           (onePacketLate setup timeouts leaks bounds horizon scheduler sequence scale scale_pos
             scale_le_one (slots := slots) n) agent)) agent
     change _ ≤ (((onePacketN).agentBehavior _ _ _ agent.1 agent.2.1) choice).toReal
-    have mixture : (weights (onePacketPool setup timeouts leaks bounds (initialLaw setup)
+    have mixture : (weights (onePacketPool setup timeouts leaks bounds (initialDistribution setup)
       horizon scheduler agent)).bind
         (freeKeyedComponent
           (onePacketUnforced setup timeouts leaks bounds horizon scheduler scale scale_pos
@@ -222,14 +230,18 @@ theorem onePacketMixture_ge_honest_of_not_late
             scale_le_one n agent from funext constant]
       exact PMF.bind_const _ _
     rw [atAgent]
-    refine le_of_le_of_eq (slotTrembledChoice_ge_main setup timeouts leaks bounds (initialLaw
+    refine le_of_le_of_eq (slotTrembledChoice_ge_main setup timeouts leaks bounds
+      (initialDistribution
       setup) horizon
       scheduler (scale_pos n).le (scale_le_one n) who info
-      (honestChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler (sequence n)
+      (honestChoice setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
+        (sequence n)
         who info)
-      (PMF.pure (silenceChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler who
+      (PMF.pure (silenceChoice setup timeouts leaks bounds
+        (initialDistribution setup) horizon scheduler who
         info))
-      (slotChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler (sequence n) who
+      (slotChoice setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
+        (sequence n) who
         info)
       choice) ?_
     exact congrArg (fun law => (law choice).toReal) mixture.symm
@@ -244,7 +256,7 @@ theorem onePacketMixture_ge_honest_of_not_late
           apply (onePacketN).mem_playedInformation
           have active : (application setup timeouts leaks).observe who history.state = some
             observed :=
-            ((bounds.onePacketMenu timeouts leaks).info (initialLaw setup) horizon
+            ((bounds.onePacketMenu timeouts leaks).info (initialDistribution setup) horizon
               scheduler who history.trace).symm.trans (infoEq.trans infoCase)
           have isSome := ((application setup timeouts leaks).observe_isSome who history.state).mp
             (by rw [active]; rfl)
@@ -264,12 +276,12 @@ pool's weights. -/
 def OnePacketAssembled (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (scale : ℕ → ℝ) (scale_pos : ∀ n, 0 < scale n) (scale_le_one : ∀ n, scale n ≤ 1)
     {slots : Nat}
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialDistribution setup)
       horizon scheduler slots p))
     (targetSequence : ℕ → (onePacketN).BehavioralAssessment) : Prop :=
   ∀ n, (targetSequence n).strategy = (onePacketN).agentBehavior (onePacketN).playedInformation
     (onePacketFallback setup timeouts leaks bounds horizon scheduler)
-    fun agent => (weights n (onePacketPool setup timeouts leaks bounds (initialLaw setup)
+    fun agent => (weights n (onePacketPool setup timeouts leaks bounds (initialDistribution setup)
       horizon scheduler agent)).bind
       (freeKeyedComponent
         (onePacketUnforced setup timeouts leaks bounds horizon scheduler scale scale_pos

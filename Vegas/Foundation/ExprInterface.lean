@@ -72,10 +72,10 @@ structure IExpr where
   /-- Typed distribution syntax. -/
   DistExpr : Ctx Ty → Ty → Type
   /-- Evaluate distribution syntax to an exact, normalized rational table.
-  This table is retained for execution lowering; semantic game laws are
-  derived from it with `RationalLaw.denote`. -/
-  evalLaw : {Γ : Ctx Ty} → {τ : Ty} →
-    DistExpr Γ τ → Env Val Γ → RationalLaw (Val τ)
+  Execution lowering retains this table. Game semantics uses the PMF returned by
+  `RationalDistribution.denote`. -/
+  evalRationalDistribution : {Γ : Ctx Ty} → {τ : Ty} →
+    DistExpr Γ τ → Env Val Γ → RationalDistribution (Val τ)
   /-- Static over-approximation of variables a distribution reads. -/
   distDeps : {Γ : Ctx Ty} → {τ : Ty} → DistExpr Γ τ → Finset VarId
   /-- Distribution dependency sets mention only variables available in the
@@ -83,21 +83,21 @@ structure IExpr where
   dist_deps_context :
     ∀ {Γ : Ctx Ty} {τ : Ty} (d : DistExpr Γ τ),
       ∀ x, x ∈ distDeps d → x ∈ Γ.map Prod.fst
-  /-- Evaluate an exact law from values for only its declared dependencies. -/
-  evalLawDeps :
+  /-- Evaluate an exact distribution using only values of its declared dependencies. -/
+  evalRationalDistributionDeps :
     {Γ : Ctx Ty} → {τ : Ty} → (d : DistExpr Γ τ) →
       ((x : VarId) → (σ : Ty) → HasVar Γ x σ → x ∈ distDeps d → Val σ) →
-        RationalLaw (Val τ)
+        RationalDistribution (Val τ)
   /-- Dependency-local expression evaluation agrees with full-environment
   evaluation when supplied by that environment. -/
   evalDeps_eq_eval :
     ∀ {Γ : Ctx Ty} {τ : Ty} (e : Expr Γ τ) (ρ : Env Val Γ),
       evalDeps e (fun x σ h _ => ρ x σ h) = eval e ρ
-  /-- Dependency-local exact-law evaluation agrees with full-environment
+  /-- Dependency-local evaluation of rational distributions agrees with full-environment
   evaluation when supplied by that environment. -/
-  evalLawDeps_eq_evalLaw :
+  evalRationalDistributionDeps_eq :
     ∀ {Γ : Ctx Ty} {τ : Ty} (d : DistExpr Γ τ) (ρ : Env Val Γ),
-      evalLawDeps d (fun x σ h _ => ρ x σ h) = evalLaw d ρ
+      evalRationalDistributionDeps d (fun x σ h _ => ρ x σ h) = evalRationalDistribution d ρ
 
 namespace IExpr
 
@@ -112,11 +112,12 @@ theorem expr_deps_sound (L : IExpr) {Γ : Ctx L.Ty} {τ : L.Ty}
   exact agrees x σ h member
 
 /-- Dependency-local evaluation makes exact-law dependency tracking sound. -/
-theorem law_deps_sound (L : IExpr) {Γ : Ctx L.Ty} {τ : L.Ty}
+theorem rationalDistribution_deps_sound (L : IExpr) {Γ : Ctx L.Ty} {τ : L.Ty}
     (law : L.DistExpr Γ τ) (left right : Env L.Val Γ)
     (agrees : AgreesOn left right (L.distDeps law)) :
-    L.evalLaw law left = L.evalLaw law right := by
-  rw [← L.evalLawDeps_eq_evalLaw law left, ← L.evalLawDeps_eq_evalLaw law right]
+    L.evalRationalDistribution law left = L.evalRationalDistribution law right := by
+  rw [← L.evalRationalDistributionDeps_eq law left, ←
+    L.evalRationalDistributionDeps_eq law right]
   congr 1
   funext x σ h member
   exact agrees x σ h member
@@ -135,13 +136,13 @@ class ResultTypes (L : IExpr) where
 finite probability law. -/
 noncomputable def evalDist (L : IExpr) {Γ : Ctx L.Ty} {τ : L.Ty}
     (dist : L.DistExpr Γ τ) (env : Env L.Val Γ) : PMF (L.Val τ) :=
-  (L.evalLaw dist env).denote
+  (L.evalRationalDistribution dist env).denote
 
 /-- Every distribution expression denotes an exact finite table, so its
 semantic law has finite support. -/
 theorem evalDist_support_finite (L : IExpr) {Γ : Ctx L.Ty} {τ : L.Ty}
     (dist : L.DistExpr Γ τ) (env : Env L.Val Γ) : (L.evalDist dist env).support.Finite :=
-  (L.evalLaw dist env).denote_support_finite
+  (L.evalRationalDistribution dist env).denote_support_finite
 
 /-- Dependency-local semantic distribution evaluation, derived from the
 retained exact rational table. -/
@@ -150,9 +151,9 @@ noncomputable def evalDistDeps (L : IExpr) {Γ : Ctx L.Ty} {τ : L.Ty}
     (env :
       (x : VarId) → (σ : L.Ty) → HasVar Γ x σ →
         x ∈ L.distDeps dist → L.Val σ) : PMF (L.Val τ) :=
-  (L.evalLawDeps dist env).denote
+  (L.evalRationalDistributionDeps dist env).denote
 
-/-- Dependency-local and full-environment semantic laws agree because their
+/-- Dependency-local and full-environment PMFs agree because their
 retained exact tables agree. -/
 theorem evalDistDeps_eq_evalDist (L : IExpr)
     {Γ : Ctx L.Ty} {τ : L.Ty} (dist : L.DistExpr Γ τ)
@@ -160,7 +161,7 @@ theorem evalDistDeps_eq_evalDist (L : IExpr)
     L.evalDistDeps dist (fun x σ h _ => env x σ h) =
       L.evalDist dist env := by
   unfold evalDistDeps evalDist
-  rw [L.evalLawDeps_eq_evalLaw]
+  rw [L.evalRationalDistributionDeps_eq]
 
 /-- Semantic distribution evaluation depends only on the declared
 distribution dependencies. -/
@@ -170,7 +171,7 @@ theorem dist_deps_sound (L : IExpr)
     (hagrees : AgreesOn left right (L.distDeps dist)) :
     L.evalDist dist left = L.evalDist dist right := by
   unfold evalDist
-  rw [L.law_deps_sound dist left right hagrees]
+  rw [L.rationalDistribution_deps_sound dist left right hagrees]
 
 end IExpr
 

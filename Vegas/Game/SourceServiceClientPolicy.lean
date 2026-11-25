@@ -47,7 +47,7 @@ variable {setup : Setup (Player := Player) (L := L)} {deps : setup.dataflowGraph
 bounded canonical response when the counted prepared slot is available. -/
 theorem sourceServiceCanonicalDecision_canonical_of_slots
     (bounds : MessageBounds (serviceGraph setup deps)) (covered : bounds.CoversBindingValues)
-    (initialCovered : ∀ state ∈ (serviceInitialLaw setup deps).support,
+    (initialCovered : ∀ state ∈ (serviceInitialDistribution setup deps).support,
       bounds.CandidateValues state)
     (capacity : (serviceGraph setup deps).order.eventCount ≤ bounds.candidateCount)
     (who : Player)
@@ -55,7 +55,7 @@ theorem sourceServiceCanonicalDecision_canonical_of_slots
     {scheduler : (serviceApplication setup deps duration leaks).Scheduler}
     (execution : (serviceApplication setup deps duration leaks).Execution)
     (trace : ((bounds.rawMenu (serviceTimeouts setup deps duration) leaks).protocol
-      (serviceInitialLaw setup deps) horizon scheduler).Trace
+      (serviceInitialDistribution setup deps) horizon scheduler).Trace
       (some ⟨remaining, some who, execution⟩))
     (atTurn : OwnSubmissionsAtTurn (serviceTimeouts setup deps duration) leaks execution who)
     (valid : CanonicalSlotsUsed (serviceTimeouts setup deps duration) leaks execution who)
@@ -74,16 +74,16 @@ theorem sourceServiceCanonicalDecision_canonical_of_slots
         (execution.observe (serviceApplication setup deps duration leaks) who) := by
   classical
   have rawTrace := (bounds.rawMenu (serviceTimeouts setup deps duration) leaks).toRawTrace
-    (serviceInitialLaw setup deps) horizon scheduler trace
+    (serviceInitialDistribution setup deps) horizon scheduler trace
   obtain ⟨counted, fresh, selected⟩ := canonicalSlot_resources_of_used bounds capacity rawTrace who
     atTurn valid event ownerSolitary turn unsent
   have facts := legalFacts setup leaks horizon scheduler _ rawTrace
   have values := bounds.candidateValues_raw_history (serviceTimeouts setup deps duration) leaks
-    (serviceInitialLaw setup deps) horizon scheduler initialCovered trace
+    (serviceInitialDistribution setup deps) horizon scheduler initialCovered trace
   have boundedTrace := trace
-  rw [serviceInitialLaw_eq_inputs] at boundedTrace
+  rw [serviceInitialDistribution_eq_inputs] at boundedTrace
   have handles := bounds.executionHandles_raw_history (serviceTimeouts setup deps duration) leaks
-    (setup.initialLaw.map setup.eventInputs) horizon scheduler boundedTrace
+    (setup.initialDistribution.map setup.eventInputs) horizon scheduler boundedTrace
   have readyView := (PublicView.ownTurn?_spec _ who event turn).1
   have owned := (PublicView.ownTurn?_spec _ who event turn).2
   by_cases inactive : who ∈ execution.application.config.defaulted
@@ -159,7 +159,7 @@ responses wherever their own previous responses follow the client. -/
 theorem sourceServiceTurnPolicy_canonical_of_slots
     (serial : (serviceGraph setup deps).ActorSerial)
     (bounds : MessageBounds (serviceGraph setup deps)) (covered : bounds.CoversBindingValues)
-    (initialCovered : ∀ state ∈ (serviceInitialLaw setup deps).support,
+    (initialCovered : ∀ state ∈ (serviceInitialDistribution setup deps).support,
       bounds.CandidateValues state)
     (capacity : (serviceGraph setup deps).order.eventCount ≤ bounds.candidateCount)
     (bound : (serviceGraph setup deps).EventId → Nat) (turns : Nat)
@@ -168,7 +168,7 @@ theorem sourceServiceTurnPolicy_canonical_of_slots
     {scheduler : (serviceApplication setup deps duration leaks).Scheduler}
     (execution : (serviceApplication setup deps duration leaks).Execution)
     (trace : ((bounds.rawMenu (serviceTimeouts setup deps duration) leaks).protocol
-      (serviceInitialLaw setup deps) horizon scheduler).Trace
+      (serviceInitialDistribution setup deps) horizon scheduler).Trace
       (some ⟨remaining, some who, execution⟩))
     (atTurn : OwnSubmissionsAtTurn (serviceTimeouts setup deps duration) leaks execution who)
     (valid : CanonicalSlotsUsed (serviceTimeouts setup deps duration) leaks execution who)
@@ -212,12 +212,13 @@ theorem consistentSlots_transition
     (before after : (serviceApplication setup deps duration leaks).ProtocolState)
     (prior :
         ((bounds.rawMenu (serviceTimeouts setup deps duration) leaks).protocol
-        (serviceInitialLaw setup deps) horizon scheduler).Trace before)
+        (serviceInitialDistribution setup deps) horizon scheduler).Trace before)
     (joint : Player → Option (serviceApplication setup deps duration leaks).Action)
     (valid : ReactiveApplication.serviceInvariant
       (ConsistentSlots bound turns timing profile) before)
     (reached : after ∈
-        ((serviceApplication setup deps duration leaks).transition (serviceInitialLaw setup deps)
+        ((serviceApplication setup deps duration leaks).transition
+          (serviceInitialDistribution setup deps)
         horizon scheduler before joint).support) :
     ReactiveApplication.serviceInvariant (ConsistentSlots bound turns timing profile)
       after := by
@@ -243,7 +244,7 @@ theorem consistentSlots_transition
             rw [recalled, ReactiveApplication.Policy.consistent_snoc_iff] at consistent
             obtain ⟨atTurn, slots⟩ := valid player consistent.1
             have rawTrace := (bounds.rawMenu (serviceTimeouts setup deps duration) leaks).toRawTrace
-              (serviceInitialLaw setup deps) horizon scheduler prior
+              (serviceInitialDistribution setup deps) horizon scheduler prior
             refine ⟨?_, canonicalSlotsUsed_respond serial rawTrace
               (serviceTurnPolicy_submitsCanonically bound turns timing profile player)
               consistent.2 atTurn slots⟩
@@ -300,7 +301,7 @@ theorem sourceServiceTurnPolicy_consistent_slots
     ∀ {state}
         (_trace :
             ((bounds.rawMenu (serviceTimeouts setup deps duration) leaks).protocol
-            (serviceInitialLaw setup deps) horizon scheduler).Trace state),
+            (serviceInitialDistribution setup deps) horizon scheduler).Trace state),
         ReactiveApplication.serviceInvariant
         (fun execution => ∀ who,
             (serviceTurnPolicy setup deps duration leaks bound turns timing profile who).Consistent
@@ -323,7 +324,7 @@ decisions fit the bounds; elsewhere it is silent. -/
 theorem sourceServiceClientPolicy_raw_admissible
     (serial : (serviceGraph setup deps).ActorSerial)
     (covered : bounds.CoversBindingValues)
-    (initialCovered : ∀ state ∈ (serviceInitialLaw setup deps).support,
+    (initialCovered : ∀ state ∈ (serviceInitialDistribution setup deps).support,
       bounds.CandidateValues state)
     (capacity : (serviceGraph setup deps).order.eventCount ≤ bounds.candidateCount)
     (bound : (serviceGraph setup deps).EventId → Nat) (turns : Nat)
@@ -331,7 +332,7 @@ theorem sourceServiceClientPolicy_raw_admissible
     (horizon : Nat) (scheduler : (serviceApplication setup deps duration leaks).Scheduler)
     (who : Player) :
     (bounds.rawMenu (serviceTimeouts setup deps duration) leaks).Admissible
-      (serviceInitialLaw setup deps) horizon scheduler who
+      (serviceInitialDistribution setup deps) horizon scheduler who
       (serviceClientPolicy setup deps duration leaks bound turns timing profile who) := by
   intro control trace active response supported
   by_cases consistent : (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns timing
@@ -342,7 +343,7 @@ theorem sourceServiceClientPolicy_raw_admissible
     obtain ⟨atTurn, slots⟩ := sourceServiceTurnPolicy_consistent_slots bounds serial bound turns
       timing profile trace who consistent
     have actorTrace : ((bounds.rawMenu (serviceTimeouts setup deps duration) leaks).protocol
-        (serviceInitialLaw setup deps) horizon scheduler).Trace
+        (serviceInitialDistribution setup deps) horizon scheduler).Trace
         (some ⟨control.remaining, some who, control.execution⟩) := by
       simpa only [← active] using trace
     have member := sourceServiceTurnPolicy_canonical_of_slots serial bounds covered initialCovered
@@ -377,7 +378,8 @@ theorem rawMenu_admits {turns : Nat}
     (timing : TurnTiming service.setup turns service.setup.informationDependencies)
     (source : Profile (service.sourceModel admission).behavioralSignature) (who : Player) :
     service.rawMenu.Admissible
-      (serviceInitialLaw service.setup service.setup.informationDependencies) service.horizon
+      (serviceInitialDistribution service.setup service.setup.informationDependencies)
+        service.horizon
       service.scheduler who
       (serviceClientPolicy service.setup service.setup.informationDependencies service.duration
         service.leaks service.bound turns timing

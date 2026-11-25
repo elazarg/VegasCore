@@ -26,7 +26,8 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
-local notation "onePacketN" => onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+local notation "onePacketN" =>
+  onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon
   scheduler
 
 variable {Parameter : Type} (parameter : State L setup.context → Parameter)
@@ -36,13 +37,14 @@ variable {Parameter : Type} (parameter : State L setup.context → Parameter)
 open Classical in
 /-- Forced pending-event source potentials need only counted clear terminal completion. -/
 theorem pending_phase_value_bounds
-    [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
-    [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+    [(application setup timeouts leaks).FiniteNature (initialDistribution setup) scheduler]
+    [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds
+      (initialDistribution setup) horizon
       scheduler).InfoState who)]
-    [Finite ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    [Finite ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).History]
     (terminalCompletes : ∀ (final : (application setup timeouts leaks).Control),
-      ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+      ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
         scheduler).Trace (some final) →
       final.execution.application.config.defaulted = ∅ →
       (application setup timeouts leaks).terminal (some final) →
@@ -51,7 +53,7 @@ theorem pending_phase_value_bounds
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (scale : ℕ → ℝ) (scale_pos : ∀ n, 0 < scale n) (scale_le_one : ∀ n, scale n ≤ 1)
     {slots : Nat}
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialDistribution setup)
       horizon scheduler slots p))
     (targetSequence : ℕ → (onePacketN).BehavioralAssessment)
     (assembled : OnePacketAssembled setup timeouts leaks bounds horizon scheduler sequence scale
@@ -76,7 +78,8 @@ theorem pending_phase_value_bounds
     (lawShape : (∃ option : LateOption slots,
       law = onePacketLate setup timeouts leaks bounds horizon scheduler sequence scale scale_pos
         scale_le_one n ((onePacketN).agentAt site) option) ∨
-      law = PMF.pure (silenceChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+      law = PMF.pure (silenceChoice setup timeouts leaks bounds
+        (initialDistribution setup) horizon scheduler
         who site.1))
     {bound : ℝ} (readoutBounded : ∀ readout,
       |exclusionReadoutUtility setup parameter utility excludedPayoff readout who| ≤ bound)
@@ -85,7 +88,7 @@ theorem pending_phase_value_bounds
     let installed := Profile.update (sig := (onePacketN).behavioralSignature)
       (targetSequence n).strategy who (((targetSequence n).strategy who).withLaw site.1 law)
     let phase := (onePacketN).runBehavioralUntil
-      ((bounds.onePacketMenu timeouts leaks).bounded (initialLaw setup) horizon
+      ((bounds.onePacketMenu timeouts leaks).bounded (initialDistribution setup) horizon
         scheduler).wellFoundedHistories installed
       (LateStopped setup timeouts leaks bounds horizon scheduler (siteRank (timeouts := timeouts)
         site.1)) history.1
@@ -116,10 +119,10 @@ theorem pending_phase_value_bounds
   obtain ⟨remaining, execution, current, recallEq, observeEq⟩ :=
     state_of_site setup timeouts leaks bounds horizon scheduler atSite history
   let menu := bounds.onePacketMenu timeouts leaks
-  have trace : (menu.protocol (initialLaw setup) horizon scheduler).Trace
+  have trace : (menu.protocol (initialDistribution setup) horizon scheduler).Trace
       (some ⟨remaining, some who, execution⟩) := current ▸ history.1.trace
   obtain ⟨found, foundOrdered, _⟩ := pendingAt_history (timeouts := timeouts)
-    (menu.toRawTrace (initialLaw setup) horizon scheduler trace)
+    (menu.toRawTrace (initialDistribution setup) horizon scheduler trace)
   have rankEq : siteRank (timeouts := timeouts) site.1 = found := by
     rw [atSite, ← observeEq]
     change (execution.application.config.history.map EventCompletion.event).length = found

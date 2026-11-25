@@ -121,7 +121,7 @@ theorem runPoint_simulation {horizon : Nat}
     {delay : (serviceGraph setup deps).EventId → Nat}
     (bound : (serviceGraph setup deps).EventId → Nat) (turns : Nat)
     (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
-        (serviceInitialLaw setup deps) horizon scheduler delay bound)
+        (serviceInitialDistribution setup deps) horizon scheduler delay bound)
     (timely : AsyncTimely (serviceTimeouts setup deps duration) delay bound)
     (base : (serviceGraph setup deps).BehavioralProfile)
     (decides : ∀ (config : (serviceGraph setup deps).Config)

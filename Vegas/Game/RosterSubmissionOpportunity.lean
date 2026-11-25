@@ -69,7 +69,7 @@ private def OfferPositions (control : (app).Control) : Prop :=
 
 private theorem offerPositions_history
     (unique : ∀ i event who, plan[i]? = some (event, .player who) → i = cursor event) :
-    ∀ {state} (_ : ((app).protocol (initialLaw setup) (plan).length schedule).Trace state),
+    ∀ {state} (_ : ((app).protocol (initialDistribution setup) (plan).length schedule).Trace state),
       state.elim True (OfferPositions setup leaks cursor)
   | _, .start => trivial
   | _, .extend (source := before) prior joint legal reached => by
@@ -144,7 +144,8 @@ theorem readyRoster_singleSubmissionOpportunity [Fintype Player]
   cases stateEq : history.state with
   | none => rw [stateEq] at member; cases member
   | some control =>
-    have trace := (bounds.onePacketMenu (Vegas.timeouts setup) leaks).toRawTrace (initialLaw setup)
+    have trace := (bounds.onePacketMenu (Vegas.timeouts setup) leaks).toRawTrace
+      (initialDistribution setup)
       (plan).length schedule (stateEq ▸ history.trace)
     have facts := offerPositions_history setup leaks rosters network cursor unique trace
     rw [stateEq] at member

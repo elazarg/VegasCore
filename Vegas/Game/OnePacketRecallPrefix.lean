@@ -31,10 +31,11 @@ theorem onePacket_ownPlay_recall (who : Player)
     (onePacketInformation setup timeouts leaks bounds horizon scheduler).ownPlay who trace =
       (application setup timeouts leaks).recallOwnPlay ((application setup timeouts leaks).recallAt
         who state) := by
-  exact ((bounds.onePacketMenu timeouts leaks).ownPlay_toRawTrace (initialLaw setup)
+  exact ((bounds.onePacketMenu timeouts leaks).ownPlay_toRawTrace (initialDistribution setup)
     horizon scheduler who trace).symm.trans
-      ((application setup timeouts leaks).trace_ownPlay (initialLaw setup) horizon scheduler who
-        ((bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon
+      ((application setup timeouts leaks).trace_ownPlay (initialDistribution setup) horizon
+        scheduler who
+        ((bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup) horizon
           scheduler trace))
 
 /-- Every recorded native response has an actual initialized active prefix
@@ -81,14 +82,16 @@ theorem forcedAgent_of_recorded_decision
         control)),
       TracePrefix prior trace → forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts
         leaks)
-        (initialLaw setup) horizon scheduler who ((application setup timeouts leaks).observe who
+        (initialDistribution setup) horizon scheduler who ((application setup timeouts
+          leaks).observe who
           (some control)))
     {recorded : (onePacketInformation setup timeouts leaks bounds horizon scheduler).InfoState who ×
       (application setup timeouts leaks).Action}
     (member : recorded ∈ (onePacketInformation setup timeouts leaks bounds horizon
       scheduler).ownPlay
       who trace) :
-    forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks) (initialLaw setup)
+    forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks)
+      (initialDistribution setup)
       horizon scheduler
       who recorded.1 := by
   obtain ⟨control, prior, isPrefix, _acting, info⟩ := initialized_prefix_of_mem_ownPlay (timeouts

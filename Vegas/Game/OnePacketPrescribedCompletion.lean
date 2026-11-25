@@ -54,19 +54,22 @@ within six times the scale times bound of target. -/
 theorem abs_expect_slotTrembledChoice_sub_le {scale : ℝ} (nonnegative : 0 ≤ scale)
     (le_one : scale ≤ 1) (who : Player) (info : (application setup timeouts leaks).Info)
     (main alternative slot :
-      PMF ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon scheduler).Choice
+      PMF ((onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon
+        scheduler).Choice
         who
         info))
-    (value : (onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+    (value : (onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon
       scheduler).Choice who
       info → ℝ) {target bound : ℝ} (bounded : ∀ choice, |value choice| ≤ bound)
     (targetBounded : |target| ≤ bound) (mainEq : expect main value = target) :
-    |expect (slotTrembledChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+    |expect (slotTrembledChoice setup timeouts leaks bounds
+      (initialDistribution setup) horizon scheduler
       scale
         nonnegative le_one who info main alternative slot) value - target| ≤
       6 * scale * bound := by
   have boundNonneg : 0 ≤ bound := (abs_nonneg _).trans targetBounded
-  have gap : ∀ law : PMF ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+  have gap : ∀ law : PMF ((onePacketModel setup timeouts leaks bounds
+    (initialDistribution setup) horizon
       scheduler).Choice who info), |expect law value - target| ≤ 2 * bound := by
     intro law
     have inside := abs_le.mp (expect_abs_le_of_bounded (μ := law) boundNonneg bounded)
@@ -82,14 +85,14 @@ theorem abs_expect_slotTrembledChoice_sub_le {scale : ℝ} (nonnegative : 0 ≤ 
   have middle := abs_mix_le (sq_nonneg scale) (pow_le_one₀ nonnegative le_one) (gap slot)
     innermost
   have outer := abs_mix_le (pow_nonneg nonnegative 3) (pow_le_one₀ nonnegative le_one)
-    (gap ((bounds.onePacketMenu timeouts leaks).uniformPolicy (initialLaw setup) horizon
+    (gap ((bounds.onePacketMenu timeouts leaks).uniformPolicy (initialDistribution setup) horizon
       scheduler who info)) middle
   have regroup : scale ^ 3 * expect ((bounds.onePacketMenu timeouts leaks).uniformPolicy
-        (initialLaw setup) horizon scheduler who info) value +
+        (initialDistribution setup) horizon scheduler who info) value +
       (1 - scale ^ 3) * (scale ^ 2 * expect slot value +
         (1 - scale ^ 2) * (scale * expect alternative value + (1 - scale) * target)) - target =
       scale ^ 3 * (expect ((bounds.onePacketMenu timeouts leaks).uniformPolicy
-        (initialLaw setup) horizon scheduler who info) value - target) +
+        (initialDistribution setup) horizon scheduler who info) value - target) +
       (1 - scale ^ 3) * (scale ^ 2 * (expect slot value - target) +
         (1 - scale ^ 2) * (scale * (expect alternative value - target) +
           (1 - scale) * (target - target))) := by ring

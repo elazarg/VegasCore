@@ -71,7 +71,7 @@ bindings and independent reveals, uniformly over dependency choices satisfying
 `RevealRelaxedOrdered`. Source-prefix clients always submit bindings and open
 active reveals; the same Nash error, full source-configuration/payoff law and
 absence of defaults and failed reveals are preserved. The
-[native honest-execution law](../Vegas/Game/PrefixClientOutcomeLaw.lean) covers
+[native honest-execution law](../Vegas/Game/PrefixClientOutcomeDistribution.lean) covers
 both relaxations for every intended extension, without a source disclosure or
 equilibrium premise. The [native Nash theorem](../Vegas/Game/PrefixClientNash.lean)
 preserves the same ε against arbitrary raw native policies for every dependency

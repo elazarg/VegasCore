@@ -116,17 +116,19 @@ theorem binding_trace (frame : DirectedBindingFrame (timeouts := timeouts) memor
   intro app view response change remembered
   have initializedPrior := prior
   change ((bounds.onePacketMenu timeouts leaks).protocol
-    (initialLaw setup) horizon scheduler).Trace _ at initializedPrior
-  rw [initialLaw, serviceInitialLaw_eq_inputs (deps := setup.informationDependencies) setup]
+    (initialDistribution setup) horizon scheduler).Trace _ at initializedPrior
+  rw [initialDistribution, serviceInitialDistribution_eq_inputs
+    (deps := setup.informationDependencies) setup]
     at initializedPrior
   have fresh := bounds.onePacket_binding_fresh timeouts leaks
-    (setup.initialLaw.map setup.eventInputs) horizon scheduler initializedPrior owner event serial
+    (setup.initialDistribution.map setup.eventInputs) horizon scheduler initializedPrior owner
+      event serial
     opening member
   have originalCount := (countRecall_history timeouts) leaks
-    ((bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon scheduler
+    ((bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup) horizon scheduler
       prior)
   have repairedCount := (countRecall_history timeouts) leaks
-    ((bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon scheduler
+    ((bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup) horizon scheduler
       imagePrior)
   have legalRepair := frame.toFrame.repairResponse_onePacket (timeouts :=
     timeouts) bounds frame.recalled originalCount

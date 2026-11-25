@@ -134,16 +134,17 @@ private theorem policy_congr {who : Player} (policy : graph.BehavioralPolicy who
   rfl
 
 /-- Source-prefix action laws depend only on the graph key. -/
-theorem prefixProfile_actionLaw_runKey_congr (profile : graph.BehavioralProfile)
+theorem prefixProfile_actionDistribution_runKey_congr (profile : graph.BehavioralProfile)
     {left right : graph.Config} (same : runKey left = runKey right) (event : graph.EventId) :
-    actionLaw (graph.prefixProfile profile) left event =
-      actionLaw (graph.prefixProfile profile) right event := by
+    actionDistribution (graph.prefixProfile profile) left event =
+      actionDistribution (graph.prefixProfile profile) right event := by
   have records : completionOf left = completionOf right := congrArg (fun key => key.2.2) same
   have defaulted := defaulted_eq_of_completionOf_eq records
   cases ownerEq : (graph.nodes event).actor with
-  | none => rw [actionLaw_of_ownerless _ _ ownerEq, actionLaw_of_ownerless _ _ ownerEq]
+  | none => rw [actionDistribution_of_ownerless _ _ ownerEq, actionDistribution_of_ownerless _ _
+    ownerEq]
   | some owner =>
-      rw [actionLaw_of_actor _ _ ownerEq, actionLaw_of_actor _ _ ownerEq]
+      rw [actionDistribution_of_actor _ _ ownerEq, actionDistribution_of_actor _ _ ownerEq]
       by_cases inactive : owner ∈ left.defaulted
       · rw [dite_eq_left inactive, dite_eq_left (defaulted ▸ inactive)]
       · rw [dite_eq_right inactive, dite_eq_right (defaulted ▸ inactive)]
@@ -166,7 +167,7 @@ theorem RevealRelaxedOrdered.readyIndependent_prefixProfile
   stable config event other eventReady otherReady different action value := by
     obtain ⟨owner, otherOwner, actor, otherActor, distinct⟩ :=
       relaxed.ready_pair_actors eventReady otherReady different.symm
-    rw [actionLaw_of_actor _ _ actor, actionLaw_of_actor _ _ actor]
+    rw [actionDistribution_of_actor _ _ actor, actionDistribution_of_actor _ _ actor]
     have notOwned : graph.actor? other ≠ some owner := by
       rw [otherActor]
       simpa using Ne.symm distinct
@@ -194,7 +195,7 @@ theorem RevealRelaxedOrdered.readyIndependent_prefixProfile
           (prefixObservation_playerObserve_complete_of_hidden owner config event other
             otherReady action value hidden notOwned privateOutput) _ _
   congr {left right} same event :=
-    prefixProfile_actionLaw_runKey_congr profile same event
+    prefixProfile_actionDistribution_runKey_congr profile same event
 
 theorem RevealRelaxedOrdered.runPolicies_prefixProfile_map_runKey
     (relaxed : graph.RevealRelaxedOrdered) (profile : graph.BehavioralProfile)

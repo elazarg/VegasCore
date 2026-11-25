@@ -79,7 +79,8 @@ private theorem delivered_map (seen : List Evidence) :
 
 /-- At settlement the batch channel has either delivered its input list or
 lost the entire batch, with the specified delivery rate. -/
-theorem thinned_delivered_law (capture delivery : Set.Icc (0 : ℝ) 1) (seen : List Evidence) :
+theorem thinned_delivered_distribution (capture delivery : Set.Icc (0 : ℝ) 1)
+    (seen : List Evidence) :
     ((thinned capture delivery).reports seen).map
       (EvidenceReport.deliveredEvidence
         ((thinned (Evidence := Evidence) capture delivery).window.settlementTime)) =

@@ -80,7 +80,7 @@ theorem audit_authentic (bonus : Int) :
 def deposit : Player → ℝ := fun _ => 1
 
 abbrev model (bonus : Int) :=
-  (service bonus).rawMenu.information (serviceInitialLaw (setup bonus) (setup
+  (service bonus).rawMenu.information (serviceInitialDistribution (setup bonus) (setup
     bonus).informationDependencies)
     (service bonus).horizon (service bonus).scheduler
 
@@ -116,7 +116,7 @@ private theorem not_defaulted_of_readout_success (bonus : Int)
       (leaks bonus)).Control)
     (trace : ((serviceApplication (setup bonus) (setup bonus).informationDependencies (service
       bonus).duration
-      (leaks bonus)).protocol (serviceInitialLaw (setup bonus) (setup
+      (leaks bonus)).protocol (serviceInitialDistribution (setup bonus) (setup
         bonus).informationDependencies)
         (service bonus).horizon (service bonus).scheduler).Trace (some control))
     (terminal : Config Player simpleExpr (program bonus).terminalCtx)
@@ -127,9 +127,9 @@ private theorem not_defaulted_of_readout_success (bonus : Int)
   let nativeTimeouts := serviceTimeouts (setup bonus) (setup bonus).informationDependencies
     (service bonus).duration
   let inputs : PMF ((setup bonus).informationGraph).Inputs :=
-    (setup bonus).initialLaw.map (setup bonus).eventInputs
+    (setup bonus).initialDistribution.map (setup bonus).eventInputs
   have initialized : inputs.map EventGraphRuntime.State.initial =
-      serviceInitialLaw (setup bonus) (setup bonus).informationDependencies := by
+      serviceInitialDistribution (setup bonus) (setup bonus).informationDependencies := by
     rw [PMF.map_comp]
     rfl
   rw [← initialized] at trace
@@ -185,7 +185,7 @@ private theorem transfers_eq_publicTransfers_of_readout (bonus : Int)
       (leaks bonus)).Control)
     (trace : ((serviceApplication (setup bonus) (setup bonus).informationDependencies (service
       bonus).duration
-      (leaks bonus)).protocol (serviceInitialLaw (setup bonus) (setup
+      (leaks bonus)).protocol (serviceInitialDistribution (setup bonus) (setup
         bonus).informationDependencies)
         (service bonus).horizon (service bonus).scheduler).Trace (some control))
     (terminal : Config Player simpleExpr (program bonus).terminalCtx)
@@ -357,7 +357,7 @@ theorem run_sourceProfile (bonus : Int) (choice : Bool) :
 
 /-- Prescribed native clients preserve typed cells, public default history
 and actual cash jointly. The law is proved for both choices and every integer bonus. -/
-theorem settlement_law (bonus : Int) (choice : Bool) :
+theorem settlement_distribution (bonus : Int) (choice : Bool) :
     (((model bonus).runBehavioral (clients bonus choice) (fuel bonus)).bind fun history =>
       ((service bonus).paymentSettlement (auditSample bonus) deposit history.state).map
         fun receipts =>
@@ -367,7 +367,7 @@ theorem settlement_law (bonus : Int) (choice : Bool) :
             receipts)) =
       PMF.pure (some ((final bonus choice).state, (final bonus choice).defaults),
         fun _ : Player => ((if choice then bonus else 0 : Int) : ℝ)) := by
-  have law := (service bonus).payment_firstTurnClientProfile_settlement_law
+  have law := (service bonus).payment_firstTurnClientProfile_settlement_distribution_eq
     (admission bonus)
     (auditSample bonus) (audit_authentic bonus) deposit 1 (sourceProfile bonus choice)
   change _ = ((setup bonus).run ((setup bonus).decodeBehavioralProfile (admission bonus)

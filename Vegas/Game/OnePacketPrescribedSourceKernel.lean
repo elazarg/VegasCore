@@ -1,7 +1,7 @@
 module
 
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
-public import Vegas.Game.OnePacketStoppedSourceLaw
+public import Vegas.Game.OnePacketStoppedSourceDistribution
 public import Vegas.Game.SourceServiceContinuation
 public import Vegas.Game.OnePacketIntendedProjection
 public import Vegas.EventGraph.OwnedStep
@@ -37,9 +37,9 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {scheduler : (application setup timeouts leaks).Scheduler}
   {delay bound : setup.informationGraph.EventId → Nat}
 local notation "menu" => bounds.onePacketMenu timeouts leaks
-local notation "N" => ReactiveApplication.ResponseMenu.information menu (initialLaw setup)
+local notation "N" => ReactiveApplication.ResponseMenu.information menu (initialDistribution setup)
   horizon scheduler
-local notation "E" => ReactiveApplication.ResponseMenu.protocol menu (initialLaw setup)
+local notation "E" => ReactiveApplication.ResponseMenu.protocol menu (initialDistribution setup)
   horizon scheduler
 local notation "Clear" => ReactiveApplication.stateInvariant
   (app := application setup timeouts leaks)
@@ -100,7 +100,7 @@ theorem counted_canonical_source_continuation
             final.execution.application.config).map read) =
       (ProtocolState.step setup.program point
         (fun _ => decodeEventAction setup.program event action)).bind fun target =>
-          (ProtocolState.continuationLaw setup.program source target).map some := by
+          (ProtocolState.continuationDistribution setup.program source target).map some := by
   let response := (canonicalServiceDecision timeouts) leaks who (execution.logs who)
     (execution.observe (application setup timeouts leaks) who) event action
   have owned := (PublicView.ownTurn?_spec _ who event turn).2
@@ -111,7 +111,7 @@ theorem counted_canonical_source_continuation
     exact Finset.notMem_empty _
   have fits := firstActivation_inclusionFits_of_counted_opportunity setup timeouts leaks bounds
     horizon scheduler delay bound opportunity timely trace rfl clear event turn never
-  have rawTrace := (menu).toRawTrace (initialLaw setup) horizon scheduler trace
+  have rawTrace := (menu).toRawTrace (initialDistribution setup) horizon scheduler trace
   have fresh := canonical_freshCall rawTrace bound who event turn fits action material submits
   have afterTrace := current ▸ start.trace
   obtain ⟨output, invariant⟩ := acceptanceInvariant_respond (timeouts := timeouts) bounds horizon
@@ -154,10 +154,11 @@ theorem counted_canonical_source_continuation
         rw [state]
         dsimp only
         rw [law]
-        exact successor.runPlan_readout_law
+        exact successor.runPlan_readout_distribution
     _ = sourceContinuation setup source (rank + 1) after := PMF.bind_const _ _
     _ = _ := by
-      change (setup.continuationLaw source (sourceServicePrefix? setup (rank + 1) after)).map
+      change (setup.continuationDistribution source (sourceServicePrefix? setup
+        (rank + 1) after)).map
         some = _
       rw [successor.decode]
       rfl
@@ -165,7 +166,7 @@ theorem counted_canonical_source_continuation
 /-- A transmitting action whose source successors are intended has exactly the
 single source-step law at its first completion stop. Public defaults cannot
 introduce an automatic tail because the certified completion remains clear. -/
-theorem counted_canonical_intended_sourceLaw
+theorem counted_canonical_intended_sourceDistribution
     (opportunity : ∀ control : (application setup timeouts leaks).Control,
       (E).Trace (some control) → control.execution.application.config.defaulted = ∅ →
       OpportunityAt timeouts leaks control.execution delay)
@@ -218,7 +219,7 @@ theorem counted_canonical_intended_sourceLaw
     exact Finset.notMem_empty _
   have fits := firstActivation_inclusionFits_of_counted_opportunity setup timeouts leaks bounds
     horizon scheduler delay bound opportunity timely trace rfl clear event turn never
-  have rawTrace := (menu).toRawTrace (initialLaw setup) horizon scheduler trace
+  have rawTrace := (menu).toRawTrace (initialDistribution setup) horizon scheduler trace
   have fresh := canonical_freshCall rawTrace bound who event turn fits action material submits
   obtain ⟨output, invariant⟩ := acceptanceInvariant_respond (timeouts := timeouts) bounds horizon
     scheduler trace event turn action material submits (current ▸ start.trace)
@@ -326,7 +327,7 @@ private theorem clear_step_effective {before after : setup.informationGraph.Conf
 
 /-- The honest law installed at an intended first callback has exactly the
 source behavioral successor law at the native completion stop. -/
-theorem counted_firstActivation_honest_sourceLaw
+theorem counted_firstActivation_honest_sourceDistribution
     [infoDecidable : ∀ player, DecidableEq ((N).InfoState player)]
     (opportunity : ∀ control : (application setup timeouts leaks).Control,
       (E).Trace (some control) → control.execution.application.config.defaulted = ∅ →
@@ -360,7 +361,8 @@ theorem counted_firstActivation_honest_sourceLaw
     ((N).runBehavioralUntil certificate
       (Profile.update (sig := (N).behavioralSignature) players who
         ((players who).withLaw info
-          (honestChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler source who
+          (honestChoice setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
+            source who
             info)))
       (fun stop => LateStopped setup timeouts leaks bounds horizon scheduler rank stop ∨
         ¬ Clear stop.state) history).map
@@ -370,7 +372,7 @@ theorem counted_firstActivation_honest_sourceLaw
   classical
   have infoEq : (N).infoOf who history.trace =
       some (execution.logs who, execution.observe (application setup timeouts leaks) who) := by
-    refine ((menu).info (initialLaw setup) horizon scheduler who history.trace).trans ?_
+    refine ((menu).info (initialDistribution setup) horizon scheduler who history.trace).trans ?_
     rw [current]
     simp only [ReactiveApplication.observe, ite_true]
   have atSite := observed.symm.trans infoEq
@@ -425,12 +427,14 @@ theorem counted_firstActivation_honest_sourceLaw
     cases impossible
   have acting : (E).active history.state who := by rw [current]; rfl
   have actsOnce :=
-    ((menu).decisionRecall (initialLaw setup) horizon scheduler).actsOnceWhereItMatters
-  rw [← mixture, (N).runBehavioralUntil_update_withLaw_eq_bind certificate actsOnce players who
+    ((menu).decisionRecall (initialDistribution setup) horizon scheduler).actsOnceWhereItMatters
+  rw [← mixture, (N).runBehavioralUntil_update_withDistribution_eq_bind certificate actsOnce
+    players who
     (players who) _ _ _ history observed going running acting, PMF.map_bind]
   change ((honestResponse setup timeouts leaks source who (execution.logs who)
       (execution.observe (application setup timeouts leaks) who)).map
-        (responseChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler who
+        (responseChoice setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
+          who
           (some (execution.logs who,
             execution.observe (application setup timeouts leaks) who)))).bind _ = _
   unfold honestResponse
@@ -493,7 +497,8 @@ theorem counted_firstActivation_honest_sourceLaw
             simp only [SilentAction, node, disclose, Bool.true_eq_false, not_false_eq_true]
       obtain ⟨material, submits⟩ :=
         canonicalServiceDecision_transmits_of_effective (setup := setup) timeouts _
-        ((menu).toRawTrace (initialLaw setup) horizon scheduler trace) who event turn graphAction
+        ((menu).toRawTrace (initialDistribution setup) horizon scheduler trace) who event turn
+          graphAction
         effective loud
       have bindingEffective : EffectiveDecision event graphAction := by
         unfold EffectiveDecision
@@ -506,7 +511,8 @@ theorem counted_firstActivation_honest_sourceLaw
         event turn (pendingEvent_spec (timeouts := timeouts) pending).2.2.2 graphAction
         (retains trace who event graphAction turn (pendingEvent_spec (timeouts := timeouts)
           pending).2.2.2 fits bindingEffective (by rw [submits]; simp))
-      have selected : (responseChoice setup timeouts leaks bounds (initialLaw setup) horizon
+      have selected : (responseChoice setup timeouts leaks bounds
+        (initialDistribution setup) horizon
           scheduler who (some (execution.logs who,
             execution.observe (application setup timeouts leaks) who))
           ((canonicalServiceDecision timeouts) leaks who (execution.logs who)
@@ -518,7 +524,7 @@ theorem counted_firstActivation_honest_sourceLaw
           (Profile.update (sig := (N).behavioralSignature) players who
             ((players who).commit (some (execution.logs who,
               execution.observe (application setup timeouts leaks) who))
-              (responseChoice setup timeouts leaks bounds (initialLaw setup)
+              (responseChoice setup timeouts leaks bounds (initialDistribution setup)
               horizon scheduler who (some (execution.logs who,
                 execution.observe (application setup timeouts leaks) who))
                 ((canonicalServiceDecision timeouts) leaks who
@@ -539,7 +545,8 @@ theorem counted_firstActivation_honest_sourceLaw
                 (fun _ => decodeEventAction setup.program event graphAction)).map some) := by
             apply bind_congr_on_support _
             intro next stepped
-            have committedStep := (menu).run_commit_response (initialLaw setup) horizon scheduler
+            have committedStep := (menu).run_commit_response
+              (initialDistribution setup) horizon scheduler
               players history who remaining execution current _ _ selected
             have commitDecidable : infoDecidable who =
                 (fun a b => Classical.propDecidable (a = b)) := Subsingleton.elim _ _
@@ -558,7 +565,8 @@ theorem counted_firstActivation_honest_sourceLaw
                 exact ⟨next, stepped, rfl⟩
               exact (PMF.mem_support_pure_iff _ _).mp inLaw
             rw [stopEq]
-            exact counted_canonical_intended_sourceLaw opportunity inclusion timely completes
+            exact counted_canonical_intended_sourceDistribution opportunity inclusion timely
+              completes
               profile certificate _ trace clear event turn never graphAction material submits
               residual decoded preserves next nextState
           _ = _ := PMF.bind_const _ _

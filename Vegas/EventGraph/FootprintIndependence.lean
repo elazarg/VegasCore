@@ -109,9 +109,10 @@ theorem RevealsOnlyConcurrent.readyIndependent_normalizeProfile_of_footprint
       · exact Ne.symm independent.2.2.2
     cases ownerEq : (graph.nodes event).actor with
     | none =>
-        rw [actionLaw_of_ownerless _ _ ownerEq, actionLaw_of_ownerless _ _ ownerEq]
+        rw [actionDistribution_of_ownerless _ _ ownerEq, actionDistribution_of_ownerless _ _
+          ownerEq]
     | some owner =>
-        rw [actionLaw_of_actor _ _ ownerEq, actionLaw_of_actor _ _ ownerEq]
+        rw [actionDistribution_of_actor _ _ ownerEq, actionDistribution_of_actor _ _ ownerEq]
         have member := mem_defaulted_complete_of_actor_ne config other otherReady action value
           owner (fun otherActor => actorsNe (otherActor.trans ownerEq.symm))
         by_cases inactive : owner ∈ config.defaulted
@@ -125,9 +126,10 @@ theorem RevealsOnlyConcurrent.readyIndependent_normalizeProfile_of_footprint
     have defaulted := defaulted_eq_of_completionOf_eq records
     cases ownerEq : (graph.nodes event).actor with
     | none =>
-        rw [actionLaw_of_ownerless _ _ ownerEq, actionLaw_of_ownerless _ _ ownerEq]
+        rw [actionDistribution_of_ownerless _ _ ownerEq, actionDistribution_of_ownerless _ _
+          ownerEq]
     | some owner =>
-        rw [actionLaw_of_actor _ _ ownerEq, actionLaw_of_actor _ _ ownerEq]
+        rw [actionDistribution_of_actor _ _ ownerEq, actionDistribution_of_actor _ _ ownerEq]
         by_cases inactive : owner ∈ left.defaulted
         · rw [dite_eq_left inactive, dite_eq_left (defaulted ▸ inactive)]
         · rw [dite_eq_right inactive, dite_eq_right (defaulted ▸ inactive)]
@@ -158,9 +160,10 @@ theorem RevealsOnlyConcurrent.lastIndependent_normalizeProfile_of_footprint
       · exact Ne.symm independent.2.2.2
     cases ownerEq : (graph.nodes event).actor with
     | none =>
-        rw [actionLaw_of_ownerless _ _ ownerEq, actionLaw_of_ownerless _ _ ownerEq]
+        rw [actionDistribution_of_ownerless _ _ ownerEq, actionDistribution_of_ownerless _ _
+          ownerEq]
     | some owner =>
-        rw [actionLaw_of_actor _ _ ownerEq, actionLaw_of_actor _ _ ownerEq]
+        rw [actionDistribution_of_actor _ _ ownerEq, actionDistribution_of_actor _ _ ownerEq]
         have member := mem_defaulted_complete_of_actor_ne config other otherReady action value
           owner (fun otherActor => actorsNe (otherActor.trans ownerEq.symm))
         by_cases inactive : owner ∈ config.defaulted
@@ -179,9 +182,10 @@ theorem RevealsOnlyConcurrent.lastIndependent_normalizeProfile_of_footprint
     have defaulted := defaulted_eq_of_completionOf_eq records
     cases ownerEq : (graph.nodes event).actor with
     | none =>
-        rw [actionLaw_of_ownerless _ _ ownerEq, actionLaw_of_ownerless _ _ ownerEq]
+        rw [actionDistribution_of_ownerless _ _ ownerEq, actionDistribution_of_ownerless _ _
+          ownerEq]
     | some owner =>
-        rw [actionLaw_of_actor _ _ ownerEq, actionLaw_of_actor _ _ ownerEq]
+        rw [actionDistribution_of_actor _ _ ownerEq, actionDistribution_of_actor _ _ ownerEq]
         by_cases inactive : owner ∈ left.defaulted
         · rw [dite_eq_left inactive, dite_eq_left (defaulted ▸ inactive)]
         · rw [dite_eq_right inactive, dite_eq_right (defaulted ▸ inactive)]

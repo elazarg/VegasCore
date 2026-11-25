@@ -33,11 +33,11 @@ def readyRosterScheduler (network : (NetworkPolicy (rosterTimeouts graph)) leaks
 instance readyRoster_finiteNature (inputs : PMF graph.Inputs) [Fact inputs.support.Finite]
     [leaks.FiniteSupport]
     (network : (NetworkPolicy (rosterTimeouts graph)) leaks) :
-    (app).FiniteNature (rosterInitialLaw graph inputs)
+    (app).FiniteNature (rosterInitialDistribution graph inputs)
       (readyRosterScheduler graph leaks rosters network) where
   toFiniteEnvironment := inferInstance
   initial_finite := by
-    rw [rosterInitialLaw, PMF.support_map]
+    rw [rosterInitialDistribution, PMF.support_map]
     exact (Fact.out : inputs.support.Finite).image _
   scheduler_finite past view := by
     have finite :=
@@ -166,13 +166,13 @@ theorem readyRoster_transition
     (rosters : graph.EventId → List Player)
     (network : (NetworkPolicy (rosterTimeouts graph)) leaks)
     (before after : (rosterApplication graph leaks).ProtocolState)
-    (prior : ((rosterApplication graph leaks).protocol (rosterInitialLaw graph inputs)
+    (prior : ((rosterApplication graph leaks).protocol (rosterInitialDistribution graph inputs)
       (rosterPlan graph rosters).length (readyRosterScheduler graph leaks rosters network)).Trace
         before)
     (valid : RosterCalendarInvariant graph leaks rosters before)
     (joint : Player → Option (rosterApplication graph leaks).Action)
     (reached : after ∈ ((rosterApplication graph leaks).transition
-      (rosterInitialLaw graph inputs) (rosterPlan graph rosters).length
+      (rosterInitialDistribution graph inputs) (rosterPlan graph rosters).length
       (readyRosterScheduler graph leaks rosters network)
         before joint).support) :
     RosterCalendarInvariant graph leaks rosters after := by
@@ -214,7 +214,8 @@ theorem readyRoster_history
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph.sequentialize))
     (rosters : graph.EventId → List Player)
     (network : (NetworkPolicy (rosterTimeouts graph)) leaks) :
-    ∀ {state} (_trace : ((rosterApplication graph leaks).protocol (rosterInitialLaw graph inputs)
+    ∀ {state} (_trace : ((rosterApplication graph leaks).protocol
+      (rosterInitialDistribution graph inputs)
       (rosterPlan graph rosters).length (readyRosterScheduler graph leaks rosters network)).Trace
         state),
       RosterCalendarInvariant graph leaks rosters state
@@ -228,7 +229,7 @@ theorem readyRoster_history
 theorem readyRoster_contract (inputs : PMF graph.Inputs)
     (network : (NetworkPolicy (rosterTimeouts graph)) leaks)
     (opportunities : ActorOpportunities graph rosters) :
-    AsyncContract (rosterTimeouts graph) leaks (rosterInitialLaw graph inputs)
+    AsyncContract (rosterTimeouts graph) leaks (rosterInitialDistribution graph inputs)
       (rosterPlan graph rosters).length
       (readyRosterScheduler graph leaks rosters network) (fun event => event.val) (fun _ => 0) where
   opportunity := RosterCalendarInvariant.opportunity graph inputs leaks rosters _
@@ -241,7 +242,7 @@ theorem readyRoster_contract (inputs : PMF graph.Inputs)
 /-- The graph's owner roster supplies a service contract for every typed input law. -/
 theorem readyRoster_owner_contract (inputs : PMF graph.Inputs)
     (network : (NetworkPolicy (rosterTimeouts graph)) leaks) :
-    AsyncContract (rosterTimeouts graph) leaks (rosterInitialLaw graph inputs)
+    AsyncContract (rosterTimeouts graph) leaks (rosterInitialDistribution graph inputs)
       (rosterPlan graph (ownerRoster graph)).length
       (readyRosterScheduler graph leaks (ownerRoster graph) network)
       (fun event => event.val) (fun _ => 0) :=

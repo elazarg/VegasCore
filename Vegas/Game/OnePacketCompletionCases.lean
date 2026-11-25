@@ -154,7 +154,7 @@ private theorem drain_publication_failed
 
 private theorem expired_owner_defaulted
     {remaining : Nat} {before after : (application setup timeouts leaks).Execution}
-    (trace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((application setup timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace
       (some ⟨remaining, none, before⟩))
     (event : setup.informationGraph.EventId) (actor : Player)
@@ -171,12 +171,12 @@ private theorem expired_owner_defaulted
         after.application.config.store = some .failure := by
   have facts := legalFacts setup leaks horizon scheduler _ trace
   have nativeTrace := trace
-  have initialEq : initialLaw setup = (setup.initialLaw.map setup.eventInputs).map
+  have initialEq : initialDistribution setup = (setup.initialDistribution.map setup.eventInputs).map
       (EventGraphRuntime.State.initial (graph := setup.informationGraph)) :=
-    serviceInitialLaw_eq_inputs (deps := setup.informationDependencies) setup
+    serviceInitialDistribution_eq_inputs (deps := setup.informationDependencies) setup
   rw [initialEq] at nativeTrace
   have valid : ExclusionEvidence 0 ∅ before.application :=
-    ExclusionEvidence.history timeouts leaks (setup.initialLaw.map setup.eventInputs)
+    ExclusionEvidence.history timeouts leaks (setup.initialDistribution.map setup.eventInputs)
       horizon scheduler nativeTrace
   obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
   obtain ⟨state, changed, rfl⟩ := PMF.support_map .. ▸ supported
@@ -218,7 +218,8 @@ private theorem expired_owner_defaulted
 
 private theorem ledger_transition {current next : (application setup timeouts leaks).Control}
     (joint : Player → Option (application setup timeouts leaks).Action)
-    (realized : some next ∈ ((application setup timeouts leaks).transition (initialLaw setup)
+    (realized : some next ∈ ((application setup timeouts leaks).transition
+      (initialDistribution setup)
       horizon
       scheduler (some current) joint).support) :
     ∀ message ∈ current.execution.network.ledger, message ∈ next.execution.network.ledger := by
@@ -268,7 +269,7 @@ private theorem ledger_transition {current next : (application setup timeouts le
 on the ledger or a publicly defaulted owner. In the latter case, a publication
 output retains its exact failed value. -/
 theorem completed_packet_or_defaulted : ∀ {state}
-    (_ : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+    (_ : ((application setup timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace state)
     (control : (application setup timeouts leaks).Control), state = some control →
     ∀ event ∈ control.execution.application.config.cut.completed, ∀ actor,
@@ -284,11 +285,12 @@ theorem completed_packet_or_defaulted : ∀ {state}
   | _, .extend (source := before) prior joint _ realized, control, current => by
       have recursive := fun next same => completed_packet_or_defaulted prior next same
       subst current
-      change some control ∈ ((application setup timeouts leaks).transition (initialLaw setup)
+      change some control ∈ ((application setup timeouts leaks).transition
+        (initialDistribution setup)
         horizon scheduler before joint).support at realized
       cases before with
       | none =>
-          change some control ∈ ((initialLaw setup).map fun state => some
+          change some control ∈ ((initialDistribution setup).map fun state => some
             (⟨horizon, none, ReactiveApplication.Execution.initial (application setup timeouts
               leaks)
               state⟩ : (application setup timeouts leaks).Control)).support at realized
@@ -305,11 +307,12 @@ theorem completed_packet_or_defaulted : ∀ {state}
             · exact Or.inl ⟨message, ledger_transition joint realized message onLedger,
                 sender, named⟩
             · right
-              refine ⟨(reactive_protocol_defaulted_mono timeouts) leaks (initialLaw setup)
+              refine ⟨(reactive_protocol_defaulted_mono timeouts) leaks (initialDistribution setup)
                 horizon scheduler current control joint realized inactive.1, ?_⟩
               intro payload outputEq
               exact FieldRef.get?_preserved _ _ _
-                ((keepsStore_step timeouts leaks).transition (initialLaw setup) horizon scheduler
+                ((keepsStore_step timeouts leaks).transition
+                  (initialDistribution setup) horizon scheduler
                   current control joint realized) _ (inactive.2 payload outputEq)
           · have idle : current.actor = none := by
               cases acting : current.actor with
@@ -357,7 +360,8 @@ theorem completed_packet_or_defaulted : ∀ {state}
                 expired
               right
               have rawPrior := prior
-              have idleTrace : ((application setup timeouts leaks).protocol (initialLaw setup)
+              have idleTrace : ((application setup timeouts leaks).protocol
+                (initialDistribution setup)
                   horizon scheduler).Trace
                     (some ⟨current.remaining, none, current.execution⟩) := by
                 rcases current with ⟨remaining, actor, execution⟩

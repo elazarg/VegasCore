@@ -19,7 +19,7 @@ are none. At a kept state (`Vegas.decisionKept`), failure of the decided event
 is read off the image (`Vegas.decisionFailed_eq`), and every step of the native
 kernel is read off the image except the owner's own, which enters as a
 hypothesis per kind of turn: within `δ` at a publication, and a law of moves
-within `δ / 2` at a binding (`Vegas.OwnerBindingLaw`). Under it the control step
+within `δ / 2` at a binding (`Vegas.OwnerBindingWithinTV`). Under it the control step
 of a decoded profile, read through the image, is within `δ` in total variation of
 the key's kernel (`Vegas.decisionKernel_close`).
 -/
@@ -128,14 +128,15 @@ theorem commitStatuses_nil_of_unsent {who : Player}
       control.execution.network.pending = [] := by
   obtain ⟨_, keyEq⟩ := lateKey_of_history (timeouts := timeouts) siteKey history current
   simp only [lateKey, Option.some.injEq] at keyEq
-  have trace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+  have trace : ((application setup timeouts leaks).protocol (initialDistribution setup) horizon
     scheduler).Trace
       (some control) :=
-    current ▸ (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon
+    current ▸ (bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup) horizon
       scheduler history.1.trace
   obtain ⟨inputRecall, _, _⟩ := (countRecall_history timeouts) leaks trace
   have facts := settledFacts_history ((toInformationGraph_barrierOrdered
-    setup.program).revealRelaxedOrdered.actorSerial) (initialLaw setup) horizon scheduler trace
+    setup.program).revealRelaxedOrdered.actorSerial) (initialDistribution setup) horizon scheduler
+      trace
   unfold commitStatuses
   rw [List.filterMap_eq_nil_iff]
   intro message member
@@ -232,7 +233,7 @@ def bindingRoundKernel (event : setup.informationGraph.EventId) (owner : Player)
         execution.network.pending =
         image.2 ∧
       execution.application.config.cut.Ready event then
-    ((application setup timeouts leaks).transition (initialLaw setup) horizon scheduler
+    ((application setup timeouts leaks).transition (initialDistribution setup) horizon scheduler
       (some ⟨remaining + 1, none, represented.choose⟩) (fun _ => none)).map
         (bindingImage (timeouts := timeouts) event owner payload)
   else PMF.pure (.inl image)
@@ -290,7 +291,7 @@ open Classical in
 the decided binding ready and the owner acting, the owner's decoded response,
 sorted into moves, is within `δ` in total variation of the key's law of moves at
 the operational state and statuses. -/
-def OwnerBindingLaw {LateOption : Type}
+def OwnerBindingWithinTV {LateOption : Type}
     (moves : LateKey setup timeouts leaks → LateOption →
       Option (OperationalState setup timeouts leaks) × List (MessageId Player × Bool) →
         PMF (Option (Handle setup.informationGraph)))
@@ -306,7 +307,8 @@ def OwnerBindingLaw {LateOption : Type}
       allowed history.state →
       ForcedState setup timeouts leaks key.owner history.state →
       execution.application.config.cut.Ready event →
-      PMF.WithinTV δ (((bounds.onePacketMenu timeouts leaks).decodeProfile (initialLaw setup)
+      PMF.WithinTV δ (((bounds.onePacketMenu timeouts leaks).decodeProfile
+        (initialDistribution setup)
           horizon scheduler profile key.owner (execution.logs key.owner)
           (execution.observe (application setup timeouts leaks) key.owner)).map
             (commitMove (timeouts := timeouts) event key.owner payload
@@ -416,9 +418,10 @@ theorem decisionKept_step (key : LateKey setup timeouts leaks)
     {state : (application setup timeouts leaks).ProtocolState}
     (kept : state ∈ decisionKept (timeouts := timeouts) bounds horizon scheduler key)
     {next : (application setup timeouts leaks).ProtocolState}
-    (member : next ∈ ((application setup timeouts leaks).controlStep (initialLaw setup) horizon
+    (member : next ∈ ((application setup timeouts leaks).controlStep
+      (initialDistribution setup) horizon
       scheduler
-      ((bounds.onePacketMenu timeouts leaks).decodeProfile (initialLaw setup) horizon
+      ((bounds.onePacketMenu timeouts leaks).decodeProfile (initialDistribution setup) horizon
         scheduler profile) state).support) :
     next ∈ decisionKept (timeouts := timeouts) bounds horizon scheduler key := by
   unfold decisionKept at kept ⊢
@@ -511,7 +514,8 @@ theorem bindingKernel_close {LateOption : Type}
     (profile : ∀ player,
       (onePacketInformation setup timeouts leaks bounds horizon scheduler).BehavioralPolicy player)
     {δ : ℝ} (nonneg : 0 ≤ δ) {allowed : (application setup timeouts leaks).ProtocolState → Prop}
-    (law : OwnerBindingLaw (timeouts := timeouts) bounds horizon scheduler moves key option profile
+    (law : OwnerBindingWithinTV (timeouts := timeouts) bounds horizon scheduler moves key option
+      profile
       δ allowed)
     {event : setup.informationGraph.EventId} {payload : L.Ty} (turn : BindingTurn (timeouts :=
       timeouts) key
@@ -522,8 +526,9 @@ theorem bindingKernel_close {LateOption : Type}
     (status : event ∈ control.execution.application.config.cut.completed ∨
       (ForcedState setup timeouts leaks key.owner (some control) ∧
         control.execution.application.config.cut.Ready event)) :
-    PMF.WithinTV δ (((application setup timeouts leaks).controlStep (initialLaw setup) horizon
-        scheduler ((bounds.onePacketMenu timeouts leaks).decodeProfile (initialLaw setup)
+    PMF.WithinTV δ (((application setup timeouts leaks).controlStep
+      (initialDistribution setup) horizon
+        scheduler ((bounds.onePacketMenu timeouts leaks).decodeProfile (initialDistribution setup)
           horizon scheduler profile) (some control)).map (bindingImage (timeouts := timeouts) event
             key.owner payload))
       (bindingKernel (timeouts := timeouts) horizon scheduler event key.owner
@@ -531,18 +536,19 @@ theorem bindingKernel_close {LateOption : Type}
         (bindingImage (timeouts := timeouts) event key.owner payload (some
           control))) := by
   obtain ⟨_, ⟨outputEq, codeEq, view⟩, _⟩ := turn
-  have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup)
+  have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup)
     horizon scheduler (current ▸ history.trace)
   have quiescent := (legalFacts setup leaks horizon scheduler control rawTrace).quiescent
   rcases status with completed | ⟨forced, ready⟩
   · convert (PMF.WithinTV.refl _).mono nonneg using 1
-    have constant : ((application setup timeouts leaks).controlStep (initialLaw setup) horizon
+    have constant : ((application setup timeouts leaks).controlStep
+      (initialDistribution setup) horizon
         scheduler ((bounds.onePacketMenu timeouts leaks).decodeProfile
-          (initialLaw setup) horizon scheduler profile) (some control)).map
+          (initialDistribution setup) horizon scheduler profile) (some control)).map
           (bindingImage (timeouts := timeouts) event key.owner payload) =
-        ((application setup timeouts leaks).controlStep (initialLaw setup) horizon
+        ((application setup timeouts leaks).controlStep (initialDistribution setup) horizon
         scheduler ((bounds.onePacketMenu timeouts leaks).decodeProfile
-          (initialLaw setup) horizon scheduler profile) (some control)).map
+          (initialDistribution setup) horizon scheduler profile) (some control)).map
           (Function.const _ (bindingImage (timeouts := timeouts) event key.owner payload (some
             control))) := by
       apply map_congr_on_support
@@ -606,9 +612,11 @@ theorem bindingKernel_close {LateOption : Type}
         cases remaining with
         | zero =>
             convert (PMF.WithinTV.refl _).mono nonneg using 1
-            have step : (application setup timeouts leaks).controlStep (initialLaw setup) horizon
+            have step : (application setup timeouts leaks).controlStep
+              (initialDistribution setup) horizon
                 scheduler ((bounds.onePacketMenu timeouts leaks).decodeProfile
-                  (initialLaw setup) horizon scheduler profile) (some ⟨0, none, execution⟩) =
+                  (initialDistribution setup) horizon scheduler profile)
+                    (some ⟨0, none, execution⟩) =
                 PMF.pure (some ⟨0, none, execution⟩) := rfl
             rw [step, PMF.pure_map, ← imageEq]
             simp only [bindingImage, stateStatuses, pendingImage_of_pending (timeouts := timeouts) _
@@ -617,11 +625,13 @@ theorem bindingKernel_close {LateOption : Type}
                 bindingKernel ]
         | succ remaining =>
             convert (PMF.WithinTV.refl _).mono nonneg using 1
-            have step : (application setup timeouts leaks).controlStep (initialLaw setup) horizon
+            have step : (application setup timeouts leaks).controlStep
+              (initialDistribution setup) horizon
                 scheduler ((bounds.onePacketMenu timeouts leaks).decodeProfile
-                  (initialLaw setup) horizon scheduler profile)
+                  (initialDistribution setup) horizon scheduler profile)
                   (some ⟨remaining + 1, none, execution⟩) =
-                (application setup timeouts leaks).transition (initialLaw setup) horizon scheduler
+                (application setup timeouts leaks).transition
+                  (initialDistribution setup) horizon scheduler
                   (some ⟨remaining + 1, none, execution⟩) (fun _ => none) := rfl
             rw [step]
             obtain ⟨state, stateEq⟩ : ∃ state, operationalState setup timeouts leaks
@@ -662,7 +672,8 @@ theorem bindingKernel_close {LateOption : Type}
             unfold bindingRoundKernel
             rw [dite_eq_left represented]
             obtain ⟨repSame, repStatuses, _⟩ := represented.choose_spec
-            exact (binding_round_image_congr (timeouts := timeouts) (initialLaw setup) horizon
+            exact (binding_round_image_congr (timeouts := timeouts)
+              (initialDistribution setup) horizon
               scheduler remaining
               execution represented.choose (stateEq.trans repSame.symm) repStatuses.symm ready
               quiescent view).symm
@@ -685,14 +696,16 @@ theorem decisionKernel_close {LateOption : Type}
     (bindingLe : 2 * δBinding ≤ δ)
     {allowed : (application setup timeouts leaks).ProtocolState → Prop}
     (owner : OwnerStepClose (timeouts := timeouts) ownerKernel key option profile δ allowed)
-    (law : OwnerBindingLaw (timeouts := timeouts) bounds horizon scheduler moves key option profile
+    (law : OwnerBindingWithinTV (timeouts := timeouts) bounds horizon scheduler moves key option
+      profile
       δBinding allowed)
     {state : (application setup timeouts leaks).ProtocolState}
     (kept : state ∈ decisionKept (timeouts := timeouts) bounds horizon scheduler key) (allowedState
       : allowed state) :
-    PMF.WithinTV δ (((application setup timeouts leaks).controlStep (initialLaw setup) horizon
+    PMF.WithinTV δ (((application setup timeouts leaks).controlStep
+      (initialDistribution setup) horizon
       scheduler
-        ((bounds.onePacketMenu timeouts leaks).decodeProfile (initialLaw setup) horizon
+        ((bounds.onePacketMenu timeouts leaks).decodeProfile (initialDistribution setup) horizon
           scheduler profile) state).map (decisionImage (timeouts := timeouts) key))
       (decisionKernel (timeouts := timeouts) bounds horizon scheduler ownerKernel moves key option
         (decisionImage (timeouts := timeouts) key state)) := by

@@ -14,7 +14,7 @@ Composing Nash preservation for the intended game
 (`Vegas.SourceProgram.Setup.intended_forfeit_isεNash_preserved`) with the forward
 transfer to turn-counted clients
 (`Vegas.AsyncServiceSpec.isεBestResponse_clientProfile_of_firstTurn_bounds`) and their
-honest execution (`Vegas.sourceServiceClients_clientPolicy_settlement_lawError`), at the
+honest execution (`Vegas.sourceServiceClients_clientPolicy_settlement_distributionError`), at the
 forfeited utility: if every native policy against the first-turn clients is
 bounded by a source deviation, the turn-counted clients of every source profile
 extending an `ε`-Nash equilibrium of the intended game are an
@@ -67,7 +67,8 @@ theorem intended_clientProfile_isεNash_of_firstTurn_bounds_readout {Parameter :
     {turns : Nat} (timing : TurnTiming service.setup turns service.setup.informationDependencies)
     (covered : ∀ (source : Profile (service.sourceModel (CommitmentInterface.values
       service.setup.program)).behavioralSignature) who,
-      menu.Admissible (serviceInitialLaw service.setup service.setup.informationDependencies)
+      menu.Admissible (serviceInitialDistribution service.setup
+        service.setup.informationDependencies)
         service.horizon
         service.scheduler who
         (serviceClientPolicy service.setup service.setup.informationDependencies service.duration
@@ -83,7 +84,7 @@ theorem intended_clientProfile_isεNash_of_firstTurn_bounds_readout {Parameter :
       service.setup.program)).behavioralSignature)
     (agrees : (service.setup.intendedRestriction (CommitmentInterface.values
       service.setup.program)).ExtendsProfile intended source)
-    (terminal : FirstTurnReadoutLaw service.setup service.setup.informationDependencies
+    (terminal : FirstTurnReadoutAgreement service.setup service.setup.informationDependencies
       service.duration service.leaks reader
       service.horizon service.scheduler service.bound turns
       (normalizeDisclosureProfile service.setup.program (service.setup.decodeBehavioralProfile
@@ -118,7 +119,7 @@ theorem intended_clientProfile_isεNash_of_firstTurn_bounds_readout {Parameter :
         service.setup.program)).BehavioralPolicy who,
         expect (((serviceApplication service.setup service.setup.informationDependencies
           service.duration
-          service.leaks).roundsFrom (serviceInitialLaw service.setup
+          service.leaks).roundsFrom (serviceInitialDistribution service.setup
             service.setup.informationDependencies)
             service.scheduler (deviatedTurnProfile service.bound turns
               (firstTurnTiming service.setup turns service.setup.informationDependencies) clients
@@ -152,7 +153,7 @@ theorem intended_clientProfile_isεNash_of_firstTurn_bounds_readout {Parameter :
               (fun state => utility (service.setup.parameterOutcome parameter state) who)))) := by
   let : Fintype Player := Fintype.ofFinite Player
   intro forfeited base payoff settle clients firstTurn
-  obtain ⟨sourceNash, _, sourceLaw⟩ := service.setup.intended_forfeit_isεNash_preserved
+  obtain ⟨sourceNash, _, sourceDistribution⟩ := service.setup.intended_forfeit_isεNash_preserved
     (CommitmentInterface.values service.setup.program)
     (sourceService_finiteBindingTypes service.setup service.bounds service.values)
     wellFormed parameter utility forfeit range intended source agrees ε equilibrium
@@ -167,7 +168,7 @@ theorem intended_clientProfile_isεNash_of_firstTurn_bounds_readout {Parameter :
       DefaultHistory Player =>
     forfeited (parameter (initialState service.setup.program result.1),
       ⟨sourcePublicEnv result.1, result.2⟩)
-  have close := sourceServiceClients_clientPolicy_settlement_lawError_readout
+  have close := sourceServiceClients_clientPolicy_settlement_distributionError_readout
     (fun event => (service.setup.dataflowGraph.sequentialize_solitary event).ownerSolitary) reader
     service.contract
     timing decoded terminal menu (covered source) sample authentic pairUtility
@@ -197,7 +198,7 @@ theorem intended_clientProfile_isεNash_of_firstTurn_bounds_readout {Parameter :
     simpa only [PMF.map_comp, Function.comp_def, Option.map_some, Option.elim_some,
       pairUtility, Setup.parameterOutcome, publicOutcome] using mapped.symm
   have projectedLaw := congrArg (PMF.map fun outcome =>
-    (outcome.1.map (fun config => (config.state, config.defaults)), outcome.2)) sourceLaw
+    (outcome.1.map (fun config => (config.state, config.defaults)), outcome.2)) sourceDistribution
   simp only [PMF.map_comp, Function.comp_def] at projectedLaw
   rw [sourceJoint, projectedLaw] at close
   exact close
@@ -219,7 +220,8 @@ theorem intended_clientProfile_isεNash_of_firstTurn_bounds {Parameter : Type}
     {turns : Nat} (timing : TurnTiming service.setup turns service.setup.informationDependencies)
     (covered : ∀ (source : Profile (service.sourceModel (CommitmentInterface.values
       service.setup.program)).behavioralSignature) who,
-      menu.Admissible (serviceInitialLaw service.setup service.setup.informationDependencies)
+      menu.Admissible (serviceInitialDistribution service.setup
+        service.setup.informationDependencies)
         service.horizon
         service.scheduler who
         (serviceClientPolicy service.setup service.setup.informationDependencies service.duration
@@ -235,7 +237,7 @@ theorem intended_clientProfile_isεNash_of_firstTurn_bounds {Parameter : Type}
       service.setup.program)).behavioralSignature)
     (agrees : (service.setup.intendedRestriction (CommitmentInterface.values
       service.setup.program)).ExtendsProfile intended source)
-    (terminal : FirstTurnSourceLaw service.setup service.setup.informationDependencies
+    (terminal : FirstTurnSourceAgreement service.setup service.setup.informationDependencies
       service.duration service.leaks
       service.horizon service.scheduler service.bound turns
       (normalizeDisclosureProfile service.setup.program (service.setup.decodeBehavioralProfile
@@ -271,7 +273,7 @@ theorem intended_clientProfile_isεNash_of_firstTurn_bounds {Parameter : Type}
         service.setup.program)).BehavioralPolicy who,
         expect (((serviceApplication service.setup service.setup.informationDependencies
           service.duration
-          service.leaks).roundsFrom (serviceInitialLaw service.setup
+          service.leaks).roundsFrom (serviceInitialDistribution service.setup
             service.setup.informationDependencies)
             service.scheduler (deviatedTurnProfile service.bound turns
               (firstTurnTiming service.setup turns service.setup.informationDependencies) clients

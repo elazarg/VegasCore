@@ -133,7 +133,8 @@ theorem nonlate_of_mainActivationTraceAfter
       (before.execution.logs owner) (before.execution.observe (application setup timeouts leaks)
         owner) :=
     (chosen ▸ legal.2 owner).2
-  have selected : (responseChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+  have selected : (responseChoice setup timeouts leaks bounds
+    (initialDistribution setup) horizon scheduler
       owner (some (before.execution.logs owner,
         before.execution.observe (application setup timeouts leaks) owner)) response).1 = some
           response := by
@@ -168,7 +169,8 @@ theorem nonlate_of_mainActivationTraceAfter
     induction laterPrefix with
     | refl => exact initialRecord
     | @extend first second earlier isPrefix actions allowed reached ih =>
-        exact recordsEntry_transition (timeouts := timeouts) owner recordedEntry (initialLaw setup)
+        exact recordsEntry_transition (timeouts := timeouts) owner recordedEntry
+          (initialDistribution setup)
           horizon scheduler
           first second actions ih reached
   obtain ⟨earlier, later, split⟩ := laterRecord afterPrefix
@@ -193,13 +195,14 @@ private theorem main_of_no_pending
     (response : (application setup timeouts leaks).Action)
     (offered : response ∈ bounds.onePacketActions timeouts leaks owner
       (execution.logs owner) (execution.observe (application setup timeouts leaks) owner)) :
-    responseChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler owner
+    responseChoice setup timeouts leaks bounds (initialDistribution setup) horizon scheduler owner
       (some (execution.logs owner, execution.observe (application setup timeouts leaks) owner))
         response ∈
-      (honestChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler source owner
+      (honestChoice setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
+        source owner
         (some (execution.logs owner,
           execution.observe (application setup timeouts leaks) owner))).support := by
-  have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup)
+  have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup)
     horizon scheduler trace
   obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (timeouts := timeouts) (failureProfile
     setup.program)
@@ -242,10 +245,12 @@ private theorem main_of_no_pending
     cases response
     cases silent
     rfl
-  have mainLaw : honestChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+  have mainLaw : honestChoice setup timeouts leaks bounds (initialDistribution setup) horizon
+    scheduler
     source owner
       (some (execution.logs owner, execution.observe (application setup timeouts leaks) owner)) =
-      PMF.pure (silenceChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler owner
+      PMF.pure (silenceChoice setup timeouts leaks bounds (initialDistribution setup) horizon
+        scheduler owner
         (some (execution.logs owner, execution.observe (application setup timeouts leaks)
           owner))) := by
     cases turn : execution.application.publicView.ownTurn? owner with
@@ -297,12 +302,12 @@ theorem response_main_of_mainActivationTraceAfter
     (stepMain : MainActivationStep setup timeouts leaks bounds horizon
       scheduler source focal
       (some control) joint) :
-    responseChoice setup timeouts leaks bounds (initialLaw setup) horizon
+    responseChoice setup timeouts leaks bounds (initialDistribution setup) horizon
       scheduler owner
       (some (control.execution.logs owner,
         control.execution.observe (application setup timeouts leaks) owner)) ((joint owner).getD
           ⟨none⟩) ∈
-      (honestChoice setup timeouts leaks bounds (initialLaw setup) horizon
+      (honestChoice setup timeouts leaks bounds (initialDistribution setup) horizon
         scheduler source owner
         (some (control.execution.logs owner,
           control.execution.observe (application setup timeouts leaks) owner))).support := by
@@ -410,7 +415,8 @@ theorem stopped_regular_of_mainActivationTraceAfter
     (timely : (AsyncTimely timeouts) delay bound)
     (certificate : (onePacketProtocol setup timeouts leaks bounds horizon
       scheduler).WellFoundedHistories)
-    (profile : ∀ who, (onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+    (profile : ∀ who, (onePacketModel setup timeouts leaks bounds
+      (initialDistribution setup) horizon
       scheduler).BehavioralPolicy who)
     (extraStop : (onePacketProtocol setup timeouts leaks bounds horizon
       scheduler).History → Prop)
@@ -422,7 +428,7 @@ theorem stopped_regular_of_mainActivationTraceAfter
     (regular : RegularTrace setup timeouts leaks bounds horizon
       scheduler source focal
       start.trace) :
-    ∀ final ∈ ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+    ∀ final ∈ ((onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon
       scheduler).runBehavioralUntil
         certificate profile (fun history =>
           ¬ Clear
@@ -444,7 +450,8 @@ theorem stopped_regular_of_mainActivationTraceAfter
   let start : (onePacketProtocol setup timeouts leaks bounds horizon
       scheduler).History :=
     ⟨some control, startTrace⟩
-  let model := onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+  let model := onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon
+    scheduler
   let stopped := fun history :
       (onePacketProtocol setup timeouts leaks bounds horizon scheduler).History =>
     ¬ Clear
@@ -479,7 +486,7 @@ theorem stopped_regular_of_mainActivationTraceAfter
     cases beforeState
     obtain ⟨after, afterState, _recall⟩ := (application setup timeouts
       leaks).transition_recall_prefix
-      (initialLaw setup) horizon scheduler before target draw.1 realized
+      (initialDistribution setup) horizon scheduler before target draw.1 realized
     cases afterState
     refine ⟨⟨after, rfl⟩, .extend valid.2.1 draw.1 draw.2 realized, ?_⟩
     intro main

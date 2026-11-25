@@ -315,7 +315,7 @@ variable [Fintype Player] (setup timeouts)
 /-- The event of the requested source rank has completed, possibly together
 with later events through automatic completion. -/
 def LateStopped (rank : Nat) (history : ((bounds.onePacketMenu timeouts leaks).protocol
-    (initialLaw setup) horizon scheduler).History) : Prop :=
+    (initialDistribution setup) horizon scheduler).History) : Prop :=
   ∃ control : (application setup timeouts leaks).Control, history.state = some control ∧
     ∃ event ∈ control.execution.application.config.cut.completed, event.val = rank
 

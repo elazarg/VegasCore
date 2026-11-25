@@ -34,7 +34,8 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 private theorem private_input_not_failed (wellFormed : setup.WellFormed)
-    {draw : State L setup.context} (member : draw ∈ setup.initialLaw.support) (who : Player)
+    {draw : State L setup.context} (member : draw ∈ setup.initialDistribution.support)
+      (who : Player)
     (input : setup.informationGraph.InputId) (privateTo : PrivateTo who (setup := setup) (.inl
       input)) :
     ¬ (setup.informationGraph.layout (.inl input)).IsFailure (setup.eventInputs draw input) := by
@@ -48,7 +49,7 @@ private theorem private_input_not_failed (wellFormed : setup.WellFormed)
 /-- The shared prior set restricts both hidden inputs and the public fiber. -/
 def hiddenPublicFiberInputs (who : Player) (base : State L setup.context) :
     Set setup.informationGraph.Inputs :=
-  {inputs | ∃ draw ∈ setup.initialLaw.support, inputs = setup.eventInputs draw ∧
+  {inputs | ∃ draw ∈ setup.initialDistribution.support, inputs = setup.eventInputs draw ∧
     HiddenAgree who draw base ∧ signal draw = signal base}
 
 /-- Conditional prior scaling uses only the restricted shared set; it does not
@@ -58,18 +59,20 @@ theorem ownerSwap_priorScaled (wellFormed : setup.WellFormed)
     (preserves : ∀ (who : Player) (mine others : State L setup.context),
       signal (splice who mine others) = signal others)
     {who : Player} {view₁ view₂ : (application setup timeouts leaks).PlayerView}
-    {base other : State L setup.context} (baseMember : base ∈ setup.initialLaw.support)
-    (otherMember : other ∈ setup.initialLaw.support)
+    {base other : State L setup.context} (baseMember : base ∈ setup.initialDistribution.support)
+    (otherMember : other ∈ setup.initialDistribution.support)
     (baseStore : ∀ input, PrivateTo who (setup := setup) (.inl input) →
       view₁.application.observation.store (.inl input) = some (setup.eventInputs base input))
     (otherStore : ∀ input, PrivateTo who (setup := setup) (.inl input) →
       view₂.application.observation.store (.inl input) = some (setup.eventInputs other input)) :
-    ∀ state ∈ (initialLaw setup).support,
+    ∀ state ∈ (initialDistribution setup).support,
       state.config.inputs ∈ swapAllowed (ownerSwap who view₁.application view₂.application) ∩
         hiddenPublicFiberInputs signal who base →
-      (initialLaw setup (state.swap (ownerSwap who view₁.application view₂.application))).toReal =
-        (setup.initialLaw (splice who other base)).toReal / (setup.initialLaw base).toReal *
-          (initialLaw setup state).toReal := by
+      (initialDistribution setup (state.swap (ownerSwap who view₁.application
+        view₂.application))).toReal =
+        (setup.initialDistribution (splice who other base)).toReal /
+          (setup.initialDistribution base).toReal *
+          (initialDistribution setup state).toReal := by
   rintro state member ⟨⟨allowedState, allowedMember, allowedInputs, swappedMember⟩, draw,
     drawMember, drawInputs, agree, sameSignal⟩
   obtain ⟨stateDraw, -, rfl⟩ := eq_initial_of_mem_support member
@@ -92,10 +95,10 @@ theorem ownerSwap_priorScaled (wellFormed : setup.WellFormed)
     (setup.eventInputs allowedDraw) = setup.eventInputs swappedDraw at swappedInputs
   have swappedDrawEq : swappedDraw = splice who other allowedDraw :=
     eventInputs_injective (swappedInputs.symm.trans spliced)
-  rw [swappedEq, swappedDrawEq, initialLaw_initial, initialLaw_initial]
-  have product := setup.initialLaw_splice_mul signal independent preserves who other
+  rw [swappedEq, swappedDrawEq, initialDistribution_initial, initialDistribution_initial]
+  have product := setup.initialDistribution_splice_mul signal independent preserves who other
     agree sameSignal.symm
-  have basePositive : 0 < (setup.initialLaw base).toReal :=
+  have basePositive : 0 < (setup.initialDistribution base).toReal :=
     ENNReal.toReal_pos ((PMF.mem_support_iff _ _).mp baseMember) (PMF.apply_ne_top _ _)
   have realProduct := congrArg ENNReal.toReal product
   rw [ENNReal.toReal_mul, ENNReal.toReal_mul] at realProduct
@@ -150,13 +153,13 @@ theorem ownerSwap_priorClosed_given_public (wellFormed : setup.WellFormed)
     (firstSite : site₁.1 = some (past₁, view₁)) (secondSite : site₂.1 = some (past₂, view₂))
     (sameKey : lateKey setup timeouts leaks who site₁.1 = lateKey setup timeouts leaks who
       site₂.1) :
-    ∀ initial ∈ setup.initialLaw.support,
+    ∀ initial ∈ setup.initialDistribution.support,
       (∃ history : (onePacketInformation setup timeouts leaks bounds horizon
         scheduler).InformationHistory
         who site₁.1, ∃ control : (application setup timeouts leaks).Control,
         history.1.state = some control ∧
           control.execution.application.config.inputs = setup.eventInputs initial) →
-      ∃ other ∈ setup.initialLaw.support, setup.eventInputs other =
+      ∃ other ∈ setup.initialDistribution.support, setup.eventInputs other =
         (ownerSwap who view₁.application view₂.application).inputs (setup.eventInputs initial) := by
   rintro initial member ⟨history, control, stateEq, inputsEq⟩
   obtain ⟨control₁, draw₁, stateEq₁, -, inputsEq₁, firstStore⟩ := siteDraw (timeouts := timeouts)

@@ -35,12 +35,12 @@ private theorem config_inputs {inputs : setup.informationGraph.Inputs}
 
 /-- All raw responses and builder commands preserve the owner's access to its bit. -/
 theorem ledgerBit_observe (draw : State simpleExpr context)
-    (member : draw ∈ setup.initialLaw.support)
+    (member : draw ∈ setup.initialDistribution.support)
     (execution : (app).Execution)
     (valid : EventGraphRuntime.State.Invariant (graph := setup.informationGraph)
         (setup.eventInputs draw) execution.application)
     (who : Player) : ledgerBit who (execution.observe app who) = signal draw := by
-  obtain ⟨bit, rfl⟩ := initialLaw_support draw member
+  obtain ⟨bit, rfl⟩ := initialDistribution_support draw member
   have inputs := config_inputs valid.reachable
   cases who
   · change (setup.informationGraph.playerStore false execution.application.config.store
@@ -56,12 +56,14 @@ theorem ledgerBit_observe (draw : State simpleExpr context)
 
 /-- One locally signal-dependent client profile realizes the exact mixture of the two
 component execution laws, for any component clients, scheduler and pending observation. -/
-theorem ledgerBit_execution_law (scheduler : (app).Scheduler)
+theorem ledgerBit_execution_distribution (scheduler : (app).Scheduler)
     (clients : Bool → Player → (app).Policy) (count : Nat) :
-    (app).roundsFrom (Vegas.initialLaw setup) scheduler (Setup.signalClients ledgerBit clients)
+    (app).roundsFrom (Vegas.initialDistribution setup) scheduler
+      (Setup.signalClients ledgerBit clients)
         count =
-      (setup.initialLaw.map signal).bind fun bit => (app).roundsFrom
-        (Vegas.initialLaw (setup.conditionInitial signal bit)) scheduler (clients bit) count :=
+      (setup.initialDistribution.map signal).bind fun bit => (app).roundsFrom
+        (Vegas.initialDistribution (setup.conditionInitial signal bit)) scheduler
+          (clients bit) count :=
   Setup.roundsFrom_signalClients ledgerBit ledgerBit_observe clients count
 
 end Vegas.Examples.CorrelatedInitialBits

@@ -28,7 +28,7 @@ def payoff (number : ℕ) : ℝ := 1 / ((number : ℝ) + 1)
 
 def value (outcome : Option ℕ) : ℝ := outcome.elim (-1) payoff
 
-def law : PMF (Option ℕ) :=
+def outcomeDistribution : PMF (Option ℕ) :=
   mix (1 / 2) (by norm_num) (by norm_num) (reference.map some) (PMF.pure none)
 
 theorem reference_full_support (number : ℕ) : number ∈ reference.support := by
@@ -57,8 +57,8 @@ private theorem payoff_bounded (number : ℕ) : |payoff number| ≤ 1 := by
 theorem reference_payoff_integrable : PayoffIntegrable reference payoff :=
   payoffIntegrable_of_bounded reference payoff payoff_bounded
 
-theorem failed_law_integrable : PayoffIntegrable law value :=
-  payoffIntegrable_of_bounded law value (C := 1) fun outcome => by
+theorem failed_distribution_integrable : PayoffIntegrable outcomeDistribution value :=
+  payoffIntegrable_of_bounded outcomeDistribution value (C := 1) fun outcome => by
     cases outcome with
     | none => norm_num [value]
     | some number => exact payoff_bounded number
@@ -74,14 +74,14 @@ theorem no_attained_minimum (number : ℕ) :
 
 /-- The actual generic comparison applies to the infinite supported laws and
 their integrability certificates, without selecting a minimum or floor. -/
-theorem failure_does_not_improve : expect law value ≤ expect reference payoff := by
-  exact expect_le_of_dominated_readout law reference id (by
+theorem failure_does_not_improve : expect outcomeDistribution value ≤ expect reference payoff := by
+  exact expect_le_of_dominated_readout outcomeDistribution reference id (by
     intro number
-    rw [PMF.map_id, law, mix_apply,
+    rw [PMF.map_id, outcomeDistribution, mix_apply,
       pmf_map_apply_of_injective _ (Option.some_injective ℕ)]
     simp only [PMF.pure_apply, Option.some_ne_none, ↓reduceIte, mul_zero, add_zero]
     exact mul_le_of_le_one_left zero_le (by norm_num)) value payoff
-    failed_law_integrable reference_payoff_integrable (by
+    failed_distribution_integrable reference_payoff_integrable (by
     intro outcome _ number reading
     change outcome = some number at reading
     subst outcome

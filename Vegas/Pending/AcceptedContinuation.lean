@@ -3,7 +3,7 @@ module
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 public import Vegas.Pending.CallSettlement
-public import Vegas.Pending.ExclusionPolicyLaw
+public import Vegas.Pending.ExclusionPolicyDistribution
 public import Vegas.Pending.ReactiveSignedCommitments
 public import Interaction.ReactiveRawRoundTrace
 public import Interaction.ReactiveStopping

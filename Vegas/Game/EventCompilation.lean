@@ -38,14 +38,14 @@ def canonicalEventSimulation (setup : Setup (Player := Player) (L := L)) :
   compileStrategy := compileEventPolicy setup.program
   honest_law profile := by
     have base := congrArg (PMF.map (publicOutcome setup.program))
-      (canonical_setup_law setup profile)
+      (canonical_setup_distribution setup profile)
     rw [PMF.map_comp] at base
     exact base.trans (PMF.map_id _).symm
   compiled_considered _ _ := trivial
   deviation_mixture profile who replacement _ := by
     refine ⟨PMF.pure (backtranslateEventPolicy setup.program who replacement), ?_⟩
     have base := congrArg (PMF.map (publicOutcome setup.program))
-      (canonical_setup_deviation_law setup profile who replacement)
+      (canonical_setup_deviation_distribution setup profile who replacement)
     rw [PMF.map_comp] at base
     rw [PMF.pure_bind]
     exact base.trans (PMF.map_id _).symm
@@ -63,19 +63,19 @@ def eventSimulation (setup : Setup (Player := Player) (L := L))
 /-- Every compiled event game has finitely supported outcome laws under finite
 fresh-binding alphabets and a finitely supported initial law. -/
 theorem eventGame_play_support_finite (setup : Setup (Player := Player) (L := L))
-    (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw]
+    (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialSupport]
     (scheduler : setup.informationGraph.PublicScheduler) (profile :
       setup.informationGraph.BehavioralProfile) :
     ((setup.eventGame scheduler).play profile).support.Finite :=
   setup.informationGraph.gameForm_play_support_finite _
-    (by rw [PMF.support_map]; exact setup.initialLaw_support_finite.image _) scheduler _
+    (by rw [PMF.support_map]; exact setup.initialDistribution_support_finite.image _) scheduler _
     ((toInformationGraph_finiteActions setup.program finite).profileFiniteSupport _)
 
 /-- Same-error Nash preservation and reflection at compiled source profiles
 for every real-valued utility of the public source result. -/
 theorem eventGame_approximate_nash_iff
     (setup : Setup (Player := Player) (L := L))
-    (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw]
+    (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialSupport]
     (scheduler : setup.informationGraph.PublicScheduler)
     (utility : PublicOutcome setup.program → Player → ℝ)
     (ε : ℝ) (profile : BehavioralProfile setup.program) :

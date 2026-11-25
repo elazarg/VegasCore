@@ -25,28 +25,30 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
   {horizon : Nat} {scheduler : (application setup timeouts leaks).Scheduler}
 
-local notation "component" => fun k => Vegas.initialLaw (setup.conditionInitial signal k)
+local notation "component" => fun k => Vegas.initialDistribution (setup.conditionInitial signal k)
 variable (menu : (application setup timeouts leaks).ResponseMenu)
   (read : Player → (application setup timeouts leaks).Info → Signal)
-  (observed : ∀ draw ∈ setup.initialLaw.support,
+  (observed : ∀ draw ∈ setup.initialDistribution.support,
     ∀ execution : (application setup timeouts leaks).Execution,
     EventGraphRuntime.State.Invariant (graph := setup.informationGraph)
       (setup.eventInputs draw) execution.application → ∀ who,
       read who (some (execution.logs who,
         execution.observe (application setup timeouts leaks) who)) = signal draw)
-  {key : Signal} (supported : key ∈ (setup.initialLaw.map signal).support)
+  {key : Signal} (supported : key ∈ (setup.initialDistribution.map signal).support)
 
 include supported in
 private theorem ledger_component_atom (st : (application setup timeouts leaks).State)
     (member : st ∈ (component key).support) :
-    Vegas.initialLaw setup st = (setup.initialLaw.map signal) key * component key st := by
+    Vegas.initialDistribution setup st = (setup.initialDistribution.map signal) key * component key
+      st := by
   obtain ⟨draw, present, rfl⟩ := eq_initial_of_mem_support
     (setup := setup.conditionInitial signal key) member
   have same := (mem_support_fiberPosterior supported present).1
-  rw [initialLaw_initial (setup := setup.conditionInitial signal key)]
-  change Vegas.initialLaw setup (EventGraphRuntime.State.initial (setup.eventInputs draw)) = _
-  rw [initialLaw_initial]
-  exact (setup.conditionInitial_initialLaw_scale signal key supported draw same).symm
+  rw [initialDistribution_initial (setup := setup.conditionInitial signal key)]
+  change Vegas.initialDistribution setup (EventGraphRuntime.State.initial
+    (setup.eventInputs draw)) = _
+  rw [initialDistribution_initial]
+  exact (setup.conditionInitial_initialDistribution_scale signal key supported draw same).symm
 
 include observed supported in
 /-- Every active menu decision on a component history identifies its initializing signal. -/
@@ -63,10 +65,12 @@ theorem ledger_component_active_read
     change control.actor = some who at active
     have raw := menu.toRawTrace (component key) horizon scheduler trace
     change (((reactiveApplication timeouts) leaks).protocol
-      (Vegas.initialLaw (setup.conditionInitial signal key)) horizon scheduler).Trace _ at raw
-    rw [Vegas.initialLaw, serviceInitialLaw_eq_inputs] at raw
+      (Vegas.initialDistribution (setup.conditionInitial signal key)) horizon scheduler).Trace _
+        at raw
+    rw [Vegas.initialDistribution, serviceInitialDistribution_eq_inputs] at raw
     have valid := reactive_history_invariant timeouts leaks
-      ((setup.conditionInitial signal key).initialLaw.map setup.eventInputs) horizon scheduler raw
+      ((setup.conditionInitial signal key).initialDistribution.map setup.eventInputs) horizon
+        scheduler raw
     obtain ⟨inputs, member, inv⟩ := valid
     obtain ⟨draw, present, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp member
     have part := mem_support_fiberPosterior supported present
@@ -80,11 +84,11 @@ theorem ledger_component_historyReachWeight [Finite Player]
     (strategies : ∀ k who, (menu.information (component k) horizon scheduler).BehavioralPolicy who)
     {control : (application setup timeouts leaks).Control}
     (trace : (menu.protocol (component key) horizon scheduler).Trace (some control)) :
-    (menu.information (Vegas.initialLaw setup) horizon scheduler).historyReachWeight
+    (menu.information (Vegas.initialDistribution setup) horizon scheduler).historyReachWeight
         (menu.signalStrategy read strategies)
         ⟨_, menu.traceOfInitialSupportSubset
           (setup.conditionInitial_ledgerSupport signal key supported) trace⟩ =
-      (setup.initialLaw.map signal) key *
+      (setup.initialDistribution.map signal) key *
         (menu.information (component key) horizon scheduler).historyReachWeight
           (strategies key) ⟨_, trace⟩ :=
   menu.signalStrategy_historyReachWeight («component» := component) (key := key)

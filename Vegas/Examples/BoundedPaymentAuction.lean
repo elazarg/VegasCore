@@ -131,13 +131,13 @@ def program (penalty : Int) : SourceProgram Player simpleExpr [] ∅ :=
 def setup (penalty : Int) : Setup (Player := Player) (L := simpleExpr) where
   context := []
   namesNodup := by decide
-  initialLaw := PMF.pure (Env.empty (CellVal simpleExpr))
+  initialDistribution := PMF.pure (Env.empty (CellVal simpleExpr))
   obligations := ∅
   program := program penalty
   accounts := rfl
   exitTransfers := fun _ => -penalty
 
-instance (penalty : Int) : (setup penalty).FiniteInitialLaw where
+instance (penalty : Int) : (setup penalty).FiniteInitialSupport where
   support_finite := by
     change (PMF.pure _).support.Finite
     simp

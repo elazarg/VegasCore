@@ -58,7 +58,7 @@ decoded from a value of the bound type, and its content factor is the
 as-if-honest mass of that source choice. -/
 theorem onePacket_commitment_realized (assessment : setup.intendedModel.BehavioralAssessment)
     {control : (application setup timeouts leaks).Control}
-    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some control))
     (who : Player) (event : setup.informationGraph.EventId)
     (turn : control.execution.application.publicView.ownTurn? who = some event)
@@ -83,10 +83,10 @@ theorem onePacket_commitment_realized (assessment : setup.intendedModel.Behavior
         (asIfHonestProfile setup timeouts leaks assessment who (some (control.execution.logs who,
           control.execution.observe (application setup timeouts leaks) who))
             (sourceOfValue setup event outputEq value)).toReal := by
-  have rawTrace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+  have rawTrace : ((application setup timeouts leaks).protocol (initialDistribution setup) horizon
     scheduler).Trace
       (some control) :=
-    (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon scheduler
+    (bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup) horizon scheduler
       trace
   have recalled := (countRecall_history timeouts) leaks rawTrace
   obtain ⟨named, turnNamed, _, packetEvent⟩ :=

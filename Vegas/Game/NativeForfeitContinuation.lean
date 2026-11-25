@@ -32,11 +32,12 @@ private theorem runToHorizon_terminal_path
     {horizon : Nat} (scheduler : (serviceApplication setup deps duration leaks).Scheduler)
     {delay bound : (serviceGraph setup deps).EventId → Nat}
     (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
-      (serviceInitialLaw setup deps) horizon scheduler delay bound)
+      (serviceInitialDistribution setup deps) horizon scheduler delay bound)
     (players : Player → (serviceApplication setup deps duration leaks).Policy)
     (current final : (serviceApplication setup deps duration leaks).Execution)
     (supported : current ∈ ((serviceApplication setup deps duration leaks).roundsFrom
-      (serviceInitialLaw setup deps) scheduler players current.environmentRecall.length).support)
+      (serviceInitialDistribution setup deps) scheduler players
+        current.environmentRecall.length).support)
     (bounded : current.environmentRecall.length ≤ horizon)
     (reached : final ∈ ((serviceApplication setup deps duration leaks).runToHorizon scheduler
       players horizon current).support) :
@@ -47,16 +48,18 @@ private theorem runToHorizon_terminal_path
   let app := serviceApplication setup deps duration leaks
   let count := horizon - current.environmentRecall.length
   have rounds : final ∈ (app.runRounds scheduler players count current).support := reached
-  obtain ⟨trace⟩ := app.raw_trace_roundsFrom (serviceInitialLaw setup deps) horizon scheduler
+  obtain ⟨trace⟩ := app.raw_trace_roundsFrom (serviceInitialDistribution setup deps) horizon
+    scheduler
     players current.environmentRecall.length bounded current supported
-  obtain ⟨finalTrace⟩ := app.raw_trace_runRounds (serviceInitialLaw setup deps) horizon scheduler
+  obtain ⟨finalTrace⟩ := app.raw_trace_runRounds (serviceInitialDistribution setup deps) horizon
+    scheduler
     players 0 count current final (by simpa only [Nat.zero_add] using trace) rounds
   have terminal : final.application.config.cut.Terminal := contract.completes
     ⟨0, none, final⟩ finalTrace ⟨rfl, rfl⟩
   have actualTrace := finalTrace
-  rw [serviceInitialLaw_eq_inputs setup] at actualTrace
+  rw [serviceInitialDistribution_eq_inputs setup] at actualTrace
   obtain ⟨input, _inputMember, valid⟩ := reactive_history_invariant
-    (serviceTimeouts setup deps duration) leaks (setup.initialLaw.map setup.eventInputs)
+    (serviceTimeouts setup deps duration) leaks (setup.initialDistribution.map setup.eventInputs)
     horizon scheduler actualTrace
   refine ⟨terminal, ?_, input, valid.reachable⟩
   exact reactive_runRounds_graph_steps (serviceTimeouts setup deps duration) leaks scheduler
@@ -66,14 +69,15 @@ private theorem runToHorizon_forfeit_floor_of_defaulted
     {horizon : Nat} (scheduler : (serviceApplication setup deps duration leaks).Scheduler)
     {delay bound : (serviceGraph setup deps).EventId → Nat}
     (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
-      (serviceInitialLaw setup deps) horizon scheduler delay bound)
+      (serviceInitialDistribution setup deps) horizon scheduler delay bound)
     (players : Player → (serviceApplication setup deps duration leaks).Policy)
     {Parameter : Type} (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ) {forfeit : ℝ}
     (range : ∀ high low who, utility high who - utility low who ≤ forfeit)
     (focal : Player) (current final : (serviceApplication setup deps duration leaks).Execution)
     (supported : current ∈ ((serviceApplication setup deps duration leaks).roundsFrom
-      (serviceInitialLaw setup deps) scheduler players current.environmentRecall.length).support)
+      (serviceInitialDistribution setup deps) scheduler players
+        current.environmentRecall.length).support)
     (bounded : current.environmentRecall.length ≤ horizon)
     (defaulted : focal ∈ current.application.config.defaulted)
     (reached : final ∈ ((serviceApplication setup deps duration leaks).runToHorizon scheduler
@@ -95,14 +99,15 @@ theorem expect_runToHorizon_forfeit_le_of_defaulted
     {horizon : Nat} (scheduler : (serviceApplication setup deps duration leaks).Scheduler)
     {delay bound : (serviceGraph setup deps).EventId → Nat}
     (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
-      (serviceInitialLaw setup deps) horizon scheduler delay bound)
+      (serviceInitialDistribution setup deps) horizon scheduler delay bound)
     (players : Player → (serviceApplication setup deps duration leaks).Policy)
     {Parameter : Type} (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ) {forfeit : ℝ}
     (range : ∀ high low who, utility high who - utility low who ≤ forfeit)
     (focal : Player) (current : (serviceApplication setup deps duration leaks).Execution)
     (supported : current ∈ ((serviceApplication setup deps duration leaks).roundsFrom
-      (serviceInitialLaw setup deps) scheduler players current.environmentRecall.length).support)
+      (serviceInitialDistribution setup deps) scheduler players
+        current.environmentRecall.length).support)
     (bounded : current.environmentRecall.length ≤ horizon)
     (defaulted : focal ∈ current.application.config.defaulted) :
     expect ((serviceApplication setup deps duration leaks).runToHorizon scheduler players horizon
@@ -148,14 +153,15 @@ theorem SourceResidual.expect_runToHorizon_forfeit_le_of_matching_binding_record
     {horizon : Nat} (scheduler : (serviceApplication setup deps duration leaks).Scheduler)
     {delay bound : (serviceGraph setup deps).EventId → Nat}
     (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
-      (serviceInitialLaw setup deps) horizon scheduler delay bound)
+      (serviceInitialDistribution setup deps) horizon scheduler delay bound)
     (players : Player → (serviceApplication setup deps duration leaks).Policy)
     {Parameter : Type} (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ) {forfeit : ℝ}
     (range : ∀ high low who, utility high who - utility low who ≤ forfeit)
     (current : (serviceApplication setup deps duration leaks).Execution)
     (supported : current ∈ ((serviceApplication setup deps duration leaks).roundsFrom
-      (serviceInitialLaw setup deps) scheduler players current.environmentRecall.length).support)
+      (serviceInitialDistribution setup deps) scheduler players
+        current.environmentRecall.length).support)
     (bounded : current.environmentRecall.length ≤ horizon)
     (currentPath : Relation.ReflTransGen EventGraph.Config.Step origin current.application.config)
     (records : ∀ event : (serviceGraph setup deps).EventId,

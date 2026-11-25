@@ -32,7 +32,7 @@ variable {Player : Type} [instDecEq : DecidableEq Player] [instFintype : Fintype
   (scheduler : (application setup timeouts leaks).Scheduler)
 
 local notation "app" => application setup timeouts leaks
-local notation "Initial" => initialLaw setup
+local notation "Initial" => initialDistribution setup
 
 local notation "raw" => bounds.rawMenu timeouts leaks
 local notation "R" => ReactiveApplication.ResponseMenu.information
@@ -57,7 +57,7 @@ def ClientSpec.programPaymentObservation
           (fun config => (config.state, config.defaults))) receipts
 
 /-- Intended source play, read jointly with the setup's executable receipts. -/
-def SourceProgram.Setup.intendedPaymentLaw
+def SourceProgram.Setup.intendedPaymentDistribution
     (intended : setup.intendedModel.BehavioralAssessment) : PMF (TerminalObservation setup) :=
   (setup.intendedModel.runBehavioral intended.strategy (instructionCount setup.program + 1)).map
     fun final => TerminalObservation.read setup
@@ -78,7 +78,7 @@ theorem intended_raw_programPayments_preserved
     (compiled : ClientCompilation spec intended) :
     ((raw).run Initial horizon scheduler compiled.assessment.strategy).bind
         (fun final => spec.programPaymentObservation final.state) =
-      setup.intendedPaymentLaw intended := by
+      setup.intendedPaymentDistribution intended := by
   classical
   let native := (raw).run Initial horizon scheduler compiled.assessment.strategy
   let source := setup.intendedModel.runBehavioral intended.strategy
@@ -93,7 +93,7 @@ theorem intended_raw_programPayments_preserved
         (setup.program.publicOutcome config) who))
   have readLaw : native.map (fun final => read final.state) =
       source.map (fun final => setup.protocolReadout final.state) := by
-    have projected := congrArg (PMF.map Prod.fst) compiled.outcomeLaw
+    have projected := congrArg (PMF.map Prod.fst) compiled.outcomeDistribution_eq
     have constant (final : ((raw).protocol Initial horizon scheduler).History) :
         (spec.settlement final.state).map (fun _ => read final.state) =
           PMF.pure (read final.state) := PMF.map_const _ _
@@ -120,7 +120,7 @@ theorem intended_raw_programPayments_preserved
     _ = native.map (fun final => reader (read final.state)) := by
       rw [← PMF.bind_pure_comp]
       exact bind_congr_on_support _ cleanObservation
-    _ = setup.intendedPaymentLaw intended := by
+    _ = setup.intendedPaymentDistribution intended := by
       have observed := congrArg (PMF.map reader) readLaw
       simp only [PMF.map_comp, Function.comp_def] at observed
       exact observed
@@ -132,8 +132,8 @@ theorem ClientCompilation.clients_programPayments_preserved
     (compiled : ClientCompilation spec intended) :
     ((app).finish Initial horizon scheduler compiled.clients none).bind
         spec.programPaymentObservation =
-      setup.intendedPaymentLaw intended := by
-  rw [← compiled.clients_stateLaw, PMF.bind_map]
+      setup.intendedPaymentDistribution intended := by
+  rw [← compiled.clients_stateDistribution, PMF.bind_map]
   exact intended_raw_programPayments_preserved setup timeouts leaks bounds horizon scheduler
     parameter utility exitPayoff spec intended compiled
 

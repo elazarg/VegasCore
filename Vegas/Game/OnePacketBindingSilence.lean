@@ -86,7 +86,7 @@ game, at a binding of the player's turn its recall has not submitted for, the
 count verdict permits the commitment at the canonical slot. -/
 theorem onePacket_canonical_permitted (assessment : setup.intendedModel.BehavioralAssessment)
     (covers : bounds.CoversOutputValues) {control : (application setup timeouts leaks).Control}
-    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some control))
     (who : Player) (event : setup.informationGraph.EventId)
     (turn : control.execution.application.publicView.ownTurn? who = some event)
@@ -103,10 +103,10 @@ theorem onePacket_canonical_permitted (assessment : setup.intendedModel.Behavior
       (slotEnvelope setup timeouts leaks who (control.execution.logs who)
         (control.execution.observe (application setup timeouts leaks) who) event serial) = true
           := by
-  have rawTrace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+  have rawTrace : ((application setup timeouts leaks).protocol (initialDistribution setup) horizon
     scheduler).Trace
       (some control) :=
-    (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon scheduler
+    (bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup) horizon scheduler
       trace
   obtain ⟨choice, supported⟩ := (asIfHonestProfile setup timeouts leaks assessment who
     (some (control.execution.logs who,
@@ -140,7 +140,7 @@ theorem honestChoice_silence_of_pending (assessment : setup.intendedModel.Behavi
     (covers : bounds.CoversOutputValues)
     (capacity : ∀ who, bindingEventCount setup.informationGraph who < bounds.candidateCount)
     {control : (application setup timeouts leaks).Control}
-    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some control))
     (who : Player) (event : setup.informationGraph.EventId)
     (turn : control.execution.application.publicView.ownTurn? who = some event)
@@ -149,10 +149,11 @@ theorem honestChoice_silence_of_pending (assessment : setup.intendedModel.Behavi
     {codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
       (setup.informationGraph.nodes event) = .bind who payload}
     (node : nodeView setup.informationGraph event = .bind who payload outputEq codeEq) :
-    honestChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler assessment who
+    honestChoice setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
+      assessment who
         (some (control.execution.logs who,
           control.execution.observe (application setup timeouts leaks) who))
-        (silenceChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler who
+        (silenceChoice setup timeouts leaks bounds (initialDistribution setup) horizon scheduler who
           (some (control.execution.logs who,
             control.execution.observe (application setup timeouts leaks) who))) = 0 := by
   obtain ⟨serial, selected⟩ := onePacket_canonicalFreshSlot_exists (timeouts := timeouts) trace who
@@ -182,9 +183,11 @@ theorem honestChoice_silence_of_pending (assessment : setup.intendedModel.Behavi
     (control.execution.logs who) (control.execution.observe (application setup timeouts leaks) who)
     event node serial choice action encoded (by rw [successful]; rfl)
   have values := congrArg Subtype.val same
-  change (responseChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler who _
+  change (responseChoice setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
+    who _
     (slotResponse setup timeouts leaks who _ _ event serial choice)).1 =
-      (silenceChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler who _).1
+      (silenceChoice setup timeouts leaks bounds (initialDistribution setup) horizon scheduler who
+        _).1
         at values
   simp only [responseChoice, offered, silenceChoice,
     bounds.silence_onePacket timeouts leaks who, ↓reduceDIte] at values
@@ -200,7 +203,7 @@ theorem slotChoice_silence_of_pending (assessment : setup.intendedModel.Behavior
     (covers : bounds.CoversOutputValues)
     (capacity : ∀ who, bindingEventCount setup.informationGraph who < bounds.candidateCount)
     {control : (application setup timeouts leaks).Control}
-    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some control))
     (who : Player) (event : setup.informationGraph.EventId)
     (turn : control.execution.application.publicView.ownTurn? who = some event)
@@ -208,10 +211,11 @@ theorem slotChoice_silence_of_pending (assessment : setup.intendedModel.Behavior
     {codeEq : cast (congrArg (EventGraph.EventCode setup.informationGraph.layout) outputEq)
       (setup.informationGraph.nodes event) = .bind who payload}
     (node : nodeView setup.informationGraph event = .bind who payload outputEq codeEq) :
-    slotChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler assessment who
+    slotChoice setup timeouts leaks bounds (initialDistribution setup) horizon scheduler assessment
+      who
         (some (control.execution.logs who,
           control.execution.observe (application setup timeouts leaks) who))
-        (silenceChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler who
+        (silenceChoice setup timeouts leaks bounds (initialDistribution setup) horizon scheduler who
           (some (control.execution.logs who,
             control.execution.observe (application setup timeouts leaks) who))) =
       ((trembleSlots setup bounds).filter fun slot =>
@@ -228,13 +232,14 @@ theorem slotChoice_silence_of_pending (assessment : setup.intendedModel.Behavior
     (control.execution.logs who)) (slotEnvelope setup timeouts leaks who
       (control.execution.logs who)
       (control.execution.observe (application setup timeouts leaks) who) event slot) = false}
-  let silence := silenceChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler who
+  let silence := silenceChoice setup timeouts leaks bounds
+    (initialDistribution setup) horizon scheduler who
     (some (control.execution.logs who, control.execution.observe (application setup timeouts
       leaks) who))
   let pairs := slotPairs setup timeouts leaks bounds assessment who (control.execution.logs who)
     (control.execution.observe (application setup timeouts leaks) who)
   let tier := fun pair : Nat × Option (OwnAction Player L) =>
-    slotChoiceOf setup timeouts leaks bounds (initialLaw setup) horizon scheduler who
+    slotChoiceOf setup timeouts leaks bounds (initialDistribution setup) horizon scheduler who
       (control.execution.logs who) (control.execution.observe (application setup timeouts leaks)
         who)
       event pair.1 pair.2
@@ -263,7 +268,8 @@ theorem slotChoice_silence_of_pending (assessment : setup.intendedModel.Behavior
       (control.execution.logs who) (control.execution.observe (application setup timeouts leaks)
         who)
       event node slot choice action encoded (by rw [successful]; rfl)
-    change slotChoiceOf setup timeouts leaks bounds (initialLaw setup) horizon scheduler who _ _
+    change slotChoiceOf setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
+      who _ _
       event slot
       choice = silence ↔ _ = false
     constructor
@@ -289,7 +295,7 @@ theorem slotChoice_silence_of_pending (assessment : setup.intendedModel.Behavior
     rw [← PMF.toOuterMeasure_apply_singleton, PMF.toOuterMeasure_map_apply,
       PMF.toOuterMeasure_map_apply, ← PMF.toOuterMeasure_apply_inter_support,
       agree, PMF.toOuterMeasure_apply_inter_support]
-  rw [slotChoice_eq_map (timeouts := timeouts) (initialLaw setup) horizon scheduler turn]
+  rw [slotChoice_eq_map (timeouts := timeouts) (initialDistribution setup) horizon scheduler turn]
   change (pairs.map tier) silence = _
   rw [mass]
   have marginal : pairs.map Prod.fst = uniformOn (trembleSlots setup bounds)

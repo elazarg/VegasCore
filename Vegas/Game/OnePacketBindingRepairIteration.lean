@@ -105,17 +105,17 @@ theorem directedRepair_completed_outputs_succeeded
     (layoutEq : setup.informationGraph.outputLayout event = .binding owner payload)
     (completed : event ∈ repaired.execution.application.config.cut.completed) :
     OutputSucceeded repaired.execution.application.config.store event := by
-  have rawFirst := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup)
+  have rawFirst := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup)
     horizon scheduler first
-  have rawLast := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup)
+  have rawLast := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup)
     horizon scheduler last
-  have signed := signedCommitments_history timeouts leaks (initialLaw setup)
+  have signed := signedCommitments_history timeouts leaks (initialDistribution setup)
     (fun state member => by
       obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ member
       exact ⟨_, rfl⟩) horizon scheduler rawFirst
   have count := (countRecall_history timeouts) leaks rawFirst
   have valid : repaired.execution.application.BindingInvariant :=
-    ((reactiveBindingInvariant timeouts) leaks).history (initialLaw setup) horizon
+    ((reactiveBindingInvariant timeouts) leaks).history (initialDistribution setup) horizon
       scheduler (fun state member => by
         obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ member
         exact State.initial_bindingInvariant _) rawLast

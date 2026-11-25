@@ -228,7 +228,7 @@ response menu of the supplied runtime, under any scheduler. -/
 theorem decodedState_publishesOrFails (profile : BehavioralProfile setup.program)
     (menu : (application setup timeouts leaks).ResponseMenu) (horizon : Nat)
     (scheduler : (application setup timeouts leaks).Scheduler) :
-    ∀ {state} (_ : (menu.protocol (initialLaw setup) horizon scheduler).Trace state)
+    ∀ {state} (_ : (menu.protocol (initialDistribution setup) horizon scheduler).Trace state)
       (control : (application setup timeouts leaks).Control), state = some control →
       DecodedState setup timeouts leaks profile (ProtocolState.PublishesOrFails setup.program)
         (some control) := by

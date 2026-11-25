@@ -54,7 +54,7 @@ arbitrary responses and every scheduler. -/
 theorem failedBindingRecord_history (horizon : Nat)
     (scheduler : (application setup timeouts leaks).Scheduler)
     {control : (application setup timeouts leaks).Control}
-    (trace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((application setup timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace
       (some control)) :
     FailedBindingRecord (timeouts := timeouts) profile control.execution := by

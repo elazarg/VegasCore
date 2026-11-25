@@ -319,7 +319,7 @@ example :
     refine (Finset.min'_eq_iff _ _ _).2 ⟨by simp, ?_⟩
     intro event _
     omega
-  simp [Vegas.EventGraph.policyPlan, Vegas.EventGraph.actionLaw,
+  simp [Vegas.EventGraph.policyPlan, Vegas.EventGraph.actionDistribution,
     Vegas.EventGraph.canonicalScheduler, pairProfile,
     Vegas.EventGraph.EventCode.actor,
     pairInitial, Vegas.EventGraph.Config.initial, pairGraph, pairOrder,
@@ -335,7 +335,7 @@ example :
     refine (Finset.max'_eq_iff _ _ _).2 ⟨by simp, ?_⟩
     intro event _
     omega
-  simp [Vegas.EventGraph.policyPlan, Vegas.EventGraph.actionLaw,
+  simp [Vegas.EventGraph.policyPlan, Vegas.EventGraph.actionDistribution,
     Vegas.EventGraph.greatestScheduler, pairProfile,
     Vegas.EventGraph.EventCode.actor,
     pairInitial, Vegas.EventGraph.Config.initial, pairGraph, pairOrder,
@@ -422,7 +422,8 @@ example :
     fun received event actor observation active =>
       if received then pairProfile false event actor observation active else PMF.pure none
   refine ⟨Vegas.EventGraph.trafficPolicy false traffic respond, ?_⟩
-  have law := Vegas.EventGraph.trafficPolicy_prefixLaw silent false (PMF.pure pairInputValues)
+  have law := Vegas.EventGraph.trafficPolicy_prefixDistribution silent false
+    (PMF.pure pairInputValues)
     traffic respond pairTrafficBoundary (by simp [pairTrafficBoundary, pairInitial, PMF.pure_map])
     (by intro event; fin_cases event <;> simp [pairTrafficBoundary, traffic, PMF.pure_map]) ?_
   swap
@@ -433,7 +434,7 @@ example :
           pairInitial 0 (pairInitial_ready 0)
       have owned : (pairGraph.nodes (0 : pairGraph.EventId)).actor = some false := rfl
       have active : false ∉ pairInitial.defaulted := by decide
-      rw [Vegas.EventGraph.eventStep, Vegas.EventGraph.actionLaw_of_actor _ _ owned,
+      rw [Vegas.EventGraph.eventStep, Vegas.EventGraph.actionDistribution_of_actor _ _ owned,
         dite_eq_right active, Function.update_self]
       simpa [respond, pairProfile] using pairInitial_step_firstAccepted.symm
     · change PMF.pure canonicalResult =
@@ -441,7 +442,7 @@ example :
           firstAccepted 1 firstAccepted_ready1
       have owned : (pairGraph.nodes (1 : pairGraph.EventId)).actor = some true := rfl
       have active : true ∉ firstAccepted.defaulted := by decide
-      rw [Vegas.EventGraph.eventStep, Vegas.EventGraph.actionLaw_of_actor _ _ owned,
+      rw [Vegas.EventGraph.eventStep, Vegas.EventGraph.actionDistribution_of_actor _ _ owned,
         dite_eq_right active, Function.update_of_ne (by decide : true ≠ false)]
       simpa [silent, pairProfile] using firstAccepted_step_canonicalResult.symm
   intro rank bounded

@@ -34,7 +34,7 @@ def target : IncentiveComparison Bool :=
 theorem target_difference : target.difference = (1 / 2 : ℝ) • (source ()).difference := by
   ext outcome
   cases outcome <;> norm_num [target, source, IncentiveComparison.difference,
-    toReal_uniformLaw_apply, toReal_pure_apply]
+    toReal_uniformDistribution_apply, toReal_pure_apply]
 
 theorem target_in_cone : target.difference ∈ IncentiveComparison.cone source := by
   rw [target_difference]
@@ -49,7 +49,7 @@ theorem no_prescribed_root_mixture (roots : PMF Unit) :
     target.prescribed ≠ roots.bind (fun root => (source root).prescribed) := by
   intro same
   have mass := congrArg (fun law => (law true).toReal) same
-  norm_num [target, source, toReal_uniformLaw_apply,
+  norm_num [target, source, toReal_uniformDistribution_apply,
     toReal_pure_apply] at mass
 
 end GameTheoryExtensionsTests.IncentiveCone

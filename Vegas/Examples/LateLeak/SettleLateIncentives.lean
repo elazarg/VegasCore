@@ -31,45 +31,49 @@ variable {G : SettleLateParameters} {late : Bool}
 
 /-! ## Laws -/
 
-theorem settleLateSenderLaw_support (profile : SettleLateProfile G late) (view : SettleLateView)
+theorem settleLateSenderDistribution_support (profile : SettleLateProfile G late)
+    (view : SettleLateView)
     (choice : Option SettleLateMove)
-    (supported : choice ∈ (settleLateSenderLaw profile view).support) :
+    (supported : choice ∈ (settleLateSenderDistribution profile view).support) :
     choice ∈ settleLateMenu late view := by
-  rw [settleLateSenderLaw, PMF.mem_support_map_iff] at supported
+  rw [settleLateSenderDistribution, PMF.mem_support_map_iff] at supported
   obtain ⟨option, _, rfl⟩ := supported
   exact option.2
 
-theorem settleLateListenerLaw_support (profile : SettleLateProfile G late) (view : SettleLateView)
+theorem settleLateListenerDistribution_support (profile : SettleLateProfile G late)
+    (view : SettleLateView)
     (choice : Option SettleLateMove)
-    (supported : choice ∈ (settleLateListenerLaw profile view).support) :
+    (supported : choice ∈ (settleLateListenerDistribution profile view).support) :
     choice ∈ settleLateMenu late view := by
-  rw [settleLateListenerLaw, PMF.mem_support_map_iff] at supported
+  rw [settleLateListenerDistribution, PMF.mem_support_map_iff] at supported
   obtain ⟨option, _, rfl⟩ := supported
   exact option.2
 
-theorem settleLateSenderLaw_apply (profile : SettleLateProfile G late) (view : SettleLateView)
+theorem settleLateSenderDistribution_apply (profile : SettleLateProfile G late)
+    (view : SettleLateView)
     (choice : Option SettleLateMove) (menu : choice ∈ settleLateMenu late view) :
-    settleLateSenderLaw profile view choice = profile .sender view ⟨choice, menu⟩ :=
+    settleLateSenderDistribution profile view choice = profile .sender view ⟨choice, menu⟩ :=
   pmf_map_apply_of_injective _ Subtype.val_injective
     (⟨choice, menu⟩ : (settleLateModel G late).Choice .sender view)
 
-theorem settleLateListenerLaw_apply (profile : SettleLateProfile G late) (view : SettleLateView)
+theorem settleLateListenerDistribution_apply (profile : SettleLateProfile G late)
+    (view : SettleLateView)
     (choice : Option SettleLateMove) (menu : choice ∈ settleLateMenu late view) :
-    settleLateListenerLaw profile view choice = profile .listener view ⟨choice, menu⟩ :=
+    settleLateListenerDistribution profile view choice = profile .listener view ⟨choice, menu⟩ :=
   pmf_map_apply_of_injective _ Subtype.val_injective
     (⟨choice, menu⟩ : (settleLateModel G late).Choice .listener view)
 
 /-- The probability of the safe answer at a view. -/
 def settleLateSafeProb (profile : SettleLateProfile G late) (view : SettleLateView) : ℝ :=
-  (settleLateListenerLaw profile view (some (.reply .safe))).toReal
+  (settleLateListenerDistribution profile view (some (.reply .safe))).toReal
 
 /-- The probability of the bit guess `1` at a view. -/
 def settleLateBitOneProb (profile : SettleLateProfile G late) (view : SettleLateView) : ℝ :=
-  (settleLateListenerLaw profile view (some (.reply (.failure true)))).toReal
+  (settleLateListenerDistribution profile view (some (.reply (.failure true)))).toReal
 
 /-- The probability that the listener emits its raw packet at a view. -/
 def settleLatePingProb (profile : SettleLateProfile G late) (view : SettleLateView) : ℝ :=
-  (settleLateListenerLaw profile view (some (.ping true))).toReal
+  (settleLateListenerDistribution profile view (some (.ping true))).toReal
 
 theorem settleLateSafeProb_nonneg (profile : SettleLateProfile G late) (view : SettleLateView) :
     0 ≤ settleLateSafeProb profile view := ENNReal.toReal_nonneg
@@ -92,14 +96,14 @@ theorem settleLatePingProb_le_one (profile : SettleLateProfile G late) (view : S
 /-- The observe-only activation averages over the listener's raw packet. -/
 theorem settleLate_expect_ping (profile : SettleLateProfile G late) (early : Option Bool)
     (glimpse : SettleLateGlimpse) (value : Bool → ℝ) :
-    expect (settleLateListenerLaw profile (.watching early glimpse))
+    expect (settleLateListenerDistribution profile (.watching early glimpse))
         (fun choice => value (settleLatePingOf choice)) =
       settleLatePingProb profile (.watching early glimpse) * value true +
         (1 - settleLatePingProb profile (.watching early glimpse)) * value false := by
   rw [lateLeak_expect_two_point _ (some (.ping true)) _ (value false)]
   · rfl
   · intro choice supported different
-    obtain ⟨sent, rfl⟩ := settleLateListenerLaw_support profile _ choice supported
+    obtain ⟨sent, rfl⟩ := settleLateListenerDistribution_support profile _ choice supported
     cases sent
     · rfl
     · exact (different rfl).elim
@@ -128,10 +132,10 @@ theorem settleLate_expect_leakCoin (g : Bool → ℝ) :
 /-- After a first-turn opening the observe-only activation saw, the sender
 holding at the second turn faces one inclusion coin. -/
 theorem settleLate_expect_fate_seenHold (g : SettleLateFate → ℝ) :
-    expect (settleLateFateLaw G (.opening true) .silent) g =
+    expect (settleLateFateDistribution G (.opening true) .silent) g =
       lateLeakInclusionProb G.toLateLeakParameters * g ⟨some .first, false, false⟩ +
         (1 - lateLeakInclusionProb G.toLateLeakParameters) * g ⟨none, false, false⟩ := by
-  simp only [settleLateFateLaw, SettleLateFirst.opened, SettleLatePacket.isOpening,
+  simp only [settleLateFateDistribution, SettleLateFirst.opened, SettleLatePacket.isOpening,
     SettleLateFirst.seen]
   rw [expect_bind_of_finite, lateLeak_expect_inclusion]
   simp [settleLateExposure, expect_pure, expect_map]
@@ -139,12 +143,12 @@ theorem settleLate_expect_fate_seenHold (g : SettleLateFate → ℝ) :
 /-- After a first-turn opening it did not see, the listener may still see the
 dropped opening when it answers. -/
 theorem settleLate_expect_fate_unseenHold (g : SettleLateFate → ℝ) :
-    expect (settleLateFateLaw G (.opening false) .silent) g =
+    expect (settleLateFateDistribution G (.opening false) .silent) g =
       lateLeakInclusionProb G.toLateLeakParameters * g ⟨some .first, false, false⟩ +
         (1 - lateLeakInclusionProb G.toLateLeakParameters) *
           (settleLateLeakProb G * g ⟨none, true, false⟩ +
             (1 - settleLateLeakProb G) * g ⟨none, false, false⟩) := by
-  simp only [settleLateFateLaw, SettleLateFirst.opened, SettleLatePacket.isOpening,
+  simp only [settleLateFateDistribution, SettleLateFirst.opened, SettleLatePacket.isOpening,
     SettleLateFirst.seen]
   rw [expect_bind_of_finite, lateLeak_expect_inclusion]
   simp only [ite_true, Bool.false_eq_true, ite_false, expect_pure, settleLateExposure,
@@ -152,21 +156,21 @@ theorem settleLate_expect_fate_unseenHold (g : SettleLateFate → ℝ) :
 
 /-- A sole opening at the second late turn. -/
 theorem settleLate_expect_fate_send (g : SettleLateFate → ℝ) :
-    expect (settleLateFateLaw G .silent .opening) g =
+    expect (settleLateFateDistribution G .silent .opening) g =
       lateLeakInclusionProb G.toLateLeakParameters * g ⟨some .second, false, false⟩ +
         (1 - lateLeakInclusionProb G.toLateLeakParameters) *
           (settleLateLeakProb G * g ⟨none, false, true⟩ +
             (1 - settleLateLeakProb G) * g ⟨none, false, false⟩) := by
-  simp only [settleLateFateLaw, SettleLateFirst.opened, SettleLatePacket.isOpening]
+  simp only [settleLateFateDistribution, SettleLateFirst.opened, SettleLatePacket.isOpening]
   rw [expect_bind_of_finite, lateLeak_expect_inclusion]
   simp only [ite_true, Bool.false_eq_true, ite_false, expect_pure, expect_map, Function.comp_def,
     settleLate_expect_leakCoin]
 
 /-- Without a late opening the reveal fails surely. -/
-theorem settleLateFateLaw_closed {first : SettleLateFirst} {second : SettleLatePacket}
+theorem settleLateFateDistribution_closed {first : SettleLateFirst} {second : SettleLatePacket}
     (firstClosed : first.opened = false) (secondClosed : second.isOpening = false) :
-    settleLateFateLaw G first second = PMF.pure ⟨none, false, false⟩ := by
-  simp only [settleLateFateLaw, firstClosed, secondClosed]
+    settleLateFateDistribution G first second = PMF.pure ⟨none, false, false⟩ := by
+  simp only [settleLateFateDistribution, firstClosed, secondClosed]
 
 /-! ## Answer values -/
 
@@ -189,7 +193,7 @@ theorem settleLateAnswerValue_success (profile : SettleLateProfile G late)
       ite_true, sub_zero, settleLateSafeProb]
     ring
   · intro choice supported different
-    obtain ⟨answer, rfl, fits⟩ := settleLateListenerLaw_support profile _ choice supported
+    obtain ⟨answer, rfl, fits⟩ := settleLateListenerDistribution_support profile _ choice supported
     rw [settleLateReport_success, succeeded] at fits
     cases answer with
     | safe => exact (different rfl).elim
@@ -214,7 +218,7 @@ theorem settleLateAnswerValue_failure (profile : SettleLateProfile G late)
       simp [settleLateReplyOf, settleLateStatePayoff, settleLateSenderBase, failed,
         settleLateBitOneProb, lateLeakBitOneGain, lateLeakBitZeroGain, label] <;> ring
   · intro choice supported different
-    obtain ⟨answer, rfl, fits⟩ := settleLateListenerLaw_support profile _ choice supported
+    obtain ⟨answer, rfl, fits⟩ := settleLateListenerDistribution_support profile _ choice supported
     rw [settleLateReport_success, failed] at fits
     cases answer with
     | failure bit =>
@@ -410,7 +414,7 @@ theorem settleLateSettleValue_extra_le (profile : SettleLateProfile G late) (R0 
         | some slot => cases slot <;> simp
   | silent =>
       rcases plain with rfl | ⟨seen, rfl⟩
-      · rw [settleLateFateLaw_closed rfl rfl, PMF.mem_support_pure_iff] at supported
+      · rw [settleLateFateDistribution_closed rfl rfl, PMF.mem_support_pure_iff] at supported
         subst supported
         simp only [SettleLateRecord.succeeded, Option.isSome_none, Bool.false_eq_true,
           ite_false] at value
@@ -468,7 +472,7 @@ theorem pmf_apply_eq_one_of_dominant_at {α : Type*} [Finite α] (law : PMF α)
   pmf_apply_eq_one_of_dominant (PMF.pure ()) law (fun _ => value) best positive (fun _ => gap)
     (by simpa only [expect_pure] using rational)
 
-theorem settleLate_law_eq_pure {α : Type*} {law : PMF α} {best : α} (one : law best = 1) :
+theorem settleLate_distribution_eq_pure {α : Type*} {law : PMF α} {best : α} (one : law best = 1) :
     law = PMF.pure best :=
   pmf_eq_pure_of_support_subset_singleton law best ((PMF.apply_eq_one_iff law best).mp one).le
 

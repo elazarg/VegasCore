@@ -49,17 +49,17 @@ theorem publicFreshSlot_congr {graph : EventGraph Player L}
 /-- **Emission is transmission.** Along every history of the supplied runtime, a
 recall entry emitted a packet exactly when it transmitted. -/
 theorem history_emitted_isSome
-    (trace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((application setup timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace
       (some control))
     (who : Player) (entry : (application setup timeouts leaks).PlayerEntry)
     (member : entry ∈ control.execution.logs who) :
     entry.emitted.isSome = entry.action.transmission.isSome := by
   have emitted := (transmissionsEmitted_serviceInvariant (timeouts := timeouts) scheduler).history
-    (initialLaw setup)
+    (initialDistribution setup)
     horizon (fun _ _ _ _ member => (List.not_mem_nil member).elim) trace
-  have signed := signedCommitments_history timeouts leaks (initialLaw setup)
-    (serviceInitialLaw_initialized setup) horizon scheduler trace
+  have signed := signedCommitments_history timeouts leaks (initialDistribution setup)
+    (serviceInitialDistribution_initialized setup) horizon scheduler trace
   cases transmits : entry.action.transmission with
   | none =>
       cases emits : entry.emitted with
@@ -76,7 +76,7 @@ theorem history_emitted_isSome
 /-- Along every history of the supplied runtime, a player's emitted envelopes
 number its submissions. -/
 theorem history_outputs_length
-    (trace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((application setup timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace
       (some control))
     (who : Player) :
@@ -93,7 +93,7 @@ theorem history_outputs_length
 /-- Along every history of the supplied runtime, a player's recall has submitted
 for an event exactly when one of its emitted envelopes names it. -/
 theorem history_eventRecorded_iff
-    (trace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((application setup timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace
       (some control))
     (who : Player) (event : setup.informationGraph.EventId) :
@@ -101,10 +101,10 @@ theorem history_eventRecorded_iff
       ∃ message ∈ (application setup timeouts leaks).outputs (control.execution.logs who),
         message.payload.call.event? setup.informationGraph = some event := by
   have emitted := (transmissionsEmitted_serviceInvariant (timeouts := timeouts) scheduler).history
-    (initialLaw setup)
+    (initialDistribution setup)
     horizon (fun _ _ _ _ member => (List.not_mem_nil member).elim) trace
-  have signed := signedCommitments_history timeouts leaks (initialLaw setup)
-    (serviceInitialLaw_initialized setup) horizon scheduler trace
+  have signed := signedCommitments_history timeouts leaks (initialDistribution setup)
+    (serviceInitialDistribution_initialized setup) horizon scheduler trace
   constructor
   · intro recorded
     obtain ⟨entry, entryMember, submitted⟩ := List.any_eq_true.mp recorded
@@ -134,7 +134,7 @@ theorem history_eventRecorded_iff
 /-- Along every history of the supplied runtime, a player has committed to a
 prepared slot exactly when one of its emitted envelopes commits to it. -/
 theorem history_slotCommitted_iff
-    (trace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((application setup timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace
       (some control))
     (who : Player) (serial : Nat) :
@@ -153,7 +153,7 @@ theorem history_slotCommitted_iff
 runtime, a player's canonical slot is read from its emitted envelopes and its
 number of completed bindings. -/
 theorem history_canonicalFreshSlot
-    (trace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((application setup timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace
       (some control))
     (who : Player) :

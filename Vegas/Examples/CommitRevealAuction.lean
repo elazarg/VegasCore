@@ -47,7 +47,7 @@ def program : SourceProgram Player simpleExpr [] ∅ :=
 def setup : Setup (Player := Player) (L := simpleExpr) where
   context := []
   namesNodup := by decide
-  initialLaw := PMF.pure (Env.empty (CellVal simpleExpr))
+  initialDistribution := PMF.pure (Env.empty (CellVal simpleExpr))
   obligations := ∅
   program := program
   accounts := rfl

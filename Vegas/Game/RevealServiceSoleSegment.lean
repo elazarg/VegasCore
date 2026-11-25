@@ -44,12 +44,13 @@ execution where a solitary leading event that is not a publication is ready and
 untouched, running until it completes preserves the outcome law of a
 ready-independent reference followed by the event's owner, whatever the other
 players do. -/
-theorem soleSegment_outcomeLaw
+theorem soleSegment_outcomeDistribution
     (timeouts : EventTimeouts (serviceGraph setup deps))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup deps)))
     {horizon turns : Nat} (scheduler : ((reactiveApplication timeouts) leaks).Scheduler)
     (delay bound : (serviceGraph setup deps).EventId → Nat)
-    (contract : AsyncContract timeouts leaks (serviceInitialLaw setup deps) horizon scheduler
+    (contract : AsyncContract timeouts leaks (serviceInitialDistribution setup deps) horizon
+      scheduler
       delay bound)
     (timely : AsyncTimely timeouts delay bound)
     (client : (serviceGraph setup deps).BehavioralProfile) (independent : ReadyIndependent client)
@@ -67,27 +68,31 @@ theorem soleSegment_outcomeLaw
     (execution : ((reactiveApplication timeouts) leaks).Execution)
     (ready : execution.application.config.cut.Ready event)
     (supported : execution ∈ (((reactiveApplication timeouts) leaks).roundsFrom
-      (serviceInitialLaw setup deps) scheduler players execution.environmentRecall.length).support)
+      (serviceInitialDistribution setup deps) scheduler players
+        execution.environmentRecall.length).support)
     (untouched : Untouched setup leaks event execution)
     (bounded : execution.environmentRecall.length ≤ horizon) :
     (((reactiveApplication timeouts) leaks).runUntilHorizon scheduler players
         (fun final => event ∈ final.application.config.cut.completed) horizon execution).bind
-      (fun final => outcomeLaw client read final.application.config) =
-      outcomeLaw client read execution.application.config := by
+      (fun final => outcomeDistribution client read final.application.config) =
+      outcomeDistribution client read execution.application.config := by
   classical
   let app := (reactiveApplication timeouts) leaks
-  have drained := outcomeLaw_drain independent read keyed
+  have drained := outcomeDistribution_drain independent read keyed
   have least : ∀ other, other ∉ execution.application.config.cut.completed →
       event.val ≤ other.val := fun _ unfinished => leading _ ready unfinished
   cases owned : (serviceGraph setup deps).actor? event with
   | none =>
-      exact chance_runUntil_bind_continuation timeouts leaks (outcomeLaw client read) drained
+      exact chance_runUntil_bind_continuation timeouts leaks
+        (outcomeDistribution client read) drained
         scheduler players event solitary
-        (fun config configReady action => step_bind_outcomeLaw_ownerless client read config event
+        (fun config configReady action => step_bind_outcomeDistribution_ownerless client read
+          config event
           configReady (fun _ unfinished => leading config.cut configReady unfinished) owned action)
         owned (horizon - execution.environmentRecall.length) execution ready
   | some owner =>
-      obtain ⟨trace⟩ := app.raw_trace_roundsFrom (serviceInitialLaw setup deps) horizon scheduler
+      obtain ⟨trace⟩ := app.raw_trace_roundsFrom (serviceInitialDistribution setup deps) horizon
+        scheduler
         players execution.environmentRecall.length bounded execution supported
       have facts := legalFacts setup leaks horizon scheduler _ trace
       have active : owner ∉ execution.application.config.defaulted :=
@@ -117,12 +122,13 @@ theorem soleSegment_outcomeLaw
       have mixture := firstTurn_mixture timeouts leaks scheduler bound client owner event owned
         players (follows owner owned) execution (fun _ other => solitary _ other ready)
         supported (untouched owner) bounded law (fun current same _ => callback current same)
-      rw [mixture, PMF.bind_bind, outcomeLaw_actor client read execution.application.config event
+      rw [mixture, PMF.bind_bind, outcomeDistribution_actor client read
+        execution.application.config event
         ready least owner owned active]
       apply bind_congr_on_support _
       intro action _
       exact serviceReference_fixedAction_continuation timeouts leaks scheduler delay bound client
-        (outcomeLaw client read) drained contract timely owner event owned solitary players
+        (outcomeDistribution client read) drained contract timely owner event owned solitary players
         (follows owner owned) action execution ready supported untouched bounded
         (effectiveAction_of_not_publication _ event notPublication action)
 

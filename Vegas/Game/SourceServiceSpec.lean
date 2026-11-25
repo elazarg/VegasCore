@@ -42,13 +42,13 @@ structure SourceServiceSpec (Player : Type) [DecidableEq Player] (L : IExpr)
   /-- Every binding value the source can choose has a native message form. -/
   values : bounds.CoversBindingValues
   /-- Every supported initial binding table fits the candidate catalogue. -/
-  initialValues : ∀ state ∈ (initialLaw setup).support, bounds.CandidateValues state
+  initialValues : ∀ state ∈ (initialDistribution setup).support, bounds.CandidateValues state
   /-- The candidate catalogue has a slot for every event. -/
   capacity : setup.informationGraph.order.eventCount ≤ bounds.candidateCount
   /-- Every event actor has an activation at its own event. -/
   opportunities : ActorOpportunities setup.dataflowGraph rosters
   /-- The prior over initial states is finitely supported. -/
-  initialFinite : setup.FiniteInitialLaw
+  initialFinite : setup.FiniteInitialSupport
   /-- The leak rule branches finitely. -/
   leaksFinite : leaks.FiniteSupport
 
@@ -75,14 +75,15 @@ abbrev sourceModel := service.setup.informationModel
   (CommitmentInterface.values service.setup.program)
 
 /-- The native information model of the retained service. -/
-abbrev model := service.menu.information (initialLaw service.setup) service.planLength
+abbrev model := service.menu.information (initialDistribution service.setup) service.planLength
   service.scheduler
 
 /-- The horizon of the standard native continuation comparisons. -/
 abbrev fuel : Nat := 2 * service.planLength + 1
 
 /-- The complete source terminal configuration read from a native history. -/
-abbrev readout (final : (service.menu.protocol (initialLaw service.setup) service.planLength
+abbrev readout (final : (service.menu.protocol (initialDistribution service.setup)
+    service.planLength
     service.scheduler).History) :
     Option (Config Player L service.setup.program.terminalCtx) :=
   sourceReadout service.setup (timeouts service.setup) service.leaks final.state
@@ -105,10 +106,10 @@ def toAsync : AsyncServiceSpec Player L where
   delay := fun event => event.val
   bound := fun _ => 0
   contract := by
-    let inputs := service.setup.initialLaw.map service.setup.eventInputs
-    have initial : initialLaw service.setup =
-        rosterInitialLaw service.setup.dataflowGraph inputs :=
-      serviceInitialLaw_eq_inputs service.setup
+    let inputs := service.setup.initialDistribution.map service.setup.eventInputs
+    have initial : initialDistribution service.setup =
+        rosterInitialDistribution service.setup.dataflowGraph inputs :=
+      serviceInitialDistribution_eq_inputs service.setup
     rw [initial]
     exact rosterScheduler_asyncContract service.setup.dataflowGraph inputs service.leaks
       service.rosters service.network service.opportunities
@@ -116,11 +117,11 @@ def toAsync : AsyncServiceSpec Player L where
   initialFinite := service.initialFinite
   leaksFinite := service.leaksFinite
   schedulerFinite := by
-    let inputs := service.setup.initialLaw.map service.setup.eventInputs
+    let inputs := service.setup.initialDistribution.map service.setup.eventInputs
     let : Fact inputs.support.Finite := ⟨by
-      rw [show inputs = service.setup.initialLaw.map service.setup.eventInputs from rfl,
+      rw [show inputs = service.setup.initialDistribution.map service.setup.eventInputs from rfl,
         PMF.support_map]
-      exact service.setup.initialLaw_support_finite.image _⟩
+      exact service.setup.initialDistribution_support_finite.image _⟩
     exact (rosterScheduler_finiteNature service.setup.dataflowGraph inputs service.leaks
       service.rosters service.network).scheduler_finite
 

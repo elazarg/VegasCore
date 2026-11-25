@@ -36,7 +36,7 @@ reads the full source protocol state from the graph's store, actions, and defaul
 Fixed graph actions and mixed behavioral events preserve the decoded source law.
 Under the setup's joint input law and a finite player type, the canonical graph
 runner preserves this law at every bounded prefix. The terminal suffix law in
-[EventGraphLaw](../Vegas/Compile/EventGraphLaw.lean) also applies to arbitrary
+[EventGraphDistribution](../Vegas/Compile/EventGraphDistribution.lean) also applies to arbitrary
 aligned suffix configurations and permits any player type with decidable equality.
 
 The [dependency design](event-graph-dependencies.md) separates these choices
@@ -65,12 +65,12 @@ including recorded actions.
 laws for the turn policy, and
 [FirstTurnClientSimulation](../Vegas/Pending/FirstTurnClientSimulation.lean)
 proves them for the recovered ledger clients.
-[StoppedPrefixLaw](../Vegas/Pending/StoppedPrefixLaw.lean) stops the physical run
+[StoppedPrefixDistribution](../Vegas/Pending/StoppedPrefixDistribution.lean) stops the physical run
 at a specified event's completion. Restricting the resulting configuration to
 that event's rank recovers the exact canonical prefix distribution whenever
 the full configuration law holds. This also covers stops at which several
 defaulted events completed in one native round.
-[SourceClientPrefixLaw](../Vegas/Game/SourceClientPrefixLaw.lean) decodes those
+[SourceClientPrefixDistribution](../Vegas/Game/SourceClientPrefixDistribution.lean) decodes those
 actual stops into the full source protocol state after the corresponding
 number of instructions, for the disclosure-normalized client profile and a
 finite player type.
@@ -81,7 +81,7 @@ typed-state/public-default law of the original profile.
 and [SourceServiceSiteBridge](../Vegas/Game/SourceServiceSiteBridge.lean)
 give the source specialization and projection.
 The full-source interfaces in
-[ServiceHonestLaw](../Vegas/Game/ServiceHonestLaw.lean) use the source information
+[ServiceHonestDistribution](../Vegas/Game/ServiceHonestDistribution.lean) use the source information
 graph directly. Asynchronous service retains arbitrary public scheduling and
 per-event deadlines under its service contract.
 The actual [periodic service](../Vegas/Pending/PeriodicServiceCompletion.lean)
@@ -98,7 +98,7 @@ graph configuration, including the action history. The [initialized menu
 law](../Interaction/ReactiveRestrictedContinuation.lean) transports physical
 execution results to that run. The lower graph APIs retain genuinely nonordered
 results, including the different raw reveal-order laws in
-[ConcurrentRevealOrderLaw](../Vegas/Examples/ConcurrentRevealOrderLaw.lean).
+[ConcurrentRevealOrderDistribution](../Vegas/Examples/ConcurrentRevealOrderDistribution.lean).
 The dependency-parametric graph result in
 [SourcePrefixForfeit](../Vegas/Game/SourcePrefixForfeit.lean) covers independent
 bindings and reveals under `RevealRelaxedOrdered`. Its source-prefix clients
@@ -167,7 +167,7 @@ public samples use their visible value, foreign bindings expose admission, and
 foreign publications expose their result.
 [PhysicalPrefixPolicy](../Vegas/Pending/PhysicalPrefixPolicy.lean) assembles
 the resulting observation-local choices into one graph policy for the entire run.
-The [source prefix law](../Vegas/Game/SourceClientPrefixLaw.lean) also reads the
+The [source prefix law](../Vegas/Game/SourceClientPrefixDistribution.lean) also reads the
 entire typed protocol state at any such stop for the recovered first-turn
 source clients with normalized disclosures.
 
@@ -178,7 +178,7 @@ Both values give that actor the same graph view and hence the same graph
 response law. [GuardRejectedTraffic](../VegasTests/GuardRejectedTraffic.lean)
 
 The full honest native law in
-[PrefixClientOutcomeLaw](../Vegas/Game/PrefixClientOutcomeLaw.lean) needs no
+[PrefixClientOutcomeDistribution](../Vegas/Game/PrefixClientOutcomeDistribution.lean) needs no
 equilibrium, finite binding catalogue, finite initial support, disclosure or
 utility-bound premise. Private-binding traffic opacity, conditional table
 sampling and checkpoint restoration retain the existing graph configurations
@@ -190,7 +190,7 @@ backtranslates every raw unilateral policy against first-turn clients to one
 behavioral source policy with the same typed-state/public-default law. The
 [compiler opening-safety lemma](../Vegas/Compile/OpeningSafety.lean) proves
 that the compiled opponents satisfy the graph simulation hypothesis on every
-reachable ready configuration. The [source deviation law](../Vegas/Game/AsyncDeviationLaw.lean)
+reachable ready configuration. The [source deviation law](../Vegas/Game/AsyncDeviationDistribution.lean)
 applies that simulation, reads the terminal graph configuration and
 backtranslates its single graph policy across the whole input distribution.
 For finite player types the same source policy also matches the decoded full
@@ -275,7 +275,7 @@ its declarations. These standalone examples each protect a concrete behavior:
 | [BoundedAuctionRoster](../Vegas/Examples/BoundedAuctionRoster.lean) | One fixed public single-opportunity builder realizes the truthful sequential equilibrium and exact joint configuration/surplus law under every joint valuation prior. |
 | [BoundedAuctionService](../Vegas/Examples/BoundedAuctionService.lean) | One concrete compiled auction assessment retains sequential equilibrium, source-decision fidelity, clean raw and physical play, actual cash and expected utility 8/7 under full pending observation. |
 | [CommitTimingInformationSource](../Vegas/Examples/CommitTimingInformationSource.lean) | Alice's honest expected value is one half because her first commitment cannot observe Bob's retained private bit. |
-| [ConcurrentRevealOrderLaw](../Vegas/Examples/ConcurrentRevealOrderLaw.lean) | The actual raw callbacks at independent reveals yield different terminal store laws under two reveal orders. |
+| [ConcurrentRevealOrderDistribution](../Vegas/Examples/ConcurrentRevealOrderDistribution.lean) | The actual raw callbacks at independent reveals yield different terminal store laws under two reveal orders. |
 | [OddsEvensConcurrentNative](../Vegas/Examples/OddsEvensConcurrentNative.lean) | Actual concurrent bindings and reveals preserve the compiled fair Nash equilibrium and full configuration/payoff law under a checked periodic builder and full pending observation. |
 | [CorrelatedInitialBitsInformation](../Vegas/Examples/CorrelatedInitialBitsInformation.lean) | Actual private views identify the shared-bit component of an information fiber and support the conditional Bayes-belief transport. |
 | [CorrelatedInitialBitsEquilibrium](../Vegas/Examples/CorrelatedInitialBitsEquilibrium.lean) | Existence of intended sequential equilibrium and preservation of every supplied equilibrium on the periodic ledger with a common private bit. |

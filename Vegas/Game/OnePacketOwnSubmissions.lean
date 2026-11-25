@@ -68,7 +68,7 @@ theorem onePacket_submission_atTurn {horizon : Nat}
     {scheduler : (application setup timeouts leaks).Scheduler} (profile : BehavioralProfile
       setup.program)
     {rank remaining : Nat} {who : Player} {execution : (application setup timeouts leaks).Execution}
-    (trace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((application setup timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace
       (some ⟨remaining, some who, execution⟩))
     (residual : SourceResidual setup profile rank execution.application.config)
@@ -151,7 +151,7 @@ was made at its turn at its event, or that player owes a failure at the decoded
 point. -/
 theorem ownTurnRecord_history (profile : BehavioralProfile setup.program) (horizon : Nat)
     (scheduler : (application setup timeouts leaks).Scheduler) :
-    ∀ {state} (_ : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup)
+    ∀ {state} (_ : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup)
         horizon scheduler).Trace state) (control : (application setup timeouts leaks).Control),
       state = some control → OwnTurnRecord setup timeouts leaks profile control.execution := by
   let app := application setup timeouts leaks
@@ -164,7 +164,7 @@ theorem ownTurnRecord_history (profile : BehavioralProfile setup.program) (horiz
       subst current
       cases before with
       | none =>
-          change some control ∈ ((initialLaw setup).map fun state =>
+          change some control ∈ ((initialDistribution setup).map fun state =>
             some ⟨horizon, none, ReactiveApplication.Execution.initial app state⟩).support
             at realized
           obtain ⟨state, supported, same⟩ := PMF.support_map .. ▸ realized
@@ -174,7 +174,7 @@ theorem ownTurnRecord_history (profile : BehavioralProfile setup.program) (horiz
             fun _ _ member => (List.not_mem_nil member).elim⟩
       | some previous =>
           obtain ⟨rank, ⟨residual⟩, record⟩ := ih previous rfl
-          have rawPrior := menu.toRawTrace (initialLaw setup) horizon scheduler prior
+          have rawPrior := menu.toRawTrace (initialDistribution setup) horizon scheduler prior
           rcases previous with ⟨remaining, actor, execution⟩
           cases actor with
           | some who =>
@@ -248,7 +248,7 @@ was made at its turn at its event. -/
 theorem onePacket_ownSubmissionsAtTurn {horizon : Nat}
     {scheduler : (application setup timeouts leaks).Scheduler}
     {control : (application setup timeouts leaks).Control}
-    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some control))
     {rank : Nat} (ordered : control.execution.application.config.cut.IsPrefix rank)
     (point : ProtocolState setup.program)
@@ -274,7 +274,7 @@ were made at the owners' turns (`Vegas.onePacket_ownSubmissionsAtTurn`). -/
 theorem reachedBoundary_of_onePacket (bounds : MessageBounds setup.informationGraph)
     {horizon : Nat} {scheduler : (application setup timeouts leaks).Scheduler} {rank : Nat}
     {anchor : (application setup timeouts leaks).Execution}
-    (start : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (start : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).History)
     (state : start.state = some ⟨horizon - anchor.environmentRecall.length, none, anchor⟩)
     (bounded : anchor.environmentRecall.length ≤ horizon)
@@ -285,10 +285,10 @@ theorem reachedBoundary_of_onePacket (bounds : MessageBounds setup.informationGr
     (decoded : sourceServicePrefix? setup rank anchor.application.config = some point)
     (intendedPoint : ProtocolState.Intended setup.program point) :
     ReachedBoundary setup timeouts leaks horizon scheduler rank anchor := by
-  have trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+  have trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some ⟨horizon - anchor.environmentRecall.length, none, anchor⟩) :=
     state ▸ start.trace
-  exact ⟨⟨(bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon
+  exact ⟨⟨(bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup) horizon
       scheduler trace⟩, bounded, ordered, untouched,
     onePacket_ownSubmissionsAtTurn (timeouts := timeouts) bounds trace ordered point decoded
       intendedPoint⟩

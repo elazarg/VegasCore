@@ -3,7 +3,7 @@ module
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 public import GameTheoryExtensions.Analysis.Protocol.StoppedContinuationComparison
-public import Vegas.Game.OnePacketLawApproximation
+public import Vegas.Game.OnePacketDistributionApproximation
 public import Interaction.ReactiveDecisionBudget
 
 @[expose] public section

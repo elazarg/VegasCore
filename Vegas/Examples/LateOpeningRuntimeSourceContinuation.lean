@@ -54,7 +54,7 @@ def bobChoiceEquiv (bit : Bool) : Answer ≃ setup.intendedModel.Choice bob (bob
   Equiv.ofBijective (bobBindingChoice bit)
     ⟨bobBindingChoice_injective bit, bobBindingChoice_surjective bit⟩
 
-def bobAnswerLaw (profile : ∀ who, setup.intendedModel.BehavioralPolicy who) (bit : Bool) :
+def bobAnswerDistribution (profile : ∀ who, setup.intendedModel.BehavioralPolicy who) (bit : Bool) :
     PMF Answer := (profile bob (bobBindingSite bit).1).map (bobChoiceEquiv bit).symm
 
 def boundConfig (bit : Bool) (label : Fin 3) (answer : Answer) :=
@@ -209,7 +209,7 @@ private theorem binding_joint_opened
     (bit : Bool) (label : Fin 3) :
     setup.intendedModel.behavioralJoint profile (openedHistory bit label).trace
       (bindingJointLegal bit label safe).1 =
-      (bobAnswerLaw profile bit).map
+      (bobAnswerDistribution profile bit).map
         (fun answer => ⟨bindingJoint answer, bindingJointLegal bit label answer⟩) := by
   classical
   have unique (who : Player)
@@ -226,7 +226,7 @@ private theorem binding_joint_opened
         (fun choice => setup.intendedProtocol.singletonJoint bob choice.val) at collapse
   rw [bobBindingInfo_opened] at collapse
   apply pmf_map_injective (f := Subtype.val) Subtype.val_injective
-  rw [collapse, PMF.map_comp, bobAnswerLaw, PMF.map_comp]
+  rw [collapse, PMF.map_comp, bobAnswerDistribution, PMF.map_comp]
   congr 1
   funext choice
   have encoded := congrArg Subtype.val ((bobChoiceEquiv bit).apply_symm_apply choice)
@@ -244,17 +244,17 @@ theorem bobContinuation_rounds
     (profile : ∀ who, setup.intendedModel.BehavioralPolicy who)
     (bit : Bool) (label : Fin 3) :
     setup.intendedModel.runBehavioralFrom profile 2 (openedHistory bit label) =
-      (bobAnswerLaw profile bit).map (fun answer => finishedHistory bit label answer) := by
+      (bobAnswerDistribution profile bit).map (fun answer => finishedHistory bit label answer) := by
   rw [setup.intendedModel.runBehavioralFrom_succ_of_not_terminal profile 1
       (bindingJointLegal bit label safe).1,
     binding_joint_opened, PMF.bind_map]
-  change (bobAnswerLaw profile bit).bind (fun answer =>
+  change (bobAnswerDistribution profile bit).bind (fun answer =>
     (setup.intendedProtocol.step (openedState bit label)
       ⟨bindingJoint answer, bindingJointLegal bit label answer⟩).bindOnSupport
       (fun target realized => setup.intendedModel.runBehavioralFrom profile 1
         ((openedHistory bit label).extend (bindingJointLegal bit label answer) realized))) = _
   calc
-    _ = (bobAnswerLaw profile bit).bind
+    _ = (bobAnswerDistribution profile bit).bind
         (fun answer => PMF.pure (finishedHistory bit label answer)) := by
       apply bind_congr_on_support
       intro answer _
@@ -279,7 +279,7 @@ theorem bobContinuation_readout
     (setup.intendedModel.runBehavioralTerminalFrom
       setup.intended_bounded.wellFoundedHistories profile (openedHistory bit label)).map
         (fun final => setup.protocolReadout final.state) =
-      (bobAnswerLaw profile bit).map
+      (bobAnswerDistribution profile bit).map
         (fun answer => some (finalConfig bit label true answer true)) := by
   rw [setup.intendedModel.runBehavioralTerminalFrom_eq_remaining
     setup.intended_bounded.wellFoundedHistories profile setup.intended_bounded]
@@ -293,7 +293,7 @@ theorem intendedTerminal_histories
     (profile : ∀ who, setup.intendedModel.BehavioralPolicy who) :
     setup.intendedModel.runBehavioralTerminalFrom
       setup.intended_bounded.wellFoundedHistories profile setup.intendedProtocol.initHistory =
-      prior.bind (fun parameter => (bobAnswerLaw profile parameter.1).map
+      prior.bind (fun parameter => (bobAnswerDistribution profile parameter.1).map
         (fun answer => finishedHistory parameter.1 parameter.2 answer)) := by
   rw [setup.intendedModel.runBehavioralTerminalFrom_initHistory
     setup.intended_bounded.wellFoundedHistories profile setup.intended_bounded]
@@ -310,7 +310,7 @@ theorem intendedTerminal_readout
     (setup.intendedModel.runBehavioralTerminalFrom
       setup.intended_bounded.wellFoundedHistories profile setup.intendedProtocol.initHistory).map
         (fun final => setup.protocolReadout final.state) =
-      prior.bind (fun parameter => (bobAnswerLaw profile parameter.1).map
+      prior.bind (fun parameter => (bobAnswerDistribution profile parameter.1).map
         (fun answer => some (finalConfig parameter.1 parameter.2 true answer true))) := by
   rw [intendedTerminal_histories, PMF.map_bind]
   simp only [PMF.map_comp, Function.comp_def, finishedHistory_readout]

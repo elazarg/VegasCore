@@ -72,7 +72,7 @@ private theorem bindingCalled_round {event : (serviceGraph setup deps).EventId}
     {scheduler : (serviceApplication setup deps duration leaks).Scheduler}
     {delay bound : (serviceGraph setup deps).EventId → Nat}
     (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
-        (serviceInitialLaw setup deps) horizon scheduler delay bound)
+        (serviceInitialDistribution setup deps) horizon scheduler delay bound)
     (timely : AsyncTimely (serviceTimeouts setup deps duration) delay bound)
     (players : Player → (serviceApplication setup deps duration leaks).Policy) (owner : Player)
     {turns : Nat} (reference : (serviceGraph setup deps).BehavioralProfile)
@@ -87,7 +87,7 @@ private theorem bindingCalled_round {event : (serviceGraph setup deps).EventId}
     (remaining : Nat)
     (execution next : (serviceApplication setup deps duration leaks).Execution)
     (trace : ((serviceApplication setup deps duration leaks).protocol
-      (serviceInitialLaw setup deps) horizon scheduler).Trace
+      (serviceInitialDistribution setup deps) horizon scheduler).Trace
         (some ⟨remaining + 1, none, execution⟩))
     (answered : ActivationsAnswered setup leaks execution)
     (atTurn : OwnSubmissionsAtTurn (serviceTimeouts setup deps duration) leaks execution owner)
@@ -156,7 +156,7 @@ private theorem bindingCalled_round {event : (serviceGraph setup deps).EventId}
       (serviceTimeouts setup deps duration) bound event := by
     rw [appEq]
     exact fits
-  obtain ⟨middleTrace⟩ := app.raw_trace_environment (serviceInitialLaw setup deps) horizon
+  obtain ⟨middleTrace⟩ := app.raw_trace_environment (serviceInitialDistribution setup deps) horizon
     scheduler remaining execution middle (.activate owner) trace selected moved
   rw [active] at middleTrace
   let action := cast (congrArg EventField.Action binding.symm) (some result)
@@ -224,7 +224,7 @@ private theorem bindingCalled_runRounds {event : (serviceGraph setup deps).Event
     {scheduler : (serviceApplication setup deps duration leaks).Scheduler}
     {delay bound : (serviceGraph setup deps).EventId → Nat}
     (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
-      (serviceInitialLaw setup deps) horizon scheduler delay bound)
+      (serviceInitialDistribution setup deps) horizon scheduler delay bound)
     (timely : AsyncTimely (serviceTimeouts setup deps duration) delay bound)
     (players : Player → (serviceApplication setup deps duration leaks).Policy) (owner : Player)
     {turns : Nat} (reference : (serviceGraph setup deps).BehavioralProfile)
@@ -238,7 +238,7 @@ private theorem bindingCalled_runRounds {event : (serviceGraph setup deps).Event
       (firstTurnTiming setup turns deps) reference owner) (remaining : Nat) :
     ∀ count (execution next : (serviceApplication setup deps duration leaks).Execution),
       ((serviceApplication setup deps duration leaks).protocol
-        (serviceInitialLaw setup deps) horizon scheduler).Trace
+        (serviceInitialDistribution setup deps) horizon scheduler).Trace
           (some ⟨remaining + count, none, execution⟩) →
       BindingCalled setup leaks bound execution owner event →
       OwnSubmissionsAtTurn (serviceTimeouts setup deps duration) leaks execution owner →
@@ -264,7 +264,8 @@ private theorem bindingCalled_runRounds {event : (serviceGraph setup deps).Event
       obtain ⟨middle, moved, rest⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       have budget : remaining + (count + 1) = (remaining + count) + 1 := by omega
       rw [budget] at trace
-      obtain ⟨middleTrace⟩ := app.raw_trace_round (serviceInitialLaw setup deps) horizon scheduler
+      obtain ⟨middleTrace⟩ := app.raw_trace_round (serviceInitialDistribution setup deps) horizon
+        scheduler
         players (remaining + count) execution middle trace moved
       have calledMiddle := bindingCalled_round unique contract timely players owner reference
         payload binding result fixed follows (remaining + count) execution middle trace answered
@@ -285,7 +286,7 @@ theorem fixedBinding_withinDeadline_runRounds {horizon remaining count : Nat}
     {scheduler : (serviceApplication setup deps duration leaks).Scheduler}
     {delay bound : (serviceGraph setup deps).EventId → Nat}
     (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
-      (serviceInitialLaw setup deps) horizon scheduler delay bound)
+      (serviceInitialDistribution setup deps) horizon scheduler delay bound)
     (timely : AsyncTimely (serviceTimeouts setup deps duration) delay bound)
     (players : Player → (serviceApplication setup deps duration leaks).Policy) (owner : Player)
     {turns : Nat} (reference : (serviceGraph setup deps).BehavioralProfile)
@@ -301,7 +302,7 @@ theorem fixedBinding_withinDeadline_runRounds {horizon remaining count : Nat}
       (firstTurnTiming setup turns deps) reference owner)
     (execution next : (serviceApplication setup deps duration leaks).Execution)
     (trace : ((serviceApplication setup deps duration leaks).protocol
-      (serviceInitialLaw setup deps) horizon scheduler).Trace
+      (serviceInitialDistribution setup deps) horizon scheduler).Trace
         (some ⟨remaining + count, none, execution⟩))
     (truthful : OwnSubmissionsAtTurn (serviceTimeouts setup deps duration) leaks execution owner)
     (answered : ActivationsAnswered setup leaks execution)
@@ -322,7 +323,8 @@ theorem fixedBinding_withinDeadline_runRounds {horizon remaining count : Nat}
     bindingCalled_runRounds unique contract timely players owner reference payload binding result
       fixed follows remaining count execution next trace initial truthful answered calls once
         reached
-  obtain ⟨nextTrace⟩ := app.raw_trace_runRounds (serviceInitialLaw setup deps) horizon scheduler
+  obtain ⟨nextTrace⟩ := app.raw_trace_runRounds (serviceInitialDistribution setup deps) horizon
+    scheduler
     players remaining count execution next trace reached
   by_cases turned : ∃ entry ∈ next.logs owner,
       entry.beforeView.application.publicView.ownTurn? owner = some event
@@ -369,7 +371,7 @@ theorem fixedBinding_block_endpoint
     (serial : (serviceGraph setup deps).ActorSerial)
     {delay : (serviceGraph setup deps).EventId → Nat}
     (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
-      (serviceInitialLaw setup deps) horizon scheduler delay bound)
+      (serviceInitialDistribution setup deps) horizon scheduler delay bound)
     (timely : AsyncTimely (serviceTimeouts setup deps duration) delay bound)
     (reference : (serviceGraph setup deps).BehavioralProfile) (compiled : Player → Prop)
     (players : Player → (serviceApplication setup deps duration leaks).Policy)
@@ -378,7 +380,8 @@ theorem fixedBinding_block_endpoint
         (firstTurnTiming setup turns deps) reference owner)
     (anchor : (serviceApplication setup deps duration leaks).Execution)
     (trace : ((serviceApplication setup deps duration leaks).protocol
-      (serviceInitialLaw setup deps) horizon scheduler).Trace (some ⟨budget, none, anchor⟩))
+      (serviceInitialDistribution setup deps) horizon scheduler).Trace
+        (some ⟨budget, none, anchor⟩))
     (truthful : ∀ owner, compiled owner → OwnSubmissionsAtTurn
       (serviceTimeouts setup deps duration) leaks anchor owner)
     (answered : ActivationsAnswered setup leaks anchor)
@@ -450,7 +453,8 @@ theorem fixedBinding_block_endpoint
           (readyBounds event ready).2 owner actor outside)
       obtain ⟨payload, binding, result, constant⟩ := fixed event
         (readyBounds event ready).1 (readyBounds event ready).2 owner actor ownerCompiled
-      have traceBudget : (app.protocol (serviceInitialLaw setup deps) horizon scheduler).Trace
+      have traceBudget : (app.protocol (serviceInitialDistribution setup deps) horizon
+        scheduler).Trace
           (some ⟨(remaining + 1) + (used + extra), none, anchor⟩) := by
         simpa only [show (remaining + 1) + (used + extra) = budget by omega] using trace
       exact fixedBinding_withinDeadline_runRounds contract timely players owner reference event
@@ -492,7 +496,8 @@ theorem fixedBinding_block_endpoint
     have finalLength := app.runRounds_environmentRecall_length scheduler players (used + extra)
       anchor final supportedFinal
     have exhausted : used + extra = budget := by omega
-    obtain ⟨finalTrace⟩ := app.raw_trace_runRounds (serviceInitialLaw setup deps) horizon scheduler
+    obtain ⟨finalTrace⟩ := app.raw_trace_runRounds (serviceInitialDistribution setup deps) horizon
+      scheduler
       players 0 (used + extra) anchor final
       (by simpa only [Nat.zero_add, exhausted] using trace) supportedFinal
     have terminal := contract.completes ⟨0, none, final⟩ finalTrace ⟨rfl, rfl⟩
@@ -510,7 +515,7 @@ theorem fixedBinding_block_key
     (serial : (serviceGraph setup deps).ActorSerial)
     {delay : (serviceGraph setup deps).EventId → Nat}
     (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
-      (serviceInitialLaw setup deps) horizon scheduler delay bound)
+      (serviceInitialDistribution setup deps) horizon scheduler delay bound)
     (timely : AsyncTimely (serviceTimeouts setup deps duration) delay bound)
     (reference : (serviceGraph setup deps).BehavioralProfile) (compiled : Player → Prop)
     (players : Player → (serviceApplication setup deps duration leaks).Policy)
@@ -519,7 +524,8 @@ theorem fixedBinding_block_key
         (firstTurnTiming setup turns deps) reference owner)
     (anchor : (serviceApplication setup deps duration leaks).Execution)
     (trace : ((serviceApplication setup deps duration leaks).protocol
-      (serviceInitialLaw setup deps) horizon scheduler).Trace (some ⟨budget, none, anchor⟩))
+      (serviceInitialDistribution setup deps) horizon scheduler).Trace
+        (some ⟨budget, none, anchor⟩))
     (truthful : ∀ owner, compiled owner → OwnSubmissionsAtTurn
       (serviceTimeouts setup deps duration) leaks anchor owner)
     (answered : ActivationsAnswered setup leaks anchor)
@@ -640,14 +646,14 @@ theorem fixedBinding_block_key
 
 /-- Honest source-prefix clients have the exact canonical graph key law across a
 private binding block, including the complete sampled joint binding table. -/
-theorem native_binding_block_key_law
+theorem native_binding_block_key_distribution
     {horizon budget turns : Nat}
     (scheduler : (serviceApplication setup deps duration leaks).Scheduler)
     (bound : (serviceGraph setup deps).EventId → Nat)
     (relaxed : (serviceGraph setup deps).RevealRelaxedOrdered)
     {delay : (serviceGraph setup deps).EventId → Nat}
     (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
-      (serviceInitialLaw setup deps) horizon scheduler delay bound)
+      (serviceInitialDistribution setup deps) horizon scheduler delay bound)
     (timely : AsyncTimely (serviceTimeouts setup deps duration) delay bound)
     (profile : (serviceGraph setup deps).BehavioralProfile)
     (submits : (serviceGraph setup deps).SubmitsBindings profile)
@@ -655,7 +661,8 @@ theorem native_binding_block_key_law
     {inputs : (serviceGraph setup deps).Inputs}
     (initialReach : origin.application.config.Reachable inputs)
     (trace : ((serviceApplication setup deps duration leaks).protocol
-      (serviceInitialLaw setup deps) horizon scheduler).Trace (some ⟨budget, none, origin⟩))
+      (serviceInitialDistribution setup deps) horizon scheduler).Trace
+        (some ⟨budget, none, origin⟩))
     (truthful : ∀ owner, OwnSubmissionsAtTurn
       (serviceTimeouts setup deps duration) leaks origin owner)
     (answered : ActivationsAnswered setup leaks origin)
@@ -786,14 +793,14 @@ theorem native_binding_block_key_law
     _ = _ := PMF.bind_pure_comp _ _
 
 /-- A private binding block preserves the canonical terminal continuation law. -/
-theorem native_binding_block_outcomeLaw
+theorem native_binding_block_outcomeDistribution
     {horizon budget turns : Nat}
     (scheduler : (serviceApplication setup deps duration leaks).Scheduler)
     (bound : (serviceGraph setup deps).EventId → Nat)
     (relaxed : (serviceGraph setup deps).RevealRelaxedOrdered)
     {delay : (serviceGraph setup deps).EventId → Nat}
     (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
-      (serviceInitialLaw setup deps) horizon scheduler delay bound)
+      (serviceInitialDistribution setup deps) horizon scheduler delay bound)
     (timely : AsyncTimely (serviceTimeouts setup deps duration) delay bound)
     (profile : (serviceGraph setup deps).BehavioralProfile)
     (submits : (serviceGraph setup deps).SubmitsBindings profile)
@@ -805,7 +812,8 @@ theorem native_binding_block_outcomeLaw
     {inputs : (serviceGraph setup deps).Inputs}
     (initialReach : origin.application.config.Reachable inputs)
     (trace : ((serviceApplication setup deps duration leaks).protocol
-      (serviceInitialLaw setup deps) horizon scheduler).Trace (some ⟨budget, none, origin⟩))
+      (serviceInitialDistribution setup deps) horizon scheduler).Trace
+        (some ⟨budget, none, origin⟩))
     (truthful : ∀ owner, OwnSubmissionsAtTurn
       (serviceTimeouts setup deps duration) leaks origin owner)
     (answered : ActivationsAnswered setup leaks origin)
@@ -829,8 +837,8 @@ theorem native_binding_block_outcomeLaw
       (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps) reference)
       (fun current => BlockDone (start + count) current.application.config) budget origin).bind
-        (fun final => outcomeLaw reference read final.application.config) =
-      outcomeLaw reference read origin.application.config := by
+        (fun final => outcomeDistribution reference read final.application.config) =
+      outcomeDistribution reference read origin.application.config := by
   classical
   intro G app reference
   let law := app.runUntil scheduler
@@ -839,19 +847,21 @@ theorem native_binding_block_outcomeLaw
     (fun current => BlockDone (start + count) current.application.config) budget origin
   let source := G.runPlan (G.policyPlan reference G.canonicalScheduler) count
     origin.application.config
-  have keyLaw := native_binding_block_key_law (turns := turns) scheduler bound relaxed contract
+  have keyLaw := native_binding_block_key_distribution (turns := turns) scheduler bound relaxed
+    contract
     timely profile submits origin initialReach trace truthful answered calls once start count
     bounded ordered clear bindings barrier untouched
   change law.map (fun final => runKey final.application.config) = source.map runKey at keyLaw
   have congruent (left right : G.Config) (same : runKey left = runKey right) :
-      outcomeLaw reference read left = outcomeLaw reference read right :=
-    outcomeLaw_eq_of_canonicalLaw_eq read keyed
-      (independent.canonicalLaw_congr left.remaining left right rfl same)
+      outcomeDistribution reference read left = outcomeDistribution reference read right :=
+    outcomeDistribution_eq_of_canonicalDistribution_eq read keyed
+      (independent.canonicalDistribution_congr left.remaining left right rfl same)
   let through := fun key =>
     if found : ∃ config : G.Config, runKey config = key then
-      outcomeLaw reference read found.choose
-    else outcomeLaw reference read origin.application.config
-  have factor (config : G.Config) : through (runKey config) = outcomeLaw reference read config := by
+      outcomeDistribution reference read found.choose
+    else outcomeDistribution reference read origin.application.config
+  have factor (config : G.Config) : through (runKey config) = outcomeDistribution reference read
+    config := by
     have found : ∃ other : G.Config, runKey other = runKey config := ⟨config, rfl⟩
     simp only [through, dite_eq_left found]
     exact congruent _ _ found.choose_spec
@@ -860,10 +870,10 @@ theorem native_binding_block_outcomeLaw
       rw [PMF.bind_map]
       exact bind_congr_on_support _ (fun final _ => (factor _).symm)
     _ = (source.map runKey).bind through := congrArg (fun law => law.bind through) keyLaw
-    _ = source.bind (outcomeLaw reference read) := by
+    _ = source.bind (outcomeDistribution reference read) := by
       rw [PMF.bind_map]
       exact bind_congr_on_support _ (fun config _ => factor config)
-    _ = _ := runPlan_bind_outcomeLaw reference read count origin.application.config
+    _ = _ := runPlan_bind_outcomeDistribution reference read count origin.application.config
 
 /-- Fixed foreign bindings remain clear up to an arbitrary block-bounded stop
 whenever the focal owner remains active at that stop. -/
@@ -874,7 +884,7 @@ theorem fixedBinding_runUntil_clear_of_active
     (serial : (serviceGraph setup deps).ActorSerial)
     {delay : (serviceGraph setup deps).EventId → Nat}
     (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
-      (serviceInitialLaw setup deps) horizon scheduler delay bound)
+      (serviceInitialDistribution setup deps) horizon scheduler delay bound)
     (timely : AsyncTimely (serviceTimeouts setup deps duration) delay bound)
     (reference : (serviceGraph setup deps).BehavioralProfile) (focal : Player)
     (players : Player → (serviceApplication setup deps duration leaks).Policy)
@@ -883,7 +893,8 @@ theorem fixedBinding_runUntil_clear_of_active
         (firstTurnTiming setup turns deps) reference owner)
     (anchor : (serviceApplication setup deps duration leaks).Execution)
     (trace : ((serviceApplication setup deps duration leaks).protocol
-      (serviceInitialLaw setup deps) horizon scheduler).Trace (some ⟨budget, none, anchor⟩))
+      (serviceInitialDistribution setup deps) horizon scheduler).Trace
+        (some ⟨budget, none, anchor⟩))
     (truthful : ∀ owner, owner ≠ focal → OwnSubmissionsAtTurn
       (serviceTimeouts setup deps duration) leaks anchor owner)
     (answered : ActivationsAnswered setup leaks anchor)
@@ -961,7 +972,8 @@ theorem fixedBinding_runUntil_clear_of_active
           next.application.WithinDeadline (serviceTimeouts setup deps duration) event := by
         obtain ⟨payload, binding, result, constant⟩ := fixed event
           (readyBounds event ready).1 (readyBounds event ready).2 owner owned foreign
-        have traceBudget : (app.protocol (serviceInitialLaw setup deps) horizon scheduler).Trace
+        have traceBudget : (app.protocol (serviceInitialDistribution setup deps) horizon
+          scheduler).Trace
             (some ⟨(remaining + 1) + (used + extra), none, anchor⟩) := by
           simpa only [show (remaining + 1) + (used + extra) = budget by omega] using trace
         exact fixedBinding_withinDeadline_runRounds contract timely players owner reference event
@@ -996,7 +1008,8 @@ theorem fixedBinding_runUntil_clear_of_active
     have finalLength := app.runRounds_environmentRecall_length scheduler players (used + extra)
       anchor final supportedFinal
     have exhausted : used + extra = budget := by omega
-    obtain ⟨finalTrace⟩ := app.raw_trace_runRounds (serviceInitialLaw setup deps) horizon scheduler
+    obtain ⟨finalTrace⟩ := app.raw_trace_runRounds (serviceInitialDistribution setup deps) horizon
+      scheduler
       players 0 (used + extra) anchor final
       (by simpa only [Nat.zero_add, exhausted] using trace) supportedFinal
     have terminal := contract.completes ⟨0, none, final⟩ finalTrace ⟨rfl, rfl⟩

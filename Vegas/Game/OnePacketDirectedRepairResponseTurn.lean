@@ -53,7 +53,7 @@ private theorem recall_subset_at_tracePrefix {before : (application setup timeou
             subst sourceEq
             obtain ⟨next, targetEq, retained⟩ := (application setup timeouts
               leaks).transition_recall_prefix
-              (initialLaw setup) horizon scheduler middle target joint realized
+              (initialDistribution setup) horizon scheduler middle target joint realized
             exact ⟨next, targetEq, fun actor entry member =>
               (retained actor).subset (subsets actor member)⟩
   obtain ⟨next, nextEq, subsets⟩ := carry prior top isPrefix before rfl
@@ -64,7 +64,8 @@ private theorem recall_subset_at_tracePrefix {before : (application setup timeou
 information history names the current turn of every other responder. -/
 theorem response_atTurn_of_forced_prefix {focal : Player}
     {info : (onePacketInformation setup timeouts leaks bounds horizon scheduler).InfoState focal}
-    (forced : forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks) (initialLaw
+    (forced : forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks)
+      (initialDistribution
       setup) horizon
       scheduler focal info)
     {past : List (application setup timeouts leaks).PlayerEntry}

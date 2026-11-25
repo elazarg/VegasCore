@@ -58,7 +58,7 @@ def choiceResult :
     Expr AfterRevealsPublicCtx (.result (.option .bool)) :=
   .var choiceOut (.there .here)
 
-def fairBool : RationalLaw Bool where
+def fairBool : RationalDistribution Bool where
   entries := [(false, 1 / 2), (true, 1 / 2)]
   normalized := by norm_num
 
@@ -145,7 +145,7 @@ example : acceptsAtSeed (.success (some false)) .failure = true := by decide
 def mixedSetup : SourceProgram.Setup (Player := Player) (L := simpleExpr) where
   context := InitialCtx
   namesNodup := by decide
-  initialLaw := PMF.pure mixedState
+  initialDistribution := PMF.pure mixedState
   obligations := {seed}
   program := mixedProgram
   accounts := rfl
@@ -222,11 +222,11 @@ def withheldState : State simpleExpr (mixedProgram.terminalCtx) :=
   Env.cons (x := seed) (PublicationResult.success true) <|
   Env.cons (x := flag) true (Env.empty (CellVal simpleExpr))
 
-@[simp] private theorem point_law (value : Bool) :
-    (RationalLaw.pure value).denote = PMF.pure value := by
+@[simp] private theorem point_distribution (value : Bool) :
+    (RationalDistribution.pure value).denote = PMF.pure value := by
   ext other
-  rw [RationalLaw.denote_apply, PMF.pure_apply]
-  simp [RationalLaw.pure, RationalLaw.entryMass]
+  rw [RationalDistribution.denote_apply, PMF.pure_apply]
+  simp [RationalDistribution.pure, RationalDistribution.entryMass]
 
 macro "solve_mixed_run" : tactic =>
   `(tactic| (
@@ -256,8 +256,8 @@ private theorem invalid_run :
       SourceProgram.Config.state =
       PMF.pure invalidState := by
   solve_mixed_run
-  change ((RationalLaw.pure false).denote.bind _).map SourceProgram.Config.state = _
-  rw [point_law, PMF.pure_bind]
+  change ((RationalDistribution.pure false).denote.bind _).map SourceProgram.Config.state = _
+  rw [point_distribution, PMF.pure_bind]
   change (PMF.pure _).map SourceProgram.Config.state = _
   rw [PMF.pure_map]
   rfl
@@ -267,8 +267,8 @@ private theorem unopenable_run :
       SourceProgram.Config.state =
       PMF.pure unopenableState := by
   solve_mixed_run
-  change ((RationalLaw.pure false).denote.bind _).map SourceProgram.Config.state = _
-  rw [point_law, PMF.pure_bind]
+  change ((RationalDistribution.pure false).denote.bind _).map SourceProgram.Config.state = _
+  rw [point_distribution, PMF.pure_bind]
   change (PMF.pure _).map SourceProgram.Config.state = _
   rw [PMF.pure_map]
   rfl
@@ -278,8 +278,8 @@ private theorem withholding_run :
       SourceProgram.Config.state =
       PMF.pure withheldState := by
   solve_mixed_run
-  change ((RationalLaw.pure false).denote.bind _).map SourceProgram.Config.state = _
-  rw [point_law, PMF.pure_bind]
+  change ((RationalDistribution.pure false).denote.bind _).map SourceProgram.Config.state = _
+  rw [point_distribution, PMF.pure_bind]
   change (PMF.pure _).map SourceProgram.Config.state = _
   rw [PMF.pure_map]
   rfl
@@ -291,11 +291,11 @@ example (value : Bool) :
   rw [successful_run, PMF.map_comp]
   change ((fairBool.denote.map id) value).toReal = _
   rw [PMF.map_id]
-  rw [RationalLaw.denote_apply]
+  rw [RationalDistribution.denote_apply]
   change (∑ index : Fin 2, if value = (fairBool.entries.get index).1 then
-    RationalLaw.entryMass (fairBool.entries.get index) else 0).toReal = _
+    RationalDistribution.entryMass (fairBool.entries.get index) else 0).toReal = _
   rw [Fin.sum_univ_two]
-  cases value <;> norm_num [fairBool, RationalLaw.entryMass]
+  cases value <;> norm_num [fairBool, RationalDistribution.entryMass]
 
 example :
     ((mixedProgram.run (mixedProfile (.success Option.none) true) mixedState).map

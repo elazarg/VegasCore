@@ -258,16 +258,17 @@ theorem erasureTwins_effectiveOpening (base : graph.BehavioralProfile)
   cases ownerEq : (graph.nodes event).actor with
   | none =>
       left
-      rw [actionLaw_of_ownerless _ _ ownerEq, actionLaw_of_ownerless _ _ ownerEq]
+      rw [actionDistribution_of_ownerless _ _ ownerEq, actionDistribution_of_ownerless _ _ ownerEq]
   | some owner =>
       by_cases inactive : owner ∈ config.defaulted
       · left
-        rw [actionLaw_of_actor _ _ ownerEq, actionLaw_of_actor _ _ ownerEq, dite_eq_left inactive,
+        rw [actionDistribution_of_actor _ _ ownerEq, actionDistribution_of_actor _ _ ownerEq,
+          dite_eq_left inactive,
           dite_eq_left inactive]
       by_cases same : owner = who
       · subst owner
         left
-        rw [actionLaw_of_actor _ _ ownerEq, actionLaw_of_actor _ _ ownerEq,
+        rw [actionDistribution_of_actor _ _ ownerEq, actionDistribution_of_actor _ _ ownerEq,
           dite_eq_right inactive, dite_eq_right inactive]
         simp only [normalizeProfile, normalizePolicy, GameTheory.Profile.update_same]
       by_cases publication : (graph.outputLayout event).IsPublication
@@ -276,22 +277,22 @@ theorem erasureTwins_effectiveOpening (base : graph.BehavioralProfile)
         have actorSame : actorName = owner :=
           Option.some.inj ((nodeView_resolve_actor outputEq codeEq).symm.trans ownerEq)
         subst actorName
-        have effective : actionLaw (graph.normalizeProfile
+        have effective : actionDistribution (graph.normalizeProfile
             (GameTheory.Profile.update (sig := graph.gameSignature) (effectiveOpening base) who
               policy)) config event =
             PMF.pure (cast (congrArg EventField.Action outputEq.symm)
               (openingAccepted event config.store)) := by
-          rw [actionLaw_of_actor _ _ ownerEq, dite_eq_right inactive]
+          rw [actionDistribution_of_actor _ _ ownerEq, dite_eq_right inactive]
           simp only [normalizeProfile, normalizePolicy, GameTheory.Profile.update_of_ne _ _ same]
           rw [effectiveOpening_of_resolve base node ownerEq]
           change PMF.pure (cast _ (openingAccepted event
             (graph.playerStore owner config.store))) = _
           rw [openingAccepted_playerStore event ownerEq]
-        have always : actionLaw (graph.normalizeProfile
+        have always : actionDistribution (graph.normalizeProfile
             (GameTheory.Profile.update (sig := graph.gameSignature) base who policy)) config
               event =
             PMF.pure (cast (congrArg EventField.Action outputEq.symm) true) := by
-          rw [actionLaw_of_actor _ _ ownerEq, dite_eq_right inactive]
+          rw [actionDistribution_of_actor _ _ ownerEq, dite_eq_right inactive]
           simp only [normalizeProfile, normalizePolicy, GameTheory.Profile.update_of_ne _ _ same]
           rw [opens owner event ownerEq publication, openAction_eq_cast_true outputEq publication]
         cases accepted : openingAccepted event config.store
@@ -307,7 +308,7 @@ theorem erasureTwins_effectiveOpening (base : graph.BehavioralProfile)
         · left
           rw [effective, always, accepted]
       · left
-        rw [actionLaw_of_actor _ _ ownerEq, actionLaw_of_actor _ _ ownerEq,
+        rw [actionDistribution_of_actor _ _ ownerEq, actionDistribution_of_actor _ _ ownerEq,
           dite_eq_right inactive, dite_eq_right inactive]
         simp only [normalizeProfile, normalizePolicy, GameTheory.Profile.update_of_ne _ _ same]
         rw [effectiveOpening_of_not_publication base publication ownerEq]
@@ -326,11 +327,12 @@ theorem erasureTwins_effectiveOpening_honest (base : graph.BehavioralProfile)
   cases ownerEq : (graph.nodes event).actor with
   | none =>
       left
-      rw [actionLaw_of_ownerless _ _ ownerEq, actionLaw_of_ownerless _ _ ownerEq]
+      rw [actionDistribution_of_ownerless _ _ ownerEq, actionDistribution_of_ownerless _ _ ownerEq]
   | some owner =>
       by_cases inactive : owner ∈ config.defaulted
       · left
-        rw [actionLaw_of_actor _ _ ownerEq, actionLaw_of_actor _ _ ownerEq, dite_eq_left inactive,
+        rw [actionDistribution_of_actor _ _ ownerEq, actionDistribution_of_actor _ _ ownerEq,
+          dite_eq_left inactive,
           dite_eq_left inactive]
       by_cases publication : (graph.outputLayout event).IsPublication
       · obtain ⟨actorName, payload, binding, checks, outputEq, codeEq, node⟩ :=
@@ -338,17 +340,17 @@ theorem erasureTwins_effectiveOpening_honest (base : graph.BehavioralProfile)
         have actorSame : actorName = owner :=
           Option.some.inj ((nodeView_resolve_actor outputEq codeEq).symm.trans ownerEq)
         subst actorName
-        have effective : actionLaw (effectiveOpening base) config event =
+        have effective : actionDistribution (effectiveOpening base) config event =
             PMF.pure (cast (congrArg EventField.Action outputEq.symm)
               (openingAccepted event config.store)) := by
-          rw [actionLaw_of_actor _ _ ownerEq, dite_eq_right inactive]
+          rw [actionDistribution_of_actor _ _ ownerEq, dite_eq_right inactive]
           rw [effectiveOpening_of_resolve base node ownerEq]
           change PMF.pure (cast _ (openingAccepted event
             (graph.playerStore owner config.store))) = _
           rw [openingAccepted_playerStore event ownerEq]
-        have always : actionLaw base config event =
+        have always : actionDistribution base config event =
             PMF.pure (cast (congrArg EventField.Action outputEq.symm) true) := by
-          rw [actionLaw_of_actor _ _ ownerEq, dite_eq_right inactive]
+          rw [actionDistribution_of_actor _ _ ownerEq, dite_eq_right inactive]
           rw [opens owner event ownerEq publication, openAction_eq_cast_true outputEq publication]
         cases accepted : openingAccepted event config.store
         · right
@@ -363,19 +365,21 @@ theorem erasureTwins_effectiveOpening_honest (base : graph.BehavioralProfile)
         · left
           rw [effective, always, accepted]
       · left
-        rw [actionLaw_of_actor _ _ ownerEq, actionLaw_of_actor _ _ ownerEq,
+        rw [actionDistribution_of_actor _ _ ownerEq, actionDistribution_of_actor _ _ ownerEq,
           dite_eq_right inactive, dite_eq_right inactive]
         rw [effectiveOpening_of_not_publication base publication ownerEq]
 
 
-private theorem actionLaw_effectiveOpening_of_not_publication
+private theorem actionDistribution_effectiveOpening_of_not_publication
     (base : graph.BehavioralProfile) (config : graph.Config) (event : graph.EventId)
     (plain : ¬ (graph.outputLayout event).IsPublication) :
-    actionLaw (effectiveOpening base) config event = actionLaw base config event := by
+    actionDistribution (effectiveOpening base) config event = actionDistribution base config event
+      := by
   cases actor : (graph.nodes event).actor with
-  | none => rw [actionLaw_of_ownerless _ _ actor, actionLaw_of_ownerless _ _ actor]
+  | none => rw [actionDistribution_of_ownerless _ _ actor, actionDistribution_of_ownerless _ _
+    actor]
   | some owner =>
-      rw [actionLaw_of_actor _ _ actor, actionLaw_of_actor _ _ actor]
+      rw [actionDistribution_of_actor _ _ actor, actionDistribution_of_actor _ _ actor]
       by_cases inactive : owner ∈ config.defaulted
       · rw [dite_eq_left inactive, dite_eq_left inactive]
       · rw [dite_eq_right inactive, dite_eq_right inactive]
@@ -389,13 +393,14 @@ theorem _root_.Vegas.EventGraph.ReadyIndependent.effectiveOpening
   stable config event other ready otherReady different action value := by
     by_cases publication : (graph.outputLayout event).IsPublication
     swap
-    · rw [actionLaw_effectiveOpening_of_not_publication base _ _ publication,
-        actionLaw_effectiveOpening_of_not_publication base _ _ publication]
+    · rw [actionDistribution_effectiveOpening_of_not_publication base _ _ publication,
+        actionDistribution_effectiveOpening_of_not_publication base _ _ publication]
       exact independent.stable config ready otherReady different action value
     cases actor : (graph.nodes event).actor with
-    | none => rw [actionLaw_of_ownerless _ _ actor, actionLaw_of_ownerless _ _ actor]
+    | none => rw [actionDistribution_of_ownerless _ _ actor, actionDistribution_of_ownerless _ _
+      actor]
     | some owner =>
-        rw [actionLaw_of_actor _ _ actor, actionLaw_of_actor _ _ actor]
+        rw [actionDistribution_of_actor _ _ actor, actionDistribution_of_actor _ _ actor]
         have foreign : graph.actor? other ≠ some owner :=
           fun same => independent.actorsDiffer config ready otherReady different.symm owner actor
             same
@@ -409,16 +414,17 @@ theorem _root_.Vegas.EventGraph.ReadyIndependent.effectiveOpening
   congr {left right} same event := by
     by_cases publication : (graph.outputLayout event).IsPublication
     swap
-    · rw [actionLaw_effectiveOpening_of_not_publication base _ _ publication,
-        actionLaw_effectiveOpening_of_not_publication base _ _ publication]
+    · rw [actionDistribution_effectiveOpening_of_not_publication base _ _ publication,
+        actionDistribution_effectiveOpening_of_not_publication base _ _ publication]
       exact independent.congr same event
     have stores : left.store = right.store := congrArg (fun key => key.2.1) same
     have records : completionOf left = completionOf right := congrArg (fun key => key.2.2) same
     have defaults := defaulted_eq_of_completionOf_eq records
     cases actor : (graph.nodes event).actor with
-    | none => rw [actionLaw_of_ownerless _ _ actor, actionLaw_of_ownerless _ _ actor]
+    | none => rw [actionDistribution_of_ownerless _ _ actor, actionDistribution_of_ownerless _ _
+      actor]
     | some owner =>
-        rw [actionLaw_of_actor _ _ actor, actionLaw_of_actor _ _ actor]
+        rw [actionDistribution_of_actor _ _ actor, actionDistribution_of_actor _ _ actor]
         by_cases inactive : owner ∈ left.defaulted
         · rw [dite_eq_left inactive, dite_eq_left (defaults ▸ inactive)]
         · rw [dite_eq_right inactive, dite_eq_right (defaults ▸ inactive)]
@@ -455,10 +461,10 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {graph : Vegas.EventGraph Player L}
 
 omit [DecidableEq Player] [IExpr.ResultTypes L] in
-private theorem storedBindingLaw_publication
+private theorem storedBindingDistribution_publication
     (field : EventField Player L) (publication : field.IsPublication)
     (stored : Option field.Value) (original : PMF field.Action) :
-    field.storedBindingLaw stored original = original := by
+    field.storedBindingDistribution stored original = original := by
   cases field with
   | publication payload => rfl
   | publicData payload => cases publication
@@ -480,7 +486,7 @@ theorem effectiveOpening_freezeBindingsBefore
       simp only [effectiveOpening, node, freezeBindingsBefore]
       by_cases inside : start ≤ event.val ∧ event.val < rank
       · rw [ite_eq_left inside]
-        exact (storedBindingLaw_publication (graph.outputLayout event)
+        exact (storedBindingDistribution_publication (graph.outputLayout event)
           (by rw [outputEq]; trivial) _ _).symm
       · rw [ite_eq_right inside]
 

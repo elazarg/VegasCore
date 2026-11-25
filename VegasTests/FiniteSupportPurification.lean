@@ -30,7 +30,7 @@ theorem finiteSupport (report : Int) (who : Player) :
     simp [sourceProfile, valueBindingProfile, profile, aliceStrategy, bobStrategy,
       BehavioralPolicy.HasFiniteSupport, program, alicePolicy, bobPolicy, PMF.support_pure]
 
-instance : setup.FiniteInitialLaw where
+instance : setup.FiniteInitialSupport where
   support_finite := by
     change (PMF.pure _).support.Finite
     simp

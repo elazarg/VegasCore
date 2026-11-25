@@ -94,8 +94,8 @@ theorem canonical_owned_expected_continuation
           graph.canonicalScheduler) count config =
         graph.runPlan (graph.policyPlan (Function.update reference focal tailPolicy)
           graph.canonicalScheduler) count config := by
-    apply runPlan_congr_of_actionLaw graph.canonicalScheduler (fun other => other = event)
-      (fun current other different => actionLaw_update_patch_of_ne reference focal event
+    apply runPlan_congr_of_actionDistribution graph.canonicalScheduler (fun other => other = event)
+      (fun current other different => actionDistribution_update_patch_of_ne reference focal event
         head tailPolicy current different) count config
     intro other same
     exact same.symm ▸ completed
@@ -113,7 +113,7 @@ theorem canonical_owned_expected_continuation
       by_contra smaller
       exact otherReady.1 ((config.2.2 other).mpr (by omega))
     rw [runPlan_canonical_succ _ count config.1 ready.not_terminal event ready least]
-    simp only [eventStep, policy, actionLaw_update_patch_self, PMF.bind_bind]
+    simp only [eventStep, policy, actionDistribution_update_patch_self, PMF.bind_bind]
     apply bind_congr_on_support _
     intro action _
     apply bind_congr_on_support _
@@ -175,9 +175,9 @@ theorem canonical_foreign_expected_continuation
       by_contra smaller
       exact otherReady.1 ((config.2.2 other).mpr (by omega))
     rw [runPlan_canonical_succ _ count config.1 ready.not_terminal event ready least]
-    have same : actionLaw (Function.update reference focal policy) config.1 event =
-        actionLaw reference config.1 event := by
-      rw [actionLaw_of_actor _ _ owned, actionLaw_of_actor _ _ owned]
+    have same : actionDistribution (Function.update reference focal policy) config.1 event =
+        actionDistribution reference config.1 event := by
+      rw [actionDistribution_of_actor _ _ owned, actionDistribution_of_actor _ _ owned]
       simp only [Function.update_of_ne different]
     simp only [eventStep, same]
   have law : (prior.bind fun seed => graph.runPlan

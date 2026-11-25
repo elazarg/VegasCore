@@ -363,26 +363,26 @@ theorem behavioralStateStep_continuation
     (program : SourceProgram Player L Γ names) (profile : BehavioralProfile program)
     (state : ProtocolState program) :
     (behavioralStateStep program profile state).bind
-      (continuationLaw program profile) =
-        continuationLaw program profile state := by
+      (continuationDistribution program profile) =
+        continuationDistribution program profile state := by
   classical
   unfold behavioralStateStep
   split
   · exact PMF.pure_bind _ _
   · rename_i running
-    exact continuationLaw_behavioral_step program profile state running
+    exact continuationDistribution_behavioral_step program profile state running
       (independentProduct fun who => (profile who).protocolAction program
         (ProtocolState.observe who program state)) (fun who => independentProduct_map_eval _ who)
 
 /-- A harmonic law is obtained by evaluating its terminal callback under source execution. -/
-theorem continuationLaw_bind_terminal {Ω : Type} :
+theorem continuationDistribution_bind_terminal {Ω : Type} :
     {Γ : SourceCtx Player L} → {O : Finset VarId} →
     (program : SourceProgram Player L Γ O) → (profile : BehavioralProfile program) →
     (law : ProtocolState program → PMF Ω) →
     (∀ state, (behavioralStateStep program profile state).bind law = law state) →
-    ∀ state, (continuationLaw program profile state).bind
+    ∀ state, (continuationDistribution program profile state).bind
       (fun config => law (terminalState program config)) = law state
-  | _, _, .ret _, _, _, _, _ => by simp [continuationLaw, terminalState]
+  | _, _, .ret _, _, _, _, _ => by simp [continuationDistribution, terminalState]
   | _, _, .sample name fresh distribution next, profile, law, harmonic, state => by
       have tail : ∀ state, (behavioralStateStep next (afterSample profile) state).bind
           (fun target => law (.inr target)) = law (.inr state) := by
@@ -392,15 +392,15 @@ theorem continuationLaw_bind_terminal {Ω : Type} :
         exact original
       cases state with
       | inr state =>
-          exact continuationLaw_bind_terminal next (afterSample profile)
+          exact continuationDistribution_bind_terminal next (afterSample profile)
             (fun target => law (.inr target)) tail state
       | inl config =>
           rw [← harmonic (.inl config), behavioralStateStep_sample_entry, PMF.bind_map]
-          simp only [continuationLaw, Sum.elim_inl, runFrom_sample, PMF.bind_bind]
+          simp only [continuationDistribution, Sum.elim_inl, runFrom_sample, PMF.bind_bind]
           apply bind_congr_on_support _
           intro value _
-          simpa only [continuationLaw_entry, terminalState, Function.comp_apply] using
-            continuationLaw_bind_terminal next (afterSample profile)
+          simpa only [continuationDistribution_entry, terminalState, Function.comp_apply] using
+            continuationDistribution_bind_terminal next (afterSample profile)
               (fun target => law (.inr target)) tail
               (entry next (sampleSuccessor name config value))
   | _, _, .commit name owner fresh guard next, profile, law, harmonic, state => by
@@ -412,15 +412,15 @@ theorem continuationLaw_bind_terminal {Ω : Type} :
         exact original
       cases state with
       | inr state =>
-          exact continuationLaw_bind_terminal next (afterCommit profile)
+          exact continuationDistribution_bind_terminal next (afterCommit profile)
             (fun target => law (.inr target)) tail state
       | inl config =>
           rw [← harmonic (.inl config), behavioralStateStep_commit_entry, PMF.bind_map]
-          simp only [continuationLaw, Sum.elim_inl, runFrom_commit, PMF.bind_bind]
+          simp only [continuationDistribution, Sum.elim_inl, runFrom_commit, PMF.bind_bind]
           apply bind_congr_on_support _
           intro choice _
-          simpa only [continuationLaw_entry, terminalState, Function.comp_apply] using
-            continuationLaw_bind_terminal next (afterCommit profile)
+          simpa only [continuationDistribution_entry, terminalState, Function.comp_apply] using
+            continuationDistribution_bind_terminal next (afterCommit profile)
               (fun target => law (.inr target)) tail
               (entry next (commitSuccessor name guard config choice))
   | _, _, .reveal published owner name fresh selected unresolved next,
@@ -433,15 +433,15 @@ theorem continuationLaw_bind_terminal {Ω : Type} :
         exact original
       cases state with
       | inr state =>
-          exact continuationLaw_bind_terminal next (afterReveal profile)
+          exact continuationDistribution_bind_terminal next (afterReveal profile)
             (fun target => law (.inr target)) tail state
       | inl config =>
           rw [← harmonic (.inl config), behavioralStateStep_reveal_entry, PMF.bind_map]
-          simp only [continuationLaw, Sum.elim_inl, runFrom_reveal, PMF.bind_bind]
+          simp only [continuationDistribution, Sum.elim_inl, runFrom_reveal, PMF.bind_bind]
           apply bind_congr_on_support _
           intro disclose _
-          simpa only [continuationLaw_entry, terminalState, Function.comp_apply] using
-            continuationLaw_bind_terminal next (afterReveal profile)
+          simpa only [continuationDistribution_entry, terminalState, Function.comp_apply] using
+            continuationDistribution_bind_terminal next (afterReveal profile)
               (fun target => law (.inr target)) tail
               (entry next (revealSuccessor published selected config disclose))
 end ProtocolState

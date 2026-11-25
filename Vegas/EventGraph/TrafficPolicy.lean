@@ -54,9 +54,9 @@ theorem bind_eventStep_eq_trafficPolicy {Traffic : Type*} (reference : graph.Beh
       config event ready := by
   unfold eventStep
   cases actor : (graph.nodes event).actor with
-  | none => simp [actionLaw_of_ownerless _ _ actor, PMF.bind_const]
+  | none => simp [actionDistribution_of_ownerless _ _ actor, PMF.bind_const]
   | some owner =>
-      simp only [actionLaw_of_actor _ _ actor]
+      simp only [actionDistribution_of_actor _ _ actor]
       by_cases active : owner ∈ config.defaulted
       · simp only [dite_eq_left active, PMF.bind_const]
       · simp only [dite_eq_right active]
@@ -69,7 +69,7 @@ theorem bind_eventStep_eq_trafficPolicy {Traffic : Type*} (reference : graph.Beh
 The phase premise gives only the one-event configuration marginal at each
 prefix, and the traffic factorization uses the focal player's actual graph
 observation. The same policy realizes every prefix marginal. -/
-theorem trafficPolicy_prefixLaw {Traffic : Type*} (reference : graph.BehavioralProfile)
+theorem trafficPolicy_prefixDistribution {Traffic : Type*} (reference : graph.BehavioralProfile)
     (focal : Player) (inputs : PMF graph.Inputs)
     (traffic : graph.EventId → graph.PlayerObservation focal → PMF Traffic)
     (respond : Traffic → graph.BehavioralPolicy focal)

@@ -45,13 +45,13 @@ def initial : State (Player := Player) simpleExpr [] := Env.empty (CellVal simpl
 def setup (bonus : Int) : Setup (Player := Player) (L := simpleExpr) where
   context := []
   namesNodup := by simp
-  initialLaw := PMF.pure initial
+  initialDistribution := PMF.pure initial
   obligations := ∅
   program := program bonus
   accounts := rfl
   exitTransfers := fun _ => 0
 
-instance (bonus : Int) : (setup bonus).FiniteInitialLaw where
+instance (bonus : Int) : (setup bonus).FiniteInitialSupport where
   support_finite := by
     change (PMF.pure initial).support.Finite
     rw [PMF.support_pure]
@@ -323,21 +323,21 @@ theorem audited_expectedUtility {Observation : Type} (bonus : Int) (choice : Boo
   simpa only [Enforcement.TerminalAudit.utility, base] using integrated
 
 /-- The actual compiled payment list has the program-selected bonus law. -/
-theorem compiled_payout_law (bonus : Int) (choice : Bool) :
+theorem compiled_payout_distribution (bonus : Int) (choice : Bool) :
     ((toInformationGraph (program bonus)).terminalOutcomes
         (toInformationGraph (program bonus)).canonicalScheduler
         (compileEventProfile (program bonus) (profile bonus choice)) (encodeInputs initial)).map
         (terminalPayouts (program bonus)) = PMF.pure [(.alice, if choice then bonus else 0)] := by
-  rw [Vegas.canonical_payout_law, run_profile, PMF.pure_map, evaluatePayoffs_final]
+  rw [Vegas.canonical_payout_distribution, run_profile, PMF.pure_map, evaluatePayoffs_final]
 
 /-- The compiled monetary receipts agree with the transfer read by strategic utility. -/
-theorem compiled_transfer_law (bonus : Int) (choice : Bool) :
+theorem compiled_transfer_distribution (bonus : Int) (choice : Bool) :
     ((toInformationGraph (program bonus)).terminalOutcomes
         (toInformationGraph (program bonus)).canonicalScheduler
         (compileEventProfile (program bonus) (profile bonus choice)) (encodeInputs initial)).map
         (fun terminal who => (transferAmount (terminalPayouts (program bonus) terminal) who : ℝ)) =
       PMF.pure ((program bonus).publicTransfers (result bonus choice)) := by
-  rw [SourceProgram.canonical_transfer_law, run_profile, PMF.pure_map]
+  rw [SourceProgram.canonical_transfer_distribution, run_profile, PMF.pure_map]
   rfl
 
 end Vegas.Examples.ProgramPayments

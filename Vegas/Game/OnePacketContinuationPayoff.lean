@@ -2,7 +2,7 @@ module
 
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-public import Vegas.Game.OnePacketLawApproximation
+public import Vegas.Game.OnePacketDistributionApproximation
 public import Vegas.Game.OnePacketAssessmentFidelity
 
 @[expose] public section
@@ -29,7 +29,7 @@ local notation "E" => ReactiveApplication.ResponseMenu.protocol
   (bounds.onePacketMenu timeouts leaks) initial horizon scheduler
 
 /-- A full typed source readout law determines the joint native readout and base payoff law. -/
-theorem readoutExclusion_law_of_full_readout
+theorem readoutExclusion_distribution_of_full_readout
     {Parameter : Type} (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
     (excludedPayoff : Player → ℝ)
@@ -61,9 +61,9 @@ variable {setup timeouts leaks bounds horizon scheduler}
 
 /-- Clean-boundary fidelity retains the complete typed source configuration
 jointly with the actual native exclusion payoff vector. -/
-theorem OnePacketAssessmentFidelity.continuation_jointLaw
+theorem OnePacketAssessmentFidelity.continuation_jointDistribution
     {intended : setup.intendedModel.BehavioralAssessment}
-    {native : (onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+    {native : (onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon
       scheduler).BehavioralAssessment}
     (fidelity : OnePacketAssessmentFidelity setup timeouts leaks bounds horizon scheduler
       intended native)
@@ -71,7 +71,7 @@ theorem OnePacketAssessmentFidelity.continuation_jointLaw
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
     (excludedPayoff : Player → ℝ)
     (rank : Nat)
-    (start : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (start : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).History)
     (anchor : (application setup timeouts leaks).Execution)
     (state : start.state = some ⟨horizon - anchor.environmentRecall.length, none, anchor⟩)
@@ -79,14 +79,15 @@ theorem OnePacketAssessmentFidelity.continuation_jointLaw
     (point : ProtocolState setup.program)
     (decoded : sourceServicePrefix? setup rank anchor.application.config = some point)
     (valid : ProtocolState.Intended setup.program point) :
-    ((bounds.onePacketMenu timeouts leaks).runFrom (initialLaw setup) horizon scheduler
+    ((bounds.onePacketMenu timeouts leaks).runFrom (initialDistribution setup) horizon scheduler
         native.strategy start).map
-        (readoutExclusion setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+        (readoutExclusion setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
           parameter utility excludedPayoff) =
-      (setup.continuationLaw (setup.intendedOpeningProfile intended.strategy) (some point)).map
+      (setup.continuationDistribution (setup.intendedOpeningProfile intended.strategy)
+        (some point)).map
         (fun terminal => (some terminal,
           exclusionTerminalUtility setup parameter utility excludedPayoff terminal)) := by
-  apply readoutExclusion_law_of_full_readout
+  apply readoutExclusion_distribution_of_full_readout
   simpa only [sourceContinuation, decoded] using
     fidelity.continuation rank start anchor state boundary point decoded valid
 

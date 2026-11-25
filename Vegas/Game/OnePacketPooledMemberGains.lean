@@ -29,15 +29,15 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
   (bounds : MessageBounds setup.informationGraph) (horizon : Nat)
   (scheduler : (application setup timeouts leaks).Scheduler)
-  [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
+  [(application setup timeouts leaks).FiniteNature (initialDistribution setup) scheduler]
   [Finite setup.intendedProtocol.History]
 
-local notation "Initial" => initialLaw setup
+local notation "Initial" => initialDistribution setup
 local notation "Menu" => bounds.onePacketMenu timeouts leaks
-local notation "N" => onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+local notation "N" => onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon
   scheduler
 local notation "E" => ReactiveApplication.ResponseMenu.protocol
-  (bounds.onePacketMenu timeouts leaks) (initialLaw setup) horizon scheduler
+  (bounds.onePacketMenu timeouts leaks) (initialDistribution setup) horizon scheduler
 
 local instance pooledNativeHistoryFintype : Fintype (E).History :=
   (Menu).historyFintype Initial horizon scheduler
@@ -322,7 +322,8 @@ theorem lateComponent_gain_le_of_member_mixtures
   obtain ⟨identify, same⟩ := freeKeyedComponent_of_not_free
     (key := agentLateKey setup timeouts leaks bounds Initial horizon scheduler)
     (keyed := LateDeliveryAgent setup timeouts leaks bounds Initial horizon scheduler)
-    (unforcedLaw setup timeouts leaks bounds Initial horizon scheduler scale nonnegative le_one)
+    (unforcedDistribution setup timeouts leaks bounds Initial horizon scheduler scale nonnegative
+      le_one)
     prescribed lateLaw keyed.2
   let best := keyedBest
     (keyed := ownedKeyed (Vegas.FreeAgent setup timeouts leaks bounds Initial horizon scheduler)

@@ -42,7 +42,8 @@ theorem sample_step {Γ : SourceCtx Player L} {payload : L.Ty}
           (cast (congrArg EventField.Value outputEq.symm) value) := by
   apply config.step_eq_map_of_code event ready outputEq _ codeEq
   change (compilePublicDist refs law).eval? config.store = _
-  rw [PublicDist.eval?, compilePublicDist_evalLaw? refs state config.store agrees law]
+  rw [PublicDist.eval?, compilePublicDist_evalRationalDistribution? refs state config.store agrees
+    law]
   rfl
 
 /-- A compiled commit stores an admitted binding, including an unopenable one.

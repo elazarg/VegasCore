@@ -206,7 +206,7 @@ theorem BehavioralPolicy.from_toProtocol {who : Player} :
         exact PMF.map_id _
       · exact from_toProtocol next admission policy.2 permitted
 
-theorem protocolLaw_idle {who : Player} {Γ : SourceCtx Player L} {O : Finset VarId}
+theorem protocolDistribution_idle {who : Player} {Γ : SourceCtx Player L} {O : Finset VarId}
     (program : SourceProgram Player L Γ O) (admission : CommitmentInterface program)
     (view : ProtocolView who program) (inactive : ProtocolView.actor who program view ≠ some who)
     (law : PMF {action : Option (OwnAction Player L) //
@@ -234,11 +234,11 @@ theorem BehavioralPolicy.protocolAction_fromProtocol {who : Player} :
     ∀ view, (fromProtocol program admission policy).protocolAction program view =
       (policy view).map Subtype.val
   | _, _, .ret _, admission, policy, view =>
-      (protocolLaw_idle _ admission view (by simp [ProtocolView.actor]) (policy view)).symm
+      (protocolDistribution_idle _ admission view (by simp [ProtocolView.actor]) (policy view)).symm
   | _, _, .sample _ _ _ next, admission, policy, view => by
       cases view with
       | inl current =>
-          exact (protocolLaw_idle _ admission (Sum.inl current)
+          exact (protocolDistribution_idle _ admission (Sum.inl current)
             (by simp [ProtocolView.actor]) (policy (Sum.inl current))).symm
       | inr later =>
           exact protocolAction_fromProtocol next admission (fun view => policy (Sum.inr view)) later
@@ -262,10 +262,10 @@ theorem BehavioralPolicy.protocolAction_fromProtocol {who : Player} :
                   simp [selected, actionEq]
             · simp only [protocolAction, Sum.elim_inl, dite_eq_left own,
                 dite_eq_right active]
-              exact (protocolLaw_idle _ admission (Sum.inl current)
+              exact (protocolDistribution_idle _ admission (Sum.inl current)
                 (by simp [ProtocolView.actor, own, active]) (policy (Sum.inl current))).symm
           · simp only [protocolAction, Sum.elim_inl, dite_eq_right own]
-            exact (protocolLaw_idle _ admission (Sum.inl current)
+            exact (protocolDistribution_idle _ admission (Sum.inl current)
               (by simp [ProtocolView.actor, own]) (policy (Sum.inl current))).symm
       | inr later =>
           exact protocolAction_fromProtocol next (fun site => admission (some site))
@@ -290,10 +290,10 @@ theorem BehavioralPolicy.protocolAction_fromProtocol {who : Player} :
                   simp [selected, actionEq, OwnAction.disclosure]
             · simp only [protocolAction, Sum.elim_inl, dite_eq_left own,
                 dite_eq_right active]
-              exact (protocolLaw_idle _ admission (Sum.inl current)
+              exact (protocolDistribution_idle _ admission (Sum.inl current)
                 (by simp [ProtocolView.actor, own, active]) (policy (Sum.inl current))).symm
           · simp only [protocolAction, Sum.elim_inl, dite_eq_right own]
-            exact (protocolLaw_idle _ admission (Sum.inl current)
+            exact (protocolDistribution_idle _ admission (Sum.inl current)
               (by simp [ProtocolView.actor, own]) (policy (Sum.inl current))).symm
       | inr later =>
           exact protocolAction_fromProtocol next admission (fun view => policy (Sum.inr view)) later

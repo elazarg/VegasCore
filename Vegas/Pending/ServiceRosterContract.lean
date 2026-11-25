@@ -28,7 +28,7 @@ variable (graph : EventGraph Player L) (inputs : PMF graph.Inputs)
   (rosters : graph.EventId → List Player)
   (scheduler : (rosterApplication graph leaks).Scheduler)
   (calendar : ∀ (control : (rosterApplication graph leaks).Control),
-    ((rosterApplication graph leaks).protocol (rosterInitialLaw graph inputs)
+    ((rosterApplication graph leaks).protocol (rosterInitialDistribution graph inputs)
       (rosterPlan graph rosters).length scheduler).Trace
         (some control) → RosterCalendarInvariant graph leaks rosters (some control))
 
@@ -36,7 +36,7 @@ include calendar
 
 /-- Every ready owner is activated within its event's rank bound. -/
 theorem opportunity (opportunities : ActorOpportunities graph rosters) :
-    Opportunity (rosterTimeouts graph) leaks (rosterInitialLaw graph inputs)
+    Opportunity (rosterTimeouts graph) leaks (rosterInitialDistribution graph inputs)
       (rosterPlan graph rosters).length
       scheduler (fun event => event.val) := by
   intro control trace event owner entered owned readyView activated late
@@ -68,7 +68,7 @@ theorem opportunity (opportunities : ActorOpportunities graph rosters) :
 /-- A sole authored identifier for a ready event receives an inclusion receipt
 before any subsequent clock advance, including after an early obsolete-block response. -/
 theorem protectedInclusion :
-    ProtectedInclusion (rosterTimeouts graph) leaks (rosterInitialLaw graph inputs)
+    ProtectedInclusion (rosterTimeouts graph) leaks (rosterInitialDistribution graph inputs)
       (rosterPlan graph rosters).length
       scheduler (fun _ => 0) := by
   intro control trace event owner owned earlier later entry message split emitted authored
@@ -100,7 +100,7 @@ theorem protectedInclusion :
 
 /-- Exhausting the fixed command horizon leaves every graph event completed. -/
 theorem completesPlay :
-    CompletesPlay (rosterTimeouts graph) leaks (rosterInitialLaw graph inputs)
+    CompletesPlay (rosterTimeouts graph) leaks (rosterInitialDistribution graph inputs)
       (rosterPlan graph rosters).length
       scheduler := by
   intro control trace terminal

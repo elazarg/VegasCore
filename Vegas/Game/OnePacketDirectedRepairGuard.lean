@@ -34,7 +34,8 @@ theorem publicRecord_of_forced_information {who : Player}
       who}
     {past : List (application setup timeouts leaks).PlayerEntry}
     {view : (application setup timeouts leaks).PlayerView} (decision : site.1 = some (past, view))
-    (forced : forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks) (initialLaw
+    (forced : forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks)
+      (initialDistribution
       setup) horizon
       scheduler who site.1)
     (history : (onePacketInformation setup timeouts leaks bounds horizon

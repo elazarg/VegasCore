@@ -268,30 +268,30 @@ namespace PublicDist
 
 /-- Evaluate the retained exact rational law if every declared dependency is
 available. -/
-def evalLaw? {Field : Type} [DecidableEq Field]
+def evalRationalDistribution? {Field : Type} [DecidableEq Field]
     {layout : Field → EventField Player L} {payload : L.Ty}
     (dist : PublicDist (R := R) layout payload) (store : Store layout) :
-    Option (RationalLaw (L.Val payload)) :=
+    Option (RationalDistribution (L.Val payload)) :=
   (collectPublicReads (R := R) (L.distDeps dist.code) dist.schema dist.reads store).map
-    fun get => L.evalLawDeps dist.code fun _ _ ref member => get ref member
+    fun get => L.evalRationalDistributionDeps dist.code fun _ _ ref member => get ref member
 
 /-- Exact-law evaluation agrees with a full typed environment when every
 declared read returns the corresponding environment value. -/
-theorem evalLaw?_eq_of_reads {Field : Type} [DecidableEq Field]
+theorem evalRationalDistribution?_eq_of_reads {Field : Type} [DecidableEq Field]
     {layout : Field → EventField Player L} {payload : L.Ty}
     (dist : PublicDist (R := R) layout payload) (store : Store layout)
     (env : Env L.Val dist.schema)
     (agree : ∀ {name input} (ref : HasVar dist.schema name input),
       name ∈ L.distDeps dist.code →
         (dist.reads ref).get? store = some (env.get ref)) :
-    dist.evalLaw? store = some (L.evalLaw dist.code env) := by
+    dist.evalRationalDistribution? store = some (L.evalRationalDistribution dist.code env) := by
   obtain ⟨get, collected, getEq⟩ := collectPublicReads_eq_of_reads
     (L.distDeps dist.code) dist.schema dist.reads store env agree
-  unfold evalLaw?
+  unfold evalRationalDistribution?
   rw [collected]
   apply congrArg some
-  rw [← L.evalLawDeps_eq_evalLaw dist.code env]
-  apply congrArg (L.evalLawDeps dist.code)
+  rw [← L.evalRationalDistributionDeps_eq dist.code env]
+  apply congrArg (L.evalRationalDistributionDeps dist.code)
   funext name input ref member
   exact getEq ref member
 
@@ -300,7 +300,7 @@ def eval? {Field : Type} [DecidableEq Field]
     {layout : Field → EventField Player L} {payload : L.Ty}
     (dist : PublicDist (R := R) layout payload) (store : Store layout) :
     Option (PMF (L.Val payload)) :=
-  (dist.evalLaw? store).map RationalLaw.denote
+  (dist.evalRationalDistribution? store).map RationalDistribution.denote
 
 /-- An available retained law is a finite law. -/
 theorem eval?_support_finite {Field : Type} [DecidableEq Field]
@@ -311,34 +311,34 @@ theorem eval?_support_finite {Field : Type} [DecidableEq Field]
   obtain ⟨table, _, rfl⟩ := Option.map_eq_some_iff.mp evaluated
   exact table.denote_support_finite
 
-theorem evalLaw?_isSome {Field : Type} [DecidableEq Field]
+theorem evalRationalDistribution?_isSome {Field : Type} [DecidableEq Field]
     {layout : Field → EventField Player L} {payload : L.Ty}
     (dist : PublicDist (R := R) layout payload) (store : Store layout)
     (available : ∀ field ∈ dist.readFields, (store field).isSome = true) :
-    (dist.evalLaw? store).isSome = true := by
-  unfold evalLaw?
+    (dist.evalRationalDistribution? store).isSome = true := by
+  unfold evalRationalDistribution?
   rw [Option.isSome_map]
   exact collectPublicReads_isSome (L.distDeps dist.code) dist.schema dist.reads store
     (fun ref member => available _ (dist.reads_mem ref member))
 
 /-- Only the typed reads used by the distribution can influence its law.
 Extra fields in a conservative footprint are immaterial. -/
-theorem evalLaw?_congr_reads {Field : Type} [DecidableEq Field]
+theorem evalRationalDistribution?_congr_reads {Field : Type} [DecidableEq Field]
     {layout : Field → EventField Player L} {payload : L.Ty}
     (dist : PublicDist (R := R) layout payload) (left right : Store layout)
     (agree : ∀ {name input} (ref : HasVar dist.schema name input),
       name ∈ L.distDeps dist.code → (dist.reads ref).get? left = (dist.reads ref).get? right) :
-    dist.evalLaw? left = dist.evalLaw? right := by
-  unfold evalLaw?
+    dist.evalRationalDistribution? left = dist.evalRationalDistribution? right := by
+  unfold evalRationalDistribution?
   rw [collectPublicReads_congr (R := R) (L.distDeps dist.code)
     dist.schema dist.reads left right agree]
 
-theorem evalLaw?_congr {Field : Type} [DecidableEq Field]
+theorem evalRationalDistribution?_congr {Field : Type} [DecidableEq Field]
     {layout : Field → EventField Player L} {payload : L.Ty}
     (dist : PublicDist (R := R) layout payload) (left right : Store layout)
     (agree : Store.AgreeOn left right dist.readFields) :
-    dist.evalLaw? left = dist.evalLaw? right := by
-  exact dist.evalLaw?_congr_reads left right fun ref member =>
+    dist.evalRationalDistribution? left = dist.evalRationalDistribution? right := by
+  exact dist.evalRationalDistribution?_congr_reads left right fun ref member =>
     PublicRead.get?_congr (dist.reads ref) left right (agree _ (dist.reads_mem ref member))
 
 /-- Semantic public sampling has the same locality as its exact rational law. -/
@@ -349,7 +349,7 @@ theorem eval?_congr_reads {Field : Type} [DecidableEq Field]
       name ∈ L.distDeps dist.code → (dist.reads ref).get? left = (dist.reads ref).get? right) :
     dist.eval? left = dist.eval? right := by
   unfold eval?
-  rw [dist.evalLaw?_congr_reads left right agree]
+  rw [dist.evalRationalDistribution?_congr_reads left right agree]
 
 theorem eval?_isSome {Field : Type} [DecidableEq Field]
     {layout : Field → EventField Player L} {payload : L.Ty}
@@ -358,7 +358,7 @@ theorem eval?_isSome {Field : Type} [DecidableEq Field]
     (dist.eval? store).isSome = true := by
   unfold eval?
   rw [Option.isSome_map]
-  exact dist.evalLaw?_isSome store available
+  exact dist.evalRationalDistribution?_isSome store available
 
 theorem eval?_congr {Field : Type} [DecidableEq Field]
     {layout : Field → EventField Player L} {payload : L.Ty}
@@ -366,7 +366,7 @@ theorem eval?_congr {Field : Type} [DecidableEq Field]
     (agree : Store.AgreeOn left right dist.readFields) :
     dist.eval? left = dist.eval? right := by
   unfold eval?
-  rw [dist.evalLaw?_congr left right agree]
+  rw [dist.evalRationalDistribution?_congr left right agree]
 
 end PublicDist
 

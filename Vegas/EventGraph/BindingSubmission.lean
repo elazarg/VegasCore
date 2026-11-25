@@ -233,28 +233,29 @@ private theorem submitPolicy_runValue_le_of_remaining (finite : graph.FiniteActi
       payoffIntegrable_of_finite_support _ _
         (eventStep_support_finite chosen (finite.profileFiniteSupport chosen) config event ready)
     by_cases owned : graph.actor? event = some who
-    · have improvedLaw : actionLaw improved config event =
-          (actionLaw profile config event).map
+    · have improvedLaw : actionDistribution improved config event =
+          (actionDistribution profile config event).map
             (EventField.submitAction (graph.outputLayout event)) := by
-        rw [actionLaw_of_actor improved config owned, actionLaw_of_actor profile config owned,
+        rw [actionDistribution_of_actor improved config owned, actionDistribution_of_actor profile
+          config owned,
           dite_eq_right defaulted, dite_eq_right defaulted]
         simp only [improved, Profile.update_same, submitPolicy]
       have improvedStep : eventStep improved config event ready =
-          (actionLaw profile config event).bind fun action =>
+          (actionDistribution profile config event).bind fun action =>
             config.step event ready ((graph.outputLayout event).submitAction action) := by
         unfold eventStep
         rw [improvedLaw, PMF.bind_map]
         rfl
       have improvedIntegrable := eventIntegrable improved (runValue improved scheduler payoff)
       rw [improvedStep] at improvedIntegrable
-      change expect ((actionLaw profile config event).bind (config.step event ready)) _ ≤
+      change expect ((actionDistribution profile config event).bind (config.step event ready)) _ ≤
         expect (eventStep improved config event ready) _
       rw [improvedStep, expect_bind_tower _ _ _ (eventIntegrable profile _),
         expect_bind_tower _ _ _ improvedIntegrable]
       apply expect_mono _ (payoffIntegrable_of_finite_support _ _
-          (actionLaw_support_finite finite profile config event))
+          (actionDistribution_support_finite finite profile config event))
         (payoffIntegrable_of_finite_support _ _
-          (actionLaw_support_finite finite profile config event))
+          (actionDistribution_support_finite finite profile config event))
       intro action _
       by_cases same : (graph.outputLayout event).submitAction action = action
       · rw [same]
@@ -270,18 +271,20 @@ private theorem submitPolicy_runValue_le_of_remaining (finite : graph.FiniteActi
           (fun stepped _ => le_runValue finite improved scheduler low stepped)
           (payoffIntegrable_constant _ _) (stepIntegrable _ _)
         rwa [expect_constant] at bound
-    · have sameLaw : actionLaw improved config event = actionLaw profile config event := by
+    · have sameLaw : actionDistribution improved config event =
+        actionDistribution profile config event := by
         cases ownerEq : (graph.nodes event).actor with
-        | none => rw [actionLaw_of_ownerless _ _ ownerEq, actionLaw_of_ownerless _ _ ownerEq]
+        | none => rw [actionDistribution_of_ownerless _ _ ownerEq, actionDistribution_of_ownerless
+          _ _ ownerEq]
         | some owner =>
-          rw [actionLaw_of_actor _ _ ownerEq, actionLaw_of_actor _ _ ownerEq]
+          rw [actionDistribution_of_actor _ _ ownerEq, actionDistribution_of_actor _ _ ownerEq]
           by_cases inactive : owner ∈ config.defaulted
           · rw [dite_eq_left inactive, dite_eq_left inactive]
           rw [dite_eq_right inactive, dite_eq_right inactive]
           have different : owner ≠ who := fun same => owned (same ▸ ownerEq)
           simp only [improved, Profile.update_of_ne _ _ different]
-      change expect ((actionLaw profile config event).bind (config.step event ready)) _ ≤
-        expect ((actionLaw improved config event).bind (config.step event ready)) _
+      change expect ((actionDistribution profile config event).bind (config.step event ready)) _ ≤
+        expect ((actionDistribution improved config event).bind (config.step event ready)) _
       rw [sameLaw]
       change expect (eventStep profile config event ready) _ ≤
         expect (eventStep profile config event ready) _
@@ -350,7 +353,8 @@ default, including when the owner was already inactive. -/
 theorem completion_bind_default_none_of_submits (profile : graph.BehavioralProfile)
     (submits : graph.SubmitsBindings profile) (config : graph.Config) (event : graph.EventId)
     (owner : Player) (payload : L.Ty) (outputEq : graph.outputLayout event = .binding owner payload)
-    (action : graph.Action event) (supported : action ∈ (actionLaw profile config event).support)
+    (action : graph.Action event) (supported : action ∈ (actionDistribution profile config
+      event).support)
     (value : (graph.outputLayout event).Value) :
     (EventGraph.completion graph event (config.actualDecision event action) value).defaultEvent =
       none := by
@@ -366,7 +370,7 @@ theorem completion_bind_default_none_of_submits (profile : graph.BehavioralProfi
   by_cases inactive : owner ∈ config.defaulted
   · rw [config.actualDecision_of_defaulted event owner actor inactive]
     rfl
-  · rw [actionLaw_of_actor profile config actor, dite_eq_right inactive] at supported
+  · rw [actionDistribution_of_actor profile config actor, dite_eq_right inactive] at supported
     have submitted := submits owner event actor (graph.playerObserve owner config) inactive action
       supported
     have castSubmitted : (EventField.binding owner payload).Submitted

@@ -31,12 +31,12 @@ theorem intended_trace_initialSupport
     (setup : Setup (Player := Player) (L := L)) :
     ∀ {state : setup.ProtocolState} (_trace : setup.intendedProtocol.Trace state)
       (point : SourceProgram.ProtocolState setup.program), state = some point →
-      ProtocolState.base setup.program point ∈ setup.initialLaw.support
+      ProtocolState.base setup.program point ∈ setup.initialDistribution.support
   | _, .start, _, same => by cases same
   | _, .extend (source := none) _ joint _ realized, point, same => by
       change _ ∈ (setup.protocolStep none joint).support at realized
       rw [same] at realized
-      change some point ∈ (setup.initialLaw.map _).support at realized
+      change some point ∈ (setup.initialDistribution.map _).support at realized
       obtain ⟨initial, present, entry⟩ := (PMF.mem_support_map_iff _ _ _).mp realized
       have pointEq := Option.some.inj entry
       rw [← pointEq, ProtocolState.base_entry]
@@ -67,21 +67,21 @@ theorem initialComponent_of_protocolStep
 /-- A genuine source transition ending in the selected component remains
 possible after conditioning the initializer. -/
 theorem conditionInitial_protocolStep_of_component
-    (supported : value ∈ (setup.initialLaw.map signal).support)
+    (supported : value ∈ (setup.initialDistribution.map signal).support)
     {before after : setup.ProtocolState} {joint : Player → Option (OwnAction Player L)}
     (reached : after ∈ (setup.protocolStep before joint).support)
     (inside : setup.initialComponent signal value after) :
     after ∈ ((setup.conditionInitial signal value).protocolStep before joint).support := by
   cases before with
   | none =>
-      change after ∈ (setup.initialLaw.map _).support at reached
+      change after ∈ (setup.initialDistribution.map _).support at reached
       obtain ⟨initial, present, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp reached
       change signal (ProtocolState.base setup.program
         (ProtocolState.entry setup.program (Config.initial initial))) = value at inside
       rw [ProtocolState.base_entry] at inside
       exact (PMF.mem_support_map_iff _ _ _).mpr ⟨initial, by
-        change initial ∈ (fiberPosterior setup.initialLaw signal value).support
-        rw [fiberPosterior_support setup.initialLaw signal value supported]
+        change initial ∈ (fiberPosterior setup.initialDistribution signal value).support
+        rw [fiberPosterior_support setup.initialDistribution signal value supported]
         exact ⟨inside, present⟩, rfl⟩
   | some before => exact reached
 
@@ -89,7 +89,7 @@ theorem conditionInitial_protocolStep_of_component
 def conditionInitial_traceOfComponent
     (setup : Setup (Player := Player) (L := L)) {Signal : Type*}
     (signal : State L setup.context → Signal) (value : Signal)
-    (supported : value ∈ (setup.initialLaw.map signal).support) :
+    (supported : value ∈ (setup.initialDistribution.map signal).support) :
     ∀ {state : setup.ProtocolState}, setup.intendedProtocol.Trace state →
       setup.initialComponent signal value state →
         (setup.conditionInitial signal value).intendedProtocol.Trace state
@@ -102,7 +102,7 @@ def conditionInitial_traceOfComponent
 @[simp] theorem conditionInitial_trace_traceOfComponent
     (setup : Setup (Player := Player) (L := L)) {Signal : Type*}
     (signal : State L setup.context → Signal) (value : Signal)
-    (supported : value ∈ (setup.initialLaw.map signal).support) :
+    (supported : value ∈ (setup.initialDistribution.map signal).support) :
     ∀ {state : setup.ProtocolState} (trace : setup.intendedProtocol.Trace state)
       (inside : setup.initialComponent signal value state),
       setup.conditionInitial_trace signal value supported
@@ -114,7 +114,7 @@ def conditionInitial_traceOfComponent
 
 /-- Reinterpret an actual history in the component under the conditioned law. -/
 def conditionInitial_historyOfComponent
-    (supported : value ∈ (setup.initialLaw.map signal).support)
+    (supported : value ∈ (setup.initialDistribution.map signal).support)
     (history : setup.intendedProtocol.History)
     (inside : setup.initialComponent signal value history.state) :
     (setup.conditionInitial signal value).intendedProtocol.History :=
@@ -122,7 +122,7 @@ def conditionInitial_historyOfComponent
     history.trace inside⟩
 
 @[simp] theorem conditionInitial_history_historyOfComponent
-    (supported : value ∈ (setup.initialLaw.map signal).support)
+    (supported : value ∈ (setup.initialDistribution.map signal).support)
     (history : setup.intendedProtocol.History)
     (inside : setup.initialComponent signal value history.state) :
     setup.conditionInitial_history signal value supported
@@ -134,7 +134,7 @@ def conditionInitial_historyOfComponent
 
 /-- A conditional information history has the identical original source view. -/
 def conditionInitial_informationHistory
-    (supported : value ∈ (setup.initialLaw.map signal).support) (who : Player)
+    (supported : value ∈ (setup.initialDistribution.map signal).support) (who : Player)
     (view : setup.ProtocolView who)
     (history : (setup.conditionInitial signal value).intendedModel.InformationHistory who view) :
     setup.intendedModel.InformationHistory who view :=
@@ -143,7 +143,7 @@ def conditionInitial_informationHistory
       history.2⟩
 
 theorem conditionInitial_informationHistory_injective
-    (supported : value ∈ (setup.initialLaw.map signal).support) (who : Player)
+    (supported : value ∈ (setup.initialDistribution.map signal).support) (who : Player)
     (view : setup.ProtocolView who) :
     Function.Injective (setup.conditionInitial_informationHistory signal value supported who
       view) := by
@@ -156,7 +156,7 @@ theorem conditionInitial_informationHistory_injective
 conditional history map is onto that fiber. This states the exact source
 information obligation for a locally recoverable common signal. -/
 theorem conditionInitial_informationHistory_surjective
-    (supported : value ∈ (setup.initialLaw.map signal).support) (who : Player)
+    (supported : value ∈ (setup.initialDistribution.map signal).support) (who : Player)
     (view : setup.ProtocolView who)
     (inside : ∀ history : setup.intendedModel.InformationHistory who view,
       setup.initialComponent signal value history.1.state) :

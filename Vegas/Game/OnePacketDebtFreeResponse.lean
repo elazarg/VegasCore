@@ -28,7 +28,7 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
 openings; actual one-packet histories provide fresh binding slots. -/
 theorem canonicalTransmitsAt_of_debtFree (wellFormed : setup.WellFormed)
     {control : (application setup timeouts leaks).Control}
-    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some control))
     (who : Player) (forced : ForcedState setup timeouts leaks who (some control))
     (notOwed : ∀ point, decodedPoint setup control.execution.application.config = some point →
@@ -52,7 +52,7 @@ theorem canonicalTransmitsAt_of_debtFree (wellFormed : setup.WellFormed)
       obtain ⟨value, actionEq⟩ := encodeEventAction?_commitsValue setup.program event sourceAction
         commitsValue graphAction encoded who payload outputEq
       rw [actionEq]
-      have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup)
+      have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup)
         horizon scheduler trace
       have readyView := (pendingEvent_spec (timeouts := timeouts) pending).2.1
       have ready := (control.execution.application.publicView_eventReady event).mp readyView
@@ -78,7 +78,7 @@ This derives transmission from the runtime guard/debt invariant. -/
 theorem honestResponse_canonical_of_debtFree (wellFormed : setup.WellFormed)
     (source : setup.intendedModel.BehavioralAssessment)
     {control : (application setup timeouts leaks).Control}
-    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some control))
     (who : Player) (forced : ForcedState setup timeouts leaks who (some control))
     (notOwed : ∀ point, decodedPoint setup control.execution.application.config = some point →
@@ -107,7 +107,7 @@ theorem honestResponse_canonical_of_debtFree (wellFormed : setup.WellFormed)
   unfold honestResponse at supported
   rw [turn] at supported
   obtain ⟨sourceChoice, chosen, responseEq⟩ := (PMF.mem_support_map_iff _ _ _).mp supported
-  have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup)
+  have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup)
     horizon scheduler trace
   have ready := (control.execution.application.publicView_eventReady event).mp
     (pendingEvent_spec (timeouts := timeouts) pending).2.1
@@ -143,7 +143,7 @@ theorem honestChoice_canonical_of_debtFree (wellFormed : setup.WellFormed)
     (capacity : ∀ who, bindingEventCount setup.informationGraph who < bounds.candidateCount)
     (source : setup.intendedModel.BehavioralAssessment)
     {control : (application setup timeouts leaks).Control}
-    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some control))
     (who : Player) (forced : ForcedState setup timeouts leaks who (some control))
     (notOwed : ∀ point, decodedPoint setup control.execution.application.config = some point →
@@ -154,11 +154,12 @@ theorem honestChoice_canonical_of_debtFree (wellFormed : setup.WellFormed)
     (bound : setup.informationGraph.EventId → Nat)
     (fits : control.execution.application.publicView.InclusionFitsDeadline timeouts bound
       event)
-    (choice : (onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+    (choice : (onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon
       scheduler).Choice who
       (some (control.execution.logs who,
         control.execution.observe (application setup timeouts leaks) who)))
-    (supported : choice ∈ (honestChoice setup timeouts leaks bounds (initialLaw setup) horizon
+    (supported : choice ∈ (honestChoice setup timeouts leaks bounds
+      (initialDistribution setup) horizon
       scheduler
       source who (some (control.execution.logs who,
         control.execution.observe (application setup timeouts leaks) who))).support) :

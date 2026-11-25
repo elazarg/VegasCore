@@ -46,7 +46,7 @@ theorem runTurnFacts_roundsFrom
     (deviation : (serviceApplication setup deps duration leaks).Policy) (count : Nat)
     (execution : (serviceApplication setup deps duration leaks).Execution)
     (supported : execution ∈ ((serviceApplication setup deps duration leaks).roundsFrom
-      (serviceInitialLaw setup deps) scheduler (Function.update (turnPolicy
+      (serviceInitialDistribution setup deps) scheduler (Function.update (turnPolicy
         (serviceTimeouts setup deps duration) leaks bound turns
           (firstTurnTiming setup turns deps) reference)
         who deviation) count).support) :
@@ -66,7 +66,7 @@ theorem RunTurnFacts.round
     (deviation : (serviceApplication setup deps duration leaks).Policy)
     {execution next : (serviceApplication setup deps duration leaks).Execution}
     (trace : ((serviceApplication setup deps duration leaks).protocol
-      (serviceInitialLaw setup deps) horizon scheduler).Trace
+      (serviceInitialDistribution setup deps) horizon scheduler).Trace
         (some ⟨remaining + 1, none, execution⟩))
     (facts : RunTurnFacts who execution)
     (reached : next ∈ ((serviceApplication setup deps duration leaks).round scheduler
@@ -148,10 +148,10 @@ theorem run_stopped_traffic_congr
     ∀ (count leftRemaining rightRemaining : Nat)
       (left right : (serviceApplication setup deps duration leaks).Execution),
       ((serviceApplication setup deps duration leaks).protocol
-        (serviceInitialLaw setup deps) horizon scheduler).Trace
+        (serviceInitialDistribution setup deps) horizon scheduler).Trace
           (some ⟨leftRemaining + count, none, left⟩) →
       ((serviceApplication setup deps duration leaks).protocol
-        (serviceInitialLaw setup deps) horizon scheduler).Trace
+        (serviceInitialDistribution setup deps) horizon scheduler).Trace
           (some ⟨rightRemaining + count, none, right⟩) →
       (¬ BlockDone finish left.application.config →
         InBlock start finish left.application.config) →
@@ -205,7 +205,8 @@ theorem run_stopped_traffic_congr
     fun done => running (stopDone execution done)
   let invariant := fun (good : Nat → app.Execution → Prop) (count : Nat)
       (current : app.Execution) =>
-    (∃ remaining, Nonempty ((app.protocol (serviceInitialLaw setup deps) horizon scheduler).Trace
+    (∃ remaining, Nonempty ((app.protocol (serviceInitialDistribution setup deps) horizon
+      scheduler).Trace
       (some ⟨remaining + count, none, current⟩))) ∧
     (¬ BlockDone finish current.application.config →
       InBlock start finish current.application.config) ∧
@@ -220,10 +221,11 @@ theorem run_stopped_traffic_congr
       (next : app.Execution) (reached : next ∈ (app.round scheduler players current).support) :
       invariant good n next := by
     obtain ⟨⟨remaining, ⟨trace⟩⟩, inside, goodNow, submitted, facts⟩ := valid
-    have before : (app.protocol (serviceInitialLaw setup deps) horizon scheduler).Trace
+    have before : (app.protocol (serviceInitialDistribution setup deps) horizon scheduler).Trace
         (some ⟨(remaining + n) + 1, none, current⟩) := by
       simpa only [Nat.add_assoc] using trace
-    obtain ⟨nextTrace⟩ := app.raw_trace_round (serviceInitialLaw setup deps) horizon scheduler
+    obtain ⟨nextTrace⟩ := app.raw_trace_round (serviceInitialDistribution setup deps) horizon
+      scheduler
       players (remaining + n) current next before reached
     have path := reactive_round_graph_steps (serviceTimeouts setup deps duration) leaks scheduler
       players current next reached
@@ -246,10 +248,12 @@ theorem run_stopped_traffic_congr
       obtain ⟨⟨currentRest, ⟨currentTrace⟩⟩, currentInside, currentGood, currentSubmitted,
         currentFacts⟩ := currentValid
       obtain ⟨⟨otherRest, ⟨otherTrace⟩⟩, _, otherGood, _, otherFacts⟩ := otherValid
-      have currentBefore : (app.protocol (serviceInitialLaw setup deps) horizon scheduler).Trace
+      have currentBefore : (app.protocol (serviceInitialDistribution setup deps) horizon
+        scheduler).Trace
           (some ⟨(currentRest + n) + 1, none, current⟩) := by
         simpa only [Nat.add_assoc] using currentTrace
-      have otherBefore : (app.protocol (serviceInitialLaw setup deps) horizon scheduler).Trace
+      have otherBefore : (app.protocol (serviceInitialDistribution setup deps) horizon
+        scheduler).Trace
           (some ⟨(otherRest + n) + 1, none, other⟩) := by
         simpa only [Nat.add_assoc] using otherTrace
       have unfinished : ¬ BlockDone finish current.application.config := notDone _ running
@@ -257,7 +261,7 @@ theorem run_stopped_traffic_congr
       have currentLegal := legalFacts setup leaks horizon scheduler _ currentBefore
       have otherLegal := legalFacts setup leaks horizon scheduler _ otherBefore
       have signed := signedCommitments_history (serviceTimeouts setup deps duration) leaks
-        (serviceInitialLaw setup deps) (fun state supported => by
+        (serviceInitialDistribution setup deps) (fun state supported => by
           obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ supported
           exact ⟨_, rfl⟩) horizon scheduler currentBefore
       have sameTraffic : (bindingTraffic (serviceTimeouts setup deps duration)) leaks who current =

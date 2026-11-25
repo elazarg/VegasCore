@@ -28,27 +28,27 @@ def lateLeakResultReadout : LateLeakState → Option (LateLeakType × Bool × La
   | _ => none
 
 /-- The joint outcome law after forgetting transmission timing. -/
-def lateLeakResultLaw (G : LateLeakParameters) (late : Bool)
+def lateLeakResultDistribution (G : LateLeakParameters) (late : Bool)
     (profile : LateLeakProfile G late) : PMF (Option (LateLeakType × Bool × LateLeakAnswer)) :=
-  (lateLeakOutcomeLaw G late profile).map lateLeakResultReadout
+  (lateLeakOutcomeDistribution G late profile).map lateLeakResultReadout
 
 /-- The intended joint result law after forgetting transmission timing. -/
-def lateLeakIntendedResultLaw : PMF (Option (LateLeakType × Bool × LateLeakAnswer)) :=
+def lateLeakIntendedResultDistribution : PMF (Option (LateLeakType × Bool × LateLeakAnswer)) :=
   lateLeakIntendedOutcome.map lateLeakResultReadout
 
 /-- The intended result is successful safe play for every initial type. -/
-theorem lateLeakIntendedResultLaw_apply (secret : LateLeakType) :
-    lateLeakIntendedResultLaw (some (secret, true, .safe)) = lateLeakPrior secret := by
-  rw [lateLeakIntendedResultLaw, lateLeakIntendedOutcome, PMF.map_comp]
+theorem lateLeakIntendedResultDistribution_apply (secret : LateLeakType) :
+    lateLeakIntendedResultDistribution (some (secret, true, .safe)) = lateLeakPrior secret := by
+  rw [lateLeakIntendedResultDistribution, lateLeakIntendedOutcome, PMF.map_comp]
   change (lateLeakPrior.map (fun other => some (other, true, LateLeakAnswer.safe))) _ = _
   exact pmf_map_apply_of_injective lateLeakPrior
     (fun _ _ same => (Option.some.inj same |> Prod.mk.inj).1) secret
 
 /-- Successful safe mass consists of the protected branch and the possible
 late successful branches. -/
-theorem lateLeakResultLaw_success_safe (profile : LateLeakProfile G late)
+theorem lateLeakResultDistribution_success_safe (profile : LateLeakProfile G late)
     (secret : LateLeakType) :
-    (lateLeakResultLaw G late profile (some (secret, true, .safe))).toReal =
+    (lateLeakResultDistribution G late profile (some (secret, true, .safe))).toReal =
       (lateLeakPrior secret).toReal *
         (lateLeakOpenProb profile (.protectedTurn secret) *
             lateLeakSafeProb profile (.protectedSuccess secret.1) +
@@ -60,9 +60,10 @@ theorem lateLeakResultLaw_success_safe (profile : LateLeakProfile G late)
                   lateLeakSafeProb profile (.secondSuccess secret.1)))) := by
   let indicator : LateLeakState → ℝ := fun state =>
     if some (secret, true, LateLeakAnswer.safe) = lateLeakResultReadout state then 1 else 0
-  have read : (lateLeakResultLaw G late profile (some (secret, true, .safe))).toReal =
+  have read : (lateLeakResultDistribution G late profile (some (secret, true, .safe))).toReal =
       lateLeakValue profile indicator (0 + 5) .initial := by
-    rw [lateLeakResultLaw, toReal_map_apply, lateLeakValue, ← lateLeakOutcomeLaw_eq]
+    rw [lateLeakResultDistribution, toReal_map_apply, lateLeakValue, ←
+      lateLeakOutcomeDistribution_eq]
     apply expect_congr_on_support
     intro state _
     dsimp [indicator]
@@ -82,7 +83,7 @@ theorem lateLeakResultLaw_success_safe (profile : LateLeakProfile G late)
           exact hit ⟨same.1.symm, same.2⟩
         simp [hit, missing]
     · intro choice supported different
-      obtain ⟨answer, rfl, -⟩ := lateLeakReplyLaw_support profile _ choice supported
+      obtain ⟨answer, rfl, -⟩ := lateLeakReplyDistribution_support profile _ choice supported
       have not_safe : answer ≠ .safe := fun same => different (by rw [same])
       simp [indicator, lateLeakResultReadout, lateLeakReplyOf, Ne.symm not_safe]
   have protectedValue (other : LateLeakType) :
@@ -145,8 +146,9 @@ theorem lateLeak_equilibrium_result_mass_gap (pays : G.DeferralPays)
             (1 - lateLeakInclusionProb G) * (G.forfeit + G.dropCharge))))
           (lateLeakInclusionProb G * G.reward)) ≤
       G.reward *
-        ((lateLeakIntendedResultLaw (some ((bit, .a), true, .safe))).toReal -
-          (lateLeakResultLaw G true A.strategy (some ((bit, .a), true, .safe))).toReal) := by
+        ((lateLeakIntendedResultDistribution (some ((bit, .a), true, .safe))).toReal -
+          (lateLeakResultDistribution G true A.strategy (some
+            ((bit, .a), true, .safe))).toReal) := by
   obtain ⟨bit, guessing⟩ := lateLeak_equilibrium_late_guess pays equilibrium
   refine ⟨bit, ?_⟩
   let cap := max
@@ -188,7 +190,7 @@ theorem lateLeak_equilibrium_result_mass_gap (pays : G.DeferralPays)
   have weighted_gap := mul_le_mul_of_nonneg_right prior_lower gap_nonnegative
   have first_weighted := mul_le_mul_of_nonneg_left protected_le prior_nonnegative
   have late_weighted := mul_le_mul_of_nonneg_left weighted_late prior_nonnegative
-  rw [lateLeakIntendedResultLaw_apply, lateLeakResultLaw_success_safe]
+  rw [lateLeakIntendedResultDistribution_apply, lateLeakResultDistribution_success_safe]
   dsimp [cap] at first_weighted weighted_gap ⊢
   nlinarith
 
@@ -199,8 +201,8 @@ theorem lateLeak_equilibrium_result_totalVariation_lower_bound (pays : G.Deferra
     (equilibrium : A.IsSequentialEquilibrium (lateLeak_antichain G true)
       (lateLeak_terminates G true) (lateLeakPayoff G true))
     {error : ℝ}
-    (close : PMF.WithinTV error (lateLeakResultLaw G true A.strategy)
-      lateLeakIntendedResultLaw) :
+    (close : PMF.WithinTV error (lateLeakResultDistribution G true A.strategy)
+      lateLeakIntendedResultDistribution) :
     (3 / 20 : ℝ) *
         (G.reward - max
           (2 * (G.reward - (lateLeakInclusionProb G * G.reward -
@@ -218,10 +220,10 @@ theorem lateLeak_equilibrium_result_not_preserved (pays : G.DeferralPays)
     {A : (lateLeakModel G true).BehavioralAssessment}
     (equilibrium : A.IsSequentialEquilibrium (lateLeak_antichain G true)
       (lateLeak_terminates G true) (lateLeakPayoff G true)) :
-    lateLeakResultLaw G true A.strategy ≠ lateLeakIntendedResultLaw := by
+    lateLeakResultDistribution G true A.strategy ≠ lateLeakIntendedResultDistribution := by
   intro same
-  have close : PMF.WithinTV 0 (lateLeakResultLaw G true A.strategy)
-      lateLeakIntendedResultLaw := by rw [same]; exact PMF.WithinTV.refl _
+  have close : PMF.WithinTV 0 (lateLeakResultDistribution G true A.strategy)
+      lateLeakIntendedResultDistribution := by rw [same]; exact PMF.WithinTV.refl _
   have bound := lateLeak_equilibrium_result_totalVariation_lower_bound pays equilibrium close
   have cap_lt : max
       (2 * (G.reward - (lateLeakInclusionProb G * G.reward -
@@ -242,8 +244,8 @@ theorem lateLeak_sample_result_mass_gap
       (lateLeak_terminates LateLeakParameters.sample true)
       (lateLeakPayoff LateLeakParameters.sample true)) :
     ∃ bit, (3 / 2000 : ℝ) ≤
-      (lateLeakIntendedResultLaw (some ((bit, .a), true, .safe))).toReal -
-        (lateLeakResultLaw LateLeakParameters.sample true A.strategy
+      (lateLeakIntendedResultDistribution (some ((bit, .a), true, .safe))).toReal -
+        (lateLeakResultDistribution LateLeakParameters.sample true A.strategy
           (some ((bit, .a), true, .safe))).toReal := by
   obtain ⟨bit, bound⟩ :=
     lateLeak_equilibrium_result_mass_gap LateLeakParameters.sample_deferralPays equilibrium
@@ -260,8 +262,8 @@ theorem lateLeak_sample_result_totalVariation_lower_bound
       (lateLeakPayoff LateLeakParameters.sample true))
     {error : ℝ}
     (close : PMF.WithinTV error
-      (lateLeakResultLaw LateLeakParameters.sample true A.strategy)
-      lateLeakIntendedResultLaw) :
+      (lateLeakResultDistribution LateLeakParameters.sample true A.strategy)
+      lateLeakIntendedResultDistribution) :
     (3 / 2000 : ℝ) ≤ error := by
   obtain ⟨bit, gap⟩ := lateLeak_sample_result_mass_gap equilibrium
   exact gap.trans ((le_abs_self _).trans (close.symm.apply (some ((bit, .a), true, .safe))))

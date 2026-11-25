@@ -1,0 +1,384 @@
+module
+
+/- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
+
+public import Vegas.Game.RevealServiceSoleSegment
+public import Vegas.Game.RevealServiceTimely
+
+@[expose] public section
+
+/-! # The honest outcome law with concurrent reveals
+
+When only independent reveals are concurrent, honest clients of an opening,
+ready-independent reference keep the reference's outcome law at every scheduler
+boundary, under every public scheduler. A round in which every ready event is a
+publication preserves the law, because honest publications stay within their
+deadline whenever their binding holds a value. Otherwise a single solitary event
+is ready, and the run until it completes preserves the law. Induction on the
+rounds left gives the law of the whole run.
+-/
+
+noncomputable section
+
+namespace Vegas
+
+open SourceProgram EventGraph EventGraphRuntime GameTheory.Math.Probability Interaction
+
+variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
+  {setup : Setup (Player := Player) (L := L)} {deps : setup.dataflowGraph.Dependencies}
+  {duration : (serviceGraph setup deps).EventId → Nat}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup deps))}
+
+/-- Every event a recorded response saw ready has completed or satisfies
+`allowed`. -/
+def SeenWithin (allowed : (serviceGraph setup deps).EventId → Prop)
+    (execution : (serviceApplication setup deps duration leaks).Execution) : Prop :=
+  ∀ who, ∀ entry ∈ execution.logs who, ∀ event,
+    entry.beforeView.application.publicView.EventReady event →
+      event ∈ execution.application.config.cut.completed ∨ allowed event
+
+/-- An untouched event: no response saw it ready, when only completed or allowed
+events were seen and it is neither. -/
+theorem SeenWithin.untouched {allowed : (serviceGraph setup deps).EventId → Prop}
+    {execution : (serviceApplication setup deps duration leaks).Execution}
+    (seen : SeenWithin allowed execution) {event : (serviceGraph setup deps).EventId}
+    (unfinished : event ∉ execution.application.config.cut.completed)
+    (disallowed : ¬ allowed event) : Untouched setup leaks event execution := by
+  intro who entry member readyView
+  rcases seen who entry member event readyView with completed | permitted
+  · exact unfinished completed
+  · exact disallowed permitted
+
+/-- A round's configuration is reached from the previous one by graph steps. -/
+theorem round_config_path
+    {scheduler : (serviceApplication setup deps duration leaks).Scheduler}
+    {players : Player → (serviceApplication setup deps duration leaks).Policy}
+    {execution next : (serviceApplication setup deps duration leaks).Execution}
+    (reached : next ∈
+      ((serviceApplication setup deps duration leaks).round scheduler players execution).support) :
+    Relation.ReflTransGen EventGraph.Config.Step execution.application.config
+      next.application.config := by
+  obtain ⟨command, _, middle, moved, cases⟩ := round_cases (setup := setup) leaks reached
+  have path := ((reactiveApplication_graphSteps (serviceTimeouts setup deps duration))
+    leaks).environmentStep execution middle command moved
+  rcases cases with ⟨_, rfl⟩ | ⟨who, _, response, _, rfl⟩
+  · exact path
+  · rw [((reactive_respond_application (serviceTimeouts setup deps duration)) leaks middle who
+      response).1]
+    exact path
+
+/-- A round keeps the seen-ready bound when every event ready before it is
+allowed. -/
+theorem round_seenWithin {allowed : (serviceGraph setup deps).EventId → Prop}
+    {scheduler : (serviceApplication setup deps duration leaks).Scheduler}
+    {players : Player → (serviceApplication setup deps duration leaks).Policy}
+    {execution next : (serviceApplication setup deps duration leaks).Execution}
+    (seen : SeenWithin allowed execution)
+    (readyAllowed : ∀ event, execution.application.config.cut.Ready event → allowed event)
+    (reached : next ∈
+      ((serviceApplication setup deps duration leaks).round scheduler players execution).support) :
+    SeenWithin allowed next := by
+  let app := serviceApplication setup deps duration leaks
+  have grown := EventGraph.Config.Step.path_completed_mono (round_config_path reached)
+  obtain ⟨command, _, middle, moved, cases⟩ := round_cases (setup := setup) leaks reached
+  have recallEq := app.environmentStep_recall execution middle command moved
+  intro who entry member event readyView
+  rcases cases with ⟨_, rfl⟩ | ⟨actor, active, response, _, rfl⟩
+  · rw [recallEq] at member
+    rcases seen who entry member event readyView with completed | permitted
+    · exact Or.inl (grown completed)
+    · exact Or.inr permitted
+  · rcases app.respond_entry_origin middle actor who response entry member with
+      prior | ⟨_, fresh⟩
+    · rw [recallEq] at prior
+      rcases seen who entry prior event readyView with completed | permitted
+      · exact Or.inl (grown completed)
+      · exact Or.inr permitted
+    · have commandEq : command = .activate actor := by
+        cases command <;> simp_all [ReactiveApplication.Command.actor?]
+      subst command
+      have sameApp := activation_application (setup := setup) leaks execution middle actor moved
+      rw [fresh] at readyView
+      change middle.application.publicView.EventReady event at readyView
+      have readyNow := (EventGraphRuntime.State.publicView_eventReady _ event).mp readyView
+      rw [sameApp] at readyNow
+      exact Or.inr (readyAllowed event readyNow)
+
+/-- While a solitary event is ready, responses see only it, so running until
+it completes keeps every seen event completed, allowed or that event. -/
+theorem runUntil_seenWithin {allowed : (serviceGraph setup deps).EventId → Prop}
+    (scheduler : (serviceApplication setup deps duration leaks).Scheduler)
+    (players : Player → (serviceApplication setup deps duration leaks).Policy)
+    (event : (serviceGraph setup deps).EventId)
+    (solitary : (serviceGraph setup deps).Solitary event) :
+    ∀ (count : Nat) (execution stopped : (serviceApplication setup deps duration leaks).Execution),
+      execution.application.config.cut.Ready event →
+      SeenWithin (fun other => allowed other ∨ other = event) execution →
+      stopped ∈ ((serviceApplication setup deps duration leaks).runUntil scheduler players
+        (fun final => event ∈ final.application.config.cut.completed) count execution).support →
+      SeenWithin (fun other => allowed other ∨ other = event) stopped := by
+  classical
+  let app := serviceApplication setup deps duration leaks
+  intro count
+  induction count with
+  | zero =>
+      intro execution stopped _ seen reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
+      exact seen
+  | succ count ih =>
+      intro execution stopped ready seen reached
+      simp only [ReactiveApplication.runUntil, ready.1, ↓reduceIte] at reached
+      obtain ⟨next, moved, rest⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+      have seenNext := round_seenWithin seen (fun other otherReady =>
+        Or.inr (solitary _ otherReady ready)) moved
+      by_cases completed : event ∈ next.application.config.cut.completed
+      · rw [app.runUntil_of_stop scheduler players _ count next completed,
+          PMF.mem_support_pure_iff] at rest
+        subst stopped
+        exact seenNext
+      · have same := EventGraph.Config.Step.path_eq_of_ready_of_not_completed event
+          (fun _ otherReady => solitary _ otherReady ready) completed (round_config_path moved)
+        exact ih next stopped (same.symm ▸ ready) seenNext rest
+
+section Induction
+
+variable {horizon turns : Nat} {scheduler :
+    (serviceApplication setup deps duration leaks).Scheduler}
+  {delay bound : (serviceGraph setup deps).EventId → Nat}
+
+/-- Compose publication rounds and solitary segments that preserve the reference's
+outcome law, using the service contract to finish any segment that reaches the horizon. -/
+theorem runToHorizon_outcomeDistribution_of_segments
+    (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
+      (serviceInitialDistribution setup deps) horizon scheduler delay bound)
+    (only : (serviceGraph setup deps).RevealsOnlyConcurrent)
+    (players : Player → (serviceApplication setup deps duration leaks).Policy)
+    (reference : (serviceGraph setup deps).BehavioralProfile)
+    {Outcome : Type*} (read : (serviceGraph setup deps).Config → Outcome) :
+    let app := serviceApplication setup deps duration leaks
+    let publication := fun event : (serviceGraph setup deps).EventId =>
+      ((serviceGraph setup deps).outputLayout event).IsPublication
+    let supported := fun execution : app.Execution => execution ∈
+      (app.roundsFrom (serviceInitialDistribution setup deps) scheduler players
+        execution.environmentRecall.length).support
+    let law := fun execution : app.Execution =>
+      outcomeDistribution reference read execution.application.config
+    (∀ execution next : app.Execution, supported execution →
+      execution.environmentRecall.length ≤ horizon →
+      (∀ event, execution.application.config.cut.Ready event → publication event) →
+      next ∈ (app.round scheduler players execution).support →
+      law next = law execution) →
+    (∀ (execution : app.Execution) (event : (serviceGraph setup deps).EventId),
+      execution.application.config.cut.Ready event → ¬ publication event →
+      supported execution → execution.environmentRecall.length ≤ horizon →
+      Untouched setup leaks event execution →
+      (app.runUntilHorizon scheduler players
+        (fun final => event ∈ final.application.config.cut.completed) horizon execution).bind
+          law = law execution) →
+    ∀ execution : app.Execution, supported execution →
+      execution.environmentRecall.length ≤ horizon →
+      SeenWithin publication execution →
+      (app.runToHorizon scheduler players horizon execution).map
+        (fun final => read final.application.config) = law execution := by
+  classical
+  dsimp only
+  intro publicationRound solitarySegment
+  let app := serviceApplication setup deps duration leaks
+  let publication := fun event : (serviceGraph setup deps).EventId =>
+    ((serviceGraph setup deps).outputLayout event).IsPublication
+  intro execution
+  generalize leftEq : horizon - execution.environmentRecall.length = left
+  induction left using Nat.strong_induction_on generalizing execution with
+  | ind left ih =>
+  intro supported bounded seen
+  obtain ⟨trace⟩ := app.raw_trace_roundsFrom (serviceInitialDistribution setup deps) horizon
+    scheduler
+    players execution.environmentRecall.length bounded execution supported
+  cases left with
+  | zero =>
+      rw [leftEq] at trace
+      have terminal := contract.completes _ trace ⟨rfl, rfl⟩
+      have noRounds : app.runToHorizon scheduler players horizon execution =
+          PMF.pure execution := by
+        unfold ReactiveApplication.runToHorizon
+        rw [leftEq]
+        rfl
+      have remaining : execution.application.config.remaining = 0 :=
+        execution.application.config.terminal_iff_remaining_zero.mp terminal
+      rw [noRounds, PMF.pure_map]
+      unfold outcomeDistribution
+      rw [remaining, EventGraph.runPlan, PMF.pure_map]
+  | succ left =>
+      by_cases allPublications : ∀ event, execution.application.config.cut.Ready event →
+          publication event
+      · have rounds : app.runToHorizon scheduler players horizon execution =
+            (app.round scheduler players execution).bind
+              (app.runToHorizon scheduler players horizon) := by
+          unfold ReactiveApplication.runToHorizon
+          rw [leftEq, ReactiveApplication.runRounds]
+          apply bind_congr_on_support _
+          intro next reached
+          rw [app.round_environmentRecall_length scheduler players execution next reached]
+          congr 1
+          omega
+        rw [rounds, PMF.map_bind]
+        calc
+          _ = (app.round scheduler players execution).bind
+              (fun _ => outcomeDistribution reference read execution.application.config) := by
+            apply bind_congr_on_support _
+            intro next reached
+            have lengthNext := app.round_environmentRecall_length scheduler players execution
+              next reached
+            have supportedNext : next ∈ (app.roundsFrom (serviceInitialDistribution setup deps)
+              scheduler
+                players next.environmentRecall.length).support := by
+              rw [lengthNext, app.roundsFrom_succ]
+              exact (PMF.mem_support_bind_iff _ _ _).mpr ⟨execution, supported, reached⟩
+            rw [ih left (by omega) next (by omega) supportedNext (by omega)
+              (round_seenWithin seen allPublications reached)]
+            exact publicationRound execution next supported bounded allPublications reached
+          _ = _ := PMF.bind_const _ _
+      · push Not at allPublications
+        obtain ⟨event, ready, notPublication⟩ := allPublications
+        have solitary := only.solitary notPublication
+        let stop := fun final : app.Execution => event ∈ final.application.config.cut.completed
+        rw [app.runToHorizon_eq_runUntilHorizon_bind scheduler players stop, PMF.map_bind]
+        calc
+          _ = (app.runUntilHorizon scheduler players stop horizon execution).bind
+              (fun stopped => outcomeDistribution reference read stopped.application.config) := by
+            apply bind_congr_on_support _
+            intro stopped reached
+            obtain ⟨used, within, rounds, lengthEq⟩ := app.runUntil_runRounds scheduler players
+              stop _ execution stopped reached
+            have stoppedSupported := app.roundsFrom_runUntil scheduler players
+              (serviceInitialDistribution setup deps) stop _ execution stopped supported reached
+            have stoppedBounded : stopped.environmentRecall.length ≤ horizon := by omega
+            have finished : event ∈ stopped.application.config.cut.completed := by
+              rcases app.runUntilHorizon_stopped scheduler players stop horizon (left + 1)
+                  execution stopped (by omega) reached with done | spent
+              · exact done
+              · obtain ⟨stoppedTrace⟩ := app.raw_trace_roundsFrom
+                  (serviceInitialDistribution setup deps)
+                  horizon scheduler players stopped.environmentRecall.length stoppedBounded
+                  stopped stoppedSupported
+                rw [spent, Nat.sub_self] at stoppedTrace
+                have terminal := contract.completes _ stoppedTrace ⟨rfl, rfl⟩
+                rw [EventOrder.Cut.Terminal] at terminal
+                rw [terminal]
+                exact Finset.mem_univ _
+            have progressed : 0 < used := by
+              rcases Nat.eq_zero_or_pos used with zero | positive
+              · subst zero
+                cases (PMF.mem_support_pure_iff _ _).mp rounds
+                exact (ready.1 finished).elim
+              · exact positive
+            have seenEvent := runUntil_seenWithin (allowed := publication) scheduler players event
+              solitary _ execution stopped ready
+              (fun who entry member other readyView =>
+                (seen who entry member other readyView).imp_right Or.inl) reached
+            have seenStopped : SeenWithin publication stopped := by
+              intro who entry member other readyView
+              rcases seenEvent who entry member other readyView with completed | permitted |
+                  same
+              · exact Or.inl completed
+              · exact Or.inr permitted
+              · subst same
+                exact Or.inl finished
+            exact ih (horizon - stopped.environmentRecall.length) (by omega) stopped rfl
+              stoppedSupported stoppedBounded seenStopped
+          _ = _ := solitarySegment execution event ready notPublication supported bounded
+              (seen.untouched ready.1 notPublication)
+
+/-- **The honest outcome law from every boundary.** Under the asynchronous
+service contract, on a graph where only independent reveals are concurrent and
+every other event leads, honest clients of an opening, ready-independent
+reference run, from every initialized execution whose responses saw only
+completed events or publications ready, to the reference's outcome law. -/
+theorem honest_runToHorizon_outcomeDistribution
+    (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
+      (serviceInitialDistribution setup deps) horizon scheduler delay bound)
+    (timely : AsyncTimely (serviceTimeouts setup deps duration) delay bound)
+    (only : (serviceGraph setup deps).RevealsOnlyConcurrent)
+    (leading : ∀ event, ¬ ((serviceGraph setup deps).outputLayout event).IsPublication →
+      (serviceGraph setup deps).Leading event)
+    (reference : (serviceGraph setup deps).BehavioralProfile)
+    (independent : ReadyIndependent reference) (opens : OpensPublications reference)
+    {Outcome : Type*} (read : (serviceGraph setup deps).Config → Outcome)
+    (keyed : ∀ left right : (serviceGraph setup deps).Config, runKey left = runKey right →
+      read left = read right)
+    (invariant : ∀ config, read config.erase = read config) :
+    let players := turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
+      (firstTurnTiming setup turns deps) reference
+    ∀ execution : (serviceApplication setup deps duration leaks).Execution,
+      execution ∈ ((serviceApplication setup deps duration leaks).roundsFrom
+        (serviceInitialDistribution setup deps) scheduler players
+          execution.environmentRecall.length).support →
+      execution.environmentRecall.length ≤ horizon →
+      SeenWithin (fun event => ((serviceGraph setup deps).outputLayout event).IsPublication)
+        execution →
+      ((serviceApplication setup deps duration leaks).runToHorizon scheduler players horizon
+          execution).map (fun final => read final.application.config) =
+        outcomeDistribution reference read execution.application.config := by
+  intro players
+  refine runToHorizon_outcomeDistribution_of_segments contract only players reference read ?_ ?_
+  · intro execution next supported bounded allPublications reached
+    exact reactive_round_outcomeDistribution_of_publications independent opens read keyed invariant
+      (serviceTimeouts setup deps duration) leaks scheduler players execution next
+      allPublications (fun event owner ready owned _ holds =>
+        honestPublication_withinDeadline contract timely players owner reference opens rfl
+          execution.environmentRecall.length bounded execution supported event
+          (independent.actorSerial event) owned ready (allPublications event ready) holds) reached
+  · intro execution event ready notPublication supported bounded untouched
+    exact soleSegment_outcomeDistribution (serviceTimeouts setup deps duration) leaks scheduler
+      delay bound contract timely reference independent read keyed players event
+      (fun _ _ => rfl) (only.solitary notPublication) (leading event notPublication)
+      notPublication execution ready supported untouched bounded
+
+/-- **The honest outcome law of the run.** Under the hypotheses of
+`honest_runToHorizon_outcomeDistribution`, the outcome of the honest clients' run to the
+horizon has the reference's outcome law from the initial configurations. -/
+theorem honest_roundsFrom_outcomeDistribution
+    (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
+      (serviceInitialDistribution setup deps) horizon scheduler delay bound)
+    (timely : AsyncTimely (serviceTimeouts setup deps duration) delay bound)
+    (only : (serviceGraph setup deps).RevealsOnlyConcurrent)
+    (leading : ∀ event, ¬ ((serviceGraph setup deps).outputLayout event).IsPublication →
+      (serviceGraph setup deps).Leading event)
+    (reference : (serviceGraph setup deps).BehavioralProfile)
+    (independent : ReadyIndependent reference) (opens : OpensPublications reference)
+    {Outcome : Type*} (read : (serviceGraph setup deps).Config → Outcome)
+    (keyed : ∀ left right : (serviceGraph setup deps).Config, runKey left = runKey right →
+      read left = read right)
+    (invariant : ∀ config, read config.erase = read config) :
+    ((serviceApplication setup deps duration leaks).roundsFrom
+      (serviceInitialDistribution setup deps)
+        scheduler (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
+          (firstTurnTiming setup turns deps) reference) horizon).map
+        (fun final => read final.application.config) =
+      (serviceInitialDistribution setup deps).bind
+        (fun state => outcomeDistribution reference read state.config) := by
+  let app := serviceApplication setup deps duration leaks
+  let players := turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
+    (firstTurnTiming setup turns deps) reference
+  unfold ReactiveApplication.roundsFrom
+  rw [PMF.map_bind]
+  apply bind_congr_on_support _
+  intro state member
+  let execution := ReactiveApplication.Execution.initial app state
+  have supported : execution ∈ (app.roundsFrom (serviceInitialDistribution setup deps) scheduler
+    players
+      execution.environmentRecall.length).support := by
+    change execution ∈ (app.roundsFrom (serviceInitialDistribution setup deps) scheduler players
+      0).support
+    rw [ReactiveApplication.roundsFrom, PMF.support_bind]
+    exact Set.mem_iUnion₂.mpr ⟨_, member, by simp [ReactiveApplication.runRounds, execution]⟩
+  have seen : SeenWithin (fun event => ((serviceGraph setup deps).outputLayout event).IsPublication)
+      execution := by
+    intro who entry present
+    cases present
+  exact honest_runToHorizon_outcomeDistribution (turns := turns) contract timely only leading
+    reference independent opens read keyed invariant execution supported (Nat.zero_le _) seen
+
+end Induction
+
+end Vegas

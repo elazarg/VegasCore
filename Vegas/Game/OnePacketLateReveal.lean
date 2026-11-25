@@ -76,18 +76,19 @@ private theorem withheld_primary_drain_failed
 /-- Disclosing completes the source reveal at its unique intended successor; every
 runtime completion reaches that successor or records a failed publication. -/
 theorem disclosure_sourceKernel
-    [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+    [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds
+      (initialDistribution setup) horizon
       scheduler).InfoState who)]
     (source : setup.intendedModel.BehavioralAssessment)
-    (assessment : (onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+    (assessment : (onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon
       scheduler).BehavioralAssessment) {who : Player}
-    (site : (onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+    (site : (onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon
       scheduler).InformationSite who)
     {event : setup.informationGraph.EventId}
     (pending : pendingEvent setup timeouts leaks who site.1 = some event)
-    (law : PMF ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+    (law : PMF ((onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon
       scheduler).Choice who site.1))
-    (history : (onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+    (history : (onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon
       scheduler).InformationHistory who site.1)
     {remaining : Nat} {execution : (application setup timeouts leaks).Execution}
     (current : history.1.state = some ⟨remaining, some who, execution⟩)
@@ -105,17 +106,17 @@ theorem disclosure_sourceKernel
       some point)
     (intendedPoint : ProtocolState.Intended setup.program point)
     (terminalCompleted : ∀ (final : (application setup timeouts leaks).Control),
-      ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+      ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
         scheduler).Trace (some final) →
       (application setup timeouts leaks).terminal (some final) →
       final.execution.application.config = execution.application.config →
       event ∈ final.execution.application.config.cut.completed) :
     let installed := Profile.update (sig := (onePacketModel setup timeouts leaks bounds
-      (initialLaw setup) horizon scheduler).behavioralSignature) assessment.strategy who
+      (initialDistribution setup) horizon scheduler).behavioralSignature) assessment.strategy who
       ((assessment.strategy who).withLaw site.1 law)
-    let phase := (onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+    let phase := (onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon
       scheduler).runBehavioralUntil ((bounds.onePacketMenu timeouts leaks).bounded
-        (initialLaw setup) horizon scheduler).wellFoundedHistories installed
+        (initialDistribution setup) horizon scheduler).wellFoundedHistories installed
         (LateStopped setup timeouts leaks bounds horizon scheduler (siteRank (timeouts := timeouts)
           site.1)) history.1
     ∃ target, ProtocolState.behavioralStateStep setup.program
@@ -132,8 +133,9 @@ theorem disclosure_sourceKernel
   classical
   intro installed phase
   let menu := bounds.onePacketMenu timeouts leaks
-  let model := onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon scheduler
-  have horizonBound := menu.bounded (initialLaw setup) horizon scheduler
+  let model := onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon
+    scheduler
+  have horizonBound := menu.bounded (initialDistribution setup) horizon scheduler
   let certificate := horizonBound.wellFoundedHistories
   let profile := setup.intendedOpeningProfile source.strategy
   let rank := siteRank (timeouts := timeouts) site.1
@@ -147,7 +149,7 @@ theorem disclosure_sourceKernel
   have ready : execution.application.config.cut.Ready event :=
     (execution.application.publicView_eventReady event).mp
       (PublicView.ownTurn?_spec _ who event turn).1
-  have traceHere : (menu.protocol (initialLaw setup) horizon scheduler).Trace
+  have traceHere : (menu.protocol (initialDistribution setup) horizon scheduler).Trace
       (some ⟨remaining, some who, execution⟩) := current ▸ history.1.trace
   -- The disclosing action and the point it reaches.
   let disclose : setup.informationGraph.Action event :=

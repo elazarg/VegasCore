@@ -13,7 +13,7 @@ independent uniform bits and performs the intended reveals. Its actual source
 information sets, consistent Bayes beliefs and sequential rationality are
 checked in [the value proof](../Vegas/Examples/OddsEvensFairValue.lean). Every
 unilateral intended policy has expected payout 100 against the fair opponent.
-[The law proof](../Vegas/Examples/OddsEvensFairLaw.lean) identifies the complete
+[The law proof](../Vegas/Examples/OddsEvensFairDistribution.lean) identifies the complete
 typed terminal/payoff distribution and derives expected payout 100 for each
 player. [The full-source extension](../Vegas/Examples/OddsEvensFullSource.lean) supplies
 a sequential equilibrium of the ordinary source menus, where failed commitments

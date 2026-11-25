@@ -112,13 +112,15 @@ theorem sourceServiceClientPolicy_roundsFrom
     (bound : (serviceGraph setup deps).EventId → Nat) (turns : Nat)
     (timing : TurnTiming setup turns deps) (profile : BehavioralProfile setup.program)
     (count : Nat) :
-    (serviceApplication setup deps duration leaks).roundsFrom (serviceInitialLaw setup deps)
+    (serviceApplication setup deps duration leaks).roundsFrom
+      (serviceInitialDistribution setup deps)
       scheduler (serviceClientPolicy setup deps duration leaks bound turns timing profile) count =
-      (serviceApplication setup deps duration leaks).roundsFrom (serviceInitialLaw setup deps)
+      (serviceApplication setup deps duration leaks).roundsFrom
+        (serviceInitialDistribution setup deps)
         scheduler (serviceTurnPolicy setup deps duration leaks bound turns timing profile)
         count :=
   EventGraphRuntime.clientPolicy_roundsFrom (serviceTimeouts setup deps duration) leaks
-    (serviceInitialLaw setup deps) scheduler bound turns timing
+    (serviceInitialDistribution setup deps) scheduler bound turns timing
     (compileEventProfile setup.program profile) count
 
 /-- Against a unilateral deviation, completing the other clients preserves the run law. -/
@@ -128,11 +130,13 @@ theorem sourceServiceClientPolicy_deviation_roundsFrom
     (timing : TurnTiming setup turns deps) (profile : BehavioralProfile setup.program)
     (who : Player) (alternative : (serviceApplication setup deps duration leaks).Policy)
     (count : Nat) :
-    (serviceApplication setup deps duration leaks).roundsFrom (serviceInitialLaw setup deps)
+    (serviceApplication setup deps duration leaks).roundsFrom
+      (serviceInitialDistribution setup deps)
       scheduler (Function.update
         (serviceClientPolicy setup deps duration leaks bound turns timing profile)
         who alternative) count =
-      (serviceApplication setup deps duration leaks).roundsFrom (serviceInitialLaw setup deps)
+      (serviceApplication setup deps duration leaks).roundsFrom
+        (serviceInitialDistribution setup deps)
         scheduler (Function.update
           (serviceTurnPolicy setup deps duration leaks bound turns timing profile)
           who alternative) count := by
@@ -161,7 +165,7 @@ end ClientRuns
 
 /-- The first-turn clients of a source profile have, through the supplied reader,
 the complete terminal configuration law of the profile's source run. -/
-def FirstTurnReadoutLaw (setup : Setup (Player := Player) (L := L))
+def FirstTurnReadoutAgreement (setup : Setup (Player := Player) (L := L))
     (deps : setup.dataflowGraph.Dependencies) (duration : (serviceGraph setup deps).EventId → Nat)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup deps)))
     (reader : (serviceApplication setup deps duration leaks).ProtocolState →
@@ -169,7 +173,7 @@ def FirstTurnReadoutLaw (setup : Setup (Player := Player) (L := L))
     (horizon : Nat) (scheduler : (serviceApplication setup deps duration leaks).Scheduler)
     (bound : (serviceGraph setup deps).EventId → Nat) (turns : Nat)
     (profile : BehavioralProfile setup.program) : Prop :=
-  ((serviceApplication setup deps duration leaks).roundsFrom (serviceInitialLaw setup deps)
+  ((serviceApplication setup deps duration leaks).roundsFrom (serviceInitialDistribution setup deps)
     scheduler (serviceTurnPolicy setup deps duration leaks bound turns
       (firstTurnTiming setup turns deps) profile) horizon).map
       (fun execution => reader ((serviceApplication setup deps duration leaks).finished
@@ -178,13 +182,13 @@ def FirstTurnReadoutLaw (setup : Setup (Player := Player) (L := L))
 
 /-- The first-turn clients of a source profile have the complete terminal
 configuration law of the profile's source run. -/
-def FirstTurnSourceLaw (setup : Setup (Player := Player) (L := L))
+def FirstTurnSourceAgreement (setup : Setup (Player := Player) (L := L))
     (deps : setup.dataflowGraph.Dependencies) (duration : (serviceGraph setup deps).EventId → Nat)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup deps)))
     (horizon : Nat) (scheduler : (serviceApplication setup deps duration leaks).Scheduler)
     (bound : (serviceGraph setup deps).EventId → Nat) (turns : Nat)
     (profile : BehavioralProfile setup.program) : Prop :=
-  ((serviceApplication setup deps duration leaks).roundsFrom (serviceInitialLaw setup deps)
+  ((serviceApplication setup deps duration leaks).roundsFrom (serviceInitialDistribution setup deps)
     scheduler (serviceTurnPolicy setup deps duration leaks bound turns
       (firstTurnTiming setup turns deps) profile) horizon).map
       (fun execution => serviceSourceReadout setup deps duration leaks

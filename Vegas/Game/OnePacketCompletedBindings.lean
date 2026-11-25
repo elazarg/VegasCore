@@ -49,7 +49,7 @@ theorem completedBinding_accepted_of_publicRecord
     obtain ⟨result, read⟩ := Option.isSome_iff_exists.mp
       (ref.get?_isSome control.execution.application.config.store present)
     have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace
-      (initialLaw setup) horizon scheduler trace
+      (initialDistribution setup) horizon scheduler trace
     cases result with
     | failure =>
         obtain ⟨rank, ⟨residual⟩, failures⟩ := failedBindingRecord_history (timeouts := timeouts)
@@ -58,7 +58,7 @@ theorem completedBinding_accepted_of_publicRecord
           (failures event completed who payload layoutEq read _ residual.decode)).elim
     | success value =>
         have valid : control.execution.application.BindingInvariant :=
-          ((reactiveBindingInvariant timeouts) leaks).history (initialLaw setup) horizon
+          ((reactiveBindingInvariant timeouts) leaks).history (initialDistribution setup) horizon
             scheduler (fun state member => by
               obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ member
               exact State.initial_bindingInvariant _) rawTrace

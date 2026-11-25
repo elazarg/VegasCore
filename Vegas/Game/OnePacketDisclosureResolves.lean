@@ -153,7 +153,7 @@ theorem decodedState_intendedFor_or_owes (wellFormed : setup.WellFormed) (who : 
     (profile : BehavioralProfile setup.program)
     (menu : (application setup timeouts leaks).ResponseMenu) (horizon : Nat)
     (scheduler : (application setup timeouts leaks).Scheduler) :
-    ∀ {state} (_ : (menu.protocol (initialLaw setup) horizon scheduler).Trace state)
+    ∀ {state} (_ : (menu.protocol (initialDistribution setup) horizon scheduler).Trace state)
       (control : (application setup timeouts leaks).Control), state = some control →
       DecodedState setup timeouts leaks profile (fun point =>
         ProtocolState.IntendedFor who setup.program point ∨
@@ -176,7 +176,7 @@ reveal transmits: the player owes no failed reveal, so the decoded point is
 intended for it, and its disclosure there publishes a value. -/
 theorem disclosureResolves_of_forced (wellFormed : setup.WellFormed)
     {control : (application setup timeouts leaks).Control}
-    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some control))
     (who actor : Player) (forced : ForcedState setup timeouts leaks who (some control))
     (other : actor ≠ who) :
@@ -187,10 +187,10 @@ theorem disclosureResolves_of_forced (wellFormed : setup.WellFormed)
   have ownerEq : owner = actor :=
     Option.some.inj ((nodeView_resolve_actor outputEq codeEq).symm.trans owned)
   subst ownerEq
-  have rawTrace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+  have rawTrace : ((application setup timeouts leaks).protocol (initialDistribution setup) horizon
     scheduler).Trace
       (some control) :=
-    (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon scheduler
+    (bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup) horizon scheduler
       trace
   have facts := legalFacts setup leaks horizon scheduler control rawTrace
   have ready : control.execution.application.config.cut.Ready event :=

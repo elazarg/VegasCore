@@ -5,7 +5,7 @@ module
 public import Vegas.Game.OnePacketFirstActivationValue
 public import Vegas.Game.OnePacketPhasePotential
 public import Vegas.Game.OnePacketLocalCompletionValue
-public import Vegas.Game.OnePacketEventPhaseLaw
+public import Vegas.Game.OnePacketEventPhaseDistribution
 public import Vegas.Game.OnePacketValueTransport
 
 @[expose] public section
@@ -26,10 +26,10 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (bounds : MessageBounds setup.informationGraph) (horizon : Nat)
   (scheduler : (application setup timeouts leaks).Scheduler)
 
-local notation "N" => onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+local notation "N" => onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon
   scheduler
 local notation "NP" => ReactiveApplication.ResponseMenu.protocol
-  (bounds.onePacketMenu timeouts leaks) (initialLaw setup) horizon scheduler
+  (bounds.onePacketMenu timeouts leaks) (initialDistribution setup) horizon scheduler
 local notation "Menu" => bounds.onePacketMenu timeouts leaks
 local notation "Clear" => ReactiveApplication.stateInvariant
   (app := application setup timeouts leaks)
@@ -40,14 +40,14 @@ open Classical in
 /-- An arbitrary current disclosure response gains only the vanishing common
 continuation error at a fresh source decision. -/
 theorem assembled_firstActivation_disclosure_gain_le
-    [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
+    [(application setup timeouts leaks).FiniteNature (initialDistribution setup) scheduler]
     [∀ who, DecidableEq ((N).InfoState who)]
     (wellFormed : setup.WellFormed) (covers : bounds.CoversOutputValues)
     (capacity : ∀ player, bindingEventCount setup.informationGraph player < bounds.candidateCount)
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (scale : ℕ → ℝ) (positive : ∀ n, 0 < scale n) (le_one : ∀ n, scale n ≤ 1)
     {slots : Nat}
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialDistribution setup)
       horizon scheduler slots p))
     (targetSequence : ℕ → (N).BehavioralAssessment)
     (assembled : OnePacketAssembled setup timeouts leaks bounds horizon scheduler sequence scale
@@ -106,7 +106,7 @@ theorem assembled_firstActivation_disclosure_gain_le
       |exclusionReadoutUtility setup parameter utility excludedPayoff readout who| ≤ payoffBound)
     (excludedBounded : |excludedPayoff who| ≤ payoffBound) :
     let common := (targetSequence n).strategy
-    let certificate := ((Menu).bounded (initialLaw setup) horizon
+    let certificate := ((Menu).bounded (initialDistribution setup) horizon
       scheduler).wellFoundedHistories
     let stopped := fun final : (NP).History => ¬ Clear final.state ∨
       DecodedState setup timeouts leaks (failureProfile setup.program)

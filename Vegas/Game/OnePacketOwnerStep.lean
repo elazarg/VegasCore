@@ -20,9 +20,9 @@ handle is public and the owner's key carries the value
 
 Hence, if the owner's decoded response keeps silence with mass near a keyed
 weight and leaves little mass outside silence and openings of the bound value
-(`Vegas.OwnerOpeningLaw`), the owner's step is close to a two-point kernel of
+(`Vegas.OwnerOpeningWithinBounds`), the owner's step is close to a two-point kernel of
 the key, the option and the operational state
-(`Vegas.ownerStepClose_of_openingLaw`).
+(`Vegas.ownerStepClose_of_openingDistribution`).
 -/
 
 noncomputable section
@@ -188,10 +188,10 @@ theorem emittedEnvelope_of_opening {horizon : Nat} {scheduler : (application set
     cases silent
   rw [sent] at sentMaterial
   cases sentMaterial
-  have trace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+  have trace : ((application setup timeouts leaks).protocol (initialDistribution setup) horizon
     scheduler).Trace
       (some control) :=
-    current ▸ (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon
+    current ▸ (bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup) horizon
       scheduler history.trace
   obtain ⟨inputRecall, serialRecall, _⟩ := (countRecall_history timeouts) leaks trace
   have local_ := (localEnvelope_eq_of_recall timeouts) leaks control.execution inputRecall
@@ -383,7 +383,7 @@ open Classical in
 decided publication event ready and the owner acting, the owner's decoded
 response keeps silence with mass within `δ₁` of the key's silence weight, and
 leaves at most `δ₂` outside silence and openings of the bound value. -/
-def OwnerOpeningLaw {LateOption : Type}
+def OwnerOpeningWithinBounds {LateOption : Type}
     (silence : LateKey setup timeouts leaks → LateOption → Option (OperationalState setup timeouts
       leaks) →
       PMF Bool)
@@ -400,14 +400,14 @@ def OwnerOpeningLaw {LateOption : Type}
       ForcedState setup timeouts leaks key.owner (some control) →
       control.execution.application.config.cut.Ready event →
       control.actor = some key.owner →
-      |expect ((bounds.onePacketMenu timeouts leaks).decodeProfile (initialLaw setup)
+      |expect ((bounds.onePacketMenu timeouts leaks).decodeProfile (initialDistribution setup)
           horizon scheduler profile key.owner (control.execution.logs
             key.owner)
           (control.execution.observe (application setup timeouts leaks) key.owner))
           (fun action => if action.transmission = none then 1 else 0) -
         expect (silence key option (operationalState setup timeouts leaks (some control)))
           (fun silent => if silent then 1 else 0)| ≤ δ₁ ∧
-      expect ((bounds.onePacketMenu timeouts leaks).decodeProfile (initialLaw setup)
+      expect ((bounds.onePacketMenu timeouts leaks).decodeProfile (initialDistribution setup)
           horizon scheduler profile key.owner (control.execution.logs
             key.owner)
           (control.execution.observe (application setup timeouts leaks) key.owner))
@@ -422,7 +422,8 @@ omit [Fintype Player] in
 followed by the response transition. -/
 theorem controlStep_owner (players : Player → (application setup timeouts leaks).Policy)
     (remaining : Nat) (owner : Player) (execution : (application setup timeouts leaks).Execution) :
-    (application setup timeouts leaks).controlStep (initialLaw setup) horizon scheduler players
+    (application setup timeouts leaks).controlStep (initialDistribution setup) horizon scheduler
+      players
         (some ⟨remaining, some owner, execution⟩) =
       (players owner (execution.logs owner) (execution.observe (application setup timeouts leaks)
         owner)).map fun action =>
@@ -439,7 +440,7 @@ theorem controlStep_owner (players : Player → (application setup timeouts leak
 
 open Classical in
 /-- **The owner's step from its opening law.** -/
-theorem ownerStepClose_of_openingLaw {LateOption : Type}
+theorem ownerStepClose_of_openingDistribution {LateOption : Type}
     (silence : LateKey setup timeouts leaks → LateOption → Option (OperationalState setup timeouts
       leaks) →
       PMF Bool)
@@ -447,7 +448,8 @@ theorem ownerStepClose_of_openingLaw {LateOption : Type}
     (profile : ∀ player,
       (onePacketInformation setup timeouts leaks bounds horizon scheduler).BehavioralPolicy player)
     {δ₁ δ₂ : ℝ} {allowed : (application setup timeouts leaks).ProtocolState → Prop}
-    (law : OwnerOpeningLaw (timeouts := timeouts) bounds horizon scheduler silence key option
+    (law : OwnerOpeningWithinBounds (timeouts := timeouts) bounds horizon scheduler silence key
+      option
       profile δ₁ δ₂ allowed) :
     OwnerStepClose (timeouts := timeouts) (openingKernel (timeouts := timeouts) bounds horizon
       scheduler silence) key option profile
@@ -471,7 +473,7 @@ theorem ownerStepClose_of_openingLaw {LateOption : Type}
     simp only [emittedEnvelope, silent]
   · intro action supported _ opens
     have member := (bounds.onePacketMenu timeouts leaks).decodeProfile_support
-      (initialLaw setup) horizon scheduler profile key.owner _ _ action
+      (initialDistribution setup) horizon scheduler profile key.owner _ _ action
         supported
     have represented : ∃ witness : (onePacketProtocol setup timeouts leaks bounds horizon
         scheduler).History × Nat × (application setup timeouts leaks).Execution ×

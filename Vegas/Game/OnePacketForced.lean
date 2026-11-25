@@ -186,20 +186,20 @@ residual at some prefix, for every source profile. -/
 theorem protocol_sourceResidual (profile : BehavioralProfile setup.program)
     (menu : (application setup timeouts leaks).ResponseMenu) (horizon : Nat)
     (scheduler : (application setup timeouts leaks).Scheduler) :
-    ∀ {state} (_trace : (menu.protocol (initialLaw setup) horizon scheduler).Trace state)
+    ∀ {state} (_trace : (menu.protocol (initialDistribution setup) horizon scheduler).Trace state)
       (control : (application setup timeouts leaks).Control), state = some control →
       ∃ rank,
         Nonempty (SourceResidual setup profile rank control.execution.application.config) := by
   intro state trace control current
   exact SourceResidual.of_rawTrace profile horizon scheduler
-    (menu.toRawTrace (initialLaw setup) horizon scheduler trace) control current
+    (menu.toRawTrace (initialDistribution setup) horizon scheduler trace) control current
 
 /-- The source point decoded from an initialized native history retains
 publication-default provenance, including through automatic completion. -/
 theorem publicationsDefaulted_of_decode
     {menu : (application setup timeouts leaks).ResponseMenu} {horizon : Nat}
     {scheduler : (application setup timeouts leaks).Scheduler}
-    (history : (menu.protocol (initialLaw setup) horizon scheduler).History)
+    (history : (menu.protocol (initialDistribution setup) horizon scheduler).History)
     (control : (application setup timeouts leaks).Control) (current : history.state = some control)
     {rank : Nat} (ordered : control.execution.application.config.cut.IsPrefix rank)
     {point : ProtocolState setup.program}
@@ -223,7 +223,7 @@ theorem decodedState_of_decode (profile : BehavioralProfile setup.program)
     {property : ProtocolState setup.program → Prop}
     {menu : (application setup timeouts leaks).ResponseMenu} {horizon : Nat}
     {scheduler : (application setup timeouts leaks).Scheduler}
-    (history : (menu.protocol (initialLaw setup) horizon scheduler).History)
+    (history : (menu.protocol (initialDistribution setup) horizon scheduler).History)
     (control : (application setup timeouts leaks).Control) (current : history.state = some control)
     {rank : Nat} (ordered : control.execution.application.config.cut.IsPrefix rank)
     {point : ProtocolState setup.program}

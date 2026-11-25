@@ -225,7 +225,8 @@ theorem completion_choice_pos (assessment : setup.intendedModel.BehavioralAssess
     ((assessment.strategy actor (setup.protocolObserve actor
         (decodedPoint setup current.execution.application.config))).map Subtype.val)
       (decodeEventAction setup.program event action) ≠ 0 := by
-  change some next ∈ ((application setup timeouts leaks).transition (initialLaw setup) horizon
+  change some next ∈ ((application setup timeouts leaks).transition
+    (initialDistribution setup) horizon
     scheduler
     (some current) joint).support at realized
   have forcedCurrent := forcedState_of_transition (timeouts := timeouts) prior joint realized
@@ -237,7 +238,7 @@ theorem completion_choice_pos (assessment : setup.intendedModel.BehavioralAssess
     setup.program)
     (bounds.onePacketMenu timeouts leaks) horizon scheduler prior current rfl
   have rawPrior := (bounds.onePacketMenu timeouts leaks).toRawTrace
-    (initialLaw setup) horizon scheduler prior
+    (initialDistribution setup) horizon scheduler prior
   have active := current.execution.application.active_of_ready_owned
     (legalFacts setup leaks horizon scheduler current rawPrior).quiescent ready acts
   have notFailing : ¬ Failing (decodeEventAction setup.program event action) := by
@@ -255,7 +256,8 @@ theorem completion_choice_pos (assessment : setup.intendedModel.BehavioralAssess
     rw [decodedNext, Option.some.injEq] at foundDecoded
     subst foundDecoded
     exact (foundForced.2 actor other).2 owes
-  rcases transition_idle_cases (timeouts := timeouts) (initialLaw setup) horizon scheduler current
+  rcases transition_idle_cases (timeouts := timeouts) (initialDistribution setup) horizon scheduler
+    current
     idle joint realized
       with sameExecution | ⟨command, moved⟩
   · exact (config_ne_of_step member (by rw [sameExecution])).elim
@@ -281,10 +283,10 @@ theorem completion_choice_pos (assessment : setup.intendedModel.BehavioralAssess
       rw [chosen]
       exact notFailing)
   rw [chosen] at content
-  have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup)
+  have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup)
     horizon scheduler (prior.extend joint legal realized)
   have facts := legalFacts setup leaks horizon scheduler next rawTrace
-  have inputsEq := transition_idle_inputs (timeouts := timeouts) (initialLaw setup) horizon
+  have inputsEq := transition_idle_inputs (timeouts := timeouts) (initialDistribution setup) horizon
     scheduler current idle joint
     realized
   have present : message ∈ current.execution.network.inputs := by
@@ -366,13 +368,14 @@ theorem intendedHistory?_isSome (assessment : setup.intendedModel.BehavioralAsse
         intendedHistory?_isSome assessment who prior next same forcedNext
           regularPrior ownPrior
       subst current
-      have realizedRaw : some control ∈ ((application setup timeouts leaks).transition (initialLaw
+      have realizedRaw : some control ∈ ((application setup timeouts leaks).transition
+        (initialDistribution
         setup)
           horizon scheduler before joint).support := realized
       cases before with
       | none =>
           obtain rfl := trace_eq_start_of_none (timeouts := timeouts) prior
-          change some control ∈ ((initialLaw setup).map fun state => some
+          change some control ∈ ((initialDistribution setup).map fun state => some
             (⟨horizon, none, ReactiveApplication.Execution.initial (application setup timeouts
               leaks)
               state⟩ : (application setup timeouts leaks).Control)).support at realizedRaw
@@ -388,7 +391,7 @@ theorem intendedHistory?_isSome (assessment : setup.intendedModel.BehavioralAsse
               (setup.intendedProtocol.step setup.intendedProtocol.initHistory.state
                 ⟨_, legalStart⟩).support := by
             rw [decodedPoint_initial]
-            change _ ∈ (setup.initialLaw.map fun initial =>
+            change _ ∈ (setup.initialDistribution.map fun initial =>
               some (ProtocolState.entry setup.program (Config.initial initial))).support
             exact (PMF.mem_support_map_iff _ _ _).mpr ⟨initial, initialSupported, rfl⟩
           obtain ⟨next, extended⟩ := extendIntended?_isSome legalStart reachedStart
@@ -408,7 +411,8 @@ theorem intendedHistory?_isSome (assessment : setup.intendedModel.BehavioralAsse
           have priorClear : current.execution.application.config.defaulted = ∅ := by
             apply Finset.eq_empty_iff_forall_notMem.mpr
             intro other present
-            have later := (reactive_protocol_defaulted_mono timeouts) leaks (initialLaw setup)
+            have later := (reactive_protocol_defaulted_mono timeouts) leaks
+              (initialDistribution setup)
               horizon scheduler current control joint realizedRaw present
             rw [clear] at later
             exact Finset.notMem_empty other later
@@ -446,7 +450,8 @@ theorem intendedHistory?_isSome (assessment : setup.intendedModel.BehavioralAsse
               have previousState : previous.state =
                   decodedPoint setup current.execution.application.config :=
                 intendedHistory?_state (timeouts := timeouts) prior previousReplay
-              rcases (reactive_protocol_config_eq_or_step_of_clear timeouts) leaks (initialLaw
+              rcases (reactive_protocol_config_eq_or_step_of_clear timeouts) leaks
+                (initialDistribution
                 setup)
                   horizon scheduler current control joint realizedRaw clear with
                     same | ⟨event, ready, action, member⟩
@@ -518,7 +523,8 @@ theorem intendedHistory?_isSome (assessment : setup.intendedModel.BehavioralAsse
                       rw [decodedCurrent] at positive
                       exact intendedAvailable_of_pos assessment
                         ((decodedPoint_actor_of_history actor
-                          ((bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup)
+                          ((bounds.onePacketMenu timeouts leaks).toRawTrace
+                            (initialDistribution setup)
                             horizon scheduler prior) ready decodedCurrent).trans acts) positive
                 have reachedStep : decodedPoint setup control.execution.application.config ∈
                     (setup.intendedProtocol.step previous.state ⟨_, legalStep⟩).support := by
@@ -555,7 +561,8 @@ def ForcedBeliefInputs.ofForcedHistories
       site.1)]
     [DecidableEq (setup.intendedModel.InformationHistory who sourceSite.1)]
     {scale floors : ℕ → ℝ} {depth : ℕ} {slack : ℝ} {n : ℕ}
-    (forced : forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks) (initialLaw
+    (forced : forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks)
+      (initialDistribution
       setup) horizon
       scheduler who site.1)
     (decision : site.1 = some (past, view)) {event : setup.informationGraph.EventId}

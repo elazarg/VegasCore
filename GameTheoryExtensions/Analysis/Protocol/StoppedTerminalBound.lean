@@ -22,7 +22,7 @@ every set of states closed under legal steps
 (`GameTheory.Protocol.InformationModel.runBehavioralUntil_support_closed`), and,
 from a decision whose information state cannot matter twice, is affine in the
 law installed there
-(`GameTheory.Protocol.InformationModel.runBehavioralUntil_update_withLaw_eq_bind`).
+(`GameTheory.Protocol.InformationModel.runBehavioralUntil_update_withDistribution_eq_bind`).
 -/
 
 noncomputable section
@@ -164,7 +164,7 @@ theorem runBehavioralUntil_congr (certificate : E.WellFoundedHistories)
 unstopped nonterminal history at an information state where `who` acts and
 which cannot matter twice, play until the stopping set with a law installed
 there draws a choice from the law and plays the corresponding commitment. -/
-theorem runBehavioralUntil_update_withLaw_eq_bind [DecidableEq ι]
+theorem runBehavioralUntil_update_withDistribution_eq_bind [DecidableEq ι]
     (certificate : E.WellFoundedHistories) (actsOnce : M.ActsOnceWhereItMatters)
     (profile : (i : ι) → M.BehavioralPolicy i) (who : ι) (policy : M.BehavioralPolicy who)
     [DecidableEq (M.InfoState who)] (info : M.InfoState who) (law : PMF (M.Choice who info))

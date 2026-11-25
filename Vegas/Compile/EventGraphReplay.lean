@@ -29,7 +29,7 @@ variable {Player : Type} [DecidableEq Player]
 variable {L : IExpr} [R : IExpr.ResultTypes L]
 
 /-- An arbitrary whole graph profile has its canonical source backtranslation. -/
-theorem canonical_profile_terminalConfig_law
+theorem canonical_profile_terminalConfig_distribution
     {Γ : SourceCtx Player L} {O : Finset VarId}
     (program : SourceProgram Player L Γ O)
     (profile : (toInformationGraph program).BehavioralProfile) (state : State L Γ) :
@@ -56,7 +56,7 @@ theorem canonical_profile_terminalConfig_law
     apply pmf_map_injective (f := Subtype.val) Subtype.val_injective
     simpa only [EventGraph.terminalOutcomes_map_val] using kernels
   rw [← outcomes]
-  exact canonical_terminalConfig_law program source state
+  exact canonical_terminalConfig_distribution program source state
 
 /-- Source decoding of an actual terminal record table is supported by a genuine source run.
 The source profile may depend on that ex-post table; this is a reachability result. -/
@@ -102,7 +102,7 @@ private theorem terminalConfig_mem_source_run_of_reachable
           final terminal⟩ := Subtype.ext same
     exact equal ▸ member
   refine ⟨fun owner => backtranslateEventPolicy program owner (profile owner), ?_⟩
-  rw [← canonical_profile_terminalConfig_law program profile state, PMF.support_map]
+  rw [← canonical_profile_terminalConfig_distribution program profile state, PMF.support_map]
   exact ⟨_, terminalSupported, rfl⟩
 
 /-- Actual terminal graph records admit a genuine full-interface source history. -/

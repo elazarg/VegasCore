@@ -82,15 +82,16 @@ structure PendingLumping (assessment : (onePacketInformation setup timeouts leak
     ∀ history ∈ (assessment.belief who site).support,
       ForcedState setup timeouts leaks who history.1.state → history.1.state ∈ keep site key
   kept : ∀ site key, lateKey setup timeouts leaks who site.1 = some key → ∀ option,
-    ∀ state ∈ keep site key, ∀ next ∈ ((application setup timeouts leaks).controlStep (initialLaw
+    ∀ state ∈ keep site key, ∀ next ∈ ((application setup timeouts leaks).controlStep
+      (initialDistribution
       setup)
       horizon scheduler ((bounds.onePacketMenu timeouts leaks).decodeProfile
-        (initialLaw setup) horizon scheduler (profileOf site option)) state).support,
+        (initialDistribution setup) horizon scheduler (profileOf site option)) state).support,
       next ∈ keep site key
   close : ∀ site key, lateKey setup timeouts leaks who site.1 = some key → ∀ option,
     ∀ state ∈ keep site key, PMF.WithinTV δ
-      (((application setup timeouts leaks).controlStep (initialLaw setup) horizon scheduler
-        ((bounds.onePacketMenu timeouts leaks).decodeProfile (initialLaw setup) horizon
+      (((application setup timeouts leaks).controlStep (initialDistribution setup) horizon scheduler
+        ((bounds.onePacketMenu timeouts leaks).decodeProfile (initialDistribution setup) horizon
           scheduler (profileOf site option)) state).map (image key))
       (kernel key option (image key state))
   failure_eq : ∀ site key, ∀ state ∈ keep site key,
@@ -132,7 +133,7 @@ theorem PendingLumping.pathwise {assessment : (onePacketInformation setup timeou
         (PMF.pure (lumping.start key (operationalRecord setup timeouts leaks
           bounds horizon scheduler
           history.1.trace)))) (lumping.failure key)| ≤ fuel * δ := by
-  have lumped := (bounds.onePacketMenu timeouts leaks).run_map_withinTV (initialLaw setup)
+  have lumped := (bounds.onePacketMenu timeouts leaks).run_map_withinTV (initialDistribution setup)
     horizon scheduler (profileOf site option) (lumping.image key)
       (lumping.kernel key option)
     (lumping.keep site key) δ (lumping.kept site key
@@ -153,8 +154,8 @@ theorem PendingLumping.pathwise {assessment : (onePacketInformation setup timeou
         (lumping.failure key ∘ fun final => lumping.image key final.state) := by
     apply expect_congr_on_support
     intro final reached
-    have stateLaw := (bounds.onePacketMenu timeouts leaks).run_map_controlSteps
-      (initialLaw setup) horizon scheduler (profileOf site option) fuel history.1
+    have stateDistribution := (bounds.onePacketMenu timeouts leaks).run_map_controlSteps
+      (initialDistribution setup) horizon scheduler (profileOf site option) fuel history.1
     have inside := (iterate_bind_map_withinTV _ (lumping.image key)
       (lumping.kernel key option)
       (lumping.keep site key) δ (lumping.kept site key
@@ -166,7 +167,7 @@ theorem PendingLumping.pathwise {assessment : (onePacketInformation setup timeou
           ExecutionProtocol.History.state).support := by
       rw [PMF.support_map]
       exact ⟨final, reached, rfl⟩
-    rw [stateLaw] at stateReached
+    rw [stateDistribution] at stateReached
     exact lumping.failure_eq site key final.state (inside final.state
       stateReached)
   rw [sameFailure]

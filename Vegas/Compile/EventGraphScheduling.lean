@@ -67,7 +67,7 @@ theorem toInformationGraph_terminalOutcomes_eq {Γ : SourceCtx Player L} {openNa
   exact toInformationGraph_runPolicies_eq program profile first second inputs
 
 /-- Every public schedule preserves the complete source configuration law. -/
-theorem scheduled_terminalConfig_law
+theorem scheduled_terminalConfig_distribution_eq
     {Γ : SourceCtx Player L} {openNames : Finset VarId}
     (program : SourceProgram Player L Γ openNames)
     (scheduler : (toInformationGraph program).PublicScheduler)
@@ -77,10 +77,10 @@ theorem scheduled_terminalConfig_law
       (terminalConfig program) = SourceProgram.run program profile state := by
   rw [toInformationGraph_terminalOutcomes_eq program (compileEventProfile program profile)
     scheduler (toInformationGraph program).canonicalScheduler (encodeInputs state)]
-  exact canonical_terminalConfig_law program profile state
+  exact canonical_terminalConfig_distribution program profile state
 
 /-- Every public schedule preserves the full typed-state projection of source execution. -/
-theorem scheduled_terminalState_law
+theorem scheduled_terminalState_distribution
     {Γ : SourceCtx Player L} {openNames : Finset VarId}
     (program : SourceProgram Player L Γ openNames)
     (scheduler : (toInformationGraph program).PublicScheduler)
@@ -91,10 +91,10 @@ theorem scheduled_terminalState_law
       (SourceProgram.run program profile state).map SourceProgram.Config.state := by
   rw [toInformationGraph_terminalOutcomes_eq program (compileEventProfile program profile)
     scheduler (toInformationGraph program).canonicalScheduler (encodeInputs state)]
-  exact canonical_terminalState_law program profile state
+  exact canonical_terminalState_distribution program profile state
 
 /-- Arbitrary public scheduling preserves the raw expression-payout projection. -/
-theorem scheduled_payout_law
+theorem scheduled_payout_distribution
     {Γ : SourceCtx Player L} {openNames : Finset VarId}
     (program : SourceProgram Player L Γ openNames)
     (scheduler : (toInformationGraph program).PublicScheduler)
@@ -106,20 +106,20 @@ theorem scheduled_payout_law
         (fun config => program.evaluatePayoffs config.state) := by
   rw [toInformationGraph_terminalOutcomes_eq program (compileEventProfile program profile)
     scheduler (toInformationGraph program).canonicalScheduler (encodeInputs state)]
-  exact canonical_payout_law program profile state
+  exact canonical_payout_distribution program profile state
 
 /-- One compiled graph and profile preserve the complete private-setup law
 under every public scheduler, without a finiteness or independence premise. -/
-theorem scheduled_setup_law (setup : Setup (Player := Player) (L := L))
+theorem scheduled_setup_distribution (setup : Setup (Player := Player) (L := L))
     (scheduler : setup.informationGraph.PublicScheduler)
     (profile : BehavioralProfile setup.program) :
-    (setup.initialLaw.bind fun initial =>
+    (setup.initialDistribution.bind fun initial =>
       (setup.informationGraph.terminalOutcomes scheduler
         (compileEventProfile setup.program profile) (setup.eventInputs initial)).map
           (terminalConfig setup.program)) = setup.run profile := by
   unfold Setup.run
   apply bind_congr_on_support _
   intro initial _
-  exact scheduled_terminalConfig_law setup.program scheduler profile initial
+  exact scheduled_terminalConfig_distribution_eq setup.program scheduler profile initial
 
 end Vegas

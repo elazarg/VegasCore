@@ -97,13 +97,13 @@ theorem settleLate_listener_support_maximal
     (answer other : LateLeakAnswer)
     (menuAnswer : some (SettleLateMove.reply answer) ∈ settleLateMenu late site.1)
     (menuOther : some (SettleLateMove.reply other) ∈ settleLateMenu late site.1)
-    (supported : settleLateListenerLaw A.strategy site.1 (some (.reply answer)) ≠ 0) :
+    (supported : settleLateListenerDistribution A.strategy site.1 (some (.reply answer)) ≠ 0) :
     settleLateAnswerReward A site other ≤ settleLateAnswerReward A site answer := by
   let problem := settleLateListenerDecision G late site answers (A.strategy .listener)
   have maximal := problem.rational_support_maximal A
     ((A.isSequentiallyRational_iff_with _ _).mp rational)
     ⟨some (.reply answer), menuAnswer⟩ (by
-      rw [settleLateListenerLaw_apply _ _ _ menuAnswer] at supported
+      rw [settleLateListenerDistribution_apply _ _ _ menuAnswer] at supported
       exact (PMF.mem_support_iff _ _).mpr supported)
     ⟨some (.reply other), menuOther⟩
   rw [settleLateListenerDecision_expectedReward G late site answers _ A
@@ -142,14 +142,17 @@ theorem settleLateAnswerReward_eq (A : (settleLateModel G late).BehavioralAssess
 
 theorem settleLateBitOneProb_bitZero (profile : SettleLateProfile G late)
     (report : SettleLateReport) (failed : report.included = none) :
-    (settleLateListenerLaw profile (.asked report) (some (.reply (.failure false)))).toReal =
+    (settleLateListenerDistribution profile (.asked report) (some (.reply
+      (.failure false)))).toReal =
       1 - settleLateBitOneProb profile (.asked report) := by
   classical
-  have computed := lateLeak_expect_two_point (settleLateListenerLaw profile (.asked report))
+  have computed := lateLeak_expect_two_point (settleLateListenerDistribution profile
+    (.asked report))
     (some (.reply (.failure true)))
     (fun choice => if some (SettleLateMove.reply (.failure false)) = choice then 1 else 0)
     1 (fun choice supported different => by
-      obtain ⟨answer, rfl, fits⟩ := settleLateListenerLaw_support profile _ choice supported
+      obtain ⟨answer, rfl, fits⟩ := settleLateListenerDistribution_support profile _ choice
+        supported
       cases answer with
       | failure bit =>
           cases bit
@@ -193,7 +196,7 @@ theorem settleLate_rational_known_failure {A : (settleLateModel G late).Behavior
       settleLateMenu late site.1 := by
     rw [at_report]
     exact ⟨_, rfl, by simp [LateLeakAnswer.fitsOutcome, failed]⟩
-  have wrong : settleLateListenerLaw A.strategy (.asked report)
+  have wrong : settleLateListenerDistribution A.strategy (.asked report)
       (some (.reply (.failure (!bit)))) = 0 := by
     by_contra supported
     have maximal := settleLate_listener_support_maximal rational site answers
@@ -291,7 +294,7 @@ theorem settleLate_rational_guesses {A : (settleLateModel G late).BehavioralAsse
     settleLateSafeProb A.strategy (.asked report) = 0 := by
   have answers := settleLate_answer_site_answers site (Or.inl ⟨report, at_report⟩)
   by_contra positive
-  have supported : settleLateListenerLaw A.strategy site.1 (some (.reply .safe)) ≠ 0 := by
+  have supported : settleLateListenerDistribution A.strategy site.1 (some (.reply .safe)) ≠ 0 := by
     intro zero
     rw [at_report] at zero
     exact positive (by rw [settleLateSafeProb, zero, ENNReal.toReal_zero])

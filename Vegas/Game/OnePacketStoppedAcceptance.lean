@@ -27,14 +27,17 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {scheduler : (application setup timeouts leaks).Scheduler}
   {bound : setup.informationGraph.EventId → Nat}
   (inclusion : ∀ control : (application setup timeouts leaks).Control,
-    ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon scheduler).Trace
+    ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
+      scheduler).Trace
       (some control) → control.execution.application.config.defaulted = ∅ →
     ProtectedInclusionAt timeouts leaks control.execution bound)
 
 local notation "menu" => bounds.onePacketMenu timeouts leaks
-local notation "protocol" => ReactiveApplication.ResponseMenu.protocol menu (initialLaw setup)
+local notation "protocol" =>
+  ReactiveApplication.ResponseMenu.protocol menu (initialDistribution setup)
   horizon scheduler
-local notation "model" => ReactiveApplication.ResponseMenu.information menu (initialLaw setup)
+local notation "model" =>
+  ReactiveApplication.ResponseMenu.information menu (initialDistribution setup)
   horizon scheduler
 local notation "Clear" => ReactiveApplication.stateInvariant
   (app := application setup timeouts leaks)

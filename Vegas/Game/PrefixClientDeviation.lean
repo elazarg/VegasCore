@@ -86,7 +86,7 @@ private theorem nativeSourceContinuation_of_private_blocks [Finite Player]
     (relaxed : (serviceGraph setup deps).RevealRelaxedOrdered)
     {delay : (serviceGraph setup deps).EventId → Nat}
     (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
-      (serviceInitialLaw setup deps) horizon scheduler delay bound)
+      (serviceInitialDistribution setup deps) horizon scheduler delay bound)
     (timely : AsyncTimely (serviceTimeouts setup deps duration) delay bound)
     (intended : GameTheory.Profile setup.intendedModel.behavioralSignature)
     (target : GameTheory.Profile (setup.informationModel
@@ -245,8 +245,8 @@ private theorem nativeSourceContinuation_initialized
           ((serviceGraph setup deps).prefixProfile reference))) focal deviation
     ∃ policy : setup.informationGraph.BehavioralPolicy focal,
       expect ((serviceApplication setup deps duration leaks).roundsFrom
-        (serviceInitialLaw setup deps) scheduler players horizon) nativePayoff ≤
-      expect (setup.initialLaw.bind fun initial => setup.informationGraph.runPolicies
+        (serviceInitialDistribution setup deps) scheduler players horizon) nativePayoff ≤
+      expect (setup.initialDistribution.bind fun initial => setup.informationGraph.runPolicies
         setup.informationGraph.canonicalScheduler
         (Function.update (setup.informationGraph.prefixProfile reference) focal policy)
           (setup.eventInputs initial)) sourcePayoff := by
@@ -260,7 +260,7 @@ private theorem nativeSourceContinuation_initialized
     EventGraph.Config.initial (graph := setup.informationGraph) (setup.eventInputs initial)
   let execution := fun initial : State L setup.context => ReactiveApplication.Execution.initial app
     (EventGraphRuntime.State.initial (graph := serviceGraph setup deps) (setup.eventInputs initial))
-  let representative := setup.initialLaw.support_nonempty.choose
+  let representative := setup.initialDistribution.support_nonempty.choose
   let frame := SourceResidual.initial setup wholeProfile representative
   obtain ⟨noise, initialFactor⟩ := source_initial_traffic_factorization setup
     (deps := deps) (duration := duration) leaks focal
@@ -269,28 +269,29 @@ private theorem nativeSourceContinuation_initialized
       List app.EnvironmentEntry × List app.PlayerEntry ×
       PlayerView (serviceGraph setup deps) × PublicView (serviceGraph setup deps) =>
     ((point.1, ghost point.1.state), point.2)
-  have factor : setup.initialLaw.map (fun initial =>
+  have factor : setup.initialDistribution.map (fun initial =>
       ((Config.initial initial, ghost initial),
         (bindingTraffic (serviceTimeouts setup deps duration)) leaks focal (execution initial))) =
-      (setup.initialLaw.map (fun initial => (Config.initial initial, ghost initial))).bind
+      (setup.initialDistribution.map (fun initial => (Config.initial initial, ghost initial))).bind
         fun hidden => (noise (hidden.1.view focal)).map fun observed => (hidden, observed) := by
     have tagged := congrArg (PMF.map augment) initialFactor
     simpa only [PMF.map_comp, PMF.map_bind, PMF.bind_map, Function.comp_def, augment,
       SourceProgram.Config.initial, ghost, execution] using tagged
-  have boundary (initial : State L setup.context) (supported : initial ∈ setup.initialLaw.support) :
+  have boundary (initial : State L setup.context) (supported : initial ∈
+    setup.initialDistribution.support) :
       CompletionBoundary setup leaks scheduler players 0 (execution initial) := by
     refine ⟨?_, EventOrder.Cut.empty_isPrefix _, ?_⟩
-    · change execution initial ∈ (app.roundsFrom (serviceInitialLaw setup deps) scheduler
+    · change execution initial ∈ (app.roundsFrom (serviceInitialDistribution setup deps) scheduler
         players 0).support
       unfold ReactiveApplication.roundsFrom
-      simp only [ReactiveApplication.runRounds, serviceInitialLaw]
+      simp only [ReactiveApplication.runRounds, serviceInitialDistribution]
       exact (PMF.mem_support_bind_iff _ _ _).mpr ⟨_,
         (PMF.mem_support_map_iff _ _ _).mpr ⟨initial, supported, rfl⟩,
         (PMF.mem_support_pure_iff _ _).mpr rfl⟩
     · intro event _ owner entry member
       cases member
   have intendedHistory (initial : State L setup.context)
-      (supported : initial ∈ setup.initialLaw.support) :
+      (supported : initial ∈ setup.initialDistribution.support) :
       ∃ history : setup.intendedProtocol.History,
         history.state = some (ProtocolState.entry setup.program (Config.initial initial)) := by
     have legal : setup.intendedProtocol.Legal setup.intendedProtocol.initHistory.state
@@ -302,14 +303,15 @@ private theorem nativeSourceContinuation_initialized
     exact ⟨setup.intendedProtocol.initHistory.extend legal reached, rfl⟩
   have initialContinuation := continuation representative
   obtain ⟨policy, comparison⟩ := initialContinuation
-    (ContextRefs.initial_coversPrefix setup.program) setup.initialLaw Config.initial ghost
+    (ContextRefs.initial_coversPrefix setup.program) setup.initialDistribution Config.initial ghost
     (fun _ _ => rfl) (fun _ _ => rfl) (fun initial _ => SourceCheckpoint.initial setup initial)
     (fun initial _ => ⟨setup.eventInputs initial, .initial⟩) intendedHistory
     (fun _ => reference) (fun _ _ => submitted) (fun _ _ _ _ _ _ _ _ => rfl)
     execution boundary (fun _ _ => Nat.zero_le _) (fun _ _ => rfl) noise factor
   refine ⟨policy, ?_⟩
   have countEq : setup.informationGraph.order.eventCount = eventCount setup.program := rfl
-  simpa only [countEq, Function.comp_def, ReactiveApplication.roundsFrom, serviceInitialLaw,
+  simpa only [countEq, Function.comp_def, ReactiveApplication.roundsFrom,
+    serviceInitialDistribution,
     PMF.bind_map,
     ReactiveApplication.runToHorizon, ReactiveApplication.Execution.initial, List.length_nil,
     Nat.sub_zero, EventGraph.runPolicies, EventGraph.run, execution, ghost, app, frame,
@@ -337,7 +339,7 @@ theorem native_prefix_deviation_bound [Finite Player]
     (relaxed : (serviceGraph setup deps).RevealRelaxedOrdered)
     {delay : (serviceGraph setup deps).EventId → Nat}
     (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
-      (serviceInitialLaw setup deps) horizon scheduler delay bound)
+      (serviceInitialDistribution setup deps) horizon scheduler delay bound)
     (timely : AsyncTimely (serviceTimeouts setup deps duration) delay bound)
     (intended : GameTheory.Profile setup.intendedModel.behavioralSignature)
     (target : GameTheory.Profile (setup.informationModel
@@ -361,7 +363,7 @@ theorem native_prefix_deviation_bound [Finite Player]
       (Setup.leastUtility utility) focal
     ∃ policy : setup.informationGraph.BehavioralPolicy focal,
       expect ((serviceApplication setup deps duration leaks).roundsFrom
-        (serviceInitialLaw setup deps) scheduler
+        (serviceInitialDistribution setup deps) scheduler
         (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
           (firstTurnTiming setup turns deps) (effectiveOpening
             ((serviceGraph setup deps).prefixProfile reference))) focal deviation) horizon)

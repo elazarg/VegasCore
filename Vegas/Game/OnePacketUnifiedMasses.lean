@@ -156,7 +156,7 @@ theorem onePacket_step_masses (assessment : setup.intendedModel.BehavioralAssess
     (covers : bounds.CoversOutputValues)
     (capacity : ∀ who, bindingEventCount setup.informationGraph who < bounds.candidateCount)
     {control : (application setup timeouts leaks).Control}
-    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some control))
     (who : Player)
     (canonical : DisclosureCanonical setup timeouts leaks bounds who (control.execution.logs who)
@@ -167,12 +167,13 @@ theorem onePacket_step_masses (assessment : setup.intendedModel.BehavioralAssess
         who))
     (positive : 0 < contentFactor setup timeouts leaks assessment who control.execution
       (control.execution.respond (application setup timeouts leaks) who response) response)
-    (choice : (onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+    (choice : (onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon
       scheduler).Choice who
       (some (control.execution.logs who,
         control.execution.observe (application setup timeouts leaks) who)))
     (chosen : choice.1 = some response) :
-    (honestChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler assessment who _
+    (honestChoice setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
+      assessment who _
         choice).toReal =
       contentFactor setup timeouts leaks assessment who control.execution
           (control.execution.respond (application setup timeouts leaks) who response) response *
@@ -184,7 +185,8 @@ theorem onePacket_step_masses (assessment : setup.intendedModel.BehavioralAssess
             ((control.execution.respond (application setup timeouts leaks) who response).observe
               (application setup timeouts leaks) who)) ∧
     (∀ {slots : Nat} (option : LateOption slots),
-      (lateChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler assessment who _
+      (lateChoice setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
+        assessment who _
           option choice).toReal =
         contentFactor setup timeouts leaks assessment who control.execution
             (control.execution.respond (application setup timeouts leaks) who response) response *
@@ -196,7 +198,8 @@ theorem onePacket_step_masses (assessment : setup.intendedModel.BehavioralAssess
                 who)
               ((control.execution.respond (application setup timeouts leaks) who response).observe
                 (application setup timeouts leaks) who)) option) ∧
-    (PMF.pure (silenceChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler who _)
+    (PMF.pure (silenceChoice setup timeouts leaks bounds (initialDistribution setup) horizon
+      scheduler who _)
         choice).toReal =
       contentFactor setup timeouts leaks assessment who control.execution
           (control.execution.respond (application setup timeouts leaks) who response) response *
@@ -204,7 +207,8 @@ theorem onePacket_step_masses (assessment : setup.intendedModel.BehavioralAssess
           ((control.execution.respond (application setup timeouts leaks) who response).logs who)
           ((control.execution.respond (application setup timeouts leaks) who response).observe
             (application setup timeouts leaks) who)) ∧
-    (slotChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler assessment who _
+    (slotChoice setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
+      assessment who _
         choice).toReal =
       contentFactor setup timeouts leaks assessment who control.execution
           (control.execution.respond (application setup timeouts leaks) who response) response *
@@ -215,10 +219,10 @@ theorem onePacket_step_masses (assessment : setup.intendedModel.BehavioralAssess
             ((control.execution.respond (application setup timeouts leaks) who response).logs who)
             ((control.execution.respond (application setup timeouts leaks) who response).observe
               (application setup timeouts leaks) who)) := by
-  have rawTrace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+  have rawTrace : ((application setup timeouts leaks).protocol (initialDistribution setup) horizon
     scheduler).Trace
       (some control) :=
-    (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon scheduler
+    (bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup) horizon scheduler
       trace
   have keyPending := LateKey.ofView_pending rawTrace who
   cases pending : pendingEvent setup timeouts leaks who (some (control.execution.logs who,

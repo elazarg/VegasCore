@@ -25,7 +25,7 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 namespace ProtocolState
 
 /-- Select the existing source continuation at this program point. -/
-def continuationLaw : {Γ : SourceCtx Player L} → {O : Finset VarId} →
+def continuationDistribution : {Γ : SourceCtx Player L} → {O : Finset VarId} →
     (program : SourceProgram Player L Γ O) → (BehavioralProfile program) →
     ProtocolState program → PMF (Config Player L program.terminalCtx)
   | _, _, .ret _ => fun _ config => PMF.pure config
@@ -33,22 +33,22 @@ def continuationLaw : {Γ : SourceCtx Player L} → {O : Finset VarId} →
       Sum.elim
         (fun config => runFrom (.sample name fresh law next)
           profile config)
-        (continuationLaw next profile)
+        (continuationDistribution next profile)
   | _, _, .commit name owner fresh guard next => fun profile =>
       Sum.elim
         (fun config => runFrom (.commit name owner fresh guard next)
           profile config)
-        (continuationLaw next (fun who => (profile who).2))
+        (continuationDistribution next (fun who => (profile who).2))
   | _, _, .reveal published owner name fresh source unresolved next => fun profile =>
       Sum.elim
         (fun config => runFrom (.reveal published owner name fresh source unresolved next)
           profile config)
-        (continuationLaw next (fun who => (profile who).2))
+        (continuationDistribution next (fun who => (profile who).2))
 
-@[simp] theorem continuationLaw_entry {Γ : SourceCtx Player L} {O : Finset VarId}
+@[simp] theorem continuationDistribution_entry {Γ : SourceCtx Player L} {O : Finset VarId}
     (program : SourceProgram Player L Γ O) (profile : BehavioralProfile program)
     (config : Config Player L Γ) :
-    continuationLaw program profile (entry program config) =
+    continuationDistribution program profile (entry program config) =
       runFrom program profile config := by
   cases program <;> rfl
 
@@ -97,23 +97,25 @@ theorem terminalState_readout : {Γ : SourceCtx Player L} → {O : Finset VarId}
             Option.map_some, Function.comp_def] using
             congrArg (Option.map Sum.inr) (terminalState_readout next state stopped)
 
-theorem continuationLaw_terminal : {Γ : SourceCtx Player L} → {O : Finset VarId} →
+theorem continuationDistribution_terminal : {Γ : SourceCtx Player L} → {O : Finset VarId} →
     (program : SourceProgram Player L Γ O) → (profile : BehavioralProfile program) →
     (state : ProtocolState program) → terminal program state →
-    (continuationLaw program profile state).map some = PMF.pure (readout program state)
+    (continuationDistribution program profile state).map some = PMF.pure (readout program state)
   | _, _, .ret _, _, _, _ => PMF.pure_map _ _
   | _, _, .sample _ _ _ next, profile, state, stopped => by
       cases state with
       | inl config => exact stopped.elim
-      | inr rest => exact continuationLaw_terminal next profile rest stopped
+      | inr rest => exact continuationDistribution_terminal next profile rest stopped
   | _, _, .commit _ _ _ _ next, profile, state, stopped => by
       cases state with
       | inl config => exact stopped.elim
-      | inr rest => exact continuationLaw_terminal next (fun who => (profile who).2) rest stopped
+      | inr rest => exact continuationDistribution_terminal next (fun who =>
+        (profile who).2) rest stopped
   | _, _, .reveal _ _ _ _ _ _ next, profile, state, stopped => by
       cases state with
       | inl config => exact stopped.elim
-      | inr rest => exact continuationLaw_terminal next (fun who => (profile who).2) rest stopped
+      | inr rest => exact continuationDistribution_terminal next (fun who =>
+        (profile who).2) rest stopped
 
 end ProtocolState
 

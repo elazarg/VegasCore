@@ -6,7 +6,7 @@ public import Vegas.Game.SourceServiceReachedDecoding
 public import Vegas.Game.SourceStateKernel
 public import Vegas.EventGraph.OwnedStep
 public import Vegas.Game.IntendedSourceProfile
-public import Vegas.Compile.EventGraphLaw
+public import Vegas.Compile.EventGraphDistribution
 
 @[expose] public section
 
@@ -50,7 +50,8 @@ variable [Finite Player]
 
 /-- Finishing the ordinary compiled graph has exactly the full source
 continuation law at its actual decoded source position. -/
-theorem SourceResidual.runPlan_readout_law {rank : Nat} {config : setup.informationGraph.Config}
+theorem SourceResidual.runPlan_readout_distribution {rank : Nat}
+    {config : setup.informationGraph.Config}
     (residual : SourceResidual setup profile rank config) :
     (setup.informationGraph.runPlan
       (setup.informationGraph.policyPlan (compileEventProfile setup.program profile)
@@ -70,38 +71,39 @@ theorem SourceResidual.runPlan_readout_law {rank : Nat} {config : setup.informat
     decodeConfig? setup.program residual.program residual.refs residual.source.revelations
       residual.source.registry residual.embedding final.store final.history
   let law := fun point : ProtocolState residual.program =>
-    (ProtocolState.continuationLaw setup.program profile (residual.lift point)).map some
+    (ProtocolState.continuationDistribution setup.program profile (residual.lift point)).map some
   let terminalLaw := fun terminal => law (ProtocolState.terminalState residual.program terminal)
   have harmonic : ∀ point, (ProtocolState.behavioralStateStep residual.program
       residual.residualProfile point).bind law = law point := by
     intro point
     have one := congrArg
       (fun distribution : PMF (ProtocolState setup.program) => distribution.bind
-        (fun target => (ProtocolState.continuationLaw setup.program profile target).map some))
+        (fun target => (ProtocolState.continuationDistribution setup.program profile target).map
+          some))
       (residual.commutes point)
     have stable := congrArg (fun distribution => distribution.map some)
       (ProtocolState.behavioralStateStep_continuation setup.program profile (residual.lift point))
     simp only [PMF.bind_map, PMF.map_bind] at one stable
     exact one.symm.trans stable
-  have sourceLaw : (SourceProgram.runFrom residual.program residual.residualProfile
+  have sourceDistribution : (SourceProgram.runFrom residual.program residual.residualProfile
       residual.source).bind terminalLaw = sourceContinuation setup profile rank config := by
-    have evaluated := ProtocolState.continuationLaw_bind_terminal residual.program
+    have evaluated := ProtocolState.continuationDistribution_bind_terminal residual.program
       residual.residualProfile law harmonic (ProtocolState.entry residual.program residual.source)
-    rw [ProtocolState.continuationLaw_entry] at evaluated
+    rw [ProtocolState.continuationDistribution_entry] at evaluated
     change (SourceProgram.runFrom residual.program residual.residualProfile
       residual.source).bind terminalLaw =
-        (setup.continuationLaw profile (sourceServicePrefix? setup rank config)).map some
+        (setup.continuationDistribution profile (sourceServicePrefix? setup rank config)).map some
     rw [residual.decode]
     exact evaluated
   have history := residual.checkpoint.history
-  have compiled := CompiledPolicySuffix.runFrom_remaining_law setup.program profile
+  have compiled := CompiledPolicySuffix.runFrom_remaining_distribution setup.program profile
     residual.program residual.residualProfile residual.refs residual.source residual.embedding
     residual.refsBefore rank residual.aligned config residual.checkpoint.ordered
     residual.checkpoint.agrees history residual.checkpoint.defaults
   have terminalEq (terminal : SourceProgram.Config Player L residual.program.terminalCtx) :
       terminalLaw terminal = PMF.pure (ProtocolState.readout setup.program
         (residual.lift (ProtocolState.terminalState residual.program terminal))) :=
-    ProtocolState.continuationLaw_terminal setup.program profile _
+    ProtocolState.continuationDistribution_terminal setup.program profile _
       (residual.lift_terminal _ (ProtocolState.terminal_terminalState _ terminal))
   have readEq (final : setup.informationGraph.Config) : read final = (tailRead final).bind fun
     terminal =>
@@ -129,7 +131,7 @@ theorem SourceResidual.runPlan_readout_law {rank : Nat} {config : setup.informat
       rw [compiled]
     _ = (SourceProgram.runFrom residual.program residual.residualProfile residual.source).bind
         terminalLaw := by rw [PMF.bind_map]; rfl
-    _ = _ := sourceLaw
+    _ = _ := sourceDistribution
 end Vegas
 
 namespace Vegas

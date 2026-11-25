@@ -43,7 +43,8 @@ theorem counterpart_of_owner_repairs (wellFormed : setup.WellFormed)
     {past : List (application setup timeouts leaks).PlayerEntry}
     {view : (application setup timeouts leaks).PlayerView}
     (decision : site.1 = some (past, view))
-    (forced : forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks) (initialLaw
+    (forced : forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks)
+      (initialDistribution
       setup)
       horizon scheduler focal site.1)
     {event : setup.informationGraph.EventId} (turn : view.application.publicView.ownTurn? focal =
@@ -122,7 +123,8 @@ theorem exists_bindingRepairs_preserving_responder [DecidableEq (CellTy Player L
     {past : List (application setup timeouts leaks).PlayerEntry}
     {view : (application setup timeouts leaks).PlayerView}
     (decision : site.1 = some (past, view))
-    (forced : forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks) (initialLaw
+    (forced : forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks)
+      (initialDistribution
       setup)
       horizon scheduler focal site.1)
     (history witness :

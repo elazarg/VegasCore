@@ -166,7 +166,7 @@ variable {horizon : Nat} {scheduler : (application setup timeouts leaks).Schedul
 /-- Along every history, the key records exactly the events the player's
 recall has submitted for. -/
 theorem LateKey.ofView_recorded
-    (trace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((application setup timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace
       (some control))
     (who : Player) (event : setup.informationGraph.EventId) :
@@ -181,7 +181,7 @@ theorem LateKey.ofView_recorded
 /-- Along every history, the key's count verdict on a slot is the verdict on
 the slot's envelope. -/
 theorem LateKey.ofView_slotPermitted
-    (trace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((application setup timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace
       (some control))
     (who : Player) (event : setup.informationGraph.EventId) (slot : Nat) :
@@ -198,7 +198,7 @@ theorem LateKey.ofView_slotPermitted
 /-- Along every history, the key's canonical slot is the player's canonical
 slot. -/
 theorem LateKey.ofView_canonicalSlot
-    (trace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((application setup timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace
       (some control))
     (who : Player) :
@@ -223,11 +223,12 @@ variable [Fintype Player] {bounds : MessageBounds setup.informationGraph} {horiz
 theorem choice_eq_silenceChoice (who : Player)
     (past : List (application setup timeouts leaks).PlayerEntry)
     (view : (application setup timeouts leaks).PlayerView)
-    (choice : (onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+    (choice : (onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon
       scheduler).Choice who
       (some (past, view)))
     (chosen : choice.1 = some ⟨none⟩) :
-    choice = silenceChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler who
+    choice = silenceChoice setup timeouts leaks bounds (initialDistribution setup) horizon
+      scheduler who
       (some (past, view)) := by
   classical
   apply Subtype.ext
@@ -242,7 +243,7 @@ slot tier and silence all give it mass one. -/
 theorem onePacket_settled_operational_masses
     (assessment : setup.intendedModel.BehavioralAssessment)
     {control : (application setup timeouts leaks).Control}
-    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some control))
     (who : Player)
     (settled : ∀ event, control.execution.application.publicView.ownTurn? who = some event →
@@ -253,7 +254,7 @@ theorem onePacket_settled_operational_masses
         who))
     (positive : 0 < contentFactor setup timeouts leaks assessment who control.execution
       (control.execution.respond (application setup timeouts leaks) who response) response)
-    (choice : (onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+    (choice : (onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon
       scheduler).Choice who
       (some (control.execution.logs who,
         control.execution.observe (application setup timeouts leaks) who)))
@@ -261,11 +262,14 @@ theorem onePacket_settled_operational_masses
     response = ⟨none⟩ ∧
       contentFactor setup timeouts leaks assessment who control.execution
         (control.execution.respond (application setup timeouts leaks) who response) response = 1 ∧
-      honestChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler assessment who _
+      honestChoice setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
+        assessment who _
         choice = 1 ∧
-      slotChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler assessment who _
+      slotChoice setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
+        assessment who _
         choice = 1 ∧
-      PMF.pure (silenceChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+      PMF.pure (silenceChoice setup timeouts leaks bounds (initialDistribution setup) horizon
+        scheduler
         who _)
         choice = 1 := by
   have silent : response = ⟨none⟩ := by
@@ -309,7 +313,7 @@ theorem onePacket_pendingBinding_operational_masses
     (covers : bounds.CoversOutputValues)
     (capacity : ∀ who, bindingEventCount setup.informationGraph who < bounds.candidateCount)
     {control : (application setup timeouts leaks).Control}
-    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some control))
     (who : Player) (event : setup.informationGraph.EventId)
     (turn : control.execution.application.publicView.ownTurn? who = some event)
@@ -324,12 +328,13 @@ theorem onePacket_pendingBinding_operational_masses
         who))
     (positive : 0 < contentFactor setup timeouts leaks assessment who control.execution
       (control.execution.respond (application setup timeouts leaks) who response) response)
-    (choice : (onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+    (choice : (onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon
       scheduler).Choice who
       (some (control.execution.logs who,
         control.execution.observe (application setup timeouts leaks) who)))
     (chosen : choice.1 = some response) :
-    (honestChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler assessment who _
+    (honestChoice setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
+      assessment who _
         choice).toReal =
       contentFactor setup timeouts leaks assessment who control.execution
           (control.execution.respond (application setup timeouts leaks) who response) response *
@@ -340,7 +345,8 @@ theorem onePacket_pendingBinding_operational_masses
             ((control.execution.respond (application setup timeouts leaks) who response).logs who)
             ((control.execution.respond (application setup timeouts leaks) who response).observe
               (application setup timeouts leaks) who)) ∧
-    (PMF.pure (silenceChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler who _)
+    (PMF.pure (silenceChoice setup timeouts leaks bounds (initialDistribution setup) horizon
+      scheduler who _)
         choice).toReal =
       contentFactor setup timeouts leaks assessment who control.execution
           (control.execution.respond (application setup timeouts leaks) who response) response *
@@ -348,7 +354,8 @@ theorem onePacket_pendingBinding_operational_masses
           ((control.execution.respond (application setup timeouts leaks) who response).logs who)
           ((control.execution.respond (application setup timeouts leaks) who response).observe
             (application setup timeouts leaks) who)) ∧
-    (slotChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler assessment who _
+    (slotChoice setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
+      assessment who _
         choice).toReal =
       contentFactor setup timeouts leaks assessment who control.execution
           (control.execution.respond (application setup timeouts leaks) who response) response *
@@ -359,10 +366,10 @@ theorem onePacket_pendingBinding_operational_masses
             ((control.execution.respond (application setup timeouts leaks) who response).logs who)
             ((control.execution.respond (application setup timeouts leaks) who response).observe
               (application setup timeouts leaks) who)) event := by
-  have rawTrace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+  have rawTrace : ((application setup timeouts leaks).protocol (initialDistribution setup) horizon
     scheduler).Trace
       (some control) :=
-    (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon scheduler
+    (bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup) horizon scheduler
       trace
   cases sends : response.transmission with
   | none =>

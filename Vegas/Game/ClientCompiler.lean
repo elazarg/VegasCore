@@ -37,7 +37,7 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
   (excludedPayoff : Player → ℝ)
 
-local notation "Initial" => initialLaw setup
+local notation "Initial" => initialDistribution setup
 local notation "app" => application setup timeouts leaks
 local notation "raw" => bounds.rawMenu timeouts leaks
 local notation "model" => ReactiveApplication.ResponseMenu.information
@@ -173,21 +173,21 @@ theorem ledgerClients_sequentiallyRational (unobserved : leaks.DeliversNothing)
     spec.payoff rational who site alternative covered
 
 /-- Complete physical-state correctness, before applying any outcome reader. -/
-theorem clients_stateLaw :
+theorem clients_stateDistribution :
     ((raw).run Initial horizon scheduler compiled.assessment.strategy).map History.state =
       (app).finish Initial horizon scheduler compiled.clients none :=
-  (raw).runFrom_stateLaw Initial horizon scheduler compiled.assessment.strategy
+  (raw).runFrom_stateDistribution Initial horizon scheduler compiled.assessment.strategy
     ((raw).protocol Initial horizon scheduler).initHistory
 
 /-- Correctness of the physical clients, including joint typed readout and settled payoff. -/
-theorem clients_outcomeLaw :
+theorem clients_outcomeDistribution :
     ((app).finish Initial horizon scheduler compiled.clients none).bind (spec.observation) =
     (setup.intendedModel.runBehavioral intended.strategy
       (instructionCount setup.program + 1)).map
       (intendedReadoutExclusion setup parameter utility excludedPayoff) := by
-  have same := congrArg (fun law => law.bind (spec.observation)) compiled.clients_stateLaw
+  have same := congrArg (fun law => law.bind (spec.observation)) compiled.clients_stateDistribution
   rw [PMF.bind_map] at same
-  exact same.symm.trans compiled.outcomeLaw
+  exact same.symm.trans compiled.outcomeDistribution_eq
 
 /-- No player has defaulted in a supported ordinary-client execution, with any
 pending-observation rule satisfying the compilation specification. -/
@@ -195,7 +195,7 @@ theorem clients_noDefaults (state : (app).ProtocolState)
     (supported : state ∈ ((app).finish Initial horizon scheduler compiled.clients none).support)
     (control : (app).Control) (current : state = some control) :
     control.execution.application.config.defaulted = ∅ := by
-  rw [← compiled.clients_stateLaw] at supported
+  rw [← compiled.clients_stateDistribution] at supported
   obtain ⟨history, reached, same⟩ := (PMF.mem_support_map_iff _ _ _).mp supported
   exact compiled.noDefaults history reached control (same.trans current)
 
@@ -205,7 +205,7 @@ theorem clients_noCharges (state : (app).ProtocolState)
     (who : Player) :
     TerminalAudit.charge (app).stateTraffic
       ((countAudit timeouts) leaks spec.evidenceService.sample) state who = 0 := by
-  rw [← compiled.clients_stateLaw] at supported
+  rw [← compiled.clients_stateDistribution] at supported
   obtain ⟨history, reached, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp supported
   exact compiled.noCharges history reached who
 
@@ -223,7 +223,7 @@ theorem ledgerClients_continuation
     compiled.assessment.strategy (2 * horizon + 1) history enough
 
 /-- The initialized physical ledger run has the selected assessment's complete state law. -/
-theorem ledgerClients_stateLaw
+theorem ledgerClients_stateDistribution
     (unobserved : leaks.DeliversNothing) :
     ((raw).run Initial horizon scheduler compiled.assessment.strategy).map History.state =
       (app).finish Initial horizon scheduler compiled.ledgerClients none :=
@@ -234,17 +234,18 @@ theorem ledgerClients_stateLaw
 theorem ledgerClients_finish_eq_clients (unobserved : leaks.DeliversNothing) :
     (app).finish Initial horizon scheduler compiled.ledgerClients none =
       (app).finish Initial horizon scheduler compiled.clients none :=
-  (compiled.ledgerClients_stateLaw unobserved).symm.trans compiled.clients_stateLaw
+  (compiled.ledgerClients_stateDistribution unobserved).symm.trans
+    compiled.clients_stateDistribution
 
 /-- Ledger clients preserve the complete source configuration and settled payoff law. -/
-theorem ledgerClients_outcomeLaw
+theorem ledgerClients_outcomeDistribution
     (unobserved : leaks.DeliversNothing) :
     ((app).finish Initial horizon scheduler compiled.ledgerClients none).bind (spec.observation) =
     (setup.intendedModel.runBehavioral intended.strategy
       (instructionCount setup.program + 1)).map
       (intendedReadoutExclusion setup parameter utility excludedPayoff) := by
   rw [compiled.ledgerClients_finish_eq_clients unobserved]
-  exact compiled.clients_outcomeLaw
+  exact compiled.clients_outcomeDistribution
 
 /-- Every supported physical ledger-client execution leaves the public default set empty. -/
 theorem ledgerClients_noDefaults
@@ -291,7 +292,7 @@ theorem compile_correct (intended : setup.intendedModel.BehavioralAssessment)
         (intendedReadoutExclusion setup parameter utility excludedPayoff) := by
   intro compiled
   exact ⟨⟨compiled.refinement⟩, compiled.equilibrium, compiled.clients_strategy,
-    compiled.clients_outcomeLaw⟩
+    compiled.clients_outcomeDistribution⟩
 
 /-- Ledger-client correctness within the bounded raw menu, with strategy agreement at every
 legal decision, when the interface does not deliver pending observations. -/
@@ -317,7 +318,7 @@ theorem compile_ledger_correct (intended : setup.intendedModel.BehavioralAssessm
   intro compiled
   exact ⟨⟨compiled.refinement⟩, compiled.equilibrium, compiled.ledgerClients_ignoreLeakedFields,
     compiled.ledgerClients_strategy_at_history unobserved,
-    compiled.ledgerClients_outcomeLaw unobserved⟩
+    compiled.ledgerClients_outcomeDistribution unobserved⟩
 
 end ClientSpec
 end Vegas

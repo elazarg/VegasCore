@@ -74,7 +74,7 @@ theorem initialCellsAt_step {initial : State L setup.context}
 theorem exists_initialCellsAt {state : setup.intendedProtocol.State}
     (trace : setup.intendedProtocol.Trace state) : ∀ {point : ProtocolState setup.program},
     state = some point →
-      ∃ initial ∈ setup.initialLaw.support, InitialCellsAt initial point := by
+      ∃ initial ∈ setup.initialDistribution.support, InitialCellsAt initial point := by
   induction trace with
   | start => intro _ initialized; cases initialized
   | @extend before after prior joint legal realized ih =>
@@ -82,7 +82,7 @@ theorem exists_initialCellsAt {state : setup.intendedProtocol.State}
       subst initialized
       cases before with
       | none =>
-          change some point ∈ (setup.initialLaw.map fun initial =>
+          change some point ∈ (setup.initialDistribution.map fun initial =>
             some (ProtocolState.entry setup.program (Config.initial initial))).support
             at realized
           rw [PMF.support_map] at realized
@@ -171,7 +171,7 @@ theorem replay_initialCellsAt {state}
     ∀ {history : setup.intendedProtocol.History},
     intendedHistory? setup timeouts leaks bounds horizon scheduler trace = some history →
     ∀ control : (application setup timeouts leaks).Control, state = some control →
-      ∃ initial ∈ setup.initialLaw.support,
+      ∃ initial ∈ setup.initialDistribution.support,
         control.execution.application.config.inputs = setup.eventInputs initial ∧
         ∃ point, history.state = some point ∧ InitialCellsAt initial point := by
   induction trace with
@@ -186,13 +186,14 @@ theorem replay_initialCellsAt {state}
             (decodedPoint setup control.execution.application.config) = some history
             at advanced
           have stateEq := extendIntended?_state advanced
-          change some control ∈ ((application setup timeouts leaks).transition (initialLaw setup)
+          change some control ∈ ((application setup timeouts leaks).transition
+            (initialDistribution setup)
             horizon scheduler none joint).support at realized
           rw [ReactiveApplication.transition, PMF.support_map] at realized
           obtain ⟨drawn, drawnMember, drawnEq⟩ := realized
           cases Option.some.inj drawnEq
-          have drawnSupport : drawn ∈ (initialLaw setup).support := drawnMember
-          rw [initialLaw, serviceInitialLaw, PMF.support_map] at drawnSupport
+          have drawnSupport : drawn ∈ (initialDistribution setup).support := drawnMember
+          rw [initialDistribution, serviceInitialDistribution, PMF.support_map] at drawnSupport
           obtain ⟨initial, member, rfl⟩ := drawnSupport
           refine ⟨initial, member, rfl, _, ?_, initialCellsAt_entry initial⟩
           rw [stateEq]
@@ -201,7 +202,8 @@ theorem replay_initialCellsAt {state}
           obtain ⟨initial, member, inputsEq, point, pointEq, found⟩ :=
             ih previousReplay current rfl
           have sameInputs := EventGraph.Config.Step.path_inputs_eq
-            (reactive_protocol_graph_steps timeouts leaks (initialLaw setup) horizon scheduler
+            (reactive_protocol_graph_steps timeouts leaks (initialDistribution setup) horizon
+              scheduler
               current control joint realized)
           refine ⟨initial, member, sameInputs.trans inputsEq, ?_⟩
           change (match control.execution.application.config.history.drop
@@ -240,10 +242,10 @@ theorem inputs_mem_swapAllowed {first second : setup.intendedProtocol.History}
   rw [firstState] at pointEq
   cases pointEq
   obtain ⟨other, otherMember, otherFound⟩ := exists_initialCellsAt second.trace secondState
-  have drawnMember : ∀ draw ∈ setup.initialLaw.support,
+  have drawnMember : ∀ draw ∈ setup.initialDistribution.support,
       EventGraphRuntime.State.initial (graph := setup.informationGraph) (setup.eventInputs draw) ∈
-        (initialLaw setup).support := fun draw drawMember => by
-    rw [initialLaw, serviceInitialLaw, PMF.support_map]
+        (initialDistribution setup).support := fun draw drawMember => by
+    rw [initialDistribution, serviceInitialDistribution, PMF.support_map]
     exact ⟨draw, drawMember, rfl⟩
   refine ⟨_, drawnMember initial member, inputsEq.symm, ?_⟩
   rw [State.swap_initial _ compatible]

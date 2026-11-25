@@ -65,7 +65,7 @@ theorem blockRun_facts
     {delay : (serviceGraph setup deps).EventId → Nat}
     (bound : (serviceGraph setup deps).EventId → Nat) (turns : Nat)
     (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
-        (serviceInitialLaw setup deps) horizon scheduler delay bound)
+        (serviceInitialDistribution setup deps) horizon scheduler delay bound)
     (timely : AsyncTimely (serviceTimeouts setup deps duration) delay bound)
     (reference : (serviceGraph setup deps).BehavioralProfile)
     (decides : ∀ (config : (serviceGraph setup deps).Config)
@@ -88,7 +88,7 @@ theorem blockRun_facts
       event.val < finish → ((serviceGraph setup deps).outputLayout event).IsPublication)
     (execution : (serviceApplication setup deps duration leaks).Execution)
     (supported : execution ∈ ((serviceApplication setup deps duration leaks).roundsFrom
-      (serviceInitialLaw setup deps) scheduler
+      (serviceInitialDistribution setup deps) scheduler
       (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps) reference) who deviation)
       execution.environmentRecall.length).support)
@@ -109,7 +109,7 @@ theorem blockRun_facts
   let players := Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound
     turns (firstTurnTiming setup turns deps) reference) who deviation
   let holds := fun (n : Nat) (current : app.Execution) =>
-    current ∈ (app.roundsFrom (serviceInitialLaw setup deps) scheduler players
+    current ∈ (app.roundsFrom (serviceInitialDistribution setup deps) scheduler players
       current.environmentRecall.length).support ∧
     current.environmentRecall.length + n ≤ horizon ∧
     (¬ BlockDone finish current.application.config →
@@ -125,7 +125,8 @@ theorem blockRun_facts
     have lengths := app.round_environmentRecall_length scheduler players current next moved
     have path := reactive_round_graph_steps (serviceTimeouts setup deps duration) leaks scheduler
       players current next moved
-    obtain ⟨trace⟩ := app.raw_trace_roundsFrom (serviceInitialLaw setup deps) horizon scheduler
+    obtain ⟨trace⟩ := app.raw_trace_roundsFrom (serviceInitialDistribution setup deps) horizon
+      scheduler
       players current.environmentRecall.length (by omega) current currentSupported
     have remaining : horizon - current.environmentRecall.length =
         (horizon - current.environmentRecall.length - 1) + 1 := by omega
@@ -138,7 +139,7 @@ theorem blockRun_facts
           start
         finish shaped publications execution.application.config current next currentSupported
         (by omega) (currentInside running) running submissions sound moved⟩
-    apply app.roundsFrom_runUntil scheduler players (serviceInitialLaw setup deps)
+    apply app.roundsFrom_runUntil scheduler players (serviceInitialDistribution setup deps)
       (fun current => BlockDone finish current.application.config) 1 current next
       currentSupported
     change next ∈ (if BlockDone finish current.application.config then PMF.pure current

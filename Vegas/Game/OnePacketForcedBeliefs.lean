@@ -154,7 +154,8 @@ structure ForcedBeliefInputs (sequence : ℕ → setup.intendedModel.BehavioralA
       site.1 → setup.intendedModel.InformationHistory who sourceSite.1)
     (scale floors : ℕ → ℝ) (depth : ℕ) (slack : ℝ) (n : ℕ) where
   /-- The site is forced for its owner. -/
-  forced : forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks) (initialLaw
+  forced : forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks)
+    (initialDistribution
     setup) horizon
     scheduler who site.1
   /-- The intended site is at the projected view. -/

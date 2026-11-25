@@ -11,7 +11,7 @@ public import Vegas.Source.CellSwapDebt
 public import Vegas.Source.CommitmentInterface
 public import Vegas.Source.ConditionedInitialFiber
 public import Vegas.Source.ConditionedInitialHistory
-public import Vegas.Source.ConditionedInitialLaw
+public import Vegas.Source.ConditionedInitialDistribution
 public import Vegas.Source.ConditionedInitialPolicy
 public import Vegas.Source.DebtObservation
 public import Vegas.Source.Disclosure

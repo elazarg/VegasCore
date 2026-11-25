@@ -100,7 +100,8 @@ def ForcedBeliefInputs.ofForcedReplay
       site.1)]
     [DecidableEq (setup.intendedModel.InformationHistory who sourceSite.1)]
     {scale floors : ℕ → ℝ} {depth : ℕ} {slack : ℝ} {n : ℕ}
-    (forced : forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks) (initialLaw
+    (forced : forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks)
+      (initialDistribution
       setup) horizon
       scheduler who site.1)
     (decision : site.1 = some (past, view)) {event : setup.informationGraph.EventId}

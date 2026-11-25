@@ -86,7 +86,7 @@ theorem foreign_publication_step_observation_eq_iff
 
 /-- At a rejected foreign opening, different requested actions have identical
 graph observation laws. This includes disclosure and withholding. -/
-theorem foreign_rejected_publication_observation_law
+theorem foreign_rejected_publication_observation_distribution
     (focal owner : Player) (foreign : owner ≠ focal) (event : graph.EventId)
     {payload : L.Ty} {binding : FieldRef graph.layout (.binding owner payload)}
     {checks : List (GuardCheck graph.layout payload)}
@@ -160,11 +160,11 @@ theorem openingAccepted_value (config : graph.Config)
 owner and is accepted. -/
 theorem effectiveOpening_publication_disclosure_safe
     (base : graph.BehavioralProfile) (config : graph.Config) (action : graph.Action event)
-    (chosen : action ∈ (actionLaw (effectiveOpening base) config event).support)
+    (chosen : action ∈ (actionDistribution (effectiveOpening base) config event).support)
     (disclose : (cast (congrArg EventField.Action outputEq) action : Bool) = true) :
     owner ∉ config.defaulted ∧ openingAccepted event config.store = true := by
   let owned := nodeView_resolve_actor outputEq codeEq
-  rw [actionLaw_of_actor _ _ owned] at chosen
+  rw [actionDistribution_of_actor _ _ owned] at chosen
   by_cases inactive : owner ∈ config.defaulted
   · rw [dite_eq_left inactive, PMF.mem_support_pure_iff] at chosen
     have failed := EventCode.failureAction_eq_cast outputEq (graph.nodes event)
@@ -292,7 +292,7 @@ theorem effectiveOpening_publication_action_from_output
       .resolve owner payload binding checks}
     (node : nodeView graph event = .resolve owner payload binding checks outputEq codeEq)
     (action : graph.Action event)
-    (chosen : action ∈ (actionLaw (effectiveOpening base) config event).support)
+    (chosen : action ∈ (actionDistribution (effectiveOpening base) config event).support)
     (moved : next ∈ (config.step event ready action).support) :
     cast (congrArg EventField.Action outputEq) action =
       ((next.outputs event).map fun value =>

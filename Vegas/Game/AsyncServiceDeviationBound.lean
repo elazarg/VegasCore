@@ -17,7 +17,7 @@ public import Vegas.Source.BindingNormalization
 Against the first-turn clients of a source profile, under a scheduler
 satisfying the asynchronous contract, every native policy of one player has the
 typed outcome law of a source deviation that may bind failure
-(`Vegas.asyncDeviation_readout_law`). Binding failure buys a pure policy
+(`Vegas.asyncDeviation_readout_distribution`). Binding failure buys a pure policy
 nothing when its value-binding normalization preserves the joint initial
 parameter and public-default outcome law. Every policy
 is a mixture of pure ones (`Vegas.SourceProgram.exists_pureMixture_run`). With a
@@ -62,7 +62,7 @@ every authentic audit and every nonnegative deposit, every native policy of
 one player against the first-turn clients of a source profile has audited
 expected payoff at most that of some source deviation of the same player. Its
 typed outcome law is that of a source deviation whose bindings may fail
-(`Vegas.asyncDeviation_readout_law`); failure buys nothing, and charges only
+(`Vegas.asyncDeviation_readout_distribution`); failure buys nothing, and charges only
 lower the payoff. Finite actual source support supplies integrability without a
 uniform utility bound. -/
 theorem firstTurn_deviation_bound {Parameter : Type}
@@ -90,7 +90,7 @@ theorem firstTurn_deviation_bound {Parameter : Type}
     ∃ deviation : (service.sourceModel admission).BehavioralPolicy who,
       expect (((serviceApplication service.setup service.setup.informationDependencies
         service.duration
-        service.leaks).roundsFrom (serviceInitialLaw service.setup
+        service.leaks).roundsFrom (serviceInitialDistribution service.setup
           service.setup.informationDependencies)
           service.scheduler (Function.update (serviceTurnPolicy service.setup
             service.setup.informationDependencies
@@ -121,17 +121,17 @@ theorem firstTurn_deviation_bound {Parameter : Type}
     (serviceSourceReadout service.setup service.setup.informationDependencies service.duration
       service.leaks final).map
       (fun config => (config.state, config.defaults))
-  let native := ((app.roundsFrom (serviceInitialLaw service.setup
+  let native := ((app.roundsFrom (serviceInitialDistribution service.setup
     service.setup.informationDependencies) service.scheduler
     (Function.update (serviceTurnPolicy service.setup service.setup.informationDependencies
       service.duration service.leaks
       service.bound turns (firstTurnTiming service.setup turns
         service.setup.informationDependencies) clients) who
       alternative) service.horizon).map app.finished)
-  obtain ⟨policy, law⟩ := asyncDeviation_readout_law service.setup service.leaks
+  obtain ⟨policy, law⟩ := asyncDeviation_readout_distribution service.setup service.leaks
     service.contract service.timely turns decoded who alternative
   let original := service.setup.run (Function.update decoded who policy)
-  have nativeLaw : native.map readPair =
+  have nativeDistribution : native.map readPair =
       original.map (fun config => some (config.state, config.defaults)) := by
     simpa only [native, readPair, original, decoded, clients, PMF.map_comp, Function.comp_def]
       using law
@@ -142,7 +142,7 @@ theorem firstTurn_deviation_bound {Parameter : Type}
     payoffIntegrable_of_finite_support _ _ (service.setup.run_support_finite _
       (FiniteBindingTypes.profileFiniteSupport service.setup.program finite _))
   have mappedIntegrable : PayoffIntegrable (native.map readPair) pairValue := by
-    rw [nativeLaw]
+    rw [nativeDistribution]
     apply (payoffIntegrable_map_iff _ _ _).2
     simpa only [pairValue, Function.comp_def, Option.elim_some, Setup.parameterOutcome,
       publicOutcome] using sourceIntegrable
@@ -180,7 +180,7 @@ theorem firstTurn_deviation_bound {Parameter : Type}
       expect original (fun config => utility (service.setup.parameterOutcome parameter config)
         who) := by
     rw [baseValue]
-    have mapped := congrArg (fun distribution => expect distribution pairValue) nativeLaw
+    have mapped := congrArg (fun distribution => expect distribution pairValue) nativeDistribution
     simpa only [expect_map, Function.comp_def, pairValue, Option.elim_some,
       Setup.parameterOutcome, publicOutcome] using mapped
   obtain ⟨better, valueBinding, improved⟩ :=
@@ -231,7 +231,8 @@ theorem isεNash_clientProfile {Parameter : Type}
       service.leaks).ResponseMenu)
     {turns : Nat} (timing : TurnTiming service.setup turns service.setup.informationDependencies)
     (covered : ∀ (source : Profile (service.sourceModel admission).behavioralSignature) who,
-      menu.Admissible (serviceInitialLaw service.setup service.setup.informationDependencies)
+      menu.Admissible (serviceInitialDistribution service.setup
+        service.setup.informationDependencies)
         service.horizon
         service.scheduler who
         (serviceClientPolicy service.setup service.setup.informationDependencies service.duration
@@ -265,7 +266,7 @@ theorem isεNash_clientProfile {Parameter : Type}
   apply (isεNash_iff_εBestResponse _ _).mpr
   exact service.isεBestResponse_clientProfile_of_firstTurn_bounds admission parameter utility sample
     authentic deposit menu timing covered low (fun _ => range) within ε source
-    (firstTurn_readout_law service.setup service.leaks service.contract service.timely
+    (firstTurn_readout_distribution service.setup service.leaks service.contract service.timely
       turns _ (fun _ => BehavioralPolicy.normalizeDisclosures_authentic _ _))
     (fun who alternative => service.firstTurn_deviation_bound admission
       parameter utility sample deposit
@@ -288,7 +289,8 @@ theorem isεNash_clientProfile_approximate {Parameter : Type}
       service.leaks).ResponseMenu)
     {turns : Nat} (timing : TurnTiming service.setup turns service.setup.informationDependencies)
     (covered : ∀ (source : Profile (service.sourceModel admission).behavioralSignature) who,
-      menu.Admissible (serviceInitialLaw service.setup service.setup.informationDependencies)
+      menu.Admissible (serviceInitialDistribution service.setup
+        service.setup.informationDependencies)
         service.horizon
         service.scheduler who
         (serviceClientPolicy service.setup service.setup.informationDependencies service.duration
@@ -356,7 +358,8 @@ theorem intended_clientProfile_isεNash {Parameter : Type}
     {turns : Nat} (timing : TurnTiming service.setup turns service.setup.informationDependencies)
     (covered : ∀ (source : Profile (service.sourceModel (CommitmentInterface.values
       service.setup.program)).behavioralSignature) who,
-      menu.Admissible (serviceInitialLaw service.setup service.setup.informationDependencies)
+      menu.Admissible (serviceInitialDistribution service.setup
+        service.setup.informationDependencies)
         service.horizon
         service.scheduler who
         (serviceClientPolicy service.setup service.setup.informationDependencies service.duration
@@ -414,7 +417,7 @@ theorem intended_clientProfile_isεNash {Parameter : Type}
   service.intended_clientProfile_isεNash_of_firstTurn_bounds wellFormed parameter
     utility forfeit
     range sample authentic deposit menu timing covered low spread within intended source agrees
-    (firstTurn_readout_law service.setup service.leaks service.contract service.timely
+    (firstTurn_readout_distribution service.setup service.leaks service.contract service.timely
       turns _ (fun _ => BehavioralPolicy.normalizeDisclosures_authentic _ _)) ε
     equilibrium (fun who alternative => service.firstTurn_deviation_bound
       (CommitmentInterface.values service.setup.program)

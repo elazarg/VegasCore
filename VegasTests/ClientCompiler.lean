@@ -75,16 +75,16 @@ example (intended : Vegas.Examples.OddsEvens.setup.intendedModel.BehavioralAsses
       (instructionCount Vegas.Examples.OddsEvens.setup.program + 1)).map
       (Vegas.intendedReadoutExclusion Vegas.Examples.OddsEvens.setup (fun _ => ())
         Vegas.Examples.OddsEvens.sourceUtility (fun _ => 0)) :=
-  (compiled intended equilibrium).ledgerClients_outcomeLaw (by intro _ _; rfl)
+  (compiled intended equilibrium).ledgerClients_outcomeDistribution (by intro _ _; rfl)
 
 def fairCompilation := compiled Vegas.Examples.OddsEvens.uniformAssessment
   Vegas.Examples.OddsEvens.uniformAssessment_equilibrium
 
 example : (app.finish initial horizon scheduler fairCompilation.ledgerClients none).bind
     (specification.observation) =
-      Vegas.Examples.OddsEvens.uniformJointLaw := by
-  exact (fairCompilation.ledgerClients_outcomeLaw (by intro _ _; rfl)).trans
-    Vegas.Examples.OddsEvens.uniform_source_joint_law
+      Vegas.Examples.OddsEvens.uniformJointDistribution := by
+  exact (fairCompilation.ledgerClients_outcomeDistribution (by intro _ _; rfl)).trans
+    Vegas.Examples.OddsEvens.uniform_source_joint_distribution
 
 
 section MonetaryCompilation
@@ -106,9 +106,9 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
     (setup.parameterPaymentUtility valuation) intended)
 
 example :
-    ((application setup timeouts leaks).finish (initialLaw setup) horizon scheduler
+    ((application setup timeouts leaks).finish (initialDistribution setup) horizon scheduler
         (spec.compile intended equilibrium).clients none).bind spec.programPaymentObservation =
-      setup.intendedPaymentLaw intended :=
+      setup.intendedPaymentDistribution intended :=
   (spec.compile intended equilibrium).clients_programPayments_preserved setup timeouts leaks bounds
     horizon scheduler parameter (setup.parameterPaymentUtility valuation)
       (fun who => exitValuation who + (setup.exitTransfers who : ℝ)) spec intended

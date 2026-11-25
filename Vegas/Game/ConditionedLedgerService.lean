@@ -4,7 +4,7 @@ module
 
 public import Vegas.Game.RevealService
 public import Vegas.Pending.ReactiveAsyncContract
-public import Vegas.Source.ConditionedInitialLaw
+public import Vegas.Source.ConditionedInitialDistribution
 
 @[expose] public section
 
@@ -40,7 +40,7 @@ open Interaction EventGraphRuntime GameTheory.Math.Probability
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
     (setup : Setup (Player := Player) (L := L))
     {Signal : Type*} (signal : State L setup.context → Signal) (value : Signal)
-    (supported : value ∈ (setup.initialLaw.map signal).support)
+    (supported : value ∈ (setup.initialDistribution.map signal).support)
     {timeouts : EventTimeouts setup.informationGraph}
     {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
     {scheduler : (application setup timeouts leaks).Scheduler}
@@ -49,8 +49,8 @@ include supported
 
 /-- Conditioning the source prior introduces no new initialized ledger state. -/
 theorem conditionInitial_ledgerSupport :
-    (Vegas.initialLaw (setup.conditionInitial signal value)).support ⊆
-      (Vegas.initialLaw setup).support := by
+    (Vegas.initialDistribution (setup.conditionInitial signal value)).support ⊆
+      (Vegas.initialDistribution setup).support := by
   intro state member
   obtain ⟨draw, present, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp member
   exact (PMF.mem_support_map_iff _ _ _).mpr
@@ -58,9 +58,10 @@ theorem conditionInitial_ledgerSupport :
 
 /-- Finite nature descends to a supported component for the same scheduler and leak law. -/
 theorem conditionInitial_finiteNature
-    (finite : (application setup timeouts leaks).FiniteNature (Vegas.initialLaw setup) scheduler) :
+    (finite : (application setup timeouts leaks).FiniteNature
+      (Vegas.initialDistribution setup) scheduler) :
     (application setup timeouts leaks).FiniteNature
-      (Vegas.initialLaw (setup.conditionInitial signal value)) scheduler where
+      (Vegas.initialDistribution (setup.conditionInitial signal value)) scheduler where
   toFiniteEnvironment := finite.toFiniteEnvironment
   initial_finite := finite.initial_finite.subset
     (setup.conditionInitial_ledgerSupport signal value supported)
@@ -70,9 +71,9 @@ theorem conditionInitial_finiteNature
 completion guarantees on all its legal raw histories, with the original deadlines. -/
 theorem conditionInitial_asyncContract {horizon : Nat}
     {delay bound : setup.informationGraph.EventId → Nat}
-    (service : AsyncContract timeouts leaks (Vegas.initialLaw setup) horizon scheduler
+    (service : AsyncContract timeouts leaks (Vegas.initialDistribution setup) horizon scheduler
       delay bound) :
-    AsyncContract timeouts leaks (Vegas.initialLaw (setup.conditionInitial signal value))
+    AsyncContract timeouts leaks (Vegas.initialDistribution (setup.conditionInitial signal value))
       horizon scheduler delay bound where
   opportunity control trace := service.opportunity control
     (ReactiveApplication.traceOfInitialSupportSubset
@@ -89,19 +90,19 @@ omit supported in
 original execution law under any fixed physical policies, including every raw deviation. -/
 theorem roundsFrom_conditionInitial_reconstruct
     (players : Player → (application setup timeouts leaks).Policy) (count : Nat) :
-    (setup.initialLaw.map signal).bind (fun key =>
+    (setup.initialDistribution.map signal).bind (fun key =>
       (application setup timeouts leaks).roundsFrom
-        (Vegas.initialLaw (setup.conditionInitial signal key)) scheduler players count) =
-      (application setup timeouts leaks).roundsFrom (Vegas.initialLaw setup)
+        (Vegas.initialDistribution (setup.conditionInitial signal key)) scheduler players count) =
+      (application setup timeouts leaks).roundsFrom (Vegas.initialDistribution setup)
         scheduler players count := by
   let pack := fun draw : State L setup.context =>
     EventGraphRuntime.State.initial (graph := setup.informationGraph)
     (setup.eventInputs draw)
   let play := fun state => (application setup timeouts leaks).runRounds scheduler players count
     (ReactiveApplication.Execution.initial (application setup timeouts leaks) state)
-  change (setup.initialLaw.map signal).bind
-    (fun key => ((fiberPosterior setup.initialLaw signal key).map pack).bind play) =
-    (setup.initialLaw.map pack).bind play
+  change (setup.initialDistribution.map signal).bind
+    (fun key => ((fiberPosterior setup.initialDistribution signal key).map pack).bind play) =
+    (setup.initialDistribution.map pack).bind play
   simp_rw [PMF.bind_map (f := pack)]
   rw [← PMF.bind_bind, fiberPosterior_reconstruct]
 

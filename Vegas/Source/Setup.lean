@@ -33,7 +33,7 @@ def FiniteBindingTypes : {Γ : SourceCtx Player L} → {O : Finset VarId} →
 structure Setup where
   context : SourceCtx Player L
   namesNodup : (context.map Prod.fst).Nodup
-  initialLaw : PMF (State L context)
+  initialDistribution : PMF (State L context)
   obligations : Finset VarId
   program : SourceProgram Player L context obligations
   accounts : obligations = commitmentNames context
@@ -46,17 +46,17 @@ namespace Setup
 /-- The private initial draw has finitely many outcomes. A mixture drawn before
 it, or a finite message alphabet read from it, needs this; a probability mass
 function need not satisfy it. -/
-class FiniteInitialLaw (setup : Setup (Player := Player) (L := L)) : Prop where
-  support_finite : setup.initialLaw.support.Finite
+class FiniteInitialSupport (setup : Setup (Player := Player) (L := L)) : Prop where
+  support_finite : setup.initialDistribution.support.Finite
 
-theorem initialLaw_support_finite (setup : Setup (Player := Player) (L := L))
-    [setup.FiniteInitialLaw] : setup.initialLaw.support.Finite :=
-  FiniteInitialLaw.support_finite
+theorem initialDistribution_support_finite (setup : Setup (Player := Player) (L := L))
+    [setup.FiniteInitialSupport] : setup.initialDistribution.support.Finite :=
+  FiniteInitialSupport.support_finite
 
 def run (setup : Setup (Player := Player) (L := L))
     (profile : BehavioralProfile setup.program) :
     PMF (Config Player L setup.program.terminalCtx) :=
-  setup.initialLaw.bind fun initial => SourceProgram.run setup.program profile initial
+  setup.initialDistribution.bind fun initial => SourceProgram.run setup.program profile initial
 
 /-- The public result law of a profile. `run` keeps the complete terminal
 state; only this projection is an outcome. -/

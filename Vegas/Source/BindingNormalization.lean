@@ -894,7 +894,7 @@ initial parameter and public result, against unchanged opponents. Finite actual
 run support supplies integrability for every real-valued utility. -/
 theorem exists_valueBinding_parameter_expect_ge {Parameter : Type}
     (setup : Setup (Player := Player) (L := L)) (finite : setup.program.FiniteBindingTypes)
-    [setup.FiniteInitialLaw] (parameter : State L setup.context → Parameter)
+    [setup.FiniteInitialSupport] (parameter : State L setup.context → Parameter)
     (value : Parameter × PublicOutcome setup.program → ℝ)
     (profile : BehavioralProfile setup.program) (who : Player)
     (policy : BehavioralPolicy who setup.program) :

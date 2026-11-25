@@ -39,8 +39,8 @@ public import Vegas.Pending.PhysicalPrefixPolicy
 public import Vegas.Pending.SingleOwnerPhase
 public import Vegas.Pending.SingleOwnerSimulation
 public import Vegas.Pending.InitialDecisionSimulation
-public import Vegas.Pending.GraphCompletionLaw
-public import Vegas.Pending.GraphEventStepLaw
+public import Vegas.Pending.GraphCompletionDistribution
+public import Vegas.Pending.GraphEventStepDistribution
 public import Vegas.Pending.OwnedCompletionConfig
 public import Vegas.Pending.PeriodicService
 public import Vegas.Pending.PeriodicServiceClock
@@ -50,14 +50,14 @@ public import Vegas.Pending.PeriodicServiceReceipts
 public import Vegas.Pending.PeriodicServiceCompletion
 
 public import Vegas.Pending.AcceptedEventOwnership
-public import Vegas.Pending.CanonicalKeyLaw
+public import Vegas.Pending.CanonicalKeyDistribution
 public import Vegas.Pending.CanonicalKeyPublication
 public import Vegas.Pending.CanonicalOutcomePublication
 public import Vegas.Pending.CanonicalOutcomeHead
 public import Vegas.Pending.ChanceContinuation
 public import Vegas.Pending.ChanceCompletionConfig
-public import Vegas.Pending.LastKeyLaw
-public import Vegas.Pending.LastErasedKeyLaw
+public import Vegas.Pending.LastKeyDistribution
+public import Vegas.Pending.LastErasedKeyDistribution
 public import Vegas.Pending.EffectiveOpening
 public import Vegas.Pending.CanonicalOutcomeAccepted
 public import Vegas.Pending.CompletionTraffic
@@ -93,7 +93,7 @@ public import Vegas.Pending.ExclusionFiniteNature
 public import Vegas.Pending.ExclusionInformationHistory
 public import Vegas.Pending.ExclusionInvariant
 public import Vegas.Pending.ExclusionNativeFailure
-public import Vegas.Pending.ExclusionPolicyLaw
+public import Vegas.Pending.ExclusionPolicyDistribution
 public import Vegas.Pending.ExclusionStoppedBoundary
 public import Vegas.Pending.GraphRefinement
 public import Vegas.Pending.OnePacketValueSwap
@@ -131,7 +131,7 @@ public import Vegas.Pending.ReactiveBindingSubmittedInclusion
 public import Vegas.Pending.ReactiveBindingSubmittedRecords
 public import Vegas.Pending.ReactiveBindingSubmittedRepair
 public import Vegas.Pending.ReactiveBindingSubmittedResponse
-public import Vegas.Pending.ReactiveBindingWindowLaw
+public import Vegas.Pending.ReactiveBindingWindowDistribution
 public import Vegas.Pending.ReactiveBoundedHandles
 public import Vegas.Pending.ReactiveBoundedValues
 public import Vegas.Pending.ReactiveCandidateBudget
@@ -154,7 +154,7 @@ public import Vegas.Pending.ReactiveFiniteResponses
 public import Vegas.Pending.ReactiveFirstOpportunity
 public import Vegas.Pending.ReactiveFreshCallAcceptance
 public import Vegas.Pending.PrefixBoundary
-public import Vegas.Pending.StoppedPrefixLaw
+public import Vegas.Pending.StoppedPrefixDistribution
 public import Vegas.Pending.ReactiveGraphSteps
 public import Vegas.Pending.ReactiveGuardConformance
 public import Vegas.Pending.ReactiveGuardedResponse
@@ -209,7 +209,7 @@ public import Vegas.Pending.SilentAction
 public import Vegas.Pending.SilentContinuation
 public import Vegas.Pending.ThinnedCountCollection
 public import Vegas.Pending.TurnClient
-public import Vegas.Pending.TurnClientActionLaw
+public import Vegas.Pending.TurnClientActionDistribution
 public import Vegas.Pending.TurnClientRecovery
 public import Vegas.Pending.TurnClientSubmissions
 public import Vegas.Pending.TurnSubmissionDiscipline

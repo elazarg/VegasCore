@@ -58,7 +58,7 @@ theorem concurrentDeviationSimulation {horizon : Nat}
     {delay : (serviceGraph setup deps).EventId → Nat}
     (bound : (serviceGraph setup deps).EventId → Nat) (turns : Nat)
     (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
-        (serviceInitialLaw setup deps) horizon scheduler delay bound)
+        (serviceInitialDistribution setup deps) horizon scheduler delay bound)
     (timely : AsyncTimely (serviceTimeouts setup deps duration) delay bound)
     (base : (serviceGraph setup deps).BehavioralProfile)
     (decides : ∀ (config : (serviceGraph setup deps).Config)
@@ -145,7 +145,7 @@ theorem concurrentDeviationSimulation {horizon : Nat}
         ext event
         simp only [Finset.mem_univ, iff_true]
         exact boundary.earlier event event.isLt
-      rw [keyTarget_runKey (independent _), lastErasedLaw_terminal _ _ _ terminal,
+      rw [keyTarget_runKey (independent _), lastErasedDistribution_terminal _ _ _ terminal,
         readErased_runKey]
     exact DeviationSimulation.of_frozen frozen (base who) settled
   have smaller : rank < G.order.eventCount := lt_of_le_of_ne within last

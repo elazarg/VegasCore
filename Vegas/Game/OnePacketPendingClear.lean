@@ -24,9 +24,11 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 local notation "menu" => bounds.onePacketMenu timeouts leaks
-local notation "protocol" => ReactiveApplication.ResponseMenu.protocol menu (initialLaw setup)
+local notation "protocol" =>
+  ReactiveApplication.ResponseMenu.protocol menu (initialDistribution setup)
   horizon scheduler
-local notation "model" => ReactiveApplication.ResponseMenu.information menu (initialLaw setup)
+local notation "model" =>
+  ReactiveApplication.ResponseMenu.information menu (initialDistribution setup)
   horizon scheduler
 
 /-- From a clear configuration with the acceptance invariant, every actual
@@ -64,7 +66,8 @@ theorem pending_publicClear_of_acceptanceInvariant
     have nextInvariant := acceptanceInvariant_transition (timeouts := timeouts) bounds horizon
       scheduler who entry
       message event sent action output before after joint legal holds.1 reached
-    change after ∈ ((application setup timeouts leaks).transition (initialLaw setup) horizon
+    change after ∈ ((application setup timeouts leaks).transition
+      (initialDistribution setup) horizon
       scheduler
       before joint).support at reached
     cases before with
@@ -74,7 +77,8 @@ theorem pending_publicClear_of_acceptanceInvariant
       | none => exact nextInvariant.elim
       | some next =>
         refine ⟨nextInvariant, fun pending => ?_⟩
-        have path := reactive_protocol_graph_steps timeouts leaks (initialLaw setup) horizon
+        have path := reactive_protocol_graph_steps timeouts leaks
+          (initialDistribution setup) horizon
           scheduler current next joint reached
         have historyKept := EventGraph.Config.Step.path_history_prefix path
         have beforePending : event ∉ current.execution.application.config.cut.completed :=

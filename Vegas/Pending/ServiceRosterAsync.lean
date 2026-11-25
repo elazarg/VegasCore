@@ -29,7 +29,7 @@ theorem rosterScheduler_protectedInclusion (graph : EventGraph Player L)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph.sequentialize))
     (rosters : graph.EventId → List Player)
     (network : (NetworkPolicy (rosterTimeouts graph)) leaks) :
-    ProtectedInclusion (rosterTimeouts graph) leaks (rosterInitialLaw graph inputs)
+    ProtectedInclusion (rosterTimeouts graph) leaks (rosterInitialDistribution graph inputs)
       (rosterPlan graph rosters).length
       (rosterScheduler graph leaks rosters network) (fun _ => 0) :=
   RosterCalendarInvariant.protectedInclusion graph inputs leaks rosters
@@ -42,7 +42,7 @@ theorem rosterScheduler_completesPlay (graph : EventGraph Player L)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph.sequentialize))
     (rosters : graph.EventId → List Player)
     (network : (NetworkPolicy (rosterTimeouts graph)) leaks) :
-    CompletesPlay (rosterTimeouts graph) leaks (rosterInitialLaw graph inputs)
+    CompletesPlay (rosterTimeouts graph) leaks (rosterInitialDistribution graph inputs)
       (rosterPlan graph rosters).length
       (rosterScheduler graph leaks rosters network) :=
   RosterCalendarInvariant.completesPlay graph inputs leaks rosters
@@ -57,7 +57,7 @@ theorem rosterScheduler_asyncContract (graph : EventGraph Player L)
     (rosters : graph.EventId → List Player)
     (network : (NetworkPolicy (rosterTimeouts graph)) leaks)
     (opportunities : ActorOpportunities graph rosters) :
-    AsyncContract (rosterTimeouts graph) leaks (rosterInitialLaw graph inputs)
+    AsyncContract (rosterTimeouts graph) leaks (rosterInitialDistribution graph inputs)
       (rosterPlan graph rosters).length
       (rosterScheduler graph leaks rosters network) (fun event => event.val) (fun _ => 0) where
   opportunity := RosterCalendarInvariant.opportunity graph inputs leaks rosters

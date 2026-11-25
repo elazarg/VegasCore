@@ -61,7 +61,8 @@ theorem actorCompletionsMatch_of_forced (assessment : setup.intendedModel.Behavi
         actorCompletionsMatch_of_forced assessment who prior next same
           forcedNext
       subst current
-      change some control ∈ ((application setup timeouts leaks).transition (initialLaw setup)
+      change some control ∈ ((application setup timeouts leaks).transition
+        (initialDistribution setup)
         horizon
         scheduler before joint).support at realized
       refine ⟨?_, ?_⟩
@@ -88,7 +89,7 @@ theorem actorCompletionsMatch_of_forced (assessment : setup.intendedModel.Behavi
             some (residual.lift (ProtocolState.entry residual.program residual.source)) :=
           (intendedHistory?_state (timeouts := timeouts) prior replayed).trans decoded
         have rawPrior := (bounds.onePacketMenu timeouts leaks).toRawTrace
-          (initialLaw setup) horizon scheduler prior
+          (initialDistribution setup) horizon scheduler prior
         have facts := legalFacts setup leaks horizon scheduler current rawPrior
         have actorActive := current.execution.application.active_of_ready_owned
           facts.quiescent ready acts
@@ -105,7 +106,8 @@ theorem actorCompletionsMatch_of_forced (assessment : setup.intendedModel.Behavi
         · have notFailing :=
             (defaulted_or_not_failing_of_legal ready acts decoded currentState
               intendedLegal).resolve_left actorActive
-          rcases transition_idle_cases (timeouts := timeouts) (initialLaw setup) horizon scheduler
+          rcases transition_idle_cases (timeouts := timeouts)
+            (initialDistribution setup) horizon scheduler
             current idle joint
               realized with sameExecution | ⟨command, moved⟩
           · have empty : control.execution.application.config.history.drop
@@ -124,9 +126,10 @@ theorem actorCompletionsMatch_of_forced (assessment : setup.intendedModel.Behavi
               (timeouts := timeouts) current.execution control.execution command moved completion
               fresh appended acts notFailing
             have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace
-              (initialLaw setup) horizon scheduler (prior.extend joint legal realized)
+              (initialDistribution setup) horizon scheduler (prior.extend joint legal realized)
             have facts := legalFacts setup leaks horizon scheduler control rawTrace
-            have inputsEq := transition_idle_inputs (timeouts := timeouts) (initialLaw setup)
+            have inputsEq := transition_idle_inputs (timeouts := timeouts)
+              (initialDistribution setup)
               horizon scheduler current
               idle joint realized
             have present : message ∈ current.execution.network.inputs := by

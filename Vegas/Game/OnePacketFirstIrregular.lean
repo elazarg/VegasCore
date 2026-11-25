@@ -3,7 +3,7 @@ module
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 public import Vegas.Game.OnePacketZeroContent
-public import Vegas.Game.OnePacketSlotLawDischarge
+public import Vegas.Game.OnePacketSlotDistributionDischarge
 public import Vegas.Game.OnePacketIrregularBound
 
 @[expose] public section
@@ -34,8 +34,9 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
   {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
-  [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
-  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+  [(application setup timeouts leaks).FiniteNature (initialDistribution setup) scheduler]
+  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds
+    (initialDistribution setup) horizon
     scheduler).InfoState who)]
 
 /-- **Irregular responses from forced states are cube-small.** At a response of a
@@ -46,7 +47,8 @@ theorem certificate_responseMass_le_cube
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (scale : ℕ → ℝ) (scale_pos : ∀ n, 0 < scale n) (scale_le_one : ∀ n, scale n ≤ 1)
     {slots : Nat}
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup) horizon
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds
+      (initialDistribution setup) horizon
       scheduler slots p))
     (covers : bounds.CoversOutputValues)
     (capacity : ∀ who, bindingEventCount setup.informationGraph who < bounds.candidateCount)
@@ -61,7 +63,7 @@ theorem certificate_responseMass_le_cube
     (acting : control.actor = some actor) (other : actor ≠ who)
     (forcedWho : ForcedState setup timeouts leaks who (some control))
     (forcedActor : forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks)
-      (initialLaw setup)
+      (initialDistribution setup)
       horizon scheduler actor ((application setup timeouts leaks).observe actor (some control)))
     (irregular : ¬ RegularStep setup timeouts leaks bounds horizon scheduler (sequence n) who
       before joint
@@ -125,9 +127,9 @@ theorem certificate_responseMass_le_cube
   -- The certificate's component at the responder's information.
   have played : (onePacketInformation setup timeouts leaks bounds horizon scheduler).infoOf actor
     prior ∈
-      (onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+      (onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon
         scheduler).playedInformation actor :=
-    (onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+    (onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon
       scheduler).mem_playedInformation (history := ⟨_, prior⟩) legal.1
   rw [infoEq] at played
   have observed : (application setup timeouts leaks).observe actor

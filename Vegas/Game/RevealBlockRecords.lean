@@ -102,7 +102,7 @@ theorem honestBlockSubmissions_round {horizon remaining : Nat}
       event.val < finish → ((serviceGraph setup deps).outputLayout event).IsPublication)
     (current next : (serviceApplication setup deps duration leaks).Execution)
     (trace : ((serviceApplication setup deps duration leaks).protocol
-      (serviceInitialLaw setup deps) horizon scheduler).Trace
+      (serviceInitialDistribution setup deps) horizon scheduler).Trace
         (some ⟨remaining + 1, none, current⟩))
     (inside : InBlock start finish current.application.config)
     (running : ¬ BlockDone finish current.application.config)
@@ -139,7 +139,8 @@ theorem honestBlockSubmissions_round {horizon remaining : Nat}
       cases command <;> simp_all [ReactiveApplication.Command.actor?]
     subst commandEq
     have appEq := activation_application setup leaks current middle owner moved
-    obtain ⟨middleTrace⟩ := app.raw_trace_environment (serviceInitialLaw setup deps) horizon
+    obtain ⟨middleTrace⟩ := app.raw_trace_environment (serviceInitialDistribution setup deps)
+      horizon
       scheduler remaining current middle (.activate owner) trace selected moved
     rw [active] at middleTrace
     have facts := legalFacts setup leaks horizon scheduler _ middleTrace
@@ -439,7 +440,7 @@ theorem blockRecordsSound_round
     {delay : (serviceGraph setup deps).EventId → Nat}
     (bound : (serviceGraph setup deps).EventId → Nat) (turns : Nat)
     (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
-        (serviceInitialLaw setup deps) horizon scheduler delay bound)
+        (serviceInitialDistribution setup deps) horizon scheduler delay bound)
     (timely : AsyncTimely (serviceTimeouts setup deps duration) delay bound)
     (reference : (serviceGraph setup deps).BehavioralProfile)
     (decides : ∀ (config : (serviceGraph setup deps).Config)
@@ -463,7 +464,7 @@ theorem blockRecordsSound_round
     (origin : (serviceGraph setup deps).Config)
     (current next : (serviceApplication setup deps duration leaks).Execution)
     (supported : current ∈ ((serviceApplication setup deps duration leaks).roundsFrom
-      (serviceInitialLaw setup deps) scheduler
+      (serviceInitialDistribution setup deps) scheduler
       (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps) reference) who deviation)
       current.environmentRecall.length).support)
@@ -481,10 +482,11 @@ theorem blockRecordsSound_round
   let timeouts := serviceTimeouts setup deps duration
   let players := Function.update (turnPolicy timeouts leaks bound
     turns (firstTurnTiming setup turns deps) reference) who deviation
-  obtain ⟨trace⟩ := app.raw_trace_roundsFrom (serviceInitialLaw setup deps) horizon scheduler
+  obtain ⟨trace⟩ := app.raw_trace_roundsFrom (serviceInitialDistribution setup deps) horizon
+    scheduler
     players current.environmentRecall.length bounded current supported
   have facts := legalFacts setup leaks horizon scheduler _ trace
-  have signed := signedCommitments_history timeouts leaks (serviceInitialLaw setup deps)
+  have signed := signedCommitments_history timeouts leaks (serviceInitialDistribution setup deps)
     (fun state supported => by
       obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ supported
       exact ⟨_, rfl⟩) horizon scheduler trace

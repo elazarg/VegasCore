@@ -26,37 +26,38 @@ variable {Player : Type} {L : IExpr}
 
 /-- Freeze a binding at its stored result, with an accepted failure for a missing output.
 Other node laws are unchanged. -/
-def storedBindingLaw : (field : EventField Player L) → Option field.Value →
+def storedBindingDistribution : (field : EventField Player L) → Option field.Value →
     PMF field.Action → PMF field.Action
   | .binding _ _, stored, _ => PMF.pure (some (stored.getD .failure))
   | .publicData _, _, original | .privateInput _ _, _, original
   | .publication _, _, original => original
 
-@[simp] theorem storedBindingLaw_binding (owner : Player) (payload : L.Ty)
+@[simp] theorem storedBindingDistribution_binding (owner : Player) (payload : L.Ty)
     (stored : Option (PublicationResult (L.Val payload)))
     (original : PMF (Option (PublicationResult (L.Val payload)))) :
-    storedBindingLaw (.binding owner payload) stored original =
+    storedBindingDistribution (.binding owner payload) stored original =
       PMF.pure (some (stored.getD .failure)) := rfl
 
 /-- Frozen binding laws always submit, including the off-support missing-output branch. -/
-theorem storedBindingLaw_submits (field : EventField Player L) (stored : Option field.Value)
+theorem storedBindingDistribution_submits (field : EventField Player L)
+    (stored : Option field.Value)
     (original : PMF field.Action) (action : field.Action)
-    (supported : action ∈ (field.storedBindingLaw stored original).support) :
+    (supported : action ∈ (field.storedBindingDistribution stored original).support) :
     field.Submitted action := by
   cases field with
   | binding owner payload =>
-      rw [storedBindingLaw, PMF.mem_support_pure_iff] at supported
+      rw [storedBindingDistribution, PMF.mem_support_pure_iff] at supported
       subst action
       rfl
   | publicData | privateInput | publication => trivial
 
 /-- An available binding output freezes the prescribed submitted result exactly. -/
-theorem storedBindingLaw_eq_pure_of_binding {field : EventField Player L}
+theorem storedBindingDistribution_eq_pure_of_binding {field : EventField Player L}
     {owner : Player} {payload : L.Ty} (binding : field = .binding owner payload)
     (stored : Option field.Value) (original : PMF field.Action)
     (value : PublicationResult (L.Val payload))
     (filled : cast (congrArg (fun field => Option field.Value) binding) stored = some value) :
-    field.storedBindingLaw stored original =
+    field.storedBindingDistribution stored original =
       PMF.pure (cast (congrArg Action binding.symm) (some value)) := by
   cases binding
   change stored = some value at filled
@@ -73,7 +74,7 @@ def freezeBindingsBefore (profile : graph.BehavioralProfile) (start rank : Nat)
     (ghost : graph.Config) : graph.BehavioralProfile :=
   fun who event actor observation active =>
     if start ≤ event.val ∧ event.val < rank then
-      (graph.outputLayout event).storedBindingLaw (ghost.outputs event)
+      (graph.outputLayout event).storedBindingDistribution (ghost.outputs event)
         (profile who event actor observation active)
     else profile who event actor observation active
 
@@ -85,7 +86,7 @@ theorem SubmitsBindings.freezeBindingsBefore {profile : graph.BehavioralProfile}
   intro who event actor observation active action supported
   unfold Vegas.EventGraph.freezeBindingsBefore at supported
   split at supported
-  · exact EventField.storedBindingLaw_submits _ _ _ action supported
+  · exact EventField.storedBindingDistribution_submits _ _ _ action supported
   · exact submits who event actor observation active action supported
 
 /-- The current source head retains its original kernel until it is added to the prefix. -/
@@ -116,7 +117,7 @@ theorem freezeBindingsBefore_binding (profile : graph.BehavioralProfile) (start 
     graph.freezeBindingsBefore profile start rank ghost who event actor observation active =
       PMF.pure (cast (congrArg EventField.Action binding.symm) (some value)) := by
   rw [freezeBindingsBefore, ite_eq_left inside]
-  exact EventField.storedBindingLaw_eq_pure_of_binding binding _ _ value filled
+  exact EventField.storedBindingDistribution_eq_pure_of_binding binding _ _ value filled
 
 private theorem freezeBindingsBefore_step_other
     (profile : graph.BehavioralProfile) (start : Nat) (before after : graph.Config)

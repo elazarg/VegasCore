@@ -4,7 +4,7 @@ module
 
 public import Vegas.Game.OnePacketHonestContinuation
 public import Vegas.Game.OnePacketSwapRegular
-public import Vegas.Game.OnePacketChanceSourceLaw
+public import Vegas.Game.OnePacketChanceSourceDistribution
 
 @[expose] public section
 
@@ -34,15 +34,15 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 local notation "N" =>
-  onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+  onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
 local notation "E" => ReactiveApplication.ResponseMenu.protocol
-  (bounds.onePacketMenu timeouts leaks) (initialLaw setup) horizon scheduler
+  (bounds.onePacketMenu timeouts leaks) (initialDistribution setup) horizon scheduler
 
 /-- Every supported source setup draw has a legal native initial boundary. -/
 theorem exists_initial_native_boundary
     (wellFormed : setup.WellFormed)
     (profile : BehavioralProfile setup.program)
-    (inputs : State L setup.context) (supported : inputs ∈ setup.initialLaw.support) :
+    (inputs : State L setup.context) (supported : inputs ∈ setup.initialDistribution.support) :
     ∃ (start : (E).History) (execution : (application setup timeouts leaks).Execution),
       start.state = some ⟨horizon - execution.environmentRecall.length, none, execution⟩ ∧
       ReachedBoundary setup timeouts leaks horizon scheduler 0 execution ∧
@@ -53,7 +53,7 @@ theorem exists_initial_native_boundary
   let native := EventGraphRuntime.State.initial (graph := setup.informationGraph)
     (setup.eventInputs inputs)
   let execution := ReactiveApplication.Execution.initial (application setup timeouts leaks) native
-  have initial : native ∈ (initialLaw setup).support :=
+  have initial : native ∈ (initialDistribution setup).support :=
     (PMF.mem_support_map_iff _ _ _).mpr ⟨inputs, supported, rfl⟩
   have legal : (E).Legal none (fun _ => none) := by
     refine ⟨by change ¬ False; trivial, ?_⟩
@@ -63,7 +63,7 @@ theorem exists_initial_native_boundary
   have reached : some ⟨horizon, none, execution⟩ ∈
       ((E).step none ⟨fun _ => none, legal⟩).support := by
     change some (⟨horizon, none, execution⟩ : (application setup timeouts leaks).Control) ∈
-      ((initialLaw setup).map fun native =>
+      ((initialDistribution setup).map fun native =>
         some (⟨horizon, none, ReactiveApplication.Execution.initial
           (application setup timeouts leaks) native⟩ :
             (application setup timeouts leaks).Control)).support
@@ -193,7 +193,8 @@ theorem exists_owned_successor_native_boundary
       sourceServicePrefix? setup (rank + 1) anchor.application.config = some target ∧
       ProtocolState.Intended setup.program target := by
   classical
-  let players := honestProfile setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+  let players := honestProfile setup timeouts leaks bounds
+    (initialDistribution setup) horizon scheduler
     source
   let waiting := fun callback : (E).History =>
     (application setup timeouts leaks).actor callback.state = some owner
@@ -211,16 +212,17 @@ theorem exists_owned_successor_native_boundary
     owner event turn callbackClear
   have installed : Profile.update (sig := (N).behavioralSignature) players owner
       ((players owner).withLaw ((N).infoOf owner callback.trace)
-        (honestChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+        (honestChoice setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
           source owner ((N).infoOf owner callback.trace))) = players := by
     change Profile.update (sig := (N).behavioralSignature) players owner
       ((players owner).withLaw ((N).infoOf owner callback.trace)
         (players owner ((N).infoOf owner callback.trace))) = players
     rw [BehavioralPolicy.withLaw_eq_self, Profile.update_eq_self]
-  have sourceLaw := counted_firstActivation_honest_sourceLaw (timeouts := timeouts) opportunity
+  have sourceDistribution := counted_firstActivation_honest_sourceDistribution
+    (timeouts := timeouts) opportunity
     inclusion timely completes covers capacity source certificate players callback callbackState
       callbackClear event pending never (same ▸ boundary.ordered) (same ▸ decoded) intended _ rfl
-  rw [installed] at sourceLaw
+  rw [installed] at sourceDistribution
   have projectedSupport : some target ∈
       (((N).runBehavioralUntil certificate players
         (fun stop => LateStopped setup timeouts leaks bounds horizon scheduler rank stop ∨
@@ -229,7 +231,7 @@ theorem exists_owned_successor_native_boundary
               = ∅)
             stop.state) callback).map
         (fun stop => nativeDecodedState setup timeouts leaks stop.state)).support := by
-    rw [sourceLaw]
+    rw [sourceDistribution]
     exact (PMF.mem_support_map_iff _ _ _).mpr ⟨target, sourceSupport, rfl⟩
   obtain ⟨final, finalSupport, decodedFinal⟩ :=
     (PMF.mem_support_map_iff _ _ _).mp projectedSupport
@@ -273,7 +275,8 @@ theorem exists_chance_successor_native_boundary
       sourceServicePrefix? setup (rank + 1) anchor.application.config = some target ∧
       ProtocolState.Intended setup.program target := by
   let profile := setup.intendedOpeningProfile source.strategy
-  let players := honestProfile setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+  let players := honestProfile setup timeouts leaks bounds
+    (initialDistribution setup) horizon scheduler
     source
   obtain ⟨found, ⟨residual⟩⟩ := protocol_sourceResidual (timeouts := timeouts) profile
     (bounds.onePacketMenu timeouts leaks) horizon scheduler start.trace _ current
@@ -294,7 +297,8 @@ theorem exists_chance_successor_native_boundary
     cases Option.some.inj same
     rw [ProtocolState.step_eq_of_actor_none focal setup.program point joint noActor] at supported
     exact supported
-  have sourceLaw := counted_chance_stopped_sourceLaw (timeouts := timeouts) completes certificate
+  have sourceDistribution := counted_chance_stopped_sourceDistribution
+    (timeouts := timeouts) completes certificate
     players start current event atRank actorless profile residual decoded intended
   have projectedSupport : some target ∈
       (((N).runBehavioralUntil certificate players
@@ -304,7 +308,7 @@ theorem exists_chance_successor_native_boundary
               = ∅)
             stop.state) start).map
         (fun stop => nativeDecodedState setup timeouts leaks stop.state)).support := by
-    rw [sourceLaw]
+    rw [sourceDistribution]
     exact (PMF.mem_support_map_iff _ _ _).mpr ⟨target, sourceSupport, rfl⟩
   obtain ⟨final, finalSupport, decodedFinal⟩ :=
     (PMF.mem_support_map_iff _ _ _).mp projectedSupport
@@ -374,7 +378,7 @@ theorem exists_native_boundary_of_intended_history
     intro point currentSource
     cases before with
     | none =>
-      change after ∈ (setup.initialLaw.map fun inputs =>
+      change after ∈ (setup.initialDistribution.map fun inputs =>
         some (ProtocolState.entry setup.program (Config.initial inputs))).support at realized
       obtain ⟨inputs, supported, same⟩ := (PMF.mem_support_map_iff _ _ _).mp realized
       cases Option.some.inj (same.trans currentSource)

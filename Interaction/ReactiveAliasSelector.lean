@@ -2,7 +2,7 @@ module
 
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-public import Interaction.ReactiveAliasLaw
+public import Interaction.ReactiveAliasDistribution
 public import Interaction.ReactiveRecallEntries
 
 @[expose] public section

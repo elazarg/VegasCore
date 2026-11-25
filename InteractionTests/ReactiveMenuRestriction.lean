@@ -90,7 +90,7 @@ theorem arbitrary_policy_continuation (profile : ∀ who, source.BehavioralPolic
   rfl
 
 /-- The initialized full state law also agrees, with no equilibrium premise. -/
-theorem arbitrary_policy_state_law (profile : ∀ who, source.BehavioralPolicy who)
+theorem arbitrary_policy_state_distribution (profile : ∀ who, source.BehavioralPolicy who)
     (fuel : Nat) :
     (source.runBehavioral profile fuel).map History.state =
       (target.runBehavioral (embed profile) fuel).map History.state := by

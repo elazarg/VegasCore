@@ -14,7 +14,7 @@ the cube of the scale, owing or not
 (`Vegas.certificate_responseMass_le_response`):
 
 * with positive content, the slot law at the response
-  (`Vegas.certificate_slotLaw_at`) gives the content factor, at most one, times
+  (`Vegas.certificate_slotDistribution_at`) gives the content factor, at most one, times
   the step response, plus the uniform tremble;
 * with content zero, a response naming the event of `r`'s turn commits at a
   binding (`Vegas.zeroContent_binding_of_turn`), where no tier gives it mass,
@@ -36,8 +36,9 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
   {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
-  [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
-  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+  [(application setup timeouts leaks).FiniteNature (initialDistribution setup) scheduler]
+  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds
+    (initialDistribution setup) horizon
     scheduler).InfoState who)]
 
 /-- **The certificate's response mass is at most the step response plus the
@@ -53,7 +54,8 @@ theorem certificate_responseMass_le_response
     (covers : bounds.CoversOutputValues)
     (capacity : ∀ who, bindingEventCount setup.informationGraph who < bounds.candidateCount)
     {slots : Nat}
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup) horizon
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds
+      (initialDistribution setup) horizon
       scheduler slots p))
     (n : ℕ) {before after : (application setup timeouts leaks).ProtocolState}
     (prior : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace before)
@@ -64,7 +66,8 @@ theorem certificate_responseMass_le_response
       ⟨joint, legal⟩).support) (control next : (application setup timeouts leaks).Control)
     (actor : Player) (initialized : before = some control) (reached : after = some next)
     (acting : control.actor = some actor)
-    (forced : forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks) (initialLaw
+    (forced : forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks)
+      (initialDistribution
       setup) horizon
       scheduler actor ((application setup timeouts leaks).observe actor (some control)))
     (clear : (ClearInput timeouts) leaks
@@ -89,9 +92,9 @@ theorem certificate_responseMass_le_response
   subst initialized reached
   have played : (onePacketInformation setup timeouts leaks bounds horizon scheduler).infoOf actor
     prior ∈
-      (onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+      (onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon
         scheduler).playedInformation actor :=
-    (onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+    (onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon
       scheduler).mem_playedInformation (history := ⟨_, prior⟩) legal.1
   have observed : (application setup timeouts leaks).observe actor (some control) =
       some (control.execution.logs actor,
@@ -119,7 +122,8 @@ theorem certificate_responseMass_le_response
     rw [chosenJoint, Option.getD_some] at floorStep
     obtain ⟨main, alternative, slot, mainFactor', alternativeFactor, slotFactor, profileEq,
       mainMass, alternativeMass, slotMass, combination, _⟩ :=
-      certificate_slotLaw_at (timeouts := timeouts) sequence scale scale_pos scale_le_one small
+      certificate_slotDistribution_at (timeouts := timeouts) sequence scale scale_pos scale_le_one
+        small
         floor floor_pos covers
         capacity weights n prior acting forced clear canonical response member nextEq positive
         (fun _ => (floored n).trans floorStep) _ infoEq played
@@ -136,7 +140,8 @@ theorem certificate_responseMass_le_response
     set content := contentFactor setup timeouts leaks (sequence n) actor control.execution
       next.execution response
     have contentLe : content ≤ 1 := contentFactor_le_one (timeouts := timeouts) _ _ _ _ _ _ _
-    have uniformLe : ((bounds.onePacketMenu timeouts leaks).uniformPolicy (initialLaw setup)
+    have uniformLe : ((bounds.onePacketMenu timeouts leaks).uniformPolicy
+      (initialDistribution setup)
         horizon scheduler actor _ (InformationModel.choicesOfLegal _ prior ⟨joint, legal⟩
           actor)).toReal ≤ 1 :=
       ENNReal.toReal_le_of_le_ofReal zero_le_one

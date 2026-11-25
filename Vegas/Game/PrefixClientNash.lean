@@ -3,7 +3,7 @@ module
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 public import Vegas.Game.PrefixClientDeviation
-public import Vegas.Game.PrefixClientOutcomeLaw
+public import Vegas.Game.PrefixClientOutcomeDistribution
 public import Vegas.Game.GraphForfeit
 public import GameTheory.Core.UtilityTransfer
 
@@ -104,7 +104,7 @@ private theorem native_compileIntendedExtension_isεNash_of_comparison
     (setup : Setup (Player := Player) (L := L)) [Finite Player]
     (deps : setup.dataflowGraph.Dependencies)
     (relaxed : (serviceGraph setup deps).RevealRelaxedOrdered)
-    (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw]
+    (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialSupport]
     (wellFormed : setup.WellFormed) {Parameter : Type}
     (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ) (forfeit : ℝ)
@@ -126,7 +126,7 @@ private theorem native_compileIntendedExtension_isεNash_of_comparison
     (bound : (serviceGraph setup deps).EventId → Nat)
     {delay : (serviceGraph setup deps).EventId → Nat}
     (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
-      (serviceInitialLaw setup deps) horizon scheduler delay bound)
+      (serviceInitialDistribution setup deps) horizon scheduler delay bound)
     (timely : AsyncTimely (serviceTimeouts setup deps duration) delay bound) :
     let app := serviceApplication setup deps duration leaks
     let admission := CommitmentInterface.forfeiture setup.program
@@ -138,7 +138,7 @@ private theorem native_compileIntendedExtension_isεNash_of_comparison
       (firstTurnTiming setup turns deps)
       (effectiveOpening ((serviceGraph setup deps).prefixProfile reference))
     (∀ focal (replacement : app.Policy), ∃ policy : setup.informationGraph.BehavioralPolicy focal,
-      expect (app.roundsFrom (serviceInitialLaw setup deps) scheduler
+      expect (app.roundsFrom (serviceInitialDistribution setup deps) scheduler
         (Function.update repairedClients focal replacement) horizon)
         (fun final => setup.graphForfeitConfigPayoff deps parameter utility forfeit
           final.application.config focal) ≤
@@ -153,12 +153,13 @@ private theorem native_compileIntendedExtension_isεNash_of_comparison
       (effectiveOpening (compilePrescribedProfile setup.program deps source))
     let nativeGame := serviceGame setup deps duration leaks scheduler horizon
     IsεNash nativeGame (setup.graphForfeitConfigPayoff deps parameter utility forfeit) ε clients ∧
-      (∀ final ∈ (app.roundsFrom (serviceInitialLaw setup deps) scheduler clients horizon).support,
+      (∀ final ∈ (app.roundsFrom (serviceInitialDistribution setup deps) scheduler clients
+        horizon).support,
         final.application.config.cut.Terminal ∧ final.application.config.defaulted = ∅ ∧
           ∃ terminal, serviceRankedReadout setup deps duration leaks (app.finished final) =
             some terminal ∧ ∀ who,
               failedReveals setup.program who (publicOutcome setup.program terminal) = 0) ∧
-      (app.roundsFrom (serviceInitialLaw setup deps) scheduler clients horizon).map
+      (app.roundsFrom (serviceInitialDistribution setup deps) scheduler clients horizon).map
         (fun final => ((setup.graphObservation deps parameter utility (leastUtility utility)
           final.application.config).1,
           setup.graphForfeitConfigPayoff deps parameter utility forfeit final.application.config)) =
@@ -200,18 +201,20 @@ private theorem native_compileIntendedExtension_isεNash_of_comparison
       (fun outcome who => leastUtility_le utility range who outcome)
       intended repaired repairedAgrees repairedDisclosing ε equilibrium
       setup.informationGraph.canonicalScheduler
-  have nativeLaw := native_compileIntendedExtension_law (turns := turns) setup deps relaxed
+  have nativeDistribution := native_compileIntendedExtension_distribution
+    (turns := turns) setup deps relaxed
     wellFormed parameter utility (leastUtility utility) intended target agrees duration leaks
     scheduler bound contract timely
-  have graphLaw := setup.compileIntendedExtension_law setup.informationDependencies infoRelaxed
+  have graphLaw := setup.compileIntendedExtension_distribution setup.informationDependencies
+    infoRelaxed
     wellFormed parameter utility (leastUtility utility) intended repaired repairedAgrees
     repairedDisclosing setup.informationGraph.canonicalScheduler
   have nativeClean (final : app.Execution)
-      (supported : final ∈ (app.roundsFrom (serviceInitialLaw setup deps) scheduler clients
+      (supported : final ∈ (app.roundsFrom (serviceInitialDistribution setup deps) scheduler clients
         horizon).support) : nativeUtility final.application.config =
         fun who => setup.graphPayoff deps parameter utility (leastUtility utility) who
           final.application.config := by
-    obtain ⟨terminal, clear, source, read, clean⟩ := nativeLaw.1 final supported
+    obtain ⟨terminal, clear, source, read, clean⟩ := nativeDistribution.1 final supported
     exact graphForfeitConfigPayoff_eq_of_native_clean setup deps duration leaks parameter utility
       forfeit (leastUtility utility) final terminal clear source read clean
   have honestLaw : ((nativeGame.play clients).map fun config =>
@@ -220,19 +223,20 @@ private theorem native_compileIntendedExtension_isεNash_of_comparison
       (sourceGame.play sourceProfile).map fun outcome =>
         (some (setup.graphReadout setup.informationDependencies outcome),
           sourceUtility outcome) := by
-    change ((app.roundsFrom (serviceInitialLaw setup deps) scheduler clients horizon).map
+    change ((app.roundsFrom (serviceInitialDistribution setup deps) scheduler clients horizon).map
       (fun final => final.application.config)).map _ = _
     rw [PMF.map_comp]
-    have same : (app.roundsFrom (serviceInitialLaw setup deps) scheduler clients horizon).map
+    have same : (app.roundsFrom (serviceInitialDistribution setup deps) scheduler clients
+      horizon).map
         (fun final => ((setup.graphObservation deps parameter utility (leastUtility utility)
           final.application.config).1, nativeUtility final.application.config)) =
-        (app.roundsFrom (serviceInitialLaw setup deps) scheduler clients horizon).map
+        (app.roundsFrom (serviceInitialDistribution setup deps) scheduler clients horizon).map
           (fun final => setup.graphObservation deps parameter utility (leastUtility utility)
             final.application.config) := by
       apply map_congr_on_support _
       intro final supported
       exact Prod.ext rfl (nativeClean final supported)
-    exact same.trans (nativeLaw.2.trans graphLaw.symm)
+    exact same.trans (nativeDistribution.2.trans graphLaw.symm)
   have nativeIntegral (who : Player) (law : PMF G.Config) :
       UtilityIntegrable nativeUtility who law :=
     setup.graphForfeitConfigPayoff_integrable deps parameter utility range who law
@@ -272,13 +276,14 @@ private theorem native_compileIntendedExtension_isεNash_of_comparison
       rw [extendedExpectedUtility_eq (nativeIntegral who _),
         extendedExpectedUtility_eq (sourceIntegral who _)]
       apply EReal.coe_le_coe_iff.mpr
-      change expect ((app.roundsFrom (serviceInitialLaw setup deps) scheduler
+      change expect ((app.roundsFrom (serviceInitialDistribution setup deps) scheduler
         (Function.update clients who replacement) horizon).map
           (fun final => final.application.config)) (fun config => nativeUtility config who) ≤ _
       rw [expect_map]
       exact bound.trans_eq (sourceExpect (Function.update sourceProfile who policy) who).symm
-  refine ⟨equilibriumNative, nativeLaw.1, ?_⟩
-  have result : ((app.roundsFrom (serviceInitialLaw setup deps) scheduler clients horizon).map
+  refine ⟨equilibriumNative, nativeDistribution.1, ?_⟩
+  have result : ((app.roundsFrom (serviceInitialDistribution setup deps) scheduler clients
+    horizon).map
       (fun final => final.application.config)).map (fun config =>
         ((setup.graphObservation deps parameter utility (leastUtility utility) config).1,
           nativeUtility config)) = _ := honestLaw.trans graphLaw
@@ -301,7 +306,7 @@ theorem native_compileIntendedExtension_preserved
     (setup : Setup (Player := Player) (L := L)) [Finite Player]
     (deps : setup.dataflowGraph.Dependencies)
     (relaxed : (serviceGraph setup deps).RevealRelaxedOrdered)
-    (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw]
+    (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialSupport]
     (wellFormed : setup.WellFormed) {Parameter : Type}
     (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ) (forfeit : ℝ)
@@ -323,7 +328,7 @@ theorem native_compileIntendedExtension_preserved
     (bound : (serviceGraph setup deps).EventId → Nat)
     {delay : (serviceGraph setup deps).EventId → Nat}
     (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
-      (serviceInitialLaw setup deps) horizon scheduler delay bound)
+      (serviceInitialDistribution setup deps) horizon scheduler delay bound)
     (timely : AsyncTimely (serviceTimeouts setup deps duration) delay bound) :
     let app := serviceApplication setup deps duration leaks
     let admission := CommitmentInterface.forfeiture setup.program
@@ -333,12 +338,13 @@ theorem native_compileIntendedExtension_preserved
       (effectiveOpening (compilePrescribedProfile setup.program deps source))
     let nativeGame := serviceGame setup deps duration leaks scheduler horizon
     IsεNash nativeGame (setup.graphForfeitConfigPayoff deps parameter utility forfeit) ε clients ∧
-      (∀ final ∈ (app.roundsFrom (serviceInitialLaw setup deps) scheduler clients horizon).support,
+      (∀ final ∈ (app.roundsFrom (serviceInitialDistribution setup deps) scheduler clients
+        horizon).support,
         final.application.config.cut.Terminal ∧ final.application.config.defaulted = ∅ ∧
           ∃ terminal, serviceRankedReadout setup deps duration leaks (app.finished final) =
             some terminal ∧ ∀ who,
               failedReveals setup.program who (publicOutcome setup.program terminal) = 0) ∧
-      (app.roundsFrom (serviceInitialLaw setup deps) scheduler clients horizon).map
+      (app.roundsFrom (serviceInitialDistribution setup deps) scheduler clients horizon).map
         (fun final => (serviceRankedReadout setup deps duration leaks
           (app.finished final),
           setup.graphForfeitConfigPayoff deps parameter utility forfeit final.application.config)) =
@@ -368,7 +374,7 @@ theorem native_compileIntendedExtension_preserved
         utility forfeit range focal replacement)
   refine ⟨nash, safety, ?_⟩
   calc
-    _ = (app.roundsFrom (serviceInitialLaw setup deps) scheduler clients horizon).map
+    _ = (app.roundsFrom (serviceInitialDistribution setup deps) scheduler clients horizon).map
         (fun final => ((setup.graphObservation deps parameter utility (leastUtility utility)
           final.application.config).1,
           setup.graphForfeitConfigPayoff deps parameter utility forfeit

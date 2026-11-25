@@ -28,10 +28,10 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (bounds : MessageBounds setup.informationGraph) (horizon : Nat)
   (scheduler : (application setup timeouts leaks).Scheduler)
 
-local notation "N" => onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+local notation "N" => onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon
   scheduler
 local notation "NP" => ReactiveApplication.ResponseMenu.protocol
-  (bounds.onePacketMenu timeouts leaks) (initialLaw setup) horizon scheduler
+  (bounds.onePacketMenu timeouts leaks) (initialDistribution setup) horizon scheduler
 local notation "Menu" => bounds.onePacketMenu timeouts leaks
 local notation "Clear" => ReactiveApplication.stateInvariant
   (app := application setup timeouts leaks)
@@ -42,14 +42,14 @@ open Classical in
 /-- Waiting at a fresh debt-free source decision has vanishing gain under
 one assembled native assessment sequence. -/
 theorem assembled_silence_history_comparison
-    [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
+    [(application setup timeouts leaks).FiniteNature (initialDistribution setup) scheduler]
     [∀ who, DecidableEq ((N).InfoState who)]
     (wellFormed : setup.WellFormed) (covers : bounds.CoversOutputValues)
     (capacity : ∀ player, bindingEventCount setup.informationGraph player < bounds.candidateCount)
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (scale : ℕ → ℝ) (positive : ∀ n, 0 < scale n) (le_one : ∀ n, scale n ≤ 1)
     (weights : ℕ → ∀ p,
-      PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+      PMF (OnePacketPart setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
         bounds.candidateCount p))
     (targetSequence : ℕ → (N).BehavioralAssessment)
     (assembled : OnePacketAssembled setup timeouts leaks bounds horizon scheduler sequence scale
@@ -73,9 +73,11 @@ theorem assembled_silence_history_comparison
       (application setup timeouts leaks).terminal (some control) →
       control.execution.application.config.cut.Terminal)
     {who : Player} (site : (N).InformationSite who) (choice : (N).Choice who site.1)
-    (notFree : ¬ Vegas.FreeAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+    (notFree : ¬ Vegas.FreeAgent setup timeouts leaks bounds
+      (initialDistribution setup) horizon scheduler
       ((N).agentAt site))
-    (notOwing : ¬ Vegas.OwingAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+    (notOwing : ¬ Vegas.OwingAgent setup timeouts leaks bounds
+      (initialDistribution setup) horizon scheduler
       ((N).agentAt site))
     (nonlate : ¬ LateDelivery setup timeouts leaks who site.1)
     (event : setup.informationGraph.EventId)
@@ -96,7 +98,7 @@ theorem assembled_silence_history_comparison
     (excludedBounded : |excludedPayoff who| ≤ payoffBound)
     :
     let common := (targetSequence n).strategy
-    let certificate := ((Menu).bounded (initialLaw setup) horizon
+    let certificate := ((Menu).bounded (initialDistribution setup) horizon
       scheduler).wellFoundedHistories
     let stopped := fun final : (NP).History => ¬ Clear final.state ∨
       DecodedState setup timeouts leaks (failureProfile setup.program)
@@ -116,7 +118,8 @@ theorem assembled_silence_history_comparison
       (2 * (scale n ^ 3 + (2 * horizon + 1 : ℕ) * (scale n ^ 3 + scale n ^ 3)) *
         (2 * horizon + 1) + scale n ^ 3 * (2 * horizon + 1)) * (2 * payoffBound) := by
   intro common certificate stopped payoff history regular
-  have forced := forcedAgent_of_not_free setup timeouts leaks bounds (initialLaw setup) horizon
+  have forced := forcedAgent_of_not_free setup timeouts leaks bounds
+    (initialDistribution setup) horizon
     scheduler notFree
   have debtFree := siteDebtFree_of_not_owing setup timeouts leaks bounds horizon scheduler
     notOwing
@@ -147,10 +150,12 @@ theorem assembled_silence_history_comparison
     decodedPoint intended
   have decided := decidedEvent_eq_of_pending setup timeouts leaks horizon scheduler
     pendingHere
-    ((Menu).toRawTrace (initialLaw setup) horizon scheduler (current ▸ history.1.trace)) rfl
+    ((Menu).toRawTrace (initialDistribution setup) horizon scheduler
+      (current ▸ history.1.trace)) rfl
     (lateKey_some (timeouts := timeouts) who (execution.logs who)
       (execution.observe (application setup timeouts leaks) who))
-  have choiceEq : choice = silenceChoice setup timeouts leaks bounds (initialLaw setup) horizon
+  have choiceEq : choice = silenceChoice setup timeouts leaks bounds
+    (initialDistribution setup) horizon
       scheduler who site.1 := by
     apply Subtype.ext
     rw [silenceChoice_val (timeouts := timeouts) who site.1 (by rw [actualAt]; rfl)]

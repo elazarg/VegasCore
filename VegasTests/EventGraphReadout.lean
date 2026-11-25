@@ -35,7 +35,7 @@ abbrev readoutOutputs : Fin 2 → Vegas.EventGraph.EventField Bool simpleExpr :=
 abbrev readoutLayout :=
   Vegas.EventGraph.fieldLayout readoutInputs readoutOutputs
 
-def fairInt : RationalLaw Int where
+def fairInt : RationalDistribution Int where
   entries := [(2, 1 / 2), (8, 1 / 2)]
   normalized := by norm_num
 
@@ -134,7 +134,7 @@ example : readoutGraph.outputLayout 1 = .publication .bool := rfl
 /-- The backend retains the exact nontrivial rational table before denotation. -/
 example :
     (match readoutGraph.nodes 0 with
-      | .sample _ law => law.evalLaw? initial.store
+      | .sample _ law => law.evalRationalDistribution? initial.store
       | _ => none) = some fairInt := rfl
 
 example :

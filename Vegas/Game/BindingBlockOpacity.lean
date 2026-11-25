@@ -55,10 +55,10 @@ theorem bindingBlock_stopped_traffic_congr
     (same : (bindingTraffic (serviceTimeouts setup deps duration)) leaks focal leftStart =
       (bindingTraffic (serviceTimeouts setup deps duration)) leaks focal rightStart)
     (leftTrace : ((serviceApplication setup deps duration leaks).protocol
-      (serviceInitialLaw setup deps) horizon scheduler).Trace
+      (serviceInitialDistribution setup deps) horizon scheduler).Trace
         (some ⟨leftRemaining + count, none, leftStart⟩))
     (rightTrace : ((serviceApplication setup deps duration leaks).protocol
-      (serviceInitialLaw setup deps) horizon scheduler).Trace
+      (serviceInitialDistribution setup deps) horizon scheduler).Trace
         (some ⟨rightRemaining + count, none, rightStart⟩))
     (leftInside : InBlock start finish leftStart.application.config)
     (rightInside : InBlock start finish rightStart.application.config)
@@ -82,7 +82,8 @@ theorem bindingBlock_stopped_traffic_congr
   intro app players
   have shaped := bindingInterval_shaped relaxed start finish bindings barrier
   let invariant := fun (n : Nat) (current : app.Execution) =>
-    (∃ remaining, Nonempty ((app.protocol (serviceInitialLaw setup deps) horizon scheduler).Trace
+    (∃ remaining, Nonempty ((app.protocol (serviceInitialDistribution setup deps) horizon
+      scheduler).Trace
       (some ⟨remaining + n, none, current⟩))) ∧
     (¬ BlockDone finish current.application.config →
       InBlock start finish current.application.config) ∧
@@ -97,10 +98,11 @@ theorem bindingBlock_stopped_traffic_congr
       (reached : next ∈ (app.round scheduler (players reference) current).support) :
       invariant n next := by
     obtain ⟨⟨remaining, ⟨trace⟩⟩, inside, canonical⟩ := valid
-    have before : (app.protocol (serviceInitialLaw setup deps) horizon scheduler).Trace
+    have before : (app.protocol (serviceInitialDistribution setup deps) horizon scheduler).Trace
         (some ⟨(remaining + n) + 1, none, current⟩) := by
       simpa only [Nat.add_assoc] using trace
-    obtain ⟨nextTrace⟩ := app.raw_trace_round (serviceInitialLaw setup deps) horizon scheduler
+    obtain ⟨nextTrace⟩ := app.raw_trace_round (serviceInitialDistribution setup deps) horizon
+      scheduler
       (players reference) (remaining + n) current next before reached
     have path := reactive_round_graph_steps (serviceTimeouts setup deps duration) leaks scheduler
       (players reference) current next reached
@@ -133,10 +135,11 @@ theorem bindingBlock_stopped_traffic_congr
       change ¬ ∀ event, event.val < finish → event ∈ right.application.config.cut.completed
       rw [← cut_eq_of_publicView_eq publics]
       exact running
-    have leftBefore : (app.protocol (serviceInitialLaw setup deps) horizon scheduler).Trace
+    have leftBefore : (app.protocol (serviceInitialDistribution setup deps) horizon scheduler).Trace
         (some ⟨(leftRest + n) + 1, none, left⟩) := by
       simpa only [Nat.add_assoc] using leftCurrentTrace
-    have rightBefore : (app.protocol (serviceInitialLaw setup deps) horizon scheduler).Trace
+    have rightBefore : (app.protocol (serviceInitialDistribution setup deps) horizon
+      scheduler).Trace
         (some ⟨(rightRest + n) + 1, none, right⟩) := by
       simpa only [Nat.add_assoc] using rightCurrentTrace
     have unfinished : ¬ BlockDone finish left.application.config := running

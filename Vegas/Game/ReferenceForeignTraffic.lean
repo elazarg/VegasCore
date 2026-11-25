@@ -126,12 +126,12 @@ theorem reference_binding_traffic_congr (serial : (serviceGraph setup deps).Acto
     (leftReady : left.application.config.cut.Ready event)
     (rightReady : right.application.config.cut.Ready event)
     (leftSupported : left ∈ ((serviceApplication setup deps duration leaks).roundsFrom
-      (serviceInitialLaw setup deps) scheduler
+      (serviceInitialDistribution setup deps) scheduler
       (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps) reference) focal deviation)
       left.environmentRecall.length).support)
     (rightSupported : right ∈ ((serviceApplication setup deps duration leaks).roundsFrom
-      (serviceInitialLaw setup deps) scheduler
+      (serviceInitialDistribution setup deps) scheduler
       (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps) reference) focal deviation)
       right.environmentRecall.length).support)
@@ -163,11 +163,12 @@ theorem reference_binding_traffic_congr (serial : (serviceGraph setup deps).Acto
       bound turns (firstTurnTiming setup turns deps) reference owner :=
     Function.update_of_ne foreign _ _
   have facts (current : app.Execution)
-      (supported : current ∈ (app.roundsFrom (serviceInitialLaw setup deps) scheduler players
+      (supported : current ∈ (app.roundsFrom (serviceInitialDistribution setup deps) scheduler
+        players
         current.environmentRecall.length).support)
       (untouched : Untouched setup leaks event current)
       (bounded : current.environmentRecall.length ≤ horizon) :
-      Nonempty ((app.protocol (serviceInitialLaw setup deps) horizon scheduler).Trace
+      Nonempty ((app.protocol (serviceInitialDistribution setup deps) horizon scheduler).Trace
         (some ⟨horizon - current.environmentRecall.length, none, current⟩)) ∧
       OwnSubmissionsAtTurn (serviceTimeouts setup deps duration) leaks current owner ∧
       CanonicalSlotsUsed (serviceTimeouts setup deps duration) leaks current owner ∧
@@ -182,7 +183,8 @@ theorem reference_binding_traffic_congr (serial : (serviceGraph setup deps).Acto
       intro entry member turn
       exact untouched owner entry member
         (entry.beforeView.application.publicView.ownTurn?_spec owner event turn).1
-    refine ⟨app.raw_trace_roundsFrom (serviceInitialLaw setup deps) horizon scheduler players
+    refine ⟨app.raw_trace_roundsFrom (serviceInitialDistribution setup deps) horizon scheduler
+      players
       current.environmentRecall.length bounded current supported, own, slots, ?_, ?_⟩
     · apply List.countP_eq_zero.mpr
       intro entry member

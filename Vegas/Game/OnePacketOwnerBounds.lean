@@ -61,10 +61,10 @@ variable {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
 /-- Every initial state of the supplied runtime has its openable candidates
 within the bounds when the bounds cover the initial binding inputs. -/
 private theorem candidateValues_initial (covers : bounds.CoversInputValues)
-    (state : EventGraphRuntime.State setup.informationGraph) (member : state ∈ (initialLaw
+    (state : EventGraphRuntime.State setup.informationGraph) (member : state ∈ (initialDistribution
       setup).support) :
     bounds.CandidateValues state := by
-  rw [initialLaw, serviceInitialLaw, PMF.support_map] at member
+  rw [initialDistribution, serviceInitialDistribution, PMF.support_map] at member
   obtain ⟨initial, _, rfl⟩ := member
   rintro ⟨owner, slot⟩ raw found
   rw [EventGraphRuntime.State.initial_candidate] at found
@@ -146,7 +146,8 @@ theorem candidate_mem_values_of_trace (covers : bounds.CoversInputValues)
     {handle : Handle setup.informationGraph} {raw : Raw L}
     (found : control.execution.application.candidates.lookup handle = .openable raw) :
     raw ∈ bounds.values :=
-  (candidateValues_serviceInvariant (timeouts := timeouts) leaks bounds).history (initialLaw setup)
+  (candidateValues_serviceInvariant (timeouts := timeouts) leaks bounds).history
+    (initialDistribution setup)
     horizon
     (fun state member => candidateValues_initial covers state member) trace handle raw found
 

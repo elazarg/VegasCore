@@ -55,7 +55,7 @@ at a reveal of the player's turn, every source choice as-if-honest play
 supports encodes to the disclosure. -/
 theorem onePacket_honest_discloses (assessment : setup.intendedModel.BehavioralAssessment)
     {control : (application setup timeouts leaks).Control}
-    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some control))
     (who : Player) (event : setup.informationGraph.EventId)
     (turn : control.execution.application.publicView.ownTurn? who = some event)
@@ -66,7 +66,7 @@ theorem onePacket_honest_discloses (assessment : setup.intendedModel.BehavioralA
         control.execution.observe (application setup timeouts leaks) who))).support) :
     choice.bind (encodeEventAction? setup.program event) =
       some (cast (congrArg EventGraph.EventField.Action outputEq.symm) true) := by
-  have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup)
+  have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup)
     horizon scheduler trace
   obtain ⟨rank, ⟨residual⟩⟩ := SourceResidual.of_rawTrace
     (setup.intendedOpeningProfile assessment.strategy) horizon scheduler rawTrace control rfl
@@ -100,15 +100,17 @@ theorem onePacket_honest_discloses (assessment : setup.intendedModel.BehavioralA
 disclosure. -/
 theorem onePacket_honestChoice_reveal (assessment : setup.intendedModel.BehavioralAssessment)
     {control : (application setup timeouts leaks).Control}
-    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some control))
     (who : Player) (event : setup.informationGraph.EventId)
     (turn : control.execution.application.publicView.ownTurn? who = some event)
     {payload : L.Ty} (outputEq : setup.informationGraph.outputLayout event = .publication payload) :
-    honestChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler assessment who
+    honestChoice setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
+      assessment who
         (some (control.execution.logs who,
           control.execution.observe (application setup timeouts leaks) who)) =
-      PMF.pure (responseChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler who
+      PMF.pure (responseChoice setup timeouts leaks bounds
+        (initialDistribution setup) horizon scheduler who
         (some (control.execution.logs who,
           control.execution.observe (application setup timeouts leaks) who))
         ((canonicalServiceDecision timeouts) leaks who (control.execution.logs who)
@@ -121,7 +123,8 @@ theorem onePacket_honestChoice_reveal (assessment : setup.intendedModel.Behavior
     who = some event from turn]
   dsimp only
   rw [PMF.map_comp]
-  rw [map_congr_support (g := fun _ => responseChoice setup timeouts leaks bounds (initialLaw
+  rw [map_congr_support (g := fun _ => responseChoice setup timeouts leaks bounds
+    (initialDistribution
     setup) horizon
       scheduler who (some (control.execution.logs who,
         control.execution.observe (application setup timeouts leaks) who))
@@ -137,7 +140,7 @@ theorem onePacket_honestChoice_reveal (assessment : setup.intendedModel.Behavior
 /-- **The slot tier at a reveal** is the canonical decision of the disclosure. -/
 theorem onePacket_slotChoice_reveal (assessment : setup.intendedModel.BehavioralAssessment)
     {control : (application setup timeouts leaks).Control}
-    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some control))
     (who : Player) (event : setup.informationGraph.EventId)
     (turn : control.execution.application.publicView.ownTurn? who = some event)
@@ -149,17 +152,20 @@ theorem onePacket_slotChoice_reveal (assessment : setup.intendedModel.Behavioral
       (setup.informationGraph.nodes event) = .resolve owner payload binding checks}
     (node : nodeView setup.informationGraph event = .resolve owner payload binding checks outputEq
       codeEq) :
-    slotChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler assessment who
+    slotChoice setup timeouts leaks bounds (initialDistribution setup) horizon scheduler assessment
+      who
         (some (control.execution.logs who,
           control.execution.observe (application setup timeouts leaks) who)) =
-      PMF.pure (responseChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler who
+      PMF.pure (responseChoice setup timeouts leaks bounds
+        (initialDistribution setup) horizon scheduler who
         (some (control.execution.logs who,
           control.execution.observe (application setup timeouts leaks) who))
         ((canonicalServiceDecision timeouts) leaks who (control.execution.logs who)
           (control.execution.observe (application setup timeouts leaks) who) event
           (cast (congrArg EventGraph.EventField.Action outputEq.symm) true))) := by
-  rw [slotChoice_eq_map (timeouts := timeouts) (initialLaw setup) horizon scheduler turn]
-  rw [map_congr_support (g := fun _ => responseChoice setup timeouts leaks bounds (initialLaw
+  rw [slotChoice_eq_map (timeouts := timeouts) (initialDistribution setup) horizon scheduler turn]
+  rw [map_congr_support (g := fun _ => responseChoice setup timeouts leaks bounds
+    (initialDistribution
     setup) horizon
       scheduler who (some (control.execution.logs who,
         control.execution.observe (application setup timeouts leaks) who))
@@ -169,7 +175,8 @@ theorem onePacket_slotChoice_reveal (assessment : setup.intendedModel.Behavioral
     fun pair supported => by
       obtain ⟨slot, _, inner⟩ := (PMF.mem_support_bind_iff _ _ _).mp supported
       obtain ⟨choice, choiceDrawn, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp inner
-      change responseChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler who _
+      change responseChoice setup timeouts leaks bounds (initialDistribution setup) horizon
+        scheduler who _
         (slotResponse setup timeouts leaks who _ _ event slot choice) = _
       unfold slotResponse
       rw [onePacket_honest_discloses (timeouts := timeouts) assessment trace who event turn outputEq
@@ -183,7 +190,7 @@ publication value is a bounded value, the one-packet menu offers the canonical
 decision of the disclosure whenever it transmits. -/
 theorem onePacket_disclosure_offered (covers : bounds.CoversOutputValues)
     {control : (application setup timeouts leaks).Control}
-    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some control))
     (who : Player) (event : setup.informationGraph.EventId)
     (turn : control.execution.application.publicView.ownTurn? who = some event)
@@ -207,10 +214,10 @@ theorem onePacket_disclosure_offered (covers : bounds.CoversOutputValues)
       bounds.onePacketActions timeouts leaks who (control.execution.logs who)
         (control.execution.observe (application setup timeouts leaks) who) := by
   classical
-  have rawTrace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+  have rawTrace : ((application setup timeouts leaks).protocol (initialDistribution setup) horizon
     scheduler).Trace
       (some control) :=
-    (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon scheduler
+    (bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup) horizon scheduler
       trace
   have activeView := (canonicalServiceDecision_active timeouts) leaks who
     (control.execution.logs who) (control.execution.observe (application setup timeouts leaks) who)

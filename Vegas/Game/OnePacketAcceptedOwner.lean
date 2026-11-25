@@ -82,14 +82,15 @@ theorem accepted_owner_of_trace {bounds : MessageBounds setup.informationGraph} 
     {field : setup.informationGraph.Field} {handle : Handle setup.informationGraph}
     (accepted : control.execution.application.accepted field = some handle) :
     ∃ payload, setup.informationGraph.layout field = .binding handle.1 payload := by
-  have rawTrace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+  have rawTrace : ((application setup timeouts leaks).protocol (initialDistribution setup) horizon
     scheduler).Trace
       (some control) :=
-    (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon scheduler
+    (bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup) horizon scheduler
       trace
-  refine (acceptedOwned_invariant setup timeouts leaks).history (initialLaw setup) horizon scheduler
+  refine (acceptedOwned_invariant setup timeouts leaks).history
+    (initialDistribution setup) horizon scheduler
     (fun state member => ?_) rawTrace field handle accepted
-  rw [initialLaw, serviceInitialLaw, PMF.support_map] at member
+  rw [initialDistribution, serviceInitialDistribution, PMF.support_map] at member
   obtain ⟨_, _, rfl⟩ := member
   intro field handle initialAccepted
   obtain ⟨input, owner, payload, rfl, layoutEq, rfl⟩ :=

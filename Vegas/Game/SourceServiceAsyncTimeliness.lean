@@ -47,7 +47,7 @@ theorem FreshCall.withinDeadline
     (owned : (serviceGraph setup deps).actor? event = some owner)
     {control : (serviceApplication setup deps duration leaks).Control}
     (trace : ((serviceApplication setup deps duration leaks).protocol
-      (serviceInitialLaw setup deps) horizon scheduler).Trace (some control))
+      (serviceInitialDistribution setup deps) horizon scheduler).Trace (some control))
     (inclusion : ProtectedInclusionAt (serviceTimeouts setup deps duration)
       leaks control.execution bound)
     (earlier : List (serviceApplication setup deps duration leaks).PlayerEntry)
@@ -62,7 +62,7 @@ theorem FreshCall.withinDeadline
       (serviceTimeouts setup deps duration) leaks event message.id control.execution)
     (unfinished : event ∉ control.execution.application.config.cut.completed) :
     control.execution.application.WithinDeadline (serviceTimeouts setup deps duration) event := by
-  rw [serviceInitialLaw_eq_inputs setup] at trace
+  rw [serviceInitialDistribution_eq_inputs setup] at trace
   exact EventGraphRuntime.FreshCall.withinDeadline _ leaks owner event owned trace inclusion earlier
     entry later message split call sole settled unfinished
 
@@ -71,18 +71,19 @@ theorem settlesFreshCalls_history {horizon : Nat}
     {scheduler : (serviceApplication setup deps duration leaks).Scheduler}
     {bound : (serviceGraph setup deps).EventId → Nat}
     (inclusion : ProtectedInclusion (serviceTimeouts setup deps duration) leaks
-        (serviceInitialLaw setup deps) horizon scheduler bound)
+        (serviceInitialDistribution setup deps) horizon scheduler bound)
     (owner : Player) (event : (serviceGraph setup deps).EventId)
     (ownerSolitary : (serviceGraph setup deps).OwnerSolitary event)
     (owned : (serviceGraph setup deps).actor? event = some owner) :
     ∀ {state}
         (_trace :
-            ((serviceApplication setup deps duration leaks).protocol (serviceInitialLaw setup deps)
+            ((serviceApplication setup deps duration leaks).protocol
+              (serviceInitialDistribution setup deps)
             horizon scheduler).Trace state), ReactiveApplication.serviceInvariant
         (SettlesFreshCalls
           (serviceTimeouts setup deps duration) leaks owner event bound) state := by
   intro state trace
-  rw [serviceInitialLaw_eq_inputs setup] at trace inclusion
+  rw [serviceInitialDistribution_eq_inputs setup] at trace inclusion
   exact EventGraphRuntime.settlesFreshCalls_history _ leaks inclusion owner event ownerSolitary
     owned trace
 
@@ -96,10 +97,11 @@ theorem prescribed_packet_settles {horizon : Nat}
     {scheduler : (serviceApplication setup deps duration leaks).Scheduler}
     {bound : (serviceGraph setup deps).EventId → Nat}
     (inclusion : ProtectedInclusion (serviceTimeouts setup deps duration) leaks
-        (serviceInitialLaw setup deps) horizon scheduler bound)
+        (serviceInitialDistribution setup deps) horizon scheduler bound)
     {control : (serviceApplication setup deps duration leaks).Control}
     (trace :
-        ((serviceApplication setup deps duration leaks).protocol (serviceInitialLaw setup deps)
+        ((serviceApplication setup deps duration leaks).protocol
+          (serviceInitialDistribution setup deps)
         horizon scheduler).Trace (some control))
     (event : (serviceGraph setup deps).EventId) (owner : Player)
     (ownerSolitary : (serviceGraph setup deps).OwnerSolitary event)

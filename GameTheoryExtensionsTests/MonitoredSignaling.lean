@@ -49,10 +49,10 @@ def signaling (secret : Bool) : PMF (Bool × Bool) :=
 
 def decode (packet : Bool × Bool) : Bool := xor packet.2 packet.1
 
-theorem honest_public_law : honest.map Prod.snd = fairBit := by
+theorem honest_public_distribution : honest.map Prod.snd = fairBit := by
   rw [honest, bindPairLaw_map_snd, PMF.bind_const]
 
-theorem signaling_public_law (secret : Bool) :
+theorem signaling_public_distribution (secret : Bool) :
     (signaling secret).map Prod.snd = fairBit := by
   apply pmf_ext_toReal
   intro message
@@ -68,26 +68,26 @@ def signalingTranscript (prior : PMF Bool) : PMF (Bool × Bool) :=
 
 /-- The public law agrees jointly with any prior on the eventual disclosed
 secret, not merely after forgetting that secret. The shared bit stays private. -/
-theorem public_transcript_law (prior : PMF Bool) :
+theorem public_transcript_distribution (prior : PMF Bool) :
     signalingTranscript prior = honestTranscript prior := by
   apply bind_congr_on_support _
   intro secret _
   change (signaling secret).map ((fun message => (secret, message)) ∘ Prod.snd) =
     honest.map ((fun message => (secret, message)) ∘ Prod.snd)
-  rw [← PMF.map_comp, ← PMF.map_comp, signaling_public_law, honest_public_law]
+  rw [← PMF.map_comp, ← PMF.map_comp, signaling_public_distribution, honest_public_distribution]
 
 /-- Any randomized monitor of the entire matched observation has the same
 output distribution, including monitors that wait until the secret is public. -/
-theorem monitor_law {Report : Type*} (prior : PMF Bool)
+theorem monitor_distribution {Report : Type*} (prior : PMF Bool)
     (monitor : Bool × Bool → PMF Report) :
     (signalingTranscript prior).bind monitor = (honestTranscript prior).bind monitor := by
-  rw [public_transcript_law]
+  rw [public_transcript_distribution]
 
 theorem monitor_expectation {Report : Type*} (prior : PMF Bool)
     (monitor : Bool × Bool → PMF Report) (sanction : Report → ℝ) :
     expect ((signalingTranscript prior).bind monitor) sanction =
       expect ((honestTranscript prior).bind monitor) sanction := by
-  rw [monitor_law]
+  rw [monitor_distribution]
 
 /-- A zero-false-positive monitor cannot impose positive expected sanctions
 on this signaling use through the specified public observation. -/
@@ -102,14 +102,14 @@ theorem decode_signaling (secret pad : Bool) : decode (pad, xor secret pad) = se
 
 /-- Knowledge of the shared bit changes the receiver's information even though
 the monitor's complete observation law is unchanged. -/
-theorem signaling_decoded_law (secret : Bool) :
+theorem signaling_decoded_distribution (secret : Bool) :
     (signaling secret).map decode = PMF.pure secret := by
   rw [signaling, PMF.map_comp]
   change fairBit.map (fun pad => decode (pad, xor secret pad)) = PMF.pure secret
   simp_rw [decode_signaling]
   exact PMF.map_const _ _
 
-theorem honest_decoded_law : honest.map decode = fairBit := by
+theorem honest_decoded_distribution : honest.map decode = fairBit := by
   apply pmf_ext_toReal
   intro guess
   cases guess <;>
@@ -126,13 +126,13 @@ theorem signaling_correct (secret : Bool) :
       1 := by
   have decoded := congrArg (fun law : PMF Bool =>
     expect law (fun guess => if guess = secret then (1 : ℝ) else 0))
-    (signaling_decoded_law secret)
+    (signaling_decoded_distribution secret)
   simpa only [expect_map, Function.comp_def, expect_pure, ite_true] using decoded
 
 theorem honest_correct (secret : Bool) :
     expect honest (fun packet => if decode packet = secret then (1 : ℝ) else 0) = 1 / 2 := by
   have decoded := congrArg (fun law : PMF Bool =>
-    expect law (fun guess => if guess = secret then (1 : ℝ) else 0)) honest_decoded_law
+    expect law (fun guess => if guess = secret then (1 : ℝ) else 0)) honest_decoded_distribution
   simp only [expect_map, Function.comp_def] at decoded
   rw [decoded]
   cases secret <;> norm_num [fairBit, expect_mix_of_finite, expect_pure]
@@ -162,7 +162,7 @@ theorem signaling_interaction_support_subset (secret : Bool) :
 
 /-- The receiver's public action can statistically distinguish the two laws:
 honest guessing succeeds half the time, whereas signaling always succeeds. -/
-theorem interaction_laws_differ (secret : Bool) :
+theorem interaction_distributions_differ (secret : Bool) :
     signalingInteraction secret ≠ honestInteraction secret := by
   intro same
   let score : Bool × Bool × Bool → ℝ := fun transcript =>

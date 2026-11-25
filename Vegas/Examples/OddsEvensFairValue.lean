@@ -174,9 +174,10 @@ theorem sourceBitProfile_uniform_first_value (own : PMF Bool) (who : Player) :
 commitment laws. In particular, Odd cannot condition its bit on Even's bit. -/
 theorem sourceDecoded_bitRun (profile : ∀ who, setup.intendedModel.BehavioralPolicy who) :
     setup.run (sourceDecoded profile) =
-      (firstBitLaw profile).bind (fun e => (secondBitLaw profile).map (bitConfig e)) :=
-  source_run_of_commitKernels _ _ _ (first_commit_bitLaw profile)
-    (second_commit_bitLaw profile) (sourceDecoded_disclosing profile)
+      (firstBitDistribution profile).bind (fun e => (secondBitDistribution profile).map
+        (bitConfig e)) :=
+  source_run_of_commitKernels _ _ _ (first_commit_bitDistribution profile)
+    (second_commit_bitDistribution profile) (sourceDecoded_disclosing profile)
 
 theorem uniform_root_value (who : Player) (deviation : setup.intendedModel.BehavioralPolicy who) :
     expect (setup.intendedModel.runBehavioral
@@ -197,17 +198,17 @@ theorem uniform_root_value (who : Player) (deviation : setup.intendedModel.Behav
   rw [sourceDecoded_bitRun, ← sourceBitProfile_run]
   cases who with
   | false =>
-      have unchanged : secondBitLaw changed = uniformLaw Bool := by
-        change secondBitLaw uniformProfile = _
-        exact secondBitLaw_uniform
+      have unchanged : secondBitDistribution changed = uniformLaw Bool := by
+        change secondBitDistribution uniformProfile = _
+        exact secondBitDistribution_uniform
       rw [unchanged]
-      exact sourceBitProfile_uniform_value (firstBitLaw changed) even
+      exact sourceBitProfile_uniform_value (firstBitDistribution changed) even
   | true =>
-      have unchanged : firstBitLaw changed = uniformLaw Bool := by
-        change firstBitLaw uniformProfile = _
-        exact firstBitLaw_uniform
+      have unchanged : firstBitDistribution changed = uniformLaw Bool := by
+        change firstBitDistribution uniformProfile = _
+        exact firstBitDistribution_uniform
       rw [unchanged]
-      exact sourceBitProfile_uniform_first_value (secondBitLaw changed) odd
+      exact sourceBitProfile_uniform_first_value (secondBitDistribution changed) odd
 
 /-- The explicit uniform-bit assessment, with its consistent Bayesian beliefs,
 is a sequential equilibrium of the actual intended source program. -/

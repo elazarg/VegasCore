@@ -40,11 +40,11 @@ theorem onePacket_opening_candidate
         some ⟨candidate, raw⟩) :
     control.execution.application.candidates.lookup candidate = .openable raw := by
   let app := application setup timeouts leaks
-  have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup)
+  have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup)
     horizon scheduler prior
   have count := (countRecall_history timeouts) leaks rawTrace
   have sound : ((packetEvidence timeouts) leaks).Sound control.execution :=
-    ((packetEvidence timeouts) leaks).history_sound (initialLaw setup) horizon scheduler
+    ((packetEvidence timeouts) leaks).history_sound (initialDistribution setup) horizon scheduler
       rawTrace
   have unchanged : app.submit control.execution.application who material =
       control.execution.application := by
@@ -93,11 +93,12 @@ theorem opening_candidate_of_signed
       owner candidate binding.field) :
     candidate.1 = owner ∧ repaired.execution.application.candidates.lookup candidate =
       .openable ⟨payload, value⟩ := by
-  have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup)
+  have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup)
     horizon scheduler prior
   have count := (countRecall_history timeouts) leaks rawTrace
   have clean := (bounds.onePacketMenu_countClean timeouts leaks scheduler).history
-    (initialLaw setup) horizon (fun state _ => (countClean_initial timeouts) leaks state) prior
+    (initialDistribution setup) horizon (fun state _ => (countClean_initial timeouts) leaks state)
+      prior
   cases field : binding.field with
   | inl input =>
       simp only [SignedBinding, field] at signed

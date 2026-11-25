@@ -23,9 +23,9 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
     {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
     {scheduler : (application setup timeouts leaks).Scheduler} {horizon : Nat}
     (menu : (application setup timeouts leaks).ResponseMenu)
-    (supported : ∀ key, key ∈ (setup.initialLaw.map signal).support)
+    (supported : ∀ key, key ∈ (setup.initialDistribution.map signal).support)
     (read : Player → (application setup timeouts leaks).Info → Signal)
-    (observed : ∀ draw ∈ setup.initialLaw.support,
+    (observed : ∀ draw ∈ setup.initialDistribution.support,
       ∀ execution : (application setup timeouts leaks).Execution,
       EventGraphRuntime.State.Invariant (graph := setup.informationGraph)
         (setup.eventInputs draw) execution.application → ∀ who,
@@ -35,18 +35,18 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
     (same : ∀ who past view, read who (some (past, view)) = viewRead who view)
 
 local notation "app" => application setup timeouts leaks
-local notation "globalLaw" => Vegas.initialLaw setup
-local notation "law" k => Vegas.initialLaw (setup.conditionInitial signal k)
+local notation "globalLaw" => Vegas.initialDistribution setup
+local notation "law" k => Vegas.initialDistribution (setup.conditionInitial signal k)
 
 include same in
 /-- The complete physical terminal-state law of the global raw assessment is the
 mixture of the component assessments' terminal-state laws. -/
-theorem ledger_componentAssessment_stateLaw [Finite Player]
+theorem ledger_componentAssessment_stateDistribution [Finite Player]
     (assessments : ∀ k, (menu.information (law k) horizon scheduler).BehavioralAssessment) :
     ((menu.run globalLaw horizon scheduler
       (ledger_componentAssessment menu supported read observed assessments).strategy).map
         (fun h => (h.state : (app).ProtocolState))) =
-      (setup.initialLaw.map signal).bind fun k =>
+      (setup.initialDistribution.map signal).bind fun k =>
         (menu.run (law k) horizon scheduler (assessments k).strategy).map
           (fun h => (h.state : (app).ProtocolState)) := by
   let clients := fun k => menu.decodeProfile (law k) horizon scheduler (assessments k).strategy
@@ -54,7 +54,7 @@ theorem ledger_componentAssessment_stateLaw [Finite Player]
       (app).finish init horizon scheduler profile none =
         ((app).roundsFrom init scheduler profile horizon).map (app).finished := by
     simp only [ReactiveApplication.finish, ReactiveApplication.roundsFrom, PMF.map_bind]
-  have knows draw (member : draw ∈ setup.initialLaw.support) (execution : (app).Execution)
+  have knows draw (member : draw ∈ setup.initialDistribution.support) (execution : (app).Execution)
       (valid : State.Invariant (graph := setup.informationGraph) (setup.eventInputs draw)
         execution.application) (who : Player) :
       viewRead who (execution.observe (app) who) = signal draw :=
@@ -62,14 +62,14 @@ theorem ledger_componentAssessment_stateLaw [Finite Player]
   trans (app).finish globalLaw horizon scheduler
     (menu.decodeProfile globalLaw horizon scheduler
       (ledger_componentAssessment menu supported read observed assessments).strategy) none
-  · exact menu.runFrom_stateLaw globalLaw horizon scheduler _
+  · exact menu.runFrom_stateDistribution globalLaw horizon scheduler _
       (menu.protocol globalLaw horizon scheduler).initHistory
   rw [decodeProfile_componentAssessment menu supported read observed viewRead same assessments,
     finish, roundsFrom_signalClients (scheduler := scheduler) viewRead knows clients horizon,
     PMF.map_bind]
   apply bind_congr_on_support _
   intro key _
-  exact (finish _ _).symm.trans (menu.runFrom_stateLaw (law key) horizon scheduler _
+  exact (finish _ _).symm.trans (menu.runFrom_stateDistribution (law key) horizon scheduler _
     (menu.protocol (law key) horizon scheduler).initHistory).symm
 
 variable [Fintype Player] {bounds : MessageBounds setup.informationGraph}
@@ -95,7 +95,8 @@ theorem ledger_componentCompilation_clean
     (∀ control, h.state = some control → control.execution.application.config.defaulted = ∅) ∧
     ∀ who, TerminalAudit.charge (app).stateTraffic ((countAudit timeouts) leaks evidence.sample)
       h.state who = 0 := by
-  have mix := ledger_componentAssessment_stateLaw (raw) supported read observed viewRead same
+  have mix := ledger_componentAssessment_stateDistribution
+    (raw) supported read observed viewRead same
     (fun k => (compiled k).assessment)
   have member := (PMF.mem_support_map_iff
     (fun t : ((raw).protocol globalLaw horizon scheduler).History => t.state) _ h.state).mpr

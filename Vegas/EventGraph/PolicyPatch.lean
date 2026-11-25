@@ -34,15 +34,16 @@ def patchPolicy {who : Player} (event : graph.EventId) (head tail : graph.Behavi
 
 /-- Away from the patched event, the patched deviation has the tail's action
 laws. -/
-theorem actionLaw_update_patch_of_ne (profile : graph.BehavioralProfile) (who : Player)
+theorem actionDistribution_update_patch_of_ne (profile : graph.BehavioralProfile) (who : Player)
     (event : graph.EventId) (head tail : graph.BehavioralPolicy who) (config : graph.Config)
     {other : graph.EventId} (different : other ≠ event) :
-    actionLaw (Function.update profile who (patchPolicy event head tail)) config other =
-      actionLaw (Function.update profile who tail) config other := by
+    actionDistribution (Function.update profile who (patchPolicy event head tail)) config other =
+      actionDistribution (Function.update profile who tail) config other := by
   cases ownerEq : (graph.nodes other).actor with
-  | none => rw [actionLaw_of_ownerless _ _ ownerEq, actionLaw_of_ownerless _ _ ownerEq]
+  | none => rw [actionDistribution_of_ownerless _ _ ownerEq, actionDistribution_of_ownerless _ _
+    ownerEq]
   | some owner =>
-      rw [actionLaw_of_actor _ _ ownerEq, actionLaw_of_actor _ _ ownerEq]
+      rw [actionDistribution_of_actor _ _ ownerEq, actionDistribution_of_actor _ _ ownerEq]
       by_cases inactive : owner ∈ config.defaulted
       · rw [dite_eq_left inactive, dite_eq_left inactive]
       · rw [dite_eq_right inactive, dite_eq_right inactive]
@@ -52,14 +53,15 @@ theorem actionLaw_update_patch_of_ne (profile : graph.BehavioralProfile) (who : 
         · simp only [Function.update_of_ne same]
 
 /-- At the patched event, the patched deviation has the head's action law. -/
-theorem actionLaw_update_patch_self (profile : graph.BehavioralProfile) (who : Player)
+theorem actionDistribution_update_patch_self (profile : graph.BehavioralProfile) (who : Player)
     (event : graph.EventId) (head tail : graph.BehavioralPolicy who) (config : graph.Config) :
-    actionLaw (Function.update profile who (patchPolicy event head tail)) config event =
-      actionLaw (Function.update profile who head) config event := by
+    actionDistribution (Function.update profile who (patchPolicy event head tail)) config event =
+      actionDistribution (Function.update profile who head) config event := by
   cases ownerEq : (graph.nodes event).actor with
-  | none => rw [actionLaw_of_ownerless _ _ ownerEq, actionLaw_of_ownerless _ _ ownerEq]
+  | none => rw [actionDistribution_of_ownerless _ _ ownerEq, actionDistribution_of_ownerless _ _
+    ownerEq]
   | some owner =>
-      rw [actionLaw_of_actor _ _ ownerEq, actionLaw_of_actor _ _ ownerEq]
+      rw [actionDistribution_of_actor _ _ ownerEq, actionDistribution_of_actor _ _ ownerEq]
       by_cases inactive : owner ∈ config.defaulted
       · rw [dite_eq_left inactive, dite_eq_left inactive]
       · rw [dite_eq_right inactive, dite_eq_right inactive]
@@ -70,10 +72,10 @@ theorem actionLaw_update_patch_self (profile : graph.BehavioralProfile) (who : P
 
 /-- **Only undecided events matter.** Two profiles with the same action laws at
 every event outside a set of completed events have the same runs. -/
-theorem runPlan_congr_of_actionLaw (scheduler : graph.PublicScheduler)
+theorem runPlan_congr_of_actionDistribution (scheduler : graph.PublicScheduler)
     {left right : graph.BehavioralProfile} (decided : graph.EventId → Prop)
     (agree : ∀ config event, ¬ decided event →
-      actionLaw left config event = actionLaw right config event) :
+      actionDistribution left config event = actionDistribution right config event) :
     ∀ fuel (config : graph.Config), (∀ event, decided event → event ∈ config.cut.completed) →
       graph.runPlan (graph.policyPlan left scheduler) fuel config =
         graph.runPlan (graph.policyPlan right scheduler) fuel config := by
@@ -123,11 +125,12 @@ theorem exists_canonical_policy_splice
   let final := Function.update reference focal tail
   have outside (config : graph.Config) (event : graph.EventId)
       (later : ¬ event.val < start + headCount) :
-      actionLaw full config event = actionLaw final config event := by
+      actionDistribution full config event = actionDistribution final config event := by
     cases owned : (graph.nodes event).actor with
-    | none => rw [actionLaw_of_ownerless _ _ owned, actionLaw_of_ownerless _ _ owned]
+    | none => rw [actionDistribution_of_ownerless _ _ owned, actionDistribution_of_ownerless _ _
+      owned]
     | some owner =>
-        rw [actionLaw_of_actor _ _ owned, actionLaw_of_actor _ _ owned]
+        rw [actionDistribution_of_actor _ _ owned, actionDistribution_of_actor _ _ owned]
         by_cases inactive : owner ∈ config.defaulted
         · rw [dite_eq_left inactive, dite_eq_left inactive]
         · rw [dite_eq_right inactive, dite_eq_right inactive]
@@ -150,7 +153,7 @@ theorem exists_canonical_policy_splice
   rw [graph.runPlan_add _ headCount tailCount origin, headEq]
   apply bind_congr_on_support _
   intro next reached
-  apply runPlan_congr_of_actionLaw graph.canonicalScheduler
+  apply runPlan_congr_of_actionDistribution graph.canonicalScheduler
     (fun event => event.val < start + headCount) outside tailCount next
   intro event earlier
   exact ((runPlan_canonical_isPrefix initial headCount start origin ordered bounded next

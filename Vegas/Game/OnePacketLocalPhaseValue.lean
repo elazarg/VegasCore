@@ -25,10 +25,10 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (bounds : MessageBounds setup.informationGraph) (horizon : Nat)
   (scheduler : (application setup timeouts leaks).Scheduler)
 
-local notation "N" => onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+local notation "N" => onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon
   scheduler
 local notation "NP" => ReactiveApplication.ResponseMenu.protocol
-  (bounds.onePacketMenu timeouts leaks) (initialLaw setup) horizon scheduler
+  (bounds.onePacketMenu timeouts leaks) (initialDistribution setup) horizon scheduler
 local notation "Clear" => ReactiveApplication.stateInvariant
   (app := application setup timeouts leaks)
     (fun native : EventGraphRuntime.State setup.informationGraph =>
@@ -42,7 +42,7 @@ theorem local_phase_value_sub_le_of_boundary_values
     (source : setup.intendedModel.BehavioralAssessment)
     (common : ∀ player, (N).BehavioralPolicy player)
     (terminalCompletes : ∀ (final : (application setup timeouts leaks).Control),
-      ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+      ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
         scheduler).Trace (some final) →
       final.execution.application.config.defaulted = ∅ →
       (application setup timeouts leaks).terminal (some final) →
@@ -214,17 +214,17 @@ theorem local_phase_value_sub_le_of_boundary_values
             terminalCompletes) certificate
             installed history current ordered event
             ready final member decodedState targetIntended
-        have after := runUntil_after_localLaw_eq certificate
-          ((bounds.onePacketMenu timeouts leaks).decisionRecall (initialLaw setup) horizon
+        have after := runUntil_after_localDistribution_eq certificate
+          ((bounds.onePacketMenu timeouts leaks).decisionRecall (initialDistribution setup) horizon
             scheduler).actsOnceWhereItMatters common who info law phase stopped history
           observed active running going final member
         have near := boundaryValues (rank + 1) final anchor anchorState boundary target atRank
           targetIntended
         have depth : (application setup timeouts leaks).rank horizon final.state ≤ 2 * horizon + 1
           := by
-          have := (application setup timeouts leaks).trace_bound (initialLaw setup) horizon
+          have := (application setup timeouts leaks).trace_bound (initialDistribution setup) horizon
             scheduler
-            ((bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon
+            ((bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup) horizon
               scheduler final.trace)
           omega
         dsimp only [later, potential]
@@ -266,14 +266,14 @@ open Classical in
 /-- The same assembled native assessment transports local stopped values to
 source completion potentials, with only the actual exceptional stop mass. -/
 theorem assembled_local_phase_value_sub_le
-    [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
+    [(application setup timeouts leaks).FiniteNature (initialDistribution setup) scheduler]
     [∀ who, DecidableEq ((N).InfoState who)]
     (wellFormed : setup.WellFormed) (covers : bounds.CoversOutputValues)
     (capacity : ∀ player, bindingEventCount setup.informationGraph player < bounds.candidateCount)
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (scale : ℕ → ℝ) (positive : ∀ n, 0 < scale n) (le_one : ∀ n, scale n ≤ 1)
     {slots : Nat}
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialDistribution setup)
       horizon scheduler slots p))
     (targetSequence : ℕ → (N).BehavioralAssessment)
     (assembled : OnePacketAssembled setup timeouts leaks bounds horizon scheduler sequence scale

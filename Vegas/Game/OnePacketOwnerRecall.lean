@@ -52,7 +52,8 @@ theorem onePacket_transition_cases {current next : (application setup timeouts l
     {joint : Player → Option (application setup timeouts leaks).Action}
     (legal : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Legal (some current)
       joint)
-    (reached : some next ∈ ((application setup timeouts leaks).transition (initialLaw setup) horizon
+    (reached : some next ∈ ((application setup timeouts leaks).transition
+      (initialDistribution setup) horizon
       scheduler (some current) joint).support) :
     (∃ who action, action ∈ bounds.onePacketActions timeouts leaks who
         (current.execution.logs who) (current.execution.observe (application setup timeouts
@@ -260,21 +261,22 @@ theorem initialCandidates_of_trace {state}
       subst initialized
       cases before with
       | none =>
-          change some control ∈ ((application setup timeouts leaks).transition (initialLaw setup)
+          change some control ∈ ((application setup timeouts leaks).transition
+            (initialDistribution setup)
             horizon scheduler none joint).support at realized
           rw [ReactiveApplication.transition, PMF.support_map] at realized
           obtain ⟨drawn, drawnMember, drawnEq⟩ := realized
           cases Option.some.inj drawnEq
-          have drawnSupport : drawn ∈ (initialLaw setup).support := drawnMember
-          rw [initialLaw, serviceInitialLaw, PMF.support_map] at drawnSupport
+          have drawnSupport : drawn ∈ (initialDistribution setup).support := drawnMember
+          rw [initialDistribution, serviceInitialDistribution, PMF.support_map] at drawnSupport
           obtain ⟨initial, _, rfl⟩ := drawnSupport
           intro player input
           exact State.initial_candidate _ player (.initial input)
       | some current =>
           have previous := ih current rfl
           have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace
-            (initialLaw setup) horizon scheduler prior
-          have path := (reactive_protocol_graph_steps timeouts) leaks (initialLaw setup)
+            (initialDistribution setup) horizon scheduler prior
+          have path := (reactive_protocol_graph_steps timeouts) leaks (initialDistribution setup)
             horizon scheduler current control joint realized
           have sameInputs := EventGraph.Config.Step.path_inputs_eq path
           intro player input
@@ -287,10 +289,10 @@ theorem initialCandidates_of_trace {state}
           · exact environment_lookup_initial (timeouts := timeouts) current.execution _ command
               moved
               (settledFacts_history ((toInformationGraph_barrierOrdered
-                setup.program).revealRelaxedOrdered.actorSerial) (initialLaw setup) horizon
+                setup.program).revealRelaxedOrdered.actorSerial) (initialDistribution setup) horizon
                   scheduler rawTrace)
               ((bounds.onePacketMenu_countClean timeouts leaks scheduler).history
-                (initialLaw setup) horizon
+                (initialDistribution setup) horizon
                 (fun state _ => (countClean_initial timeouts) leaks state) prior)
               player input
           · rw [same]
@@ -301,7 +303,8 @@ theorem accepted_initial_of_trace {control : (application setup timeouts leaks).
     {input : setup.informationGraph.InputId} {owner : Player} {payload : L.Ty}
     (layoutEq : setup.informationGraph.inputLayout input = .binding owner payload) :
     control.execution.application.accepted (.inl input) = some (owner, .initial input) := by
-  have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon
+  have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace
+    (initialDistribution setup) horizon
     scheduler trace
   let invariant : (application setup timeouts leaks).Invariant
       (fun state => state.accepted (.inl input) = some (owner, .initial input)) :=
@@ -312,7 +315,7 @@ theorem accepted_initial_of_trace {control : (application setup timeouts leaks).
       environment := fun state command next held reached =>
         ((keepsInputHandles_step timeouts leaks).environment state command next reached input).trans
           held }
-  exact invariant.history (initialLaw setup) horizon scheduler (fun state member => by
+  exact invariant.history (initialDistribution setup) horizon scheduler (fun state member => by
     obtain ⟨_, _, rfl⟩ := PMF.support_map .. ▸ member
     exact State.initial_accepted_binding _ input owner payload layoutEq) rawTrace
 
@@ -345,15 +348,16 @@ omit [Fintype Player] in
 /-- Every transition of the supplied runtime grows the application state. -/
 theorem stateGrows_transition {current next : (application setup timeouts leaks).Control}
     {joint : Player → Option (application setup timeouts leaks).Action}
-    (reached : some next ∈ ((application setup timeouts leaks).transition (initialLaw setup) horizon
+    (reached : some next ∈ ((application setup timeouts leaks).transition
+      (initialDistribution setup) horizon
       scheduler (some current) joint).support) :
     StateGrows setup current.execution.application next.execution.application := by
-  refine ⟨(keepsStore_step timeouts leaks).transition (initialLaw setup) horizon scheduler
+  refine ⟨(keepsStore_step timeouts leaks).transition (initialDistribution setup) horizon scheduler
       current next joint reached,
-    (keepsFixedCandidates_step timeouts leaks).transition (initialLaw setup) horizon
+    (keepsFixedCandidates_step timeouts leaks).transition (initialDistribution setup) horizon
       scheduler current next joint reached, ?_⟩
   exact EventGraph.Config.Step.path_history_prefix
-    ((reactive_protocol_graph_steps timeouts) leaks (initialLaw setup) horizon scheduler
+    ((reactive_protocol_graph_steps timeouts) leaks (initialDistribution setup) horizon scheduler
       current next joint reached)
 
 omit [Fintype Player] in
@@ -405,7 +409,7 @@ theorem freshExact_of_trace {control : (application setup timeouts leaks).Contro
       ¬ NamedSlot player ((application setup timeouts leaks).outputs (control.execution.logs
         player))
         serial := by
-  have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup)
+  have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup)
     horizon scheduler trace
   have recalled := (countRecall_history timeouts) leaks rawTrace
   rw [preparedFresh_history (timeouts := timeouts) horizon scheduler rawTrace player serial]
@@ -429,10 +433,10 @@ theorem onePacket_commitment_slotFresh {control : (application setup timeouts le
     (sends : response.transmission = some material) {event : setup.informationGraph.EventId}
     {serial : Nat} (packet : material.call.packet = .commitment event (who, .prepared serial)) :
     control.execution.application.candidates.lookup (who, .prepared serial) = .fresh := by
-  have rawTrace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+  have rawTrace : ((application setup timeouts leaks).protocol (initialDistribution setup) horizon
     scheduler).Trace
       (some control) :=
-    (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon scheduler
+    (bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup) horizon scheduler
       trace
   have recalled := (countRecall_history timeouts) leaks rawTrace
   obtain ⟨_, permitted⟩ := (bounds.mem_onePacketActions timeouts leaks who _ _
@@ -484,7 +488,7 @@ theorem recordedResponse_respond {control : (application setup timeouts leaks).C
             ((application setup timeouts leaks).submit control.execution.application who material)
               who
               (control.execution.network.known who) material⟩⟩ := by
-  have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup)
+  have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup)
     horizon scheduler trace
   have recalled := (countRecall_history timeouts) leaks rawTrace
   obtain ⟨effective, _⟩ := (bounds.mem_onePacketActions timeouts leaks who _ _
@@ -617,7 +621,8 @@ theorem recallRecord_of_trace {state}
       subst initialized
       cases before with
       | none =>
-          change some control ∈ ((application setup timeouts leaks).transition (initialLaw setup)
+          change some control ∈ ((application setup timeouts leaks).transition
+            (initialDistribution setup)
             horizon scheduler none joint).support at realized
           rw [ReactiveApplication.transition, PMF.support_map] at realized
           obtain ⟨drawn, _, drawnEq⟩ := realized

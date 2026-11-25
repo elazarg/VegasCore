@@ -215,7 +215,8 @@ theorem thinnedFirstCountReports_audit (timeouts : EventTimeouts graph)
     (EvidenceReport.deliveredEvidence batch.window.settlementTime)).map charge =
     ((batch.reports seen).map (EvidenceReport.deliveredEvidence batch.window.settlementTime)).map
       charge
-  simp only [batch, EvidenceReportService.thinned_delivered_law, EvidenceReportService.erase,
+  simp only [batch, EvidenceReportService.thinned_delivered_distribution,
+    EvidenceReportService.erase,
     mix_map, PMF.pure_map]
   have same : charge (firstCountReports seen) = charge seen := by
     funext who

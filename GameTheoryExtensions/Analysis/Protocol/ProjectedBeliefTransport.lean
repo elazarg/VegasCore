@@ -294,7 +294,7 @@ theorem sum_abs_projectedBelief_sub_le {A : M.BehavioralAssessment} {B : S.Behav
       regular_pos := by
         rw [sum_subtype_univ regular reach]
         exact regularPos }
-  have native : ∀ point, weights.nativeLaw point =
+  have native : ∀ point, weights.nativeMarginalMass point =
       (((A.belief who site).map project) point).toReal := fun point => by
     rw [map_apply_toReal_eq_sum, sum_congr rfl fun history _ =>
       belief_toReal_eq_div bayes positive history, ← sum_div, massEq]
@@ -309,14 +309,15 @@ theorem sum_abs_projectedBelief_sub_le {A : M.BehavioralAssessment} {B : S.Behav
         (fun history => project history = point),
       sum_subtype_univ regular reach, sum_subtype_univ (fun history => ¬ regular history) reach,
       sum_filter_and_add_not_and regular (fun history => project history = point), ← split]
-  have source : ∀ point, weights.sourceLaw point = (B.belief who sourceSite point).toReal :=
+  have source : ∀ point, weights.sourceMarginalMass point =
+    (B.belief who sourceSite point).toReal :=
     fun point => by
       rw [belief_toReal_eq_div sourceBayes sourcePositive point, sourceMassEq]
       change (∑ _unit : Unit, sourceReach point) /
         ∑ pair : S.InformationHistory who sourceSite.1 × Unit, sourceReach pair.1 = _
       rw [Fintype.sum_prod_type]
       simp [sourceReach]
-  have bound := weights.sum_abs_nativeLaw_sub_sourceLaw_le
+  have bound := weights.sum_abs_nativeMarginalMass_sub_sourceMarginalMass_le
   rw [sum_congr rfl fun point _ => by rw [native point, source point]] at bound
   exact bound
 

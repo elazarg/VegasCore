@@ -245,7 +245,8 @@ def advanceIntended? (history : setup.intendedProtocol.History) :
 /-- The partial intended replay, accepting only stuttering or singleton
 completion transitions whose source steps are intended and actually reach the endpoint. -/
 def intendedHistory? : ∀ {state},
-    ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon scheduler).Trace
+    ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
+      scheduler).Trace
       state →
       Option setup.intendedProtocol.History
   | _, .start => some setup.intendedProtocol.initHistory
@@ -272,7 +273,7 @@ theorem extendIntended?_state {history : setup.intendedProtocol.History}
 /-- **The replay ends at the decoded point.** Whenever the intended history of
 a native history exists, its state is the decoded point of the native state. -/
 theorem intendedHistory?_state : ∀ {state}
-    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace state)
     {history : setup.intendedProtocol.History},
     intendedHistory? setup timeouts leaks bounds horizon scheduler trace = some history →
@@ -300,7 +301,7 @@ theorem intendedHistory?_state : ∀ {state}
                     (completion.decision.bind (decodeEventAction setup.program completion.event))
                     (decodedPoint setup after.execution.application.config)
                 | _ => none) = some history at advanced
-              have path := reactive_protocol_graph_steps timeouts leaks (initialLaw setup)
+              have path := reactive_protocol_graph_steps timeouts leaks (initialDistribution setup)
                 horizon scheduler before after joint realized
               split at advanced
               · rename_i dropped
@@ -324,9 +325,9 @@ projected view. -/
 theorem intendedHistory?_infoOf {who : Player} {past : List (application setup timeouts
   leaks).PlayerEntry}
     {view : (application setup timeouts leaks).PlayerView}
-    (native : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (native : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).History)
-    (seen : ((bounds.onePacketMenu timeouts leaks).information (initialLaw setup) horizon
+    (seen : ((bounds.onePacketMenu timeouts leaks).information (initialDistribution setup) horizon
       scheduler).infoOf who native.trace =
       some (past, view))
     {history : setup.intendedProtocol.History}
@@ -335,9 +336,11 @@ theorem intendedHistory?_infoOf {who : Player} {past : List (application setup t
     setup.intendedModel.infoOf who history.trace =
       projectView setup timeouts leaks who (some (past, view)) := by
   obtain ⟨state, trace⟩ := native
-  have observed : ((bounds.onePacketMenu timeouts leaks).information (initialLaw setup) horizon
+  have observed : ((bounds.onePacketMenu timeouts leaks).information
+    (initialDistribution setup) horizon
       scheduler).infoOf who trace = (application setup timeouts leaks).observe who state :=
-    (bounds.onePacketMenu timeouts leaks).info (initialLaw setup) horizon scheduler who trace
+    (bounds.onePacketMenu timeouts leaks).info (initialDistribution setup) horizon scheduler who
+      trace
   rw [observed] at seen
   cases state with
   | none => cases seen

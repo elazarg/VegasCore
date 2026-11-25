@@ -20,7 +20,7 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
 /-- At each reached boundary of the recovered clients, the next completed ledger configuration
 realizes the graph event step followed by automatic completion. -/
-theorem firstTurn_client_event_config_law
+theorem firstTurn_client_event_config_distribution
     (timeouts : EventTimeouts graph.sequentialize)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph.sequentialize))
     {horizon turns : Nat} (scheduler : (reactiveApplication timeouts leaks).Scheduler)
@@ -52,11 +52,12 @@ theorem firstTurn_client_event_config_law
     _ reference _ horizon execution boundary.supported]
   have supported := boundary.supported
   rw [clientPolicy_roundsFrom] at supported
-  exact firstTurn_event_config_law timeouts leaks scheduler delay bound inputs reference contract
+  exact firstTurn_event_config_distribution timeouts leaks scheduler delay bound inputs reference
+    contract
     timely realizable event execution ⟨supported, boundary.ordered, boundary.untouched⟩ bounded
 
 /-- The recovered clients realize the full canonical sequential graph configuration law. -/
-theorem firstTurn_client_config_law
+theorem firstTurn_client_config_distribution
     (timeouts : EventTimeouts graph.sequentialize)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph.sequentialize))
     {horizon turns : Nat} (scheduler : (reactiveApplication timeouts leaks).Scheduler)
@@ -72,7 +73,8 @@ theorem firstTurn_client_config_law
         (fun execution => execution.application.config) =
       ((graph.sequentialize.canonicalGame inputs).play reference).map Subtype.val := by
   rw [clientPolicy_roundsFrom]
-  exact firstTurn_config_law timeouts leaks scheduler delay bound inputs reference contract timely
+  exact firstTurn_config_distribution timeouts leaks scheduler delay bound inputs reference
+    contract timely
     realizable
 
 end Vegas.EventGraphRuntime

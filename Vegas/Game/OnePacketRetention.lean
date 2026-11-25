@@ -226,19 +226,20 @@ variable [Fintype Player] (bounds : MessageBounds setup.informationGraph) {horiz
 the one-packet game, the canonical slot of a player is at most its number of
 binding events. -/
 theorem canonicalFreshSlot_le_bindingEvents
-    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some control))
     (who : Player) {serial : Nat}
     (selected : canonicalFreshSlot who (control.execution.application.playerView who) =
       some serial) :
     serial ≤ bindingEventCount setup.informationGraph who := by
-  have rawTrace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+  have rawTrace : ((application setup timeouts leaks).protocol (initialDistribution setup) horizon
     scheduler).Trace
       (some control) :=
-    (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon scheduler
+    (bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup) horizon scheduler
       trace
   have clean := (bounds.onePacketMenu_countClean timeouts leaks scheduler).history
-    (initialLaw setup) horizon (fun state _ => (countClean_initial timeouts) leaks state) trace
+    (initialDistribution setup) horizon (fun state _ => (countClean_initial timeouts) leaks state)
+      trace
   have facts := legalFacts setup leaks horizon scheduler control rawTrace
   rw [canonicalFreshSlot_eq_publicFreshSlot (preparedFresh_history (timeouts := timeouts) horizon
     scheduler rawTrace)]
@@ -252,18 +253,18 @@ theorem canonicalFreshSlot_le_bindingEvents
 game: input handles always are, and every other accepted handle is committed by
 a packet its owner emitted. -/
 theorem onePacket_accepted_allowed
-    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some control))
     (field : setup.informationGraph.Field) (candidate : Handle setup.informationGraph)
     (accepted : control.execution.application.accepted field = some candidate) :
     bounds.AllowsHandle candidate := by
-  have rawTrace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+  have rawTrace : ((application setup timeouts leaks).protocol (initialDistribution setup) horizon
     scheduler).Trace
       (some control) :=
-    (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon scheduler
+    (bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup) horizon scheduler
       trace
-  have signed := signedCommitments_history timeouts leaks (initialLaw setup)
-    (serviceInitialLaw_initialized setup) horizon scheduler rawTrace
+  have signed := signedCommitments_history timeouts leaks (initialDistribution setup)
+    (serviceInitialDistribution_initialized setup) horizon scheduler rawTrace
   cases field with
   | inl input =>
       unfold MessageBounds.AllowsHandle
@@ -272,7 +273,7 @@ theorem onePacket_accepted_allowed
   | inr event =>
       obtain ⟨message, output, call⟩ := signed.acceptedSigned event candidate accepted
       have allowed := ((onePacket_outputsAllowed (timeouts := timeouts) bounds scheduler).history
-        (initialLaw setup)
+        (initialDistribution setup)
         horizon (fun _ _ _ _ output => (List.not_mem_nil output).elim) trace) candidate.1 message
         output
       rw [call] at allowed
@@ -287,7 +288,7 @@ def RetainsCoveredCanonical (horizon : Nat) (scheduler : (application setup time
   leaks).Scheduler)
     (bound : setup.informationGraph.EventId → Nat) : Prop :=
   ∀ {control : (application setup timeouts leaks).Control},
-    ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some control) →
     ∀ who (event : setup.informationGraph.EventId) (action : setup.informationGraph.Action event),
     control.execution.application.publicView.ownTurn? who = some event →

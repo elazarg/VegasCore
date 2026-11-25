@@ -11,7 +11,7 @@ public import Vegas.Game.OnePacketUnintendedValue
 public import Vegas.Game.OnePacketIrregularBeliefBounds
 public import GameTheoryExtensions.Analysis.Protocol.GainComparison
 public import Vegas.Game.OnePacketOpeningUnique
-public import Vegas.Game.OnePacketOpeningLaw
+public import Vegas.Game.OnePacketOpeningDistribution
 public import Vegas.Game.OnePacketPrescribedCompletion
 public import Vegas.Game.OnePacketPooledGains
 
@@ -39,10 +39,10 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (bounds : MessageBounds setup.informationGraph) (horizon : Nat)
   (scheduler : (application setup timeouts leaks).Scheduler)
 
-local notation "N" => onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+local notation "N" => onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon
   scheduler
 local notation "NP" => ReactiveApplication.ResponseMenu.protocol
-  (bounds.onePacketMenu timeouts leaks) (initialLaw setup) horizon scheduler
+  (bounds.onePacketMenu timeouts leaks) (initialDistribution setup) horizon scheduler
 local notation "Menu" => bounds.onePacketMenu timeouts leaks
 local notation "Clear" => ReactiveApplication.stateInvariant
   (app := application setup timeouts leaks)
@@ -51,19 +51,21 @@ local notation "Clear" => ReactiveApplication.stateInvariant
 
 open Classical in
 private theorem late_main_value_sub_le
-    [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
+    [(application setup timeouts leaks).FiniteNature (initialDistribution setup) scheduler]
     [∀ who, DecidableEq ((N).InfoState who)]
     (source : setup.intendedModel.BehavioralAssessment) {slots : Nat}
     (scale : ℝ) (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1) {who : Player}
     (site : (N).InformationSite who) (option : LateOption slots) (choice : (N).Choice who site.1)
-    (main : lateChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler source who
+    (main : lateChoice setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
+      source who
       site.1 option = PMF.pure choice)
     (assessment : (N).BehavioralAssessment)
     {Outcome : Type*} (observe : (NP).History → Outcome) (utility : Outcome → Player → ℝ)
     {bound : ℝ} (bounded : ∀ final : (NP).History, |utility (observe final) who| ≤ bound) :
     |localValue (2 * horizon + 1) observe utility assessment site (PMF.pure choice) -
       localValue (2 * horizon + 1) observe utility assessment site
-        (lateComponent setup timeouts leaks bounds (initialLaw setup) horizon scheduler source
+        (lateComponent setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
+          source
           scale nonnegative le_one who site.1 option)| ≤ 6 * scale * bound := by
   let value := fun found : (N).Choice who site.1 =>
     localValue (2 * horizon + 1) observe utility assessment site (PMF.pure found)
@@ -79,32 +81,37 @@ private theorem late_main_value_sub_le
       localValue (2 * horizon + 1) observe utility assessment site law = expect law value := by
     intro law
     have linear := localValue_bind (2 * horizon + 1) observe utility assessment site
-      ((Menu).bounded (initialLaw setup) horizon scheduler)
-      ((Menu).decisionRecall (initialLaw setup) horizon scheduler).actsOnceWhereItMatters law
+      ((Menu).bounded (initialDistribution setup) horizon scheduler)
+      ((Menu).decisionRecall (initialDistribution setup) horizon scheduler).actsOnceWhereItMatters
+        law
       PMF.pure
     simpa only [PMF.bind_pure] using linear
-  have mainValue : expect (lateChoice setup timeouts leaks bounds (initialLaw setup) horizon
+  have mainValue : expect (lateChoice setup timeouts leaks bounds
+    (initialDistribution setup) horizon
       scheduler source who site.1 option) value = value choice := by rw [main, expect_pure]
   have near := abs_expect_slotTrembledChoice_sub_le (timeouts := timeouts) nonnegative le_one who
     site.1
-    (lateChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler source who
+    (lateChoice setup timeouts leaks bounds (initialDistribution setup) horizon scheduler source who
       site.1 option)
-    (PMF.pure (silenceChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+    (PMF.pure (silenceChoice setup timeouts leaks bounds (initialDistribution setup) horizon
+      scheduler
       who site.1))
-    (slotChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler source who site.1)
+    (slotChoice setup timeouts leaks bounds (initialDistribution setup) horizon scheduler source
+      who site.1)
     value valueBounded (valueBounded choice) mainValue
-  have component := affine (lateComponent setup timeouts leaks bounds (initialLaw setup) horizon
+  have component := affine (lateComponent setup timeouts leaks bounds
+    (initialDistribution setup) horizon
     scheduler source scale nonnegative le_one who site.1 option)
   rw [component]
   exact (abs_sub_comm _ _).trans_le near
 
 open Classical in
 private theorem lateChoice_eq_pure_opening
-    [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
+    [(application setup timeouts leaks).FiniteNature (initialDistribution setup) scheduler]
     [∀ who, DecidableEq ((N).InfoState who)]
     (wellFormed : setup.WellFormed) (source : setup.intendedModel.BehavioralAssessment)
     {slots : Nat} {who : Player} (site : (N).InformationSite who)
-    (notFree : ¬ Vegas.FreeAgent setup timeouts leaks bounds (initialLaw setup) horizon
+    (notFree : ¬ Vegas.FreeAgent setup timeouts leaks bounds (initialDistribution setup) horizon
       scheduler ((N).agentAt
       site))
     (debtFree : SiteDebtFree setup timeouts leaks bounds horizon scheduler site)
@@ -119,11 +126,11 @@ private theorem lateChoice_eq_pure_opening
     (sends : response.transmission = some material)
     {handle : Handle setup.informationGraph} {raw : Raw L}
     (packet : material.call.packet = .opening event handle raw) (slot : Fin slots) :
-    lateChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler source who
+    lateChoice setup timeouts leaks bounds (initialDistribution setup) horizon scheduler source who
       site.1
       (some slot) = PMF.pure choice := by
   obtain ⟨native, seen, forced⟩ := forcedAgent_of_not_free setup timeouts leaks bounds
-      (initialLaw setup) horizon
+      (initialDistribution setup) horizon
     scheduler notFree
   have owed := debtFree ⟨native, seen⟩
   obtain ⟨payload, binding, checks, outputEq, codeEq, node⟩ :=
@@ -158,7 +165,8 @@ private theorem lateChoice_eq_pure_opening
     response member material sends ((congrArg (Payload.event? setup.informationGraph) packet).trans
       rfl)
   have lateEq := lateChoice_reveal (timeouts := timeouts) source trace who _ turn node slot
-  have choiceEq : choice = responseChoice setup timeouts leaks bounds (initialLaw setup) horizon
+  have choiceEq : choice = responseChoice setup timeouts leaks bounds
+    (initialDistribution setup) horizon
       scheduler who _ ((canonicalServiceDecision timeouts) leaks who
         (execution.logs who) (execution.observe (application setup timeouts leaks) who) _
         (cast (congrArg EventGraph.EventField.Action outputEq.symm) true)) := by
@@ -175,7 +183,7 @@ open Classical in
 /-- Every pure keyed native deviation has vanishing gain or is bounded by an
 original source deviation mixture under the same assessments. -/
 theorem assembled_keyed_local_comparisons
-    [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
+    [(application setup timeouts leaks).FiniteNature (initialDistribution setup) scheduler]
     [Finite setup.intendedProtocol.History]
     [∀ player, DecidableEq ((N).InfoState player)]
     (wellFormed : setup.WellFormed)
@@ -192,22 +200,24 @@ theorem assembled_keyed_local_comparisons
     (capacity : ∀ who, bindingEventCount setup.informationGraph who < bounds.candidateCount)
     (slots_pos : 0 < bounds.candidateCount)
     (weights : ℕ → ∀ p,
-      PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+      PMF (OnePacketPart setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
           bounds.candidateCount p))
     (targetSequence : ℕ → (N).BehavioralAssessment)
     (assembled : OnePacketAssembled setup timeouts leaks bounds horizon scheduler sequence scale
       positive le_one weights targetSequence)
     (mixed : ∀ n, (targetSequence n).IsFullyMixed)
     (bayes : ∀ n, BehavioralAssessment.IsBayesConsistent (N) (targetSequence n)
-      ((Menu).decisionRecall (initialLaw setup) horizon scheduler).decisionInformationAntichain)
+      ((Menu).decisionRecall (initialDistribution setup) horizon
+        scheduler).decisionInformationAntichain)
     {delay bound : setup.informationGraph.EventId → Nat}
-    (opportunity : Opportunity timeouts leaks (initialLaw setup) horizon scheduler delay)
-    (inclusion : ProtectedInclusion timeouts leaks (initialLaw setup) horizon scheduler bound)
+    (opportunity : Opportunity timeouts leaks (initialDistribution setup) horizon scheduler delay)
+    (inclusion : ProtectedInclusion timeouts leaks (initialDistribution setup) horizon scheduler
+      bound)
     (timely : (AsyncTimely timeouts) delay bound)
     {Parameter : Type} (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
     (excludedPayoff : Player → ℝ) (payoffBound : ℝ) (nonnegative : 0 ≤ payoffBound)
-    (completes : CompletesPlay timeouts leaks (initialLaw setup) horizon scheduler)
+    (completes : CompletesPlay timeouts leaks (initialDistribution setup) horizon scheduler)
     (payoffBounded : ∀ who (final : (NP).History),
       |exclusionBase setup timeouts parameter utility excludedPayoff leaks final.state
         who| ≤ payoffBound)
@@ -219,28 +229,30 @@ theorem assembled_keyed_local_comparisons
     (readoutBounded : ∀ who readout,
       |exclusionReadoutUtility setup parameter utility excludedPayoff readout who| ≤ payoffBound)
     (pooled : ∀ n (alternative : ∀ p,
-        PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+        PMF (OnePacketPart setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
           bounds.candidateCount p)) p,
       ∑ agent ∈ Finset.univ.filter
-          (fun agent => onePacketPool setup timeouts leaks bounds (initialLaw setup) horizon
+          (fun agent => onePacketPool setup timeouts leaks bounds
+            (initialDistribution setup) horizon
           scheduler agent = p),
         (if decision : (N).IsDecisionInfo agent.1 agent.2.1 then
           ((targetSequence n).continuationContext
-              ((Menu).bounded (initialLaw setup) horizon scheduler).wellFoundedHistories
+              ((Menu).bounded (initialDistribution setup) horizon scheduler).wellFoundedHistories
               ⟨agent.2.1, decision⟩
               (fun final => exclusionBase setup timeouts parameter utility excludedPayoff leaks
           final.state
                 agent.1)).value
               (((targetSequence n).strategy agent.1).withLaw agent.2.1
-                ((alternative (onePacketPool setup timeouts leaks bounds (initialLaw setup)
+                ((alternative (onePacketPool setup timeouts leaks bounds (initialDistribution setup)
           horizon scheduler
                   agent)).bind
-                  (onePacketComponent setup timeouts leaks bounds (initialLaw setup) horizon
+                  (onePacketComponent setup timeouts leaks bounds
+                    (initialDistribution setup) horizon
           scheduler (sequence n)
                     (scale n)
                     (positive n).le (le_one n) agent))) -
             ((targetSequence n).continuationContext
-              ((Menu).bounded (initialLaw setup) horizon scheduler).wellFoundedHistories
+              ((Menu).bounded (initialDistribution setup) horizon scheduler).wellFoundedHistories
               ⟨agent.2.1, decision⟩
               (fun final => exclusionBase setup timeouts parameter utility excludedPayoff leaks
           final.state
@@ -248,12 +260,14 @@ theorem assembled_keyed_local_comparisons
         else 0) ≤ 0) :
     ∃ error : ℕ → ℝ, Tendsto error atTop (nhds 0) ∧
       ∀ n who (site : (N).InformationSite who),
-        ¬ FreeAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+        ¬ FreeAgent setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
           ((N).agentAt site) →
-        ¬ OwingAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+        ¬ OwingAgent setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
           ((N).agentAt site) →
-        ownedKeyed (FreeAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler)
-          (LateDeliveryAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler)
+        ownedKeyed (FreeAgent setup timeouts leaks bounds (initialDistribution setup) horizon
+          scheduler)
+          (LateDeliveryAgent setup timeouts leaks bounds (initialDistribution setup) horizon
+            scheduler)
           ((N).agentAt site) →
         ∀ choice : (N).Choice who site.1,
           localGain (2 * horizon + 1) (fun final => final.state)
@@ -268,7 +282,8 @@ theorem assembled_keyed_local_comparisons
               expect mixture (intendedSiteGain setup parameter utility excludedPayoff (sequence
                 n)) +
                 error n := by
-  let certificate := ((Menu).bounded (initialLaw setup) horizon scheduler).wellFoundedHistories
+  let certificate := ((Menu).bounded (initialDistribution setup) horizon
+    scheduler).wellFoundedHistories
   obtain ⟨memberError, memberLimit, members⟩ := assembled_pooled_member_gain_bounds setup timeouts
     leaks bounds horizon scheduler wellFormed priors sequence sourceMixed scale
     positive le_one scaleEq covers coversInputs capacity slots_pos weights targetSequence
@@ -292,11 +307,11 @@ theorem assembled_keyed_local_comparisons
       wellFormed priors covers coversInputs capacity slots_pos sequence sourceMixed
       sourceBayes scale positive le_one scaleEq weights targetSequence assembled mixed bayes
       (fun control trace _ => opportunity control
-        ((Menu).toRawTrace (initialLaw setup) horizon scheduler trace))
+        ((Menu).toRawTrace (initialDistribution setup) horizon scheduler trace))
       (fun control trace _ => inclusion control
-        ((Menu).toRawTrace (initialLaw setup) horizon scheduler trace)) timely
+        ((Menu).toRawTrace (initialDistribution setup) horizon scheduler trace)) timely
       (fun control trace _ ended => completes control
-        ((Menu).toRawTrace (initialLaw setup) horizon scheduler trace) ended)
+        ((Menu).toRawTrace (initialDistribution setup) horizon scheduler trace) ended)
       parameter utility excludedPayoff nonnegative readoutBounded excludedBounded
   obtain ⟨irregularError, irregularLimit, irregular⟩ := irregular_belief_bounds_of_assembled
     setup timeouts leaks bounds horizon scheduler wellFormed priors sequence
@@ -346,7 +361,7 @@ theorem assembled_keyed_local_comparisons
     (exclusionBase setup timeouts parameter utility excludedPayoff leaks) (targetSequence n)
       site law
   let optionLaw := fun option : LateOption bounds.candidateCount => lateComponent setup timeouts
-    leaks bounds (initialLaw setup) horizon scheduler (sequence n) (scale n)
+    leaks bounds (initialDistribution setup) horizon scheduler (sequence n) (scale n)
     (positive n).le (le_one n) who site.1 option
   have pendingAt := nativePending
   rw [nativeAt] at pendingAt
@@ -384,7 +399,7 @@ theorem assembled_keyed_local_comparisons
     change terminalValue (PMF.pure choice) - _ ≤ _
     linarith [(abs_le.mp pureNear).2, (abs_le.mp nativeNear).1]
   have viaMain : ∀ (option : LateOption bounds.candidateCount),
-      lateChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler (sequence
+      lateChoice setup timeouts leaks bounds (initialDistribution setup) horizon scheduler (sequence
         n) who
         nativeSite.1 option = PMF.pure nativeChoice →
       localGain (2 * horizon + 1) (fun final => final.state)
@@ -448,12 +463,14 @@ theorem assembled_keyed_local_comparisons
       positiveTerms.1, le_abs_self (memberError n)]
   cases sends : response.transmission with
   | none =>
-      have silent : nativeChoice = silenceChoice setup timeouts leaks bounds (initialLaw setup)
+      have silent : nativeChoice = silenceChoice setup timeouts leaks bounds
+        (initialDistribution setup)
         horizon
           scheduler who nativeSite.1 := by
         apply Subtype.ext
         rw [selected, nativeAt]
-        change some response = (silenceChoice setup timeouts leaks bounds (initialLaw setup) horizon
+        change some response = (silenceChoice setup timeouts leaks bounds
+          (initialDistribution setup) horizon
           scheduler who (some (nativePast, nativeView))).1
         have responseEq : response = ⟨none⟩ :=
           congrArg (fun transmission => (⟨transmission⟩ : (application setup timeouts
@@ -461,7 +478,8 @@ theorem assembled_keyed_local_comparisons
         rw [responseEq]
         simp only [silenceChoice, responseChoice]
         split <;> rfl
-      have main : lateChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+      have main : lateChoice setup timeouts leaks bounds (initialDistribution setup) horizon
+        scheduler
           (sequence n) who nativeSite.1 (none : LateOption bounds.candidateCount) =
             PMF.pure nativeChoice := by
         rw [silent, nativeAt, lateChoice_none]
@@ -480,7 +498,8 @@ theorem assembled_keyed_local_comparisons
           have debtFree := siteDebtFree_of_not_owing setup timeouts leaks bounds horizon
             scheduler
             nativeNotOwing
-          have forced := forcedAgent_of_not_free setup timeouts leaks bounds (initialLaw setup)
+          have forced := forcedAgent_of_not_free setup timeouts leaks bounds
+            (initialDistribution setup)
             horizon scheduler
             nativeNotFree
           have unforcedMass : expect nativeBelief (fun history =>
@@ -512,7 +531,7 @@ theorem assembled_keyed_local_comparisons
           have bad := OnePacketComparison.unintendedCommitment_value_sub_le setup timeouts leaks
             bounds horizon scheduler wellFormed
             (fun control trace _ ended => completes control
-              ((Menu).toRawTrace (initialLaw setup) horizon scheduler trace) ended)
+              ((Menu).toRawTrace (initialDistribution setup) horizon scheduler trace) ended)
             (targetSequence n) nativeSite nativeChoice nativeNotOwing atTurn intendedChoice
             nativeAt response selected material sends named candidate packet parameter utility
             excludedPayoff (readoutBounded who) (excludedBounded who) unforcedMass
@@ -520,7 +539,8 @@ theorem assembled_keyed_local_comparisons
             2 * payoffBound * |irregularError n| at bad
           obtain ⟨lower, affine⟩ := affineValues n ((N).agentAt site) keyed notOwing decision
           have productNonneg := mul_nonneg
-            (scoreUnit n (agentLateKey setup timeouts leaks bounds (initialLaw setup) horizon
+            (scoreUnit n (agentLateKey setup timeouts leaks bounds
+              (initialDistribution setup) horizon
           scheduler
               ((N).agentAt site))
               none).1 (sub_nonneg.mpr lower)
@@ -529,7 +549,8 @@ theorem assembled_keyed_local_comparisons
             have near := affine none
             change |terminalValue (optionLaw none) -
               (excludedPayoff who + score n
-                (agentLateKey setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+                (agentLateKey setup timeouts leaks bounds (initialDistribution setup) horizon
+                  scheduler
                   ((N).agentAt site)) none *
                 (continuation n ((N).agentAt site) - excludedPayoff who))| ≤ affineError n at near
             linarith [(abs_le.mp near).1]

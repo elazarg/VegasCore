@@ -31,18 +31,18 @@ theorem settleLate_mem_support_of_pos {α : Type*} [DecidableEq α] (law : PMF �
   rw [expect_ite_eq, mul_one] at positive
   exact (PMF.mem_support_iff _ _).mpr fun zero => by simp [zero] at positive
 
-theorem settleLateFateLaw_seenFailure_support :
+theorem settleLateFateDistribution_seenFailure_support :
     (⟨none, false, false⟩ : SettleLateFate) ∈
-      (settleLateFateLaw G (.opening true) .silent).support := by
+      (settleLateFateDistribution G (.opening true) .silent).support := by
   apply settleLate_mem_support_of_pos
   rw [settleLate_expect_fate_seenHold]
   simp only [SettleLateFate.mk.injEq, reduceCtorEq, false_and, ite_false, and_self, ite_true,
     mul_zero, mul_one, zero_add]
   exact sub_pos.mpr (lateLeakInclusionProb_lt_one G.toLateLeakParameters)
 
-theorem settleLateFateLaw_exposedFailure_support :
+theorem settleLateFateDistribution_exposedFailure_support :
     (⟨none, true, false⟩ : SettleLateFate) ∈
-      (settleLateFateLaw G (.opening false) .silent).support := by
+      (settleLateFateDistribution G (.opening false) .silent).support := by
   apply settleLate_mem_support_of_pos
   rw [settleLate_expect_fate_unseenHold]
   simp only [SettleLateFate.mk.injEq, reduceCtorEq, false_and, ite_false, and_self, ite_true,
@@ -52,7 +52,7 @@ theorem settleLateFateLaw_exposedFailure_support :
 
 /-- The listener's information set at an answer reached by a history. -/
 def settleLateAnswerSite (G : SettleLateParameters) (record : SettleLateRecord)
-    (supported : record.fate ∈ (settleLateFateLaw G record.first record.second).support)
+    (supported : record.fate ∈ (settleLateFateDistribution G record.first record.second).support)
     (answer : LateLeakAnswer) (fits : answer.fitsOutcome record.report.included.isSome = true) :
     (settleLateModel G true).InformationSite .listener :=
   settleLateSite G true .listener (settleLateAnswerHistory G record supported) (.reply answer)
@@ -68,7 +68,7 @@ theorem settleLate_rational_seen_failure {A : (settleLateModel G true).Behaviora
       if bit then 1 else 0 :=
   settleLate_rational_known_failure rational
     (settleLateAnswerSite G ⟨(bit, .a), none, .opening true, ping, .silent, ⟨none, false, false⟩⟩
-      settleLateFateLaw_seenFailure_support (.failure true) rfl)
+      settleLateFateDistribution_seenFailure_support (.failure true) rfl)
     _ rfl rfl bit rfl
 
 /-- After a dropped opening it sees when it answers, the listener guesses the
@@ -80,7 +80,7 @@ theorem settleLate_rational_exposed_failure {A : (settleLateModel G true).Behavi
       if bit then 1 else 0 :=
   settleLate_rational_known_failure rational
     (settleLateAnswerSite G ⟨(bit, .a), none, .opening false, ping, .silent, ⟨none, true, false⟩⟩
-      settleLateFateLaw_exposedFailure_support (.failure true) rfl)
+      settleLateFateDistribution_exposedFailure_support (.failure true) rfl)
     _ rfl rfl bit rfl
 
 /-! ## Opposite preferences -/
@@ -139,7 +139,7 @@ theorem settleLateEmitValue_update_agree (profile : SettleLateProfile G late)
     settleLateEmitValue (settleLateUpdate profile .sender policy) payoff secret early packet =
       settleLateEmitValue profile payoff secret early packet := by
   simp only [settleLateEmitValue, settleLateWatchValue, settleLateSecondValue,
-    settleLateListenerLaw_update_sender, settleLateSenderLaw_update_sender, agree,
+    settleLateListenerDistribution_update_sender, settleLateSenderDistribution_update_sender, agree,
     settleLateSettleValue_update_sender]
   rfl
 
@@ -230,7 +230,7 @@ theorem settleLate_rational_first_turn (pays : G.DeferralPays)
     (strict : settleLateEmitValue A.strategy (settleLateStatePayoff G .sender) secret none
         unpreferred <
       settleLateEmitValue A.strategy (settleLateStatePayoff G .sender) secret none preferred) :
-    settleLateSenderLaw A.strategy (.firstTurn secret none) =
+    settleLateSenderDistribution A.strategy (.firstTurn secret none) =
       PMF.pure (some (.emit preferred)) := by
   have core := settleLate_rational_corePlay pays rational secret
   have R0 := pays.reward_pos.le
@@ -246,7 +246,8 @@ theorem settleLate_rational_first_turn (pays : G.DeferralPays)
     settleLateEmitValue A.strategy (settleLateStatePayoff G .sender) secret none
       (settleLatePacketOf choice)
   have current : settleLateValue A.strategy (settleLateStatePayoff G .sender) 6
-      (.firstLate secret none) = expect (settleLateSenderLaw A.strategy (.firstTurn secret none))
+      (.firstLate secret none) = expect (settleLateSenderDistribution A.strategy
+        (.firstTurn secret none))
         value :=
     settleLateValue_firstLate _ _ 2 secret none
   let deviation := (A.strategy .sender).commit site.1
@@ -255,7 +256,7 @@ theorem settleLate_rational_first_turn (pays : G.DeferralPays)
       (settleLateStatePayoff G .sender) 6 (.firstLate secret none) =
         value (some (.emit preferred)) := by
     rw [show (6 : ℕ) = 2 + 4 from rfl, settleLateValue_firstLate, settleLateFirstValue,
-      settleLateSenderLaw_update_sender]
+      settleLateSenderDistribution_update_sender]
     change expect (((A.strategy .sender).commit site.1
       ⟨some (.emit preferred), settleLate_firstTurn_menu (late := true) secret none preferred⟩
         site.1).map Subtype.val) _ = _
@@ -267,7 +268,7 @@ theorem settleLate_rational_first_turn (pays : G.DeferralPays)
           settleLateExtend, settleLateView])) _ _ _ _
   have optimal := settleLate_rational_at_state rational site at_state deviation
   rw [deviated, current] at optimal
-  apply settleLate_law_eq_pure
+  apply settleLate_distribution_eq_pure
   have signal (word : Bool) := settleLateEmitValue_signal_le A.strategy R0 D0 secret word
   have preferredBound : lateLeakInclusionProb G.toLateLeakParameters *
         settleLateFloor G secret.2 -
@@ -282,7 +283,7 @@ theorem settleLate_rational_first_turn (pays : G.DeferralPays)
         (value (some (.emit preferred)) - (settleLateTop G secret.2 - G.dropCharge)))
     ?_ optimal
   intro choice supported different
-  obtain ⟨packet, rfl⟩ := settleLateSenderLaw_support A.strategy _ choice supported
+  obtain ⟨packet, rfl⟩ := settleLateSenderDistribution_support A.strategy _ choice supported
   have notPreferred : packet ≠ preferred := fun same => different (by rw [same])
   have m1 := min_le_left (value (some (.emit preferred)) - value (some (.emit unpreferred)))
     (value (some (.emit preferred)) - (settleLateTop G secret.2 - G.dropCharge))
@@ -328,12 +329,12 @@ theorem settleLate_deferral_value (profile : SettleLateProfile G true) (secret :
         (settleLateStatePayoff G .sender) 6 (.protectedTurn secret) =
       settleLateEmitValue profile (settleLateStatePayoff G .sender) secret none packet := by
   rw [show (6 : ℕ) = 1 + 5 from rfl, settleLateValue_protectedTurn, settleLateProtectedValue,
-    settleLateSenderLaw_update_sender, settleLateDeferral,
+    settleLateSenderDistribution_update_sender, settleLateDeferral,
     InformationModel.BehavioralPolicy.commit_of_ne (M := settleLateModel G true) _ _ _
       (by simp), InformationModel.BehavioralPolicy.commit_self (M := settleLateModel G true),
     PMF.pure_map, expect_pure]
   simp only [settleLatePacketOf, settleLateProtectedEmitValue, reduceCtorEq, ite_false,
-    SettleLatePacket.word, settleLateFirstValue, settleLateSenderLaw_update_sender]
+    SettleLatePacket.word, settleLateFirstValue, settleLateSenderDistribution_update_sender]
   rw [InformationModel.BehavioralPolicy.commit_self (M := settleLateModel G true), PMF.pure_map,
     expect_pure]
   exact settleLateEmitValue_update_agree profile _ (fun _ _ _ _ => by
@@ -346,10 +347,11 @@ theorem settleLate_deferral_value (profile : SettleLateProfile G true) (secret :
 signal and the listener answers safely. -/
 theorem settleLate_protected_value_of_safe (profile : SettleLateProfile G late)
     (secret : LateLeakType)
-    (opens : settleLateSenderLaw profile (.protectedTurn secret) = PMF.pure (some (.emit .opening)))
-    (quiet : settleLateSenderLaw profile (.afterProtected secret) =
+    (opens : settleLateSenderDistribution profile (.protectedTurn secret) = PMF.pure (some
+      (.emit .opening)))
+    (quiet : settleLateSenderDistribution profile (.afterProtected secret) =
       PMF.pure (some (.emit .silent)))
-    (safe : settleLateListenerLaw profile (.protectedAsked secret.1 none) =
+    (safe : settleLateListenerDistribution profile (.protectedAsked secret.1 none) =
       PMF.pure (some (.reply .safe))) :
     settleLateValue profile (settleLateStatePayoff G .sender) 6 (.protectedTurn secret) =
       G.reward / 2 := by

@@ -187,7 +187,7 @@ theorem jointSettlement_readout_sub_valuation {Retained : Type}
 /-- A retained joint utility law determines the corresponding cash law whenever
 valuation factors through that same retained observation on the actual support.
 All outcome, receipt and verdict correlations are retained. -/
-theorem jointSettlement_readout_eq_of_utility_law {Retained : Type}
+theorem jointSettlement_readout_eq_of_utility_distribution_eq {Retained : Type}
     (law : PMF Outcome) (valuation transfer : Outcome → Player → ℝ)
     (retain : Outcome → Retained) (retainedValuation : Retained → Player → ℝ)
     (factors : ∀ outcome ∈ law.support, valuation outcome = retainedValuation (retain outcome))
@@ -211,7 +211,7 @@ theorem jointSettlement_clean (law : PMF Outcome) (transfer : Outcome → Player
     (clean : ∀ outcome ∈ law.support, ∀ who, charge observe audit outcome who = 0) :
     jointSettlement law transfer observe audit deposit =
       law.map (fun outcome => (outcome, transfer outcome)) := by
-  exact (settlement_transport_of_normalized_law law law id (PMF.map_id law)
+  exact (settlement_transport_of_normalized_distribution law law id (PMF.map_id law)
     transfer observe audit deposit (fun _ => rfl) (fun _ => rfl) clean).2
 
 end Enforcement.TerminalAudit

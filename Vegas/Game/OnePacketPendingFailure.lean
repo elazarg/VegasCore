@@ -4,7 +4,7 @@ module
 
 public import Vegas.Game.OnePacketLateLumping
 public import Vegas.Game.OnePacketLateSuccess
-public import Vegas.Game.OnePacketEventPhaseLaw
+public import Vegas.Game.OnePacketEventPhaseDistribution
 public import Vegas.Pending.ReactiveAcceptedOutput
 
 @[expose] public section
@@ -27,9 +27,10 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 local notation "menu" => bounds.onePacketMenu timeouts leaks
-local notation "N" => onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+local notation "N" => onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon
   scheduler
-local notation "E" => ReactiveApplication.ResponseMenu.protocol menu (initialLaw setup) horizon
+local notation "E" =>
+  ReactiveApplication.ResponseMenu.protocol menu (initialDistribution setup) horizon
   scheduler
 
 open Classical in
@@ -56,14 +57,15 @@ theorem completed_decisionFailure_terminal_expect
   have closed : ∀ before joint (legal : (E).Legal before joint) after,
       property before → after ∈ ((E).step before ⟨joint, legal⟩).support → property after := by
     rintro before joint legal after ⟨next, rfl, present⟩ reached
-    change after ∈ ((application setup timeouts leaks).transition (initialLaw setup) horizon
+    change after ∈ ((application setup timeouts leaks).transition
+      (initialDistribution setup) horizon
       scheduler
       (some next) joint).support at reached
     obtain ⟨last, rfl, _⟩ := (application setup timeouts leaks).transition_recall_prefix
-      (initialLaw setup)
+      (initialDistribution setup)
       horizon scheduler next after joint reached
     refine ⟨last, rfl, ?_⟩
-    exact (keepsStore_step timeouts leaks).transition (initialLaw setup) horizon scheduler
+    exact (keepsStore_step timeouts leaks).transition (initialDistribution setup) horizon scheduler
       next last joint reached (.inr event) value present
   have remains := (N).runBehavioralTerminalFrom_support_closed certificate players property closed
     start ⟨control, current, stored⟩
@@ -100,7 +102,7 @@ open Classical in
 failure probability is its probability at the first completion or public failure. -/
 theorem pending_failure_terminal_eq_stopped [Finite (E).History]
     (terminalCompletes : ∀ (final : (application setup timeouts leaks).Control),
-      ((menu).protocol (initialLaw setup) horizon scheduler).Trace (some final) →
+      ((menu).protocol (initialDistribution setup) horizon scheduler).Trace (some final) →
       final.execution.application.config.defaulted = ∅ →
       (application setup timeouts leaks).terminal (some final) →
       final.execution.application.config.cut.Terminal)
@@ -154,7 +156,7 @@ open Classical in
 its first completion under counted clear terminal completeness. -/
 theorem pending_failure_run_eq_phase [Finite (E).History]
     (terminalCompletes : ∀ (final : (application setup timeouts leaks).Control),
-      ((menu).protocol (initialLaw setup) horizon scheduler).Trace (some final) →
+      ((menu).protocol (initialDistribution setup) horizon scheduler).Trace (some final) →
       final.execution.application.config.defaulted = ∅ →
       (application setup timeouts leaks).terminal (some final) →
       final.execution.application.config.cut.Terminal)
@@ -175,7 +177,7 @@ theorem pending_failure_run_eq_phase [Finite (E).History]
         (fun final => if DecisionFailed (timeouts := timeouts) key final.state then (1 : ℝ) else 0)
           := by
   rw [← (N).runBehavioralTerminalFrom_eq_runBehavioralFrom_of_bounded certificate
-    ((bounds.onePacketMenu timeouts leaks).bounded (initialLaw setup) horizon scheduler),
+    ((bounds.onePacketMenu timeouts leaks).bounded (initialDistribution setup) horizon scheduler),
     pending_failure_terminal_eq_stopped (timeouts := timeouts) terminalCompletes certificate
       players start current ordered clear key event ready decided,
     ← pending_until_eq_clearUntil (timeouts := timeouts) certificate

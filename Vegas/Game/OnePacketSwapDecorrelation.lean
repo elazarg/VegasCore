@@ -50,7 +50,8 @@ variable {who : Player}
     leaks).PlayerView}
   (wellFormed : setup.WellFormed)
   {sequence : ℕ → setup.intendedModel.BehavioralAssessment} {n : ℕ}
-  (forced : forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks) (initialLaw
+  (forced : forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks)
+    (initialDistribution
     setup) horizon
     scheduler who site.1)
   (decision : site.1 = some (past, view))

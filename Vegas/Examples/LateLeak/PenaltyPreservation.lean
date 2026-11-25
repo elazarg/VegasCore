@@ -190,8 +190,10 @@ theorem lateLeak_rational_protected_opens (reward : 0 ≤ G.reward)
 
 private theorem opening_eq_pure (profile : LateLeakProfile G true) (secret : LateLeakType)
     (opens : lateLeakOpenProb profile (.protectedTurn secret) = 1) :
-    lateLeakOpeningLaw profile (.protectedTurn secret) = PMF.pure (some (.opening true)) := by
-  have one : lateLeakOpeningLaw profile (.protectedTurn secret) (some (.opening true)) = 1 := by
+    lateLeakOpeningDistribution profile (.protectedTurn secret) = PMF.pure (some
+      (.opening true)) := by
+  have one : lateLeakOpeningDistribution profile (.protectedTurn secret) (some
+    (.opening true)) = 1 := by
     rw [← ENNReal.toReal_eq_one_iff]
     exact opens
   exact pmf_eq_pure_of_support_subset_singleton _ _
@@ -225,7 +227,7 @@ theorem lateLeak_rational_bayes_protected_safe {A : (lateLeakModel G true).Behav
     (bayes : InformationModel.BehavioralAssessment.IsBayesConsistent
       (lateLeakModel G true) A (lateLeak_antichain G true))
     (opens : ∀ secret, lateLeakOpenProb A.strategy (.protectedTurn secret) = 1)
-    (bit : Bool) : lateLeakReplyLaw A.strategy (.protectedSuccess bit) =
+    (bit : Bool) : lateLeakReplyDistribution A.strategy (.protectedSuccess bit) =
       PMF.pure (some (.reply .safe)) := by
   let site := lateLeakListenerSite G true (lateLeakOpenedHistory G true (bit, .a))
     (.protectedSuccess bit) rfl .safe rfl
@@ -256,7 +258,7 @@ theorem lateLeak_rational_bayes_protected_safe {A : (lateLeakModel G true).Behav
       _ = _ := (bayes .listener site mass (protectedMember (G := G) (bit, other))).symm
   apply pmf_eq_pure_of_support_subset_singleton
   intro choice supported
-  obtain ⟨answer, rfl, fits⟩ := lateLeakReplyLaw_support A.strategy _ choice supported
+  obtain ⟨answer, rfl, fits⟩ := lateLeakReplyDistribution_support A.strategy _ choice supported
   cases answer with
   | safe => rfl
   | guess label =>
@@ -272,32 +274,33 @@ theorem lateLeak_rational_protected_safe {A : (lateLeakModel G true).BehavioralA
     (equilibrium : A.IsSequentialEquilibrium (lateLeak_antichain G true)
       (lateLeak_terminates G true) (lateLeakPayoff G true))
     (opens : ∀ secret, lateLeakOpenProb A.strategy (.protectedTurn secret) = 1)
-    (bit : Bool) : lateLeakReplyLaw A.strategy (.protectedSuccess bit) =
+    (bit : Bool) : lateLeakReplyDistribution A.strategy (.protectedSuccess bit) =
       PMF.pure (some (.reply .safe)) :=
   lateLeak_rational_bayes_protected_safe equilibrium.1
     (equilibrium.2.isBayesConsistent (lateLeak_antichain G true)) opens bit
 
-theorem lateLeak_intended_law_of_protected (profile : LateLeakProfile G true)
+theorem lateLeak_intended_distribution_of_protected (profile : LateLeakProfile G true)
     (opens : ∀ secret, lateLeakOpenProb profile (.protectedTurn secret) = 1)
-    (safe : ∀ bit, lateLeakReplyLaw profile (.protectedSuccess bit) =
+    (safe : ∀ bit, lateLeakReplyDistribution profile (.protectedSuccess bit) =
       PMF.pure (some (.reply .safe))) :
-    lateLeakOutcomeLaw G true profile = lateLeakIntendedOutcome := by
-  rw [lateLeakOutcomeLaw_eq, Function.iterate_succ_apply, lateLeakFlow_pure,
+    lateLeakOutcomeDistribution G true profile = lateLeakIntendedOutcome := by
+  rw [lateLeakOutcomeDistribution_eq, Function.iterate_succ_apply, lateLeakFlow_pure,
     lateLeakFlow_iterate_eq_bind]
-  change ((lateLeakMoveLaw profile .initial).bind
+  change ((lateLeakMoveDistribution profile .initial).bind
     fun _ => lateLeakPrior.map LateLeakState.protectedTurn).bind _ = _
   rw [PMF.bind_const, PMF.bind_map, lateLeakIntendedOutcome, ← PMF.bind_pure_comp]
   congr 1
   funext secret
   simp only [Function.comp_apply]
   rw [Function.iterate_succ_apply, lateLeakFlow_pure]
-  change (lateLeakFlow profile)^[3] ((lateLeakOpeningLaw profile (.protectedTurn secret)).bind
+  change (lateLeakFlow profile)^[3] ((lateLeakOpeningDistribution profile
+    (.protectedTurn secret)).bind
     (lateLeakAdvance G (.protectedTurn secret))) = _
   rw [opening_eq_pure profile secret (opens secret), PMF.pure_bind]
   simp only [lateLeakAdvance, ite_true]
   rw [Function.iterate_succ_apply, lateLeakFlow_pure]
   change (lateLeakFlow profile)^[2]
-    ((lateLeakReplyLaw profile (lateLeakSignal secret .protectedOpen)).bind
+    ((lateLeakReplyDistribution profile (lateLeakSignal secret .protectedOpen)).bind
       (lateLeakAdvance G (.answering secret .protectedOpen))) = _
   rw [lateLeakSignal, safe, PMF.pure_bind]
   simp only [lateLeakAdvance, lateLeakReplyOf]
@@ -318,9 +321,9 @@ theorem lateLeak_outcome_preserved_of_failure_costs (reward : 0 ≤ G.reward)
     (A : (lateLeakModel G true).BehavioralAssessment)
     (equilibrium : A.IsSequentialEquilibrium (lateLeak_antichain G true)
       (lateLeak_terminates G true) (lateLeakPayoff G true)) :
-    lateLeakOutcomeLaw G true A.strategy = lateLeakIntendedOutcome := by
+    lateLeakOutcomeDistribution G true A.strategy = lateLeakIntendedOutcome := by
   have opens := lateLeak_rational_protected_opens reward never attempt equilibrium.1
-  exact lateLeak_intended_law_of_protected A.strategy opens
+  exact lateLeak_intended_distribution_of_protected A.strategy opens
     (lateLeak_rational_protected_safe equilibrium opens)
 
 /-- The finite late-turn game has a preserving sequential equilibrium when
@@ -331,7 +334,7 @@ theorem lateLeak_preserving_equilibrium_of_failure_costs (reward : 0 ≤ G.rewar
     ∃ A : (lateLeakModel G true).BehavioralAssessment,
       A.IsSequentialEquilibrium (lateLeak_antichain G true)
         (lateLeak_terminates G true) (lateLeakPayoff G true) ∧
-      lateLeakOutcomeLaw G true A.strategy = lateLeakIntendedOutcome := by
+      lateLeakOutcomeDistribution G true A.strategy = lateLeakIntendedOutcome := by
   obtain ⟨A, equilibrium⟩ := lateLeak_exists_sequentialEquilibrium G true
   exact ⟨A, equilibrium,
     lateLeak_outcome_preserved_of_failure_costs reward never attempt A equilibrium⟩
@@ -343,7 +346,7 @@ theorem lateLeak_preserving_equilibrium_of_dropCharge_bound (reward : 0 ≤ G.re
     ∃ A : (lateLeakModel G true).BehavioralAssessment,
       A.IsSequentialEquilibrium (lateLeak_antichain G true)
         (lateLeak_terminates G true) (lateLeakPayoff G true) ∧
-      lateLeakOutcomeLaw G true A.strategy = lateLeakIntendedOutcome := by
+      lateLeakOutcomeDistribution G true A.strategy = lateLeakIntendedOutcome := by
   have delta : 0 < 1 - lateLeakInclusionProb G := sub_pos.mpr (lateLeakInclusionProb_lt_one G)
   have collected : G.reward ≤ (1 - lateLeakInclusionProb G) * G.dropCharge := by
     have bound := (div_le_iff₀ delta).mp charge
@@ -361,7 +364,7 @@ theorem lateLeak_exists_preserving_dropCharge (G : LateLeakParameters)
         A.IsSequentialEquilibrium (lateLeak_antichain { G with dropCharge := charge } true)
           (lateLeak_terminates { G with dropCharge := charge } true)
           (lateLeakPayoff { G with dropCharge := charge } true) ∧
-        lateLeakOutcomeLaw { G with dropCharge := charge } true A.strategy =
+        lateLeakOutcomeDistribution { G with dropCharge := charge } true A.strategy =
           lateLeakIntendedOutcome := by
   refine ⟨G.reward / (1 - lateLeakInclusionProb G), div_nonneg reward
     (sub_pos.mpr (lateLeakInclusionProb_lt_one G)).le, ?_⟩

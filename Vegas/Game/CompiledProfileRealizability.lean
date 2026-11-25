@@ -2,7 +2,7 @@ module
 
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-public import Vegas.Compile.EventGraphLaw
+public import Vegas.Compile.EventGraphDistribution
 public import Vegas.Compile.EventGraphSourceResidual
 public import Vegas.Pending.EffectiveAction
 public import Vegas.Source.DisclosureBehavioral
@@ -25,13 +25,13 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)} {profile : BehavioralProfile setup.program}
 
 /-- Authentic source disclosures compile to effective graph actions at a reached prefix. -/
-private theorem SourceResidual.actionLaw_effective {rank : Nat}
+private theorem SourceResidual.actionDistribution_effective {rank : Nat}
     {config : setup.informationGraph.Config}
     (residual : SourceResidual setup profile rank config) (event : setup.informationGraph.EventId)
     (atRank : event.val = rank)
     (authenticWhole : ∀ who, (profile who).AuthenticDisclosures setup.program)
     (action : setup.informationGraph.Action event)
-    (member : action ∈ (EventGraph.actionLaw (compileEventProfile setup.program profile)
+    (member : action ∈ (EventGraph.actionDistribution (compileEventProfile setup.program profile)
       config event).support) : EffectiveAction config event action := by
   rcases residual with ⟨Γ, names, program, residualProfile, source, refs, embedding, refsBefore,
     aligned, _, authentic, _, _, _, _, _, _, _, checkpoint⟩
@@ -108,10 +108,10 @@ private theorem SourceResidual.actionLaw_effective {rank : Nat}
         else revealKernel residualProfile (source.view owner) inactive
       have status : config.defaulted = source.defaulted :=
         congrArg DefaultHistory.defaulted checkpoint.defaults
-      have lawEq : EventGraph.actionLaw (compileEventProfile setup.program profile) config
+      have lawEq : EventGraph.actionDistribution (compileEventProfile setup.program profile) config
           (embedding.event index) = choiceLaw.map (fun disclose =>
             cast (congrArg EventGraph.EventField.Action outputEq.symm) disclose) := by
-        rw [EventGraph.actionLaw_of_actor _ config actor]
+        rw [EventGraph.actionDistribution_of_actor _ config actor]
         by_cases inactive : owner ∈ source.defaulted
         · have stopped : owner ∈ config.defaulted := status.symm ▸ inactive
           simp only [choiceLaw, dite_eq_left inactive, dite_eq_left stopped, PMF.pure_map]
@@ -150,7 +150,8 @@ private theorem SourceResidual.actionLaw_effective {rank : Nat}
 certificate on every configuration reachable from the compiled input law. -/
 theorem compileEventProfile_realizable
     (authentic : ∀ who, (profile who).AuthenticDisclosures setup.program) :
-    RealizableProfile (graph := setup.informationGraph) (setup.initialLaw.map setup.eventInputs)
+    RealizableProfile (graph := setup.informationGraph) (setup.initialDistribution.map
+      setup.eventInputs)
       (compileEventProfile setup.program profile) := by
   intro inputs supported config reachable
   obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ supported
@@ -166,7 +167,7 @@ theorem compileEventProfile_realizable
   have ordered : config.cut.IsPrefix event.val :=
     ⟨event.isLt.le, fun _ => setup.informationGraph.sequentialize_mem_completed_iff_lt_of_ready
       _ ready⟩
-  exact residual.actionLaw_effective event (ordered.unique residual.checkpoint.ordered)
+  exact residual.actionDistribution_effective event (ordered.unique residual.checkpoint.ordered)
     authentic action chosen
 
 end Vegas

@@ -28,7 +28,7 @@ defaults and failed reveals are preserved under every permitted graph scheduler.
 theorem compileIntendedExtension_forfeit (setup : Setup (Player := Player) (L := L))
     [Finite Player] (deps : setup.dataflowGraph.Dependencies)
     (relaxed : (setup.dataflowGraph.withDependencies deps).RevealRelaxedOrdered)
-    (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw]
+    (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialSupport]
     (wellFormed : setup.WellFormed) {Parameter : Type}
     (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ) (forfeit : ℝ)
@@ -101,7 +101,8 @@ theorem compileIntendedExtension_forfeit (setup : Setup (Player := Player) (L :=
         (setup.graphInputs_support_finite deps) scheduler
         (Profile.update (sig := game.sig) clients who replacement)
         ((toInformationGraph_finiteActions setup.program finite).profileFiniteSupport _)
-  · have law := setup.compileIntendedExtension_law deps relaxed wellFormed parameter utility
+  · have law := setup.compileIntendedExtension_distribution deps relaxed wellFormed parameter
+      utility
       excluded intended target agrees disclosing scheduler
     refine Eq.trans ?_ law
     apply map_congr_on_support _

@@ -27,28 +27,29 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
   (bounds : MessageBounds setup.informationGraph) (horizon : Nat)
   (scheduler : (application setup timeouts leaks).Scheduler)
-  [Fintype ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+  [Fintype ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
     scheduler).History]
-  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds
+    (initialDistribution setup) horizon
     scheduler).InfoState who)]
 
-local notation "N" => onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+local notation "N" => onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon
   scheduler
 local notation "menu" => bounds.onePacketMenu timeouts leaks
 local notation "E" => ReactiveApplication.ResponseMenu.protocol
-  (bounds.onePacketMenu timeouts leaks) (initialLaw setup) horizon scheduler
+  (bounds.onePacketMenu timeouts leaks) (initialDistribution setup) horizon scheduler
 
 /-- One own-debt witness fixes own debt throughout the actual information
 fiber, for every source profile. -/
 theorem owingAgent_allHistories (profile : BehavioralProfile setup.program) {who : Player}
     (site : (N).InformationSite who)
-    (owing : OwingAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+    (owing : OwingAgent setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
       ((N).agentAt site))
     (history : (N).InformationHistory who site.1) :
     DecodedState setup timeouts leaks profile (ProtocolState.OwesFailure who setup.program)
       history.1.state := by
   obtain ⟨first, point, decoded, owes⟩ := owing
-  let rawSite := (menu).rawSite (initialLaw setup) horizon scheduler who site
+  let rawSite := (menu).rawSite (initialDistribution setup) horizon scheduler who site
   obtain ⟨_witness, _running, response, permitted⟩ := rawSite.2
   have someInfo : site.1.isSome = true := by
     change (some response).isSome = site.1.isSome at permitted
@@ -64,11 +65,11 @@ variable {Parameter : Type} (parameter : State L setup.context → Parameter)
 /-- Every whole-policy deviation at a site carrying own source debt has zero
 native base-utility gain, under any assessment at that site. -/
 theorem owingAgent_gain_eq_zero
-    (completes : CompletesPlay timeouts leaks (initialLaw setup) horizon scheduler)
+    (completes : CompletesPlay timeouts leaks (initialDistribution setup) horizon scheduler)
     (certificate : (E).WellFoundedHistories)
     (assessment : (N).BehavioralAssessment) {who : Player}
     (deviation : (N).AssessmentDeviation who)
-    (owing : OwingAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+    (owing : OwingAgent setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
       ((N).agentAt deviation.1)) :
     expect ((N).assessmentComparisonWith ((N).runBehavioralTerminalFrom certificate)
       (fun final => final.state) assessment who deviation).alternative
@@ -86,10 +87,10 @@ theorem owingAgent_gain_eq_zero
 /-- At a site carrying own source debt, every whole continuation policy has
 exactly the assessed native continuation value. -/
 theorem owingAgent_value_eq
-    (completes : CompletesPlay timeouts leaks (initialLaw setup) horizon scheduler)
+    (completes : CompletesPlay timeouts leaks (initialDistribution setup) horizon scheduler)
     (certificate : (E).WellFoundedHistories)
     (assessment : (N).BehavioralAssessment) {who : Player} (site : (N).InformationSite who)
-    (owing : OwingAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+    (owing : OwingAgent setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
       ((N).agentAt site))
     (alternative : (N).BehavioralPolicy who) :
     (assessment.continuationContext certificate site
@@ -107,9 +108,9 @@ theorem owingAgent_value_eq
 
 /-- The local-law gain at a site carrying own source debt is exactly zero. -/
 theorem owingAgent_localGain_eq_zero
-    (completes : CompletesPlay timeouts leaks (initialLaw setup) horizon scheduler)
+    (completes : CompletesPlay timeouts leaks (initialDistribution setup) horizon scheduler)
     (assessment : (N).BehavioralAssessment) {who : Player} (site : (N).InformationSite who)
-    (owing : OwingAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+    (owing : OwingAgent setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
       ((N).agentAt site))
     (law : PMF ((N).Choice who site.1)) :
     localGain (2 * horizon + 1) (fun final => final.state)
@@ -118,9 +119,10 @@ theorem owingAgent_localGain_eq_zero
   rw [localGain_eq_sub]
   simp only [localValue_eq_continuationContext (2 * horizon + 1) (fun final => final.state)
     (exclusionBase setup timeouts parameter utility excludedPayoff leaks) assessment site
-    ((menu).bounded (initialLaw setup) horizon scheduler), BehavioralPolicy.withLaw_eq_self]
+    ((menu).bounded (initialDistribution setup) horizon scheduler),
+      BehavioralPolicy.withLaw_eq_self]
   exact sub_eq_zero.mpr (owingAgent_value_eq setup timeouts leaks bounds horizon scheduler parameter
-    utility excludedPayoff completes ((menu).bounded (initialLaw setup) horizon
+    utility excludedPayoff completes ((menu).bounded (initialDistribution setup) horizon
       scheduler).wellFoundedHistories assessment site owing
     ((assessment.strategy who).withLaw site.1 law))
 

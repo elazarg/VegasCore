@@ -93,13 +93,13 @@ def settleLateDeferredHistory (G : SettleLateParameters) (secret : LateLeakType)
       simp [settleLateAdvance, settleLatePacketOf, settleLateTalkPacket_ne_opening,
         settleLateTalkPacket_word])
 
-theorem settleLateFirstLaw_mem_support (first : SettleLateFirst) :
-    first ∈ (settleLateFirstLaw G first.packet).support := by
+theorem settleLateFirstDistribution_mem_support (first : SettleLateFirst) :
+    first ∈ (settleLateFirstDistribution G first.packet).support := by
   cases first with
-  | silent => simp [settleLateFirstLaw, SettleLateFirst.packet]
-  | signal word => simp [settleLateFirstLaw, SettleLateFirst.packet]
+  | silent => simp [settleLateFirstDistribution, SettleLateFirst.packet]
+  | signal word => simp [settleLateFirstDistribution, SettleLateFirst.packet]
   | opening seen =>
-      simp only [settleLateFirstLaw, SettleLateFirst.packet, PMF.support_map]
+      simp only [settleLateFirstDistribution, SettleLateFirst.packet, PMF.support_map]
       exact ⟨seen, (PMF.mem_support_iff _ _).mpr (settleLateLeakCoin_ne_zero seen), rfl⟩
 
 /-- The history reaching the listener's observe-only activation. -/
@@ -110,7 +110,7 @@ def settleLateWatchHistory (G : SettleLateParameters) (secret : LateLeakType)
     ⟨first.packet, rfl⟩ (.watching secret early first) (by
       change _ ∈ (settleLateAdvance G (.firstLate secret early) _).support
       simp only [settleLateAdvance, settleLatePacketOf, PMF.support_map]
-      exact ⟨first, settleLateFirstLaw_mem_support first, rfl⟩)
+      exact ⟨first, settleLateFirstDistribution_mem_support first, rfl⟩)
 
 /-- The history reaching the second late turn. -/
 def settleLateSecondHistory (G : SettleLateParameters) (secret : LateLeakType)
@@ -124,7 +124,7 @@ def settleLateSecondHistory (G : SettleLateParameters) (secret : LateLeakType)
 
 /-- The history reaching an answer. -/
 def settleLateAnswerHistory (G : SettleLateParameters) (record : SettleLateRecord)
-    (supported : record.fate ∈ (settleLateFateLaw G record.first record.second).support) :
+    (supported : record.fate ∈ (settleLateFateDistribution G record.first record.second).support) :
     (settleLateExecution G true).History :=
   settleLateExtend (settleLateSecondHistory G record.secret record.early record.first record.ping)
     (some (.emit record.second))
@@ -138,11 +138,11 @@ theorem settleLate_weight_deferred (profile : SettleLateProfile G true) (secret 
     (early : Option Bool) :
     (settleLateModel G true).historyReachWeight profile (settleLateDeferredHistory G secret early) =
       lateLeakPrior secret *
-        settleLateSenderLaw profile (.protectedTurn secret)
+        settleLateSenderDistribution profile (.protectedTurn secret)
           (some (.emit (settleLateTalkPacket early))) := by
   rw [settleLateDeferredHistory, settleLateExtend_weight, settleLate_weight_type]
   congr 1
-  change settleLateSenderLaw profile (.protectedTurn secret)
+  change settleLateSenderDistribution profile (.protectedTurn secret)
       (some (.emit (settleLateTalkPacket early))) *
     (settleLateAdvance G (.protectedTurn secret) (some (.emit (settleLateTalkPacket early))))
       (.firstLate secret early) = _
@@ -155,11 +155,12 @@ theorem settleLate_weight_watch (profile : SettleLateProfile G true) (secret : L
         (settleLateWatchHistory G secret early first) =
       (settleLateModel G true).historyReachWeight profile
           (settleLateDeferredHistory G secret early) *
-        (settleLateSenderLaw profile (.firstTurn secret early) (some (.emit first.packet)) *
-          settleLateFirstLaw G first.packet first) := by
+        (settleLateSenderDistribution profile (.firstTurn secret early) (some
+          (.emit first.packet)) *
+          settleLateFirstDistribution G first.packet first) := by
   rw [settleLateWatchHistory, settleLateExtend_weight]
   congr 2
-  change ((settleLateFirstLaw G first.packet).map (SettleLateState.watching secret early))
+  change ((settleLateFirstDistribution G first.packet).map (SettleLateState.watching secret early))
     (.watching secret early first) = _
   exact pmf_map_apply_of_injective _ (fun _ _ same => by cases same; rfl) _
 
@@ -169,7 +170,7 @@ theorem settleLate_weight_second (profile : SettleLateProfile G true) (secret : 
         (settleLateSecondHistory G secret early first ping) =
       (settleLateModel G true).historyReachWeight profile
           (settleLateWatchHistory G secret early first) *
-        settleLateListenerLaw profile (.watching early (first.glimpse secret.1))
+        settleLateListenerDistribution profile (.watching early (first.glimpse secret.1))
           (some (.ping ping)) := by
   rw [settleLateSecondHistory, settleLateExtend_weight]
   change _ * (_ * (PMF.pure (SettleLateState.secondLate secret early first ping))
@@ -178,18 +179,18 @@ theorem settleLate_weight_second (profile : SettleLateProfile G true) (secret : 
   rfl
 
 theorem settleLate_weight_answer (profile : SettleLateProfile G true) (record : SettleLateRecord)
-    (supported : record.fate ∈ (settleLateFateLaw G record.first record.second).support) :
+    (supported : record.fate ∈ (settleLateFateDistribution G record.first record.second).support) :
     (settleLateModel G true).historyReachWeight profile
         (settleLateAnswerHistory G record supported) =
       (settleLateModel G true).historyReachWeight profile
           (settleLateSecondHistory G record.secret record.early record.first record.ping) *
-        (settleLateSenderLaw profile
+        (settleLateSenderDistribution profile
             (.secondTurn record.secret record.early record.first.packet record.ping)
             (some (.emit record.second)) *
-          settleLateFateLaw G record.first record.second record.fate) := by
+          settleLateFateDistribution G record.first record.second record.fate) := by
   rw [settleLateAnswerHistory, settleLateExtend_weight]
   congr 2
-  change ((settleLateFateLaw G record.first record.second).map fun fate =>
+  change ((settleLateFateDistribution G record.first record.second).map fun fate =>
     SettleLateState.answering ⟨record.secret, record.early, record.first, record.ping,
       record.second, fate⟩) (.answering record) = _
   exact pmf_map_apply_of_injective _ (fun _ _ same => by cases same; rfl) _
@@ -270,7 +271,7 @@ theorem settleLate_rational_second_core (pays : G.DeferralPays)
     {A : (settleLateModel G true).BehavioralAssessment}
     (rational : A.IsSequentiallyRational (settleLate_terminates G true) (settleLatePayoff G true))
     (secret : LateLeakType) {first : SettleLateFirst} (plain : first.Plain) (ping : Bool) :
-    settleLateSenderLaw A.strategy (.secondTurn secret none first.packet ping) =
+    settleLateSenderDistribution A.strategy (.secondTurn secret none first.packet ping) =
       PMF.pure (some (.emit (settleLateCorePacket first.packet))) := by
   let site := settleLateSecondSite G secret none first ping
   let core : (settleLateModel G true).Choice .sender site.1 :=
@@ -289,7 +290,7 @@ theorem settleLate_rational_second_core (pays : G.DeferralPays)
         record = settleLateAnswerValue A.strategy (settleLateStatePayoff G .sender) record)
       (history : (settleLateModel G true).InformationHistory .sender site.1) :
       settleLateValue profile (settleLateStatePayoff G .sender) 6 history.1.state =
-        expect (settleLateSenderLaw profile site.1) (settle history.1.state) := by
+        expect (settleLateSenderDistribution profile site.1) (settle history.1.state) := by
     obtain ⟨first', packet, state⟩ := settleLate_secondTurn_fiber (secret := secret)
       (early := none) (packet := first.packet) (ping := ping) history
     rw [state, settleLateValue_secondLate_six, settleLateSecondValue, packet]
@@ -298,22 +299,23 @@ theorem settleLate_rational_second_core (pays : G.DeferralPays)
   have current := law A.strategy fun _ => rfl
   have deviated := law (settleLateUpdate A.strategy .sender deviation)
     fun record => settleLateAnswerValue_update_sender A.strategy deviation _ record
-  have committed : settleLateSenderLaw (settleLateUpdate A.strategy .sender deviation) site.1 =
+  have committed : settleLateSenderDistribution (settleLateUpdate A.strategy .sender deviation)
+    site.1 =
       PMF.pure core.1 := by
-    rw [settleLateSenderLaw_update_sender]
+    rw [settleLateSenderDistribution_update_sender]
     change (((A.strategy .sender).commit site.1 core) site.1).map Subtype.val = _
     rw [InformationModel.BehavioralPolicy.commit_self (M := settleLateModel G true), PMF.pure_map]
   simp only [current, deviated, committed, expect_pure] at optimal
-  apply settleLate_law_eq_pure
+  apply settleLate_distribution_eq_pure
   have gap := pays.core_gap secret.2
   refine pmf_apply_eq_one_of_dominant (A.belief .sender site)
-    (settleLateSenderLaw A.strategy site.1)
+    (settleLateSenderDistribution A.strategy site.1)
     (fun history => settle history.1.state) core.1 (sub_pos.mpr gap) ?_ optimal
   intro history choice supported different
   obtain ⟨first', packet, state⟩ := settleLate_secondTurn_fiber (secret := secret) (early := none)
     (packet := first.packet) (ping := ping) history
   have plain' : first'.Plain := SettleLateFirst.plain_of_packet plain packet
-  obtain ⟨other, rfl⟩ := settleLateSenderLaw_support A.strategy _ choice supported
+  obtain ⟨other, rfl⟩ := settleLateSenderDistribution_support A.strategy _ choice supported
   have extra := settleLateSettleValue_extra_le A.strategy pays.reward_pos.le
     (by linarith [pays.reward_pos, pays.forfeit_gt]) secret plain' ping other (by
       rw [packet]

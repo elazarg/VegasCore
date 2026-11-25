@@ -10,7 +10,7 @@ public import Vegas.Pending.PublicFailureEvidence
 public import Vegas.Pending.EventCommandFrame
 public import Vegas.Pending.AcceptedEventOwnership
 public import Vegas.Pending.ReactiveStateInvariant
-public import Vegas.Pending.ExclusionPolicyLaw
+public import Vegas.Pending.ExclusionPolicyDistribution
 public import Vegas.EventGraph.SolitaryEvent
 public import Interaction.ReactiveProvenance
 

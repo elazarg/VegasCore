@@ -32,10 +32,11 @@ variable {G : LateLeakParameters}
 
 /-- In the intended game the sender opens at the protected turn. -/
 theorem lateLeak_intended_opening (profile : LateLeakProfile G false) (secret : LateLeakType) :
-    lateLeakOpeningLaw profile (.protectedTurn secret) = PMF.pure (some (.opening true)) := by
+    lateLeakOpeningDistribution profile (.protectedTurn secret) = PMF.pure (some
+      (.opening true)) := by
   apply pmf_eq_pure_of_support_subset_singleton
   intro choice supported
-  rw [lateLeakOpeningLaw, PMF.mem_support_map_iff] at supported
+  rw [lateLeakOpeningDistribution, PMF.mem_support_map_iff] at supported
   obtain ⟨option, _, rfl⟩ := supported
   obtain ⟨now, same, allowed⟩ := option.2
   cases now
@@ -183,10 +184,11 @@ theorem lateLeak_intended_listener_safe {A : (lateLeakModel G false).BehavioralA
     (uniform : ∀ label other : LateLeakLabel,
       A.belief .listener ⟨_, decision⟩ (lateLeakOpenedMember G (bit, label)) =
         A.belief .listener ⟨_, decision⟩ (lateLeakOpenedMember G (bit, other))) :
-    lateLeakReplyLaw A.strategy (.protectedSuccess bit) = PMF.pure (some (.reply .safe)) := by
+    lateLeakReplyDistribution A.strategy (.protectedSuccess bit) = PMF.pure (some
+      (.reply .safe)) := by
   apply pmf_eq_pure_of_support_subset_singleton
   intro choice supported
-  obtain ⟨answer, rfl, fits⟩ := lateLeakReplyLaw_support A.strategy _ choice supported
+  obtain ⟨answer, rfl, fits⟩ := lateLeakReplyDistribution_support A.strategy _ choice supported
   cases answer with
   | safe => rfl
   | guess label =>
@@ -209,26 +211,27 @@ theorem lateLeakFlow_iterate_finished (profile : LateLeakProfile G false) (fuel 
 
 /-- A profile answering safely after every protected opening has the intended
 outcome law. -/
-theorem lateLeakOutcomeLaw_of_safe (profile : LateLeakProfile G false)
-    (safe : ∀ bit, lateLeakReplyLaw profile (.protectedSuccess bit) =
+theorem lateLeakOutcomeDistribution_of_safe (profile : LateLeakProfile G false)
+    (safe : ∀ bit, lateLeakReplyDistribution profile (.protectedSuccess bit) =
       PMF.pure (some (.reply .safe))) :
-    lateLeakOutcomeLaw G false profile = lateLeakIntendedOutcome := by
-  rw [lateLeakOutcomeLaw_eq, Function.iterate_succ_apply, lateLeakFlow_pure,
+    lateLeakOutcomeDistribution G false profile = lateLeakIntendedOutcome := by
+  rw [lateLeakOutcomeDistribution_eq, Function.iterate_succ_apply, lateLeakFlow_pure,
     lateLeakFlow_iterate_eq_bind]
-  change ((lateLeakMoveLaw profile .initial).bind
+  change ((lateLeakMoveDistribution profile .initial).bind
     fun _ => lateLeakPrior.map LateLeakState.protectedTurn).bind _ = _
   rw [PMF.bind_const, PMF.bind_map, lateLeakIntendedOutcome, ← PMF.bind_pure_comp]
   congr 1
   funext secret
   simp only [Function.comp_apply]
   rw [Function.iterate_succ_apply, lateLeakFlow_pure]
-  change (lateLeakFlow profile)^[3] ((lateLeakOpeningLaw profile (.protectedTurn secret)).bind
+  change (lateLeakFlow profile)^[3] ((lateLeakOpeningDistribution profile
+    (.protectedTurn secret)).bind
     (lateLeakAdvance G (.protectedTurn secret))) = _
   rw [lateLeak_intended_opening, PMF.pure_bind]
   simp only [lateLeakAdvance, ite_true]
   rw [Function.iterate_succ_apply, lateLeakFlow_pure]
   change (lateLeakFlow profile)^[2]
-    ((lateLeakReplyLaw profile (lateLeakSignal secret .protectedOpen)).bind
+    ((lateLeakReplyDistribution profile (lateLeakSignal secret .protectedOpen)).bind
       (lateLeakAdvance G (.answering secret .protectedOpen))) = _
   rw [lateLeakSignal, safe, PMF.pure_bind]
   simp only [lateLeakAdvance, lateLeakReplyOf]
@@ -289,7 +292,7 @@ theorem lateLeakKernel_update_listener (profile : LateLeakProfile G false)
     (mover : state.mover = .sender) :
     lateLeakKernel (lateLeakUpdate profile .listener policy) state =
       lateLeakKernel profile state := by
-  unfold lateLeakKernel lateLeakMoveLaw
+  unfold lateLeakKernel lateLeakMoveDistribution
   rw [mover]
   simp only [lateLeakUpdate, Profile.update_of_ne _ _ (by decide :
     LateLeakRole.sender ≠ LateLeakRole.listener)]
@@ -345,9 +348,9 @@ def lateLeakIntendedAssessment (G : LateLeakParameters) :
       (lateLeakUniformProfile_mixed G false) (lateLeak_antichain G false)).belief⟩
 
 theorem lateLeakIntendedAssessment_safe (bit : Bool) :
-    lateLeakReplyLaw (lateLeakIntendedAssessment G).strategy (.protectedSuccess bit) =
+    lateLeakReplyDistribution (lateLeakIntendedAssessment G).strategy (.protectedSuccess bit) =
       PMF.pure (some (.reply .safe)) := by
-  simp [lateLeakReplyLaw, lateLeakIntendedAssessment, lateLeakUpdate, lateLeakSafePolicy,
+  simp [lateLeakReplyDistribution, lateLeakIntendedAssessment, lateLeakUpdate, lateLeakSafePolicy,
     LateLeakSignal.success, PMF.pure_map]
 
 theorem lateLeakIntendedAssessment_isSequentialEquilibrium :
@@ -406,8 +409,7 @@ theorem lateLeakIntendedAssessment_isSequentialEquilibrium :
         (lateLeakModel G false).historyReachWeight
           (Profile.update (sig := (lateLeakModel G false).behavioralSignature)
             reference.strategy .listener alternative) history.1 =
-          (lateLeakModel G false).historyReachWeight reference.strategy history.1 :=
-      by
+          (lateLeakModel G false).historyReachWeight reference.strategy history.1 := by
         intro alternative player site history
         exact lateLeak_weight_update_listener reference.strategy alternative history.1.trace
           (lateLeak_fiber_not_finished site history)
@@ -419,9 +421,9 @@ law. -/
 theorem lateLeak_intended_outcome (A : (lateLeakModel G false).BehavioralAssessment)
     (equilibrium : A.IsSequentialEquilibrium (lateLeak_antichain G false)
       (lateLeak_terminates G false) (lateLeakPayoff G false)) :
-    lateLeakOutcomeLaw G false A.strategy = lateLeakIntendedOutcome := by
+    lateLeakOutcomeDistribution G false A.strategy = lateLeakIntendedOutcome := by
   obtain ⟨rational, sequence, approximate, converges⟩ := equilibrium
-  apply lateLeakOutcomeLaw_of_safe
+  apply lateLeakOutcomeDistribution_of_safe
   intro bit
   have decision : (lateLeakModel G false).IsDecisionInfo .listener
       (.asked (.protectedSuccess bit)) :=
@@ -446,7 +448,7 @@ theorem lateLeak_intended_equilibria (G : LateLeakParameters) :
     ∀ A : (lateLeakModel G false).BehavioralAssessment,
       A.IsSequentialEquilibrium (lateLeak_antichain G false) (lateLeak_terminates G false)
           (lateLeakPayoff G false) →
-        lateLeakOutcomeLaw G false A.strategy = lateLeakIntendedOutcome :=
+        lateLeakOutcomeDistribution G false A.strategy = lateLeakIntendedOutcome :=
   ⟨⟨lateLeakIntendedAssessment G, lateLeakIntendedAssessment_isSequentialEquilibrium⟩,
     lateLeak_intended_outcome⟩
 

@@ -22,17 +22,19 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
   (bounds : MessageBounds setup.informationGraph) (horizon : Nat)
   (scheduler : (application setup timeouts leaks).Scheduler)
-  [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
+  [(application setup timeouts leaks).FiniteNature (initialDistribution setup) scheduler]
   [Finite setup.intendedProtocol.History]
-  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds
+    (initialDistribution setup) horizon
     scheduler).InfoState who)]
 
-local notation "N" => onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+local notation "N" => onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon
   scheduler
 
 local instance irregularBeliefHistoryFintype : Fintype
-    ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon scheduler).History :=
-  (bounds.onePacketMenu timeouts leaks).historyFintype (initialLaw setup) horizon scheduler
+    ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
+      scheduler).History :=
+  (bounds.onePacketMenu timeouts leaks).historyFintype (initialDistribution setup) horizon scheduler
 
 open Classical in
 /-- One vanishing error bounds irregular-history belief mass at every debt-free forced own turn
@@ -48,7 +50,7 @@ theorem irregular_belief_bounds_of_assembled
       (2 * horizon + 2) n)
     (covers : bounds.CoversOutputValues) (coversInputs : bounds.CoversInputValues)
     (capacity : ∀ who, bindingEventCount setup.informationGraph who < bounds.candidateCount)
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialDistribution setup)
       horizon scheduler bounds.candidateCount p))
     (target : ℕ → (N).BehavioralAssessment)
     (assembled : OnePacketAssembled setup timeouts leaks bounds horizon scheduler sequence
@@ -56,12 +58,12 @@ theorem irregular_belief_bounds_of_assembled
     (mixed : ∀ n, (target n).IsFullyMixed)
     (bayes : ∀ n, BehavioralAssessment.IsBayesConsistent (N) (target n)
       ((bounds.onePacketMenu timeouts leaks).decisionRecall
-        (initialLaw setup) horizon scheduler).decisionInformationAntichain) :
+        (initialDistribution setup) horizon scheduler).decisionInformationAntichain) :
     ∃ drift : ℕ → ℝ, Tendsto drift atTop (nhds 0) ∧
       ∀ n who (site : (N).InformationSite who),
-        ¬ Vegas.FreeAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+        ¬ Vegas.FreeAgent setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
           ((N).agentAt site) →
-        ¬ Vegas.OwingAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+        ¬ Vegas.OwingAgent setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
           ((N).agentAt site) →
         ∀ {past : List (application setup timeouts leaks).PlayerEntry}
           {view : (application setup timeouts leaks).PlayerView}, site.1 = some (past, view) →
@@ -71,9 +73,9 @@ theorem irregular_belief_bounds_of_assembled
           if RegularTrace setup timeouts leaks bounds horizon scheduler (sequence n) who
             history.1.trace then (0 : ℝ) else 1) ≤ drift n := by
   let good := fun who (site : (N).InformationSite who) =>
-    ¬ Vegas.FreeAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+    ¬ Vegas.FreeAgent setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
           ((N).agentAt site) ∧
-      ¬ Vegas.OwingAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+      ¬ Vegas.OwingAgent setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
           ((N).agentAt site) ∧
       ∃ (past : List (application setup timeouts leaks).PlayerEntry)
         (view : (application setup timeouts leaks).PlayerView) (event :

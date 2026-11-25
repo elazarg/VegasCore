@@ -336,7 +336,7 @@ theorem evalExprDeps_eq_eval {Γ : CtxSimple} {b : BaseTy}
     evalExprDeps e (fun x τ h _ => ρ x τ h) = evalExpr e ρ := rfl
 
 inductive DistExpr (Γ : CtxSimple) (b : BaseTy) : Type where
-  | weighted (law : RationalLaw (Val b)) : DistExpr Γ b
+  | weighted (law : RationalDistribution (Val b)) : DistExpr Γ b
   | ite (c : Expr Γ .bool) (t f : DistExpr Γ b) : DistExpr Γ b
 
 /-- Distribution expression dependency set. -/
@@ -362,27 +362,28 @@ theorem dist_deps_context {Γ : CtxSimple} {b : BaseTy}
         · exact iht x hxt
         · exact ihf x hxf
 
-def evalLawDistExprDeps {Γ : CtxSimple} {b : BaseTy} : (d : DistExpr Γ b) →
+def evalRationalDistributionExprDeps {Γ : CtxSimple} {b : BaseTy} : (d : DistExpr Γ b) →
     ((x : VarId) → (τ : BaseTy) → HasVar Γ x τ →
       x ∈ distExprDeps d → Val τ) →
-        RationalLaw (Val b)
+        RationalDistribution (Val b)
   | .weighted law, _ => law
   | .ite c t f, ρ =>
       if evalExprDeps c
           (fun x τ h hx => ρ x τ h (by simp [distExprDeps, hx])) then
-        evalLawDistExprDeps t
+        evalRationalDistributionExprDeps t
           (fun x τ h hx => ρ x τ h (by simp [distExprDeps, hx]))
       else
-        evalLawDistExprDeps f
+        evalRationalDistributionExprDeps f
           (fun x τ h hx => ρ x τ h (by simp [distExprDeps, hx]))
 
-def evalLawDistExpr {Γ : CtxSimple} {b : BaseTy}
-    (d : DistExpr Γ b) (env : PlainEnv Γ) : RationalLaw (Val b) :=
-  evalLawDistExprDeps d (fun x τ h _ => env x τ h)
+def evalRationalDistributionExpr {Γ : CtxSimple} {b : BaseTy}
+    (d : DistExpr Γ b) (env : PlainEnv Γ) : RationalDistribution (Val b) :=
+  evalRationalDistributionExprDeps d (fun x τ h _ => env x τ h)
 
-theorem evalLawDistExprDeps_eq_evalLaw {Γ : CtxSimple} {b : BaseTy}
+theorem evalRationalDistributionExprDeps_eq {Γ : CtxSimple} {b : BaseTy}
     (d : DistExpr Γ b) (ρ : PlainEnv Γ) :
-    evalLawDistExprDeps d (fun x τ h _ => ρ x τ h) = evalLawDistExpr d ρ := rfl
+    evalRationalDistributionExprDeps d (fun x τ h _ => ρ x τ h) = evalRationalDistributionExpr d ρ
+      := rfl
 
 /-- The current concrete language, viewed as an instance of `IExpr`. -/
 @[reducible] def simpleExpr : Vegas.IExpr where
@@ -401,19 +402,19 @@ theorem evalLawDistExprDeps_eq_evalLaw {Γ : CtxSimple} {b : BaseTy}
   evalDeps := @evalExprDeps
   expr_deps_context := @expr_deps_context
   DistExpr := DistExpr
-  evalLaw := @evalLawDistExpr
+  evalRationalDistribution := @evalRationalDistributionExpr
   distDeps := @distExprDeps
   dist_deps_context := @dist_deps_context
-  evalLawDeps := @evalLawDistExprDeps
+  evalRationalDistributionDeps := @evalRationalDistributionExprDeps
   evalDeps_eq_eval := @evalExprDeps_eq_eval
-  evalLawDeps_eq_evalLaw := @evalLawDistExprDeps_eq_evalLaw
+  evalRationalDistributionDeps_eq := @evalRationalDistributionExprDeps_eq
 
 instance simpleExprResultTypes : IExpr.ResultTypes simpleExpr where
   result := BaseTy.result
   valueEquiv := fun _ => Equiv.refl _
 
-@[simp] private theorem evalLawDistExpr_weighted {Γ : CtxSimple} {b : BaseTy}
-    (law : RationalLaw (Val b)) (env : PlainEnv Γ) :
-    evalLawDistExpr (.weighted law) env = law := rfl
+@[simp] private theorem evalRationalDistExpr_weighted {Γ : CtxSimple} {b : BaseTy}
+    (law : RationalDistribution (Val b)) (env : PlainEnv Γ) :
+    evalRationalDistributionExpr (.weighted law) env = law := rfl
 
 end Vegas

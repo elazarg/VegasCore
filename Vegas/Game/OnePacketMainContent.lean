@@ -82,11 +82,12 @@ theorem contentFactor_pos_of_honestChoice
     (source : setup.intendedModel.BehavioralAssessment)
     (who : Player) (execution : (application setup timeouts leaks).Execution)
     (response : (application setup timeouts leaks).Action)
-    (choice : (onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+    (choice : (onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon
       scheduler).Choice who
       (some (execution.logs who, execution.observe (application setup timeouts leaks) who)))
     (chosen : choice.1 = some response)
-    (supported : choice ∈ (honestChoice setup timeouts leaks bounds (initialLaw setup) horizon
+    (supported : choice ∈ (honestChoice setup timeouts leaks bounds
+      (initialDistribution setup) horizon
       scheduler source who (some (execution.logs who,
         execution.observe (application setup timeouts leaks) who))).support) :
     0 < contentFactor setup timeouts leaks source who execution

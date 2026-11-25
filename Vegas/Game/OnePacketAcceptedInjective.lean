@@ -39,13 +39,13 @@ theorem acceptedInjective_of_trace {horizon : Nat}
     (trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some
       control)) :
     AcceptedInjective control.execution.application.accepted := by
-  have rawTrace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+  have rawTrace : ((application setup timeouts leaks).protocol (initialDistribution setup) horizon
     scheduler).Trace
       (some control) :=
-    (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon scheduler
+    (bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup) horizon scheduler
       trace
-  have signed := signedCommitments_history timeouts leaks (initialLaw setup)
-    (serviceInitialLaw_initialized setup) horizon scheduler rawTrace
+  have signed := signedCommitments_history timeouts leaks (initialDistribution setup)
+    (serviceInitialDistribution_initialized setup) horizon scheduler rawTrace
   have prepared (event : setup.informationGraph.EventId) (handle : Handle setup.informationGraph)
       (accepted : control.execution.application.accepted (.inr event) = some handle) :
       ∃ committed ∈ control.execution.network.inputs,

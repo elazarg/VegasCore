@@ -40,7 +40,7 @@ private theorem resolution_failure_of_intended_impossible
     {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
     {scheduler : (application setup timeouts leaks).Scheduler}
     {control : (application setup timeouts leaks).Control}
-    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some control))
     {event : setup.informationGraph.EventId} {owner : Player} {payload : L.Ty}
     {binding : EventGraph.FieldRef setup.informationGraph.layout (.binding owner payload)}
@@ -110,7 +110,7 @@ theorem firstResponse_not_main_of_publicFailure_of_settles
     (horizon : Nat) (scheduler : (application setup timeouts leaks).Scheduler)
     (bound : setup.informationGraph.EventId → Nat)
     {remaining : Nat} {who : Player} {execution : (application setup timeouts leaks).Execution}
-    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some ⟨remaining, some who, execution⟩))
     (clear : execution.application.config.defaulted = ∅)
     (regular : RegularTrace setup timeouts leaks bounds horizon scheduler source focal trace)
@@ -120,21 +120,22 @@ theorem firstResponse_not_main_of_publicFailure_of_settles
     (pending : pendingEvent setup timeouts leaks who (some (execution.logs who,
       execution.observe (application setup timeouts leaks) who)) = some event)
     (fits : execution.application.publicView.InclusionFitsDeadline timeouts bound event)
-    (choice : (onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+    (choice : (onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon
       scheduler).Choice who
       (some (execution.logs who, execution.observe (application setup timeouts leaks) who)))
     (response : (application setup timeouts leaks).Action) (selected : choice.1 = some response)
-    (after : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (after : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some ⟨remaining, none,
         execution.respond (application setup timeouts leaks) who response⟩))
     (next : (application setup timeouts leaks).Execution)
     (settles : SettlesFreshCalls timeouts leaks who event bound next)
     (control : (application setup timeouts leaks).Control) (nextExecution : control.execution =
       next)
-    (target : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (target : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some control)) (isPrefix : TracePrefix after target)
     (failed : next.application.PublicFailure event) :
-    choice ∉ (honestChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler source
+    choice ∉ (honestChoice setup timeouts leaks bounds (initialDistribution setup) horizon
+      scheduler source
       who
       (some (execution.logs who, execution.observe (application setup timeouts leaks)
         who))).support := by
@@ -190,7 +191,8 @@ theorem firstResponse_not_main_of_publicFailure_of_settles
             intended resolved).elim
   have outputStored := (stored failed.completed).1
   have facts := legalFacts setup leaks horizon scheduler control
-    ((bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon scheduler target)
+    ((bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup) horizon scheduler
+      target)
   have valid := facts.binding
   rw [nextExecution] at valid
   exact (OutputSucceeded.not_publicFailure ⟨output, outputStored, good⟩ valid) failed

@@ -162,7 +162,7 @@ def closureAdvance (reference : graph.BehavioralProfile) (who : Player)
 /-- The closure advance from a configuration where the owned event is ready. -/
 theorem closureAdvance_runKey {reference : graph.BehavioralProfile} {who : Player}
     (keyed : ∀ {left right : graph.Config}, runKey left = runKey right →
-      ∀ event, actionLaw reference left event = actionLaw reference right event)
+      ∀ event, actionDistribution reference left event = actionDistribution reference right event)
     (event : graph.EventId) (owned : graph.actor? event = some who) (config : graph.Config)
     (ready : config.cut.Ready event) (action : graph.Action event) :
     closureAdvance reference who event owned (runKey config) (some action) =

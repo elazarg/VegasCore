@@ -4,7 +4,7 @@ module
 
 public import Vegas.Compile.EventGraphSourceResidual
 public import Vegas.Compile.EventGraphSourceStep
-public import Vegas.Compile.EventGraphLaw
+public import Vegas.Compile.EventGraphDistribution
 
 @[expose] public section
 
@@ -31,7 +31,7 @@ private theorem SourceResidual.supported_opening_succeeds {rank : Nat}
     (codeEq : cast (congrArg (EventCode setup.informationGraph.layout) outputEq)
       (setup.informationGraph.nodes event) = .resolve owner payload binding checks)
     (action : setup.informationGraph.Action event)
-    (chosen : action ∈ (actionLaw (compileEventProfile setup.program profile)
+    (chosen : action ∈ (actionDistribution (compileEventProfile setup.program profile)
       config event).support)
     (disclose : (cast (congrArg EventField.Action outputEq) action : Bool) = true) :
     ∃ value, EventCode.resolveOutput? binding checks true config.store =
@@ -107,18 +107,18 @@ private theorem SourceResidual.supported_opening_succeeds {rank : Nat}
         congrArg DefaultHistory.defaulted checkpoint.defaults
       by_cases inactive : author ∈ source.defaulted
       · have stopped : author ∈ config.defaulted := status.symm ▸ inactive
-        rw [actionLaw_of_actor _ _ actor, dite_eq_left stopped, PMF.mem_support_pure_iff]
+        rw [actionDistribution_of_actor _ _ actor, dite_eq_left stopped, PMF.mem_support_pure_iff]
           at chosen
         have mechanical := EventCode.failureAction_eq_cast outputEq _ _ actualCode
           author actor rfl
         rw [chosen, mechanical, cast_cast, cast_eq] at disclose
         cases disclose
       · have active : author ∉ config.defaulted := status.symm ▸ inactive
-        have law : actionLaw (compileEventProfile setup.program profile) config
+        have law : actionDistribution (compileEventProfile setup.program profile) config
             (embedding.event head) =
             (revealKernel residualProfile (source.view author) inactive).map
               (fun flag => cast (congrArg EventField.Action outputEq.symm) flag) := by
-          rw [actionLaw_of_actor _ _ actor, dite_eq_right active]
+          rw [actionDistribution_of_actor _ _ actor, dite_eq_right active]
           exact eq_map_cast_of_cast_eq (congrArg EventField.Action outputEq) _ _
             (reveal_head_policy_eq setup.program profile selected unresolved next residualProfile
               refs source.revelations source.registry embedding refsBefore rank aligned config
@@ -146,7 +146,7 @@ theorem compileEventProfile_supported_opening_succeeds
     (effective : ∀ who, (profile who).EffectiveDisclosures setup.program []
       (Revelations.initial setup.context))
     (inputs : setup.informationGraph.Inputs)
-    (present : inputs ∈ (setup.initialLaw.map setup.eventInputs).support)
+    (present : inputs ∈ (setup.initialDistribution.map setup.eventInputs).support)
     (config : setup.informationGraph.Config) (reachable : config.Reachable inputs)
     (event : setup.informationGraph.EventId) (ready : config.cut.Ready event)
     {owner : Player} {payload : L.Ty}
@@ -156,7 +156,7 @@ theorem compileEventProfile_supported_opening_succeeds
     (codeEq : cast (congrArg (EventCode setup.informationGraph.layout) outputEq)
       (setup.informationGraph.nodes event) = .resolve owner payload binding checks)
     (action : setup.informationGraph.Action event)
-    (chosen : action ∈ (actionLaw (compileEventProfile setup.program profile)
+    (chosen : action ∈ (actionDistribution (compileEventProfile setup.program profile)
       config event).support)
     (disclose : (cast (congrArg EventField.Action outputEq) action : Bool) = true) :
     ∃ value, EventCode.resolveOutput? binding checks true config.store =

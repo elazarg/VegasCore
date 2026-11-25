@@ -24,7 +24,7 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
 
 local notation "E" => ReactiveApplication.ResponseMenu.protocol
   (MessageBounds.onePacketMenu timeouts leaks bounds)
-  (initialLaw setup) horizon scheduler
+  (initialDistribution setup) horizon scheduler
 
 open Classical in
 /-- Any law supported on completed native configurations has an affine source
@@ -93,34 +93,35 @@ theorem completionValue_expect_affine_of_completed [Finite (E).History]
     expect_sub (payoffIntegrable_constant _ 1) (payoffIntegrable_of_finite _ _), expect_constant]
 
 
-local notation "N" => onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+local notation "N" => onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon
   scheduler
 
 open Classical in
 /-- Successful disclosure completions preserve their current source continuation
 value under counted clear terminal completeness. -/
 theorem disclosure_sourceValue
-    [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
-    [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+    [(application setup timeouts leaks).FiniteNature (initialDistribution setup) scheduler]
+    [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds
+      (initialDistribution setup) horizon
       scheduler).InfoState who)]
     [Finite ((bounds.onePacketMenu timeouts leaks).protocol
-      (initialLaw setup) horizon scheduler).History]
+      (initialDistribution setup) horizon scheduler).History]
     (terminalCompletes : ∀ (final : (application setup timeouts leaks).Control),
-      ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+      ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
         scheduler).Trace (some final) →
       final.execution.application.config.defaulted = ∅ →
       (application setup timeouts leaks).terminal (some final) →
       final.execution.application.config.cut.Terminal)
     (source : setup.intendedModel.BehavioralAssessment)
-    (assessment : (onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+    (assessment : (onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon
       scheduler).BehavioralAssessment) {who : Player}
-    (site : (onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+    (site : (onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon
       scheduler).InformationSite who)
     {event : setup.informationGraph.EventId}
     (pending : pendingEvent setup timeouts leaks who site.1 = some event)
-    (law : PMF ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+    (law : PMF ((onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon
       scheduler).Choice who site.1))
-    (history : (onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+    (history : (onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon
       scheduler).InformationHistory who site.1)
     {remaining : Nat} {execution : (application setup timeouts leaks).Execution}
     (current : history.1.state = some ⟨remaining, some who, execution⟩)
@@ -148,7 +149,7 @@ theorem disclosure_sourceValue
     let installed := Profile.update (sig := (N).behavioralSignature) assessment.strategy who
       ((assessment.strategy who).withLaw site.1 law)
     let phase := (N).runBehavioralUntil ((bounds.onePacketMenu timeouts leaks).bounded
-      (initialLaw setup) horizon scheduler).wellFoundedHistories installed
+      (initialDistribution setup) horizon scheduler).wellFoundedHistories installed
       (LateStopped setup timeouts leaks bounds horizon scheduler (siteRank (timeouts := timeouts)
         site.1)) history.1
     expect phase (completionValue setup timeouts leaks bounds horizon scheduler parameter utility
@@ -163,7 +164,8 @@ theorem disclosure_sourceValue
         excludedPayoff who := by
   intro profile installed phase
   let menu := bounds.onePacketMenu timeouts leaks
-  let certificate := (menu.bounded (initialLaw setup) horizon scheduler).wellFoundedHistories
+  let certificate := (menu.bounded (initialDistribution setup) horizon
+    scheduler).wellFoundedHistories
   obtain ⟨target, stepPure, _intended, stops⟩ := disclosure_sourceKernel (timeouts := timeouts)
     source
     assessment site pending law history current turn ordered outputEq codeEq decoded intendedPoint

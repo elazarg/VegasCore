@@ -33,7 +33,7 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 property of that history, for every source profile. -/
 theorem decodedState_of_nativeDecodedState (profile : BehavioralProfile setup.program)
     {property : ProtocolState setup.program → Prop}
-    (history : (menu.protocol (initialLaw setup) horizon scheduler).History)
+    (history : (menu.protocol (initialDistribution setup) horizon scheduler).History)
     {point : ProtocolState setup.program}
     (decoded : nativeDecodedState setup timeouts leaks history.state = some point)
     (holds : property point) : DecodedState setup timeouts leaks profile property history.state
@@ -48,7 +48,7 @@ theorem decodedState_of_nativeDecodedState (profile : BehavioralProfile setup.pr
 
 /-- Every initialized native history has a decoded point. -/
 theorem nativeDecodedState_isSome
-    (history : (menu.protocol (initialLaw setup) horizon scheduler).History)
+    (history : (menu.protocol (initialDistribution setup) horizon scheduler).History)
     {control : (application setup timeouts leaks).Control} (current : history.state = some
       control) :
     ∃ point, nativeDecodedState setup timeouts leaks history.state = some point := by
@@ -65,12 +65,13 @@ profile. -/
 theorem decodedState_owesFailure_of_infoOf (profile : BehavioralProfile setup.program)
     {who : Player} {past : List (application setup timeouts leaks).PlayerEntry}
     {view : (application setup timeouts leaks).PlayerView}
-    (owing : (menu.information (initialLaw setup) horizon scheduler).InformationHistory who
+    (owing : (menu.information (initialDistribution setup) horizon scheduler).InformationHistory who
       (some (past, view)))
     {point : ProtocolState setup.program}
     (decoded : nativeDecodedState setup timeouts leaks owing.1.state = some point)
     (owes : ProtocolState.OwesFailure who setup.program point)
-    (history : (menu.information (initialLaw setup) horizon scheduler).InformationHistory who
+    (history : (menu.information (initialDistribution setup) horizon scheduler).InformationHistory
+      who
       (some (past, view))) :
     DecodedState setup timeouts leaks profile (ProtocolState.OwesFailure who setup.program)
       history.1.state := by

@@ -50,8 +50,9 @@ variable {Player : Type} [DecidableEq Player]
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup deps)))
 
 /-- The service's initial law consists of initial runtime states. -/
-theorem serviceInitialLaw_initialized (state : EventGraphRuntime.State (serviceGraph setup deps))
-    (supported : state ∈ (serviceInitialLaw setup deps).support) :
+theorem serviceInitialDistribution_initialized (state : EventGraphRuntime.State
+    (serviceGraph setup deps))
+    (supported : state ∈ (serviceInitialDistribution setup deps).support) :
     ∃ inputs, state = EventGraphRuntime.State.initial inputs := by
   obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ supported
   exact ⟨_, rfl⟩
@@ -64,7 +65,7 @@ theorem earlierOwnPacket_of_output {horizon : Nat}
     {scheduler : (serviceApplication setup deps duration leaks).Scheduler}
     {control : (serviceApplication setup deps duration leaks).Control}
     (trace : ((serviceApplication setup deps duration leaks).protocol
-      (serviceInitialLaw setup deps) horizon scheduler).Trace (some control))
+      (serviceInitialDistribution setup deps) horizon scheduler).Trace (some control))
     (who : Player) (payload : WitnessedPacket (serviceGraph setup deps))
     (other : Message Player (WitnessedPacket (serviceGraph setup deps)))
     (member : other ∈ (serviceApplication setup deps duration leaks).outputs
@@ -74,7 +75,8 @@ theorem earlierOwnPacket_of_output {horizon : Nat}
       ⟨(who, control.execution.network.nextSerial who), payload⟩ other := by
   have recalled := (countRecall_history (serviceTimeouts setup deps duration)) leaks trace
   have signed := signedCommitments_history (serviceTimeouts setup deps duration) leaks
-    (serviceInitialLaw setup deps) (serviceInitialLaw_initialized setup) horizon scheduler trace
+    (serviceInitialDistribution setup deps) (serviceInitialDistribution_initialized setup) horizon
+      scheduler trace
   obtain ⟨entry, entryMember, emitted⟩ := List.mem_filterMap.mp member
   have sender := (signed.emissions who entry entryMember other emitted).1
   have input : other ∈ control.execution.network.inputs := by
@@ -91,7 +93,7 @@ theorem output_event {horizon : Nat}
     {scheduler : (serviceApplication setup deps duration leaks).Scheduler}
     {control : (serviceApplication setup deps duration leaks).Control}
     (trace : ((serviceApplication setup deps duration leaks).protocol
-      (serviceInitialLaw setup deps) horizon scheduler).Trace (some control))
+      (serviceInitialDistribution setup deps) horizon scheduler).Trace (some control))
     (who : Player) (event : (serviceGraph setup deps).EventId)
     (unsent : (eventRecorded (serviceTimeouts setup deps duration)) leaks
       (control.execution.logs who) event = false)
@@ -100,7 +102,8 @@ theorem output_event {horizon : Nat}
       (control.execution.logs who)) :
     other.payload.call.event? (serviceGraph setup deps) ≠ some event := by
   have signed := signedCommitments_history (serviceTimeouts setup deps duration) leaks
-    (serviceInitialLaw setup deps) (serviceInitialLaw_initialized setup) horizon scheduler trace
+    (serviceInitialDistribution setup deps) (serviceInitialDistribution_initialized setup) horizon
+      scheduler trace
   obtain ⟨entry, entryMember, emitted⟩ := List.mem_filterMap.mp member
   obtain ⟨_, material, transmission, call⟩ := signed.emissions who entry entryMember other emitted
   have notSubmitted : (submittedEvent? (serviceTimeouts setup deps duration)) leaks entry.action ≠
@@ -128,7 +131,7 @@ theorem canonicalServiceDecision_countPermits {horizon : Nat}
     {scheduler : (serviceApplication setup deps duration leaks).Scheduler}
     {control : (serviceApplication setup deps duration leaks).Control}
     (trace : ((serviceApplication setup deps duration leaks).protocol
-      (serviceInitialLaw setup deps) horizon scheduler).Trace (some control))
+      (serviceInitialDistribution setup deps) horizon scheduler).Trace (some control))
     (who : Player) (event : (serviceGraph setup deps).EventId)
     (turn : control.execution.application.publicView.ownTurn? who = some event)
     (unsent : (eventRecorded (serviceTimeouts setup deps duration)) leaks
@@ -146,10 +149,11 @@ theorem canonicalServiceDecision_countPermits {horizon : Nat}
         material) = true := by
   have recalled := (countRecall_history (serviceTimeouts setup deps duration)) leaks trace
   have signed := signedCommitments_history (serviceTimeouts setup deps duration) leaks
-    (serviceInitialLaw setup deps) (serviceInitialLaw_initialized setup) horizon scheduler trace
+    (serviceInitialDistribution setup deps) (serviceInitialDistribution_initialized setup) horizon
+      scheduler trace
   have bindingValid := ((reactiveBindingInvariant (serviceTimeouts setup deps duration))
     leaks).history
-    (serviceInitialLaw setup deps) horizon scheduler (fun state member => by
+    (serviceInitialDistribution setup deps) horizon scheduler (fun state member => by
       obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ member
       exact State.initial_bindingInvariant _) trace
   have readyView := (PublicView.ownTurn?_spec _ who event turn).1
@@ -346,7 +350,7 @@ lies in the one-packet menu whenever the canonical menu retains it. -/
 theorem canonical_mem_onePacket_of_pending {horizon : Nat}
     {scheduler : (application setup timeouts leaks).Scheduler} {control : (application setup
       timeouts leaks).Control}
-    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some control))
     (who : Player) (event : setup.informationGraph.EventId)
     (turn : control.execution.application.publicView.ownTurn? who = some event)
@@ -360,10 +364,10 @@ theorem canonical_mem_onePacket_of_pending {horizon : Nat}
         (control.execution.observe (application setup timeouts leaks) who) event action ∈
       bounds.onePacketActions timeouts leaks who (control.execution.logs who)
         (control.execution.observe (application setup timeouts leaks) who) := by
-  have rawTrace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+  have rawTrace : ((application setup timeouts leaks).protocol (initialDistribution setup) horizon
     scheduler).Trace
       (some control) :=
-    (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon scheduler
+    (bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup) horizon scheduler
       trace
   exact bounds.canonical_mem_onePacket timeouts leaks who _ _ _ retained fun material submits
     =>

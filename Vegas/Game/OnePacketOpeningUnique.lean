@@ -35,7 +35,7 @@ at a reveal owned by the player, a transmitting canonical disclosure opens the
 accepted handle of the revealed binding, owned by the player and openable to
 the binding's stored value. -/
 theorem disclosure_transmits_form {control : (application setup timeouts leaks).Control}
-    (trace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((application setup timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace
       (some control))
     (who : Player) (event : setup.informationGraph.EventId)
@@ -90,7 +90,7 @@ theorem disclosure_transmits_form {control : (application setup timeouts leaks).
 player's own candidate, and a forwarded fact is sound evidence of the
 network. -/
 theorem resolved_fact_holds {control : (application setup timeouts leaks).Control}
-    (trace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((application setup timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace
       (some control))
     (who : Player) (request : EvidenceRequest setup.informationGraph) (fact : OpeningFact
@@ -140,7 +140,7 @@ theorem resolved_fact_holds {control : (application setup timeouts leaks).Contro
 is the opening of its handle at its value, with the canonical certificate of
 that opening. -/
 theorem disclosure_normal_form {control : (application setup timeouts leaks).Control}
-    (trace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((application setup timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace
       (some control))
     (who : Player) (event : setup.informationGraph.EventId)
@@ -201,7 +201,7 @@ signs its handle by the player's single commitment for the binding, which is
 the accepted handle, and the certificate opens that handle to its stored
 value. -/
 theorem onePacket_opening_eq_disclosure {control : (application setup timeouts leaks).Control}
-    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some control))
     (who : Player) (event : setup.informationGraph.EventId)
     {payload : L.Ty} {binding : EventGraph.FieldRef setup.informationGraph.layout (.binding who
@@ -229,17 +229,18 @@ theorem onePacket_opening_eq_disclosure {control : (application setup timeouts l
       (control.execution.observe (application setup timeouts leaks) who) event
       (cast (congrArg EventGraph.EventField.Action outputEq.symm) true) := by
   classical
-  have rawTrace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+  have rawTrace : ((application setup timeouts leaks).protocol (initialDistribution setup) horizon
     scheduler).Trace
       (some control) :=
-    (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon scheduler
+    (bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup) horizon scheduler
       trace
   have facts := legalFacts setup leaks horizon scheduler control rawTrace
   have recalled := (countRecall_history timeouts) leaks rawTrace
   have clean := (bounds.onePacketMenu_countClean timeouts leaks scheduler).history
-    (initialLaw setup) horizon (fun state _ => (countClean_initial timeouts) leaks state) trace
-  have signed := signedCommitments_history timeouts leaks (initialLaw setup)
-    (serviceInitialLaw_initialized setup) horizon scheduler rawTrace
+    (initialDistribution setup) horizon (fun state _ => (countClean_initial timeouts) leaks state)
+      trace
+  have signed := signedCommitments_history timeouts leaks (initialDistribution setup)
+    (serviceInitialDistribution_initialized setup) horizon scheduler rawTrace
   obtain ⟨handle, value, accepted, owner, openable, disclosureEq⟩ :=
     disclosure_normal_form (timeouts := timeouts) rawTrace who event node disclosed sendsDisclosure
   rw [disclosureEq]
@@ -376,7 +377,7 @@ theorem onePacket_opening_eq_disclosure {control : (application setup timeouts l
 one-packet game, when the player's canonical disclosure transmits at its
 pending reveal, it is canonical. -/
 theorem disclosureCanonical_of_resolves {control : (application setup timeouts leaks).Control}
-    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some control))
     (who : Player)
     (resolves : DisclosureResolves setup timeouts leaks who (control.execution.logs who)

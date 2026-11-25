@@ -52,7 +52,8 @@ theorem response_trace
     (covered : bounds.CoversOutputValues)
     {focal : Player} (other : owner ≠ focal)
     {info : (onePacketInformation setup timeouts leaks bounds horizon scheduler).InfoState focal}
-    (forced : forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks) (initialLaw
+    (forced : forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks)
+      (initialDistribution
       setup) horizon
       scheduler focal info)
     {past : List (application setup timeouts leaks).PlayerEntry}
@@ -92,7 +93,7 @@ theorem response_trace
       targetTrace, targetRecord⟩
   have same : actor = owner := not_ne_iff.mp foreign
   subst actor
-  have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup)
+  have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup)
     horizon scheduler prior
   have count := (countRecall_history timeouts) leaks rawTrace
   rcases response with ⟨transmission⟩
@@ -184,12 +185,14 @@ theorem response_trace
                     rawResponse)]⟩
               have initializedPrior := prior
               change ((bounds.onePacketMenu timeouts leaks).protocol
-                (initialLaw setup) horizon scheduler).Trace _
+                (initialDistribution setup) horizon scheduler).Trace _
                   at initializedPrior
-              rw [initialLaw, serviceInitialLaw_eq_inputs (deps := setup.informationDependencies)
+              rw [initialDistribution, serviceInitialDistribution_eq_inputs
+                (deps := setup.informationDependencies)
                 setup] at initializedPrior
               have fresh := bounds.onePacket_binding_fresh timeouts leaks
-                (setup.initialLaw.map setup.eventInputs) horizon scheduler initializedPrior owner
+                (setup.initialDistribution.map setup.eventInputs) horizon scheduler
+                  initializedPrior owner
                 event serial opening available
               obtain ⟨afterFrame, targetTrace, targetRecord⟩ := frame.binding_trace (timeouts :=
                 timeouts) remaining prior

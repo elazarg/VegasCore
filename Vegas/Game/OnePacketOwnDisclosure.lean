@@ -72,7 +72,7 @@ for a player at which the player owes no failure at the decoded point, the
 player's canonical disclosure at its pending reveal transmits. -/
 theorem disclosureResolves_of_debtFree (wellFormed : setup.WellFormed)
     {control : (application setup timeouts leaks).Control}
-    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some control))
     (who : Player) (forced : ForcedState setup timeouts leaks who (some control))
     (notOwed : ∀ point, decodedPoint setup control.execution.application.config = some point →
@@ -84,10 +84,10 @@ theorem disclosureResolves_of_debtFree (wellFormed : setup.WellFormed)
   have ownerEq : owner = who :=
     Option.some.inj ((nodeView_resolve_actor outputEq codeEq).symm.trans owned)
   subst ownerEq
-  have rawTrace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+  have rawTrace : ((application setup timeouts leaks).protocol (initialDistribution setup) horizon
     scheduler).Trace
       (some control) :=
-    (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon scheduler
+    (bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup) horizon scheduler
       trace
   have facts := legalFacts setup leaks horizon scheduler control rawTrace
   have ready : control.execution.application.config.cut.Ready event :=

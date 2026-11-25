@@ -44,7 +44,7 @@ def acceptedBit? (view : app.PlayerView) : Option Bool := do
     if fact.handle = accepted then fact.raw.as? .bool else none
 
 /-- The second player's source choice after reading the ledger. -/
-def oddBitLaw (view : app.PlayerView) : PMF Bool :=
+def oddBitDistribution (view : app.PlayerView) : PMF Bool :=
   match acceptedBit? view with
   | none => uniformLaw Bool
   | some bit => PMF.pure (!bit)
@@ -66,7 +66,7 @@ def respond (who : Player) : app.Policy := fun past view =>
         else match event with
         | ⟨0, _⟩ => (uniformLaw Bool).map fun bit =>
             ordinaryResponse who past view (eventId 0) (some (PublicationResult.success bit))
-        | ⟨1, _⟩ => (oddBitLaw view).map fun bit =>
+        | ⟨1, _⟩ => (oddBitDistribution view).map fun bit =>
             ordinaryResponse who past view (eventId 1) (some (PublicationResult.success bit))
         | ⟨2, _⟩ => PMF.pure (ordinaryResponse who past view (eventId 2) true)
         | ⟨3, _⟩ => PMF.pure (ordinaryResponse who past view (eventId 3) true)
@@ -85,13 +85,13 @@ theorem policy_of_defaulted (who : Player) (past : List app.PlayerEntry)
   simp only [policy, ReactiveApplication.ledgerPolicy, respond,
     ReactiveApplication.PlayerView.ledgerOnly, defaulted, ↓reduceIte]
 
-theorem oddBitLaw_of_known (view : app.PlayerView) (bit : Bool)
-    (known : acceptedBit? view = some bit) : oddBitLaw view = PMF.pure (!bit) := by
-  simp only [oddBitLaw, known]
+theorem oddBitDistribution_of_known (view : app.PlayerView) (bit : Bool)
+    (known : acceptedBit? view = some bit) : oddBitDistribution view = PMF.pure (!bit) := by
+  simp only [oddBitDistribution, known]
 
-theorem oddBitLaw_of_unknown (view : app.PlayerView)
-    (unknown : acceptedBit? view = none) : oddBitLaw view = uniformLaw Bool := by
-  simp only [oddBitLaw, unknown]
+theorem oddBitDistribution_of_unknown (view : app.PlayerView)
+    (unknown : acceptedBit? view = none) : oddBitDistribution view = uniformLaw Bool := by
+  simp only [oddBitDistribution, unknown]
 
 theorem acceptedBit?_ledgerOnly (view : app.PlayerView) :
     acceptedBit? (view.ledgerOnly app) = acceptedBit? view := rfl
@@ -110,10 +110,10 @@ theorem policy_at_informed_commitment (past : List app.PlayerEntry) (view : app.
   simp only [policy, ReactiveApplication.ledgerPolicy, respond,
     ReactiveApplication.PlayerView.ledgerOnly, included, ↓reduceIte, turn, unsent,
     Bool.false_eq_true]
-  change (oddBitLaw view).map (fun selected : Bool => ordinaryResponse odd
+  change (oddBitDistribution view).map (fun selected : Bool => ordinaryResponse odd
     (past.map (ReactiveApplication.PlayerEntry.ledgerOnly app)) (view.ledgerOnly app)
     (eventId 1) (some (PublicationResult.success selected))) = _
-  rw [oddBitLaw_of_known _ bit known, PMF.pure_map]
+  rw [oddBitDistribution_of_known _ bit known, PMF.pure_map]
   rfl
 
 private theorem recorded_ledgerOnly (past : List app.PlayerEntry) (event : compiled.EventId) :

@@ -495,9 +495,9 @@ example (bit : Bool) : Vegas.Examples.OddsEvensLedgerClient.acceptedBit?
       first_application]
   all_goals decide
 
-example (bit : Bool) : Vegas.Examples.OddsEvensLedgerClient.oddBitLaw
+example (bit : Bool) : Vegas.Examples.OddsEvensLedgerClient.oddBitDistribution
     ((disclosedIncluded bit).observe app odd) = PMF.pure (!bit) :=
-  Vegas.Examples.OddsEvensLedgerClient.oddBitLaw_of_known _ bit (disclosed_known bit)
+  Vegas.Examples.OddsEvensLedgerClient.oddBitDistribution_of_known _ bit (disclosed_known bit)
 
 example (bit : Bool) : Vegas.Examples.OddsEvensLedgerClient.acceptedBit?
     ((firstCommit bit).observe app odd) = none := by

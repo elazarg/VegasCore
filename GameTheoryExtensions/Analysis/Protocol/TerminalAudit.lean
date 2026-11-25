@@ -132,7 +132,7 @@ theorem settlement_clean (base : Outcome → Player → ℝ) (observe : Outcome 
 transports zero collection and the full realized settlement law. The projection
 may forget private representations; no independence of audit verdicts, players
 or represented states is required. -/
-theorem settlement_transport_of_normalized_law
+theorem settlement_transport_of_normalized_distribution
     (source target : PMF Outcome) (normalize : Outcome → Outcome)
     (law : target.map normalize = source)
     (base : Outcome → Player → ℝ) (observe : Outcome → Observation)

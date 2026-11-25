@@ -19,7 +19,7 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
 /-- The ready owner roster realizes any unilateral raw deviation against the
 effective-opening profile on every canonical prefix and at termination. -/
-theorem readyRoster_effectiveOpening_deviation_config_law
+theorem readyRoster_effectiveOpening_deviation_config_distribution
     (graph : EventGraph Player L)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph.sequentialize))
     (network : (NetworkPolicy (rosterTimeouts graph)) leaks)
@@ -38,11 +38,11 @@ theorem readyRoster_effectiveOpening_deviation_config_law
             (graph.sequentialize.policyPlan (Function.update reference focal policy)
               graph.sequentialize.canonicalScheduler)
             rank (Config.initial seed)) ∧
-      ((rosterApplication graph leaks).roundsFrom (rosterInitialLaw graph inputs)
+      ((rosterApplication graph leaks).roundsFrom (rosterInitialDistribution graph inputs)
         scheduler players horizon).map (fun final => final.application.config) =
         inputs.bind (graph.sequentialize.runPolicies graph.sequentialize.canonicalScheduler
           (Function.update reference focal policy)) :=
-  effectiveOpening_deviation_config_law (turns := 1) (rosterTimeouts graph) leaks
+  effectiveOpening_deviation_config_distribution (turns := 1) (rosterTimeouts graph) leaks
     (readyRosterScheduler graph leaks (ownerRoster graph) network)
     (fun event => event.val) (fun _ => 0) inputs base
     (readyRoster_owner_contract graph leaks inputs network)

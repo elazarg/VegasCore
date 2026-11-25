@@ -51,24 +51,25 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 /-- **The allowed inputs of a swap**: the inputs of an initial state the swap
 sends into the support of the initial law. -/
 def swapAllowed (swap : HiddenSwap setup.informationGraph) : Set setup.informationGraph.Inputs :=
-  {inputs | ∃ state ∈ (initialLaw setup).support, state.config.inputs = inputs ∧
-    state.swap swap ∈ (initialLaw setup).support}
+  {inputs | ∃ state ∈ (initialDistribution setup).support, state.config.inputs = inputs ∧
+    state.swap swap ∈ (initialDistribution setup).support}
 
 /-- An initial state is the initial state of its inputs. -/
-private theorem eq_initial_of_mem_initialLaw {state : EventGraphRuntime.State
+private theorem eq_initial_of_mem_initialDistribution {state : EventGraphRuntime.State
   setup.informationGraph}
-    (member : state ∈ (initialLaw setup).support) :
+    (member : state ∈ (initialDistribution setup).support) :
     state = EventGraphRuntime.State.initial state.config.inputs := by
-  rw [initialLaw, serviceInitialLaw, PMF.support_map] at member
+  rw [initialDistribution, serviceInitialDistribution, PMF.support_map] at member
   obtain ⟨_, _, rfl⟩ := member
   rfl
 
 /-- **The initial law is closed under the swap at the allowed inputs.** -/
 theorem initialClosed_swapAllowed (swap : HiddenSwap setup.informationGraph) :
-    ∀ state ∈ (initialLaw setup).support, state.config.inputs ∈ swapAllowed swap →
-      state.swap swap ∈ (initialLaw setup).support := by
+    ∀ state ∈ (initialDistribution setup).support, state.config.inputs ∈ swapAllowed swap →
+      state.swap swap ∈ (initialDistribution setup).support := by
   rintro state member ⟨other, otherMember, sameInputs, swapped⟩
-  rw [eq_initial_of_mem_initialLaw member, ← sameInputs, ← eq_initial_of_mem_initialLaw otherMember]
+  rw [eq_initial_of_mem_initialDistribution member, ← sameInputs, ←
+    eq_initial_of_mem_initialDistribution otherMember]
   exact swapped
 
 /-- **The allowed inputs are closed under the swap.** -/
@@ -298,9 +299,10 @@ theorem acceptedCompleted_transition (initial : PMF (application setup timeouts 
 class InitialAcceptedCompleted (initial : PMF (application setup timeouts leaks).State) : Prop where
   initial_accepted : ∀ state ∈ initial.support, AcceptedCompleted (setup := setup) state
 
-instance : InitialAcceptedCompleted (timeouts := timeouts) (leaks := leaks) (initialLaw setup) where
+instance : InitialAcceptedCompleted (timeouts := timeouts) (leaks := leaks)
+    (initialDistribution setup) where
   initial_accepted state member event candidate held := by
-    rw [initialLaw, serviceInitialLaw, PMF.support_map] at member
+    rw [initialDistribution, serviceInitialDistribution, PMF.support_map] at member
     obtain ⟨_, _, rfl⟩ := member
     obtain ⟨_, _, _, field, _, _⟩ := State.initial_accepted_eq_some _ _ candidate held
     cases field

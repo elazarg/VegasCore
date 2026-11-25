@@ -44,12 +44,12 @@ theorem signalClients_update (read : Player → (app).PlayerView → Signal)
 /-- After initialization, locally selected clients have the entire component continuation
 law at every valid control, including controls immediately before a player's response. -/
 theorem finish_signalClients (read : Player → (app).PlayerView → Signal)
-    (observed : ∀ draw ∈ setup.initialLaw.support, ∀ execution : (app).Execution,
+    (observed : ∀ draw ∈ setup.initialDistribution.support, ∀ execution : (app).Execution,
       EventGraphRuntime.State.Invariant (graph := setup.informationGraph)
         (setup.eventInputs draw) execution.application → ∀ who,
         read who (execution.observe app who) = signal draw)
     (clients : Signal → Player → (app).Policy)
-    (draw : State L setup.context) (member : draw ∈ setup.initialLaw.support)
+    (draw : State L setup.context) (member : draw ∈ setup.initialDistribution.support)
     (control : (app).Control)
     (valid : EventGraphRuntime.State.Invariant (graph := setup.informationGraph)
       (setup.eventInputs draw) control.execution.application)
@@ -81,14 +81,15 @@ theorem finish_signalClients (read : Player → (app).PlayerView → Signal)
 /-- Players who recover the initial signal from their existing views implement the
 component execution law at every round, for arbitrary component policies. -/
 theorem roundsFrom_signalClients (read : Player → (app).PlayerView → Signal)
-    (observed : ∀ draw ∈ setup.initialLaw.support, ∀ execution : (app).Execution,
+    (observed : ∀ draw ∈ setup.initialDistribution.support, ∀ execution : (app).Execution,
       EventGraphRuntime.State.Invariant (graph := setup.informationGraph)
         (setup.eventInputs draw) execution.application → ∀ who,
         read who (execution.observe app who) = signal draw)
     (clients : Signal → Player → (app).Policy) (count : Nat) :
-    (app).roundsFrom (Vegas.initialLaw setup) scheduler (signalClients read clients) count =
-      (setup.initialLaw.map signal).bind fun value => (app).roundsFrom
-        (Vegas.initialLaw (setup.conditionInitial signal value)) scheduler (clients value)
+    (app).roundsFrom (Vegas.initialDistribution setup) scheduler
+      (signalClients read clients) count =
+      (setup.initialDistribution.map signal).bind fun value => (app).roundsFrom
+        (Vegas.initialDistribution (setup.conditionInitial signal value)) scheduler (clients value)
           count := by
   rw [← setup.roundsFrom_conditionInitial_reconstruct signal (signalClients read clients) count]
   apply bind_congr_on_support _

@@ -75,7 +75,7 @@ theorem decodedPoint_actor_of_history {setup : Setup (Player := Player) (L := L)
     {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
     (who : Player) {horizon : Nat} {scheduler : (application setup timeouts leaks).Scheduler}
     {control : (application setup timeouts leaks).Control}
-    (trace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((application setup timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace
       (some control))
     {event : setup.informationGraph.EventId} (ready :

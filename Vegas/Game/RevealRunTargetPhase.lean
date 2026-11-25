@@ -72,7 +72,7 @@ theorem targetStep_joint {horizon : Nat}
     {delay : (serviceGraph setup deps).EventId → Nat}
     (bound : (serviceGraph setup deps).EventId → Nat) (turns : Nat)
     (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
-        (serviceInitialLaw setup deps) horizon scheduler delay bound)
+        (serviceInitialDistribution setup deps) horizon scheduler delay bound)
     (timely : AsyncTimely (serviceTimeouts setup deps duration) delay bound)
     (base : (serviceGraph setup deps).BehavioralProfile)
     (decides : ∀ (config : (serviceGraph setup deps).Config)
@@ -100,7 +100,8 @@ theorem targetStep_joint {horizon : Nat}
     {Seed : Type} (prior : PMF Seed)
     (execution : Seed → (serviceApplication setup deps duration leaks).Execution)
     (supported : ∀ seed ∈ prior.support, execution seed ∈
-      ((serviceApplication setup deps duration leaks).roundsFrom (serviceInitialLaw setup deps)
+      ((serviceApplication setup deps duration leaks).roundsFrom
+        (serviceInitialDistribution setup deps)
         scheduler (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound
           turns (firstTurnTiming setup turns deps)
           ((serviceGraph setup deps).normalizeProfile base)) who deviation)
@@ -247,9 +248,9 @@ theorem targetStep_joint {horizon : Nat}
     have lengths : (execution left).environmentRecall.length =
         (execution right).environmentRecall.length :=
       congrArg (fun value => value.2.2.1.length) same
-    obtain ⟨leftTrace⟩ := app.raw_trace_roundsFrom (serviceInitialLaw setup deps) horizon
+    obtain ⟨leftTrace⟩ := app.raw_trace_roundsFrom (serviceInitialDistribution setup deps) horizon
       scheduler players _ (bounded left leftMember) _ (supported left leftMember)
-    obtain ⟨rightTrace⟩ := app.raw_trace_roundsFrom (serviceInitialLaw setup deps) horizon
+    obtain ⟨rightTrace⟩ := app.raw_trace_roundsFrom (serviceInitialDistribution setup deps) horizon
       scheduler players _ (bounded right rightMember) _ (supported right rightMember)
     have agreeAt : ∀ (n : Nat) (currentRun otherRun : app.Execution),
         good left (n + 1) currentRun → good right (n + 1) otherRun →
@@ -420,30 +421,32 @@ theorem targetStep_joint {horizon : Nat}
 
 
 /-- A normalized deviation acts like the normalized base at settling events. -/
-theorem actionLaw_lastDeviation_of_settles {graph : Vegas.EventGraph Player L}
+theorem actionDistribution_lastDeviation_of_settles {graph : Vegas.EventGraph Player L}
     (base : graph.BehavioralProfile) (who : Player) (policy : graph.BehavioralPolicy who)
     (config : graph.Config) (event : graph.EventId)
     (settles : Settles (graph.normalizeProfile base) who config event) :
-    actionLaw (graph.lastDeviationProfile base who policy) config event =
-      actionLaw (graph.normalizeProfile base) config event := by
+    actionDistribution (graph.lastDeviationProfile base who policy) config event =
+      actionDistribution (graph.normalizeProfile base) config event := by
   rcases settles.2.2.1 with foreign | inactive
-  · exact actionLaw_lastDeviationProfile_other base who policy config foreign
+  · exact actionDistribution_lastDeviationProfile_other base who policy config foreign
   · by_cases owned : (graph.nodes event).actor = some who
-    · rw [actionLaw_of_actor _ _ owned, actionLaw_of_actor _ _ owned, dite_eq_left inactive,
+    · rw [actionDistribution_of_actor _ _ owned, actionDistribution_of_actor _ _ owned,
+        dite_eq_left inactive,
         dite_eq_left inactive]
-    · exact actionLaw_lastDeviationProfile_other base who policy config owned
+    · exact actionDistribution_lastDeviationProfile_other base who policy config owned
 
 /-- The last-served erased-key law of a normalized deviation is read from the
 closure. -/
-theorem lastErasedLaw_closure_deviation {graph : Vegas.EventGraph Player L}
+theorem lastErasedDistribution_closure_deviation {graph : Vegas.EventGraph Player L}
     (base : graph.BehavioralProfile) (who : Player) (policy : graph.BehavioralPolicy who)
     (independent : LastIndependent (graph.lastDeviationProfile base who policy) who)
     (config : graph.Config) :
-    lastErasedLaw (graph.lastDeviationProfile base who policy) who
+    lastErasedDistribution (graph.lastDeviationProfile base who policy) who
         (closure (graph.normalizeProfile base) who config) =
-      lastErasedLaw (graph.lastDeviationProfile base who policy) who config :=
-  lastErasedLaw_closure independent
-    (fun current event settles => actionLaw_lastDeviation_of_settles base who policy current event
+      lastErasedDistribution (graph.lastDeviationProfile base who policy) who config :=
+  lastErasedDistribution_closure independent
+    (fun current event settles => actionDistribution_lastDeviation_of_settles base who policy
+      current event
       settles) _ config rfl
 
 /-- The starting conditions of the last step of a run: earlier events have
@@ -470,7 +473,7 @@ theorem targetStep_phase {horizon : Nat}
     {delay : (serviceGraph setup deps).EventId → Nat}
     (bound : (serviceGraph setup deps).EventId → Nat) (turns : Nat)
     (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
-        (serviceInitialLaw setup deps) horizon scheduler delay bound)
+        (serviceInitialDistribution setup deps) horizon scheduler delay bound)
     (timely : AsyncTimely (serviceTimeouts setup deps duration) delay bound)
     (base : (serviceGraph setup deps).BehavioralProfile)
     (decides : ∀ (config : (serviceGraph setup deps).Config)
@@ -501,7 +504,8 @@ theorem targetStep_phase {horizon : Nat}
     {Seed : Type} (prior : PMF Seed)
     (execution : Seed → (serviceApplication setup deps duration leaks).Execution)
     (supported : ∀ seed ∈ prior.support, execution seed ∈
-      ((serviceApplication setup deps duration leaks).roundsFrom (serviceInitialLaw setup deps)
+      ((serviceApplication setup deps duration leaks).roundsFrom
+        (serviceInitialDistribution setup deps)
         scheduler (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound
           turns (firstTurnTiming setup turns deps)
           ((serviceGraph setup deps).normalizeProfile base)) who deviation)
@@ -582,9 +586,10 @@ theorem targetStep_phase {horizon : Nat}
   refine ⟨build, nextNoise, factored, fun policy => ?_⟩
   have targetNode : (G.nodes target).actor = some who := targetOwned
   have agree : ∀ (current : G.Config) other, other ≠ target →
-      actionLaw (P (build policy)) current other = actionLaw (P policy) current other :=
+      actionDistribution (P (build policy)) current other = actionDistribution
+        (P policy) current other :=
     fun current other different =>
-      actionLaw_lastDeviationProfile_patch_of_ne base who target _ policy current different
+      actionDistribution_lastDeviationProfile_patch_of_ne base who target _ policy current different
   have realized (current : RunKey G) (extra : _)
       (member : extra ∈ (channel (keyView who current)).support)
       (keyed : current ∈ (prior.map key).support) :
@@ -619,10 +624,11 @@ theorem targetStep_phase {horizon : Nat}
     have nonempty : closed.cut.enabled.Nonempty :=
       ⟨target, (EventOrder.Cut.mem_enabled _ _).mpr ready⟩
     rw [keyEq, keyTarget_runKey (independent _) closed,
-      lastErasedLaw_patch_step target agree closed ready (lastPick_eq_of_alone who closed alone
+      lastErasedDistribution_patch_step target agree closed ready
+        (lastPick_eq_of_alone who closed alone
         nonempty)]
     unfold eventStep
-    rw [actionLaw_lastDeviationProfile_owned base who (build policy) closed targetNode
+    rw [actionDistribution_lastDeviationProfile_owned base who (build policy) closed targetNode
       closedActive]
     simp only [build, patchPolicy, ↓reduceIte]
     rw [ownedHead_self]
@@ -668,7 +674,7 @@ theorem targetStep_phase {horizon : Nat}
     simp only [Function.comp_apply]
     rw [picked, Option.elim_some, PMF.pure_bind,
       step_eq_ownedStepped target targetOwned closed ready action, PMF.pure_bind,
-      ← lastErasedLaw_closure_deviation base who policy (independent policy),
+      ← lastErasedDistribution_closure_deviation base who policy (independent policy),
       ← keyTarget_runKey (independent policy), ← closureAdvance_runKey referenceIndependent.congr
         target targetOwned closed ready action]
   · push Not at active
@@ -676,7 +682,7 @@ theorem targetStep_phase {horizon : Nat}
       closure_completes_done base decides who run (begin seed member).earlier
         (fun _ _ _ _ => Or.inr active) target targetLate
     rw [keyEq, keyTarget_runKey (independent _) closed,
-      lastErasedLaw_patch_completed target agree closed closedDone,
+      lastErasedDistribution_patch_completed target agree closed closedDone,
       ← keyTarget_runKey (independent policy) closed]
     have constant : ∀ extra ∈ (channel (keyView who (runKey closed))).support,
         keyTarget (P policy) who (closureAdvance R who target targetOwned (runKey closed)
@@ -698,7 +704,7 @@ theorem finalStep_phase {horizon : Nat}
     {delay : (serviceGraph setup deps).EventId → Nat}
     (bound : (serviceGraph setup deps).EventId → Nat) (turns : Nat)
     (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
-        (serviceInitialLaw setup deps) horizon scheduler delay bound)
+        (serviceInitialDistribution setup deps) horizon scheduler delay bound)
     (timely : AsyncTimely (serviceTimeouts setup deps duration) delay bound)
     (base : (serviceGraph setup deps).BehavioralProfile)
     (decides : ∀ (config : (serviceGraph setup deps).Config)
@@ -723,7 +729,8 @@ theorem finalStep_phase {horizon : Nat}
     {Seed : Type} (prior : PMF Seed)
     (execution : Seed → (serviceApplication setup deps duration leaks).Execution)
     (supported : ∀ seed ∈ prior.support, execution seed ∈
-      ((serviceApplication setup deps duration leaks).roundsFrom (serviceInitialLaw setup deps)
+      ((serviceApplication setup deps duration leaks).roundsFrom
+        (serviceInitialDistribution setup deps)
         scheduler (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound
           turns (firstTurnTiming setup turns deps)
           ((serviceGraph setup deps).normalizeProfile base)) who deviation)
@@ -855,9 +862,9 @@ theorem finalStep_phase {horizon : Nat}
     have lengths : (execution left).environmentRecall.length =
         (execution right).environmentRecall.length :=
       congrArg (fun value => value.2.2.1.length) same
-    obtain ⟨leftTrace⟩ := app.raw_trace_roundsFrom (serviceInitialLaw setup deps) horizon
+    obtain ⟨leftTrace⟩ := app.raw_trace_roundsFrom (serviceInitialDistribution setup deps) horizon
       scheduler players _ (bounded left leftMember) _ (supported left leftMember)
-    obtain ⟨rightTrace⟩ := app.raw_trace_roundsFrom (serviceInitialLaw setup deps) horizon
+    obtain ⟨rightTrace⟩ := app.raw_trace_roundsFrom (serviceInitialDistribution setup deps) horizon
       scheduler players _ (bounded right rightMember) _ (supported right rightMember)
     have observedStop (current other : app.Execution)
         (equal : traffic current = traffic other) :

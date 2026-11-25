@@ -144,13 +144,13 @@ theorem runValue_of_defaulted (profile : graph.BehavioralProfile)
     atDefault result (runPlan_defaulted_mono _ _ config result member defaulted),
     expect_constant]
 
-theorem actionLaw_support_finite (finite : graph.FiniteActions)
+theorem actionDistribution_support_finite (finite : graph.FiniteActions)
     (profile : graph.BehavioralProfile) (config : graph.Config) (event : graph.EventId) :
-    (actionLaw profile config event).support.Finite := by
+    (actionDistribution profile config event).support.Finite := by
   cases ownerEq : (graph.nodes event).actor with
-  | none => rw [actionLaw_of_ownerless _ _ ownerEq]; simp
+  | none => rw [actionDistribution_of_ownerless _ _ ownerEq]; simp
   | some owner =>
-      rw [actionLaw_of_actor _ _ ownerEq]
+      rw [actionDistribution_of_actor _ _ ownerEq]
       by_cases inactive : owner ∈ config.defaulted
       · rw [dite_eq_left inactive]; simp
       · rw [dite_eq_right inactive]
@@ -207,18 +207,18 @@ theorem honestAtPublications_runValue_le (finite : graph.FiniteActions)
       · obtain ⟨actor, publication⟩ := owned
         obtain ⟨opened, honestOpens, othersDefault⟩ :=
           decisive config event ready actor publication defaulted
-        have improvedLaw : actionLaw improved config event = PMF.pure opened := by
-          rw [actionLaw_of_actor improved config actor, dite_eq_right defaulted]
+        have improvedLaw : actionDistribution improved config event = PMF.pure opened := by
+          rw [actionDistribution_of_actor improved config actor, dite_eq_right defaulted]
           simp only [improved, Profile.update_same, honestAtPublications, ite_eq_left publication]
           exact honestOpens
-        change expect ((actionLaw profile config event).bind (config.step event ready)) _ ≤
-          expect ((actionLaw improved config event).bind (config.step event ready)) _
+        change expect ((actionDistribution profile config event).bind (config.step event ready)) _ ≤
+          expect ((actionDistribution improved config event).bind (config.step event ready)) _
         rw [improvedLaw, PMF.pure_bind, expect_bind_tower _ _ _ (eventIntegrable profile _)]
         have target := le_runValue finite improved scheduler low
-        calc _ ≤ expect (actionLaw profile config event) (fun _ =>
+        calc _ ≤ expect (actionDistribution profile config event) (fun _ =>
               expect (config.step event ready opened) (runValue improved scheduler payoff)) := by
               apply expect_mono _ (payoffIntegrable_of_finite_support _ _
-                (actionLaw_support_finite finite profile config event))
+                (actionDistribution_support_finite finite profile config event))
                 (payoffIntegrable_constant _ _)
               intro action _
               by_cases same : action = opened
@@ -235,11 +235,13 @@ theorem honestAtPublications_runValue_le (finite : graph.FiniteActions)
                   (stepIntegrable _ _)
                 rwa [expect_constant] at bound
           _ = _ := expect_constant _ _
-      · have sameLaw : actionLaw improved config event = actionLaw profile config event := by
+      · have sameLaw : actionDistribution improved config event =
+          actionDistribution profile config event := by
           cases ownerEq : (graph.nodes event).actor with
-          | none => rw [actionLaw_of_ownerless _ _ ownerEq, actionLaw_of_ownerless _ _ ownerEq]
+          | none => rw [actionDistribution_of_ownerless _ _ ownerEq,
+            actionDistribution_of_ownerless _ _ ownerEq]
           | some owner =>
-              rw [actionLaw_of_actor _ _ ownerEq, actionLaw_of_actor _ _ ownerEq]
+              rw [actionDistribution_of_actor _ _ ownerEq, actionDistribution_of_actor _ _ ownerEq]
               by_cases inactive : owner ∈ config.defaulted
               · rw [dite_eq_left inactive, dite_eq_left inactive]
               rw [dite_eq_right inactive, dite_eq_right inactive]
@@ -249,8 +251,8 @@ theorem honestAtPublications_runValue_le (finite : graph.FiniteActions)
                   fun publication => owned ⟨ownerEq, publication⟩
                 simp only [improved, Profile.update_same, honestAtPublications, ite_eq_right plain]
               · simp only [improved, Profile.update_of_ne _ _ same]
-        change expect ((actionLaw profile config event).bind (config.step event ready)) _ ≤
-          expect ((actionLaw improved config event).bind (config.step event ready)) _
+        change expect ((actionDistribution profile config event).bind (config.step event ready)) _ ≤
+          expect ((actionDistribution improved config event).bind (config.step event ready)) _
         rw [sameLaw]
         change expect (eventStep profile config event ready) _ ≤
           expect (eventStep profile config event ready) _

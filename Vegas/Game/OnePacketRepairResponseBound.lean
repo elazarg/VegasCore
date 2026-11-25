@@ -3,7 +3,7 @@ module
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 public import Vegas.Game.OnePacketResponseBound
-public import Vegas.Game.OnePacketSlotLawForced
+public import Vegas.Game.OnePacketSlotDistributionForced
 
 @[expose] public section
 
@@ -29,8 +29,9 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
   {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
-  [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
-  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+  [(application setup timeouts leaks).FiniteNature (initialDistribution setup) scheduler]
+  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds
+    (initialDistribution setup) horizon
     scheduler).InfoState who)]
   [Finite (onePacketProtocol setup timeouts leaks bounds horizon scheduler).History]
 
@@ -44,7 +45,8 @@ variable (wellFormed : setup.WellFormed)
   (covers : bounds.CoversOutputValues)
   (capacity : ∀ who, bindingEventCount setup.informationGraph who < bounds.candidateCount)
   {slots : Nat}
-  (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup) horizon
+  (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds
+    (initialDistribution setup) horizon
     scheduler slots p))
 
 include wellFormed small floor_pos floored covers capacity
@@ -78,7 +80,7 @@ theorem certificate_regularResponse_lower (who : Player) (n : ℕ)
   obtain ⟨⟨forcedActor, forcedWho⟩, positive⟩ := regular actor acting other
   obtain ⟨main, alternative, slot, mainFactor', alternativeFactor, slotFactor, profileEq,
     mainMass, alternativeMass, slotMass, combination, cube⟩ :=
-    certificate_slotLaw_forced (timeouts := timeouts) wellFormed sequence scale scale_pos
+    certificate_slotDistribution_forced (timeouts := timeouts) wellFormed sequence scale scale_pos
       scale_le_one small floor
       floor_pos floored covers capacity weights who n prior joint legal realized control next
       actor rfl rfl acting other forcedActor forcedWho positive
@@ -93,7 +95,7 @@ theorem certificate_regularResponse_lower (who : Player) (n : ℕ)
   rw [← mass, ← combination]
   unfold slotCombination
   have uniform : 0 ≤ scale n ^ 3 * ((bounds.onePacketMenu timeouts leaks).uniformPolicy
-      (initialLaw setup) horizon scheduler actor _ (InformationModel.choicesOfLegal _ prior
+      (initialDistribution setup) horizon scheduler actor _ (InformationModel.choicesOfLegal _ prior
         ⟨joint, legal⟩ actor)).toReal :=
     mul_nonneg (pow_nonneg (scale_pos n).le 3) ENNReal.toReal_nonneg
   nlinarith
@@ -119,7 +121,7 @@ theorem certificate_responseMass_le_of_operationally_equal (who : Player) (n : �
     {actor : Player} (acting : control.actor = some actor)
     (imageActing : imageControl.actor = some actor) (other : actor ≠ who)
     (forcedActor : forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks)
-      (initialLaw setup)
+      (initialDistribution setup)
       horizon scheduler actor ((application setup timeouts leaks).observe actor (some control)))
     (canonical : DisclosureCanonical setup timeouts leaks bounds actor (control.execution.logs
       actor)
@@ -219,7 +221,7 @@ theorem certificate_irregularResponseMass_le_of_operationally_equal (who : Playe
     (imageActing : imageControl.actor = some actor) (other : actor ≠ who)
     (forcedWho : ForcedState setup timeouts leaks who (some control))
     (forcedActor : forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks)
-      (initialLaw setup)
+      (initialDistribution setup)
       horizon scheduler actor ((application setup timeouts leaks).observe actor (some control)))
     (irregular : ¬ RegularStep setup timeouts leaks bounds horizon scheduler (sequence n) who
       (some control) joint (some next))

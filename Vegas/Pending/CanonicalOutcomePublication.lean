@@ -28,7 +28,7 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {graph : Vegas.EventGraph Player L}
 
 /-- The canonical run law of a profile from a configuration, read through `read`. -/
-def outcomeLaw {Outcome : Type*} (profile : graph.BehavioralProfile)
+def outcomeDistribution {Outcome : Type*} (profile : graph.BehavioralProfile)
     (read : graph.Config → Outcome) (config : graph.Config) : PMF Outcome :=
   (graph.runPlan (graph.policyPlan profile graph.canonicalScheduler) config.remaining config).map
     read
@@ -108,11 +108,13 @@ theorem BindingFails.keep {before after : graph.Config} {event : graph.EventId}
 
 /-- A key-determined readout has the same law wherever the canonical key law is
 the same. -/
-theorem outcomeLaw_eq_of_canonicalLaw_eq {Outcome : Type*} {profile : graph.BehavioralProfile}
+theorem outcomeDistribution_eq_of_canonicalDistribution_eq {Outcome : Type*}
+    {profile : graph.BehavioralProfile}
     (read : graph.Config → Outcome)
     (keyed : ∀ left right : graph.Config, runKey left = runKey right → read left = read right)
-    {left right : graph.Config} (same : canonicalLaw profile left = canonicalLaw profile right) :
-    outcomeLaw profile read left = outcomeLaw profile read right := by
+    {left right : graph.Config} (same : canonicalDistribution profile left = canonicalDistribution
+      profile right) :
+    outcomeDistribution profile read left = outcomeDistribution profile read right := by
   classical
   let key : _ → Outcome := fun value =>
     if found : ∃ config : graph.Config, runKey config = value then read (Classical.choose found)
@@ -122,13 +124,13 @@ theorem outcomeLaw_eq_of_canonicalLaw_eq {Outcome : Type*} {profile : graph.Beha
     have found : ∃ other : graph.Config, runKey other = runKey config := ⟨config, rfl⟩
     simp only [Function.comp_apply, key, dite_eq_left found]
     exact (keyed _ _ (Classical.choose_spec found)).symm
-  unfold outcomeLaw
+  unfold outcomeDistribution
   rw [factor, ← PMF.map_comp, ← PMF.map_comp]
   exact congrArg (PMF.map key) same
 
 /-- An expiry at a failed binding of an active owner preserves the outcome law
 of an opening reference. -/
-theorem outcomeLaw_of_failed_expiry {Outcome : Type*} {profile : graph.BehavioralProfile}
+theorem outcomeDistribution_of_failed_expiry {Outcome : Type*} {profile : graph.BehavioralProfile}
     (independent : ReadyIndependent profile) (opens : OpensPublications profile)
     (read : graph.Config → Outcome)
     (keyed : ∀ left right : graph.Config, runKey left = runKey right → read left = read right)
@@ -142,7 +144,7 @@ theorem outcomeLaw_of_failed_expiry {Outcome : Type*} {profile : graph.Behaviora
     (failed : binding.get? config.store = some .failure)
     (active : owner ∉ config.defaulted) (action : graph.Action event)
     (member : next ∈ (config.step event ready action).support) :
-    outcomeLaw profile read next = outcomeLaw profile read config := by
+    outcomeDistribution profile read next = outcomeDistribution profile read config := by
   have owned : graph.actor? event = some owner := nodeView_resolve_actor outputEq codeEq
   have publication : (graph.outputLayout event).IsPublication := by
     rw [outputEq]
@@ -156,11 +158,12 @@ theorem outcomeLaw_of_failed_expiry {Outcome : Type*} {profile : graph.Behaviora
         (config.step event ready opening).support := by
     rw [config.step_of_binding_failed event ready outputEq codeEq failed opening]
     exact PMF.mem_support_pure_iff _ _ |>.mpr rfl
-  have prescribed : actionLaw profile config event = PMF.pure opening := by
-    rw [actionLaw_of_actor profile config owned, dite_eq_right active]
+  have prescribed : actionDistribution profile config event = PMF.pure opening := by
+    rw [actionDistribution_of_actor profile config owned, dite_eq_right active]
     exact opens config event owner owned publication active
-  rw [← outcomeLaw_eq_of_canonicalLaw_eq read keyed
-    (State.canonicalLaw_of_mem_step_of_actionLaw independent _ _ event ready owner owned opening
+  rw [← outcomeDistribution_eq_of_canonicalDistribution_eq read keyed
+    (State.canonicalDistribution_of_mem_step_of_actionDistribution independent _ _ event ready
+      owner owned opening
       prescribed openedMember)]
   exact runPlan_map_of_binding_failed profile graph.canonicalScheduler read invariant _ config
     event ready outputEq codeEq active action opening
@@ -168,7 +171,7 @@ theorem outcomeLaw_of_failed_expiry {Outcome : Type*} {profile : graph.Behaviora
 /-- A native environment command at a publication-only configuration preserves
 the outcome law of an opening reference at every supported successor, when no
 active owner's ready publication with a holding binding is due. -/
-theorem environmentStep_outcomeLaw_of_publications {Outcome : Type*}
+theorem environmentStep_outcomeDistribution_of_publications {Outcome : Type*}
     {profile : graph.BehavioralProfile}
     (independent : ReadyIndependent profile) (opens : OpensPublications profile)
     (read : graph.Config → Outcome)
@@ -182,10 +185,13 @@ theorem environmentStep_outcomeLaw_of_publications {Outcome : Type*}
       owner ∉ state.config.defaulted → BindingHolds state.config event →
       state.WithinDeadline timeouts event)
     (moved : next ∈ (environmentStep timeouts state command).support) :
-    outcomeLaw profile read next.config = outcomeLaw profile read state.config := by
-  have viaKey (same : canonicalLaw profile next.config = canonicalLaw profile state.config) :
-      outcomeLaw profile read next.config = outcomeLaw profile read state.config :=
-    outcomeLaw_eq_of_canonicalLaw_eq read keyed same
+    outcomeDistribution profile read next.config = outcomeDistribution profile read state.config :=
+      by
+  have viaKey (same : canonicalDistribution profile next.config = canonicalDistribution profile
+    state.config) :
+      outcomeDistribution profile read next.config = outcomeDistribution profile read state.config
+        :=
+    outcomeDistribution_eq_of_canonicalDistribution_eq read keyed same
   cases command with
   | advanceClock =>
       simp only [environmentStep, PMF.mem_support_pure_iff] at moved
@@ -230,7 +236,8 @@ theorem environmentStep_outcomeLaw_of_publications {Outcome : Type*}
         | resolve owner payload binding checks outputEq codeEq =>
             have owned := nodeView_resolve_actor outputEq codeEq
             by_cases inactive : owner ∈ state.config.defaulted
-            · exact viaKey (State.canonicalLaw_of_mem_step_defaulted independent _ _ event ready
+            · exact viaKey (State.canonicalDistribution_of_mem_step_defaulted independent _ _ event
+              ready
                 owner owned inactive action stepped)
             by_cases holds : ∃ value, binding.get? state.config.store = some (.success value)
             · have within := timely event owner ready owned inactive (by
@@ -261,13 +268,14 @@ theorem environmentStep_outcomeLaw_of_publications {Outcome : Type*}
                     cases result with
                     | failure => rfl
                     | success value => exact (holds ⟨value, stored⟩).elim
-              exact outcomeLaw_of_failed_expiry independent opens read keyed invariant _ _ event
+              exact outcomeDistribution_of_failed_expiry independent opens read keyed invariant _ _
+                event
                 ready outputEq codeEq failed inactive action stepped
 
 /-- A ledger environment step at a publication-only configuration preserves
 the outcome law of an opening reference at every supported successor, when no
 active owner's ready publication with a holding binding is due. -/
-theorem reactive_environmentStep_outcomeLaw_of_publications {Outcome : Type*}
+theorem reactive_environmentStep_outcomeDistribution_of_publications {Outcome : Type*}
     {profile : graph.BehavioralProfile}
     (independent : ReadyIndependent profile) (opens : OpensPublications profile)
     (read : graph.Config → Outcome)
@@ -285,12 +293,14 @@ theorem reactive_environmentStep_outcomeLaw_of_publications {Outcome : Type*}
       execution.application.WithinDeadline timeouts event)
     (moved : next ∈
       (execution.environmentStep ((reactiveApplication timeouts) leaks) command).support) :
-    outcomeLaw profile read next.application.config =
-      outcomeLaw profile read execution.application.config := by
+    outcomeDistribution profile read next.application.config =
+      outcomeDistribution profile read execution.application.config := by
   have viaKey {config : graph.Config}
-      (same : canonicalLaw profile config = canonicalLaw profile execution.application.config) :
-      outcomeLaw profile read config = outcomeLaw profile read execution.application.config :=
-    outcomeLaw_eq_of_canonicalLaw_eq read keyed same
+      (same : canonicalDistribution profile config = canonicalDistribution profile
+        execution.application.config) :
+      outcomeDistribution profile read config = outcomeDistribution profile read
+        execution.application.config :=
+    outcomeDistribution_eq_of_canonicalDistribution_eq read keyed same
   unfold ReactiveApplication.Execution.environmentStep at moved
   rw [PMF.support_map] at moved
   obtain ⟨updated, supported, rfl⟩ := moved
@@ -319,8 +329,8 @@ theorem reactive_environmentStep_outcomeLaw_of_publications {Outcome : Type*}
                 MessageNetwork.includePending, found, result, Option.getD_some]
               obtain ⟨native, handled, drained⟩ := reactiveHandle_call result
               apply viaKey
-              rw [← drained, State.drain_canonicalLaw independent]
-              exact handle_canonicalLaw_of_publications independent opens timeouts _ _ _
+              rw [← drained, State.drain_canonicalDistribution independent]
+              exact handle_canonicalDistribution_of_publications independent opens timeouts _ _ _
                 publications handled
   | application operation =>
       rw [PMF.support_map] at supported
@@ -328,9 +338,9 @@ theorem reactive_environmentStep_outcomeLaw_of_publications {Outcome : Type*}
       change state ∈ ((environmentStep timeouts execution.application operation).map
         State.drain).support at changed
       obtain ⟨native, nativeMoved, rfl⟩ := PMF.support_map .. ▸ changed
-      exact (outcomeLaw_eq_of_canonicalLaw_eq read keyed
-        (State.drain_canonicalLaw independent native)).trans
-        (environmentStep_outcomeLaw_of_publications independent opens read keyed invariant
+      exact (outcomeDistribution_eq_of_canonicalDistribution_eq read keyed
+        (State.drain_canonicalDistribution independent native)).trans
+        (environmentStep_outcomeDistribution_of_publications independent opens read keyed invariant
           timeouts _ _ operation publications timely nativeMoved)
 
 /-- **Publication rounds preserve the outcome law.** A ledger round at a
@@ -338,7 +348,7 @@ publication-only configuration preserves the outcome law of a ready-independent
 opening reference at every supported successor, whatever the scheduler and
 player policies, when no active owner's ready publication with a holding
 binding is due. -/
-theorem reactive_round_outcomeLaw_of_publications {Outcome : Type*}
+theorem reactive_round_outcomeDistribution_of_publications {Outcome : Type*}
     {profile : graph.BehavioralProfile}
     (independent : ReadyIndependent profile) (opens : OpensPublications profile)
     (read : graph.Config → Outcome)
@@ -357,12 +367,13 @@ theorem reactive_round_outcomeLaw_of_publications {Outcome : Type*}
       execution.application.WithinDeadline timeouts event)
     (reached : next ∈
       (((reactiveApplication timeouts) leaks).round scheduler players execution).support) :
-    outcomeLaw profile read next.application.config =
-      outcomeLaw profile read execution.application.config := by
+    outcomeDistribution profile read next.application.config =
+      outcomeDistribution profile read execution.application.config := by
   let app := (reactiveApplication timeouts) leaks
   obtain ⟨command, _, dispatched⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
   obtain ⟨middle, moved, resumed⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ dispatched)
-  have middleLaw := reactive_environmentStep_outcomeLaw_of_publications independent opens read
+  have middleLaw := reactive_environmentStep_outcomeDistribution_of_publications independent opens
+    read
     keyed invariant timeouts leaks execution middle command publications timely moved
   change next ∈ (app.resume players (command.actor? app) middle).support at resumed
   cases actor : command.actor? app with
@@ -380,22 +391,22 @@ theorem reactive_round_outcomeLaw_of_publications {Outcome : Type*}
       exact middleLaw
 
 /-- An initial segment of the canonical executor preserves its terminal continuation law. -/
-theorem runPlan_bind_outcomeLaw {Outcome : Type*} (profile : graph.BehavioralProfile)
+theorem runPlan_bind_outcomeDistribution {Outcome : Type*} (profile : graph.BehavioralProfile)
     (read : graph.Config → Outcome) :
     ∀ count config,
       (graph.runPlan (graph.policyPlan profile graph.canonicalScheduler) count config).bind
-        (outcomeLaw profile read) = outcomeLaw profile read config := by
+        (outcomeDistribution profile read) = outcomeDistribution profile read config := by
   let plan := graph.policyPlan profile graph.canonicalScheduler
   have head (config : graph.Config) (pending : ¬ config.cut.Terminal) :
       (plan config pending).bind (fun choice =>
-        (config.step choice.1.1 choice.1.2 choice.2).bind (outcomeLaw profile read)) =
-          outcomeLaw profile read config := by
+        (config.step choice.1.1 choice.1.2 choice.2).bind (outcomeDistribution profile read)) =
+          outcomeDistribution profile read config := by
     obtain ⟨remaining, fuel⟩ : ∃ remaining, config.remaining = remaining + 1 := by
       have nonzero : config.remaining ≠ 0 := by
         intro zero
         exact pending (config.terminal_iff_remaining_zero.mpr zero)
       exact Nat.exists_eq_succ_of_ne_zero nonzero
-    unfold outcomeLaw
+    unfold outcomeDistribution
     conv_rhs => rw [fuel, EventGraph.runPlan, dite_eq_right pending, PMF.map_bind]
     apply bind_congr_on_support _
     intro choice _
@@ -414,7 +425,8 @@ theorem runPlan_bind_outcomeLaw {Outcome : Type*} (profile : graph.BehavioralPro
       · rw [EventGraph.runPlan, dite_eq_right terminal, PMF.bind_bind]
         calc
           _ = (plan config terminal).bind (fun choice =>
-              (config.step choice.1.1 choice.1.2 choice.2).bind (outcomeLaw profile read)) := by
+              (config.step choice.1.1 choice.1.2 choice.2).bind
+                (outcomeDistribution profile read)) := by
             apply bind_congr_on_support _
             intro choice _
             rw [PMF.bind_bind]
@@ -423,13 +435,13 @@ theorem runPlan_bind_outcomeLaw {Outcome : Type*} (profile : graph.BehavioralPro
 
 /-- A continuation supported on empty public defaults has no current default.
 This uses only the absorbing graph semantics. -/
-theorem defaulted_eq_empty_of_outcomeLaw
+theorem defaulted_eq_empty_of_outcomeDistribution
     (profile : graph.BehavioralProfile) (config : graph.Config)
-    (clean : outcomeLaw profile Config.defaulted config = PMF.pure ∅) :
+    (clean : outcomeDistribution profile Config.defaulted config = PMF.pure ∅) :
     config.defaulted = ∅ := by
   obtain ⟨final, selected⟩ := (graph.runPlan (graph.policyPlan profile graph.canonicalScheduler)
     config.remaining config).support_nonempty
-  have observed : final.defaulted ∈ (outcomeLaw profile Config.defaulted config).support :=
+  have observed : final.defaulted ∈ (outcomeDistribution profile Config.defaulted config).support :=
     (PMF.mem_support_map_iff _ _ _).mpr ⟨final, selected, rfl⟩
   rw [clean, PMF.mem_support_pure_iff] at observed
   have growing := Config.Step.path_defaulted_mono
@@ -440,23 +452,25 @@ theorem defaulted_eq_empty_of_outcomeLaw
   have later := growing member
   simp only [observed, Finset.notMem_empty] at later
 
-private theorem defaultLaw_eq_of_canonicalLaw_eq {profile : graph.BehavioralProfile}
+private theorem defaultDistribution_eq_of_canonicalDistribution_eq
+    {profile : graph.BehavioralProfile}
     {left right : graph.Config}
-    (same : canonicalLaw profile left = canonicalLaw profile right) :
-    outcomeLaw profile Config.defaulted left = outcomeLaw profile Config.defaulted right :=
-  outcomeLaw_eq_of_canonicalLaw_eq Config.defaulted
+    (same : canonicalDistribution profile left = canonicalDistribution profile right) :
+    outcomeDistribution profile Config.defaulted left = outcomeDistribution profile
+      Config.defaulted right :=
+  outcomeDistribution_eq_of_canonicalDistribution_eq Config.defaulted
     (fun _ _ equal => defaulted_eq_of_completionOf_eq (congrArg (fun key => key.2.2) equal)) same
 
 /-- If an ordinary-opening continuation never defaults, every ready publication
 has an accepted opening. This is a property of the semantic continuation law. -/
-theorem openingAccepted_of_defaultLaw
+theorem openingAccepted_of_defaultDistribution
     {profile : graph.BehavioralProfile} (independent : ReadyIndependent profile)
     (opens : OpensPublications profile) (config : graph.Config)
-    (law : outcomeLaw profile Config.defaulted config = PMF.pure ∅)
+    (law : outcomeDistribution profile Config.defaulted config = PMF.pure ∅)
     (event : graph.EventId) (ready : config.cut.Ready event)
     (publication : (graph.outputLayout event).IsPublication) :
     openingAccepted event config.store = true := by
-  have clear := defaulted_eq_empty_of_outcomeLaw profile config law
+  have clear := defaulted_eq_empty_of_outcomeDistribution profile config law
   obtain ⟨owner, payload, binding, checks, outputEq, codeEq, node⟩ :=
     exists_resolve_of_publication publication
   have owned := nodeView_resolve_actor outputEq codeEq
@@ -469,14 +483,15 @@ theorem openingAccepted_of_defaultLaw
   have member : failed ∈ (config.step event ready action).support := by
     rw [step_of_opening_rejected config event ready node rejected action]
     exact (PMF.mem_support_pure_iff _ _).mpr rfl
-  have prescribed : actionLaw profile config event = PMF.pure action := by
-    rw [actionLaw_of_actor profile config owned, dite_eq_right active,
+  have prescribed : actionDistribution profile config event = PMF.pure action := by
+    rw [actionDistribution_of_actor profile config owned, dite_eq_right active,
       opens config event owner owned publication active,
       openAction_eq_cast_true outputEq publication]
-  have same := State.canonicalLaw_of_mem_step_of_actionLaw independent config failed event ready
+  have same := State.canonicalDistribution_of_mem_step_of_actionDistribution independent config
+    failed event ready
     owner owned action prescribed member
-  have failedClear := defaulted_eq_empty_of_outcomeLaw profile failed
-    ((defaultLaw_eq_of_canonicalLaw_eq same).trans law)
+  have failedClear := defaulted_eq_empty_of_outcomeDistribution profile failed
+    ((defaultDistribution_eq_of_canonicalDistribution_eq same).trans law)
   have inactive : owner ∈ failed.defaulted := by
     change owner ∈ (config.complete event ready action _).defaults.defaulted
     rw [EventGraph.Config.complete_defaults, config.completion_resolve_defaultEvent event owner
@@ -493,21 +508,22 @@ theorem environment_publication_clear_or_focal_default
     {profile : graph.BehavioralProfile} (independent : ReadyIndependent profile)
     (opens : OpensPublications profile) (timeouts : EventTimeouts graph)
     (state next : State graph) (command : EnvironmentCommand graph) (focal : Player)
-    (law : outcomeLaw profile Config.defaulted state.config = PMF.pure ∅)
+    (law : outcomeDistribution profile Config.defaulted state.config = PMF.pure ∅)
     (publications : ∀ event, state.config.cut.Ready event →
       (graph.outputLayout event).IsPublication)
     (deadlines : ∀ event owner, state.config.cut.Ready event → graph.actor? event = some owner →
       owner ≠ focal → state.WithinDeadline timeouts event)
     (moved : next ∈ (environmentStep timeouts state command).support) :
     focal ∈ next.config.defaulted ∨
-      (next.config.defaulted = ∅ ∧ canonicalLaw profile next.config =
-        canonicalLaw profile state.config) := by
+      (next.config.defaulted = ∅ ∧ canonicalDistribution profile next.config =
+        canonicalDistribution profile state.config) := by
   classical
   by_cases failed : focal ∈ next.config.defaulted
   · exact Or.inl failed
   right
-  have clear := defaulted_eq_empty_of_outcomeLaw profile state.config law
-  have same : canonicalLaw profile next.config = canonicalLaw profile state.config := by
+  have clear := defaulted_eq_empty_of_outcomeDistribution profile state.config law
+  have same : canonicalDistribution profile next.config = canonicalDistribution profile
+    state.config := by
     cases command with
     | advanceClock =>
       cases (PMF.mem_support_pure_iff _ _).mp moved
@@ -549,7 +565,8 @@ theorem environment_publication_clear_or_focal_default
             stepped other otherActive inactive
           have equal : other = owner := Option.some.inj (otherOwned.symm.trans owned)
           exact failed (sameOwner ▸ equal ▸ inactive)
-        exact canonicalLaw_eq_of_clear_publication_step independent opens state.config next.config
+        exact canonicalDistribution_eq_of_clear_publication_step independent opens state.config
+          next.config
           event ready (publications event ready) action stepped nextClear
       · have within := deadlines event owner ready owned sameOwner
         unfold State.WithinDeadline at within
@@ -561,8 +578,8 @@ theorem environment_publication_clear_or_focal_default
             (by omega), PMF.mem_support_pure_iff] at moved
           cases moved
           rfl
-  exact ⟨defaulted_eq_empty_of_outcomeLaw profile next.config
-    ((defaultLaw_eq_of_canonicalLaw_eq same).trans law), same⟩
+  exact ⟨defaulted_eq_empty_of_outcomeDistribution profile next.config
+    ((defaultDistribution_eq_of_canonicalDistribution_eq same).trans law), same⟩
 
 /-- Before a focal default, a native public operation preserves the ordinary
 opening potential and cannot default any honest owner with a protected deadline. -/
@@ -572,7 +589,7 @@ theorem reactive_environment_publication_clear_or_focal_default
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (execution next : ((reactiveApplication timeouts) leaks).Execution)
     (command : ((reactiveApplication timeouts) leaks).Command) (focal : Player)
-    (law : outcomeLaw profile Config.defaulted execution.application.config = PMF.pure ∅)
+    (law : outcomeDistribution profile Config.defaulted execution.application.config = PMF.pure ∅)
     (publications : ∀ event, execution.application.config.cut.Ready event →
       (graph.outputLayout event).IsPublication)
     (deadlines : ∀ event owner, execution.application.config.cut.Ready event →
@@ -581,14 +598,15 @@ theorem reactive_environment_publication_clear_or_focal_default
     (moved : next ∈
       (execution.environmentStep ((reactiveApplication timeouts) leaks) command).support) :
     focal ∈ next.application.config.defaulted ∨
-      (next.application.config.defaulted = ∅ ∧ canonicalLaw profile next.application.config =
-        canonicalLaw profile execution.application.config) := by
+      (next.application.config.defaulted = ∅ ∧ canonicalDistribution profile
+        next.application.config =
+        canonicalDistribution profile execution.application.config) := by
   classical
   by_cases failed : focal ∈ next.application.config.defaulted
   · exact Or.inl failed
   right
-  have same : canonicalLaw profile next.application.config =
-      canonicalLaw profile execution.application.config := by
+  have same : canonicalDistribution profile next.application.config =
+      canonicalDistribution profile execution.application.config := by
     unfold ReactiveApplication.Execution.environmentStep at moved
     rw [PMF.support_map] at moved
     obtain ⟨updated, supported, rfl⟩ := moved
@@ -616,8 +634,8 @@ theorem reactive_environment_publication_clear_or_focal_default
                 simp only [ReactiveApplication.Execution.includePending,
                   MessageNetwork.includePending, found, result, Option.getD_some]
                 obtain ⟨native, handled, drained⟩ := reactiveHandle_call result
-                rw [← drained, State.drain_canonicalLaw independent]
-                exact handle_canonicalLaw_of_publications independent opens timeouts _ _ _
+                rw [← drained, State.drain_canonicalDistribution independent]
+                exact handle_canonicalDistribution_of_publications independent opens timeouts _ _ _
                   publications handled
     | application operation =>
         rw [PMF.support_map] at supported
@@ -633,9 +651,9 @@ theorem reactive_environment_publication_clear_or_focal_default
           change focal ∈ native.drain.config.defaulted
           rw [native.drain_defaulted]
           exact bad
-        · exact (State.drain_canonicalLaw independent native).trans same
-  exact ⟨defaulted_eq_empty_of_outcomeLaw profile next.application.config
-    ((defaultLaw_eq_of_canonicalLaw_eq same).trans law), same⟩
+        · exact (State.drain_canonicalDistribution independent native).trans same
+  exact ⟨defaulted_eq_empty_of_outcomeDistribution profile next.application.config
+    ((defaultDistribution_eq_of_canonicalDistribution_eq same).trans law), same⟩
 
 /-- A whole native public round either defaults the focal player or preserves
 the clear ordinary-opening potential, with arbitrary client responses. -/
@@ -646,7 +664,7 @@ theorem reactive_round_publication_clear_or_focal_default
     (scheduler : ((reactiveApplication timeouts) leaks).Scheduler)
     (players : Player → ((reactiveApplication timeouts) leaks).Policy)
     (execution next : ((reactiveApplication timeouts) leaks).Execution) (focal : Player)
-    (law : outcomeLaw profile Config.defaulted execution.application.config = PMF.pure ∅)
+    (law : outcomeDistribution profile Config.defaulted execution.application.config = PMF.pure ∅)
     (publications : ∀ event, execution.application.config.cut.Ready event →
       (graph.outputLayout event).IsPublication)
     (deadlines : ∀ event owner, execution.application.config.cut.Ready event →
@@ -655,8 +673,9 @@ theorem reactive_round_publication_clear_or_focal_default
     (reached : next ∈
       (((reactiveApplication timeouts) leaks).round scheduler players execution).support) :
     focal ∈ next.application.config.defaulted ∨
-      (next.application.config.defaulted = ∅ ∧ canonicalLaw profile next.application.config =
-        canonicalLaw profile execution.application.config) := by
+      (next.application.config.defaulted = ∅ ∧ canonicalDistribution profile
+        next.application.config =
+        canonicalDistribution profile execution.application.config) := by
   let app := (reactiveApplication timeouts) leaks
   obtain ⟨command, _, dispatched⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
   obtain ⟨middle, moved, resumed⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ dispatched)

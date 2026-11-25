@@ -35,7 +35,7 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
 /-- The mass the initial law gives the application state of a native state. -/
 def initialMass : (application setup timeouts leaks).ProtocolState → ℝ
   | none => 0
-  | some control => (initialLaw setup control.execution.application).toReal
+  | some control => (initialDistribution setup control.execution.application).toReal
 
 open Classical in
 /-- The positive initial masses of the states of the native histories. -/
@@ -64,16 +64,18 @@ theorem initialFloor_pos : 0 < initialFloor setup timeouts leaks bounds horizon 
 
 /-- **Supported initial states are above the initial floor.** -/
 theorem initialFloor_le {state : (application setup timeouts leaks).State}
-    (supported : state ∈ (initialLaw setup).support) :
-    initialFloor setup timeouts leaks bounds horizon scheduler ≤ (initialLaw setup state).toReal :=
+    (supported : state ∈ (initialDistribution setup).support) :
+    initialFloor setup timeouts leaks bounds horizon scheduler ≤
+      (initialDistribution setup state).toReal :=
       by
   classical
   let := Fintype.ofFinite (onePacketProtocol setup timeouts leaks bounds horizon scheduler).History
-  obtain ⟨trace⟩ := (bounds.onePacketMenu timeouts leaks).trace_initial (initialLaw setup)
+  obtain ⟨trace⟩ := (bounds.onePacketMenu timeouts leaks).trace_initial (initialDistribution setup)
     horizon scheduler state supported
-  have positive : 0 < (initialLaw setup state).toReal :=
+  have positive : 0 < (initialDistribution setup state).toReal :=
     ENNReal.toReal_pos ((PMF.mem_support_iff _ _).mp supported) (PMF.apply_ne_top _ _)
-  have member : (initialLaw setup state).toReal ∈ initialMasses setup timeouts leaks bounds horizon
+  have member : (initialDistribution setup state).toReal ∈ initialMasses setup timeouts leaks
+    bounds horizon
       scheduler := by
     unfold initialMasses
     refine Finset.mem_filter.mpr ⟨Finset.mem_image.mpr ⟨⟨_, trace⟩, Finset.mem_univ _, rfl⟩,

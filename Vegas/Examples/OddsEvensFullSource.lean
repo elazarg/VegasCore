@@ -2,7 +2,7 @@ module
 
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-public import Vegas.Examples.OddsEvensFairLaw
+public import Vegas.Examples.OddsEvensFairDistribution
 public import Vegas.Game.IntendedPreservation
 
 @[expose] public section
@@ -106,7 +106,7 @@ theorem fair_full_source_equilibrium_exists :
       (fullModel.runBehavioralTerminalFrom fullBounded.wellFoundedHistories target.strategy
         fullProtocol.initHistory).map
         (fun final => (setup.protocolReadout final.state, fun who => fullPayoff who final)) =
-          uniformJointLaw := by
+          uniformJointDistribution := by
   classical
   let restriction := setup.intendedRestriction fullAdmission
   let sourceCertificate := setup.intended_bounded.wellFoundedHistories
@@ -120,7 +120,7 @@ theorem fair_full_source_equilibrium_exists :
       fullModel.Choice who (restriction.site who site).1 →
         PMF (setup.intendedModel.Choice who site.1) :=
     fun _ _ _ => PMF.pure (Classical.arbitrary _)
-  obtain ⟨target, sequential, extends_, _, _, jointLaw⟩ :=
+  obtain ⟨target, sequential, extends_, _, _, jointDistribution⟩ :=
     restriction.sequentialEquilibrium_extends_of_comparator_unclocked
       setup.intended_decision_antichain sourceCertificate targetCertificate
       (setup.uniformReference finiteBindingTypes fullAdmission)
@@ -133,7 +133,7 @@ theorem fair_full_source_equilibrium_exists :
       uniformAssessment uniformAssessment_equilibrium
   refine ⟨target, sequential, extends_, ?_⟩
   have readouts := congrArg (PMF.map fun pair => (setup.protocolReadout pair.1.state, pair.2))
-    jointLaw
+    jointDistribution
   simp only [PMF.map_comp] at readouts
   change (setup.intendedModel.runBehavioralTerminalFrom sourceCertificate
     uniformProfile setup.intendedProtocol.initHistory).map
@@ -158,6 +158,6 @@ theorem fair_full_source_equilibrium_exists :
       exact (setup.intended_exclusionReadoutUtility wellFormed (fun _ => ()) sourceUtility
         (fun _ => 0) final who).symm
   rw [same]
-  exact uniform_source_joint_law
+  exact uniform_source_joint_distribution
 
 end Vegas.Examples.OddsEvens

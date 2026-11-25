@@ -25,7 +25,7 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 /-- The finite history type of the intended game, for finite commitment payload
 types and a finite initial law. -/
 theorem intended_finite_history [Finite Player] (finite : setup.program.FiniteBindingTypes)
-    [setup.FiniteInitialLaw] : Finite setup.intendedProtocol.History :=
+    [setup.FiniteInitialSupport] : Finite setup.intendedProtocol.History :=
   have : Finite (setup.executionProtocol (CommitmentInterface.values setup.program)).History :=
     setup.finite_history finite _
   Finite.of_injective (setup.intendedRestriction (CommitmentInterface.values

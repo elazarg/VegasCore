@@ -52,7 +52,8 @@ transition and its one-packet legality are constructed by the induction. -/
 theorem repair_binding_history
     (covered : bounds.CoversOutputValues) (focal owner : Player) (other : owner ≠ focal)
     {info : (onePacketInformation setup timeouts leaks bounds horizon scheduler).InfoState focal}
-    (forced : forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks) (initialLaw
+    (forced : forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks)
+      (initialDistribution
       setup) horizon
       scheduler focal info)
     {past : List (application setup timeouts leaks).PlayerEntry}
@@ -114,7 +115,7 @@ theorem repair_binding_history
         have afterPrefix : TracePrefix afterTrace history.1.trace := isPrefix
         cases source with
         | none =>
-            change some control ∈ ((initialLaw setup).map fun state => some
+            change some control ∈ ((initialDistribution setup).map fun state => some
               (⟨horizon, none,
                 ReactiveApplication.Execution.initial (application setup timeouts leaks) state⟩ :
                   (application setup timeouts leaks).Control)).support at realized
@@ -141,25 +142,26 @@ theorem repair_binding_history
             have beforeClear : before.execution.application.config.defaulted = ∅ :=
               prefixClear prior priorPrefix
             have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace
-              (initialLaw setup) horizon scheduler prior
+              (initialDistribution setup) horizon scheduler prior
             have clean := (bounds.onePacketMenu_countClean timeouts leaks scheduler).history
-              (initialLaw setup) horizon (fun state _ => (countClean_initial timeouts) leaks
+              (initialDistribution setup) horizon (fun state _ =>
+                (countClean_initial timeouts) leaks
                 state) prior
-            have signed := (signedCommitments_history timeouts) leaks (initialLaw setup)
+            have signed := (signedCommitments_history timeouts) leaks (initialDistribution setup)
               (fun state member => by
                 obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ member
                 exact ⟨setup.eventInputs initial, rfl⟩) horizon scheduler rawTrace
             have leftBinding := ((reactiveBindingInvariant timeouts) leaks).history
-              (initialLaw setup) horizon scheduler
+              (initialDistribution setup) horizon scheduler
               (fun state member => by
                 obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ member
                 exact State.initial_bindingInvariant _) rawTrace
             have rightBinding := ((reactiveBindingInvariant timeouts) leaks).history
-              (initialLaw setup) horizon scheduler
+              (initialDistribution setup) horizon scheduler
               (fun state member => by
                 obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ member
                 exact State.initial_bindingInvariant _)
-              ((bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon
+              ((bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup) horizon
                 scheduler image.trace)
             rcases before with ⟨remaining, actor, original⟩
             cases actor with

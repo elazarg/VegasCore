@@ -66,13 +66,13 @@ theorem initialMass_eq (initial : State L setup.context) :
     (setup.protocolStep none (fun _ => none)
         (decodedPoint setup (EventGraphRuntime.State.initial (graph := setup.informationGraph)
           (setup.eventInputs initial)).config)).toReal =
-      (initialLaw setup (EventGraphRuntime.State.initial (graph := setup.informationGraph)
+      (initialDistribution setup (EventGraphRuntime.State.initial (graph := setup.informationGraph)
         (setup.eventInputs initial))).toReal := by
   rw [decodedPoint_initial]
-  change ((setup.initialLaw.map fun initial =>
+  change ((setup.initialDistribution.map fun initial =>
       some (ProtocolState.entry setup.program (Config.initial initial)))
         (some (ProtocolState.entry setup.program (Config.initial initial)))).toReal =
-    ((setup.initialLaw.map fun initial => EventGraphRuntime.State.initial (graph :=
+    ((setup.initialDistribution.map fun initial => EventGraphRuntime.State.initial (graph :=
       setup.informationGraph)
       (setup.eventInputs initial)) (EventGraphRuntime.State.initial (graph :=
         setup.informationGraph)
@@ -89,13 +89,14 @@ transition. -/
 theorem replayStepMatches_start (assessment : setup.intendedModel.BehavioralAssessment)
     (who : Player) (joint : Player → Option (application setup timeouts leaks).Action)
     {after : (application setup timeouts leaks).ProtocolState}
-    (realized : after ∈ ((application setup timeouts leaks).transition (initialLaw setup) horizon
+    (realized : after ∈ ((application setup timeouts leaks).transition
+      (initialDistribution setup) horizon
       scheduler
       none joint).support) :
     ReplayStepMatches setup timeouts leaks assessment who setup.intendedProtocol.initHistory 1 none
       joint
       after := by
-  change after ∈ ((initialLaw setup).map fun state => some
+  change after ∈ ((initialDistribution setup).map fun state => some
     (⟨horizon, none, ReactiveApplication.Execution.initial (application setup timeouts leaks)
       state⟩ :
       (application setup timeouts leaks).Control)).support at realized

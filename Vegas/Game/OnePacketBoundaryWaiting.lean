@@ -31,7 +31,7 @@ variable [Fintype Player]
   {horizon : Nat} {scheduler : (application setup timeouts leaks).Scheduler}
   {delay bound : setup.informationGraph.EventId → Nat}
   (opportunity : ∀ control : (application setup timeouts leaks).Control,
-    ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some control) →
     control.execution.application.config.defaulted = ∅ →
     OpportunityAt timeouts leaks control.execution delay)
@@ -46,7 +46,7 @@ a due expiry would require one under pointwise opportunity.
 The application therefore keeps both its source configuration and public clarity. -/
 theorem counted_waiting_environment
     {remaining : Nat} {execution : (application setup timeouts leaks).Execution}
-    (trace : ((Menu).protocol (initialLaw setup) horizon scheduler).Trace
+    (trace : ((Menu).protocol (initialDistribution setup) horizon scheduler).Trace
       (some ⟨remaining + 1, none, execution⟩))
     (clear : execution.application.config.defaulted = ∅)
     {rank : Nat} (ordered : execution.application.config.cut.IsPrefix rank)
@@ -63,7 +63,7 @@ theorem counted_waiting_environment
       command).support) :
     next.application.config = execution.application.config ∧
       next.application.config.defaulted = ∅ := by
-  have rawTrace := (Menu).toRawTrace (initialLaw setup) horizon scheduler trace
+  have rawTrace := (Menu).toRawTrace (initialDistribution setup) horizon scheduler trace
   have facts := legalFacts setup leaks horizon scheduler _ rawTrace
   have safe : ∀ message ∈ execution.network.pending, message.sender = owner →
       message.payload.call.event? setup.informationGraph ≠ some event := by
@@ -76,16 +76,16 @@ theorem counted_waiting_environment
       point decoded intendedPoint owner
     exact never entry remembered (submissions entry remembered event submitted)
   have rawInputs : ((application setup timeouts leaks).protocol
-      ((setup.initialLaw.map setup.eventInputs).map State.initial) horizon scheduler).Trace
+      ((setup.initialDistribution.map setup.eventInputs).map State.initial) horizon scheduler).Trace
         (some ⟨remaining + 1, none, execution⟩) := by
-    have initialEq : initialLaw setup =
-        (setup.initialLaw.map setup.eventInputs).map (State.initial (graph :=
+    have initialEq : initialDistribution setup =
+        (setup.initialDistribution.map setup.eventInputs).map (State.initial (graph :=
           setup.informationGraph)) :=
-      serviceInitialLaw_eq_inputs (deps := setup.informationDependencies) setup
+      serviceInitialDistribution_eq_inputs (deps := setup.informationDependencies) setup
     rw [← initialEq]
     exact rawTrace
   obtain ⟨inputs, _supported, invariant⟩ := (reactive_history_invariant timeouts) leaks
-    (setup.initialLaw.map setup.eventInputs) horizon scheduler rawInputs
+    (setup.initialDistribution.map setup.eventInputs) horizon scheduler rawInputs
   obtain ⟨entered, activated⟩ := invariant.activatedAt_eq_some_of_ready_actor event ready
     (by simp only [owned, Option.isSome_some])
   change execution.application.activatedAt event = some entered at activated
@@ -105,7 +105,7 @@ theorem counted_waiting_environment
 include opportunity timely in
 private theorem counted_waiting_transition
     {control : (application setup timeouts leaks).Control}
-    (trace : ((Menu).protocol (initialLaw setup) horizon scheduler).Trace (some control))
+    (trace : ((Menu).protocol (initialDistribution setup) horizon scheduler).Trace (some control))
     (clear : control.execution.application.config.defaulted = ∅)
     {rank : Nat} (ordered : control.execution.application.config.cut.IsPrefix rank)
     {point : ProtocolState setup.program}
@@ -119,7 +119,8 @@ private theorem counted_waiting_transition
     (going : control.actor ≠ some owner)
     (joint : Player → Option (application setup timeouts leaks).Action)
     (target : (application setup timeouts leaks).ProtocolState)
-    (realized : target ∈ ((application setup timeouts leaks).transition (initialLaw setup) horizon
+    (realized : target ∈ ((application setup timeouts leaks).transition
+      (initialDistribution setup) horizon
       scheduler (some control) joint).support) :
     ∃ next, target = some next ∧
       next.execution.application.config = control.execution.application.config ∧
@@ -164,16 +165,16 @@ source point, public clarity and the owner's complete recall are unchanged
 through the waiting phase. All players' continuation policies are arbitrary. -/
 theorem counted_waiting_until_firstActivation
     (completes : ∀ control : (application setup timeouts leaks).Control,
-      ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+      ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some control) →
       control.execution.application.config.defaulted = ∅ →
       (application setup timeouts leaks).terminal (some control) →
       control.execution.application.config.cut.Terminal)
-    (certificate : ((Menu).protocol (initialLaw setup) horizon
+    (certificate : ((Menu).protocol (initialDistribution setup) horizon
       scheduler).WellFoundedHistories)
-    (players : ∀ player, ((Menu).information (initialLaw setup) horizon
+    (players : ∀ player, ((Menu).information (initialDistribution setup) horizon
       scheduler).BehavioralPolicy player)
-    (start : ((Menu).protocol (initialLaw setup) horizon scheduler).History)
+    (start : ((Menu).protocol (initialDistribution setup) horizon scheduler).History)
     {remaining : Nat} {execution : (application setup timeouts leaks).Execution}
     (current : start.state = some ⟨remaining, none, execution⟩)
     (clear : execution.application.config.defaulted = ∅)
@@ -186,7 +187,7 @@ theorem counted_waiting_until_firstActivation
     (ready : execution.application.config.cut.Ready event)
     (never : ∀ entry ∈ execution.logs owner, ¬ ActivatedAt setup timeouts leaks owner event
       entry) :
-    ∀ stopped ∈ (((Menu).information (initialLaw setup) horizon
+    ∀ stopped ∈ (((Menu).information (initialDistribution setup) horizon
       scheduler).runBehavioralUntil certificate players
         (fun history => (application setup timeouts leaks).actor history.state = some owner)
           start).support,
@@ -195,8 +196,8 @@ theorem counted_waiting_until_firstActivation
         control.execution.application.config.defaulted = ∅ ∧
         control.execution.logs owner = execution.logs owner := by
   classical
-  let model := (Menu).information (initialLaw setup) horizon scheduler
-  let protocol := (Menu).protocol (initialLaw setup) horizon scheduler
+  let model := (Menu).information (initialDistribution setup) horizon scheduler
+  let protocol := (Menu).protocol (initialDistribution setup) horizon scheduler
   let stopped := fun history : protocol.History =>
     (application setup timeouts leaks).actor history.state = some owner
   let property := fun history : protocol.History =>
@@ -219,7 +220,8 @@ theorem counted_waiting_until_firstActivation
       rw [state]
       exact active
     have trace : protocol.Trace (some control) := state ▸ history.trace
-    have nextStep : next.state ∈ ((application setup timeouts leaks).transition (initialLaw setup)
+    have nextStep : next.state ∈ ((application setup timeouts leaks).transition
+      (initialDistribution setup)
       horizon
         scheduler (some control) joint).support := by
       rw [← state]
@@ -255,16 +257,16 @@ arbitrary play. Its source configuration is unchanged and its complete owner
 recall still equals the boundary recall. -/
 theorem counted_boundary_firstActivation
     (completes : ∀ control : (application setup timeouts leaks).Control,
-      ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+      ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some control) →
       control.execution.application.config.defaulted = ∅ →
       (application setup timeouts leaks).terminal (some control) →
       control.execution.application.config.cut.Terminal)
-    (certificate : ((Menu).protocol (initialLaw setup) horizon
+    (certificate : ((Menu).protocol (initialDistribution setup) horizon
       scheduler).WellFoundedHistories)
-    (players : ∀ player, ((Menu).information (initialLaw setup) horizon
+    (players : ∀ player, ((Menu).information (initialDistribution setup) horizon
       scheduler).BehavioralPolicy player)
-    (start : ((Menu).protocol (initialLaw setup) horizon scheduler).History)
+    (start : ((Menu).protocol (initialDistribution setup) horizon scheduler).History)
     {rank : Nat} {execution : (application setup timeouts leaks).Execution}
     (current : start.state =
       some ⟨horizon - execution.environmentRecall.length, none, execution⟩)
@@ -275,7 +277,7 @@ theorem counted_boundary_firstActivation
     (intendedPoint : ProtocolState.Intended setup.program point)
     (owner : Player) (event : setup.informationGraph.EventId) (atRank : event.val = rank)
     (owned : setup.informationGraph.actor? event = some owner) :
-    ∀ stopped ∈ (((Menu).information (initialLaw setup) horizon
+    ∀ stopped ∈ (((Menu).information (initialDistribution setup) horizon
       scheduler).runBehavioralUntil certificate players
         (fun history => (application setup timeouts leaks).actor history.state = some owner)
           start).support,
@@ -302,7 +304,7 @@ theorem counted_boundary_firstActivation
   rcases control with ⟨remaining, actor, anchor⟩
   dsimp only at active
   subst actor
-  have trace : ((Menu).protocol (initialLaw setup) horizon scheduler).Trace
+  have trace : ((Menu).protocol (initialDistribution setup) horizon scheduler).Trace
       (some ⟨remaining, some owner, anchor⟩) := state ▸ stopped.trace
   have turn : anchor.application.publicView.ownTurn? owner = some event :=
     ownTurn?_of_ready setup anchor.application (same ▸ ready) owned

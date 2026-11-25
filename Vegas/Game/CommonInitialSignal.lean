@@ -25,7 +25,7 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 def SharesInitialSignal (setup : Setup (Player := Player) (L := L))
     (signal : State L setup.context → Signal) : Prop :=
   ∀ who (first second : State L setup.context),
-    first ∈ setup.initialLaw.support → second ∈ setup.initialLaw.support →
+    first ∈ setup.initialDistribution.support → second ∈ setup.initialDistribution.support →
     sourceObserve who first = sourceObserve who second → signal first = signal second
 
 private theorem intendedInfo_eq {state : setup.ProtocolState}
@@ -37,7 +37,7 @@ private theorem intendedInfo_eq {state : setup.ProtocolState}
 
 /-- Each actual decision fiber lies entirely in its observed component even off path. -/
 theorem SharesInitialSignal.sourceFiber (common : setup.SharesInitialSignal signal)
-    (value : Signal) (supported : value ∈ (setup.initialLaw.map signal).support)
+    (value : Signal) (supported : value ∈ (setup.initialDistribution.map signal).support)
     (who : Player) (site : (setup.conditionInitial signal value).intendedModel.InformationSite who)
     (history : setup.intendedModel.InformationHistory who site.1) :
     setup.initialComponent signal value history.1.state := by
@@ -108,13 +108,13 @@ any value of the signal; their choice does not affect a legal execution. -/
 def nativeInitialSignal (signal : State L setup.context → Signal) (who : Player)
     (view : (app).PlayerView) : Signal := by
   classical
-  exact if h : ∃ draw ∈ setup.initialLaw.support, VisibleInitialInputs who view draw then
-    signal h.choose else signal setup.initialLaw.support_nonempty.choose
+  exact if h : ∃ draw ∈ setup.initialDistribution.support, VisibleInitialInputs who view draw then
+    signal h.choose else signal setup.initialDistribution.support_nonempty.choose
 
 /-- Every valid raw execution reveals the correct common signal to its owner at any turn.
 The construction requires no ledger publication or extension of the observation rule. -/
 theorem SharesInitialSignal.native (common : setup.SharesInitialSignal signal)
-    (draw : State L setup.context) (present : draw ∈ setup.initialLaw.support)
+    (draw : State L setup.context) (present : draw ∈ setup.initialDistribution.support)
     (execution : (app).Execution)
     (valid : EventGraphRuntime.State.Invariant (graph := setup.informationGraph)
       (setup.eventInputs draw) execution.application) (who : Player) :
@@ -126,7 +126,7 @@ theorem SharesInitialSignal.native (common : setup.SharesInitialSignal signal)
       (.inl input) = _
     rw [EventGraph.playerStore_of_visible _ _ _ _ visible, EventGraph.Config.store_input,
       reachable_inputs valid.reachable]
-  have existsDraw : ∃ other ∈ setup.initialLaw.support,
+  have existsDraw : ∃ other ∈ setup.initialDistribution.support,
       VisibleInitialInputs who (execution.observe app who) other := ⟨draw, present, readsDraw⟩
   unfold nativeInitialSignal
   rw [dite_eq_left existsDraw]

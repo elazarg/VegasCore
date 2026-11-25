@@ -24,7 +24,7 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 local notation "NP" => ReactiveApplication.ResponseMenu.protocol
-  (bounds.onePacketMenu timeouts leaks) (initialLaw setup) horizon scheduler
+  (bounds.onePacketMenu timeouts leaks) (initialDistribution setup) horizon scheduler
 
 /-- A completed failed event in a genuine native history retains its owner's
 source obligation, independently of any future service guarantee. -/
@@ -38,7 +38,7 @@ theorem decodedDebt_of_failed_event
       (ProtocolState.OwesFailure who setup.program) history.state := by
   have record := SourceFailureRecord.history (timeouts := timeouts) (failureProfile setup.program)
     horizon scheduler
-    ((bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon scheduler
+    ((bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup) horizon scheduler
       (current ▸ history.trace))
   obtain ⟨rank, residual, holds⟩ := record
   rw [current]

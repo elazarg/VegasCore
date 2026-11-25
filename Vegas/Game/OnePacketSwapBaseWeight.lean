@@ -182,7 +182,7 @@ private theorem target_some_of_realized {control : (application setup timeouts l
       (some control) ⟨joint, legal⟩).support) :
     ∃ next, target = some next := by
   obtain ⟨next, nextEq, _⟩ := (application setup timeouts leaks).transition_recall_prefix
-    (initialLaw setup) horizon scheduler control target joint reached
+    (initialDistribution setup) horizon scheduler control target joint reached
   exact ⟨next, nextEq⟩
 
 /-- **The swap keeps the source factor** of a transition between protocol states
@@ -215,19 +215,21 @@ theorem transitionSourceFactor_swap (swap : HiddenSwap setup.informationGraph)
 /-- The source weight of the image of a history: the initial draw scales by the
 ratio `c`, and every later source factor is unchanged. -/
 private theorem othersSourceWeight_mapTrace_aux (swap : HiddenSwap setup.informationGraph)
-    (initialClosed : ∀ state ∈ (initialLaw setup).support, state.config.inputs ∈ allowed →
-      state.swap swap ∈ (initialLaw setup).support)
+    (initialClosed : ∀ state ∈ (initialDistribution setup).support, state.config.inputs ∈ allowed →
+      state.swap swap ∈ (initialDistribution setup).support)
     (bounded : ∀ handle raw, raw ∈ bounds.values → swap.raw handle raw ∈ bounds.values)
     (failures : ∀ event, swap.values.ExpiryFixed event)
     (assessment : setup.intendedModel.BehavioralAssessment) (who : Player)
     (fixesOthers : ∀ other, other ≠ who → swap.Fixes other) (c : ℝ)
-    (priorScaled : ∀ state ∈ (initialLaw setup).support, state.config.inputs ∈ allowed →
-      (initialLaw setup (state.swap swap)).toReal = c * (initialLaw setup state).toReal) :
+    (priorScaled : ∀ state ∈ (initialDistribution setup).support, state.config.inputs ∈ allowed →
+      (initialDistribution setup (state.swap swap)).toReal = c *
+        (initialDistribution setup state).toReal) :
     ∀ {state} (trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace
       state)
       (guarded : SwapGuardState setup timeouts swap allowed state),
     othersSourceWeight setup timeouts leaks bounds horizon scheduler assessment who
-        ((onePacketSwapSymmetry (timeouts := timeouts) bounds (initialLaw setup) horizon scheduler
+        ((onePacketSwapSymmetry (timeouts := timeouts) bounds
+          (initialDistribution setup) horizon scheduler
           swap initialClosed
           bounded failures).mapTrace trace guarded) =
       state.elim 1 (fun _ => c) *
@@ -243,12 +245,12 @@ private theorem othersSourceWeight_mapTrace_aux (swap : HiddenSwap setup.informa
         priorScaled prior]
       cases source with
       | none =>
-          change target ∈ ((initialLaw setup).map _).support at reached
+          change target ∈ ((initialDistribution setup).map _).support at reached
           rw [PMF.support_map] at reached
           obtain ⟨initial, member, rfl⟩ := reached
           have inputs : initial.config.inputs ∈ allowed := guarded.inputs
-          change 1 * _ * (initialLaw setup (initial.swap swap)).toReal =
-            c * (_ * (initialLaw setup initial).toReal)
+          change 1 * _ * (initialDistribution setup (initial.swap swap)).toReal =
+            c * (_ * (initialDistribution setup initial).toReal)
           rw [priorScaled initial member inputs]
           ring
       | some control =>
@@ -266,19 +268,21 @@ other than the observer and scales the initial mass of every allowed draw by
 `c`, the image of every history ending at a protocol state has `c` times its
 source weight. -/
 theorem othersSourceWeight_mapTrace_scaled (swap : HiddenSwap setup.informationGraph)
-    (initialClosed : ∀ state ∈ (initialLaw setup).support, state.config.inputs ∈ allowed →
-      state.swap swap ∈ (initialLaw setup).support)
+    (initialClosed : ∀ state ∈ (initialDistribution setup).support, state.config.inputs ∈ allowed →
+      state.swap swap ∈ (initialDistribution setup).support)
     (bounded : ∀ handle raw, raw ∈ bounds.values → swap.raw handle raw ∈ bounds.values)
     (failures : ∀ event, swap.values.ExpiryFixed event)
     (assessment : setup.intendedModel.BehavioralAssessment) (who : Player)
     (fixesOthers : ∀ other, other ≠ who → swap.Fixes other) (c : ℝ)
-    (priorScaled : ∀ state ∈ (initialLaw setup).support, state.config.inputs ∈ allowed →
-      (initialLaw setup (state.swap swap)).toReal = c * (initialLaw setup state).toReal)
+    (priorScaled : ∀ state ∈ (initialDistribution setup).support, state.config.inputs ∈ allowed →
+      (initialDistribution setup (state.swap swap)).toReal = c *
+        (initialDistribution setup state).toReal)
     {control : (application setup timeouts leaks).Control}
     (trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some control))
     (guarded : SwapGuardState setup timeouts swap allowed (some control)) :
     othersSourceWeight setup timeouts leaks bounds horizon scheduler assessment who
-        ((onePacketSwapSymmetry (timeouts := timeouts) bounds (initialLaw setup) horizon scheduler
+        ((onePacketSwapSymmetry (timeouts := timeouts) bounds
+          (initialDistribution setup) horizon scheduler
           swap initialClosed
           bounded failures).mapTrace trace guarded) =
       c * othersSourceWeight setup timeouts leaks bounds horizon scheduler assessment who trace :=
@@ -290,8 +294,8 @@ theorem othersSourceWeight_mapTrace_scaled (swap : HiddenSwap setup.informationG
 /-- A player the swap fixes has the same information at the swapped state of a
 history. -/
 theorem observe_swap_of_fixes (swap : HiddenSwap setup.informationGraph)
-    (initialClosed : ∀ state ∈ (initialLaw setup).support, state.config.inputs ∈ allowed →
-      state.swap swap ∈ (initialLaw setup).support)
+    (initialClosed : ∀ state ∈ (initialDistribution setup).support, state.config.inputs ∈ allowed →
+      state.swap swap ∈ (initialDistribution setup).support)
     (bounded : ∀ handle raw, raw ∈ bounds.values → swap.raw handle raw ∈ bounds.values)
     (failures : ∀ event, swap.values.ExpiryFixed event)
     {player : Player} (fixes : swap.Fixes player) {state : (application setup timeouts
@@ -329,8 +333,8 @@ theorem observe_swap_of_fixes (swap : HiddenSwap setup.informationGraph)
 /-- **The swap keeps regular steps** into guarded states, when forcedness for the
 observer is invariant under the swap at guarded states. -/
 theorem regularStep_swap_iff (swap : HiddenSwap setup.informationGraph)
-    (initialClosed : ∀ state ∈ (initialLaw setup).support, state.config.inputs ∈ allowed →
-      state.swap swap ∈ (initialLaw setup).support)
+    (initialClosed : ∀ state ∈ (initialDistribution setup).support, state.config.inputs ∈ allowed →
+      state.swap swap ∈ (initialDistribution setup).support)
     (bounded : ∀ handle raw, raw ∈ bounds.values → swap.raw handle raw ∈ bounds.values)
     (failures : ∀ event, swap.values.ExpiryFixed event)
     (assessment : setup.intendedModel.BehavioralAssessment) (who : Player)
@@ -358,7 +362,8 @@ theorem regularStep_swap_iff (swap : HiddenSwap setup.informationGraph)
   | some control =>
       obtain ⟨next, rfl⟩ := target_some_of_realized (timeouts := timeouts) legal reached
       change (∀ actor, control.actor = some actor → actor ≠ who →
-          (forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks) (initialLaw
+          (forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks)
+            (initialDistribution
             setup) horizon
               scheduler actor ((application setup timeouts leaks).observe actor
                 (swap.protocolState (some control))) ∧
@@ -384,8 +389,8 @@ theorem regularStep_swap_iff (swap : HiddenSwap setup.informationGraph)
 swap fixes every player other than the observer and forcedness for the observer
 is invariant under the swap at guarded states. -/
 theorem regularTrace_mapTrace_iff (swap : HiddenSwap setup.informationGraph)
-    (initialClosed : ∀ state ∈ (initialLaw setup).support, state.config.inputs ∈ allowed →
-      state.swap swap ∈ (initialLaw setup).support)
+    (initialClosed : ∀ state ∈ (initialDistribution setup).support, state.config.inputs ∈ allowed →
+      state.swap swap ∈ (initialDistribution setup).support)
     (bounded : ∀ handle raw, raw ∈ bounds.values → swap.raw handle raw ∈ bounds.values)
     (failures : ∀ event, swap.values.ExpiryFixed event)
     (assessment : setup.intendedModel.BehavioralAssessment) (who : Player)
@@ -399,7 +404,8 @@ theorem regularTrace_mapTrace_iff (swap : HiddenSwap setup.informationGraph)
       state)
       (guarded : SwapGuardState setup timeouts swap allowed state),
     RegularTrace setup timeouts leaks bounds horizon scheduler assessment who
-        ((onePacketSwapSymmetry (timeouts := timeouts) bounds (initialLaw setup) horizon scheduler
+        ((onePacketSwapSymmetry (timeouts := timeouts) bounds
+          (initialDistribution setup) horizon scheduler
           swap initialClosed
           bounded failures).mapTrace trace guarded) ↔
       RegularTrace setup timeouts leaks bounds horizon scheduler assessment who trace
@@ -415,7 +421,8 @@ theorem regularTrace_mapTrace_iff (swap : HiddenSwap setup.informationGraph)
           who
           fixesOthers forcedEq prior
           legal reached
-          ((onePacketSwapSymmetry (timeouts := timeouts) bounds (initialLaw setup) horizon scheduler
+          ((onePacketSwapSymmetry (timeouts := timeouts) bounds
+            (initialDistribution setup) horizon scheduler
             swap initialClosed
             bounded failures).guard_source prior legal reached guarded))
 
@@ -445,8 +452,8 @@ theorem observe_decodedPoint_swap_of_fixes (swap : HiddenSwap setup.informationG
 ending at a guarded state, when it fixes every other player and some other
 player exists to witness the observer's public reveals. -/
 theorem forcedState_swap_iff (swap : HiddenSwap setup.informationGraph)
-    (initialClosed : ∀ state ∈ (initialLaw setup).support, state.config.inputs ∈ allowed →
-      state.swap swap ∈ (initialLaw setup).support)
+    (initialClosed : ∀ state ∈ (initialDistribution setup).support, state.config.inputs ∈ allowed →
+      state.swap swap ∈ (initialDistribution setup).support)
     (bounded : ∀ handle raw, raw ∈ bounds.values → swap.raw handle raw ∈ bounds.values)
     (failures : ∀ event, swap.values.ExpiryFixed event)
     (who : Player) (fixesOthers : ∀ other, other ≠ who → swap.Fixes other)
@@ -464,7 +471,8 @@ theorem forcedState_swap_iff (swap : HiddenSwap setup.informationGraph)
         (bounds.onePacketMenu timeouts leaks) horizon scheduler trace control rfl
       obtain ⟨swappedRank, ⟨swappedResidual⟩⟩ := protocol_sourceResidual (timeouts := timeouts)
         (failureProfile setup.program) (bounds.onePacketMenu timeouts leaks) horizon
-        scheduler ((onePacketSwapSymmetry (timeouts := timeouts) bounds (initialLaw setup) horizon
+        scheduler ((onePacketSwapSymmetry (timeouts := timeouts) bounds
+          (initialDistribution setup) horizon
           scheduler swap
           initialClosed bounded failures).mapTrace trace guarded) (swap.control
             control) rfl
@@ -503,8 +511,8 @@ theorem forcedState_swap_iff (swap : HiddenSwap setup.informationGraph)
 /-- **The image of a history is regular exactly when the history is**, when the
 swap fixes every player other than the observer and some other player exists. -/
 theorem regularTrace_mapTrace_iff_of_fixes (swap : HiddenSwap setup.informationGraph)
-    (initialClosed : ∀ state ∈ (initialLaw setup).support, state.config.inputs ∈ allowed →
-      state.swap swap ∈ (initialLaw setup).support)
+    (initialClosed : ∀ state ∈ (initialDistribution setup).support, state.config.inputs ∈ allowed →
+      state.swap swap ∈ (initialDistribution setup).support)
     (bounded : ∀ handle raw, raw ∈ bounds.values → swap.raw handle raw ∈ bounds.values)
     (failures : ∀ event, swap.values.ExpiryFixed event)
     (assessment : setup.intendedModel.BehavioralAssessment) (who : Player)
@@ -514,7 +522,8 @@ theorem regularTrace_mapTrace_iff_of_fixes (swap : HiddenSwap setup.informationG
     (trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace state)
     (guarded : SwapGuardState setup timeouts swap allowed state) :
     RegularTrace setup timeouts leaks bounds horizon scheduler assessment who
-        ((onePacketSwapSymmetry (timeouts := timeouts) bounds (initialLaw setup) horizon scheduler
+        ((onePacketSwapSymmetry (timeouts := timeouts) bounds
+          (initialDistribution setup) horizon scheduler
           swap initialClosed
           bounded failures).mapTrace trace guarded) ↔
       RegularTrace setup timeouts leaks bounds horizon scheduler assessment who trace :=

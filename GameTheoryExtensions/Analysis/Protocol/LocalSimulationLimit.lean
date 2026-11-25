@@ -42,7 +42,7 @@ variable {Player : Type} [Finite Player] [DecidableEq Player]
 omit [DecidableEq Player] [∀ who, DecidableEq (N.InfoState who)] in
 /-- If two converging behavioral sequences produce asymptotically equal
 observed probabilities, their limiting observed laws agree. -/
-theorem runBehavioral_map_eq_of_lawError
+theorem runBehavioral_map_eq_of_distributionError
     {Outcome : Type*} (sourceObserve : E.History → Outcome) (targetObserve : T.History → Outcome)
     (sourceFuel targetFuel : ℕ)
     {sourceSequence : ℕ → ∀ who, M.BehavioralPolicy who}
@@ -52,11 +52,12 @@ theorem runBehavioral_map_eq_of_lawError
       PMFConvergesPointwise (fun n => sourceSequence n who site.1) (source who site.1))
     (targetConverges : ∀ who (site : N.InformationSite who),
       PMFConvergesPointwise (fun n => targetSequence n who site.1) (target who site.1))
-    {lawError : ℕ → ℝ} (lawErrorVanishes : Tendsto lawError atTop (nhds 0))
+    {distributionError : ℕ → ℝ} (distributionErrorVanishes : Tendsto distributionError atTop
+      (nhds 0))
     (initialized : ∀ n outcome,
       |(((N.runBehavioral (targetSequence n) targetFuel).map targetObserve) outcome).toReal -
         (((M.runBehavioral (sourceSequence n) sourceFuel).map sourceObserve) outcome).toReal| ≤
-          lawError n) :
+          distributionError n) :
     (N.runBehavioral target targetFuel).map targetObserve =
       (M.runBehavioral source sourceFuel).map sourceObserve := by
   classical
@@ -74,7 +75,7 @@ theorem runBehavioral_map_eq_of_lawError
   let targetMass n := expect (N.runBehavioral (targetSequence n) targetFuel)
     (fun history => indicator (targetObserve history))
   have differenceVanishes : Tendsto (fun n => targetMass n - sourceMass n) atTop (nhds 0) := by
-    apply squeeze_zero_norm _ lawErrorVanishes
+    apply squeeze_zero_norm _ distributionErrorVanishes
     intro n
     have bound := initialized n outcome
     rw [toReal_map_apply, toReal_map_apply] at bound
@@ -101,7 +102,7 @@ total-variation bound gives this. The limit laws then agree exactly.
 The bounded target horizon covers completion. The source conclusion is its law
 at the stated source fuel; choosing an adequate source horizon makes this a
 terminal-law theorem. -/
-theorem sequentialEquilibrium_of_copied_comparisons_limit_of_lawError
+theorem sequentialEquilibrium_of_copied_comparisons_limit_of_distributionError
     {Outcome : Type*} (sourceObserve : E.History → Outcome) (targetObserve : T.History → Outcome)
     (sourceFuel targetFuel : Nat)
     (targetBounded : T.BoundedHorizon targetFuel) (targetRecall : N.DecisionRecall)
@@ -131,12 +132,13 @@ theorem sequentialEquilibrium_of_copied_comparisons_limit_of_lawError
                 (sourceSequence n) who deviation
               expect sourceComparison.alternative (utility · who) -
                 expect sourceComparison.prescribed (utility · who)) + comparisonError n)
-    (lawError : ℕ → ℝ) (lawErrorVanishes : Tendsto lawError atTop (nhds 0))
+    (distributionError : ℕ → ℝ) (distributionErrorVanishes : Tendsto distributionError atTop
+      (nhds 0))
     (initialized : ∀ n outcome,
       |(((N.runBehavioral (targetSequence n).strategy targetFuel).map targetObserve)
           outcome).toReal -
         (((M.runBehavioral (sourceSequence n).strategy sourceFuel).map sourceObserve)
-          outcome).toReal| ≤ lawError n)
+          outcome).toReal| ≤ distributionError n)
     (target : N.BehavioralAssessment) (index : ℕ → ℕ) (increasing : StrictMono index)
     (targetConverges : BehavioralAssessmentConvergesPointwise
       (fun n => targetSequence (index n)) target)
@@ -274,17 +276,17 @@ theorem sequentialEquilibrium_of_copied_comparisons_limit_of_lawError
     exact localOptimal who site law
   refine ⟨(target.isSequentialEquilibrium_iff_truncated_of_bounded N _ certificate targetBounded
     _).mp terminal, ?_⟩
-  exact runBehavioral_map_eq_of_lawError sourceObserve targetObserve sourceFuel targetFuel
+  exact runBehavioral_map_eq_of_distributionError sourceObserve targetObserve sourceFuel targetFuel
     (fun who site => (sourceConverges.strategy who site).subseq increasing)
-    targetConverges.strategy (lawErrorVanishes.comp increasing.tendsto_atTop)
+    targetConverges.strategy (distributionErrorVanishes.comp increasing.tendsto_atTop)
     (fun n => initialized (index n))
 
 /-- Local target gains bounded by original-source gain mixtures, up to one
 uniformly vanishing error, preserve sequential rationality at a common consistent
 assessment limit: the case of
-`sequentialEquilibrium_of_copied_comparisons_limit_of_lawError` in which every
+`sequentialEquilibrium_of_copied_comparisons_limit_of_distributionError` in which every
 information site is copied. -/
-theorem sequentialEquilibrium_of_local_comparisons_limit_of_lawError
+theorem sequentialEquilibrium_of_local_comparisons_limit_of_distributionError
     {Outcome : Type*} (sourceObserve : E.History → Outcome) (targetObserve : T.History → Outcome)
     (sourceFuel targetFuel : Nat)
     (targetBounded : T.BoundedHorizon targetFuel) (targetRecall : N.DecisionRecall)
@@ -313,12 +315,13 @@ theorem sequentialEquilibrium_of_local_comparisons_limit_of_lawError
                 (sourceSequence n) who deviation
               expect sourceComparison.alternative (utility · who) -
                 expect sourceComparison.prescribed (utility · who)) + comparisonError n)
-    (lawError : ℕ → ℝ) (lawErrorVanishes : Tendsto lawError atTop (nhds 0))
+    (distributionError : ℕ → ℝ) (distributionErrorVanishes : Tendsto distributionError atTop
+      (nhds 0))
     (initialized : ∀ n outcome,
       |(((N.runBehavioral (targetSequence n).strategy targetFuel).map targetObserve)
           outcome).toReal -
         (((M.runBehavioral (sourceSequence n).strategy sourceFuel).map sourceObserve)
-          outcome).toReal| ≤ lawError n)
+          outcome).toReal| ≤ distributionError n)
     (target : N.BehavioralAssessment) (index : ℕ → ℕ) (increasing : StrictMono index)
     (targetConverges : BehavioralAssessmentConvergesPointwise
       (fun n => targetSequence (index n)) target)
@@ -328,11 +331,11 @@ theorem sequentialEquilibrium_of_local_comparisons_limit_of_lawError
           (fun history => utility (targetObserve history) who) targetFuel) ∧
       (N.runBehavioral target.strategy targetFuel).map targetObserve =
         (M.runBehavioral source.strategy sourceFuel).map sourceObserve :=
-  sequentialEquilibrium_of_copied_comparisons_limit_of_lawError sourceObserve targetObserve
+  sequentialEquilibrium_of_copied_comparisons_limit_of_distributionError sourceObserve targetObserve
     sourceFuel targetFuel targetBounded targetRecall utility source sourceSequence
     sourceConverges sourceRational targetSequence (fun _ _ => True) comparisonError
-    errorVanishes (fun n who site _ law => localComparisons n who site law) lawError
-    lawErrorVanishes initialized target index increasing targetConverges consistent
+    errorVanishes (fun n who site _ law => localComparisons n who site law) distributionError
+    distributionErrorVanishes initialized target index increasing targetConverges consistent
     (fun _ _ free => absurd trivial free)
 
 /-- Local target gains bounded by original-source gain mixtures, up to one
@@ -346,7 +349,7 @@ uniformly vanishing error in every observed outcome's probability.
 The bounded target horizon covers completion. The source conclusion is its law
 at the stated source fuel; choosing an adequate source horizon makes this a
 terminal-law theorem. -/
-theorem exists_sequentialEquilibrium_limit_of_local_comparisons_of_lawError
+theorem exists_sequentialEquilibrium_limit_of_local_comparisons_of_distributionError
     {Outcome : Type*} (sourceObserve : E.History → Outcome) (targetObserve : T.History → Outcome)
     (sourceFuel targetFuel : Nat)
     (targetBounded : T.BoundedHorizon targetFuel) (targetRecall : N.DecisionRecall)
@@ -378,12 +381,13 @@ theorem exists_sequentialEquilibrium_limit_of_local_comparisons_of_lawError
                 (sourceSequence n) who deviation
               expect sourceComparison.alternative (utility · who) -
                 expect sourceComparison.prescribed (utility · who)) + comparisonError n)
-    (lawError : ℕ → ℝ) (lawErrorVanishes : Tendsto lawError atTop (nhds 0))
+    (distributionError : ℕ → ℝ) (distributionErrorVanishes : Tendsto distributionError atTop
+      (nhds 0))
     (initialized : ∀ n outcome,
       |(((N.runBehavioral (targetSequence n).strategy targetFuel).map targetObserve)
           outcome).toReal -
         (((M.runBehavioral (sourceSequence n).strategy sourceFuel).map sourceObserve)
-          outcome).toReal| ≤ lawError n) :
+          outcome).toReal| ≤ distributionError n) :
     ∃ target : N.BehavioralAssessment,
       target.IsSequentialEquilibriumFor targetRecall.decisionInformationAntichain
         (fun who site => target.truncatedContinuationContext site
@@ -398,14 +402,16 @@ theorem exists_sequentialEquilibrium_limit_of_local_comparisons_of_lawError
       targetRecall.decisionInformationAntichain
       targetSequence targetMixed targetBayes
       (fun _ _ => uniformlyTight_of_finite _) (fun _ _ => uniformlyTight_of_finite _)
-  have result := sequentialEquilibrium_of_local_comparisons_limit_of_lawError sourceObserve
+  have result := sequentialEquilibrium_of_local_comparisons_limit_of_distributionError sourceObserve
     targetObserve sourceFuel targetFuel targetBounded targetRecall utility source sourceSequence
     sourceConverges sourceRational targetSequence
-    comparisonError errorVanishes localComparisons lawError lawErrorVanishes initialized target
+    comparisonError errorVanishes localComparisons distributionError distributionErrorVanishes
+      initialized target
     index increasing targetConverges consistent
   exact ⟨target, result.1, result.2, index, increasing, targetConverges⟩
 
-/-- The exact-law case of `exists_sequentialEquilibrium_limit_of_local_comparisons_of_lawError`:
+/-- The exact-law case of
+`exists_sequentialEquilibrium_limit_of_local_comparisons_of_distributionError`:
 the perturbed target laws equal the perturbed source laws. -/
 theorem exists_sequentialEquilibrium_limit_of_local_comparisons
     {Outcome : Type*} (sourceObserve : E.History → Outcome) (targetObserve : T.History → Outcome)
@@ -450,7 +456,7 @@ theorem exists_sequentialEquilibrium_limit_of_local_comparisons
         (M.runBehavioral source.strategy sourceFuel).map sourceObserve ∧
       ∃ index : ℕ → ℕ, StrictMono index ∧
         BehavioralAssessmentConvergesPointwise (fun n => targetSequence (index n)) target :=
-  exists_sequentialEquilibrium_limit_of_local_comparisons_of_lawError sourceObserve
+  exists_sequentialEquilibrium_limit_of_local_comparisons_of_distributionError sourceObserve
     targetObserve sourceFuel targetFuel targetBounded targetRecall utility source sourceSequence
     sourceConverges sourceRational targetSequence targetMixed targetBayes comparisonError
     errorVanishes localComparisons (fun _ => 0) tendsto_const_nhds

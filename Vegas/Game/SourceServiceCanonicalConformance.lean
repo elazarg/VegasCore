@@ -46,7 +46,8 @@ theorem canonicalServiceDecision_freshServiceEnvelope {horizon remaining : Nat}
     {scheduler : (serviceApplication setup deps duration leaks).Scheduler}
     {who : Player} {middle : (serviceApplication setup deps duration leaks).Execution}
     (trace :
-        ((serviceApplication setup deps duration leaks).protocol (serviceInitialLaw setup deps)
+        ((serviceApplication setup deps duration leaks).protocol
+          (serviceInitialDistribution setup deps)
         horizon scheduler).Trace (some ⟨remaining, some who, middle⟩))
     (event : (serviceGraph setup deps).EventId)
     (turn : middle.application.publicView.ownTurn? who = some event)
@@ -141,7 +142,8 @@ theorem freshCallsConform_round_reference
         reference who)
     {execution next : (serviceApplication setup deps duration leaks).Execution}
     (trace :
-        ((serviceApplication setup deps duration leaks).protocol (serviceInitialLaw setup deps)
+        ((serviceApplication setup deps duration leaks).protocol
+          (serviceInitialDistribution setup deps)
         horizon scheduler).Trace (some ⟨remaining + 1, none, execution⟩))
     (atTurn : OwnSubmissionsAtTurn (serviceTimeouts setup deps duration) leaks execution who)
     (valid : CanonicalSlotsUsed (serviceTimeouts setup deps duration) leaks execution who)
@@ -165,7 +167,8 @@ theorem freshCallsConform_round_reference
     moved who valid
   rcases cases with ⟨_, rfl⟩ | ⟨responder, active, response, chosen, rfl⟩
   · exact conformMiddle
-  · obtain ⟨middleTrace⟩ := app.raw_trace_environment (serviceInitialLaw setup deps) horizon
+  · obtain ⟨middleTrace⟩ := app.raw_trace_environment (serviceInitialDistribution setup deps)
+      horizon
         scheduler remaining execution middle command trace selected moved
     rw [active] at middleTrace
     by_cases same : responder = who
@@ -223,7 +226,8 @@ theorem freshCallsConform_round
         profile who)
     {execution next : (serviceApplication setup deps duration leaks).Execution}
     (trace :
-        ((serviceApplication setup deps duration leaks).protocol (serviceInitialLaw setup deps)
+        ((serviceApplication setup deps duration leaks).protocol
+          (serviceInitialDistribution setup deps)
         horizon scheduler).Trace (some ⟨remaining + 1, none, execution⟩))
     (atTurn : OwnSubmissionsAtTurn (serviceTimeouts setup deps duration) leaks execution who)
     (valid : CanonicalSlotsUsed (serviceTimeouts setup deps duration) leaks execution who)
@@ -252,7 +256,8 @@ theorem sourceServiceTurnPolicy_freshServiceEnvelope_reference
         reference who)
     (count : Nat) (execution : (serviceApplication setup deps duration leaks).Execution)
     (reached : execution ∈
-        ((serviceApplication setup deps duration leaks).roundsFrom (serviceInitialLaw setup deps)
+        ((serviceApplication setup deps duration leaks).roundsFrom
+          (serviceInitialDistribution setup deps)
         scheduler players count).support)
     (entry : (serviceApplication setup deps duration leaks).PlayerEntry)
     (member : entry ∈ execution.logs who)
@@ -277,7 +282,7 @@ theorem sourceServiceTurnPolicy_freshServiceEnvelope_reference
       obtain ⟨prior, priorMem, moved⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       obtain ⟨atTurn, valid⟩ := canonicalSlots_roundsFrom_reference serial scheduler players who
         timing reference follows count prior priorMem
-      obtain ⟨trace⟩ := app.raw_trace_roundsFrom (serviceInitialLaw setup deps) (count + 1)
+      obtain ⟨trace⟩ := app.raw_trace_roundsFrom (serviceInitialDistribution setup deps) (count + 1)
           scheduler players count (Nat.le_succ count) prior priorMem
       rw [show count + 1 - count = 0 + 1 by omega] at trace
       exact freshCallsConform_round_reference serial follows trace atTurn valid
@@ -298,7 +303,8 @@ theorem sourceServiceTurnPolicy_freshServiceEnvelope
         profile who)
     (count : Nat) (execution : (serviceApplication setup deps duration leaks).Execution)
     (reached : execution ∈
-        ((serviceApplication setup deps duration leaks).roundsFrom (serviceInitialLaw setup deps)
+        ((serviceApplication setup deps duration leaks).roundsFrom
+          (serviceInitialDistribution setup deps)
         scheduler players count).support)
     (entry : (serviceApplication setup deps duration leaks).PlayerEntry)
     (member : entry ∈ execution.logs who)

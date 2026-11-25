@@ -56,7 +56,7 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 def eventGame (setup : Setup (Player := Player) (L := L))
     (scheduler : setup.informationGraph.PublicScheduler) : GameForm Player :=
   setup.informationGraph.gameForm
-    (setup.initialLaw.map fun initial => setup.eventInputs initial) scheduler
+    (setup.initialDistribution.map fun initial => setup.eventInputs initial) scheduler
 
 /-- The same compiled game under its canonical scheduler. -/
 def canonicalEventGame (setup : Setup (Player := Player) (L := L)) : GameForm Player :=

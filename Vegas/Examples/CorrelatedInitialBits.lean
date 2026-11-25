@@ -44,7 +44,7 @@ def program : SourceProgram Player simpleExpr context ∅ :=
 def setup : Setup (Player := Player) (L := simpleExpr) where
   context := context
   namesNodup := by decide
-  initialLaw := mix (1 / 2) (by norm_num) (by norm_num)
+  initialDistribution := mix (1 / 2) (by norm_num) (by norm_num)
     (PMF.pure (sourceInitial false)) (PMF.pure (sourceInitial true))
   obligations := ∅
   program := program
@@ -108,8 +108,8 @@ private theorem pure_sourceState_apply (first second otherFirst otherSecond : Bo
       fun states => same ((sourceState_eq_iff first second otherFirst otherSecond).mp states)
     exact (PMF.pure_apply_of_ne _ _ different).trans (ite_eq_right same).symm
 
-theorem initialLaw_apply (first second : Bool) :
-    setup.initialLaw (sourceState first second) = if first = second then 1 / 2 else 0 := by
+theorem initialDistribution_apply (first second : Bool) :
+    setup.initialDistribution (sourceState first second) = if first = second then 1 / 2 else 0 := by
   classical
   calc
     _ = ENNReal.ofReal (1 / 2 : ℝ) *
@@ -130,39 +130,45 @@ theorem initialLaw_apply (first second : Bool) :
         norm_num
       cases first <;> cases second <;> norm_num [half]
 
-theorem initialLaw_support (initial : State simpleExpr context)
-    (member : initial ∈ setup.initialLaw.support) : ∃ bit, sourceInitial bit = initial := by
+theorem initialDistribution_support (initial : State simpleExpr context)
+    (member : initial ∈ setup.initialDistribution.support) :
+    ∃ bit, sourceInitial bit = initial := by
   obtain ⟨first, second, rfl⟩ := sourceState_exists initial
   have same : first = second := by
     by_contra different
     have nonzero := (PMF.mem_support_iff _ _).mp member
-    exact nonzero ((initialLaw_apply first second).trans (ite_eq_right different))
+    exact nonzero ((initialDistribution_apply first second).trans (ite_eq_right different))
   subst second
   exact ⟨first, rfl⟩
 
-theorem signal_supported (bit : Bool) : bit ∈ (setup.initialLaw.map signal).support := by
+theorem signal_supported (bit : Bool) : bit ∈ (setup.initialDistribution.map signal).support := by
   apply (PMF.mem_support_map_iff _ _ _).mpr
   refine ⟨sourceInitial bit, ?_, rfl⟩
   rw [PMF.mem_support_iff]
-  change setup.initialLaw (sourceState bit bit) ≠ 0
-  exact ne_of_eq_of_ne (initialLaw_apply bit bit) (by norm_num)
+  change setup.initialDistribution (sourceState bit bit) ≠ 0
+  exact ne_of_eq_of_ne (initialDistribution_apply bit bit) (by norm_num)
 
 theorem not_independent : ¬ setup.PrivateInputsIndependentGiven (fun _ => ()) := by
   intro independent
   have forbidden := independent false (sourceState false false) (sourceState true true) rfl
-  have left : setup.initialLaw (splice false (sourceState false false) (sourceState true true)) *
-      setup.initialLaw (splice false (sourceState true true) (sourceState false false)) = 0 := by
+  have left : setup.initialDistribution (splice false (sourceState false false)
+    (sourceState true true)) *
+      setup.initialDistribution (splice false (sourceState true true)
+        (sourceState false false)) = 0 := by
     calc
-      _ = setup.initialLaw (sourceState false true) *
-          setup.initialLaw (sourceState true false) := congrArg₂ (· * ·)
-        (congrArg (fun state => setup.initialLaw state) (splice_false false false true true))
-        (congrArg (fun state => setup.initialLaw state) (splice_false true true false false))
+      _ = setup.initialDistribution (sourceState false true) *
+          setup.initialDistribution (sourceState true false) := congrArg₂ (· * ·)
+        (congrArg (fun state => setup.initialDistribution state)
+          (splice_false false false true true))
+        (congrArg (fun state => setup.initialDistribution state)
+          (splice_false true true false false))
       _ = (0 : ℝ≥0∞) * 0 :=
-        congrArg₂ (· * ·) (initialLaw_apply false true) (initialLaw_apply true false)
+        congrArg₂ (· * ·) (initialDistribution_apply false true)
+          (initialDistribution_apply true false)
       _ = 0 := by simp
-  have right : setup.initialLaw (sourceState false false) *
-      setup.initialLaw (sourceState true true) = (1 / 2 : ℝ≥0∞) * (1 / 2) :=
-    congrArg₂ (· * ·) (initialLaw_apply false false) (initialLaw_apply true true)
+  have right : setup.initialDistribution (sourceState false false) *
+      setup.initialDistribution (sourceState true true) = (1 / 2 : ℝ≥0∞) * (1 / 2) :=
+    congrArg₂ (· * ·) (initialDistribution_apply false false) (initialDistribution_apply true true)
   have impossible := left.symm.trans (forbidden.trans right)
   norm_num at impossible
 
@@ -194,12 +200,12 @@ theorem not_independent_of_publicSignal {Public : Type*}
   intro who first second _
   exact independent who first second (publicSignal_constant observed observable first second)
 
-theorem conditioned_initialLaw (bit : Bool) :
-    (setup.conditionInitial signal bit).initialLaw = PMF.pure (sourceInitial bit) := by
+theorem conditioned_initialDistribution (bit : Bool) :
+    (setup.conditionInitial signal bit).initialDistribution = PMF.pure (sourceInitial bit) := by
   apply pmf_eq_pure_of_support_subset_singleton
   intro initial member
   have info := mem_support_fiberPosterior (signal_supported bit) member
-  obtain ⟨other, rfl⟩ := initialLaw_support initial info.2
+  obtain ⟨other, rfl⟩ := initialDistribution_support initial info.2
   have same := info.1
   change other = bit at same
   cases same
@@ -211,7 +217,7 @@ theorem conditioned_independent (bit : Bool) :
   intro who first second _
   obtain ⟨a, b, rfl⟩ := sourceState_exists first
   obtain ⟨c, d, rfl⟩ := sourceState_exists second
-  simp only [conditioned_initialLaw]
+  simp only [conditioned_initialDistribution]
   have factor (first second : Bool) :
       (PMF.pure (sourceInitial bit)) (sourceState first second) =
         (if first = bit then (1 : ℝ≥0∞) else 0) *
@@ -246,9 +252,9 @@ theorem conditioned_observable (bit : Bool) :
   intro _ _ _
   rfl
 
-instance : setup.FiniteInitialLaw where
+instance : setup.FiniteInitialSupport where
   support_finite := (Set.finite_range sourceInitial).subset fun initial member =>
-    initialLaw_support initial member
+    initialDistribution_support initial member
 
 theorem finiteBindingTypes : program.FiniteBindingTypes :=
   ⟨inferInstance, inferInstance, trivial⟩
@@ -270,12 +276,12 @@ theorem wellFormed : setup.WellFormed where
 the prior's support, despite the absence of public initial cells. -/
 theorem signal_eq_of_initial_observe_eq (who : Player)
     {first second : State simpleExpr context}
-    (firstMember : first ∈ setup.initialLaw.support)
-    (secondMember : second ∈ setup.initialLaw.support)
+    (firstMember : first ∈ setup.initialDistribution.support)
+    (secondMember : second ∈ setup.initialDistribution.support)
     (observed : sourceObserve who first = sourceObserve who second) :
     signal first = signal second := by
-  obtain ⟨first, rfl⟩ := initialLaw_support first firstMember
-  obtain ⟨second, rfl⟩ := initialLaw_support second secondMember
+  obtain ⟨first, rfl⟩ := initialDistribution_support first firstMember
+  obtain ⟨second, rfl⟩ := initialDistribution_support second secondMember
   cases who
   · have bits := congrArg (fun view : SourceObservation simpleExpr false context =>
       view.cells 0 (.privateInput false .bool) .here) observed

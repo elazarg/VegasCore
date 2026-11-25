@@ -311,10 +311,10 @@ private theorem reference_binding_first_invoke_congr
     (same : bindingWindowReadout (leaks := leaks) focal left =
       bindingWindowReadout (leaks := leaks) focal right)
     (leftTrace : ((serviceApplication setup deps duration leaks).protocol
-      (serviceInitialLaw setup deps) horizon scheduler).Trace
+      (serviceInitialDistribution setup deps) horizon scheduler).Trace
         (some ⟨leftRemaining + 1, none, left⟩))
     (rightTrace : ((serviceApplication setup deps duration leaks).protocol
-      (serviceInitialLaw setup deps) horizon scheduler).Trace
+      (serviceInitialDistribution setup deps) horizon scheduler).Trace
         (some ⟨rightRemaining + 1, none, right⟩))
     (leftReady : left.application.config.cut.Ready event)
     (rightReady : right.application.config.cut.Ready event)
@@ -553,10 +553,10 @@ private theorem bindingWindow_round_readout
     (same : bindingWindowReadout (leaks := leaks) focal left =
       bindingWindowReadout (leaks := leaks) focal right)
     (leftTrace : ((serviceApplication setup deps duration leaks).protocol
-      (serviceInitialLaw setup deps) horizon scheduler).Trace
+      (serviceInitialDistribution setup deps) horizon scheduler).Trace
         (some ⟨leftRemaining + 1, none, left⟩))
     (rightTrace : ((serviceApplication setup deps duration leaks).protocol
-      (serviceInitialLaw setup deps) horizon scheduler).Trace
+      (serviceInitialDistribution setup deps) horizon scheduler).Trace
         (some ⟨rightRemaining + 1, none, right⟩))
     (leftReady : left.application.config.cut.Ready event)
     (rightReady : right.application.config.cut.Ready event)
@@ -681,10 +681,10 @@ private theorem bindingWindow_stopped_readout
     (same : bindingWindowReadout (leaks := leaks) focal leftStart =
       bindingWindowReadout (leaks := leaks) focal rightStart)
     (leftTrace : ((serviceApplication setup deps duration leaks).protocol
-      (serviceInitialLaw setup deps) horizon scheduler).Trace
+      (serviceInitialDistribution setup deps) horizon scheduler).Trace
         (some ⟨leftRemaining + count, none, leftStart⟩))
     (rightTrace : ((serviceApplication setup deps duration leaks).protocol
-      (serviceInitialLaw setup deps) horizon scheduler).Trace
+      (serviceInitialDistribution setup deps) horizon scheduler).Trace
         (some ⟨rightRemaining + count, none, rightStart⟩))
     (leftReady : leftStart.application.config.cut.Ready event)
     (rightReady : rightStart.application.config.cut.Ready event)
@@ -706,7 +706,8 @@ private theorem bindingWindow_stopped_readout
         (bindingWindowReadout (leaks := leaks) focal) := by
   intro app players
   let invariant := fun (n : Nat) (current : app.Execution) =>
-    (∃ remaining, Nonempty ((app.protocol (serviceInitialLaw setup deps) horizon scheduler).Trace
+    (∃ remaining, Nonempty ((app.protocol (serviceInitialDistribution setup deps) horizon
+      scheduler).Trace
       (some ⟨remaining + n, none, current⟩))) ∧
     (event ∉ current.application.config.cut.completed →
       current.application.config.cut.Ready event) ∧
@@ -721,10 +722,11 @@ private theorem bindingWindow_stopped_readout
       (reached : next ∈ (app.round scheduler (players reference) current).support) :
       invariant n next := by
     obtain ⟨⟨remaining, ⟨trace⟩⟩, pendingReady, canonical⟩ := valid
-    have before : (app.protocol (serviceInitialLaw setup deps) horizon scheduler).Trace
+    have before : (app.protocol (serviceInitialDistribution setup deps) horizon scheduler).Trace
         (some ⟨(remaining + n) + 1, none, current⟩) := by
       simpa only [Nat.add_assoc] using trace
-    obtain ⟨nextTrace⟩ := app.raw_trace_round (serviceInitialLaw setup deps) horizon scheduler
+    obtain ⟨nextTrace⟩ := app.raw_trace_round (serviceInitialDistribution setup deps) horizon
+      scheduler
       (players reference) (remaining + n) current next before reached
     refine ⟨⟨remaining, ⟨nextTrace⟩⟩,
       fun unfinished => round_ready_of_unfinished scheduler (players reference)
@@ -754,10 +756,11 @@ private theorem bindingWindow_stopped_readout
     have rightRunning : event ∉ right.application.config.cut.completed := by
       rw [← cut_eq_of_publicView_eq publics]
       exact running
-    have leftBefore : (app.protocol (serviceInitialLaw setup deps) horizon scheduler).Trace
+    have leftBefore : (app.protocol (serviceInitialDistribution setup deps) horizon scheduler).Trace
         (some ⟨(leftRest + n) + 1, none, left⟩) := by
       simpa only [Nat.add_assoc] using leftCurrentTrace
-    have rightBefore : (app.protocol (serviceInitialLaw setup deps) horizon scheduler).Trace
+    have rightBefore : (app.protocol (serviceInitialDistribution setup deps) horizon
+      scheduler).Trace
         (some ⟨(rightRest + n) + 1, none, right⟩) := by
       simpa only [Nat.add_assoc] using rightCurrentTrace
     exact bindingWindow_round_readout relaxed scheduler bound outputEq leftReference
@@ -972,10 +975,10 @@ private theorem bindingWindowReadout_congr_of_traffic
     (focal : Player)
     {left right : (serviceApplication setup deps duration leaks).Execution}
     (leftTrace : ((serviceApplication setup deps duration leaks).protocol
-      (serviceInitialLaw setup deps) horizon scheduler).Trace
+      (serviceInitialDistribution setup deps) horizon scheduler).Trace
         (some ⟨leftRemaining, none, left⟩))
     (rightTrace : ((serviceApplication setup deps duration leaks).protocol
-      (serviceInitialLaw setup deps) horizon scheduler).Trace
+      (serviceInitialDistribution setup deps) horizon scheduler).Trace
         (some ⟨rightRemaining, none, right⟩))
     (same : (bindingTraffic (serviceTimeouts setup deps duration)) leaks focal left =
       (bindingTraffic (serviceTimeouts setup deps duration)) leaks focal right) :
@@ -995,19 +998,19 @@ private theorem bindingWindowReadout_congr_of_traffic
       app.public_response_count_eq_activations
         (fun view : EventGraphRuntime.PlayerView (serviceGraph setup deps) => view.publicView)
         (by intro state who; rfl) query owner
-        (serviceInitialLaw setup deps) horizon scheduler leftTrace rfl
+        (serviceInitialDistribution setup deps) horizon scheduler leftTrace rfl
     have rightTurns : ownerTurns owner event right = _ :=
       app.public_response_count_eq_activations
         (fun view : EventGraphRuntime.PlayerView (serviceGraph setup deps) => view.publicView)
         (by intro state who; rfl) query owner
-        (serviceInitialLaw setup deps) horizon scheduler rightTrace rfl
+        (serviceInitialDistribution setup deps) horizon scheduler rightTrace rfl
     rw [leftTurns, rightTurns, environments]
   · change (eventRecorded (serviceTimeouts setup deps duration)) leaks (left.logs owner) event =
       (eventRecorded (serviceTimeouts setup deps duration)) leaks (right.logs owner) event
     rw [eventRecorded_eq_inputs (serviceTimeouts setup deps duration) leaks
-      (serviceInitialLaw setup deps) horizon scheduler leftTrace owner event,
+      (serviceInitialDistribution setup deps) horizon scheduler leftTrace owner event,
       eventRecorded_eq_inputs (serviceTimeouts setup deps duration) leaks
-        (serviceInitialLaw setup deps) horizon scheduler rightTrace owner event, networks]
+        (serviceInitialDistribution setup deps) horizon scheduler rightTrace owner event, networks]
 
 end Vegas
 
@@ -1039,10 +1042,10 @@ theorem bindingWindow_round_opacity
     (same : (bindingTraffic (serviceTimeouts setup deps duration)) leaks focal left =
       (bindingTraffic (serviceTimeouts setup deps duration)) leaks focal right)
     (leftTrace : ((serviceApplication setup deps duration leaks).protocol
-      (serviceInitialLaw setup deps) horizon scheduler).Trace
+      (serviceInitialDistribution setup deps) horizon scheduler).Trace
         (some ⟨leftRemaining + 1, none, left⟩))
     (rightTrace : ((serviceApplication setup deps duration leaks).protocol
-      (serviceInitialLaw setup deps) horizon scheduler).Trace
+      (serviceInitialDistribution setup deps) horizon scheduler).Trace
         (some ⟨rightRemaining + 1, none, right⟩))
     (leftReady : left.application.config.cut.Ready event)
     (rightReady : right.application.config.cut.Ready event)
@@ -1085,10 +1088,10 @@ theorem bindingWindow_stopped_opacity
     (same : (bindingTraffic (serviceTimeouts setup deps duration)) leaks focal leftStart =
       (bindingTraffic (serviceTimeouts setup deps duration)) leaks focal rightStart)
     (leftTrace : ((serviceApplication setup deps duration leaks).protocol
-      (serviceInitialLaw setup deps) horizon scheduler).Trace
+      (serviceInitialDistribution setup deps) horizon scheduler).Trace
         (some ⟨leftRemaining + count, none, leftStart⟩))
     (rightTrace : ((serviceApplication setup deps duration leaks).protocol
-      (serviceInitialLaw setup deps) horizon scheduler).Trace
+      (serviceInitialDistribution setup deps) horizon scheduler).Trace
         (some ⟨rightRemaining + count, none, rightStart⟩))
     (leftReady : leftStart.application.config.cut.Ready event)
     (rightReady : rightStart.application.config.cut.Ready event)

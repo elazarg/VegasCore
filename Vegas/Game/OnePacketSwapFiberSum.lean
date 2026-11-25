@@ -129,29 +129,35 @@ omit [DecidableEq (CellTy Player L)] in
 swaps, one after the other, give back the history. -/
 theorem mapHistory_mapHistory_of_swap_eq {first second : HiddenSwap setup.informationGraph}
     (same : second = first)
-    (firstClosed : ∀ state ∈ (initialLaw setup).support,
-      state.config.inputs ∈ swapAllowed first → state.swap first ∈ (initialLaw setup).support)
+    (firstClosed : ∀ state ∈ (initialDistribution setup).support,
+      state.config.inputs ∈ swapAllowed first → state.swap first ∈
+        (initialDistribution setup).support)
     (firstBounded : ∀ handle raw, raw ∈ bounds.values → first.raw handle raw ∈ bounds.values)
     (firstFailures : ∀ event, first.values.ExpiryFixed event)
-    (secondClosed : ∀ state ∈ (initialLaw setup).support,
-      state.config.inputs ∈ swapAllowed second → state.swap second ∈ (initialLaw setup).support)
+    (secondClosed : ∀ state ∈ (initialDistribution setup).support,
+      state.config.inputs ∈ swapAllowed second → state.swap second ∈
+        (initialDistribution setup).support)
     (secondBounded : ∀ handle raw, raw ∈ bounds.values → second.raw handle raw ∈ bounds.values)
     (secondFailures : ∀ event, second.values.ExpiryFixed event)
     (history : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).History)
     (firstGuard : SwapGuardState setup timeouts first (swapAllowed first) history.state)
     (secondGuard : SwapGuardState setup timeouts second (swapAllowed second)
-      ((onePacketSwapSymmetry (timeouts := timeouts) bounds (initialLaw setup) horizon scheduler
+      ((onePacketSwapSymmetry (timeouts := timeouts) bounds
+        (initialDistribution setup) horizon scheduler
         first firstClosed
         firstBounded firstFailures).mapHistory history firstGuard).state) :
-    (onePacketSwapSymmetry (timeouts := timeouts) bounds (initialLaw setup) horizon scheduler second
+    (onePacketSwapSymmetry (timeouts := timeouts) bounds (initialDistribution setup) horizon
+      scheduler second
       secondClosed
         secondBounded secondFailures).mapHistory
-      ((onePacketSwapSymmetry (timeouts := timeouts) bounds (initialLaw setup) horizon scheduler
+      ((onePacketSwapSymmetry (timeouts := timeouts) bounds
+        (initialDistribution setup) horizon scheduler
         first firstClosed
         firstBounded firstFailures).mapHistory history firstGuard) secondGuard = history := by
   subst same
   exact StateSymmetry.mapHistory_mapHistory
-    (onePacketSwapSymmetry_involutive (timeouts := timeouts) bounds (initialLaw setup) horizon
+    (onePacketSwapSymmetry_involutive (timeouts := timeouts) bounds
+      (initialDistribution setup) horizon
       scheduler second
       secondClosed secondBounded secondFailures (swapAllowed_closed second)) history firstGuard
 
@@ -178,7 +184,8 @@ theorem sameView_of_site {x y : setup.intendedModel.InformationHistory who sourc
 
 variable (wellFormed : setup.WellFormed)
   {sequence : ℕ → setup.intendedModel.BehavioralAssessment} {n : ℕ}
-  (forced : forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks) (initialLaw
+  (forced : forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks)
+    (initialDistribution
     setup) horizon
     scheduler who site.1)
   (decision : site.1 = some (past, view))
@@ -274,7 +281,7 @@ variable (covered : BindingFieldsCovered bounds)
 variable (view) in
 /-- The symmetry of the one-packet game given by the swap between two end points. -/
 abbrev siteSymmetry :=
-  onePacketSwapSymmetry (timeouts := timeouts) bounds (initialLaw setup) horizon scheduler
+  onePacketSwapSymmetry (timeouts := timeouts) bounds (initialDistribution setup) horizon scheduler
     (siteSwap view wellFormed xState yState)
     (initialClosed_swapAllowed (siteSwap view wellFormed xState yState))
     (bounded_betweenHandlePairs _ _ covered)

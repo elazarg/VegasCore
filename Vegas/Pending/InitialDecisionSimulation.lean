@@ -21,7 +21,7 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
 /-- If the first event is the only decision of the focal player, every native
 deviation has the full terminal configuration law of a single graph policy. -/
-theorem focal_initial_decision_config_law
+theorem focal_initial_decision_config_distribution
     (timeouts : EventTimeouts graph.sequentialize)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph.sequentialize))
     {horizon turns : Nat} (scheduler : (reactiveApplication timeouts leaks).Scheduler)
@@ -57,7 +57,8 @@ theorem focal_initial_decision_config_law
   have ordered : (EventOrder.Cut.empty G.order).IsPrefix event.val :=
     first ▸ EventOrder.Cut.empty_isPrefix _
   have ready := ordered.ready event.isLt
-  obtain ⟨law, phaseLaw⟩ := focal_initial_completed_config_law timeouts leaks scheduler bound turns
+  obtain ⟨law, phaseLaw⟩ := focal_initial_completed_config_distribution timeouts leaks scheduler
+    bound turns
     timing reference focal deviation event owned (graph.sequentialize_solitary event) ready
     inputs horizon contract.completes
   let policy : G.BehavioralPolicy focal :=
@@ -66,10 +67,11 @@ theorem focal_initial_decision_config_law
         cast (congrArg (fun current => PMF (G.Action current)) same.symm) (law observed)
       else reference focal other ownerEq observed active
   refine ⟨policy, ?_⟩
-  have localLaw := eventCompletionLaw_of_event_steps (scheduler := scheduler) (players := players)
+  have localLaw := eventCompletionPreservesReadout_of_event_steps (scheduler := scheduler)
+    (players := players)
     inputs reference 1 (by
       intro other before boundary later within
-      refine firstTurn_event_config_law_of_owner_follows timeouts leaks (turns := turns)
+      refine firstTurn_event_config_distribution_of_owner_follows timeouts leaks (turns := turns)
         scheduler delay bound inputs reference contract timely realizable other players
         ?_ before boundary within
       intro owner ownerEq
@@ -110,18 +112,20 @@ theorem focal_initial_decision_config_law
       G.runPlan (G.policyPlan (Function.update reference focal policy) G.canonicalScheduler)
         config.remaining config = onward config := by
     have agree (current : G.Config) (other : G.EventId) (different : other ≠ event) :
-        EventGraph.actionLaw (Function.update reference focal policy) current other =
-          EventGraph.actionLaw reference current other := by
+        EventGraph.actionDistribution (Function.update reference focal policy) current other =
+          EventGraph.actionDistribution reference current other := by
       cases actor : G.actor? other with
-      | none => rw [EventGraph.actionLaw_of_ownerless _ _ actor,
-          EventGraph.actionLaw_of_ownerless _ _ actor]
+      | none => rw [EventGraph.actionDistribution_of_ownerless _ _ actor,
+          EventGraph.actionDistribution_of_ownerless _ _ actor]
       | some owner =>
           have unfocal : owner ≠ focal := fun same => different (only other (same ▸ actor))
-          rw [EventGraph.actionLaw_of_actor _ _ actor, EventGraph.actionLaw_of_actor _ _ actor]
+          rw [EventGraph.actionDistribution_of_actor _ _ actor,
+            EventGraph.actionDistribution_of_actor _ _ actor]
           by_cases inactive : owner ∈ current.defaulted
           · rw [dite_eq_left inactive, dite_eq_left inactive]
           · rw [dite_eq_right inactive, dite_eq_right inactive, Function.update_of_ne unfocal]
-    exact EventGraph.runPlan_congr_of_actionLaw G.canonicalScheduler (fun other => other = event)
+    exact EventGraph.runPlan_congr_of_actionDistribution G.canonicalScheduler
+      (fun other => other = event)
       agree config.remaining config (fun _ same => same.symm ▸ completed)
   rw [native, phaseLaw, PMF.bind_bind]
   apply bind_congr_on_support _
@@ -134,7 +138,7 @@ theorem focal_initial_decision_config_law
         initial.remaining initial
   rw [EventGraph.runPlan_remaining_canonical_step _ initial event ready
     (fun other _ => Fin.le_iff_val_le_val.mpr (by rw [first]; exact Nat.zero_le _)),
-    EventGraph.eventStep, EventGraph.actionLaw_of_actor _ _ owned, dite_eq_right active,
+    EventGraph.eventStep, EventGraph.actionDistribution_of_actor _ _ owned, dite_eq_right active,
     Function.update_self, PMF.bind_bind, PMF.bind_bind]
   simp only [policy, dite_eq_left rfl, cast_eq]
   apply bind_congr_on_support _

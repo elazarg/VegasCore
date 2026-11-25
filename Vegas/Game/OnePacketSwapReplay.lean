@@ -400,9 +400,9 @@ theorem intendedHistory?_mapTrace (wellFormed : setup.WellFormed)
     {publicAgree : PublicCellsAgree setup p q} {succeed : CommitmentCellsSucceed setup p q}
     (handlePairs : Handle setup.informationGraph → Option (Raw L × Raw L))
     {allowed : Set setup.informationGraph.Inputs}
-    (initialClosed : ∀ state ∈ (initialLaw setup).support, state.config.inputs ∈ allowed →
+    (initialClosed : ∀ state ∈ (initialDistribution setup).support, state.config.inputs ∈ allowed →
       state.swap (HiddenSwap.ofPairs (betweenPairs publicAgree succeed) handlePairs) ∈
-        (initialLaw setup).support)
+        (initialDistribution setup).support)
     (bounded : ∀ handle raw, raw ∈ bounds.values →
       (HiddenSwap.ofPairs (betweenPairs publicAgree succeed) handlePairs).raw handle raw ∈
         bounds.values) :
@@ -414,7 +414,8 @@ theorem intendedHistory?_mapTrace (wellFormed : setup.WellFormed)
       intendedHistory? setup timeouts leaks bounds horizon scheduler trace = some replay →
       TracePrefix replay.trace first.trace →
       ∃ image, intendedHistory? setup timeouts leaks bounds horizon scheduler
-          ((onePacketSwapSymmetry (timeouts := timeouts) bounds (initialLaw setup) horizon scheduler
+          ((onePacketSwapSymmetry (timeouts := timeouts) bounds
+            (initialDistribution setup) horizon scheduler
             (HiddenSwap.ofPairs (betweenPairs publicAgree succeed) handlePairs) initialClosed
             bounded (EventGraph.ValueSwap.ofPairs_expiryFixed _)).mapTrace trace guarded) =
           some image ∧
@@ -433,7 +434,8 @@ theorem intendedHistory?_mapTrace (wellFormed : setup.WellFormed)
         have secondDefaults := (congrArg setup.protocolDefaults secondState).symm.trans
           (intended_defaults_trace wellFormed second.trace)
         exact firstDefaults.trans (by rw [sameLength]; exact secondDefaults.symm)
-      have priorGuard := (onePacketSwapSymmetry (timeouts := timeouts) bounds (initialLaw setup)
+      have priorGuard := (onePacketSwapSymmetry (timeouts := timeouts) bounds
+        (initialDistribution setup)
         horizon scheduler
         (HiddenSwap.ofPairs (betweenPairs publicAgree succeed) handlePairs) initialClosed
         bounded (EventGraph.ValueSwap.ofPairs_expiryFixed _)).guard_source prior legal realized
@@ -449,7 +451,8 @@ theorem intendedHistory?_mapTrace (wellFormed : setup.WellFormed)
           handlePairs initialClosed
           bounded prior priorGuard previousReplay previousPrefix
       have mappedEq : intendedHistory? setup timeouts leaks bounds horizon scheduler
-          ((onePacketSwapSymmetry (timeouts := timeouts) bounds (initialLaw setup) horizon scheduler
+          ((onePacketSwapSymmetry (timeouts := timeouts) bounds
+            (initialDistribution setup) horizon scheduler
             (HiddenSwap.ofPairs (betweenPairs publicAgree succeed) handlePairs) initialClosed
             bounded (EventGraph.ValueSwap.ofPairs_expiryFixed _)).mapTrace
               (.extend prior joint legal realized) guarded) =
@@ -464,7 +467,8 @@ theorem intendedHistory?_mapTrace (wellFormed : setup.WellFormed)
         change (intendedHistory? setup timeouts leaks bounds horizon scheduler _).bind _ = _
         rw [previousImage]
         rfl
-      have realizedImage := (onePacketSwapSymmetry (timeouts := timeouts) bounds (initialLaw setup)
+      have realizedImage := (onePacketSwapSymmetry (timeouts := timeouts) bounds
+        (initialDistribution setup)
         horizon scheduler
         (HiddenSwap.ofPairs (betweenPairs publicAgree succeed) handlePairs) initialClosed
         bounded (EventGraph.ValueSwap.ofPairs_expiryFixed _)).realized prior legal realized guarded
@@ -493,14 +497,14 @@ theorem intendedHistory?_mapTrace (wellFormed : setup.WellFormed)
         change some (HiddenSwap.control (timeouts := timeouts) (HiddenSwap.ofPairs (betweenPairs
           publicAgree succeed)
           handlePairs) next) ∈ ((application setup timeouts leaks).transition
-          (initialLaw setup) horizon scheduler none
+          (initialDistribution setup) horizon scheduler none
           ((HiddenSwap.ofPairs (betweenPairs publicAgree succeed) handlePairs).joint (timeouts :=
             timeouts)
             joint)).support at realizedImage
         rw [ReactiveApplication.transition, PMF.support_map] at realizedImage
         obtain ⟨initialState, initialMember, initialEq⟩ := realizedImage
-        have drawn : initialState ∈ (initialLaw setup).support := initialMember
-        rw [initialLaw, serviceInitialLaw, PMF.support_map] at drawn
+        have drawn : initialState ∈ (initialDistribution setup).support := initialMember
+        rw [initialDistribution, serviceInitialDistribution, PMF.support_map] at drawn
         obtain ⟨initialValues, valuesMember, initialStateEq⟩ := drawn
         have swappedConfig : next.execution.application.config.swap
             (EventGraph.ValueSwap.ofPairs (betweenPairs publicAgree succeed)) =
@@ -518,7 +522,7 @@ theorem intendedHistory?_mapTrace (wellFormed : setup.WellFormed)
             (setup.protocolStep previous'.state
               (actingJoint setup previous'.state none)).support := by
           rw [previousNone, replayStateEq, swappedDecoded]
-          change _ ∈ (setup.initialLaw.map fun initial =>
+          change _ ∈ (setup.initialDistribution.map fun initial =>
             some (ProtocolState.entry setup.program (Config.initial initial))).support
           exact (PMF.mem_support_map_iff _ _ _).mpr ⟨initialValues, valuesMember, rfl⟩
         obtain ⟨image, extended, imagePrefix, imageLength⟩ := extendIntended?_between
@@ -544,7 +548,7 @@ theorem intendedHistory?_mapTrace (wellFormed : setup.WellFormed)
         change some (HiddenSwap.control (timeouts := timeouts) (HiddenSwap.ofPairs (betweenPairs
           publicAgree succeed)
             handlePairs) next) ∈ ((application setup timeouts leaks).transition
-            (initialLaw setup) horizon scheduler
+            (initialDistribution setup) horizon scheduler
             (some (HiddenSwap.control (timeouts := timeouts) (HiddenSwap.ofPairs (betweenPairs
               publicAgree succeed)
               handlePairs) current))
@@ -569,11 +573,13 @@ theorem intendedHistory?_mapTrace (wellFormed : setup.WellFormed)
           obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (timeouts := timeouts)
             (failureProfile setup.program)
             (bounds.onePacketMenu timeouts leaks) horizon scheduler
-            ((onePacketSwapSymmetry (timeouts := timeouts) bounds (initialLaw setup) horizon
+            ((onePacketSwapSymmetry (timeouts := timeouts) bounds
+              (initialDistribution setup) horizon
               scheduler
               (HiddenSwap.ofPairs (betweenPairs publicAgree succeed) handlePairs) initialClosed
               bounded (EventGraph.ValueSwap.ofPairs_expiryFixed _)).mapTrace prior priorGuard) _ rfl
-          have path := reactive_protocol_graph_steps timeouts leaks (initialLaw setup) horizon
+          have path := reactive_protocol_graph_steps timeouts leaks
+            (initialDistribution setup) horizon
             scheduler _ _ _ realizedImage
           change Relation.ReflTransGen EventGraph.Config.Step
             (current.execution.application.config.swap

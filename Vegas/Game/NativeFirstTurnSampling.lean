@@ -38,11 +38,11 @@ private theorem serviceReference_callback_of_pending_path
     {horizon remaining : Nat} {acting : Option Player}
     {scheduler : (serviceApplication setup deps duration leaks).Scheduler}
     (trace : ((serviceApplication setup deps duration leaks).protocol
-      (serviceInitialLaw setup deps) horizon scheduler).Trace
+      (serviceInitialDistribution setup deps) horizon scheduler).Trace
         (some ⟨remaining, acting, current⟩)) :
     referencePolicy (serviceTimeouts setup deps duration) leaks reference owner (current.logs owner)
         (current.observe (serviceApplication setup deps duration leaks) owner) =
-      (actionLaw reference origin.application.config event).map
+      (actionDistribution reference origin.application.config event).map
         ((canonicalServiceDecision (serviceTimeouts setup deps duration)) leaks owner
           (current.logs owner) (current.observe (serviceApplication setup deps duration leaks)
             owner) event) := by
@@ -54,8 +54,8 @@ private theorem serviceReference_callback_of_pending_path
       (legalFacts setup leaks horizon scheduler _ trace).quiescent currentReady owned
   rw [sourceServiceCanonicalPolicy_at_event_reference setup leaks reference owner current event
     turn owned, dite_eq_right active]
-  have stable := independent.actionLaw_path_of_unfinished path ready unfinished
-  rw [actionLaw_of_actor _ _ owned, dite_eq_right active] at stable
+  have stable := independent.actionDistribution_path_of_unfinished path ready unfinished
+  rw [actionDistribution_of_actor _ _ owned, dite_eq_right active] at stable
   exact congrArg (PMF.map _) stable
 
 /-- A ready-independent owned decision can be drawn before any stopped native run. -/
@@ -74,14 +74,14 @@ theorem serviceReference_firstTurn_mixture_of_independent
     (execution : (serviceApplication setup deps duration leaks).Execution)
     (ready : execution.application.config.cut.Ready event)
     (trace : ((serviceApplication setup deps duration leaks).protocol
-      (serviceInitialLaw setup deps) horizon scheduler).Trace
+      (serviceInitialDistribution setup deps) horizon scheduler).Trace
         (some ⟨remaining + count, none, execution⟩))
     (untouched : Untouched setup leaks event execution) :
     let app := serviceApplication setup deps duration leaks
     let players := turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
       (firstTurnTiming setup turns deps) reference
     app.runUntil scheduler background stop count execution =
-      (actionLaw reference execution.application.config event).bind (fun action =>
+      (actionDistribution reference execution.application.config event).bind (fun action =>
         app.runUntil scheduler
           (Function.update background owner (fun past view =>
             if turnIndex (serviceTimeouts setup deps duration)
@@ -91,7 +91,7 @@ theorem serviceReference_firstTurn_mixture_of_independent
             else players owner past view)) stop count execution) := by
   classical
   intro app players
-  let law := actionLaw reference execution.application.config event
+  let law := actionDistribution reference execution.application.config event
   let first := fun past view => turnIndex (serviceTimeouts setup deps duration)
     leaks owner event past view = some 0
   let member := fun (action : (serviceGraph setup deps).Action event) past view =>
@@ -107,7 +107,7 @@ theorem serviceReference_firstTurn_mixture_of_independent
     exact (sourceServiceTurn_first selected).2 entry memberEntry
       (sourceServiceTurn_first earlier).1
   have atFirst : ∀ remaining current,
-      (app.protocol (serviceInitialLaw setup deps) horizon scheduler).Trace
+      (app.protocol (serviceInitialDistribution setup deps) horizon scheduler).Trace
         (some ⟨remaining + 1, none, current⟩) →
       invariant current → ¬ stop current →
       ∀ command ∈ (scheduler current.environmentRecall (current.observeEnvironment app)).support,
@@ -130,7 +130,8 @@ theorem serviceReference_firstTurn_mixture_of_independent
       ((middle.application.publicView_eventReady event).mp
         (middle.application.publicView.ownTurn?_spec owner event
           (sourceServiceTurn_first firstNow).1).1).1
-    obtain ⟨middleTrace⟩ := app.raw_trace_environment (serviceInitialLaw setup deps) horizon
+    obtain ⟨middleTrace⟩ := app.raw_trace_environment (serviceInitialDistribution setup deps)
+      horizon
       scheduler remaining current middle (.activate owner) currentTrace selected moved
     have callback := serviceReference_callback_of_pending_path reference independent owner event
       owned execution middle ready middlePath middlePending middleTrace
@@ -155,7 +156,7 @@ theorem serviceReference_firstTurn_mixture_of_independent
         exact compiled.trans (by rw [PMF.bind_map]; rfl)
       · simp only [fits, ite_false, PMF.bind_const]
   have preserved : ∀ remaining current,
-      (app.protocol (serviceInitialLaw setup deps) horizon scheduler).Trace
+      (app.protocol (serviceInitialDistribution setup deps) horizon scheduler).Trace
         (some ⟨remaining + 1, none, current⟩) →
       invariant current → ¬ stop current →
       ∀ next ∈ (app.round scheduler (Function.update background owner (players owner))
@@ -170,7 +171,8 @@ theorem serviceReference_firstTurn_mixture_of_independent
     exact untouched owner entry memberEntry
       (PublicView.ownTurn?_spec _ owner event (sourceServiceTurn_first earlier).1).1
   have mixed := app.runUntil_mixture_at_first
-    (serviceInitialLaw setup deps) horizon scheduler background owner (players owner) law member
+    (serviceInitialDistribution setup deps) horizon scheduler background owner
+      (players owner) law member
     first once (by intro action past view away; simp only [member, away, ite_false])
     stop invariant atFirst preserved count remaining execution trace .refl clean
   have restored : Function.update background owner (players owner) = background := by

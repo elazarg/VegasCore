@@ -135,9 +135,9 @@ theorem run_step_settles (base : (serviceGraph setup deps).BehavioralProfile)
     have settles := honest_settles base decides who ready publication foreign
     refine ⟨settles, step_eq_settled settles ownedNode member ?_⟩
     obtain ⟨acting, _⟩ := settles.2.2.2.choose_spec.choose_spec
-    have kernel : actionLaw R before event = PMF.pure (cast (congrArg EventField.Action
+    have kernel : actionDistribution R before event = PMF.pure (cast (congrArg EventField.Action
         outputEq.symm) (openingAccepted event before.store)) := by
-      rw [actionLaw_of_actor _ _ ownedNode, dite_eq_right active]
+      rw [actionDistribution_of_actor _ _ ownedNode, dite_eq_right active]
       exact decides before event owner payload binding checks outputEq codeEq node owned active
     have chosen : settles.2.2.2.choose = cast (congrArg EventField.Action outputEq.symm)
         (openingAccepted event before.store) := by

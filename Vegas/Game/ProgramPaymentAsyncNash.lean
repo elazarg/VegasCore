@@ -124,7 +124,8 @@ theorem payment_within_of_bounds {Parameter : Type}
     (valuation_bounds : ∀ control,
       ((serviceApplication service.setup service.setup.informationDependencies service.duration
         service.leaks).protocol
-        (serviceInitialLaw service.setup service.setup.informationDependencies) service.horizon
+        (serviceInitialDistribution service.setup service.setup.informationDependencies)
+          service.horizon
           service.scheduler).Trace
           (some control) →
       ∀ terminal, serviceSourceReadout service.setup service.setup.informationDependencies
@@ -135,7 +136,8 @@ theorem payment_within_of_bounds {Parameter : Type}
     (transfer_bounds : ∀ control,
       ((serviceApplication service.setup service.setup.informationDependencies service.duration
         service.leaks).protocol
-        (serviceInitialLaw service.setup service.setup.informationDependencies) service.horizon
+        (serviceInitialDistribution service.setup service.setup.informationDependencies)
+          service.horizon
           service.scheduler).Trace
           (some control) →
       ∀ terminal, serviceSourceReadout service.setup service.setup.informationDependencies
@@ -275,7 +277,7 @@ theorem payment_firstTurnClientProfile_isεNash_iff {Parameter : Type}
 terminal cells, public default history and monetary receipt vector. This cash law
 precedes valuation
 and does not assume equilibrium or independent audit verdicts. -/
-theorem payment_firstTurnClientProfile_settlement_law
+theorem payment_firstTurnClientProfile_settlement_distribution_eq
     (admission : CommitmentInterface service.setup.program)
     (sample : List (SettledEvidence service.setup service.setup.informationDependencies) →
       PMF (List (SettledEvidence service.setup service.setup.informationDependencies)))
@@ -293,7 +295,7 @@ theorem payment_firstTurnClientProfile_settlement_law
       (service.setup.run (service.setup.decodeBehavioralProfile admission source)).map
         (fun terminal => (some (terminal.state, terminal.defaults), fun who =>
           service.setup.transfers (service.setup.program.publicOutcome terminal) who)) := by
-  exact service.firstTurnClientProfile_settlement_law admission
+  exact service.firstTurnClientProfile_settlement_distribution admission
     (fun _ => ()) (fun outcome => service.setup.transfers outcome.2)
     sample authentic deposit turns source
 

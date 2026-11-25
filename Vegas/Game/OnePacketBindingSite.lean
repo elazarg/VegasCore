@@ -41,7 +41,7 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 prepared slot whose commitment envelope the count verdict permits against the
 player's earlier packets is fresh. -/
 theorem onePacket_permitted_fresh {control : (application setup timeouts leaks).Control}
-    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some control))
     (who : Player) (event : setup.informationGraph.EventId) (slot : Nat)
     (permitted : countPermits ((application setup timeouts leaks).outputs (control.execution.logs
@@ -51,26 +51,31 @@ theorem onePacket_permitted_fresh {control : (application setup timeouts leaks).
     (control.execution.observe (application setup timeouts leaks) who).application.candidates
       (.prepared slot) = .fresh := by
   have inputTrace := trace
-  rw [initialLaw, serviceInitialLaw_eq_inputs (deps := setup.informationDependencies) setup]
+  rw [initialDistribution, serviceInitialDistribution_eq_inputs
+    (deps := setup.informationDependencies) setup]
     at inputTrace
   exact bounds.onePacket_permitted_binding_fresh timeouts leaks
-    (setup.initialLaw.map setup.eventInputs) horizon scheduler inputTrace who event slot none
+    (setup.initialDistribution.map setup.eventInputs) horizon scheduler inputTrace who event slot
+      none
     permitted
 
 /-- **The canonical slot exists.** Along every history of the one-packet game,
 every player has a canonical slot. -/
 theorem onePacket_canonicalFreshSlot_exists {control : (application setup timeouts leaks).Control}
-    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some control))
     (who : Player) :
     ∃ serial, canonicalFreshSlot who
       (control.execution.observe (application setup timeouts leaks) who).application = some serial
         := by
-  have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon
+  have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace
+    (initialDistribution setup) horizon
     scheduler trace
-  rw [initialLaw, serviceInitialLaw_eq_inputs (deps := setup.informationDependencies) setup]
+  rw [initialDistribution, serviceInitialDistribution_eq_inputs
+    (deps := setup.informationDependencies) setup]
     at rawTrace
-  have recalled := (candidateRecall_history timeouts) leaks (setup.initialLaw.map setup.eventInputs)
+  have recalled := (candidateRecall_history timeouts) leaks
+    (setup.initialDistribution.map setup.eventInputs)
     horizon scheduler rawTrace
   obtain ⟨serial, _bound, fresh⟩ := (reactiveFreshSlot_le_recall timeouts) leaks
     control.execution who recalled
@@ -82,7 +87,7 @@ value, every source choice as-if-honest play supports encodes to a successful
 bounded value. -/
 theorem onePacket_honest_covered (assessment : setup.intendedModel.BehavioralAssessment)
     (covers : bounds.CoversOutputValues) {control : (application setup timeouts leaks).Control}
-    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some control))
     (who : Player) (event : setup.informationGraph.EventId)
     (turn : control.execution.application.publicView.ownTurn? who = some event)
@@ -91,7 +96,8 @@ theorem onePacket_honest_covered (assessment : setup.intendedModel.BehavioralAss
       (some (control.execution.logs who,
         control.execution.observe (application setup timeouts leaks) who))).support) :
     CoveredBinding setup bounds event choice := by
-  have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon
+  have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace
+    (initialDistribution setup) horizon
     scheduler trace
   have facts := legalFacts setup leaks horizon scheduler control rawTrace
   have turnFacts := PublicView.ownTurn?_spec _ who event turn
@@ -124,7 +130,7 @@ and the capacity is at least one, the binding is a covered pending binding. -/
 theorem onePacket_coveredPendingBinding (assessment : setup.intendedModel.BehavioralAssessment)
     (covers : bounds.CoversOutputValues) (capacity : 1 ≤ bounds.candidateCount)
     {control : (application setup timeouts leaks).Control}
-    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some control))
     (who : Player) (event : setup.informationGraph.EventId)
     (turn : control.execution.application.publicView.ownTurn? who = some event)
@@ -137,7 +143,8 @@ theorem onePacket_coveredPendingBinding (assessment : setup.intendedModel.Behavi
       codeEq where
   turn := turn
   active := by
-    have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon
+    have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace
+      (initialDistribution setup) horizon
       scheduler trace
     have facts := legalFacts setup leaks horizon scheduler control rawTrace
     have turnFacts := PublicView.ownTurn?_spec _ who event turn

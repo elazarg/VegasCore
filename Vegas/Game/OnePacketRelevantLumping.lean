@@ -2,7 +2,7 @@ module
 
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-public import Vegas.Game.OnePacketSiteLaws
+public import Vegas.Game.OnePacketSiteDistributions
 
 @[expose] public section
 
@@ -73,16 +73,17 @@ structure PendingLumpingOn (assessment : (onePacketInformation setup timeouts le
       ForcedState setup timeouts leaks who history.1.state → history.1.state ∈ keep site key
   kept : ∀ site, relevant site → ∀ key, lateKey setup timeouts leaks who site.1 = some key → ∀
     option,
-    ∀ state ∈ keep site key, ∀ next ∈ ((application setup timeouts leaks).controlStep (initialLaw
+    ∀ state ∈ keep site key, ∀ next ∈ ((application setup timeouts leaks).controlStep
+      (initialDistribution
       setup)
       horizon scheduler ((bounds.onePacketMenu timeouts leaks).decodeProfile
-        (initialLaw setup) horizon scheduler (profileOf site option)) state).support,
+        (initialDistribution setup) horizon scheduler (profileOf site option)) state).support,
       next ∈ keep site key
   close : ∀ site, relevant site → ∀ key, lateKey setup timeouts leaks who site.1 = some key → ∀
     option,
     ∀ state ∈ keep site key, PMF.WithinTV δ
-      (((application setup timeouts leaks).controlStep (initialLaw setup) horizon scheduler
-        ((bounds.onePacketMenu timeouts leaks).decodeProfile (initialLaw setup) horizon
+      (((application setup timeouts leaks).controlStep (initialDistribution setup) horizon scheduler
+        ((bounds.onePacketMenu timeouts leaks).decodeProfile (initialDistribution setup) horizon
           scheduler (profileOf site option)) state).map (image key))
       (kernel key option (image key state))
   failure_eq : ∀ site, relevant site → ∀ key, ∀ state ∈ keep site key,
@@ -93,7 +94,7 @@ section Failure
 variable (setup timeouts leaks bounds horizon scheduler)
 
 local notation "onePacketN" =>
-  onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+  onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
 
 /-- The failure expectation of `fuel` steps of a lumping's image kernel from the
 image read off an operational record. -/
@@ -149,7 +150,7 @@ theorem PendingLumpingOn.abs_failure_sub_le_of_keep {assessment : (onePacketInfo
         (fun final => if failedState key final.state then 1 else 0) -
       expect ((fun law => law.bind (lumping.kernel key option))^[fuel]
         (PMF.pure (lumping.image key history.state))) (lumping.failure key)| ≤ fuel * δ := by
-  have lumped := (bounds.onePacketMenu timeouts leaks).run_map_withinTV (initialLaw setup)
+  have lumped := (bounds.onePacketMenu timeouts leaks).run_map_withinTV (initialDistribution setup)
     horizon scheduler (profileOf site option) (lumping.image key)
       (lumping.kernel key option)
     (lumping.keep site key) δ (lumping.kept site
@@ -168,8 +169,8 @@ theorem PendingLumpingOn.abs_failure_sub_le_of_keep {assessment : (onePacketInfo
         (lumping.failure key ∘ fun final => lumping.image key final.state) := by
     apply expect_congr_on_support
     intro final reached
-    have stateLaw := (bounds.onePacketMenu timeouts leaks).run_map_controlSteps
-      (initialLaw setup) horizon scheduler (profileOf site option) fuel history
+    have stateDistribution := (bounds.onePacketMenu timeouts leaks).run_map_controlSteps
+      (initialDistribution setup) horizon scheduler (profileOf site option) fuel history
     have inside := (iterate_bind_map_withinTV _ (lumping.image key)
       (lumping.kernel key option)
       (lumping.keep site key) δ (lumping.kept site
@@ -181,7 +182,7 @@ theorem PendingLumpingOn.abs_failure_sub_le_of_keep {assessment : (onePacketInfo
           ExecutionProtocol.History.state).support := by
       rw [PMF.support_map]
       exact ⟨final, reached, rfl⟩
-    rw [stateLaw] at stateReached
+    rw [stateDistribution] at stateReached
     exact lumping.failure_eq site isRelevant key final.state (inside
       final.state stateReached)
   rw [sameFailure]
@@ -270,15 +271,17 @@ def onePacketLateLumpingOn
       ∀ history ∈ (assessment.belief who site).support,
         ForcedState setup timeouts leaks who history.1.state → allowed site history.1.state)
     (allowedStep : ∀ site, relevant site → ∀ option state, allowed site state →
-      ∀ next ∈ ((application setup timeouts leaks).controlStep (initialLaw setup) horizon scheduler
-        ((bounds.onePacketMenu timeouts leaks).decodeProfile (initialLaw setup) horizon
+      ∀ next ∈ ((application setup timeouts leaks).controlStep
+        (initialDistribution setup) horizon scheduler
+        ((bounds.onePacketMenu timeouts leaks).decodeProfile (initialDistribution setup) horizon
           scheduler (profileOf site option)) state).support, allowed site next)
     (owner : ∀ site, relevant site → ∀ key, lateKey setup timeouts leaks who site.1 = some key →
       ∀ option, OwnerStepClose (timeouts := timeouts) ownerKernel key option (profileOf site option)
         δ (allowed site))
     (law : ∀ site, relevant site → ∀ key, lateKey setup timeouts leaks who site.1 = some key → ∀
       option,
-      OwnerBindingLaw (timeouts := timeouts) bounds horizon scheduler moves key option (profileOf
+      OwnerBindingWithinTV (timeouts := timeouts) bounds horizon scheduler moves key option
+        (profileOf
         site option)
         δBinding (allowed site)) :
     PendingLumpingOn (timeouts := timeouts) assessment who relevant profileOf

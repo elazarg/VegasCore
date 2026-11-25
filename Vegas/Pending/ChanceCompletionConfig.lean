@@ -20,7 +20,7 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
 /-- The first completed sampling boundary has precisely the graph-step configuration
 distribution followed by deterministic automatic completion. -/
-theorem chance_completed_config_law
+theorem chance_completed_config_distribution
     (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (serial : graph.ActorSerial)
@@ -42,7 +42,8 @@ theorem chance_completed_config_law
   let recover := fun output : Option (graph.outputLayout event).Value =>
     output.elim before.application.config (fun value =>
       State.drainConfig (before.application.config.complete event ready action value))
-  have raw := chance_completed_output_law timeouts leaks serial scheduler players event ownerless
+  have raw := chance_completed_output_distribution timeouts leaks serial scheduler players event
+    ownerless
     solitary count before ready completed
   have projected := congrArg (PMF.map recover) raw
   simp only [PMF.map_comp] at projected

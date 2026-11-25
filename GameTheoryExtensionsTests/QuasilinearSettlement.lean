@@ -48,7 +48,7 @@ def utilityObservation (outcome charged : Bool) : Bool × (Bool → ℝ) :=
     (if charged then (if who then 28 else 23) else (if who then 32 else 25))
     else (if who then 18 else 13))
 
-def scenarioLaw (readout : Bool → Bool → Bool × (Bool → ℝ)) :
+def scenarioDistribution (readout : Bool → Bool → Bool × (Bool → ℝ)) :
     PMF (Bool × (Bool → ℝ)) :=
   coin.bind fun outcome => (chargeCoin outcome).map (readout outcome)
 
@@ -61,7 +61,7 @@ theorem audit_shared_charge (outcome : Bool) (verdict : Bool → Bool)
 
 /-- An actual correlated monetary audit produces exactly these cash vectors. -/
 theorem cash_distribution :
-    jointSettlement coin transfer id audit deposit = scenarioLaw cashObservation := by
+    jointSettlement coin transfer id audit deposit = scenarioDistribution cashObservation := by
   simp only [jointSettlement, settlement, audit, PMF.map_comp]
   congr 1
   funext outcome
@@ -85,9 +85,9 @@ theorem cash_distribution :
 /-- The concrete utility vectors retain both the outcome and shared audit coin. -/
 theorem utility_distribution :
     (jointSettlement coin transfer id audit deposit).map (utilityReadout valuation) =
-      scenarioLaw utilityObservation := by
+      scenarioDistribution utilityObservation := by
   rw [cash_distribution]
-  simp only [scenarioLaw, PMF.map_bind, PMF.map_comp]
+  simp only [scenarioDistribution, PMF.map_bind, PMF.map_comp]
   congr 1
   funext outcome
   congr 1
@@ -101,8 +101,8 @@ theorem utility_distribution :
 
 /-- Subtraction recovers this exact joint cash law, despite correlated charges. -/
 theorem recovered_cash_distribution :
-    (scenarioLaw utilityObservation).map (receiptReadout valuation) =
-      scenarioLaw cashObservation := by
+    (scenarioDistribution utilityObservation).map (receiptReadout valuation) =
+      scenarioDistribution cashObservation := by
   rw [← utility_distribution, map_utilityReadout_receiptReadout, cash_distribution]
 
 /-- Cash alone cannot distinguish failure from charged success. -/

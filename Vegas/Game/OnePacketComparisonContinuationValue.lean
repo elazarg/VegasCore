@@ -24,10 +24,10 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (bounds : MessageBounds setup.informationGraph) (horizon : Nat)
   (scheduler : (application setup timeouts leaks).Scheduler)
 
-local notation "N" => onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+local notation "N" => onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon
   scheduler
 local notation "NP" => ReactiveApplication.ResponseMenu.protocol
-  (bounds.onePacketMenu timeouts leaks) (initialLaw setup) horizon scheduler
+  (bounds.onePacketMenu timeouts leaks) (initialDistribution setup) horizon scheduler
 local notation "Clear" => ReactiveApplication.stateInvariant
   (app := application setup timeouts leaks)
     (fun native : EventGraphRuntime.State setup.informationGraph =>
@@ -45,8 +45,8 @@ private theorem sourceContinuation_value_of_prefix
       (fun readout => exclusionReadoutUtility setup parameter utility excludedPayoff readout who) =
       sourcePointValue setup parameter utility excludedPayoff profile who point := by
   have lawEq : sourceContinuation setup profile rank config =
-      (setup.continuationLaw profile (some point)).map some :=
-    congrArg (fun decoded => (setup.continuationLaw profile decoded).map some) decoded
+      (setup.continuationDistribution profile (some point)).map some :=
+    congrArg (fun decoded => (setup.continuationDistribution profile decoded).map some) decoded
   exact congrArg (fun law => expect law
     (fun readout => exclusionReadoutUtility setup parameter utility excludedPayoff readout who))
     lawEq
@@ -55,14 +55,14 @@ open Classical in
 /-- The same common native weights approximate the source value at every
 intended boundary, under counted native service and completion. -/
 theorem assembled_stopped_boundary_value_sub_le
-    [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
+    [(application setup timeouts leaks).FiniteNature (initialDistribution setup) scheduler]
     [∀ who, DecidableEq ((N).InfoState who)]
     (wellFormed : setup.WellFormed) (covers : bounds.CoversOutputValues)
     (capacity : ∀ player, bindingEventCount setup.informationGraph player < bounds.candidateCount)
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (scale : ℕ → ℝ) (positive : ∀ n, 0 < scale n) (le_one : ∀ n, scale n ≤ 1)
     {slots : Nat}
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialDistribution setup)
       horizon scheduler slots p))
     (targetSequence : ℕ → (N).BehavioralAssessment)
     (assembled : OnePacketAssembled setup timeouts leaks bounds horizon scheduler sequence scale
@@ -70,18 +70,18 @@ theorem assembled_stopped_boundary_value_sub_le
       le_one weights targetSequence) (n : ℕ)
     {delay bound : setup.informationGraph.EventId → Nat}
     (opportunity : ∀ control : (application setup timeouts leaks).Control,
-      ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+      ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
         scheduler).Trace (some control) →
       control.execution.application.config.defaulted = ∅ →
       OpportunityAt timeouts leaks control.execution delay)
     (inclusion : ∀ control : (application setup timeouts leaks).Control,
-      ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+      ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
         scheduler).Trace (some control) →
       control.execution.application.config.defaulted = ∅ →
       ProtectedInclusionAt timeouts leaks control.execution bound)
     (timely : (AsyncTimely timeouts) delay bound)
     (completes : ∀ control : (application setup timeouts leaks).Control,
-      ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+      ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
         scheduler).Trace (some control) →
       control.execution.application.config.defaulted = ∅ →
       (application setup timeouts leaks).terminal (some control) →
@@ -180,18 +180,18 @@ theorem debtStopped_eq_bind_eventPhase
     obtain ⟨before, state, configEq⟩ := holds.resolve_left going
     obtain ⟨⟨joint, _, realized⟩, _⟩ :=
       (N).mem_support_runBehavioralFrom_one players running member
-    change next.state ∈ ((application setup timeouts leaks).transition (initialLaw setup)
+    change next.state ∈ ((application setup timeouts leaks).transition (initialDistribution setup)
       horizon scheduler history.state joint).support at realized
     rw [state] at realized
     obtain ⟨after, afterState, _⟩ := (application setup timeouts leaks).transition_recall_prefix
-      (initialLaw setup) horizon scheduler before next.state joint realized
+      (initialDistribution setup) horizon scheduler before next.state joint realized
     have beforeOrdered : before.execution.application.config.cut.IsPrefix rank := by
       rw [configEq]
       exact ordered
     by_cases clearNext : Clear next.state
     · have empty : after.execution.application.config.defaulted = ∅ :=
         by simpa only [afterState, ReactiveApplication.stateInvariant] using clearNext
-      rcases reactive_protocol_config_eq_or_step_of_clear timeouts leaks (initialLaw setup)
+      rcases reactive_protocol_config_eq_or_step_of_clear timeouts leaks (initialDistribution setup)
           horizon scheduler before after joint (afterState ▸ realized) empty with
         same | ⟨event, ready, action, supported⟩
       · exact Or.inr ⟨after, afterState, same.trans configEq⟩
@@ -230,7 +230,7 @@ theorem debtStopped_eq_bind_eventPhase
   exact ih next ((N).mem_support_runBehavioralFrom_one players ended member).1
     (preserve history next holds halted ended member)
 
-theorem runUntil_after_localLaw_eq
+theorem runUntil_after_localDistribution_eq
     (certificate : (NP).WellFoundedHistories) (actsOnce : (N).ActsOnceWhereItMatters)
     (players : ∀ who, (N).BehavioralPolicy who) (who : Player)
     [DecidableEq ((N).InfoState who)] (info : (N).InfoState who)

@@ -80,7 +80,7 @@ theorem unsentFor_iff_unrecorded {who : Player}
     {past : List (application setup timeouts leaks).PlayerEntry}
     {view : (application setup timeouts leaks).PlayerView} {control : (application setup timeouts
       leaks).Control}
-    (trace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((application setup timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace
       (some control))
     (recallEq : control.execution.logs who = past) {key : LateKey setup timeouts leaks}
@@ -117,7 +117,7 @@ theorem decidedEvent_eq_of_pending {who : Player}
     {view : (application setup timeouts leaks).PlayerView} {event : setup.informationGraph.EventId}
     (pending : pendingEvent setup timeouts leaks who (some (past, view)) = some event)
     {control : (application setup timeouts leaks).Control}
-    (trace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((application setup timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace
       (some control))
     (recallEq : control.execution.logs who = past) {key : LateKey setup timeouts leaks}
@@ -204,13 +204,13 @@ variable [Fintype Player] {bounds : MessageBounds setup.informationGraph} {horiz
 once the player's recall has submitted for an event, the one-packet choice of a
 response that is silent or names the event keeps silence. -/
 theorem decoded_silent_of_recorded {control : (application setup timeouts leaks).Control}
-    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some control))
     (who : Player) (event : setup.informationGraph.EventId)
     (recorded : (eventRecorded timeouts) leaks (control.execution.logs who) event = true)
     (response : (application setup timeouts leaks).Action) (named : SilentOrNames (timeouts :=
       timeouts) event response) :
-    (responseChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler who
+    (responseChoice setup timeouts leaks bounds (initialDistribution setup) horizon scheduler who
       (some (control.execution.logs who,
         control.execution.observe (application setup timeouts leaks) who)) response).1.getD ⟨none⟩ =
       ⟨none⟩ := by
@@ -230,13 +230,14 @@ theorem decoded_silent_of_recorded {control : (application setup timeouts leaks)
 /-- Laws of responses that are silent or name the event give choices that keep
 silence once the event is recorded. -/
 theorem map_responseChoice_silent {control : (application setup timeouts leaks).Control}
-    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some control))
     (who : Player) (event : setup.informationGraph.EventId)
     (recorded : (eventRecorded timeouts) leaks (control.execution.logs who) event = true)
     (law : PMF (application setup timeouts leaks).Action)
     (named : ∀ response ∈ law.support, SilentOrNames (timeouts := timeouts) event response) :
-    ∀ choice ∈ (law.map (responseChoice setup timeouts leaks bounds (initialLaw setup) horizon
+    ∀ choice ∈ (law.map (responseChoice setup timeouts leaks bounds
+      (initialDistribution setup) horizon
       scheduler
       who (some (control.execution.logs who,
         control.execution.observe (application setup timeouts leaks) who)))).support,
@@ -251,28 +252,31 @@ player's turn at an event its recall has submitted for, the as-if-honest choice,
 every late option, the slot tier and silence choose only silence. -/
 theorem parts_silent_of_recorded (assessment : setup.intendedModel.BehavioralAssessment)
     {control : (application setup timeouts leaks).Control}
-    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some control))
     (who : Player) (event : setup.informationGraph.EventId)
     (turn : control.execution.application.publicView.ownTurn? who = some event)
     (recorded : (eventRecorded timeouts) leaks (control.execution.logs who) event = true) :
-    (∀ choice ∈ (honestChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+    (∀ choice ∈ (honestChoice setup timeouts leaks bounds (initialDistribution setup) horizon
+      scheduler
       assessment
         who (some (control.execution.logs who,
           control.execution.observe (application setup timeouts leaks) who))).support,
         choice.1.getD ⟨none⟩ = ⟨none⟩) ∧
-    (∀ choice ∈ (slotChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+    (∀ choice ∈ (slotChoice setup timeouts leaks bounds (initialDistribution setup) horizon
+      scheduler
       assessment
         who (some (control.execution.logs who,
           control.execution.observe (application setup timeouts leaks) who))).support,
         choice.1.getD ⟨none⟩ = ⟨none⟩) ∧
     (∀ {slots : Nat} (option : LateOption slots),
-      ∀ choice ∈ (lateChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+      ∀ choice ∈ (lateChoice setup timeouts leaks bounds (initialDistribution setup) horizon
+        scheduler
         assessment
         who (some (control.execution.logs who,
           control.execution.observe (application setup timeouts leaks) who)) option).support,
         choice.1.getD ⟨none⟩ = ⟨none⟩) ∧
-    (silenceChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler who
+    (silenceChoice setup timeouts leaks bounds (initialDistribution setup) horizon scheduler who
         (some (control.execution.logs who,
           control.execution.observe (application setup timeouts leaks) who))).1.getD ⟨none⟩ =
       ⟨none⟩ := by

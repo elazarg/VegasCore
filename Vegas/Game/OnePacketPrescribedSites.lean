@@ -35,15 +35,17 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
   (bounds : MessageBounds setup.informationGraph) (horizon : Nat)
   (scheduler : (application setup timeouts leaks).Scheduler)
-  [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
-  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+  [(application setup timeouts leaks).FiniteNature (initialDistribution setup) scheduler]
+  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds
+    (initialDistribution setup) horizon
     scheduler).InfoState who)]
 
 local notation "onePacketN" =>
-  onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+  onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
 
-omit [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
-  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+omit [(application setup timeouts leaks).FiniteNature (initialDistribution setup) scheduler]
+  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds
+    (initialDistribution setup) horizon
     scheduler).InfoState who)] in
 /-- **A forced debt-free first activation.** At a history of a first activation
 of `who` for its pending event, forced for `who` with no player owing a failure
@@ -74,7 +76,7 @@ theorem firstActivation_history_facts (wellFormed : setup.WellFormed) {who : Pla
   change ForcedState setup timeouts leaks who start.state at forced
   change ∀ point, nativeDecodedState setup timeouts leaks start.state = some point → _ at regular
   have observedState : (application setup timeouts leaks).observe who start.state = site.1 :=
-    (menu.info (initialLaw setup) horizon scheduler who start.trace).symm.trans observed
+    (menu.info (initialDistribution setup) horizon scheduler who start.trace).symm.trans observed
   rcases startState : start.state with _ | ⟨remaining, actor, execution⟩
   · rw [startState] at forced
     exact forced.elim
@@ -86,11 +88,11 @@ theorem firstActivation_history_facts (wellFormed : setup.WellFormed) {who : Pla
     cases pending
   subst actorEq
   simp only [ReactiveApplication.observe, ↓reduceIte] at observedState
-  have trace : (menu.protocol (initialLaw setup) horizon scheduler).Trace
+  have trace : (menu.protocol (initialDistribution setup) horizon scheduler).Trace
       (some ⟨remaining, some who, execution⟩) := startState ▸ start.trace
-  have rawTrace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+  have rawTrace : ((application setup timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some ⟨remaining, some who, execution⟩) :=
-    menu.toRawTrace (initialLaw setup) horizon scheduler trace
+    menu.toRawTrace (initialDistribution setup) horizon scheduler trace
   have pendingAt : pendingEvent setup timeouts leaks who (some (execution.logs who,
       execution.observe (application setup timeouts leaks) who)) = some event := by
     rw [observedState]

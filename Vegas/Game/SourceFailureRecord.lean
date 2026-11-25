@@ -157,7 +157,7 @@ theorem history {timeouts : EventTimeouts setup.informationGraph}
     (profile : BehavioralProfile setup.program) (horizon : Nat)
     (scheduler : (application setup timeouts leaks).Scheduler)
     {control : (application setup timeouts leaks).Control}
-    (trace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((application setup timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace
       (some control)) : SourceFailureRecord profile control.execution.application.config := by
   let invariant : (application setup timeouts leaks).Invariant
@@ -170,7 +170,7 @@ theorem history {timeouts : EventTimeouts setup.informationGraph}
       environment := fun state command next valid reached =>
         valid.path ((reactiveApplication_graphSteps timeouts leaks).environment state command next
           reached) }
-  exact invariant.history (initialLaw setup) horizon scheduler (fun state supported => by
+  exact invariant.history (initialDistribution setup) horizon scheduler (fun state supported => by
     obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ supported
     exact SourceFailureRecord.initial setup profile initial) trace
 

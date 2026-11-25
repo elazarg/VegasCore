@@ -4,7 +4,7 @@ module
 
 public import Vegas.EventGraph.SchedulerReplay
 public import Vegas.EventGraph.DecisionTwin
-public import Vegas.EventGraph.SequentialLaw
+public import Vegas.EventGraph.SequentialDistribution
 public import Vegas.EventGraph.SequentialNormalization
 public import Vegas.EventGraph.NormalizedRestriction
 

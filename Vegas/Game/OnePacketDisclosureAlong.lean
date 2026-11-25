@@ -143,7 +143,8 @@ theorem revealFailed_along {control : (application setup timeouts leaks).Control
       cases source with
       | none => exact (not_tracePrefix_start (timeouts := timeouts) before earlier).elim
       | some previous =>
-          have path := reactive_protocol_graph_steps timeouts leaks (initialLaw setup) horizon
+          have path := reactive_protocol_graph_steps timeouts leaks
+            (initialDistribution setup) horizon
             scheduler previous current joint realized
           obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (timeouts := timeouts)
             (failureProfile setup.program)
@@ -195,10 +196,10 @@ theorem disclosureResolves_along (wellFormed : setup.WellFormed) {who : Player}
   have ownerEq : owner = r :=
     Option.some.inj ((nodeView_resolve_actor outputEq codeEq).symm.trans owned)
   subst ownerEq
-  have rawTrace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+  have rawTrace : ((application setup timeouts leaks).protocol (initialDistribution setup) horizon
     scheduler).Trace
       (some control) :=
-    (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon scheduler
+    (bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup) horizon scheduler
       prior
   have facts := legalFacts setup leaks horizon scheduler control rawTrace
   have ready : control.execution.application.config.cut.Ready event :=

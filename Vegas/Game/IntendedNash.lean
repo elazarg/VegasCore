@@ -102,7 +102,7 @@ law of terminal store and payoff, and no reveal fails on any history it
 reaches. -/
 theorem intended_forfeit_isεNash_preserved [Finite Player]
     (admission : CommitmentInterface setup.program)
-    (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw]
+    (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialSupport]
     (wellFormed : setup.WellFormed) {Parameter : Type}
     (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
@@ -245,7 +245,7 @@ paths preserve the joint typed-readout/payoff law and have no public defaults
 or failed reveals. -/
 theorem intended_isεNash_preserved [Finite Player]
     (admission : CommitmentInterface setup.program)
-    (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw]
+    (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialSupport]
     (wellFormed : setup.WellFormed) {Parameter : Type}
     (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)

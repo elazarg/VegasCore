@@ -2,7 +2,7 @@ module
 
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-public import Vegas.Source.ConditionedInitialLaw
+public import Vegas.Source.ConditionedInitialDistribution
 
 @[expose] public section
 
@@ -39,7 +39,7 @@ theorem intended_trace_positive
 theorem conditionInitial_trace_injective
     (setup : Setup (Player := Player) (L := L)) {Signal : Type*}
     (signal : State L setup.context → Signal) (value : Signal)
-    (supported : value ∈ (setup.initialLaw.map signal).support) :
+    (supported : value ∈ (setup.initialDistribution.map signal).support) :
     ∀ {state : setup.ProtocolState}
       (first second : (setup.conditionInitial signal value).intendedProtocol.Trace state),
       setup.conditionInitial_trace signal value supported first =
@@ -61,7 +61,7 @@ theorem conditionInitial_trace_injective
 theorem conditionInitial_history_injective
     (setup : Setup (Player := Player) (L := L)) {Signal : Type*}
     (signal : State L setup.context → Signal) (value : Signal)
-    (supported : value ∈ (setup.initialLaw.map signal).support) :
+    (supported : value ∈ (setup.initialDistribution.map signal).support) :
     Function.Injective (setup.conditionInitial_history signal value supported) := by
   rintro ⟨firstState, first⟩ ⟨secondState, second⟩ same
   have states : firstState = secondState := congrArg (·.state) same

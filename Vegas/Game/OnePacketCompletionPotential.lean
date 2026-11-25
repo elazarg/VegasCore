@@ -2,7 +2,7 @@ module
 
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-public import Vegas.Game.OnePacketCompletionLaw
+public import Vegas.Game.OnePacketCompletionDistribution
 public import Vegas.Game.OnePacketLateBadMass
 public import Vegas.Game.OnePacketLateLumping
 public import Vegas.Game.OnePacketLateSuccess
@@ -26,7 +26,7 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 local notation "E" => ReactiveApplication.ResponseMenu.protocol
-  (bounds.onePacketMenu timeouts leaks) (initialLaw setup) horizon scheduler
+  (bounds.onePacketMenu timeouts leaks) (initialDistribution setup) horizon scheduler
 
 open Classical in
 /-- On any actual law supported on completed events, missing intended completion
@@ -81,15 +81,16 @@ theorem completionPoint_badMass_eq_lateBadStop
 section CommitmentValues
 
 variable (setup timeouts leaks bounds horizon scheduler)
-  [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
+  [(application setup timeouts leaks).FiniteNature (initialDistribution setup) scheduler]
   {Parameter : Type} (parameter : State L setup.context → Parameter)
   (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
   (excludedPayoff : Player → ℝ)
-  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds
+    (initialDistribution setup) horizon
     scheduler).InfoState who)]
 
 local notation "onePacketN" =>
-  onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+  onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
 
 open Classical in
 /-- **The value of committing a choice at a site history.** The expected source
@@ -98,7 +99,7 @@ the history's configuration decodes to after `rank` events, when that point is a
 point of the intended game; the exclusion payoff otherwise. -/
 def decodedCommitValue (profile : BehavioralProfile setup.program) (who : Player) (rank : Nat)
     (choice : Option (OwnAction Player L))
-    (history : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup)
+    (history : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup)
       horizon scheduler).History) : ℝ :=
   match history.state with
   | none => excludedPayoff who

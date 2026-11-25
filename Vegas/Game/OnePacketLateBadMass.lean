@@ -39,7 +39,7 @@ open Classical in
 completion point. -/
 def lateBadStop (rank : Nat) (fresh : (application setup timeouts leaks).Control → Prop)
     (event : setup.informationGraph.EventId)
-    (stop : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (stop : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).History) : ℝ :=
   if (∃ control, stop.state = some control ∧
       event ∈ control.execution.application.config.cut.completed ∧
@@ -49,17 +49,18 @@ def lateBadStop (rank : Nat) (fresh : (application setup timeouts leaks).Control
 
 open Classical in
 /-- **The bad mass at a late binding.** Under the hypotheses of
-`Vegas.lateBinding_completionPointLaw` without value-free success, the mass of
+`Vegas.lateBinding_CompletionPointApproximation` without value-free success, the mass of
 bad stops of play until the event completes is at most the cube of the scale
 per step of the horizon. -/
 theorem lateBinding_badMass
-    [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
+    [(application setup timeouts leaks).FiniteNature (initialDistribution setup) scheduler]
     (covers : bounds.CoversOutputValues) (capacity : 1 ≤ bounds.candidateCount)
     (assessment : setup.intendedModel.BehavioralAssessment) {scale : ℝ} (positive : 0 < scale)
     (le_one : scale ≤ 1) {slots : Nat} (slotsLe : slots ≤ bounds.candidateCount)
-    (installed : ∀ player, (onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+    (installed : ∀ player, (onePacketModel setup timeouts leaks bounds
+      (initialDistribution setup) horizon
       scheduler).BehavioralPolicy player)
-    (start : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (start : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).History)
     {remaining : Nat} {who : Player} {execution : (application setup timeouts leaks).Execution}
     (current : start.state = some ⟨remaining, some who, execution⟩)
@@ -74,7 +75,7 @@ theorem lateBinding_badMass
     {point : ProtocolState setup.program}
     (decoded : sourceServicePrefix? setup rank execution.application.config = some point)
     (terminalCompleted : ∀ (final : (application setup timeouts leaks).Control),
-      ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+      ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
         scheduler).Trace (some final) →
       (application setup timeouts leaks).terminal (some final) →
       final.execution.application.config = execution.application.config →
@@ -85,22 +86,25 @@ theorem lateBinding_badMass
       ¬ StoreEventFailed control.execution.application.config.store event)
     (shape : LateOwnerShapeFrom setup timeouts leaks bounds horizon scheduler assessment positive.le
       le_one slots installed who event execution) :
-    expect ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+    expect ((onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon
         scheduler).runBehavioralUntil
-        ((bounds.onePacketMenu timeouts leaks).bounded (initialLaw setup) horizon
+        ((bounds.onePacketMenu timeouts leaks).bounded (initialDistribution setup) horizon
           scheduler).wellFoundedHistories installed
         (LateStopped setup timeouts leaks bounds horizon scheduler rank) start)
         (lateBadStop setup timeouts leaks bounds horizon scheduler rank fresh event) ≤
       scale ^ 3 * (2 * horizon + 1) := by
   let menu := bounds.onePacketMenu timeouts leaks
-  let model := onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon scheduler
-  let certificate := (menu.bounded (initialLaw setup) horizon scheduler).wellFoundedHistories
+  let model := onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon
+    scheduler
+  let certificate := (menu.bounded (initialDistribution setup) horizon
+    scheduler).wellFoundedHistories
   let bad := lateBadStop setup timeouts leaks bounds horizon scheduler rank fresh event
   have badBounded : ∀ stop, |bad stop| ≤ 1 := by
     intro stop
     simp only [bad, lateBadStop]
     split <;> norm_num
-  have committed : ∀ (history : (menu.protocol (initialLaw setup) horizon scheduler).History)
+  have committed : ∀ (history : (menu.protocol (initialDistribution setup) horizon
+    scheduler).History)
       (later : Nat) (reached : (application setup timeouts leaks).Execution),
       history.state = some ⟨later, some who, reached⟩ →
       LateUnsent setup timeouts leaks who event execution.application.config (execution.logs who)
@@ -118,7 +122,7 @@ theorem lateBinding_badMass
         ∃ factor : ℝ, ∀ choice ∈ (asIfHonestProfile setup timeouts leaks assessment who
             (some (reached.logs who, reached.observe (application setup timeouts leaks)
               who))).support,
-          ∀ next : (menu.protocol (initialLaw setup) horizon scheduler).History,
+          ∀ next : (menu.protocol (initialDistribution setup) horizon scheduler).History,
             next.state = some ⟨later, none, reached.respond (application setup timeouts leaks) who
               (slotResponse setup timeouts leaks who (reached.logs who)
                 (reached.observe (application setup timeouts leaks) who) event slot choice)⟩ →
@@ -131,7 +135,7 @@ theorem lateBinding_badMass
       rw [state] at unsent
       exact unsent.1
     refine ⟨0, fun choice member next nextState => ?_⟩
-    have traceHere : (menu.protocol (initialLaw setup) horizon scheduler).Trace
+    have traceHere : (menu.protocol (initialDistribution setup) horizon scheduler).Trace
         (some ⟨later, some who, reached⟩) := state ▸ history.trace
     obtain ⟨readyHere, orderedHere, decodedHere, turnHere⟩ := lateUnsent_facts (timeouts :=
       timeouts) turn ordered
@@ -162,7 +166,7 @@ theorem lateBinding_badMass
     have acts : ∀ player, ProtocolView.actor player setup.program
         (ProtocolState.observe player setup.program point) = some who := fun player =>
       (decodedPoint_actor_of_history player
-        (menu.toRawTrace (initialLaw setup) horizon scheduler traceHere) readyHere
+        (menu.toRawTrace (initialDistribution setup) horizon scheduler traceHere) readyHere
           pointDecoded).trans owned
     obtain ⟨stepTarget, stepEq⟩ := ProtocolState.step_eq_pure_of_actor who who setup.program
       point (fun _ => some source) (acts who)

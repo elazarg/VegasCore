@@ -27,17 +27,17 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {utility : Parameter × PublicOutcome setup.program → Player → ℝ}
   {excludedPayoff : Player → ℝ}
 
-local notation "Initial" => initialLaw setup
+local notation "Initial" => initialDistribution setup
 local notation "app" => application setup timeouts leaks
 local notation "one" => bounds.onePacketMenu timeouts leaks
 local notation "raw" => bounds.rawMenu timeouts leaks
 local notation "N" => onePacketModel setup timeouts leaks bounds Initial horizon scheduler
 local notation "R" => ReactiveApplication.ResponseMenu.information
-  (bounds.rawMenu timeouts leaks) (initialLaw setup) horizon scheduler
+  (bounds.rawMenu timeouts leaks) (initialDistribution setup) horizon scheduler
 local notation "EP" => ReactiveApplication.ResponseMenu.protocol
-  (bounds.onePacketMenu timeouts leaks) (initialLaw setup) horizon scheduler
+  (bounds.onePacketMenu timeouts leaks) (initialDistribution setup) horizon scheduler
 local notation "RP" => ReactiveApplication.ResponseMenu.protocol
-  (bounds.rawMenu timeouts leaks) (initialLaw setup) horizon scheduler
+  (bounds.rawMenu timeouts leaks) (initialDistribution setup) horizon scheduler
 
 /-- Every represented raw continuation is free of audit charges and retains
 the complete normalized terminal history jointly with its realized settlement. -/
@@ -112,7 +112,7 @@ theorem intendedOpening_continuation_clean
     (intended : ∀ who, setup.intendedModel.BehavioralPolicy who)
     (point : ProtocolState setup.program) (reached : IntendedReached setup point)
     (terminal : Config Player L setup.program.terminalCtx)
-    (supported : terminal ∈ (setup.continuationLaw
+    (supported : terminal ∈ (setup.continuationDistribution
       (setup.intendedOpeningProfile intended) (some point)).support) :
     terminal.defaulted = ∅ ∧
       ∀ who, failedReveals setup.program who (publicOutcome setup.program terminal) = 0 := by
@@ -120,7 +120,7 @@ theorem intendedOpening_continuation_clean
   obtain ⟨history, state⟩ := reached
   have law := setup.intendedOpeningProfile_runFrom wellFormed intended
     (setup.protocolRemaining history.state) history le_rfl
-  have observed : some terminal ∈ ((setup.continuationLaw
+  have observed : some terminal ∈ ((setup.continuationDistribution
       (setup.intendedOpeningProfile intended) history.state).map some).support := by
     rw [state]
     exact (PMF.mem_support_map_iff _ _ _).mpr ⟨terminal, supported, rfl⟩
@@ -150,7 +150,8 @@ theorem ClientAssessmentRefinement.continuation_source_settlement
     (valid : ProtocolState.Intended setup.program point) :
     ((raw).runFrom Initial horizon scheduler target.strategy rawStart).bind
         (fun final => spec.observation final.state) =
-      (setup.continuationLaw (setup.intendedOpeningProfile intended.strategy) (some point)).map
+      (setup.continuationDistribution (setup.intendedOpeningProfile intended.strategy)
+        (some point)).map
         (fun terminal => (some terminal, utility (setup.parameterOutcome parameter terminal))) := by
   have settled := (refinement.continuation_settlement spec nativeStart rawStart same).2
   have projected := congrArg (PMF.map (fun output =>
@@ -167,7 +168,8 @@ theorem ClientAssessmentRefinement.continuation_source_settlement
       sourceReadout setup timeouts leaks
         ((bounds.onePacketRestriction timeouts leaks Initial horizon scheduler).history
           history).state = sourceReadout setup timeouts leaks history.state := rfl
-  have nativeLaw := refinement.fidelity.continuation_jointLaw parameter utility excludedPayoff
+  have nativeDistribution := refinement.fidelity.continuation_jointDistribution parameter utility
+    excludedPayoff
     rank nativeStart anchor state boundary point decoded valid
   have readoutJoint :
       ((raw).runFrom Initial horizon scheduler target.strategy rawStart).bind
@@ -183,7 +185,7 @@ theorem ClientAssessmentRefinement.continuation_source_settlement
           exclusionBase setup timeouts parameter utility excludedPayoff leaks final.state))
     simpa only [PMF.map_bind, PMF.map_comp, Function.comp_def, normalRead,
       retainedRead] using projected
-  refine readoutJoint.trans (nativeLaw.trans ?_)
+  refine readoutJoint.trans (nativeDistribution.trans ?_)
   apply map_congr_on_support
   intro terminal supported
   have reached := intendedReached_of_reachedBoundary spec.wellFormed rank nativeStart anchor
@@ -225,7 +227,8 @@ theorem ClientAssessmentRefinement.continuation_source_clean
   have readoutLaw :
       ((raw).runFrom Initial horizon scheduler target.strategy rawStart).map
         (fun final => sourceReadout setup timeouts leaks final.state) =
-      (setup.continuationLaw (setup.intendedOpeningProfile intended.strategy) (some point)).map
+      (setup.continuationDistribution (setup.intendedOpeningProfile intended.strategy)
+        (some point)).map
         some := by
     have projected := congrArg (PMF.map Prod.fst) settled
     have forgetSettlement (final : (RP).History) :
@@ -245,7 +248,7 @@ theorem ClientAssessmentRefinement.continuation_source_clean
     state boundary point decoded valid
   intro final supported
   have observed : sourceReadout setup timeouts leaks final.state ∈
-      ((setup.continuationLaw (setup.intendedOpeningProfile intended.strategy)
+      ((setup.continuationDistribution (setup.intendedOpeningProfile intended.strategy)
         (some point)).map some).support := by
     rw [← readoutLaw]
     exact (PMF.mem_support_map_iff _ _ _).mpr ⟨final, supported, rfl⟩
@@ -288,10 +291,11 @@ theorem ClientAssessmentRefinement.physical_continuation_source_settlement
     ((app).finish Initial horizon scheduler
       ((raw).decodeProfile Initial horizon scheduler target.strategy) rawStart.state).bind
         spec.observation =
-      (setup.continuationLaw (setup.intendedOpeningProfile intended.strategy) (some point)).map
+      (setup.continuationDistribution (setup.intendedOpeningProfile intended.strategy)
+        (some point)).map
         (fun terminal => (some terminal, utility (setup.parameterOutcome parameter terminal))) := by
   have physical := congrArg (fun law => law.bind spec.observation)
-    ((raw).runFrom_stateLaw Initial horizon scheduler target.strategy rawStart)
+    ((raw).runFrom_stateDistribution Initial horizon scheduler target.strategy rawStart)
   rw [PMF.bind_map] at physical
   exact physical.symm.trans (refinement.continuation_source_settlement spec nativeStart rawStart
     same rank anchor state boundary point decoded valid)
@@ -313,7 +317,8 @@ theorem ClientAssessmentRefinement.physical_continuation_noCharges
     (who : Player) :
     TerminalAudit.charge (app).stateTraffic
       ((countAudit timeouts) leaks spec.evidenceService.sample) outcome who = 0 := by
-  rw [← (raw).runFrom_stateLaw Initial horizon scheduler target.strategy rawStart] at supported
+  rw [← (raw).runFrom_stateDistribution Initial horizon scheduler target.strategy rawStart]
+    at supported
   obtain ⟨final, member, current⟩ := (PMF.mem_support_map_iff _ _ _).mp supported
   rw [← current]
   exact (refinement.continuation_settlement spec nativeStart rawStart same).1 final member who
@@ -344,7 +349,8 @@ theorem ClientAssessmentRefinement.physical_continuation_source_clean
       sourceReadout setup timeouts leaks outcome = some terminal ∧
       control.execution.application.config.defaulted = ∅ ∧
       (∀ who, failedReveals setup.program who (publicOutcome setup.program terminal) = 0) := by
-  rw [← (raw).runFrom_stateLaw Initial horizon scheduler target.strategy rawStart] at supported
+  rw [← (raw).runFrom_stateDistribution Initial horizon scheduler target.strategy rawStart]
+    at supported
   obtain ⟨final, member, current⟩ := (PMF.mem_support_map_iff _ _ _).mp supported
   simpa only [current] using refinement.continuation_source_clean spec nativeStart rawStart same
     rank anchor state boundary point decoded valid final member

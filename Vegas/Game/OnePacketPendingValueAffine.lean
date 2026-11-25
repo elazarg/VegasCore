@@ -24,10 +24,10 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (bounds : MessageBounds setup.informationGraph) (horizon : Nat)
   (scheduler : (application setup timeouts leaks).Scheduler)
 
-local notation "N" => onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+local notation "N" => onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon
   scheduler
 local notation "NP" => ReactiveApplication.ResponseMenu.protocol
-  (bounds.onePacketMenu timeouts leaks) (initialLaw setup) horizon scheduler
+  (bounds.onePacketMenu timeouts leaks) (initialDistribution setup) horizon scheduler
 local notation "Menu" => bounds.onePacketMenu timeouts leaks
 local notation "Clear" => ReactiveApplication.stateInvariant
   (app := application setup timeouts leaks)
@@ -38,19 +38,19 @@ open Classical in
 /-- The actual common continuation factors through the current event, with
 uniform source-potential and physical completion errors. -/
 theorem pending_value_affine_of_boundary_values
-    [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
+    [(application setup timeouts leaks).FiniteNature (initialDistribution setup) scheduler]
     [∀ who, DecidableEq ((N).InfoState who)]
     (wellFormed : setup.WellFormed) (covers : bounds.CoversOutputValues)
     (capacity : ∀ player, bindingEventCount setup.informationGraph player < bounds.candidateCount)
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (scale : ℕ → ℝ) (positive : ∀ n, 0 < scale n) (le_one : ∀ n, scale n ≤ 1)
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialDistribution setup)
       horizon scheduler bounds.candidateCount p))
     (targetSequence : ℕ → (N).BehavioralAssessment)
     (assembled : OnePacketAssembled setup timeouts leaks bounds horizon scheduler sequence scale
       positive le_one weights targetSequence) (n : ℕ)
     (terminalCompletes : ∀ (final : (application setup timeouts leaks).Control),
-      ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+      ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
         scheduler).Trace (some final) →
       final.execution.application.config.defaulted = ∅ →
       (application setup timeouts leaks).terminal (some final) →
@@ -73,7 +73,7 @@ theorem pending_value_affine_of_boundary_values
       law = onePacketLate setup timeouts leaks bounds horizon scheduler sequence scale
         positive
         le_one n ((N).agentAt site) option) ∨
-      law = PMF.pure (silenceChoice setup timeouts leaks bounds (initialLaw setup) horizon
+      law = PMF.pure (silenceChoice setup timeouts leaks bounds (initialDistribution setup) horizon
         scheduler
         who site.1))
     {Parameter : Type} (parameter : State L setup.context → Parameter)
@@ -84,7 +84,7 @@ theorem pending_value_affine_of_boundary_values
     (excludedBounded : |excludedPayoff who| ≤ payoffBound)
     (boundaryError : ℝ) (boundaryErrorNonneg : 0 ≤ boundaryError) :
     let common := (targetSequence n).strategy
-    let certificate := ((Menu).bounded (initialLaw setup) horizon
+    let certificate := ((Menu).bounded (initialDistribution setup) horizon
       scheduler).wellFoundedHistories
     let installed := Profile.update (sig := (N).behavioralSignature) common who
       ((common who).withLaw site.1 law)
@@ -133,9 +133,9 @@ theorem pending_value_affine_of_boundary_values
   subst recallEq
   subst observeEq
   let menu := bounds.onePacketMenu timeouts leaks
-  have trace : (menu.protocol (initialLaw setup) horizon scheduler).Trace
+  have trace : (menu.protocol (initialDistribution setup) horizon scheduler).Trace
       (some ⟨remaining, some who, execution⟩) := current ▸ history.1.trace
-  have rawTrace := menu.toRawTrace (initialLaw setup) horizon scheduler trace
+  have rawTrace := menu.toRawTrace (initialDistribution setup) horizon scheduler trace
   have pendingAt := pending
   rw [atSite] at pendingAt
   obtain ⟨turn, readyView, owned, _⟩ := pendingEvent_spec (timeouts := timeouts) pendingAt
@@ -200,13 +200,13 @@ open Classical in
 /-- The actual common continuation factors through the current event, with
 uniform source-potential and physical completion errors. -/
 theorem assembled_pending_value_affine
-    [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
+    [(application setup timeouts leaks).FiniteNature (initialDistribution setup) scheduler]
     [∀ who, DecidableEq ((N).InfoState who)]
     (wellFormed : setup.WellFormed) (covers : bounds.CoversOutputValues)
     (capacity : ∀ player, bindingEventCount setup.informationGraph player < bounds.candidateCount)
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (scale : ℕ → ℝ) (positive : ∀ n, 0 < scale n) (le_one : ∀ n, scale n ≤ 1)
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialDistribution setup)
       horizon scheduler bounds.candidateCount p))
     (targetSequence : ℕ → (N).BehavioralAssessment)
     (assembled : OnePacketAssembled setup timeouts leaks bounds horizon scheduler sequence scale
@@ -241,7 +241,7 @@ theorem assembled_pending_value_affine
       law = onePacketLate setup timeouts leaks bounds horizon scheduler sequence scale
         positive
         le_one n ((N).agentAt site) option) ∨
-      law = PMF.pure (silenceChoice setup timeouts leaks bounds (initialLaw setup) horizon
+      law = PMF.pure (silenceChoice setup timeouts leaks bounds (initialDistribution setup) horizon
         scheduler
         who site.1))
     {Parameter : Type} (parameter : State L setup.context → Parameter)
@@ -251,7 +251,7 @@ theorem assembled_pending_value_affine
       |exclusionReadoutUtility setup parameter utility excludedPayoff readout who| ≤ payoffBound)
     (excludedBounded : |excludedPayoff who| ≤ payoffBound) :
     let common := (targetSequence n).strategy
-    let certificate := ((Menu).bounded (initialLaw setup) horizon
+    let certificate := ((Menu).bounded (initialDistribution setup) horizon
       scheduler).wellFoundedHistories
     let installed := Profile.update (sig := (N).behavioralSignature) common who
       ((common who).withLaw site.1 law)

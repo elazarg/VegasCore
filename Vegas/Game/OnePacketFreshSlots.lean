@@ -311,11 +311,12 @@ owner commits to it. -/
 theorem preparedFresh_history (horizon : Nat) (scheduler : (application setup timeouts
   leaks).Scheduler)
     {control : (application setup timeouts leaks).Control}
-    (trace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((application setup timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace
       (some control)) :
     PreparedFresh control.execution.application control.execution.network.inputs :=
-  ((freshFacts_serviceInvariant (timeouts := timeouts) scheduler).history (initialLaw setup) horizon
+  ((freshFacts_serviceInvariant (timeouts := timeouts) scheduler).history
+    (initialDistribution setup) horizon
     (fun state supported => by
       obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ supported
       refine ⟨settledFacts_initial _, fun owner serial => ?_⟩

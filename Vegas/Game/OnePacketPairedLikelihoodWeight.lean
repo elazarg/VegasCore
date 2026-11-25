@@ -70,7 +70,8 @@ theorem upperSourceWeight_le_of_paired_responses
       0 < steps.mass n (operationalState setup timeouts leaks before)
         (operationalState setup timeouts leaks after))
     (n : ℕ) {ι K₁ ε : ℝ} (ιPos : 0 < ι)
-    (initialFloored : ∀ state ∈ (initialLaw setup).support, ι ≤ (initialLaw setup state).toReal)
+    (initialFloored : ∀ state ∈ (initialDistribution setup).support, ι ≤
+      (initialDistribution setup state).toReal)
     (K₁Nonneg : 0 ≤ K₁) (εNonneg : 0 ≤ ε)
     {final imageFinal : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).State}
     (top : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace final)
@@ -196,7 +197,7 @@ theorem upperSourceWeight_le_of_paired_responses
                 cases imageAfter with
                 | none => cases afterEq
                 | some imageFirst =>
-                    change some imageFirst ∈ ((initialLaw setup).map fun state => some
+                    change some imageFirst ∈ ((initialDistribution setup).map fun state => some
                       (⟨horizon, none, ReactiveApplication.Execution.initial
                         (application setup timeouts leaks) state⟩ :
                           (application setup timeouts leaks).Control)).support at imageRealized
@@ -208,16 +209,16 @@ theorem upperSourceWeight_le_of_paired_responses
                     simp only [show RegularStep setup timeouts leaks bounds horizon scheduler
                       (sequence n)
                       who none joint (some first) from trivial, ↓reduceIte]
-                    change (initialLaw setup first.execution.application).toReal ≤
-                      K * (initialLaw setup imageFirst.execution.application).toReal
+                    change (initialDistribution setup first.execution.application).toReal ≤
+                      K * (initialDistribution setup imageFirst.execution.application).toReal
                     rw [applicationEq]
-                    calc (initialLaw setup first.execution.application).toReal ≤ 1 :=
+                    calc (initialDistribution setup first.execution.application).toReal ≤ 1 :=
                           ENNReal.toReal_le_of_le_ofReal zero_le_one
                             (by rw [ENNReal.ofReal_one]; exact PMF.coe_le_one _ _)
-                      _ ≤ 1 / ι * (initialLaw setup drawn).toReal := by
+                      _ ≤ 1 / ι * (initialDistribution setup drawn).toReal := by
                           rw [div_mul_eq_mul_div, one_mul, le_div_iff₀ ιPos, one_mul]
                           exact initialFloored drawn drawnMember
-                      _ ≤ K * (initialLaw setup drawn).toReal :=
+                      _ ≤ K * (initialDistribution setup drawn).toReal :=
                           mul_le_mul_of_nonneg_right inverseInitial ENNReal.toReal_nonneg
     | some control =>
         cases imageBefore with

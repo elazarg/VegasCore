@@ -2,7 +2,7 @@ module
 
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-public import Vegas.Game.OnePacketOpeningLaw
+public import Vegas.Game.OnePacketOpeningDistribution
 
 @[expose] public section
 
@@ -53,7 +53,8 @@ theorem controlStep_recall {horizon : Nat} {scheduler : (application setup timeo
     (players : Player → (application setup timeouts leaks).Policy)
     (control : (application setup timeouts leaks).Control) {next : (application setup timeouts
       leaks).ProtocolState}
-    (member : next ∈ ((application setup timeouts leaks).controlStep (initialLaw setup) horizon
+    (member : next ∈ ((application setup timeouts leaks).controlStep
+      (initialDistribution setup) horizon
       scheduler
       players (some control)).support) (who : Player) :
     ∃ control', next = some control' ∧
@@ -100,7 +101,8 @@ theorem siteConsistent_step {horizon : Nat} {scheduler : (application setup time
       leaks).ProtocolState}
     (consistent : SiteConsistent (timeouts := timeouts) who info state) {next : (application setup
       timeouts leaks).ProtocolState}
-    (member : next ∈ ((application setup timeouts leaks).controlStep (initialLaw setup) horizon
+    (member : next ∈ ((application setup timeouts leaks).controlStep
+      (initialDistribution setup) horizon
       scheduler
       players state).support) :
     SiteConsistent (timeouts := timeouts) who info next := by

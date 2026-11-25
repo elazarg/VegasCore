@@ -62,7 +62,7 @@ theorem honest_settles (base : (serviceGraph setup deps).BehavioralProfile)
   have honest : owner ≠ who := fun same => foreign (same ▸ owned)
   obtain ⟨value, stepEq, _⟩ := honest_complete_records (who := who) ready node honest inactive
   refine Settles.of_step ready (Or.inl publication) (Or.inl foreign) ?_ stepEq
-  rw [actionLaw_of_actor _ _ ownedNode, dite_eq_right inactive]
+  rw [actionDistribution_of_actor _ _ ownedNode, dite_eq_right inactive]
   exact decides config event owner payload binding checks outputEq codeEq node owned inactive
 
 /-- **The closure completes what does not wait for the active deviator.** In a

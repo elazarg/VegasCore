@@ -237,11 +237,12 @@ its initial law. -/
 theorem actorRecord_history (profile : BehavioralProfile setup.program) (horizon : Nat)
     (scheduler : (application setup timeouts leaks).Scheduler)
     {control : (application setup timeouts leaks).Control}
-    (trace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((application setup timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace
       (some control)) :
     ActorRecord (timeouts := timeouts) profile control.execution :=
-  (actorRecord_serviceInvariant (timeouts := timeouts) profile scheduler).history (initialLaw setup)
+  (actorRecord_serviceInvariant (timeouts := timeouts) profile scheduler).history
+    (initialDistribution setup)
     horizon
     (fun state supported => by
       obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ supported
@@ -262,7 +263,7 @@ completed by an accepted packet of the player, since otherwise it would owe a
 failure. -/
 theorem onePacket_silent_of_pending (horizon : Nat)
     (scheduler : (application setup timeouts leaks).Scheduler) (owner : Player)
-    (history : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (history : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).History)
     (forced : ForcedState setup timeouts leaks owner history.state)
     {control : (application setup timeouts leaks).Control} (current : history.state = some control)
@@ -280,8 +281,8 @@ theorem onePacket_silent_of_pending (horizon : Nat)
     silent | ⟨material, _, permitted⟩
   · exact silent
   exfalso
-  have trace : (app.protocol (initialLaw setup) horizon scheduler).Trace (some control) :=
-    current ▸ (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon
+  have trace : (app.protocol (initialDistribution setup) horizon scheduler).Trace (some control) :=
+    current ▸ (bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup) horizon
       scheduler history.trace
   rw [current] at forced
   obtain ⟨rank, point, ordered, decoded, forcedPoint⟩ := forced

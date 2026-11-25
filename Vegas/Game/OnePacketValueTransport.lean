@@ -32,7 +32,7 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 local notation "onePacketN" =>
-  onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+  onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
 
 /-- **Regular histories owe nothing.** For a well-formed setup, at a forced
 decision site of who, a regular history along which who's own completions decode
@@ -42,7 +42,8 @@ theorem not_owesFailure_of_regular (wellFormed : setup.WellFormed)
     {site : (onePacketN).InformationSite who} {past : List (application setup timeouts
       leaks).PlayerEntry}
     {view : (application setup timeouts leaks).PlayerView} (atSite : site.1 = some (past, view))
-    (forced : forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks) (initialLaw
+    (forced : forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks)
+      (initialDistribution
       setup) horizon
       scheduler who site.1)
     (history : (onePacketN).InformationHistory who site.1)
@@ -104,7 +105,7 @@ of `profile` at every point of the intended game lies in
 theorem sourcePointValue_mem_Icc (profile : BehavioralProfile setup.program) (who : Player)
     (upper : ℝ) (le_upper : ∀ outcome, utility outcome who ≤ upper)
     (below : ∀ point, IntendedReached setup point →
-      ∀ terminal ∈ (ProtocolState.continuationLaw setup.program profile point).support,
+      ∀ terminal ∈ (ProtocolState.continuationDistribution setup.program profile point).support,
         excludedPayoff who ≤ utility (setup.parameterOutcome parameter terminal) who)
     (point : ProtocolState setup.program)
     (reachedPoint : IntendedReached setup point) :
@@ -114,7 +115,8 @@ theorem sourcePointValue_mem_Icc (profile : BehavioralProfile setup.program) (wh
   classical
   unfold sourcePointValue
   rw [expect_map]
-  have within : ∀ terminal ∈ (ProtocolState.continuationLaw setup.program profile point).support,
+  have within : ∀ terminal ∈ (ProtocolState.continuationDistribution setup.program profile
+    point).support,
       excludedPayoff who ≤ exclusionReadoutUtility setup parameter utility excludedPayoff
         (some terminal) who ∧
       exclusionReadoutUtility setup parameter utility excludedPayoff (some terminal) who ≤
@@ -130,7 +132,7 @@ theorem sourcePointValue_mem_Icc (profile : BehavioralProfile setup.program) (wh
     · exact ⟨below point reachedPoint terminal member,
         (le_upper _).trans (le_max_right _ _)⟩
   rw [expect_congr_on_support (g := fun terminal =>
-    if terminal ∈ (ProtocolState.continuationLaw setup.program profile point).support then
+    if terminal ∈ (ProtocolState.continuationDistribution setup.program profile point).support then
       exclusionReadoutUtility setup parameter utility excludedPayoff (some terminal) who
     else excludedPayoff who) (fun terminal member => by rw [ite_eq_left member ..]; rfl)]
   apply expect_mem_Icc
@@ -153,7 +155,7 @@ theorem excludedPayoff_le_of_reached [Finite Player] (wellFormed : setup.WellFor
     (intended : ∀ who, setup.intendedModel.BehavioralPolicy who)
     (point : ProtocolState setup.program) (reachedPoint : IntendedReached setup point)
     (who : Player) :
-    ∀ terminal ∈ (ProtocolState.continuationLaw setup.program
+    ∀ terminal ∈ (ProtocolState.continuationDistribution setup.program
         (setup.intendedOpeningProfile intended) point).support,
       excludedPayoff who ≤ utility (setup.parameterOutcome parameter terminal) who := by
   have := Fintype.ofFinite Player
@@ -161,7 +163,8 @@ theorem excludedPayoff_le_of_reached [Finite Player] (wellFormed : setup.WellFor
   intro terminal member
   have law := setup.intendedOpeningProfile_runFrom wellFormed intended
     (setup.protocolRemaining history.state) history le_rfl
-  have readout : some terminal ∈ ((setup.continuationLaw (setup.intendedOpeningProfile intended)
+  have readout : some terminal ∈ ((setup.continuationDistribution
+    (setup.intendedOpeningProfile intended)
       history.state).map some).support := by
     rw [state]
     exact (PMF.mem_support_map_iff _ _ _).mpr ⟨terminal, member, rfl⟩

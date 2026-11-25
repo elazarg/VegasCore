@@ -29,14 +29,14 @@ abbrev outputLayout : Fin 6 → EventField Bool simpleExpr :=
 
 abbrev layout := fieldLayout inputLayout outputLayout
 
-def coinLaw : RationalLaw Bool where
+def coinDistribution : RationalDistribution Bool where
   entries := [(false, 1 / 2), (true, 1 / 2)]
   normalized := by norm_num
 
 def coin : EventCode layout (.publicData .bool) :=
   .sample (L := simpleExpr) BaseTy.bool {
     schema := []
-    code := .weighted coinLaw
+    code := .weighted coinDistribution
     reads := fun ref => nomatch ref
     readFields := ∅
     reads_mem := fun ref => nomatch ref
@@ -75,7 +75,7 @@ theorem calendarLength : (rosterPlan graph (ownerRoster graph)).length = 38 := b
 
 theorem contract (input : PMF graph.Inputs) :
     AsyncContract (rosterTimeouts graph) leaks
-      (rosterInitialLaw graph input) 38
+      (rosterInitialDistribution graph input) 38
       (readyRosterScheduler graph leaks (ownerRoster graph) network)
       (fun event => event.val) (fun _ => 0) := by
   rw [← calendarLength]
@@ -83,7 +83,7 @@ theorem contract (input : PMF graph.Inputs) :
 
 /-- One policy realizes all six physical prefixes for any raw deviation of the
 owner of the five bindings, including deviations after seeing the coin. -/
-theorem deviation_prefix_law (inputs : PMF graph.Inputs)
+theorem deviation_prefix_distribution (inputs : PMF graph.Inputs)
     (reference : graph.sequentialize.BehavioralProfile)
     (deviation : (rosterApplication graph leaks).Policy) :
     let scheduler := readyRosterScheduler graph leaks (ownerRoster graph) network
@@ -100,7 +100,8 @@ theorem deviation_prefix_law (inputs : PMF graph.Inputs)
   have actors : ∀ event : graph.sequentialize.EventId,
       graph.sequentialize.actor? event = none ∨ graph.sequentialize.actor? event = some false := by
     decide
-  obtain ⟨policy, prefixes, _⟩ := singleOwner_deviation_config_law (rosterTimeouts graph) leaks
+  obtain ⟨policy, prefixes, _⟩ := singleOwner_deviation_config_distribution
+    (rosterTimeouts graph) leaks
     scheduler (fun _ => 0) 1 (EventGraphRuntime.firstTurnTiming graph.sequentialize 1) reference
     false deviation inputs 38 (contract inputs).completes actors
   exact ⟨policy, prefixes⟩

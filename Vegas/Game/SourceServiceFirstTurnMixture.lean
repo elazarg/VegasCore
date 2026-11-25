@@ -78,7 +78,7 @@ theorem canonicalServiceDecision_transmits_of_effective {horizon : Nat}
     {scheduler : ((reactiveApplication timeouts) leaks).Scheduler}
     (control : ((reactiveApplication timeouts) leaks).Control)
     (trace : (((reactiveApplication timeouts) leaks).protocol
-      (serviceInitialLaw setup deps) horizon scheduler).Trace
+      (serviceInitialDistribution setup deps) horizon scheduler).Trace
       (some control))
     (owner : Player) (event : (serviceGraph setup deps).EventId)
     (turn : control.execution.application.publicView.ownTurn? owner = some event)
@@ -91,8 +91,9 @@ theorem canonicalServiceDecision_transmits_of_effective {horizon : Nat}
         some material := by
   apply EventGraphRuntime.canonicalServiceDecision_transmits_of_effective timeouts control
     (horizon := horizon) (scheduler := scheduler)
-    (inputs := setup.initialLaw.map setup.eventInputs) _ owner event turn action effective loud
-  rwa [← serviceInitialLaw_eq_inputs setup]
+    (inputs := setup.initialDistribution.map setup.eventInputs) _ owner event turn action effective
+      loud
+  rwa [← serviceInitialDistribution_eq_inputs setup]
 
 end Transmission
 

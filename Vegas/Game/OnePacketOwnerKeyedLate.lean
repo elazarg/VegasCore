@@ -14,7 +14,7 @@ of which `who` owes a failure, the owner swap between their views sends the
 first site's information state to the second's (`Vegas.ownerSwap_info`), so in
 a well-formed setup with hidden initial cells independent given an observed
 public initial signal their base laws agree
-on every payoff of the operational record (`Vegas.ownerSwap_baseLawAgrees_late`).
+on every payoff of the operational record (`Vegas.ownerSwap_BaseExpectationAgrees_late`).
 -/
 
 noncomputable section
@@ -34,7 +34,7 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- **Agreeing base laws at two late sites with one key.** -/
-theorem ownerSwap_baseLawAgrees_late
+theorem ownerSwap_BaseExpectationAgrees_late
     {Public : Type*} (signal : State L setup.context → Public)
     [Finite (onePacketProtocol setup timeouts leaks bounds horizon scheduler).History]
     (wellFormed : setup.WellFormed) (independent : setup.PrivateInputsIndependentGiven signal)
@@ -59,14 +59,15 @@ theorem ownerSwap_baseLawAgrees_late
     (firstLate : LateDelivery setup timeouts leaks who site₁.1)
     (secondLate : LateDelivery setup timeouts leaks who site₂.1)
     (payoff : List (Option (OperationalState setup timeouts leaks)) → ℝ) :
-    BaseLawAgrees (timeouts := timeouts)
+    BaseExpectationAgrees (timeouts := timeouts)
       (fun history => othersSourceWeight setup timeouts leaks bounds horizon scheduler
         assessment who
         history.trace * weight (operationalRecord setup timeouts leaks bounds horizon scheduler
           history.trace))
       (fun history => RegularTrace setup timeouts leaks bounds horizon scheduler assessment who
         history.trace) site₁ site₂ payoff :=
-  ownerSwap_baseLawAgrees (timeouts := timeouts) signal wellFormed independent observable covers
+  ownerSwap_BaseExpectationAgrees (timeouts := timeouts) signal wellFormed independent observable
+    covers
     assessment
     weight firstSite secondSite sameKey firstDebtFree secondDebtFree
     (ownerSwap_info (timeouts := timeouts) firstSite secondSite sameKey firstDebtFree secondDebtFree

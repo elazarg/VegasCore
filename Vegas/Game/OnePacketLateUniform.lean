@@ -33,16 +33,18 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
   (bounds : MessageBounds setup.informationGraph) (horizon : Nat)
   (scheduler : (application setup timeouts leaks).Scheduler)
-  [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
+  [(application setup timeouts leaks).FiniteNature (initialDistribution setup) scheduler]
   [Finite setup.intendedProtocol.History]
-  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds
+    (initialDistribution setup) horizon
     scheduler).InfoState who)]
 
 local notation "onePacketN" =>
-  onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+  onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
 
 omit [Finite setup.intendedProtocol.History]
-  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds
+    (initialDistribution setup) horizon
     scheduler).InfoState who)] in
 open Filter in
 /-- **Uniform decorrelation.** If at every site satisfying a condition the
@@ -71,7 +73,8 @@ theorem exists_uniform_decorrelation
     (fun _ _ _ _ _ le decorrelated => decorrelated.mono le) condition perSite
 
 variable {setup timeouts leaks bounds horizon scheduler} in
-omit [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+omit [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds
+    (initialDistribution setup) horizon
     scheduler).InfoState who)] in
 open Classical in
 /-- **Vanishing decorrelation at a forced own-turn site.** At a forced site of
@@ -86,14 +89,15 @@ theorem OnePacketBeliefInputs.tendsto_decorrelated (wellFormed : setup.WellForme
     (mixed : ∀ n, (targetSequence n).IsFullyMixed)
     (bayes : ∀ n, BehavioralAssessment.IsBayesConsistent (onePacketN) (targetSequence n)
       ((bounds.onePacketMenu timeouts leaks).decisionRecall
-        (initialLaw setup) horizon scheduler).decisionInformationAntichain)
+        (initialDistribution setup) horizon scheduler).decisionInformationAntichain)
     {who : Player} {site : (onePacketN).InformationSite who}
     {sourceSite : setup.intendedModel.InformationSite who}
     {past : List (application setup timeouts leaks).PlayerEntry}
     {view : (application setup timeouts leaks).PlayerView}
     (decision : site.1 = some (past, view))
     (projected : sourceSite.1 = projectView setup timeouts leaks who site.1)
-    (forced : forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks) (initialLaw
+    (forced : forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks)
+      (initialDistribution
       setup) horizon
       scheduler who site.1)
     {event : setup.informationGraph.EventId} (turn : view.application.publicView.ownTurn? who =
@@ -130,7 +134,7 @@ theorem OnePacketBaseInputs.lateDecorrelated
     {sequence : ℕ → setup.intendedModel.BehavioralAssessment} {slots : Nat}
     (inputs : OnePacketBaseInputs setup timeouts leaks bounds horizon scheduler sequence slots)
     (wellFormed : setup.WellFormed) (sourceMixed : ∀ n, (sequence n).IsFullyMixed)
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialDistribution setup)
       horizon scheduler slots p))
     (targetSequence : ℕ → (onePacketN).BehavioralAssessment)
     (assembled : OnePacketAssembled setup timeouts leaks bounds horizon scheduler sequence
@@ -140,15 +144,17 @@ theorem OnePacketBaseInputs.lateDecorrelated
     (mixed : ∀ n, (targetSequence n).IsFullyMixed)
     (bayes : ∀ n, BehavioralAssessment.IsBayesConsistent (onePacketN) (targetSequence n)
       ((bounds.onePacketMenu timeouts leaks).decisionRecall
-        (initialLaw setup) horizon scheduler).decisionInformationAntichain) :
+        (initialDistribution setup) horizon scheduler).decisionInformationAntichain) :
     ∃ decorrelation : ℕ → ℝ, Tendsto decorrelation atTop (nhds 0) ∧
       ∀ n who (site : (onePacketN).InformationSite who),
-        ¬ FreeAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+        ¬ FreeAgent setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
         ((onePacketN).agentAt site) →
-        ¬ OwingAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+        ¬ OwingAgent setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
         ((onePacketN).agentAt site) →
-        ownedKeyed (FreeAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler)
-          (LateDeliveryAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler)
+        ownedKeyed (FreeAgent setup timeouts leaks bounds (initialDistribution setup) horizon
+          scheduler)
+          (LateDeliveryAgent setup timeouts leaks bounds (initialDistribution setup) horizon
+            scheduler)
           ((onePacketN).agentAt site) →
         BeliefDecorrelated ((targetSequence n).belief who site)
           (fun history => operationalRecord setup timeouts leaks bounds horizon scheduler
@@ -157,16 +163,19 @@ theorem OnePacketBaseInputs.lateDecorrelated
             n) := by
   obtain ⟨decorrelation, limit, holds⟩ := exists_uniform_decorrelation setup timeouts leaks bounds
     horizon scheduler targetSequence
-    (fun who site => ¬ FreeAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+    (fun who site => ¬ FreeAgent setup timeouts leaks bounds
+      (initialDistribution setup) horizon scheduler
       ((onePacketN).agentAt site) ∧
-      ¬ OwingAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+      ¬ OwingAgent setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
         ((onePacketN).agentAt site) ∧
-      ownedKeyed (FreeAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler)
-        (LateDeliveryAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler)
+      ownedKeyed (FreeAgent setup timeouts leaks bounds (initialDistribution setup) horizon
+        scheduler)
+        (LateDeliveryAgent setup timeouts leaks bounds (initialDistribution setup) horizon
+          scheduler)
         ((onePacketN).agentAt site))
     (fun who site ⟨notFree, notOwing, keyed⟩ => by
       obtain ⟨input, atSite, event, turn⟩ := lateDelivery_input setup timeouts leaks keyed.1
-      have forced := forcedAgent_of_not_free setup timeouts leaks bounds (initialLaw setup)
+      have forced := forcedAgent_of_not_free setup timeouts leaks bounds (initialDistribution setup)
         horizon scheduler notFree
       have debtFree := siteDebtFree_of_not_owing setup timeouts leaks bounds horizon scheduler
         notOwing

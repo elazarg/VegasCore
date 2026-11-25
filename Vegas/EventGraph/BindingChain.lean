@@ -12,7 +12,7 @@ public import Vegas.EventGraph.DependencyRelaxation
 public import Vegas.EventGraph.DefaultFailure
 public import Vegas.EventGraph.PolicyCongruence
 public import Vegas.EventGraph.PrefixPolicy
-public import Vegas.EventGraph.SequentialLaw
+public import Vegas.EventGraph.SequentialDistribution
 public import Vegas.EventGraph.StoredBindingProfile
 
 @[expose] public section
@@ -93,10 +93,10 @@ theorem bindingObservers_complete_congr (focal : Player)
       leftAction rightAction leftValue rightValue (values owner.1 owner.2)
       (actions owner.1 owner.2) publicEffect
 
-private theorem step_eq_outputLaw_map (config : graph.Config) (event : graph.EventId)
+private theorem step_eq_outputDistribution_map (config : graph.Config) (event : graph.EventId)
     (ready : config.cut.Ready event) (action : graph.Action event) :
     config.step event ready action =
-      (outputLaw config event ready action).map (config.complete event ready action) := rfl
+      (outputDistribution config event ready action).map (config.complete event ready action) := rfl
 
 private theorem option_get_eq {α : Type} {left right : Option α}
     (same : left = right) (leftSome : left.isSome) (rightSome : right.isSome) :
@@ -104,13 +104,15 @@ private theorem option_get_eq {α : Type} {left right : Option α}
   cases same
   rfl
 
-private theorem binding_outputLaw_congr (event : graph.EventId) (owner : Player) (payload : L.Ty)
+private theorem binding_outputDistribution_congr (event : graph.EventId) (owner : Player)
+    (payload : L.Ty)
     (binding : graph.outputLayout event = .binding owner payload)
     (left right : graph.Config) (defaults : left.defaulted = right.defaulted)
     (leftReady : left.cut.Ready event) (rightReady : right.cut.Ready event)
     (action : graph.Action event) :
-    outputLaw left event leftReady action = outputLaw right event rightReady action := by
-  unfold outputLaw
+    outputDistribution left event leftReady action = outputDistribution right event rightReady
+      action := by
+  unfold outputDistribution
   apply option_get_eq
   have effective : left.effectiveAction event action = right.effectiveAction event action := by
     unfold Config.effectiveAction
@@ -144,9 +146,9 @@ theorem eventStep_bindingObservers_congr
     congrArg DefaultHistory.defaulted (congrArg EventPublicObservation.defaults
       (congrArg Prod.fst same))
   have effects (leftAction : graph.Action event)
-      (leftSupported : leftAction ∈ (actionLaw leftProfile left event).support)
+      (leftSupported : leftAction ∈ (actionDistribution leftProfile left event).support)
       (rightAction : graph.Action event)
-      (rightSupported : rightAction ∈ (actionLaw rightProfile right event).support)
+      (rightSupported : rightAction ∈ (actionDistribution rightProfile right event).support)
       (leftValue rightValue : (graph.outputLayout event).Value) :
       (completion graph event (left.actualDecision event leftAction) leftValue).defaultEvent =
         (completion graph event (right.actualDecision event rightAction) rightValue).defaultEvent :=
@@ -161,7 +163,7 @@ theorem eventStep_bindingObservers_congr
     apply bind_eq_of_map_eq _ _ (fun _ => ()) (fun _ => ())
       ((PMF.map_const _ ()).trans (PMF.map_const _ ()).symm)
     intro leftAction leftSupported rightAction rightSupported _
-    rw [step_eq_outputLaw_map, step_eq_outputLaw_map, PMF.map_comp, PMF.map_comp,
+    rw [step_eq_outputDistribution_map, step_eq_outputDistribution_map, PMF.map_comp, PMF.map_comp,
       ← PMF.bind_pure_comp, ← PMF.bind_pure_comp]
     apply bind_eq_of_map_eq _ _ (fun _ => ()) (fun _ => ())
       ((PMF.map_const _ ()).trans (PMF.map_const _ ()).symm)
@@ -176,8 +178,9 @@ theorem eventStep_bindingObservers_congr
     · intro observer different owned
       exact (different (Option.some.inj (actor.symm.trans owned)).symm).elim
     · exact effects leftAction leftSupported rightAction rightSupported leftValue rightValue
-  · have actionEq : actionLaw leftProfile left event = actionLaw rightProfile right event := by
-      rw [actionLaw_of_actor _ _ actor, actionLaw_of_actor _ _ actor]
+  · have actionEq : actionDistribution leftProfile left event =
+      actionDistribution rightProfile right event := by
+      rw [actionDistribution_of_actor _ _ actor, actionDistribution_of_actor _ _ actor]
       by_cases inactive : owner ∈ left.defaulted
       · have rightInactive : owner ∈ right.defaulted := defaults ▸ inactive
         rw [dite_eq_left inactive, dite_eq_left rightInactive]
@@ -194,10 +197,11 @@ theorem eventStep_bindingObservers_congr
     rw [actionEq]
     apply bind_congr_on_support _
     intro action rightSupported
-    have leftSupported : action ∈ (actionLaw leftProfile left event).support := by
+    have leftSupported : action ∈ (actionDistribution leftProfile left event).support := by
       rwa [actionEq]
-    rw [step_eq_outputLaw_map, step_eq_outputLaw_map, PMF.map_comp, PMF.map_comp,
-      binding_outputLaw_congr event owner payload binding left right defaults leftReady rightReady]
+    rw [step_eq_outputDistribution_map, step_eq_outputDistribution_map, PMF.map_comp, PMF.map_comp,
+      binding_outputDistribution_congr event owner payload binding left right defaults leftReady
+        rightReady]
     apply map_congr_on_support _
     intro value _
     exact bindingObservers_complete_congr focal left right same event leftReady rightReady hidden
@@ -380,7 +384,7 @@ theorem eventStep_submitted_binding_frame (profile : graph.BehavioralProfile)
     (event : graph.EventId) (ready : config.cut.Ready event)
     (owner : Player) (payload : L.Ty)
     (binding : graph.outputLayout event = .binding owner payload)
-    (submits : ∀ action ∈ (actionLaw profile config event).support,
+    (submits : ∀ action ∈ (actionDistribution profile config event).support,
       (graph.outputLayout event).Submitted action)
     (next : graph.Config) (supported : next ∈ (eventStep profile config event ready).support) :
     next.defaulted = ∅ ∧ Relation.ReflTransGen Config.Step config next ∧
@@ -447,7 +451,7 @@ private theorem runPlan_binding_frame_of_allowed
       have actor : graph.actor? event = some owner :=
         EventCode.actor_eq_of_binding (graph.nodes event) binding
       have active : owner ∉ origin.defaulted := by rw [clear]; simp
-      rw [actionLaw_of_actor _ _ actor, dite_eq_right active] at chosen
+      rw [actionDistribution_of_actor _ _ actor, dite_eq_right active] at chosen
       obtain ⟨submitted, admitted⟩ := permitted event (by rfl) (by dsimp only [event]; omega)
         owner actor (graph.playerObserve owner origin) active action chosen
       obtain ⟨result, actionEq, nextClear, firstPath, firstRecord, firstValue⟩ :=
@@ -623,7 +627,7 @@ theorem runPlan_canonical_prefixProfile_bind_frozen_congr {Outcome : Type}
         continuation (graph.prefixProfile (graph.freezeBindingsBefore profile start rank ghost))) :=
   by
   have congr := runPlan_canonical_map_runKey_congr (graph.prefixProfile profile)
-    (fun same event => prefixProfile_actionLaw_runKey_congr profile same event)
+    (fun same event => prefixProfile_actionDistribution_runKey_congr profile same event)
     count left right same
   apply bind_eq_of_map_key_eq runKey Set.univ _ _ (fun _ _ => Set.mem_univ _)
     (fun _ _ => Set.mem_univ _) congr

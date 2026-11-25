@@ -188,10 +188,12 @@ any two realized native transitions, including scheduler and response rounds. -/
 theorem completionMass_eq_of_operational_transitions
     {before after imageBefore imageAfter : (application setup timeouts leaks).Control}
     (joint imageJoint : Player → Option (application setup timeouts leaks).Action)
-    (_realized : some after ∈ ((application setup timeouts leaks).transition (initialLaw setup)
+    (_realized : some after ∈ ((application setup timeouts leaks).transition
+      (initialDistribution setup)
       horizon
       scheduler (some before) joint).support)
-    (_imageRealized : some imageAfter ∈ ((application setup timeouts leaks).transition (initialLaw
+    (_imageRealized : some imageAfter ∈ ((application setup timeouts leaks).transition
+      (initialDistribution
       setup)
       horizon scheduler (some imageBefore) imageJoint).support)
     (beforeOperational : operationalState setup timeouts leaks (some before) =

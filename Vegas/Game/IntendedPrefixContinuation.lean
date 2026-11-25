@@ -50,7 +50,7 @@ theorem SourceResidual.clear_of_intended_history
 
 /-- The canonical prescribed continuation from a genuine intended history has
 the intended full source readout, including its source action and default history. -/
-theorem SourceResidual.prescribed_readout_law_of_intended_history [Finite Player]
+theorem SourceResidual.prescribed_readout_distribution_of_intended_history [Finite Player]
     (wellFormed : setup.WellFormed)
     (admission : CommitmentInterface setup.program)
     (intended : GameTheory.Profile setup.intendedModel.behavioralSignature)
@@ -72,7 +72,8 @@ theorem SourceResidual.prescribed_readout_law_of_intended_history [Finite Player
         (ContextRefs.initial setup.context (outputLayout setup.program))
         (Revelations.initial setup.context) [] (outputEmbedding setup.program)
         final.store final.history) =
-      (setup.continuationLaw (setup.intendedOpeningProfile intended) history.state).map some := by
+      (setup.continuationDistribution (setup.intendedOpeningProfile intended) history.state).map
+        some := by
   have clean := Config.NoBindingDefaults.of_clear
     (residual.clear_of_intended_history wellFormed history state)
   have repaired : setup.informationGraph.runPlan
@@ -87,17 +88,17 @@ theorem SourceResidual.prescribed_readout_law_of_intended_history [Finite Player
     runPlan_canonical_prescribed_compile_of_reachable setup.program _ submits origin.remaining
       origin reachable clean
   refine (congrArg (PMF.map _) repaired).trans ?_
-  have sourceLaw := residual.runPlan_readout_law
+  have sourceDistribution := residual.runPlan_readout_distribution
   have sourceState := congrArg
-    (fun point => (setup.continuationLaw (setup.decodeBehavioralProfile admission target)
+    (fun point => (setup.continuationDistribution (setup.decodeBehavioralProfile admission target)
       point).map some) state.symm
-  exact sourceLaw.trans (sourceState.trans (congrArg (PMF.map some)
-    (setup.continuationLaw_eq_of_intended_extension wellFormed admission intended target
+  exact sourceDistribution.trans (sourceState.trans (congrArg (PMF.map some)
+    (setup.continuationDistribution_eq_of_intended_extension wellFormed admission intended target
       agrees history)))
 
 /-- The public-phase canonical potential is derived from a genuine intended
 history and the existing compiler continuation law. It is not a caller premise. -/
-theorem SourceResidual.prescribed_defaultLaw_of_intended_history [Finite Player]
+theorem SourceResidual.prescribed_defaultDistribution_of_intended_history [Finite Player]
     (wellFormed : setup.WellFormed)
     (admission : CommitmentInterface setup.program)
     (intended : GameTheory.Profile setup.intendedModel.behavioralSignature)
@@ -110,7 +111,7 @@ theorem SourceResidual.prescribed_defaultLaw_of_intended_history [Finite Player]
     {inputs : setup.informationGraph.Inputs} (reachable : origin.Reachable inputs)
     (history : setup.intendedProtocol.History)
     (state : history.state = sourceServicePrefix? setup rank origin) :
-    EventGraphRuntime.outcomeLaw
+    EventGraphRuntime.outcomeDistribution
       (compilePrescribedProfile setup.program setup.informationDependencies
         (setup.decodeBehavioralProfile admission target)) EventGraph.Config.defaulted origin =
         PMF.pure ∅ := by
@@ -124,26 +125,28 @@ theorem SourceResidual.prescribed_defaultLaw_of_intended_history [Finite Player]
       (ContextRefs.initial setup.context (outputLayout setup.program))
       (Revelations.initial setup.context) [] (outputEmbedding setup.program)
       final.store final.history
-  have sourceLaw := residual.prescribed_readout_law_of_intended_history wellFormed admission
+  have sourceDistribution := residual.prescribed_readout_distribution_of_intended_history
+    wellFormed admission
     intended target agrees submits reachable history state
-  change run.map read = _ at sourceLaw
+  change run.map read = _ at sourceDistribution
   have finalClear (final : setup.informationGraph.Config) (member : final ∈ run.support) :
       final.defaulted = ∅ := by
     have terminal := setup.informationGraph.runPlan_terminal
       (setup.informationGraph.policyPlan profile setup.informationGraph.canonicalScheduler)
       origin.remaining origin final le_rfl member
     let output := terminalConfig setup.program ⟨final, terminal⟩
-    have chosen : some output ∈ ((setup.continuationLaw
+    have chosen : some output ∈ ((setup.continuationDistribution
         (setup.intendedOpeningProfile intended) history.state).map some).support := by
-      rw [← sourceLaw]
+      rw [← sourceDistribution]
       exact (PMF.mem_support_map_iff _ _ _).mpr
         ⟨final, member, decodeConfig?_terminal setup.program ⟨final, terminal⟩⟩
     obtain ⟨source, supported, equal⟩ := (PMF.mem_support_map_iff _ _ _).mp chosen
     have sourceEq : source = output := Option.some.inj equal
     subst source
-    have targetMember : output ∈ (setup.continuationLaw
+    have targetMember : output ∈ (setup.continuationDistribution
         (setup.decodeBehavioralProfile admission target) history.state).support := by
-      rw [setup.continuationLaw_eq_of_intended_extension wellFormed admission intended target
+      rw [setup.continuationDistribution_eq_of_intended_extension wellFormed admission intended
+        target
         agrees history]
       exact supported
     exact (setup.continuation_clean_of_intended_extension wellFormed admission intended target
@@ -155,7 +158,7 @@ theorem SourceResidual.prescribed_defaultLaw_of_intended_history [Finite Player]
 
 /-- Forgetting additional source-order prerequisites preserves the canonical
 clean continuation potential at a genuine intended source prefix. -/
-theorem SourceResidual.prescribed_defaultLaw_fromSequential [Finite Player]
+theorem SourceResidual.prescribed_defaultDistribution_fromSequential [Finite Player]
     (deps : setup.dataflowGraph.Dependencies)
     (wellFormed : setup.WellFormed)
     (admission : CommitmentInterface setup.program)
@@ -169,14 +172,15 @@ theorem SourceResidual.prescribed_defaultLaw_fromSequential [Finite Player]
     {inputs : setup.informationGraph.Inputs} (reachable : origin.Reachable inputs)
     (history : setup.intendedProtocol.History)
     (state : history.state = sourceServicePrefix? setup rank origin) :
-    EventGraphRuntime.outcomeLaw
+    EventGraphRuntime.outcomeDistribution
       (compilePrescribedProfile setup.program deps
         (setup.decodeBehavioralProfile admission target)) EventGraph.Config.defaulted
       ((setup.dataflowGraph.withDependencies deps).fromSequentialConfig origin) = PMF.pure ∅ := by
   let graph := setup.dataflowGraph.withDependencies deps
   let profile := compilePrescribedProfile setup.program deps
     (setup.decodeBehavioralProfile admission target)
-  have law := residual.prescribed_defaultLaw_of_intended_history wellFormed admission intended
+  have law := residual.prescribed_defaultDistribution_of_intended_history wellFormed admission
+    intended
     target agrees submits reachable history state
   have transported := congrArg (PMF.map EventGraph.Config.defaulted)
     (graph.runPlan_canonical_fromSequential profile origin.remaining origin)

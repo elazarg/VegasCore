@@ -162,7 +162,8 @@ theorem responseMass_le_of_slotTrembled
         control.execution.observe (application setup timeouts leaks) actor))))
     (component : profile actor (some (control.execution.logs actor,
         control.execution.observe (application setup timeouts leaks) actor)) =
-      slotTrembledChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler scale
+      slotTrembledChoice setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
+        scale
         nonnegative le_one actor _ main alternative slot)
     (outside : ∀ choice : (onePacketInformation setup timeouts leaks bounds horizon
         scheduler).Choice actor (some (control.execution.logs actor,
@@ -179,7 +180,8 @@ theorem responseMass_le_of_slotTrembled
   · obtain ⟨choice, value⟩ := found
     rw [← value, pmf_map_apply_of_injective _ Subtype.val_injective, component]
     obtain ⟨mainZero, alternativeZero, slotZero⟩ := outside choice value
-    exact slotTrembledChoice_le_of_unprescribed setup timeouts leaks bounds (initialLaw setup)
+    exact slotTrembledChoice_le_of_unprescribed setup timeouts leaks bounds
+      (initialDistribution setup)
       horizon
       scheduler nonnegative le_one actor _ main alternative slot choice mainZero alternativeZero
       slotZero

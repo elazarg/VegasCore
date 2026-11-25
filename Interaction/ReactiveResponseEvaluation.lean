@@ -126,7 +126,7 @@ theorem run_restrict_control_steps (profile : Principal → app.Policy)
       rfl
 
 /-- Complete menu play has exactly the physical continuation state law. -/
-theorem runFrom_stateLaw
+theorem runFrom_stateDistribution
     (profile : (who : Principal) →
       (menu.information initial horizon scheduler).BehavioralPolicy who)
     (history : (menu.protocol initial horizon scheduler).History) :

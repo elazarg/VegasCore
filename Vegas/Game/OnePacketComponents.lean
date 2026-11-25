@@ -82,7 +82,7 @@ abbrev OnePacketPart (slots : Nat) :=
 
 /-- The free law of an unforced agent's choice: the choice trembled toward the
 uniform law over its menu with weight `scale`. -/
-def unforcedLaw (scale : ℝ) (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1)
+def unforcedDistribution (scale : ℝ) (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1)
     (agent : (onePacketN).InformationAgent (onePacketN).playedInformation)
     (choice : (onePacketN).Choice agent.1 agent.2.1) :
     PMF ((onePacketN).Choice agent.1 agent.2.1) :=
@@ -100,7 +100,8 @@ def onePacketComponent (assessment : setup.intendedModel.BehavioralAssessment) {
     OnePacketPart setup timeouts leaks bounds initial horizon scheduler slots
         (onePacketPool setup timeouts leaks bounds initial horizon scheduler agent) →
       PMF ((onePacketN).Choice agent.1 agent.2.1) :=
-  freeKeyedComponent (unforcedLaw setup timeouts leaks bounds initial horizon scheduler scale
+  freeKeyedComponent (unforcedDistribution setup timeouts leaks bounds initial horizon scheduler
+    scale
     nonnegative le_one)
     (fun agent => slotPrescribedComponent setup timeouts leaks bounds initial horizon
       scheduler
@@ -109,10 +110,11 @@ def onePacketComponent (assessment : setup.intendedModel.BehavioralAssessment) {
       scheduler
       assessment scale nonnegative le_one agent.1 agent.2.1 option) agent
 
-theorem unforcedLaw_fullSupport {scale : ℝ} (positive : 0 < scale) (le_one : scale ≤ 1)
+theorem unforcedDistribution_fullSupport {scale : ℝ} (positive : 0 < scale) (le_one : scale ≤ 1)
     (agent : (onePacketN).InformationAgent (onePacketN).playedInformation)
     (choice : (onePacketN).Choice agent.1 agent.2.1) :
-    FullSupport (unforcedLaw setup timeouts leaks bounds initial horizon scheduler scale positive.le
+    FullSupport (unforcedDistribution setup timeouts leaks bounds initial horizon scheduler scale
+      positive.le
       le_one agent choice) := by
   intro other
   let := Fintype.ofFinite ((onePacketN).Choice agent.1 agent.2.1)
@@ -126,7 +128,8 @@ theorem onePacketComponent_fullSupport (assessment : setup.intendedModel.Behavio
     FullSupport (onePacketComponent setup timeouts leaks bounds initial horizon scheduler assessment
       scale positive.le le_one agent part) :=
   freeKeyedComponent_fullSupport _ _ _
-    (unforcedLaw_fullSupport setup timeouts leaks bounds initial horizon scheduler positive le_one)
+    (unforcedDistribution_fullSupport setup timeouts leaks bounds initial horizon scheduler
+      positive le_one)
     (fun agent => by
       unfold slotPrescribedComponent
       exact slotTrembledChoice_fullSupport setup timeouts leaks bounds initial horizon
@@ -158,11 +161,11 @@ theorem freeAgent_of_publicDefault
 
 /-- A free component converges to its selected pure choice as the common
 reference perturbation vanishes. -/
-theorem unforcedLaw_converges (scale : ℕ → ℝ) (positive : ∀ n, 0 < scale n)
+theorem unforcedDistribution_converges (scale : ℕ → ℝ) (positive : ∀ n, 0 < scale n)
     (le_one : ∀ n, scale n ≤ 1) (vanishes : Tendsto scale atTop (nhds 0))
     (agent : (onePacketN).InformationAgent (onePacketN).playedInformation)
     (choice : (onePacketN).Choice agent.1 agent.2.1) :
-    PMFConvergesPointwise (fun n => unforcedLaw setup timeouts leaks bounds initial horizon
+    PMFConvergesPointwise (fun n => unforcedDistribution setup timeouts leaks bounds initial horizon
       scheduler
       (scale n) (positive n).le (le_one n) agent choice) (PMF.pure choice) :=
   pmfConvergesPointwise_mix_zero scale (fun n => (positive n).le) le_one vanishes

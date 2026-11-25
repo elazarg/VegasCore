@@ -22,7 +22,7 @@ public import Interaction.ReactiveAliasConsistency
 public import Interaction.ReactiveAliasEquilibrium
 public import Interaction.ReactiveAliasImplementation
 public import Interaction.ReactiveAliasIncentives
-public import Interaction.ReactiveAliasLaw
+public import Interaction.ReactiveAliasDistribution
 public import Interaction.ReactiveAliasSelector
 public import Interaction.ReactiveAliasStrategy
 public import Interaction.ReactiveConditionedMenu

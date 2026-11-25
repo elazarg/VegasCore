@@ -36,7 +36,8 @@ theorem blockRun_quiescent {horizon : Nat}
     {players : Player → (serviceApplication setup deps duration leaks).Policy}
     {finish : Nat} (execution : (serviceApplication setup deps duration leaks).Execution)
     (supported : execution ∈ ((serviceApplication setup deps duration leaks).roundsFrom
-      (serviceInitialLaw setup deps) scheduler players execution.environmentRecall.length).support)
+      (serviceInitialDistribution setup deps) scheduler players
+        execution.environmentRecall.length).support)
     (bounded : execution.environmentRecall.length ≤ horizon)
     (final : (serviceApplication setup deps duration leaks).Execution)
     (reached : final ∈ ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
@@ -44,12 +45,14 @@ theorem blockRun_quiescent {horizon : Nat}
       execution).support) :
     final.application.config.Quiescent := by
   let app := serviceApplication setup deps duration leaks
-  have finalSupported := app.roundsFrom_runUntil scheduler players (serviceInitialLaw setup deps)
+  have finalSupported := app.roundsFrom_runUntil scheduler players
+    (serviceInitialDistribution setup deps)
     (fun current => BlockDone finish current.application.config) _ execution final supported
     reached
   obtain ⟨used, usedLe, _, lengths⟩ := app.runUntil_runRounds scheduler players
     (fun current => BlockDone finish current.application.config) _ execution final reached
-  obtain ⟨trace⟩ := app.raw_trace_roundsFrom (serviceInitialLaw setup deps) horizon scheduler
+  obtain ⟨trace⟩ := app.raw_trace_roundsFrom (serviceInitialDistribution setup deps) horizon
+    scheduler
     players final.environmentRecall.length (by omega) final finalSupported
   exact quiescent_of_automatic _ (legalFacts setup leaks horizon scheduler _ trace).quiescent
 
@@ -111,7 +114,7 @@ theorem lastBlock_phase {horizon : Nat}
     {delay : (serviceGraph setup deps).EventId → Nat}
     (bound : (serviceGraph setup deps).EventId → Nat) (turns : Nat)
     (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
-        (serviceInitialLaw setup deps) horizon scheduler delay bound)
+        (serviceInitialDistribution setup deps) horizon scheduler delay bound)
     (timely : AsyncTimely (serviceTimeouts setup deps duration) delay bound)
     (base : (serviceGraph setup deps).BehavioralProfile)
     (decides : ∀ (config : (serviceGraph setup deps).Config)
@@ -140,7 +143,8 @@ theorem lastBlock_phase {horizon : Nat}
     {Seed : Type} (prior : PMF Seed)
     (execution : Seed → (serviceApplication setup deps duration leaks).Execution)
     (supported : ∀ seed ∈ prior.support, execution seed ∈
-      ((serviceApplication setup deps duration leaks).roundsFrom (serviceInitialLaw setup deps)
+      ((serviceApplication setup deps duration leaks).roundsFrom
+        (serviceInitialDistribution setup deps)
         scheduler (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound
           turns (firstTurnTiming setup turns deps)
           ((serviceGraph setup deps).normalizeProfile base)) who deviation)
@@ -226,14 +230,14 @@ theorem lastBlock_phase {horizon : Nat}
         .resolve owner payload binding checks),
       nodeView G event = .resolve owner payload binding checks outputEq codeEq →
       owner ≠ who → owner ∉ current.defaulted →
-        actionLaw (P policy) current event = PMF.pure (cast (congrArg EventField.Action
+        actionDistribution (P policy) current event = PMF.pure (cast (congrArg EventField.Action
           outputEq.symm) (openingAccepted event current.store)) := by
     intro policy current event owner payload binding checks outputEq codeEq node honest active
     have owned := nodeView_resolve_actor outputEq codeEq
     have ownedNode : (G.nodes event).actor = some owner := owned
-    rw [actionLaw_lastDeviationProfile_other base who policy current
+    rw [actionDistribution_lastDeviationProfile_other base who policy current
       (fun same => honest (Option.some.inj (ownedNode.symm.trans same))),
-      actionLaw_of_actor _ _ ownedNode, dite_eq_right active]
+      actionDistribution_of_actor _ _ ownedNode, dite_eq_right active]
     exact decides current event owner payload binding checks outputEq codeEq node owned active
   have finalFacts (seed : Seed) (member : seed ∈ prior.support) (final : app.Execution)
       (reached : final ∈ (run seed).support) :
@@ -279,7 +283,8 @@ theorem lastBlock_phase {horizon : Nat}
         (∀ event : G.EventId, event.val < start → event ∈ final.cut.completed) ∧
         (¬ BlockDone finish final → InBlock start finish final) ∧
         BlockRecordsSound who start finish (config seed) final ∧
-        lastErasedLaw (P policy) who (config seed) = lastErasedLaw (P policy) who final ∧
+        lastErasedDistribution (P policy) who (config seed) = lastErasedDistribution
+          (P policy) who final ∧
         (∀ event : G.EventId, start ≤ event.val → event.val < finish →
           event ∉ final.cut.completed → G.actor? event = some who) ∧
         (∀ event, event ∈ final.cut.completed → event ∈ (config seed).cut.completed ∨
@@ -291,7 +296,7 @@ theorem lastBlock_phase {horizon : Nat}
         rfl, fun event _ late pending => (pending (done event late)).elim,
         fun event finished => Or.inl finished, id⟩
     obtain ⟨final, path, inside, _, sound, law, pending, fresh, whoDefaulted⟩ :=
-      lastErasedLaw_honest_block shaped flat publications concurrent (P policy)
+      lastErasedDistribution_honest_block shaped flat publications concurrent (P policy)
         (honestLaw policy) (config seed) (config seed).remaining (config seed) rfl
         ((begin seed member).inside done) .refl (fun event fresh done => (fresh done).elim)
         (startActive seed member)
@@ -310,7 +315,8 @@ theorem lastBlock_phase {horizon : Nat}
       (none : ∀ event : G.EventId, start ≤ event.val → event.val < finish →
         G.actor? event = some who → event ∈ (config seed).cut.completed) :
       ∃ final : G.Config,
-        lastErasedLaw (P policy) who (config seed) = lastErasedLaw (P policy) who final ∧
+        lastErasedDistribution (P policy) who (config seed) = lastErasedDistribution
+          (P policy) who final ∧
         BlockDone finish final ∧
         ∀ other ∈ prior.support, key other = key seed → ∀ last ∈ (run other).support,
           runKey last.application.config = runKey (State.drainConfig final) := by
@@ -351,13 +357,14 @@ theorem lastBlock_phase {horizon : Nat}
       (none : ∀ event : G.EventId, start ≤ event.val → event.val < finish →
         G.actor? event = some who → event ∈ (config seed).cut.completed)
       (agreeAfter : ∀ final : G.Config, BlockDone finish final →
-        lastErasedLaw (P (build policy)) who final = lastErasedLaw (P policy) who final) :
+        lastErasedDistribution (P (build policy)) who final = lastErasedDistribution
+          (P policy) who final) :
       keyTarget (P (build policy)) who (key seed) =
         (channel (view (key seed))).bind fun extra =>
           keyTarget (P policy) who (endKey (key seed) extra) := by
     obtain ⟨final, law, done, endsEq⟩ := quietEnds seed member (build policy) none
     rw [keyTarget_runKey (independent _), law, agreeAfter final done,
-      ← State.drainConfig_lastErasedLaw (independent policy),
+      ← State.drainConfig_lastErasedDistribution (independent policy),
       ← keyTarget_runKey (independent policy)]
     have constant : ∀ extra ∈ (channel (view (key seed))).support,
         keyTarget (P policy) who (endKey (key seed) extra) =
@@ -411,13 +418,14 @@ theorem lastBlock_phase {horizon : Nat}
   refine ⟨build, nextNoise, factored, reduce build fun policy current keyed => ?_⟩
   obtain ⟨seed, member, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp keyed
   have agree : ∀ (current : G.Config) other, other ≠ w →
-      actionLaw (P (build policy)) current other = actionLaw (P policy) current other :=
+      actionDistribution (P (build policy)) current other = actionDistribution
+        (P policy) current other :=
     fun current other different =>
-      actionLaw_lastDeviationProfile_patch_of_ne base who w _ policy current different
+      actionDistribution_lastDeviationProfile_patch_of_ne base who w _ policy current different
   by_cases wDone : w ∈ (config seed).cut.completed
   · exact quietPointwise build policy seed member
       (fun event early late owned => by rw [unique event early late owned]; exact wDone)
-      (fun final done => lastErasedLaw_patch_completed w agree final (done w wLate))
+      (fun final done => lastErasedDistribution_patch_completed w agree final (done w wLate))
   obtain ⟨Y, pathY, earlierY, insideYOf, soundY, lawY, pendingY, freshY, whoY⟩ :=
     closure seed member (build policy)
   have whoActiveStart : who ∉ (config seed).defaulted := fun inactive =>
@@ -464,9 +472,9 @@ theorem lastBlock_phase {horizon : Nat}
       (keyView who (runKey (config seed)), blockHidden who start finish (runKey (config seed)))
     rw [keyView_runKey, keyView_runKey, startViews, hiddens]
   rw [keyTarget_runKey (independent _) (config seed), lawY,
-    lastErasedLaw_patch_step w agree Y wReady (lastPick_eq_of_alone who Y alone nonempty)]
+    lastErasedDistribution_patch_step w agree Y wReady (lastPick_eq_of_alone who Y alone nonempty)]
   unfold eventStep
-  rw [actionLaw_lastDeviationProfile_owned base who (build policy) Y wNode whoActive]
+  rw [actionDistribution_lastDeviationProfile_owned base who (build policy) Y wNode whoActive]
   simp only [build, patchPolicy, ↓reduceIte]
   rw [ownedHead_self]
   simp only [kernel, PMF.bind_bind, PMF.bind_map]
@@ -499,7 +507,7 @@ theorem lastBlock_phase {horizon : Nat}
     exact resolved
   simp only [Function.comp_apply, observed, Option.elim, PMF.pure_bind]
   rw [resolve_step_eq wReady outputEq codeEq whoActive disclose output resolvedY, PMF.pure_bind,
-    ← State.drainConfig_lastErasedLaw (independent policy),
+    ← State.drainConfig_lastErasedDistribution (independent policy),
     ← keyTarget_runKey (independent policy)]
   change _ = keyTarget (P policy) who (endKey (key seed) (traffic final))
   rw [← keys, ← ends other otherMember final reached]

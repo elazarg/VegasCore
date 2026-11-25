@@ -2,7 +2,7 @@ module
 
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-public import Vegas.Source.ConditionedInitialLaw
+public import Vegas.Source.ConditionedInitialDistribution
 
 @[expose] public section
 

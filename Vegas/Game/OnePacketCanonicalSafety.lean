@@ -32,7 +32,7 @@ theorem canonical_firstResponse_result_of_settles
     (scheduler : (application setup timeouts leaks).Scheduler)
     (bound : setup.informationGraph.EventId → Nat)
     {remaining : Nat} {who : Player} {execution : (application setup timeouts leaks).Execution}
-    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some ⟨remaining, some who, execution⟩))
     (event : setup.informationGraph.EventId)
     (turn : execution.application.publicView.ownTurn? who = some event)
@@ -42,13 +42,13 @@ theorem canonical_firstResponse_result_of_settles
     (submits : ((canonicalServiceDecision timeouts) leaks who (execution.logs who)
       (execution.observe (application setup timeouts leaks) who) event action).transmission = some
         material)
-    (after : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (after : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some ⟨remaining, none,
         execution.respond (application setup timeouts leaks) who
           ((canonicalServiceDecision timeouts) leaks who (execution.logs who)
             (execution.observe (application setup timeouts leaks) who) event action)⟩))
     (control : (application setup timeouts leaks).Control)
-    (target : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (target : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some control)) (isPrefix : TracePrefix after target)
     (next : (application setup timeouts leaks).Execution) (nextExecution : control.execution = next)
     (settles : SettlesFreshCalls timeouts leaks who event bound next) :
@@ -61,7 +61,7 @@ theorem canonical_firstResponse_result_of_settles
   obtain ⟨output, invariant⟩ := acceptanceInvariant_respond (timeouts := timeouts) bounds horizon
     scheduler trace event turn action material submits after
   have transports : ∀ {state}
-      {later : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+      {later : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
         scheduler).Trace state}, TracePrefix after later →
       AcceptanceInvariant setup timeouts leaks bounds horizon scheduler who
         (respondEntry timeouts leaks execution who ((canonicalServiceDecision timeouts)
@@ -79,7 +79,7 @@ theorem canonical_firstResponse_result_of_settles
           event _ action output _ _ joint legal ih realized
   have finalInvariant := transports isPrefix
   obtain ⟨_, records, _emitted, _, finalWitness, _, accepted⟩ := finalInvariant
-  have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup)
+  have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup)
     horizon scheduler trace
   have call := canonical_freshCall rawTrace bound who event turn fits action material submits
   obtain ⟨earlier, later, split⟩ := records

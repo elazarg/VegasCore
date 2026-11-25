@@ -244,14 +244,14 @@ theorem applicationStep_mass (state next : EventGraphRuntime.State setup.informa
       simpa only [completionMass] using completionMass_of_automatic_path
         (State.drain_trace { state with clock := state.clock + 1 })
   | expire expired =>
-      obtain ⟨native, nativeLaw⟩ : ∃ native,
+      obtain ⟨native, nativeDistribution⟩ : ∃ native,
           EventGraphRuntime.environmentStep timeouts state (.expire expired) = PMF.pure native :=
         ⟨_, rfl⟩
       have member : native ∈ (EventGraphRuntime.environmentStep timeouts state
           (.expire expired)).support := by
-        rw [nativeLaw]
+        rw [nativeDistribution]
         exact (PMF.mem_support_pure_iff _ _).mpr rfl
-      apply pureCase native nativeLaw
+      apply pureCase native nativeDistribution
       obtain ⟨_, effect⟩ :=
         environmentStep_expire_config_activated timeouts state native expired member
       rcases effect with ⟨same, _⟩ | ⟨ready, action, supported, _⟩
@@ -508,14 +508,15 @@ theorem environment_stepProb
   let app := application setup timeouts leaks
   subst initialized reachedNext
   rw [stepProb_of_idle (timeouts := timeouts) profile prior joint legal idle]
-  change some next ∈ (app.transition (initialLaw setup) horizon scheduler (some control)
+  change some next ∈ (app.transition (initialDistribution setup) horizon scheduler (some control)
     joint).support at realized
   rcases control with ⟨remaining, current, execution⟩
   change current = none at idle
   subst idle
   cases remaining with
   | zero =>
-      have lawEq : app.transition (initialLaw setup) horizon scheduler (some ⟨0, none, execution⟩)
+      have lawEq : app.transition (initialDistribution setup) horizon scheduler
+        (some ⟨0, none, execution⟩)
           joint = PMF.pure (some ⟨0, none, execution⟩) := rfl
       rw [lawEq] at realized ⊢
       rw [pure_apply_of_mem realized]
@@ -525,7 +526,7 @@ theorem environment_stepProb
   | succ remaining =>
       let shift : app.Command → app.Execution → app.ProtocolState := fun command reached =>
         some ⟨remaining, command.actor? app, reached⟩
-      have lawEq : app.transition (initialLaw setup) horizon scheduler
+      have lawEq : app.transition (initialDistribution setup) horizon scheduler
           (some ⟨remaining + 1, none, execution⟩) joint =
           (scheduler execution.environmentRecall (execution.observeEnvironment app)).bind
             fun command => (execution.environmentStep app command).map (shift command) := rfl
@@ -626,7 +627,8 @@ def OperationalSteps.ofComponents {sequence : ℕ → setup.intendedModel.Behavi
         ⟨joint, legal⟩).support) (control next : (application setup timeouts leaks).Control)
       (actor : Player), before = some control → after = some next →
       control.actor = some actor → actor ≠ who →
-      forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks) (initialLaw setup)
+      forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks)
+        (initialDistribution setup)
         horizon
         scheduler actor ((application setup timeouts leaks).observe actor (some control)) →
       ForcedState setup timeouts leaks who (some control) →

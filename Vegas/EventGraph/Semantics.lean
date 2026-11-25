@@ -92,7 +92,7 @@ variable {graph : Vegas.EventGraph Player L}
 /-- The action law a profile supplies at one event: a defaulted owner's forced
 failure, the owner's policy at its actual observation, or a chance node's unit
 action. -/
-def actionLaw (profile : graph.BehavioralProfile) (config : graph.Config)
+def actionDistribution (profile : graph.BehavioralProfile) (config : graph.Config)
     (event : graph.EventId) : PMF (graph.Action event) :=
   match ownerEq : (graph.nodes event).actor with
   | some owner =>
@@ -102,13 +102,13 @@ def actionLaw (profile : graph.BehavioralProfile) (config : graph.Config)
   | none => PMF.pure (EventCode.actionOfActorNone (graph.nodes event) ownerEq)
 
 /-- The action law at an owned event. -/
-theorem actionLaw_of_actor (profile : graph.BehavioralProfile) (config : graph.Config)
+theorem actionDistribution_of_actor (profile : graph.BehavioralProfile) (config : graph.Config)
     {event : graph.EventId} {owner : Player} (ownerEq : (graph.nodes event).actor = some owner) :
-    actionLaw profile config event =
+    actionDistribution profile config event =
       if inactive : owner ∈ config.defaulted then
         PMF.pure ((graph.nodes event).failureAction owner ownerEq)
       else profile owner event ownerEq (graph.playerObserve owner config) inactive := by
-  unfold actionLaw
+  unfold actionDistribution
   split
   · next same sameEq =>
       obtain rfl : same = owner := Option.some.inj (sameEq.symm.trans ownerEq)
@@ -116,11 +116,11 @@ theorem actionLaw_of_actor (profile : graph.BehavioralProfile) (config : graph.C
   · next noneEq => exact absurd (noneEq.symm.trans ownerEq) (by simp)
 
 /-- The action law at an ownerless event. -/
-theorem actionLaw_of_ownerless (profile : graph.BehavioralProfile) (config : graph.Config)
+theorem actionDistribution_of_ownerless (profile : graph.BehavioralProfile) (config : graph.Config)
     {event : graph.EventId} (ownerless : (graph.nodes event).actor = none) :
-    actionLaw profile config event =
+    actionDistribution profile config event =
       PMF.pure (EventCode.actionOfActorNone (graph.nodes event) ownerless) := by
-  unfold actionLaw
+  unfold actionDistribution
   split
   · next same sameEq => exact absurd (sameEq.symm.trans ownerless) (by simp)
   · rfl
@@ -128,7 +128,7 @@ theorem actionLaw_of_ownerless (profile : graph.BehavioralProfile) (config : gra
 /-- One event's action drawn from the profile and then executed. -/
 def eventStep (profile : graph.BehavioralProfile) (config : graph.Config)
     (event : graph.EventId) (ready : config.cut.Ready event) : PMF graph.Config :=
-  (actionLaw profile config event).bind (config.step event ready)
+  (actionDistribution profile config event).bind (config.step event ready)
 
 theorem eventStep_congr_event (profile : graph.BehavioralProfile) (config : graph.Config)
     {event other : graph.EventId} (same : event = other) (ready : config.cut.Ready event)
@@ -158,7 +158,7 @@ def policyPlan (graph : Vegas.EventGraph Player L)
     let enabledNonempty := enabled_nonempty_of_not_terminal config notTerminal
     (scheduler (graph.publicObserve config) config.cut.enabled enabledNonempty).bind
       fun selected =>
-        (actionLaw profile config selected.1).map fun action =>
+        (actionDistribution profile config selected.1).map fun action =>
           ⟨⟨selected.1, (EventOrder.Cut.mem_enabled _ _).mp selected.2⟩, action⟩
 
 section
@@ -172,7 +172,7 @@ theorem policyPlan_eq (profile : graph.BehavioralProfile) (scheduler : graph.Pub
     graph.policyPlan profile scheduler config notTerminal =
       (scheduler (graph.publicObserve config) config.cut.enabled
         (enabled_nonempty_of_not_terminal config notTerminal)).bind fun selected =>
-          (actionLaw profile config selected.1).map fun action =>
+          (actionDistribution profile config selected.1).map fun action =>
             ⟨⟨selected.1, (EventOrder.Cut.mem_enabled _ _).mp selected.2⟩, action⟩ := rfl
 
 /-- One step of the runner under a policy plan. -/
@@ -212,9 +212,9 @@ theorem policyPlan_support_finite (graph : Vegas.EventGraph Player L)
   refine (Set.toFinite _).biUnion fun selected _ => ?_
   rw [PMF.support_map]
   cases actor : (graph.nodes selected.1).actor with
-  | none => simp [actionLaw_of_ownerless profile config actor]
+  | none => simp [actionDistribution_of_ownerless profile config actor]
   | some owner =>
-      rw [actionLaw_of_actor profile config actor]
+      rw [actionDistribution_of_actor profile config actor]
       split
       · simp
       · exact (finiteProfile _ _ _ _ _).image _

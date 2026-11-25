@@ -204,7 +204,7 @@ theorem protocol_ownPlay (setup : Setup (Player := Player) (L := L))
             cases joint who with
             | none => exact fun _ => rfl
             | some _ => exact fun permitted => permitted.1.elim
-          change after ∈ (setup.initialLaw.map _).support at realized
+          change after ∈ (setup.initialDistribution.map _).support at realized
           rw [PMF.support_map] at realized
           obtain ⟨initial, _, rfl⟩ := realized
           rw [inactive]

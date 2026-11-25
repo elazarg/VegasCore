@@ -53,7 +53,7 @@ theorem intended_equilibrium_exists :
     fallback _ setup.intended_bounded.wellFoundedHistories
 
 local notation "raw" => bounds.rawMenu timeouts leaks
-local notation "initial" => Vegas.initialLaw setup
+local notation "initial" => Vegas.initialDistribution setup
 local notation "ledger" => Interaction.ReactiveApplication.ResponseMenu.information (raw)
   initial horizon scheduler
 

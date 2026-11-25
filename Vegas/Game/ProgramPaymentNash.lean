@@ -30,7 +30,7 @@ variable {L : IExpr} [IExpr.ResultTypes L]
 before applying the setup's declared exit transfer. -/
 theorem eventGame_paymentSum_approximate_nash_iff
     (setup : Setup (Player := Player) (L := L))
-    (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw]
+    (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialSupport]
     (scheduler : setup.informationGraph.PublicScheduler)
     (valuation : PublicOutcome setup.program → Player → ℝ)
     (ε : ℝ) (profile : BehavioralProfile setup.program) :
@@ -68,7 +68,7 @@ def eventTransfers (setup : Setup (Player := Player) (L := L))
 /-- Same-error Nash preservation and reflection for actual default-aware receipts. -/
 theorem eventGame_payment_approximate_nash_iff
     (setup : Setup (Player := Player) (L := L))
-    (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw]
+    (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialSupport]
     (scheduler : setup.informationGraph.PublicScheduler)
     (valuation : PublicOutcome setup.program → Player → ℝ)
     (ε : ℝ) (profile : BehavioralProfile setup.program) :
@@ -152,14 +152,14 @@ def canonicalParameterEventSimulation {Parameter : Type}
   compileStrategy := compileEventPolicy setup.program
   honest_law profile := by
     have base := congrArg (PMF.map (setup.parameterOutcome parameter))
-      (canonical_setup_law setup profile)
+      (canonical_setup_distribution setup profile)
     rw [PMF.map_comp, setup.run_map_parameterOutcome] at base
     exact base.trans (PMF.map_id _).symm
   compiled_considered _ _ := trivial
   deviation_mixture profile who replacement _ := by
     refine ⟨PMF.pure (backtranslateEventPolicy setup.program who replacement), ?_⟩
     have base := congrArg (PMF.map (setup.parameterOutcome parameter))
-      (canonical_setup_deviation_law setup profile who replacement)
+      (canonical_setup_deviation_distribution setup profile who replacement)
     rw [PMF.map_comp, setup.run_map_parameterOutcome] at base
     rw [PMF.pure_bind]
     exact base.trans (PMF.map_id _).symm
@@ -183,7 +183,7 @@ is solely an analysis readout of the existing source execution. -/
 theorem parameterEventGame_approximate_nash_iff {Parameter : Type}
     (setup : Setup (Player := Player) (L := L))
     (parameter : State L setup.context → Parameter)
-    (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw]
+    (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialSupport]
     (scheduler : setup.informationGraph.PublicScheduler)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
     (ε : ℝ) (profile : BehavioralProfile setup.program) :
@@ -201,7 +201,7 @@ same Nash error in the graph and source games. -/
 theorem parameterEventGame_payment_approximate_nash_iff {Parameter : Type}
     (setup : Setup (Player := Player) (L := L))
     (parameter : State L setup.context → Parameter)
-    (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw]
+    (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialSupport]
     (scheduler : setup.informationGraph.PublicScheduler)
     (valuation : Parameter × PublicOutcome setup.program → Player → ℝ)
     (ε : ℝ) (profile : BehavioralProfile setup.program) :

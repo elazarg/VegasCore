@@ -76,9 +76,9 @@ act with point masses whose completions have one erasure are twins. -/
 theorem erasureTwins_of_pointwise {left right : graph.BehavioralProfile}
     (pointwise : ∀ (config : graph.Config) (event : graph.EventId)
       (ready : config.cut.Ready event),
-      actionLaw left config event = actionLaw right config event ∨
-        ∃ first second, actionLaw left config event = PMF.pure first ∧
-          actionLaw right config event = PMF.pure second ∧
+      actionDistribution left config event = actionDistribution right config event ∨
+        ∃ first second, actionDistribution left config event = PMF.pure first ∧
+          actionDistribution right config event = PMF.pure second ∧
           (config.step event ready first).map Config.erase =
             (config.step event ready second).map Config.erase) :
     ErasureTwins left right := by

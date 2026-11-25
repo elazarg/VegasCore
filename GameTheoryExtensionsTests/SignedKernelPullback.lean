@@ -46,10 +46,10 @@ theorem unrestricted_expect_not_monotone (law : PMF ℕ)
 
 def half : unitInterval := ⟨1 / 2, by norm_num, by norm_num⟩
 
-def law : PMF ℕ := (ProbabilityTheory.geometricMeasure half).toPMF
+def geometricDistribution : PMF ℕ := (ProbabilityTheory.geometricMeasure half).toPMF
 
 theorem geometric_expect_not_monotone :
-    ¬ Monotone (fun observable : ℕ → ℝ => expect law observable) := by
+    ¬ Monotone (fun observable : ℕ → ℝ => expect geometricDistribution observable) := by
   apply unrestricted_expect_not_monotone
   intro number
   change ProbabilityTheory.geometricMeasure half {number} ≠ 0

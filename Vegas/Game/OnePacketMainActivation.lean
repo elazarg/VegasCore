@@ -33,11 +33,12 @@ def MainActivationStep (source : setup.intendedModel.BehavioralAssessment) (foca
   | some before, joint => ∀ owner, before.actor = some owner → owner ≠ focal →
       FirstActivation setup timeouts leaks owner (some (before.execution.logs owner,
         before.execution.observe (application setup timeouts leaks) owner)) →
-      responseChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler owner
+      responseChoice setup timeouts leaks bounds (initialDistribution setup) horizon scheduler owner
         (some (before.execution.logs owner,
           before.execution.observe (application setup timeouts leaks) owner))
         ((joint owner).getD ⟨none⟩) ∈
-        (honestChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler source owner
+        (honestChoice setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
+          source owner
           (some (before.execution.logs owner,
             before.execution.observe (application setup timeouts leaks) owner))).support
 

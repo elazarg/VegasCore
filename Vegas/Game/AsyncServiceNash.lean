@@ -6,7 +6,7 @@ public import Vegas.Game.AsyncServiceSpec
 public import Vegas.Game.SourceServiceTurnSettlement
 public import Vegas.Game.SourceServiceClientPolicy
 public import Vegas.Game.SourceServiceChoiceSupport
-public import Vegas.Game.ServiceHonestLaw
+public import Vegas.Game.ServiceHonestDistribution
 public import Interaction.ReactiveRawRoundTrace
 public import GameTheory.Core.Approximate
 public import Vegas.Game.SourceInformation
@@ -73,7 +73,8 @@ def SettlementRange {Parameter : Type}
       service.leaks)
     (serviceSourceAudit service.setup service.setup.informationDependencies service.duration
       service.leaks sample) deposit
-  ∀ control, (app.protocol (serviceInitialLaw service.setup service.setup.informationDependencies)
+  ∀ control, (app.protocol (serviceInitialDistribution service.setup
+    service.setup.informationDependencies)
     service.horizon
     service.scheduler).Trace (some control) →
     ∀ payoffs ∈ (settle (some control)).support, ∀ who,
@@ -100,7 +101,8 @@ def ReadoutSettlementRange {Parameter : Type}
       service.leaks)
     (serviceSourceAudit service.setup service.setup.informationDependencies service.duration
       service.leaks sample) deposit
-  ∀ control, (app.protocol (serviceInitialLaw service.setup service.setup.informationDependencies)
+  ∀ control, (app.protocol (serviceInitialDistribution service.setup
+    service.setup.informationDependencies)
     service.horizon
     service.scheduler).Trace (some control) →
     ∀ payoffs ∈ (settle (some control)).support, ∀ who,
@@ -123,7 +125,8 @@ private theorem ReadoutSettlementRange.expected {Parameter : Type}
     (trace : ((serviceApplication service.setup service.setup.informationDependencies
       service.duration
       service.leaks).protocol
-      (serviceInitialLaw service.setup service.setup.informationDependencies) service.horizon
+      (serviceInitialDistribution service.setup service.setup.informationDependencies)
+        service.horizon
         service.scheduler).Trace (some control)) (who : Player) :
     let base := readoutBaseUtility reader
       (fun config => utility (service.setup.parameterOutcome parameter config))
@@ -172,7 +175,8 @@ private theorem clientProfile_value_close {Parameter : Type}
       service.leaks).ResponseMenu)
     {turns : Nat} (timing : TurnTiming service.setup turns service.setup.informationDependencies)
     (covered : ∀ (source : Profile (service.sourceModel admission).behavioralSignature) who,
-      menu.Admissible (serviceInitialLaw service.setup service.setup.informationDependencies)
+      menu.Admissible (serviceInitialDistribution service.setup
+        service.setup.informationDependencies)
         service.horizon
         service.scheduler who
         (serviceClientPolicy service.setup service.setup.informationDependencies service.duration
@@ -183,7 +187,7 @@ private theorem clientProfile_value_close {Parameter : Type}
     (low : Player → ℝ) (range : Player → ℝ)
     (within : service.ReadoutSettlementRange reader parameter utility sample deposit low range)
     (source : Profile (service.sourceModel admission).behavioralSignature)
-    (terminal : FirstTurnReadoutLaw service.setup service.setup.informationDependencies
+    (terminal : FirstTurnReadoutAgreement service.setup service.setup.informationDependencies
       service.duration service.leaks reader
       service.horizon service.scheduler service.bound turns
       (normalizeDisclosureProfile service.setup.program (service.setup.decodeBehavioralProfile
@@ -234,32 +238,33 @@ private theorem clientProfile_value_close {Parameter : Type}
   let sourceJoint := (service.setup.run decoded).map fun config =>
     (some (config.state, config.defaults), pairUtility (config.state, config.defaults))
   have close : PMF.WithinTV timing.deferralError nativeJoint sourceJoint :=
-    sourceServiceClients_clientPolicy_settlement_lawError_readout
+    sourceServiceClients_clientPolicy_settlement_distributionError_readout
       (fun event => (service.setup.dataflowGraph.sequentialize_solitary event).ownerSolitary)
       reader service.contract timing
       decoded terminal
       menu (covered source) sample authentic pairUtility deposit
   have rawRange (players : Player → app.Policy) (execution : app.Execution)
-      (reached : execution ∈ (app.roundsFrom (serviceInitialLaw service.setup
+      (reached : execution ∈ (app.roundsFrom (serviceInitialDistribution service.setup
         service.setup.informationDependencies)
         service.scheduler players service.horizon).support) :
       ∀ payoffs ∈ (settle (app.finished execution)).support,
         low who ≤ payoffs who ∧ payoffs who ≤ low who + range who := by
-    obtain ⟨trace⟩ := app.raw_trace_roundsFrom (serviceInitialLaw service.setup
+    obtain ⟨trace⟩ := app.raw_trace_roundsFrom (serviceInitialDistribution service.setup
       service.setup.informationDependencies)
       service.horizon service.scheduler players service.horizon le_rfl execution reached
     exact fun payoffs drawn => within ⟨0, none, execution⟩
       (by simpa only [Nat.sub_self] using trace)
       payoffs drawn who
   have states : native.map (fun final => final.state) =
-      (app.roundsFrom (serviceInitialLaw service.setup service.setup.informationDependencies)
+      (app.roundsFrom (serviceInitialDistribution service.setup
+        service.setup.informationDependencies)
         service.scheduler
         (serviceClientPolicy service.setup service.setup.informationDependencies service.duration
           service.leaks
           service.bound turns timing normalized) service.horizon).map app.finished := by
     exact menu.run_restrict_eq_roundsFrom _ _ _ _ (covered source)
   have initialized (final) (supported : final ∈ native.support) :
-      ∃ execution, execution ∈ (app.roundsFrom (serviceInitialLaw service.setup
+      ∃ execution, execution ∈ (app.roundsFrom (serviceInitialDistribution service.setup
         service.setup.informationDependencies)
         service.scheduler (serviceClientPolicy service.setup service.setup.informationDependencies
           service.duration
@@ -270,7 +275,7 @@ private theorem clientProfile_value_close {Parameter : Type}
       exact ⟨final, supported, rfl⟩
     rw [states, PMF.support_map] at mapped
     exact mapped
-  have realized : (app.roundsFrom (serviceInitialLaw service.setup
+  have realized : (app.roundsFrom (serviceInitialDistribution service.setup
     service.setup.informationDependencies) service.scheduler
       (serviceTurnPolicy service.setup service.setup.informationDependencies service.duration
         service.leaks service.bound
@@ -278,7 +283,7 @@ private theorem clientProfile_value_close {Parameter : Type}
           normalized) service.horizon).bind
         (fun execution => (settle (app.finished execution)).map fun payoffs =>
           (readPair (app.finished execution), payoffs)) = sourceJoint := by
-    have exactLaw := sourceServiceFirstTurn_settlement_law_readout
+    have exactLaw := sourceServiceFirstTurn_settlement_distribution_readout
       (fun event => (service.setup.dataflowGraph.sequentialize_solitary event).ownerSolitary)
       reader service.contract
       normalized terminal
@@ -313,7 +318,7 @@ private theorem clientProfile_value_close {Parameter : Type}
     apply payoffIntegrable_of_bounded_on_support native _ (C := |low who| + |range who|)
     intro final supported
     obtain ⟨execution, reached, same⟩ := initialized final supported
-    obtain ⟨trace⟩ := app.raw_trace_roundsFrom (serviceInitialLaw service.setup
+    obtain ⟨trace⟩ := app.raw_trace_roundsFrom (serviceInitialDistribution service.setup
       service.setup.informationDependencies)
       service.horizon service.scheduler _ service.horizon le_rfl execution reached
     have bounds := ReadoutSettlementRange.expected service reader within ⟨0, none, execution⟩
@@ -363,7 +368,8 @@ theorem isεBestResponse_of_clientProfile {Parameter : Type}
       service.leaks).ResponseMenu)
     {turns : Nat} (timing : TurnTiming service.setup turns service.setup.informationDependencies)
     (covered : ∀ (source : Profile (service.sourceModel admission).behavioralSignature) who,
-      menu.Admissible (serviceInitialLaw service.setup service.setup.informationDependencies)
+      menu.Admissible (serviceInitialDistribution service.setup
+        service.setup.informationDependencies)
         service.horizon
         service.scheduler who
         (serviceClientPolicy service.setup service.setup.informationDependencies service.duration
@@ -406,7 +412,7 @@ theorem isεBestResponse_of_clientProfile {Parameter : Type}
     (serviceSourceReadout service.setup service.setup.informationDependencies service.duration
       service.leaks)
     parameter utility sample authentic deposit menu timing covered low range within source
-    (firstTurn_readout_law service.setup service.leaks service.contract service.timely
+    (firstTurn_readout_distribution service.setup service.leaks service.contract service.timely
       turns _ (fun who => BehavioralPolicy.normalizeDisclosures_authentic _ _)) who
   obtain ⟨deviationNative, deviationSource, deviationAbove, deviationBelow⟩ :=
     service.clientProfile_value_close admission
@@ -415,9 +421,9 @@ theorem isεBestResponse_of_clientProfile {Parameter : Type}
       utility sample authentic deposit menu
       timing
       covered low range within (Profile.update source who alternative)
-      (firstTurn_readout_law service.setup service.leaks service.contract service.timely
+      (firstTurn_readout_distribution service.setup service.leaks service.contract service.timely
         turns _ (fun who => BehavioralPolicy.normalizeDisclosures_authentic _ _)) who
-  let nativeUtility := fun (history : (menu.protocol (serviceInitialLaw service.setup
+  let nativeUtility := fun (history : (menu.protocol (serviceInitialDistribution service.setup
     service.setup.informationDependencies)
     service.horizon
       service.scheduler).History) (who : Player) => payoff history.state who
@@ -476,7 +482,8 @@ theorem isεBestResponse_clientProfile_of_firstTurn_bounds_readout {Parameter : 
       service.leaks).ResponseMenu)
     {turns : Nat} (timing : TurnTiming service.setup turns service.setup.informationDependencies)
     (covered : ∀ (source : Profile (service.sourceModel admission).behavioralSignature) who,
-      menu.Admissible (serviceInitialLaw service.setup service.setup.informationDependencies)
+      menu.Admissible (serviceInitialDistribution service.setup
+        service.setup.informationDependencies)
         service.horizon
         service.scheduler who
         (serviceClientPolicy service.setup service.setup.informationDependencies service.duration
@@ -487,7 +494,7 @@ theorem isεBestResponse_clientProfile_of_firstTurn_bounds_readout {Parameter : 
     (low : Player → ℝ) (range : Player → ℝ)
     (within : service.ReadoutSettlementRange reader parameter utility sample deposit low range)
     (ε : ℝ) (source : Profile (service.sourceModel admission).behavioralSignature)
-    (terminal : FirstTurnReadoutLaw service.setup service.setup.informationDependencies
+    (terminal : FirstTurnReadoutAgreement service.setup service.setup.informationDependencies
       service.duration service.leaks reader
       service.horizon service.scheduler service.bound turns
       (normalizeDisclosureProfile service.setup.program (service.setup.decodeBehavioralProfile
@@ -509,7 +516,7 @@ theorem isεBestResponse_clientProfile_of_firstTurn_bounds_readout {Parameter : 
       ∃ deviation : (service.sourceModel admission).BehavioralPolicy who,
         expect (((serviceApplication service.setup service.setup.informationDependencies
           service.duration
-          service.leaks).roundsFrom (serviceInitialLaw service.setup
+          service.leaks).roundsFrom (serviceInitialDistribution service.setup
             service.setup.informationDependencies)
             service.scheduler (deviatedTurnProfile service.bound turns
               (firstTurnTiming service.setup turns service.setup.informationDependencies) clients
@@ -538,24 +545,24 @@ theorem isεBestResponse_clientProfile_of_firstTurn_bounds_readout {Parameter : 
   classical
   let app := serviceApplication service.setup service.setup.informationDependencies
     service.duration service.leaks
-  let model := menu.information (serviceInitialLaw service.setup
+  let model := menu.information (serviceInitialDistribution service.setup
     service.setup.informationDependencies) service.horizon
     service.scheduler
   let sourceUtility := fun (final : (service.setup.executionProtocol
       admission).History) (who : Player) =>
     (service.setup.protocolReadout final.state).elim 0
       (fun state => utility (service.setup.parameterOutcome parameter state) who)
-  let nativeUtility := fun (history : (menu.protocol (serviceInitialLaw service.setup
+  let nativeUtility := fun (history : (menu.protocol (serviceInitialDistribution service.setup
     service.setup.informationDependencies)
     service.horizon
       service.scheduler).History) (who : Player) => payoff history.state who
   have rawWithin (players : Player → app.Policy) (execution : app.Execution)
-      (supported : execution ∈ (app.roundsFrom (serviceInitialLaw service.setup
+      (supported : execution ∈ (app.roundsFrom (serviceInitialDistribution service.setup
         service.setup.informationDependencies)
         service.scheduler players service.horizon).support) (player : Player) :
       low player ≤ payoff (app.finished execution) player ∧
         payoff (app.finished execution) player ≤ low player + range player := by
-    obtain ⟨trace⟩ := app.raw_trace_roundsFrom (serviceInitialLaw service.setup
+    obtain ⟨trace⟩ := app.raw_trace_roundsFrom (serviceInitialDistribution service.setup
       service.setup.informationDependencies)
       service.horizon service.scheduler players service.horizon le_rfl execution supported
     exact ReadoutSettlementRange.expected service reader within ⟨0, none, execution⟩
@@ -564,7 +571,7 @@ theorem isεBestResponse_clientProfile_of_firstTurn_bounds_readout {Parameter : 
   intro who
   rw [bestResponse_self_iff]
   intro replacement
-  let alternative := app.decodePolicy (menu.embedPolicy (serviceInitialLaw service.setup
+  let alternative := app.decodePolicy (menu.embedPolicy (serviceInitialDistribution service.setup
     service.setup.informationDependencies)
     service.horizon service.scheduler who replacement)
   let players := Function.update (serviceClientPolicy service.setup
@@ -572,16 +579,17 @@ theorem isεBestResponse_clientProfile_of_firstTurn_bounds_readout {Parameter : 
     service.leaks
     service.bound turns timing clients) who alternative
   let turnPlayers := deviatedTurnProfile service.bound turns timing clients who alternative
-  have completed : app.roundsFrom (serviceInitialLaw service.setup
+  have completed : app.roundsFrom (serviceInitialDistribution service.setup
     service.setup.informationDependencies) service.scheduler
     players
       service.horizon =
-      app.roundsFrom (serviceInitialLaw service.setup service.setup.informationDependencies)
+      app.roundsFrom (serviceInitialDistribution service.setup
+        service.setup.informationDependencies)
         service.scheduler turnPlayers
         service.horizon :=
     sourceServiceClientPolicy_deviation_roundsFrom service.scheduler service.bound turns timing
       clients who alternative service.horizon
-  have admissible : ∀ player, menu.Admissible (serviceInitialLaw service.setup
+  have admissible : ∀ player, menu.Admissible (serviceInitialDistribution service.setup
     service.setup.informationDependencies)
     service.horizon
       service.scheduler player (players player) := by
@@ -590,13 +598,13 @@ theorem isεBestResponse_clientProfile_of_firstTurn_bounds_readout {Parameter : 
     · subst same
       intro control _ _ action member
       simp only [players, Function.update_self] at member
-      exact menu.decode_embedPolicy_covered (serviceInitialLaw service.setup
+      exact menu.decode_embedPolicy_covered (serviceInitialDistribution service.setup
         service.setup.informationDependencies)
         service.horizon
         service.scheduler player replacement _ _ action member
     · simp only [players, Function.update_of_ne same]
       exact covered source player
-  have restricted : (fun player => menu.restrictPolicy (serviceInitialLaw service.setup
+  have restricted : (fun player => menu.restrictPolicy (serviceInitialDistribution service.setup
     service.setup.informationDependencies)
       service.horizon service.scheduler player (players player)) =
       Profile.update (service.clientProfile admission menu timing source) who replacement := by
@@ -604,31 +612,32 @@ theorem isεBestResponse_clientProfile_of_firstTurn_bounds_readout {Parameter : 
     by_cases same : player = who
     · subst same
       simp only [players, Function.update_self, Profile.update]
-      exact menu.restrict_decode_embedPolicy (serviceInitialLaw service.setup
+      exact menu.restrict_decode_embedPolicy (serviceInitialDistribution service.setup
         service.setup.informationDependencies)
         service.horizon
         service.scheduler player replacement
     · simp only [players, Function.update_of_ne same, Profile.update]
       rfl
   have deviationLaw := menu.run_restrict_eq_roundsFrom
-    (serviceInitialLaw service.setup service.setup.informationDependencies) service.horizon
+    (serviceInitialDistribution service.setup service.setup.informationDependencies) service.horizon
     service.scheduler players admissible
   rw [restricted] at deviationLaw
   rw [completed] at deviationLaw
   -- The turn-counted and first-turn deviations are close.
   have coupled := deviatedTurnProfile_roundsFrom_bind_within
-    (serviceInitialLaw service.setup service.setup.informationDependencies) service.scheduler
+    (serviceInitialDistribution service.setup service.setup.informationDependencies)
+      service.scheduler
       service.horizon service.bound
     timing clients who alternative (fun execution => PMF.pure execution)
   simp only [PMF.bind_pure] at coupled
   let limit := deviatedTurnProfile service.bound turns (firstTurnTiming service.setup turns
     service.setup.informationDependencies)
     clients who alternative
-  have deviationGap : expect (app.roundsFrom (serviceInitialLaw service.setup
+  have deviationGap : expect (app.roundsFrom (serviceInitialDistribution service.setup
     service.setup.informationDependencies)
     service.scheduler
         turnPlayers service.horizon) (fun execution => payoff (app.finished execution) who) -
-      expect (app.roundsFrom (serviceInitialLaw service.setup
+      expect (app.roundsFrom (serviceInitialDistribution service.setup
         service.setup.informationDependencies) service.scheduler limit
         service.horizon)
         (fun execution => payoff (app.finished execution) who) ≤
@@ -642,7 +651,7 @@ theorem isεBestResponse_clientProfile_of_firstTurn_bounds_readout {Parameter : 
       · exact rawWithin limit execution supported who
   obtain ⟨deviation, firstBound⟩ := firstTurn who alternative
   rw [expect_map] at firstBound
-  have firstBound' : expect (app.roundsFrom (serviceInitialLaw service.setup
+  have firstBound' : expect (app.roundsFrom (serviceInitialDistribution service.setup
     service.setup.informationDependencies)
     service.scheduler limit
         service.horizon) (fun execution => payoff (app.finished execution) who) ≤
@@ -698,7 +707,7 @@ theorem isεBestResponse_clientProfile_of_firstTurn_bounds_readout {Parameter : 
   have deviationValue : expectedUtility nativeUtility who
       (model.runBehavioral (Profile.update (service.clientProfile admission menu timing source) who
         replacement) (2 * service.horizon + 1)) =
-      expect (app.roundsFrom (serviceInitialLaw service.setup
+      expect (app.roundsFrom (serviceInitialDistribution service.setup
         service.setup.informationDependencies) service.scheduler
         turnPlayers
         service.horizon) (fun execution => payoff (app.finished execution) who) := by
@@ -730,7 +739,8 @@ theorem isεBestResponse_clientProfile_of_firstTurn_bounds {Parameter : Type}
       service.leaks).ResponseMenu)
     {turns : Nat} (timing : TurnTiming service.setup turns service.setup.informationDependencies)
     (covered : ∀ (source : Profile (service.sourceModel admission).behavioralSignature) who,
-      menu.Admissible (serviceInitialLaw service.setup service.setup.informationDependencies)
+      menu.Admissible (serviceInitialDistribution service.setup
+        service.setup.informationDependencies)
         service.horizon
         service.scheduler who
         (serviceClientPolicy service.setup service.setup.informationDependencies service.duration
@@ -741,7 +751,7 @@ theorem isεBestResponse_clientProfile_of_firstTurn_bounds {Parameter : Type}
     (low : Player → ℝ) (range : Player → ℝ)
     (within : service.SettlementRange parameter utility sample deposit low range)
     (ε : ℝ) (source : Profile (service.sourceModel admission).behavioralSignature)
-    (terminal : FirstTurnSourceLaw service.setup service.setup.informationDependencies
+    (terminal : FirstTurnSourceAgreement service.setup service.setup.informationDependencies
       service.duration service.leaks
       service.horizon service.scheduler service.bound turns
       (normalizeDisclosureProfile service.setup.program (service.setup.decodeBehavioralProfile
@@ -764,7 +774,7 @@ theorem isεBestResponse_clientProfile_of_firstTurn_bounds {Parameter : Type}
       ∃ deviation : (service.sourceModel admission).BehavioralPolicy who,
         expect (((serviceApplication service.setup service.setup.informationDependencies
           service.duration
-          service.leaks).roundsFrom (serviceInitialLaw service.setup
+          service.leaks).roundsFrom (serviceInitialDistribution service.setup
             service.setup.informationDependencies)
             service.scheduler (deviatedTurnProfile service.bound turns
               (firstTurnTiming service.setup turns service.setup.informationDependencies) clients

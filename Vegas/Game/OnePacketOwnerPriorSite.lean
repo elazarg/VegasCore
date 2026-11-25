@@ -34,7 +34,7 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 /-- **Private initial inputs are not failures** in a well-formed setup: a
 private input never fails, and an initial commitment holds a success. -/
 theorem eventInputs_not_failure (wellFormed : setup.WellFormed) {who : Player}
-    {draw : State L setup.context} (member : draw ∈ setup.initialLaw.support)
+    {draw : State L setup.context} (member : draw ∈ setup.initialDistribution.support)
     {name : VarId} {kind : CellTy Player L} (source : HasVar setup.context name kind)
     (hidden : kind.hiddenOwner? = some who) :
     ¬ (setup.informationGraph.layout (.inl (inputId source))).IsFailure
@@ -99,7 +99,7 @@ theorem siteDraw {who : Player}
       scheduler).InformationHistory who
       site.1) :
     ∃ (control : (application setup timeouts leaks).Control) (draw : State L setup.context),
-      history.1.state = some control ∧ draw ∈ setup.initialLaw.support ∧
+      history.1.state = some control ∧ draw ∈ setup.initialDistribution.support ∧
       control.execution.application.config.inputs = setup.eventInputs draw ∧
       ∀ input, PrivateTo who (setup := setup) (.inl input) →
         view.application.observation.store (.inl input) = some (setup.eventInputs draw input) := by
@@ -126,13 +126,13 @@ theorem ownerSwap_priorClosed (wellFormed : setup.WellFormed)
     {past₁ past₂ : List (application setup timeouts leaks).PlayerEntry}
     {view₁ view₂ : (application setup timeouts leaks).PlayerView}
     (firstSite : site₁.1 = some (past₁, view₁)) (secondSite : site₂.1 = some (past₂, view₂)) :
-    ∀ initial ∈ setup.initialLaw.support,
+    ∀ initial ∈ setup.initialDistribution.support,
       (∃ history : (onePacketInformation setup timeouts leaks bounds horizon
           scheduler).InformationHistory who site₁.1, ∃ control : (application setup timeouts
             leaks).Control,
         history.1.state = some control ∧
           control.execution.application.config.inputs = setup.eventInputs initial) →
-      ∃ other ∈ setup.initialLaw.support, setup.eventInputs other =
+      ∃ other ∈ setup.initialDistribution.support, setup.eventInputs other =
         (ownerSwap who view₁.application view₂.application).inputs (setup.eventInputs initial) := by
   rintro initial member ⟨history, control, stateEq, inputsEq⟩
   obtain ⟨control₁, draw₁, stateEq₁, -, inputsEq₁, firstStore⟩ := siteDraw (timeouts := timeouts)
@@ -146,7 +146,7 @@ theorem ownerSwap_priorClosed (wellFormed : setup.WellFormed)
       view₁.application.observation.store (.inl input) =
         some (setup.eventInputs initial input) := fun input privateTo => by
     rw [firstStore input privateTo, ← inputsEq₁, inputsEq]
-  have ok : ∀ draw ∈ setup.initialLaw.support, ∀ input,
+  have ok : ∀ draw ∈ setup.initialDistribution.support, ∀ input,
       PrivateTo who (setup := setup) (.inl input) →
         ¬ (setup.informationGraph.layout (.inl input)).IsFailure (setup.eventInputs draw input) :=
           by

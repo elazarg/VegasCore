@@ -48,7 +48,7 @@ def initial (values : Player → Int) : State simpleExpr context :=
 def setup (prior : PMF (Player → Int)) : Setup (Player := Player) (L := simpleExpr) where
   context := context
   namesNodup := by decide
-  initialLaw := prior.map initial
+  initialDistribution := prior.map initial
   obligations := ∅
   program := program
   accounts := rfl

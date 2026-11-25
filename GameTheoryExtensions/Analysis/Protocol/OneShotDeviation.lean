@@ -24,7 +24,7 @@ open GameTheory.Math.Probability ExecutionProtocol
 variable {Player : Type} [DecidableEq Player]
   {E : ExecutionProtocol Player} [E.FiniteMovers] (M : InformationModel E)
 
-theorem one_step_then_baseline_eq_local_law (antichain : M.DecisionInformationAntichain)
+theorem one_step_then_baseline_eq_local_distribution (antichain : M.DecisionInformationAntichain)
     (profile : ∀ player, M.BehavioralPolicy player) (who : Player)
     [DecidableEq (M.InfoState who)] (alternative : M.BehavioralPolicy who)
     (history : E.History) (active : E.active history.state who) (fuel : Nat) :

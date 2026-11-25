@@ -43,7 +43,7 @@ theorem serviceReference_fixedAction_continuation
     (drained : ∀ state : EventGraphRuntime.State (serviceGraph setup deps),
       continuation state.drain.config = continuation state.config)
     (contract : AsyncContract timeouts leaks
-      (serviceInitialLaw setup deps) horizon scheduler delay bound)
+      (serviceInitialDistribution setup deps) horizon scheduler delay bound)
     (timely : AsyncTimely timeouts delay bound)
     (owner : Player) (event : (serviceGraph setup deps).EventId)
     (owned : (serviceGraph setup deps).actor? event = some owner) (solitary :
@@ -55,7 +55,7 @@ theorem serviceReference_fixedAction_continuation
     (execution : ((reactiveApplication timeouts) leaks).Execution)
     (ready : execution.application.config.cut.Ready event)
     (supported : execution ∈ (((reactiveApplication timeouts) leaks).roundsFrom
-      (serviceInitialLaw setup deps) scheduler background
+      (serviceInitialDistribution setup deps) scheduler background
         execution.environmentRecall.length).support)
     (untouched : Untouched setup leaks event execution)
     (bounded : execution.environmentRecall.length ≤ horizon)
@@ -73,7 +73,7 @@ theorem serviceReference_fixedAction_continuation
         continuation stopped.application.config) =
       (execution.application.config.step event ready action).bind
         fun after => continuation after := by
-  rw [serviceInitialLaw_eq_inputs setup] at contract supported
+  rw [serviceInitialDistribution_eq_inputs setup] at contract supported
   exact EventGraphRuntime.firstTurn_fixedAction_continuation timeouts leaks scheduler delay bound
     client continuation drained contract timely owner event owned solitary background follows action
     execution ready supported untouched bounded effective
@@ -129,7 +129,8 @@ theorem sourceService_fixedAction_continuation
     (delay bound : setup.informationGraph.EventId → Nat)
     (source : BehavioralProfile setup.program) (reference :
       setup.informationGraph.BehavioralProfile)
-    (contract : AsyncContract timeouts leaks (initialLaw setup) horizon scheduler delay bound)
+    (contract : AsyncContract timeouts leaks (initialDistribution setup) horizon scheduler delay
+      bound)
     (timely : AsyncTimely timeouts delay bound)
     (owner : Player) (event : setup.informationGraph.EventId)
     (owned : setup.informationGraph.actor? event = some owner)
@@ -177,88 +178,94 @@ theorem sourceService_fixedAction_continuation
 /-- First-turn clients of a profile with authentic disclosures have exactly the terminal
 configuration distribution of the canonical compiled graph under the asynchronous service contract
 and its reaction and inclusion bounds. -/
-theorem firstTurnGraphLaw_of_async
+theorem firstTurnGraphDistribution_of_async
     (timeouts : EventTimeouts setup.informationGraph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
     {horizon turns : Nat} (scheduler : (application setup timeouts leaks).Scheduler)
     (delay bound : setup.informationGraph.EventId → Nat)
     (source : BehavioralProfile setup.program)
-    (contract : AsyncContract timeouts leaks (initialLaw setup) horizon scheduler delay bound)
+    (contract : AsyncContract timeouts leaks (initialDistribution setup) horizon scheduler delay
+      bound)
     (timely : AsyncTimely timeouts delay bound)
     (authentic : ∀ who, (source who).AuthenticDisclosures setup.program) :
-    ((application setup timeouts leaks).roundsFrom (initialLaw setup) scheduler
+    ((application setup timeouts leaks).roundsFrom (initialDistribution setup) scheduler
       (serviceTurnPolicy setup setup.informationDependencies timeouts.duration leaks bound turns
         (firstTurnTiming setup turns) source) horizon).map
         (fun execution => execution.application.config) =
-    ((setup.informationGraph.canonicalGame (setup.initialLaw.map setup.eventInputs)).play
+    ((setup.informationGraph.canonicalGame (setup.initialDistribution.map setup.eventInputs)).play
       (compileEventProfile setup.program source)).map Subtype.val := by
-  have initEq := serviceInitialLaw_eq_inputs setup (deps := setup.informationDependencies)
-  unfold initialLaw at contract ⊢
+  have initEq := serviceInitialDistribution_eq_inputs setup (deps := setup.informationDependencies)
+  unfold initialDistribution at contract ⊢
   rw [initEq] at contract ⊢
-  exact EventGraphRuntime.firstTurn_config_law timeouts leaks scheduler delay bound
-    (setup.initialLaw.map setup.eventInputs) (compileEventProfile setup.program source) contract
+  exact EventGraphRuntime.firstTurn_config_distribution timeouts leaks scheduler delay bound
+    (setup.initialDistribution.map setup.eventInputs) (compileEventProfile setup.program source)
+      contract
     timely (compileEventProfile_realizable authentic)
 
 /-- First-turn source clients preserve the full source configuration under the
 asynchronous service contract and its reaction/inclusion timing budget. -/
-theorem firstTurnSourceLaw_of_async
+theorem FirstTurnSourceMatches_of_async
     (timeouts : EventTimeouts setup.informationGraph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
     {horizon turns : Nat} (scheduler : (application setup timeouts leaks).Scheduler)
     (delay bound : setup.informationGraph.EventId → Nat)
     (source : BehavioralProfile setup.program)
-    (contract : AsyncContract timeouts leaks (initialLaw setup) horizon scheduler delay bound)
+    (contract : AsyncContract timeouts leaks (initialDistribution setup) horizon scheduler delay
+      bound)
     (timely : AsyncTimely timeouts delay bound)
     (authentic : ∀ who, (source who).AuthenticDisclosures setup.program) :
-    FirstTurnSourceLaw setup setup.informationDependencies timeouts.duration leaks horizon
+    FirstTurnSourceAgreement setup setup.informationDependencies timeouts.duration leaks horizon
       scheduler bound turns
       source := by
-  have raw := firstTurnGraphLaw_of_async (turns := turns) timeouts leaks scheduler delay bound
+  have raw := firstTurnGraphDistribution_of_async (turns := turns) timeouts leaks scheduler delay
+    bound
     source contract timely authentic
-  have graph := sourceReadout_law_of_config_law setup timeouts leaks _ raw
-  have compiled := congrArg (PMF.map some) (canonical_setup_law setup source)
+  have graph := sourceReadout_distribution_of_config_distribution setup timeouts leaks _ raw
+  have compiled := congrArg (PMF.map some) (canonical_setup_distribution setup source)
   rw [PMF.map_comp] at compiled
   exact graph.trans compiled
 
 /-- Actual first-turn clients have the full terminal graph configuration law of canonical execution
 under their disclosure-normalized profile. -/
-theorem sourceServiceClientPolicy_canonicalGraph_law
+theorem sourceServiceClientPolicy_canonicalGraph_config_distribution_eq
     (timeouts : EventTimeouts setup.informationGraph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
     {horizon turns : Nat} (scheduler : (application setup timeouts leaks).Scheduler)
     (delay bound : setup.informationGraph.EventId → Nat)
     (original : BehavioralProfile setup.program)
-    (contract : AsyncContract timeouts leaks (initialLaw setup) horizon scheduler delay bound)
+    (contract : AsyncContract timeouts leaks (initialDistribution setup) horizon scheduler delay
+      bound)
     (timely : AsyncTimely timeouts delay bound) :
-    ((application setup timeouts leaks).roundsFrom (initialLaw setup) scheduler
+    ((application setup timeouts leaks).roundsFrom (initialDistribution setup) scheduler
       (serviceClientPolicy setup setup.informationDependencies timeouts.duration leaks bound turns
         (firstTurnTiming setup turns) (normalizeDisclosureProfile setup.program original))
       horizon).map (fun execution => execution.application.config) =
-    ((setup.informationGraph.canonicalGame (setup.initialLaw.map setup.eventInputs)).play
+    ((setup.informationGraph.canonicalGame (setup.initialDistribution.map setup.eventInputs)).play
       (compileEventProfile setup.program (normalizeDisclosureProfile setup.program original))).map
         Subtype.val := by
-  have initEq := serviceInitialLaw_eq_inputs setup (deps := setup.informationDependencies)
-  unfold initialLaw at contract ⊢
+  have initEq := serviceInitialDistribution_eq_inputs setup (deps := setup.informationDependencies)
+  unfold initialDistribution at contract ⊢
   rw [initEq] at contract ⊢
-  exact firstTurn_client_config_law timeouts leaks scheduler delay bound
-    (setup.initialLaw.map setup.eventInputs) _ contract timely
+  exact firstTurn_client_config_distribution timeouts leaks scheduler delay bound
+    (setup.initialDistribution.map setup.eventInputs) _ contract timely
     (compileEventProfile_realizable fun who =>
       BehavioralPolicy.normalizeDisclosures_authentic setup.program (original who))
 
 /-- Actual first-turn clients preserve every observation of the original source's
 full typed state and public default history: the ledger-to-graph law composed with the
 canonical configuration law. -/
-theorem sourceServiceClientPolicy_outcome_law
+theorem sourceServiceClientPolicy_source_observation_distribution_eq
     (timeouts : EventTimeouts setup.informationGraph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
     {horizon turns : Nat} (scheduler : (application setup timeouts leaks).Scheduler)
     (delay bound : setup.informationGraph.EventId → Nat)
     (original : BehavioralProfile setup.program)
-    (contract : AsyncContract timeouts leaks (initialLaw setup) horizon scheduler delay bound)
+    (contract : AsyncContract timeouts leaks (initialDistribution setup) horizon scheduler delay
+      bound)
     (timely : AsyncTimely timeouts delay bound)
     {Outcome : Type*}
     (read : State L setup.program.terminalCtx × DefaultHistory Player → Outcome) :
-    ((application setup timeouts leaks).roundsFrom (initialLaw setup) scheduler
+    ((application setup timeouts leaks).roundsFrom (initialDistribution setup) scheduler
       (serviceClientPolicy setup setup.informationDependencies timeouts.duration leaks bound turns
         (firstTurnTiming setup turns) (normalizeDisclosureProfile setup.program original))
       horizon).map (fun execution =>
@@ -269,13 +276,14 @@ theorem sourceServiceClientPolicy_outcome_law
   have graph := congrArg
     (PMF.map (Option.map fun final : Config Player L setup.program.terminalCtx =>
       read (final.state, final.defaults)))
-    (sourceReadout_law_of_config_law setup timeouts leaks _
-      (sourceServiceClientPolicy_canonicalGraph_law (horizon := horizon) (turns := turns)
+    (sourceReadout_distribution_of_config_distribution setup timeouts leaks _
+      (sourceServiceClientPolicy_canonicalGraph_config_distribution_eq (horizon := horizon)
+        (turns := turns)
       timeouts leaks scheduler delay bound original contract timely))
   have source := congrArg
     (PMF.map fun final : Config Player L setup.program.terminalCtx =>
       some (read (final.state, final.defaults)))
-    (canonical_setup_law setup (normalizeDisclosureProfile setup.program original))
+    (canonical_setup_distribution setup (normalizeDisclosureProfile setup.program original))
   have normalized := congrArg (PMF.map fun output => some (read output))
     (setup.run_normalizeDisclosures_eq original)
   simp only [PMF.map_comp, Function.comp_def, Option.map_some] at graph source normalized
@@ -283,17 +291,18 @@ theorem sourceServiceClientPolicy_outcome_law
 
 /-- Actual clients and canonical compiled graph execution preserve the same
 typed-state and public-default observations for every source profile. -/
-theorem sourceServiceClientPolicy_graph_law
+theorem sourceServiceClientPolicy_graph_observation_distribution_eq
     (timeouts : EventTimeouts setup.informationGraph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
     {horizon turns : Nat} (scheduler : (application setup timeouts leaks).Scheduler)
     (delay bound : setup.informationGraph.EventId → Nat)
     (original : BehavioralProfile setup.program)
-    (contract : AsyncContract timeouts leaks (initialLaw setup) horizon scheduler delay bound)
+    (contract : AsyncContract timeouts leaks (initialDistribution setup) horizon scheduler delay
+      bound)
     (timely : AsyncTimely timeouts delay bound)
     {Outcome : Type*}
     (read : State L setup.program.terminalCtx × DefaultHistory Player → Outcome) :
-    ((application setup timeouts leaks).roundsFrom (initialLaw setup) scheduler
+    ((application setup timeouts leaks).roundsFrom (initialDistribution setup) scheduler
       (serviceClientPolicy setup setup.informationDependencies timeouts.duration leaks bound turns
         (firstTurnTiming setup turns) (normalizeDisclosureProfile setup.program original))
       horizon).map (fun execution =>
@@ -301,15 +310,16 @@ theorem sourceServiceClientPolicy_graph_law
           ((application setup timeouts leaks).finished execution)).map
           (fun final => read (final.state, final.defaults))) =
       ((setup.informationGraph.canonicalGame
-          (setup.initialLaw.map setup.eventInputs)).play
+          (setup.initialDistribution.map setup.eventInputs)).play
         (compileEventProfile setup.program original)).map (fun terminal =>
           let final := terminalConfig setup.program terminal
           some (read (final.state, final.defaults))) := by
-  rw [sourceServiceClientPolicy_outcome_law timeouts leaks scheduler delay bound original contract
+  rw [sourceServiceClientPolicy_source_observation_distribution_eq timeouts leaks scheduler delay
+    bound original contract
     timely read]
   have law := congrArg
     (PMF.map (fun final : Config Player L setup.program.terminalCtx =>
-      some (read (final.state, final.defaults)))) (canonical_setup_law setup original)
+      some (read (final.state, final.defaults)))) (canonical_setup_distribution setup original)
   simpa only [PMF.map_comp, Function.comp_def] using law.symm
 
 end Compilation

@@ -40,7 +40,7 @@ def prior : PMF (State simpleExpr context) :=
 def setup : Setup (Player := Bool) (L := simpleExpr) where
   context := context
   namesNodup := by decide
-  initialLaw := prior
+  initialDistribution := prior
   obligations := ∅
   program := .ret []
   accounts := rfl
@@ -96,7 +96,8 @@ theorem exists_draw (state : State simpleExpr context) :
   all_goals norm_num
 
 /-- All eight typed states have positive prior probability. -/
-theorem full_support (state : State simpleExpr context) : state ∈ setup.initialLaw.support := by
+theorem full_support (state : State simpleExpr context) :
+    state ∈ setup.initialDistribution.support := by
   obtain ⟨p, a, b, rfl⟩ := exists_draw state
   rw [PMF.mem_support_iff]
   change prior (draw p a b) ≠ 0

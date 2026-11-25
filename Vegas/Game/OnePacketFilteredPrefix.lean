@@ -72,7 +72,7 @@ theorem clearRecord_of_tracePrefix
       cases source with
       | none => trivial
       | some current =>
-          apply native_clear_before_transition timeouts leaks (initialLaw setup)
+          apply native_clear_before_transition timeouts leaks (initialDistribution setup)
             horizon scheduler joint realized ?_ current rfl
           intro next same
           subst target

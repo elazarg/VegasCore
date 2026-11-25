@@ -77,10 +77,12 @@ theorem regularStep_of_clear_regular_main (wellFormed : setup.WellFormed)
     (next : (application setup timeouts leaks).Control)
     (realized : some next ∈ ((onePacketProtocol setup timeouts leaks bounds horizon scheduler).step
       (some ⟨remaining, some actor, execution⟩) ⟨joint, legal⟩).support)
-    (main : responseChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler actor
+    (main : responseChoice setup timeouts leaks bounds (initialDistribution setup) horizon
+      scheduler actor
       (some (execution.logs actor, execution.observe (application setup timeouts leaks) actor))
       ((joint actor).getD ⟨none⟩) ∈
-      (honestChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler source actor
+      (honestChoice setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
+        source actor
         (some (execution.logs actor,
           execution.observe (application setup timeouts leaks) actor))).support) :
     RegularStep setup timeouts leaks bounds horizon scheduler source focal
@@ -94,7 +96,8 @@ theorem regularStep_of_clear_regular_main (wellFormed : setup.WellFormed)
       ⟨point, decoded, forcedPoint_of_intended player intended⟩
   obtain ⟨response, chosen, member, nextEq, _infoEq⟩ :=
     onePacket_response_step (timeouts := timeouts) prior joint legal realized _ next rfl rfl rfl
-  have selected : (responseChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+  have selected : (responseChoice setup timeouts leaks bounds
+    (initialDistribution setup) horizon scheduler
     actor
       (some (execution.logs actor, execution.observe (application setup timeouts leaks) actor))
       response).1 = some response := by

@@ -2,7 +2,7 @@ module
 
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-public import Vegas.Examples.OddsEvensFairLaw
+public import Vegas.Examples.OddsEvensFairDistribution
 public import Vegas.Game.IntendedSourceProfile
 public import Vegas.Game.SourcePrefixForfeit
 public import Vegas.Game.RevealService
@@ -174,13 +174,13 @@ theorem target_extends : (setup.intendedRestriction admission).ExtendsProfile
 theorem source_disclosing (who : Player) : Disclosing program (source who) :=
   setup.intendedSourceProfile_disclosing admission uniformAssessment.strategy who
 
-theorem uniform_joint_law :
+theorem uniform_joint_distribution :
     (setup.intendedModel.runBehavioral uniformAssessment.strategy
       (instructionCount setup.program + 1)).map (fun final =>
         (setup.protocolReadout final.state, fun who => (setup.protocolReadout final.state).elim 0
           (fun terminal => sourceUtility (setup.parameterOutcome (fun _ => ()) terminal) who))) =
-        uniformJointLaw := by
-  rw [← uniform_source_joint_law]
+        uniformJointDistribution := by
+  rw [← uniform_source_joint_distribution]
   apply map_congr_on_support _
   intro final _supported
   refine Prod.ext rfl (funext fun who => ?_)
@@ -198,18 +198,18 @@ theorem graph_equilibrium (scheduler : graph.PublicScheduler) :
     (((graph.gameForm (setup.graphInputs dependencies) scheduler).play graphClients).map
       (fun outcome => (some (setup.graphReadout dependencies outcome),
         setup.graphForfeitPayoff dependencies (fun _ => ()) sourceUtility 200 outcome))) =
-      uniformJointLaw ∧
+      uniformJointDistribution ∧
     ∀ who, expect ((graph.gameForm (setup.graphInputs dependencies) scheduler).play graphClients)
       (fun outcome => setup.graphForfeitPayoff dependencies (fun _ => ()) sourceUtility 200
         outcome who) = 100 := by
   obtain ⟨nash, clean, law⟩ := setup.compileIntendedExtension_forfeit dependencies relaxed
     finiteBindingTypes wellFormed (fun _ => ()) sourceUtility 200 utility_spread
     uniformAssessment.strategy target target_extends source_disclosing 0 uniform_isNash scheduler
-  have exactLaw := law.trans uniform_joint_law
+  have exactLaw := law.trans uniform_joint_distribution
   refine ⟨nash, clean, exactLaw, ?_⟩
   intro who
   have expected := congrArg (fun law => expect law (fun observed => observed.2 who)) exactLaw
   rw [expect_map] at expected
-  exact expected.trans (uniformJointLaw_expected who)
+  exact expected.trans (uniformJointDistribution_expected_payoff who)
 
 end Vegas.Examples.OddsEvensConcurrent

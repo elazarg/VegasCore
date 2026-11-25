@@ -36,7 +36,8 @@ structure RunPoint (scheduler : (serviceApplication setup deps duration leaks).S
     (who : Player) (start finish bar : Nat)
     (execution : (serviceApplication setup deps duration leaks).Execution) : Prop where
   supported : execution ∈ ((serviceApplication setup deps duration leaks).roundsFrom
-    (serviceInitialLaw setup deps) scheduler players execution.environmentRecall.length).support
+    (serviceInitialDistribution setup deps) scheduler players
+      execution.environmentRecall.length).support
   bounded : execution.environmentRecall.length ≤ horizon
   earlier : ∀ event : (serviceGraph setup deps).EventId, event.val < start →
     event ∈ execution.application.config.cut.completed
@@ -148,7 +149,7 @@ theorem RunPoint.target_endpoint {horizon : Nat}
     {delay : (serviceGraph setup deps).EventId → Nat}
     (bound : (serviceGraph setup deps).EventId → Nat) (turns : Nat)
     (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
-        (serviceInitialLaw setup deps) horizon scheduler delay bound)
+        (serviceInitialDistribution setup deps) horizon scheduler delay bound)
     (timely : AsyncTimely (serviceTimeouts setup deps duration) delay bound)
     (reference : (serviceGraph setup deps).BehavioralProfile)
     (decides : ∀ (config : (serviceGraph setup deps).Config)
@@ -262,7 +263,7 @@ theorem RunPoint.final_endpoint {horizon : Nat}
     {delay : (serviceGraph setup deps).EventId → Nat}
     (bound : (serviceGraph setup deps).EventId → Nat) (turns : Nat)
     (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
-        (serviceInitialLaw setup deps) horizon scheduler delay bound)
+        (serviceInitialDistribution setup deps) horizon scheduler delay bound)
     (timely : AsyncTimely (serviceTimeouts setup deps duration) delay bound)
     (reference : (serviceGraph setup deps).BehavioralProfile)
     (decides : ∀ (config : (serviceGraph setup deps).Config)

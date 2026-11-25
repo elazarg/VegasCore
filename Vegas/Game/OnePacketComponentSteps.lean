@@ -71,7 +71,8 @@ theorem response_stepProb
   subst initialized
   have active : (application setup timeouts leaks).actor (some control) = some actor := acting
   rw [stepProb_of_actor (timeouts := timeouts) profile prior joint legal active]
-  change _ ∈ ((application setup timeouts leaks).transition (initialLaw setup) horizon scheduler
+  change _ ∈ ((application setup timeouts leaks).transition
+    (initialDistribution setup) horizon scheduler
     (some control) joint).support at realized
   rw [transition_respond (timeouts := timeouts) control acting joint] at realized ⊢
   rw [(PMF.mem_support_pure_iff _ _).mp realized, PMF.pure_apply_self, ENNReal.toReal_one,
@@ -154,7 +155,8 @@ def OperationalSteps.ofSlotComponents
         ⟨joint, legal⟩).support) (control next : (application setup timeouts leaks).Control)
       (actor : Player), before = some control → after = some next →
       control.actor = some actor → actor ≠ who →
-      forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks) (initialLaw setup)
+      forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks)
+        (initialDistribution setup)
         horizon
         scheduler actor ((application setup timeouts leaks).observe actor (some control)) →
       ForcedState setup timeouts leaks who (some control) →
@@ -169,7 +171,8 @@ def OperationalSteps.ofSlotComponents
         profiles n actor ((onePacketInformation setup timeouts leaks bounds horizon
           scheduler).infoOf
             actor prior) =
-          slotTrembledChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler scale
+          slotTrembledChoice setup timeouts leaks bounds (initialDistribution setup) horizon
+            scheduler scale
             nonnegative le_one actor _ main alternative slot ∧
         (main (InformationModel.choicesOfLegal _ prior ⟨joint, legal⟩ actor)).toReal =
           contentFactor setup timeouts leaks (sequence n) actor control.execution next.execution
@@ -200,7 +203,8 @@ def OperationalSteps.ofSlotComponents
     rw [response_stepProb (timeouts := timeouts) (profiles n) prior joint legal realized control
       initialized acting,
       ← combination]
-    have near := slotTrembledChoice_near setup timeouts leaks bounds (initialLaw setup) horizon
+    have near := slotTrembledChoice_near setup timeouts leaks bounds
+      (initialDistribution setup) horizon
       scheduler
       nonnegative le_one actor _ main alternative slot
       (InformationModel.choicesOfLegal _ prior ⟨joint, legal⟩ actor) mainMass alternativeMass

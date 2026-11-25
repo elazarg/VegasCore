@@ -6,7 +6,7 @@ public import Vegas.Compile.EventGraphSourceStep
 public import Vegas.Compile.EventGraphHistory
 public import Vegas.Compile.EventGraphInputs
 public import Vegas.EventGraph.SequentialNormalization
-public import Vegas.EventGraph.SequentialLaw
+public import Vegas.EventGraph.SequentialDistribution
 public import Vegas.Source.SetupProtocol
 
 @[expose] public section

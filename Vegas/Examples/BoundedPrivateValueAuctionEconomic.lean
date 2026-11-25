@@ -49,13 +49,13 @@ theorem truthful_bob_payoff_ge (types : Player → Bid) (alternative other : Bid
     split_ifs <;> omega
   exact_mod_cast gain
 
-theorem truthful_joint_law (prior : PMF (Player → Bid)) :
+theorem truthful_joint_distribution (prior : PMF (Player → Bid)) :
     ((setup prior).run truthful).map (fun terminal =>
       (terminal, utility ((setup prior).parameterOutcome values terminal))) =
       prior.map (fun types =>
         (finalConfig types (types .alice) (types .bob),
           surplus types (types .alice) (types .bob))) := by
-  rw [truthful_source_law, PMF.map_comp]
+  rw [truthful_source_distribution, PMF.map_comp]
   apply map_congr_on_support _
   intro types _
   dsimp only [Function.comp_def]
@@ -104,7 +104,7 @@ private theorem uniformPrior_expected_surplus (who : Player) :
     norm_num [Fintype.sum_prod_type, Fin.sum_univ_succ, valuationPair, surplus,
       BoundedPaymentAuction.bid]
 
-theorem truthful_joint_law_expected (who : Player) :
+theorem truthful_joint_distribution_expected (who : Player) :
     expect (uniformPrior.map (fun types =>
       (finalConfig types (types .alice) (types .bob),
         surplus types (types .alice) (types .bob)))) (fun realized => realized.2 who) = 8 / 7 := by

@@ -24,7 +24,7 @@ open GameTheory GameTheory.Protocol GameTheory.Math.Probability
 variable {G : SettleLateParameters} {late : Bool}
 
 /-- The law of the final state of play from the initial state. -/
-def settleLateOutcomeLaw (G : SettleLateParameters) (late : Bool)
+def settleLateOutcomeDistribution (G : SettleLateParameters) (late : Bool)
     (profile : SettleLateProfile G late) : PMF SettleLateState :=
   ((settleLateModel G late).runBehavioralTerminalFrom (settleLate_terminates G late) profile
     (settleLateExecution G late).initHistory).map ExecutionProtocol.History.state
@@ -34,9 +34,10 @@ signal, and the listener gives the safe answer. -/
 def settleLateIntendedOutcome : PMF SettleLateState :=
   lateLeakPrior.map fun secret => .protectedDone secret none .safe
 
-theorem settleLateOutcomeLaw_eq (G : SettleLateParameters) (late : Bool)
+theorem settleLateOutcomeDistribution_eq (G : SettleLateParameters) (late : Bool)
     (profile : SettleLateProfile G late) :
-    settleLateOutcomeLaw G late profile = (settleLateFlow profile)^[6] (PMF.pure .initial) :=
+    settleLateOutcomeDistribution G late profile = (settleLateFlow profile)^[6]
+      (PMF.pure .initial) :=
   settleLate_terminal_map_state _ profile _
 
 theorem settleLateIntendedOutcome_apply (secret : LateLeakType) :
@@ -56,19 +57,21 @@ theorem settleLateFirstValue_of_late_zero (profile : SettleLateProfile G late)
 
 /-- The outcome law's mass on a type opening at the protected turn, emitting
 nothing more, and the listener answering safely. -/
-theorem settleLateOutcomeLaw_protected_safe (profile : SettleLateProfile G late)
+theorem settleLateOutcomeDistribution_protected_safe (profile : SettleLateProfile G late)
     (secret : LateLeakType) :
-    (settleLateOutcomeLaw G late profile (.protectedDone secret none .safe)).toReal =
+    (settleLateOutcomeDistribution G late profile (.protectedDone secret none .safe)).toReal =
       (lateLeakPrior secret).toReal *
-        ((settleLateSenderLaw profile (.protectedTurn secret) (some (.emit .opening))).toReal *
-          ((settleLateSenderLaw profile (.afterProtected secret) (some (.emit .silent))).toReal *
+        ((settleLateSenderDistribution profile (.protectedTurn secret) (some
+          (.emit .opening))).toReal *
+          ((settleLateSenderDistribution profile (.afterProtected secret) (some
+            (.emit .silent))).toReal *
             settleLateSafeProb profile (.protectedAsked secret.1 none))) := by
   classical
   let target : SettleLateState := .protectedDone secret none .safe
   let indicator : SettleLateState → ℝ := fun state => if target = state then 1 else 0
-  have read : (settleLateOutcomeLaw G late profile target).toReal =
+  have read : (settleLateOutcomeDistribution G late profile target).toReal =
       settleLateValue profile indicator (0 + 6) .initial := by
-    rw [settleLateValue, ← settleLateOutcomeLaw_eq, expect_ite_eq, mul_one]
+    rw [settleLateValue, ← settleLateOutcomeDistribution_eq, expect_ite_eq, mul_one]
   have late_zero (other : LateLeakType) (early : Option Bool) :
       settleLateFirstValue profile indicator other early = 0 :=
     settleLateFirstValue_of_late_zero profile indicator (fun record answer => by
@@ -84,11 +87,11 @@ theorem settleLateOutcomeLaw_protected_safe (profile : SettleLateProfile G late)
       rw [settleLateProtectedAnswerValue, lateLeak_expect_two_point _ (some (.reply .safe)) _ 0]
       · simp [indicator, target, settleLateReplyOf, settleLateSafeProb]
       · intro choice supported different
-        obtain ⟨reply, rfl, -⟩ := settleLateListenerLaw_support profile _ choice supported
+        obtain ⟨reply, rfl, -⟩ := settleLateListenerDistribution_support profile _ choice supported
         have : reply ≠ .safe := fun same => different (by rw [same])
         simp [indicator, target, settleLateReplyOf, Ne.symm this]
     · simp only [hit, ite_false]
-      rw [settleLateProtectedAnswerValue, ← expect_zero (settleLateListenerLaw profile _)]
+      rw [settleLateProtectedAnswerValue, ← expect_zero (settleLateListenerDistribution profile _)]
       apply expect_congr_on_support
       intro choice _
       simp only [indicator, target, SettleLateState.protectedDone.injEq]
@@ -99,7 +102,8 @@ theorem settleLateOutcomeLaw_protected_safe (profile : SettleLateProfile G late)
   have after (other : LateLeakType) :
       settleLateAfterValue profile indicator other =
         if secret = other then
-          (settleLateSenderLaw profile (.afterProtected secret) (some (.emit .silent))).toReal *
+          (settleLateSenderDistribution profile (.afterProtected secret) (some
+            (.emit .silent))).toReal *
             settleLateSafeProb profile (.protectedAsked secret.1 none)
         else 0 := by
     rw [settleLateAfterValue, lateLeak_expect_two_point _ (some (.emit .silent)) _ 0]
@@ -108,15 +112,17 @@ theorem settleLateOutcomeLaw_protected_safe (profile : SettleLateProfile G late)
         simp [settleLatePacketOf, SettleLatePacket.word, answer]
       · simp [settleLatePacketOf, SettleLatePacket.word, answer, same, Ne.symm same]
     · intro choice supported different
-      obtain ⟨word, rfl, -⟩ := settleLateSenderLaw_support profile _ choice supported
+      obtain ⟨word, rfl, -⟩ := settleLateSenderDistribution_support profile _ choice supported
       cases word with
       | none => exact (different rfl).elim
       | some word => simp [settleLatePacketOf, settleLateTalkPacket, SettleLatePacket.word, answer]
   have protectedValue (other : LateLeakType) :
       settleLateProtectedValue profile indicator other =
         if secret = other then
-          (settleLateSenderLaw profile (.protectedTurn secret) (some (.emit .opening))).toReal *
-            ((settleLateSenderLaw profile (.afterProtected secret) (some (.emit .silent))).toReal *
+          (settleLateSenderDistribution profile (.protectedTurn secret) (some
+            (.emit .opening))).toReal *
+            ((settleLateSenderDistribution profile (.afterProtected secret) (some
+              (.emit .silent))).toReal *
               settleLateSafeProb profile (.protectedAsked secret.1 none))
         else 0 := by
     rw [settleLateProtectedValue, lateLeak_expect_two_point _ (some (.emit .opening)) _ 0]
@@ -125,7 +131,7 @@ theorem settleLateOutcomeLaw_protected_safe (profile : SettleLateProfile G late)
         simp [settleLatePacketOf, settleLateProtectedEmitValue, after]
       · simp [settleLatePacketOf, settleLateProtectedEmitValue, after, same]
     · intro choice supported different
-      obtain ⟨packet, rfl, -⟩ := settleLateSenderLaw_support profile _ choice supported
+      obtain ⟨packet, rfl, -⟩ := settleLateSenderDistribution_support profile _ choice supported
       have closed : packet ≠ .opening := fun same => different (by rw [same])
       simp [settleLatePacketOf, settleLateProtectedEmitValue, closed, late_zero]
   rw [read, settleLateValue_initial]
@@ -134,19 +140,23 @@ theorem settleLateOutcomeLaw_protected_safe (profile : SettleLateProfile G late)
 
 /-- An outcome law equal to the intended one forces opening at the protected
 turn, no raw signal afterwards, and the safe answer. -/
-theorem settleLate_intended_law_forces (profile : SettleLateProfile G late)
-    (same : settleLateOutcomeLaw G late profile = settleLateIntendedOutcome)
+theorem settleLate_intended_distribution_forces (profile : SettleLateProfile G late)
+    (same : settleLateOutcomeDistribution G late profile = settleLateIntendedOutcome)
     (secret : LateLeakType) :
-    settleLateSenderLaw profile (.protectedTurn secret) = PMF.pure (some (.emit .opening)) ∧
-      settleLateSenderLaw profile (.afterProtected secret) = PMF.pure (some (.emit .silent)) ∧
-      settleLateListenerLaw profile (.protectedAsked secret.1 none) =
+    settleLateSenderDistribution profile (.protectedTurn secret) = PMF.pure (some
+      (.emit .opening)) ∧
+      settleLateSenderDistribution profile (.afterProtected secret) = PMF.pure (some
+        (.emit .silent)) ∧
+      settleLateListenerDistribution profile (.protectedAsked secret.1 none) =
         PMF.pure (some (.reply .safe)) := by
-  have mass := settleLateOutcomeLaw_protected_safe profile secret
+  have mass := settleLateOutcomeDistribution_protected_safe profile secret
   rw [same, settleLateIntendedOutcome_apply] at mass
   have positive : 0 < (lateLeakPrior secret).toReal :=
     ENNReal.toReal_pos (lateLeakPrior_ne_zero secret) (PMF.apply_ne_top _ _)
-  set a := (settleLateSenderLaw profile (.protectedTurn secret) (some (.emit .opening))).toReal
-  set b := (settleLateSenderLaw profile (.afterProtected secret) (some (.emit .silent))).toReal
+  set a := (settleLateSenderDistribution profile (.protectedTurn secret) (some
+    (.emit .opening))).toReal
+  set b := (settleLateSenderDistribution profile (.afterProtected secret) (some
+    (.emit .silent))).toReal
   set c := settleLateSafeProb profile (.protectedAsked secret.1 none)
   have product : a * (b * c) = 1 := by
     have := mass.symm
@@ -163,8 +173,8 @@ theorem settleLate_intended_law_forces (profile : SettleLateProfile G late)
   have hbc : b * c = 1 := by rw [ha, one_mul] at product; exact product
   have hb : b = 1 := by nlinarith
   have hc : c = 1 := by rw [hb, one_mul] at hbc; exact hbc
-  refine ⟨settleLate_law_eq_pure ((ENNReal.toReal_eq_one_iff _).mp ha),
-    settleLate_law_eq_pure ((ENNReal.toReal_eq_one_iff _).mp hb),
-    settleLate_law_eq_pure ((ENNReal.toReal_eq_one_iff _).mp hc)⟩
+  refine ⟨settleLate_distribution_eq_pure ((ENNReal.toReal_eq_one_iff _).mp ha),
+    settleLate_distribution_eq_pure ((ENNReal.toReal_eq_one_iff _).mp hb),
+    settleLate_distribution_eq_pure ((ENNReal.toReal_eq_one_iff _).mp hc)⟩
 
 end Vegas

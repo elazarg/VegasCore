@@ -25,15 +25,16 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
   (bounds : MessageBounds setup.informationGraph) (horizon : Nat)
   (scheduler : (application setup timeouts leaks).Scheduler)
-  [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
+  [(application setup timeouts leaks).FiniteNature (initialDistribution setup) scheduler]
   [Finite setup.intendedProtocol.History]
 
-local notation "N" => onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+local notation "N" => onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon
   scheduler
 
 local instance exactReplayHistoryFintype : Fintype
-    ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon scheduler).History :=
-  (bounds.onePacketMenu timeouts leaks).historyFintype (initialLaw setup) horizon scheduler
+    ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
+      scheduler).History :=
+  (bounds.onePacketMenu timeouts leaks).historyFintype (initialDistribution setup) horizon scheduler
 
 /-- Every intended history in a realized source decision fiber has an actual native replay
 preimage, whether or not the preserved equilibrium assigns that history positive probability. -/
@@ -65,7 +66,8 @@ theorem exists_native_replay_at_sourceDecision
     sources (2 * horizon + 2)
   obtain ⟨weights, sequence, limit, index, assembled, mixed, bayes, increasing, converges,
       _consistent, _pooled, _limits, _freeOptimal, _publicOptimal⟩ :=
-    setup.exists_onePacket_consistent_completion timeouts leaks bounds (initialLaw setup) horizon
+    setup.exists_onePacket_consistent_completion timeouts leaks bounds
+      (initialDistribution setup) horizon
       scheduler (fun _ => ()) (fun _ _ => (0 : ℝ)) (fun _ => 0) sources bounds.candidateCount
       scale positive le_one vanishes
   have assembledNative : OnePacketAssembled setup timeouts leaks bounds horizon scheduler sources
@@ -74,9 +76,11 @@ theorem exists_native_replay_at_sourceDecision
     realization.projected
   have debtFree := siteDebtFree_of_projected_intended_site wellFormed sourceSite nativeSite
     realization.projected
-  have notFree : ¬ FreeAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+  have notFree : ¬ FreeAgent setup timeouts leaks bounds (initialDistribution setup) horizon
+    scheduler
       ((N).agentAt nativeSite) := not_not.mpr ⟨clear, realization.forced⟩
-  have notOwing : ¬ OwingAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+  have notOwing : ¬ OwingAgent setup timeouts leaks bounds
+    (initialDistribution setup) horizon scheduler
       ((N).agentAt nativeSite) := by
     rintro ⟨history, point, decoded, owes⟩
     exact debtFree history point decoded owes
@@ -86,7 +90,8 @@ theorem exists_native_replay_at_sourceDecision
       (projectView setup timeouts leaks who nativeSite.1) := realization.projected ▸ sourceSite.2
   have canonicalEq : projectedSite setup timeouts leaks decision = sourceSite :=
     Subtype.ext realization.projected.symm
-  have replayLaw := assembled_limit_belief_replay_law setup timeouts leaks bounds horizon scheduler
+  have replayLaw := assembled_limit_belief_replay_distribution setup timeouts leaks bounds horizon
+    scheduler
     wellFormed priors sources (fun _ => full) (fun _ => referenceBayes) scale
     positive le_one (fun _ => rfl) covers coversInputs capacity weights sequence assembledNative
     mixed bayes reference limit (behavioralAssessmentConvergesPointwise_const reference) index

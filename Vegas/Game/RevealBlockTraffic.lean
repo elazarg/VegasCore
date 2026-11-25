@@ -634,10 +634,10 @@ theorem honest_block_matched_of_turns {horizon leftRemaining rightRemaining : Na
     (sameTraffic : (bindingTraffic (serviceTimeouts setup deps duration)) leaks who left =
       (bindingTraffic (serviceTimeouts setup deps duration)) leaks who right)
     (leftTrace : ((serviceApplication setup deps duration leaks).protocol
-      (serviceInitialLaw setup deps) horizon scheduler).Trace
+      (serviceInitialDistribution setup deps) horizon scheduler).Trace
         (some ⟨leftRemaining + 1, none, left⟩))
     (rightTrace : ((serviceApplication setup deps duration leaks).protocol
-      (serviceInitialLaw setup deps) horizon scheduler).Trace
+      (serviceInitialDistribution setup deps) horizon scheduler).Trace
         (some ⟨rightRemaining + 1, none, right⟩))
     (publications : ∀ event, left.application.config.cut.Ready event →
       ((serviceGraph setup deps).outputLayout event).IsPublication)
@@ -704,9 +704,11 @@ theorem honest_block_matched_of_turns {horizon leftRemaining rightRemaining : Na
   have rightMoved : rightActive ∈ (right.environmentStep app (.activate actor)).support := by
     rw [ReactiveApplication.Execution.activation_samples, PMF.support_map]
     exact ⟨sample, by rw [← networks]; exact sampled, rfl⟩
-  obtain ⟨leftActiveTrace⟩ := app.raw_trace_environment (serviceInitialLaw setup deps) horizon
+  obtain ⟨leftActiveTrace⟩ := app.raw_trace_environment (serviceInitialDistribution setup deps)
+    horizon
     scheduler leftRemaining left leftActive (.activate actor) leftTrace selected leftMoved
-  obtain ⟨rightActiveTrace⟩ := app.raw_trace_environment (serviceInitialLaw setup deps) horizon
+  obtain ⟨rightActiveTrace⟩ := app.raw_trace_environment (serviceInitialDistribution setup deps)
+    horizon
     scheduler rightRemaining right rightActive (.activate actor) rightTrace (by
       rw [← environments, ← observeEnvironment_eq_of_bindingTraffic who sameTraffic]
       exact selected) rightMoved
@@ -903,10 +905,10 @@ theorem honest_block_matched_of {horizon leftRemaining rightRemaining : Nat}
     (sameTraffic : (bindingTraffic (serviceTimeouts setup deps duration)) leaks who left =
       (bindingTraffic (serviceTimeouts setup deps duration)) leaks who right)
     (leftTrace : ((serviceApplication setup deps duration leaks).protocol
-      (serviceInitialLaw setup deps) horizon scheduler).Trace
+      (serviceInitialDistribution setup deps) horizon scheduler).Trace
         (some ⟨leftRemaining + 1, none, left⟩))
     (rightTrace : ((serviceApplication setup deps duration leaks).protocol
-      (serviceInitialLaw setup deps) horizon scheduler).Trace
+      (serviceInitialDistribution setup deps) horizon scheduler).Trace
         (some ⟨rightRemaining + 1, none, right⟩))
     (publications : ∀ event, left.application.config.cut.Ready event →
       ((serviceGraph setup deps).outputLayout event).IsPublication)
@@ -986,10 +988,10 @@ theorem honest_block_matched {horizon leftRemaining rightRemaining : Nat}
     {left right : (serviceApplication setup deps duration leaks).Execution}
     (same : blockReadout who left = blockReadout who right)
     (leftTrace : ((serviceApplication setup deps duration leaks).protocol
-      (serviceInitialLaw setup deps) horizon scheduler).Trace
+      (serviceInitialDistribution setup deps) horizon scheduler).Trace
         (some ⟨leftRemaining + 1, none, left⟩))
     (rightTrace : ((serviceApplication setup deps duration leaks).protocol
-      (serviceInitialLaw setup deps) horizon scheduler).Trace
+      (serviceInitialDistribution setup deps) horizon scheduler).Trace
         (some ⟨rightRemaining + 1, none, right⟩))
     (publications : ∀ event, left.application.config.cut.Ready event →
       ((serviceGraph setup deps).outputLayout event).IsPublication)
@@ -1145,10 +1147,10 @@ theorem block_stopped_readout_congr {horizon : Nat}
     ∀ (count leftRemaining rightRemaining : Nat)
       (left right : (serviceApplication setup deps duration leaks).Execution),
       ((serviceApplication setup deps duration leaks).protocol
-        (serviceInitialLaw setup deps) horizon scheduler).Trace
+        (serviceInitialDistribution setup deps) horizon scheduler).Trace
           (some ⟨leftRemaining + count, none, left⟩) →
       ((serviceApplication setup deps duration leaks).protocol
-        (serviceInitialLaw setup deps) horizon scheduler).Trace
+        (serviceInitialDistribution setup deps) horizon scheduler).Trace
           (some ⟨rightRemaining + count, none, right⟩) →
       (¬ BlockDone finish left.application.config →
         InBlock start finish left.application.config) →
@@ -1173,7 +1175,8 @@ theorem block_stopped_readout_congr {horizon : Nat}
   let players := Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound
     turns (firstTurnTiming setup turns deps) reference) who deviation
   let invariant := fun (origin : app.Execution) (count : Nat) (current : app.Execution) =>
-    (∃ remaining, Nonempty ((app.protocol (serviceInitialLaw setup deps) horizon scheduler).Trace
+    (∃ remaining, Nonempty ((app.protocol (serviceInitialDistribution setup deps) horizon
+      scheduler).Trace
       (some ⟨remaining + count, none, current⟩))) ∧
     (¬ BlockDone finish current.application.config →
       InBlock start finish current.application.config) ∧
@@ -1184,10 +1187,11 @@ theorem block_stopped_readout_congr {horizon : Nat}
       (next : app.Execution) (reached : next ∈ (app.round scheduler players current).support) :
       invariant origin n next := by
     obtain ⟨⟨remaining, ⟨trace⟩⟩, inside, kept⟩ := valid
-    have before : (app.protocol (serviceInitialLaw setup deps) horizon scheduler).Trace
+    have before : (app.protocol (serviceInitialDistribution setup deps) horizon scheduler).Trace
         (some ⟨(remaining + n) + 1, none, current⟩) := by
       simpa only [Nat.add_assoc] using trace
-    obtain ⟨nextTrace⟩ := app.raw_trace_round (serviceInitialLaw setup deps) horizon scheduler
+    obtain ⟨nextTrace⟩ := app.raw_trace_round (serviceInitialDistribution setup deps) horizon
+      scheduler
       players (remaining + n) current next before reached
     have path := reactive_round_graph_steps (serviceTimeouts setup deps duration) leaks scheduler
       players current next reached
@@ -1204,10 +1208,12 @@ theorem block_stopped_readout_congr {horizon : Nat}
   · intro n current other currentValid otherValid equal running
     obtain ⟨⟨currentRest, ⟨currentTrace⟩⟩, currentInside, currentKept⟩ := currentValid
     obtain ⟨⟨otherRest, ⟨otherTrace⟩⟩, _, otherKept⟩ := otherValid
-    have currentBefore : (app.protocol (serviceInitialLaw setup deps) horizon scheduler).Trace
+    have currentBefore : (app.protocol (serviceInitialDistribution setup deps) horizon
+      scheduler).Trace
         (some ⟨(currentRest + n) + 1, none, current⟩) := by
       simpa only [Nat.add_assoc] using currentTrace
-    have otherBefore : (app.protocol (serviceInitialLaw setup deps) horizon scheduler).Trace
+    have otherBefore : (app.protocol (serviceInitialDistribution setup deps) horizon
+      scheduler).Trace
         (some ⟨(otherRest + n) + 1, none, other⟩) := by
       simpa only [Nat.add_assoc] using otherTrace
     have inside := currentInside running

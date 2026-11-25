@@ -61,11 +61,11 @@ theorem foreign_owned_checkpoint_successor_traffic_factor
         PrefixBoundary (inputs.map State.initial) scheduler players event.val (execution seed)) →
       (∀ seed ∈ prior.support, (execution seed).environmentRecall.length ≤ horizon) →
       (∀ seed ∈ prior.support, owner ∉ (config seed).defaulted →
-        ∀ action ∈ (actionLaw reference (config seed) event).support,
+        ∀ action ∈ (actionDistribution reference (config seed) event).support,
           EffectiveAction (config seed) event action) →
       (∀ left ∈ prior.support, ∀ right ∈ prior.support,
-        ∀ leftAction ∈ (actionLaw reference (config left) event).support,
-        ∀ rightAction ∈ (actionLaw reference (config right) event).support,
+        ∀ leftAction ∈ (actionDistribution reference (config left) event).support,
+        ∀ rightAction ∈ (actionDistribution reference (config right) event).support,
         ∀ (leftReady : (config left).cut.Ready event)
           (rightReady : (config right).cut.Ready event),
         owner ∉ (config left).defaulted → owner ∉ (config right).defaulted →
@@ -116,7 +116,7 @@ theorem foreign_owned_checkpoint_successor_traffic_factor
     (app).raw_trace_roundsFrom (inputs.map State.initial) horizon scheduler players
       (execution seed).environmentRecall.length (bounded seed member) (execution seed)
       (boundary seed member active).supported
-  let choice := fun before => actionLaw reference before event
+  let choice := fun before => actionDistribution reference before event
   let advance := fun (before : graph.Config) (action : graph.Action event) =>
     if available : before.cut.Ready event then
       (before.step_eq_pure_of_actor event available action owner owned).choose
@@ -261,7 +261,7 @@ theorem foreign_owned_checkpoint_successor_traffic_factor
 
 /-- Read the primary rank from a drained successor without changing its
 joint traffic law. -/
-theorem primary_rank_traffic_of_checkpoint_law
+theorem primary_rank_traffic_of_checkpoint_distribution
     {Seed Native Traffic View : Type*} (prior : PMF Seed) (phase : Seed → PMF Native)
     (config : Seed → graph.Config) (readConfig : Native → graph.Config)
     (arbitraryNative : Seed → Native) (traffic : Native → Traffic) (observe : graph.Config → View)
@@ -337,11 +337,11 @@ theorem foreign_owned_checkpoint_primary_traffic_factor
         PrefixBoundary (inputs.map State.initial) scheduler players event.val (execution seed)) →
       (∀ seed ∈ prior.support, (execution seed).environmentRecall.length ≤ horizon) →
       (∀ seed ∈ prior.support, owner ∉ (config seed).defaulted →
-        ∀ action ∈ (actionLaw reference (config seed) event).support,
+        ∀ action ∈ (actionDistribution reference (config seed) event).support,
           EffectiveAction (config seed) event action) →
       (∀ left ∈ prior.support, ∀ right ∈ prior.support,
-        ∀ leftAction ∈ (actionLaw reference (config left) event).support,
-        ∀ rightAction ∈ (actionLaw reference (config right) event).support,
+        ∀ leftAction ∈ (actionDistribution reference (config left) event).support,
+        ∀ rightAction ∈ (actionDistribution reference (config right) event).support,
         ∀ (leftReady : (config left).cut.Ready event)
           (rightReady : (config right).cut.Ready event),
         owner ∉ (config left).defaulted → owner ∉ (config right).defaulted →
@@ -365,7 +365,7 @@ theorem foreign_owned_checkpoint_primary_traffic_factor
   obtain ⟨nextNoise, joint⟩ := foreign_owned_checkpoint_successor_traffic_factor
     scheduler delay bound reference contract timely focal owner deviation foreign event owned
     solitary prior execution config noise factor ordered native boundary bounded realizable coupled
-  exact ⟨nextNoise, primary_rank_traffic_of_checkpoint_law prior phase config (fun final =>
+  exact ⟨nextNoise, primary_rank_traffic_of_checkpoint_distribution prior phase config (fun final =>
     final.application.config) execution traffic observe event reference nextNoise ordered joint⟩
 
 end Vegas.EventGraphRuntime

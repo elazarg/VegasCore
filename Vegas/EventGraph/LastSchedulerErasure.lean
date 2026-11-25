@@ -43,28 +43,29 @@ structure LastIndependent (profile : graph.BehavioralProfile) (who : Player) : P
     config.cut.Ready event → ∀ (otherReady : config.cut.Ready other), other ≠ event →
       Movable who config event →
       ∀ (action : graph.Action other) (value : (graph.outputLayout other).Value),
-        actionLaw profile (config.complete other otherReady action value) event =
-          actionLaw profile config event
+        actionDistribution profile (config.complete other otherReady action value) event =
+          actionDistribution profile config event
   congr : ∀ {left right : graph.Config}, runKey left = runKey right →
-    ∀ event, actionLaw profile left event = actionLaw profile right event
+    ∀ event, actionDistribution profile left event = actionDistribution profile right event
 
 /-- The law of the final key when `who` is served last. -/
-def lastLaw (profile : graph.BehavioralProfile) (who : Player) (config : graph.Config) :=
+def lastDistribution (profile : graph.BehavioralProfile) (who : Player) (config : graph.Config) :=
   (graph.runPlan (graph.policyPlan profile (graph.lastScheduler who)) config.remaining
     config).map runKey
 
 /-- The last scheduler's law takes its picked event first. -/
-theorem lastLaw_step (profile : graph.BehavioralProfile) (who : Player) (config : graph.Config)
+theorem lastDistribution_step (profile : graph.BehavioralProfile) (who : Player)
+    (config : graph.Config)
     (notTerminal : ¬ config.cut.Terminal) (event : graph.EventId) (ready : config.cut.Ready event)
     (picked : event = graph.lastPick who config.cut.enabled
       (enabled_nonempty_of_not_terminal config notTerminal)) :
-    lastLaw profile who config =
-      (eventStep profile config event ready).bind (lastLaw profile who) := by
+    lastDistribution profile who config =
+      (eventStep profile config event ready).bind (lastDistribution profile who) := by
   obtain ⟨rest, restEq⟩ : ∃ rest, config.remaining = rest + 1 := by
     have positive : config.remaining ≠ 0 :=
       fun zero => notTerminal ((config.terminal_iff_remaining_zero).mpr zero)
     exact ⟨config.remaining - 1, by omega⟩
-  unfold lastLaw
+  unfold lastDistribution
   rw [restEq, runPlan_policyPlan_succ profile _ rest config notTerminal]
   simp only [EventGraph.lastScheduler, PMF.pure_bind]
   rw [eventStep_congr_event profile config picked.symm _ ready, PMF.map_bind]
@@ -79,16 +80,16 @@ theorem lastLaw_step (profile : graph.BehavioralProfile) (who : Player) (config 
   rw [(by omega : next.remaining = rest)]
 
 /-- **The last law is read from the order-free key.** -/
-theorem LastIndependent.lastLaw_congr {profile : graph.BehavioralProfile} {who : Player}
+theorem LastIndependent.lastDistribution_congr {profile : graph.BehavioralProfile} {who : Player}
     (independent : LastIndependent profile who) :
     ∀ fuel (left right : graph.Config), left.remaining = fuel → runKey left = runKey right →
-      lastLaw profile who left = lastLaw profile who right := by
+      lastDistribution profile who left = lastDistribution profile who right := by
   intro fuel
   induction fuel with
   | zero =>
       intro left right remaining same
       have rightRemaining := (remaining_eq_of_runKey_eq same).symm.trans remaining
-      unfold lastLaw
+      unfold lastDistribution
       rw [remaining, rightRemaining]
       simp only [EventGraph.runPlan, PMF.pure_map, same]
   | succ fuel ih =>
@@ -106,8 +107,8 @@ theorem LastIndependent.lastLaw_congr {profile : graph.BehavioralProfile} {who :
       have rightPicked : event = graph.lastPick who right.cut.enabled
           (enabled_nonempty_of_not_terminal right rightNotTerminal) :=
         graph.lastPick_congr who (congrArg EventOrder.Cut.enabled cut) _ _
-      rw [lastLaw_step profile who left notTerminal event ready rfl,
-        lastLaw_step profile who right rightNotTerminal event rightReady rightPicked]
+      rw [lastDistribution_step profile who left notTerminal event ready rfl,
+        lastDistribution_step profile who right rightNotTerminal event rightReady rightPicked]
       unfold eventStep
       rw [independent.congr same event, PMF.bind_bind, PMF.bind_bind]
       apply bind_congr_on_support _
@@ -137,12 +138,13 @@ private theorem Movable.step {who : Player} {config next : graph.Config}
 
 /-- **A movable event may be taken first.** Completing a ready movable event
 and then continuing with `who` served last is the law of serving `who` last. -/
-theorem LastIndependent.eventStep_bind_lastLaw {profile : graph.BehavioralProfile} {who : Player}
+theorem LastIndependent.eventStep_bind_lastDistribution {profile : graph.BehavioralProfile}
+    {who : Player}
     (independent : LastIndependent profile who) :
     ∀ fuel (config : graph.Config), config.remaining = fuel →
       ∀ event (ready : config.cut.Ready event), Movable who config event →
-        (eventStep profile config event ready).bind (lastLaw profile who) =
-          lastLaw profile who config := by
+        (eventStep profile config event ready).bind (lastDistribution profile who) =
+          lastDistribution profile who config := by
   intro fuel
   induction fuel with
   | zero =>
@@ -161,19 +163,19 @@ theorem LastIndependent.eventStep_bind_lastLaw {profile : graph.BehavioralProfil
         · exact Or.inl (graph.lastPick_other who _ ((EventOrder.Cut.mem_enabled _ _).mpr ready)
             foreign)
         · exact Or.inr defaulted
-      rw [lastLaw_step profile who config notTerminal picked pickedReady rfl]
+      rw [lastDistribution_step profile who config notTerminal picked pickedReady rfl]
       by_cases same : event = picked
-      · exact congrArg (fun law => law.bind (lastLaw profile who))
+      · exact congrArg (fun law => law.bind (lastDistribution profile who))
           (eventStep_congr_event profile config same ready pickedReady)
       -- Each order expands into both action laws and the two fixed steps.
       have expand (first second : graph.EventId) (firstReady : config.cut.Ready first)
           (secondReady : config.cut.Ready second) (different : first ≠ second)
           (secondMovable : Movable who config second) :
-          (eventStep profile config first firstReady).bind (lastLaw profile who) =
-            (actionLaw profile config first).bind fun firstAction =>
-              (actionLaw profile config second).bind fun secondAction =>
+          (eventStep profile config first firstReady).bind (lastDistribution profile who) =
+            (actionDistribution profile config first).bind fun firstAction =>
+              (actionDistribution profile config second).bind fun secondAction =>
                 (stepThen config first second firstReady secondReady different firstAction
-                  secondAction).bind (lastLaw profile who) := by
+                  secondAction).bind (lastDistribution profile who) := by
         unfold eventStep
         rw [PMF.bind_bind]
         apply bind_congr_on_support _
@@ -206,7 +208,7 @@ theorem LastIndependent.eventStep_bind_lastLaw {profile : graph.BehavioralProfil
       exact bind_eq_of_map_key_eq runKey Set.univ _ _ (Set.subset_univ _) (Set.subset_univ _)
         (stepThen_map_runKey_comm config ready pickedReady same
           (independent.actorsDiffer config ready pickedReady same) eventAction pickedAction) _
-        (fun a _ b _ keys => independent.lastLaw_congr _ a b rfl keys)
+        (fun a _ b _ keys => independent.lastDistribution_congr _ a b rfl keys)
 
 private theorem policy_congr {who : Player} (policy : graph.BehavioralPolicy who)
     (event : graph.EventId) (actor : graph.actor? event = some who)
@@ -244,9 +246,10 @@ theorem RevealsOnlyConcurrent.lastIndependent_normalizeProfile
       · exact Ne.symm independent.2.2.2
     cases ownerEq : (graph.nodes event).actor with
     | none =>
-        rw [actionLaw_of_ownerless _ _ ownerEq, actionLaw_of_ownerless _ _ ownerEq]
+        rw [actionDistribution_of_ownerless _ _ ownerEq, actionDistribution_of_ownerless _ _
+          ownerEq]
     | some owner =>
-        rw [actionLaw_of_actor _ _ ownerEq, actionLaw_of_actor _ _ ownerEq]
+        rw [actionDistribution_of_actor _ _ ownerEq, actionDistribution_of_actor _ _ ownerEq]
         have member := mem_defaulted_complete_of_actor_ne config other otherReady action value
           owner (fun otherActor => actorsNe (otherActor.trans ownerEq.symm))
         by_cases inactive : owner ∈ config.defaulted
@@ -264,9 +267,10 @@ theorem RevealsOnlyConcurrent.lastIndependent_normalizeProfile
     have defaulted := defaulted_eq_of_completionOf_eq records
     cases ownerEq : (graph.nodes event).actor with
     | none =>
-        rw [actionLaw_of_ownerless _ _ ownerEq, actionLaw_of_ownerless _ _ ownerEq]
+        rw [actionDistribution_of_ownerless _ _ ownerEq, actionDistribution_of_ownerless _ _
+          ownerEq]
     | some owner =>
-        rw [actionLaw_of_actor _ _ ownerEq, actionLaw_of_actor _ _ ownerEq]
+        rw [actionDistribution_of_actor _ _ ownerEq, actionDistribution_of_actor _ _ ownerEq]
         by_cases inactive : owner ∈ left.defaulted
         · rw [dite_eq_left inactive, dite_eq_left (defaulted ▸ inactive)]
         · rw [dite_eq_right inactive, dite_eq_right (defaulted ▸ inactive)]

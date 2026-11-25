@@ -33,7 +33,7 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (bounds : MessageBounds setup.informationGraph) (horizon : Nat)
   (scheduler : (application setup timeouts leaks).Scheduler)
 
-local notation "Initial" => initialLaw setup
+local notation "Initial" => initialDistribution setup
 local notation "menu" => bounds.onePacketMenu timeouts leaks
 local notation "N" => onePacketModel setup timeouts leaks bounds Initial horizon scheduler
 local notation "E" => ReactiveApplication.ResponseMenu.protocol

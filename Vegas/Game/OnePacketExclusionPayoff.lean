@@ -71,7 +71,7 @@ def exclusionReadoutUtility (readout : Option (Config Player L setup.program.ter
 exclusion payoff of `who` under the typed readout of its continuation. -/
 def sourcePointValue (profile : BehavioralProfile setup.program) (who : Player)
     (point : ProtocolState setup.program) : ℝ :=
-  expect ((ProtocolState.continuationLaw setup.program profile point).map some)
+  expect ((ProtocolState.continuationDistribution setup.program profile point).map some)
     (fun readout => exclusionReadoutUtility setup parameter utility excludedPayoff readout who)
 
 variable [Fintype Player] in

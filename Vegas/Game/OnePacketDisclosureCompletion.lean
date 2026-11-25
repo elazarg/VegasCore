@@ -3,7 +3,7 @@ module
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 public import Vegas.Game.OnePacketEventSuccess
-public import Vegas.Pending.ExclusionPolicyLaw
+public import Vegas.Pending.ExclusionPolicyDistribution
 public import GameTheoryExtensions.Analysis.Protocol.StoppedHistoryAtom
 
 @[expose] public section
@@ -35,24 +35,25 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
 Additional stops may retain the unchanged sending configuration while the event is pending. -/
 theorem accepted_until_continuation
     (reference : setup.informationGraph.BehavioralProfile)
-    (certificate : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup)
+    (certificate : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup)
       horizon scheduler).WellFoundedHistories)
     (players : ∀ player, ((bounds.onePacketMenu timeouts leaks).information
-      (initialLaw setup) horizon scheduler).BehavioralPolicy player)
-    (extraStop : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup)
+      (initialDistribution setup) horizon scheduler).BehavioralPolicy player)
+    (extraStop : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup)
       horizon scheduler).History → Prop)
     {who : Player} {entry : (application setup timeouts leaks).PlayerEntry}
     {message : Message Player (WitnessedPacket setup.informationGraph)} {event :
       setup.informationGraph.EventId}
     {sent : setup.informationGraph.Config} {action : setup.informationGraph.Action event}
     {output : (setup.informationGraph.outputLayout event).Value}
-    (start : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (start : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).History) {control : (application setup timeouts leaks).Control}
     (current : start.state = some control)
     (invariant : AcceptanceInvariant setup timeouts leaks bounds horizon scheduler who entry
       message event sent action output (some control))
     (atSent : control.execution.application.config = sent)
-    (settles : ∀ stop ∈ (((bounds.onePacketMenu timeouts leaks).information (initialLaw setup)
+    (settles : ∀ stop ∈ (((bounds.onePacketMenu timeouts leaks).information
+      (initialDistribution setup)
         horizon scheduler).runBehavioralUntil certificate players
         (fun history => (∃ final, history.state = some final ∧
           event ∈ final.execution.application.config.cut.completed) ∨ extraStop history)
@@ -60,7 +61,7 @@ theorem accepted_until_continuation
       ∀ final, stop.state = some final → RecordsEntry setup timeouts leaks who entry (some final) →
         event ∈ final.execution.application.config.cut.completed →
           (message.id, true) ∈ final.execution.receipts) :
-    ∀ stop ∈ (((bounds.onePacketMenu timeouts leaks).information (initialLaw setup)
+    ∀ stop ∈ (((bounds.onePacketMenu timeouts leaks).information (initialDistribution setup)
         horizon scheduler).runBehavioralUntil certificate players
         (fun history => (∃ final, history.state = some final ∧
           event ∈ final.execution.application.config.cut.completed) ∨ extraStop history)
@@ -83,13 +84,15 @@ theorem accepted_until_continuation
                 (sent.complete event ready action output).remaining
                 (sent.complete event ready action output)) := by
   let menu := bounds.onePacketMenu timeouts leaks
-  let model := menu.information (initialLaw setup) horizon scheduler
-  let stopped := fun history : (menu.protocol (initialLaw setup) horizon scheduler).History =>
+  let model := menu.information (initialDistribution setup) horizon scheduler
+  let stopped := fun history : (menu.protocol (initialDistribution setup) horizon
+    scheduler).History =>
     (∃ final, history.state = some final ∧
       event ∈ final.execution.application.config.cut.completed) ∨ extraStop history
   have initial : AcceptanceInvariant setup timeouts leaks bounds horizon scheduler who entry
       message event sent action output start.state := current ▸ invariant
-  have transports : ∀ {state} {trace : (menu.protocol (initialLaw setup) horizon scheduler).Trace
+  have transports : ∀ {state} {trace : (menu.protocol (initialDistribution setup) horizon
+    scheduler).Trace
         state}, TracePrefix start.trace trace →
       AcceptanceInvariant setup timeouts leaks bounds horizon scheduler who entry message event
         sent action output state := by
@@ -137,7 +140,8 @@ theorem accepted_until_continuation
               change (message.id, true) ∈ after.execution.receipts at isInside
               have done := (after.execution.application.config.output_available event).mp
                 (by rw [(afterInvariant.2.2.2.2.2.2 isInside).1]; rfl)
-              let afterHistory : (menu.protocol (initialLaw setup) horizon scheduler).History :=
+              let afterHistory : (menu.protocol (initialDistribution setup) horizon
+                scheduler).History :=
                 ⟨some after, prior.extend joint legal moved⟩
               have noShorter : ¬ (prior.extend joint legal moved).length < stop.trace.length := by
                 intro shorter
@@ -149,7 +153,7 @@ theorem accepted_until_continuation
                 Nat.le_antisymm later.length_le (Nat.le_of_not_gt noShorter)
               have sameHistory := later.eq_of_length sameLength
               have sameState : some after = some final :=
-                (congrArg (fun history : (menu.protocol (initialLaw setup) horizon
+                (congrArg (fun history : (menu.protocol (initialDistribution setup) horizon
                   scheduler).History => history.state) sameHistory).trans state
               have sameControl := Option.some.inj sameState
               subst after
@@ -166,13 +170,13 @@ theorem accepted_until_continuation
               have beforeAt := priorInvariant.2.2.2.2.2.1 pending
               obtain ⟨packet, found, handled⟩ :=
                 (application setup timeouts leaks).transition_new_accepted_receipt
-                  (initialLaw setup) horizon scheduler before final joint moved message.id
+                  (initialDistribution setup) horizon scheduler before final joint moved message.id
                   isInside wasOutside
-              have rawPrior := menu.toRawTrace (initialLaw setup) horizon scheduler prior
+              have rawPrior := menu.toRawTrace (initialDistribution setup) horizon scheduler prior
               have recalled := (application setup timeouts leaks).history_inputRecall
-                (initialLaw setup) horizon scheduler rawPrior
+                (initialDistribution setup) horizon scheduler rawPrior
               have unique := (application setup timeouts leaks).uniqueIds_history scheduler
-                (initialLaw setup) horizon _ rawPrior
+                (initialDistribution setup) horizon _ rawPrior
               obtain ⟨first, last, split⟩ := priorInvariant.2.1
               have recorded : message ∈ (application setup timeouts leaks).outputs
                   (before.execution.logs who) := by

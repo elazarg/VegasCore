@@ -70,23 +70,24 @@ def behavioralPolicyEquiv (setup : Setup (Player := Player) (L := L))
         rw [BehavioralPolicy.toProtocol_map_val, BehavioralPolicy.protocolAction_fromProtocol]
         rfl
 
-theorem continuationLaw_behavioral_step (setup : Setup (Player := Player) (L := L))
+theorem continuationDistribution_behavioral_step (setup : Setup (Player := Player) (L := L))
     (profile : BehavioralProfile setup.program) (state : setup.ProtocolState)
     (running : ¬ state.elim False (SourceProgram.ProtocolState.terminal setup.program))
     (joint : PMF (Player → Option (OwnAction Player L)))
     (marginal : ∀ who, joint.map (fun actions => actions who) =
       (setup.protocolObserve who state).elim (PMF.pure none)
         ((profile who).protocolAction setup.program)) :
-    (joint.bind (setup.protocolStep state)).bind (setup.continuationLaw profile) =
-      setup.continuationLaw profile state := by
+    (joint.bind (setup.protocolStep state)).bind (setup.continuationDistribution profile) =
+      setup.continuationDistribution profile state := by
   cases state with
   | none =>
-      simp [protocolStep, continuationLaw, PMF.bind_const, PMF.bind_map,
+      simp [protocolStep, continuationDistribution, PMF.bind_const, PMF.bind_map,
         run, Config.initial, SourceProgram.run, Function.comp_def]
   | some state =>
-      simpa only [protocolStep, continuationLaw, PMF.bind_bind, PMF.bind_map,
+      simpa only [protocolStep, continuationDistribution, PMF.bind_bind, PMF.bind_map,
           Function.comp_def] using
-        SourceProgram.ProtocolState.continuationLaw_behavioral_step setup.program profile state
+        SourceProgram.ProtocolState.continuationDistribution_behavioral_step setup.program profile
+          state
           running joint marginal
 
 theorem protocol_runBehavioralFrom_eq (setup : Setup (Player := Player) (L := L))
@@ -98,11 +99,11 @@ theorem protocol_runBehavioralFrom_eq (setup : Setup (Player := Player) (L := L)
       (setup.protocol_singleMover admission)
       (fun who => setup.toProtocolBehavioralPolicy admission who (profile who) (permitted who))
       fuel history).map (fun final => setup.protocolReadout final.state) =
-      (setup.continuationLaw profile history.state).map some := by
+      (setup.continuationDistribution profile history.state).map some := by
   unfold InformationModel.runSingleMoverBehavioralFrom
   refine runRandomizedFor_readout_eq (E := setup.executionProtocol admission)
     _ setup.protocolRemaining ?_ ?_ setup.protocolReadout
-    (fun state => (setup.continuationLaw profile state).map some) ?_ ?_ fuel history enough
+    (fun state => (setup.continuationDistribution profile state).map some) ?_ ?_ fuel history enough
   · intro state zero
     cases state with
     | none => simp [protocolRemaining] at zero
@@ -111,7 +112,7 @@ theorem protocol_runBehavioralFrom_eq (setup : Setup (Player := Player) (L := L)
   · intro before joint after reached
     have consumed := setup.protocol_remaining_step before.state after joint.1 joint.2.1 reached
     omega
-  · exact fun state stopped => setup.continuationLaw_terminal profile state stopped
+  · exact fun state stopped => setup.continuationDistribution_terminal profile state stopped
   · intro before running
     let law := (setup.informationModel admission).singleMoverJoint
       (setup.protocol_singleMover admission)
@@ -128,11 +129,12 @@ theorem protocol_runBehavioralFrom_eq (setup : Setup (Player := Player) (L := L)
         ((setup.protocolSignals admission).infoOf who before.trace)).map Subtype.val = _
       rw [protocol_info]
     have stepLaw := congrArg (fun result => result.map some)
-      (setup.continuationLaw_behavioral_step profile before.state running (law.map Subtype.val)
+      (setup.continuationDistribution_behavioral_step profile before.state running
+        (law.map Subtype.val)
         (fun who => (marginal who).trans (setup.toProtocolBehavioralPolicy_map_val
           admission who (profile who) (permitted who) _)))
     change law.bind (fun joint => (setup.protocolStep before.state joint.1).bind
-      (fun state => (setup.continuationLaw profile state).map some)) = _
+      (fun state => (setup.continuationDistribution profile state).map some)) = _
     simpa only [PMF.map_bind, PMF.bind_bind, PMF.bind_map, Function.comp_def] using stepLaw
 
 theorem protocol_runBehavioral_eq (setup : Setup (Player := Player) (L := L))

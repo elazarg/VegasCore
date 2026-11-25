@@ -25,7 +25,7 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
 /-- At canonical configurations, one backtranslated policy preserves the full
 graph law when compiled against the original opponents. -/
-theorem canonical_deviation_runPolicies_law
+theorem canonical_deviation_runPolicies_distribution
     {Γ : SourceCtx Player L} {openNames : Finset VarId}
     (program : SourceProgram Player L Γ openNames) (profile : BehavioralProfile program)
     (who : Player) (replacement : (toInformationGraph program).BehavioralPolicy who)
@@ -55,7 +55,7 @@ theorem canonical_deviation_runPolicies_law
 
 /-- One backtranslated policy implements a canonical graph deviation exactly,
 including every typed cell, original choice and public default record. -/
-theorem canonical_deviation_terminalConfig_law
+theorem canonical_deviation_terminalConfig_distribution
     {Γ : SourceCtx Player L} {openNames : Finset VarId}
     (program : SourceProgram Player L Γ openNames) (profile : BehavioralProfile program)
     (who : Player) (replacement : (toInformationGraph program).BehavioralPolicy who)
@@ -70,7 +70,7 @@ theorem canonical_deviation_terminalConfig_law
   let graph := toInformationGraph program
   let translated := Profile.update (sig := SourceProgram.gameSignature program) profile who
     (backtranslateEventPolicy program who replacement)
-  have kernels := canonical_deviation_runPolicies_law program profile who replacement
+  have kernels := canonical_deviation_runPolicies_distribution program profile who replacement
     (encodeInputs state)
   have outcomes : graph.terminalOutcomes graph.canonicalScheduler
       (compileEventProfile program translated) (encodeInputs state) =
@@ -80,10 +80,10 @@ theorem canonical_deviation_terminalConfig_law
     apply pmf_map_injective (f := Subtype.val) Subtype.val_injective
     simpa only [EventGraph.terminalOutcomes_map_val, translated, graph] using kernels
   rw [← outcomes]
-  exact canonical_terminalConfig_law program translated state
+  exact canonical_terminalConfig_distribution program translated state
 
 /-- Every public scheduler admits the same exact single-policy backtranslation. -/
-theorem scheduled_deviation_terminalConfig_law
+theorem scheduled_deviation_terminalConfig_distribution
     {Γ : SourceCtx Player L} {openNames : Finset VarId}
     (program : SourceProgram Player L Γ openNames)
     (scheduler : (toInformationGraph program).PublicScheduler) (profile : BehavioralProfile program)
@@ -98,10 +98,10 @@ theorem scheduled_deviation_terminalConfig_law
           (backtranslateEventPolicy program who replacement)) state := by
   rw [toInformationGraph_terminalOutcomes_eq program _ scheduler
     (toInformationGraph program).canonicalScheduler]
-  exact canonical_deviation_terminalConfig_law program profile who replacement state
+  exact canonical_deviation_terminalConfig_distribution program profile who replacement state
 
 /-- Typed terminal-state deviation correspondence is a projection of the full law. -/
-theorem canonical_deviation_terminalState_law
+theorem canonical_deviation_terminalState_distribution
     {Γ : SourceCtx Player L} {openNames : Finset VarId}
     (program : SourceProgram Player L Γ openNames) (profile : BehavioralProfile program)
     (who : Player) (replacement : (toInformationGraph program).BehavioralPolicy who)
@@ -114,16 +114,16 @@ theorem canonical_deviation_terminalState_law
         (Profile.update (sig := SourceProgram.gameSignature program) profile who
           (backtranslateEventPolicy program who replacement)) state).map Config.state := by
   have law := congrArg (PMF.map Config.state)
-    (canonical_deviation_terminalConfig_law program profile who replacement state)
+    (canonical_deviation_terminalConfig_distribution program profile who replacement state)
   simpa only [PMF.map_comp, terminalConfig, Function.comp_def] using law
 
 /-- A canonical replacement has one distributed source law across arbitrary
 correlated private/public initial states, with opponents unchanged. -/
-theorem canonical_setup_deviation_law (setup : Setup (Player := Player) (L := L))
+theorem canonical_setup_deviation_distribution (setup : Setup (Player := Player) (L := L))
     (profile : BehavioralProfile setup.program) (who : Player)
     (replacement : setup.informationGraph.BehavioralPolicy who) :
     ((setup.informationGraph.canonicalGame
-      (setup.initialLaw.map fun initial => setup.eventInputs initial)).play
+      (setup.initialDistribution.map fun initial => setup.eventInputs initial)).play
       (Profile.update (sig := setup.informationGraph.gameSignature)
         (compileEventProfile setup.program profile) who replacement)).map
           (terminalConfig setup.program) =
@@ -133,15 +133,16 @@ theorem canonical_setup_deviation_law (setup : Setup (Player := Player) (L := L)
   simp only [PMF.map_bind, PMF.bind_map]
   apply bind_congr_on_support _
   intro initial _
-  exact canonical_deviation_terminalConfig_law setup.program profile who replacement initial
+  exact canonical_deviation_terminalConfig_distribution setup.program profile who replacement
+    initial
 
 /-- Exact distributed deviation backtranslation for every public scheduler.
 The source policy is independent of the sampled initial state; no mixture,
 finite-history, finite-payload or finite-initial-law premise occurs. -/
-theorem scheduled_setup_deviation_law (setup : Setup (Player := Player) (L := L))
+theorem scheduled_setup_deviation_distribution (setup : Setup (Player := Player) (L := L))
     (scheduler : setup.informationGraph.PublicScheduler) (profile : BehavioralProfile setup.program)
     (who : Player) (replacement : setup.informationGraph.BehavioralPolicy who) :
-    (setup.initialLaw.bind fun initial =>
+    (setup.initialDistribution.bind fun initial =>
       (setup.informationGraph.terminalOutcomes scheduler
         (Profile.update (sig := setup.informationGraph.gameSignature)
           (compileEventProfile setup.program profile) who replacement)
@@ -151,7 +152,8 @@ theorem scheduled_setup_deviation_law (setup : Setup (Player := Player) (L := L)
   unfold Setup.run
   apply bind_congr_on_support _
   intro initial _
-  exact scheduled_deviation_terminalConfig_law setup.program scheduler profile who replacement
+  exact scheduled_deviation_terminalConfig_distribution setup.program scheduler profile who
+    replacement
     initial
 
 /-- Finite source binding alphabets give finite graph action types. -/

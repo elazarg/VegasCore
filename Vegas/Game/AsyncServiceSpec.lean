@@ -55,7 +55,7 @@ structure AsyncServiceSpec (Player : Type) [DecidableEq Player] (L : IExpr)
   /-- Every binding value the source can choose has a native message form. -/
   values : bounds.CoversBindingValues
   /-- Every supported initial binding table fits the candidate catalogue. -/
-  initialValues : ∀ state ∈ (initialLaw setup).support,
+  initialValues : ∀ state ∈ (initialDistribution setup).support,
     bounds.CandidateValues state
   /-- The candidate catalogue has a slot for every event. -/
   capacity : setup.informationGraph.order.eventCount ≤ bounds.candidateCount
@@ -68,13 +68,13 @@ structure AsyncServiceSpec (Player : Type) [DecidableEq Player] (L : IExpr)
   /-- Per-event inclusion bound for an owner's sole packet. -/
   bound : setup.informationGraph.EventId → Nat
   contract : AsyncContract ⟨duration⟩ leaks
-    (initialLaw setup)
+    (initialDistribution setup)
     horizon scheduler delay bound
   /-- Every owned event's reaction and inclusion fit before its configured
   deadline. -/
   timely : AsyncTimely ⟨duration⟩ delay bound
   /-- The prior over initial states is finitely supported. -/
-  initialFinite : setup.FiniteInitialLaw
+  initialFinite : setup.FiniteInitialSupport
   /-- The leak rule branches finitely. -/
   leaksFinite : leaks.FiniteSupport
   /-- The scheduler branches finitely. -/
@@ -92,14 +92,14 @@ variable (service : AsyncServiceSpec Player L)
 the scheduler. -/
 instance finiteNature :
     (application service.setup ⟨service.duration⟩ service.leaks).FiniteNature
-      (initialLaw service.setup) service.scheduler where
-  initial_finite := serviceInitialLaw_support_finite service.setup
+      (initialDistribution service.setup) service.scheduler where
+  initial_finite := serviceInitialDistribution_support_finite service.setup
     service.setup.informationDependencies
   scheduler_finite := service.schedulerFinite
 
 /-- The scheduler completes every event by the horizon. -/
 theorem completes : CompletesPlay ⟨service.duration⟩
-    service.leaks (initialLaw service.setup) service.horizon
+    service.leaks (initialDistribution service.setup) service.horizon
       service.scheduler :=
   service.contract.completes
 
@@ -114,13 +114,13 @@ abbrev rawMenu [Fintype Player] :
 /-- The complete behavioral game in a supplied response menu. -/
 abbrev gameForm [Finite Player]
     (menu : (application service.setup ⟨service.duration⟩ service.leaks).ResponseMenu) :=
-  menu.gameForm (initialLaw service.setup) service.horizon service.scheduler
+  menu.gameForm (initialDistribution service.setup) service.horizon service.scheduler
 
 /-- Complete native history law under the service's scheduler and round horizon. -/
 def run [Finite Player]
     (menu : (application service.setup ⟨service.duration⟩ service.leaks).ResponseMenu)
     (profile : Profile (service.gameForm menu).sig) :=
-  menu.run (initialLaw service.setup) service.horizon service.scheduler profile
+  menu.run (initialDistribution service.setup) service.horizon service.scheduler profile
 
 variable (admission : CommitmentInterface service.setup.program)
 
@@ -136,9 +136,9 @@ def clientProfile
     (menu : (application service.setup ⟨service.duration⟩ service.leaks).ResponseMenu)
     {turns : Nat} (timing : TurnTiming service.setup turns service.setup.informationDependencies)
     (source : Profile (service.sourceModel admission).behavioralSignature) :
-    Profile (menu.information (initialLaw service.setup) service.horizon
+    Profile (menu.information (initialDistribution service.setup) service.horizon
       service.scheduler).behavioralSignature := fun who =>
-  menu.restrictPolicy (initialLaw service.setup) service.horizon
+  menu.restrictPolicy (initialDistribution service.setup) service.horizon
     service.scheduler who
     (serviceClientPolicy service.setup service.setup.informationDependencies service.duration
       service.leaks service.bound turns timing
@@ -177,7 +177,7 @@ theorem clientProfile_congr
         other) who := by
     simp only [normalizeDisclosureProfile, normalizeDisclosureProfileFrom,
       Setup.decodeBehavioralProfile, same]
-  exact congrArg (menu.restrictPolicy (initialLaw service.setup) service.horizon
+  exact congrArg (menu.restrictPolicy (initialDistribution service.setup) service.horizon
     service.scheduler who) (clientPolicy_congr service timing _ _ who decoded)
 
 /-- The clients of a unilateral source deviation are a unilateral deviation of

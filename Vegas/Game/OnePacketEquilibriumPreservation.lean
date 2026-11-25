@@ -37,15 +37,15 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
   {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
-  [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
+  [(application setup timeouts leaks).FiniteNature (initialDistribution setup) scheduler]
   [Finite setup.intendedProtocol.History]
 
-local notation "Initial" => initialLaw setup
+local notation "Initial" => initialDistribution setup
 local notation "Menu" => bounds.onePacketMenu timeouts leaks
-local notation "N" => onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+local notation "N" => onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon
   scheduler
 local notation "E" => ReactiveApplication.ResponseMenu.protocol
-  (bounds.onePacketMenu timeouts leaks) (initialLaw setup) horizon scheduler
+  (bounds.onePacketMenu timeouts leaks) (initialDistribution setup) horizon scheduler
 
 local instance nativeEquilibriumHistoryFintype : Fintype (E).History :=
   (Menu).historyFintype Initial horizon scheduler
@@ -186,17 +186,18 @@ private theorem intended_onePacket_sequentialEquilibrium_preserved_of_bounded_ut
   let sourceObserve := intendedReadoutExclusion setup parameter utility excludedPayoff
   let targetObserve := readoutExclusion setup timeouts leaks bounds Initial horizon scheduler
     parameter utility excludedPayoff
-  let lawError := fun n => ((min (Fintype.card Player) 1 * horizon : ℕ) : ℝ) *
+  let distributionError := fun n => ((min (Fintype.card Player) 1 * horizon : ℕ) : ℝ) *
     (1 - slotRetention (scale n))
-  have lawVanishes : Tendsto lawError atTop (nhds 0) := by
-    simpa [lawError] using
+  have lawVanishes : Tendsto distributionError atTop (nhds 0) := by
+    simpa [distributionError] using
       ((tendsto_const_nhds (x := (1 : ℝ))).sub (tendsto_slotRetention vanishes)).const_mul
         (((min (Fintype.card Player) 1 * horizon : ℕ) : ℝ))
   have initialized : ∀ n outcome,
       |((((N).runBehavioral (sequence n).strategy (2 * horizon + 1)).map targetObserve)
           outcome).toReal -
         (((setup.intendedModel.runBehavioral (sourceSequence n).strategy
-          (instructionCount setup.program + 1)).map sourceObserve) outcome).toReal| ≤ lawError n :=
+          (instructionCount setup.program + 1)).map sourceObserve) outcome).toReal| ≤
+            distributionError n :=
       by
     intro n outcome
     exact (OnePacketComparison.assembled_initialized_readout_exclusion_withinTV setup timeouts
@@ -209,8 +210,9 @@ private theorem intended_onePacket_sequentialEquilibrium_preserved_of_bounded_ut
       (fun control trace _ ended => completes control
         ((Menu).toRawTrace Initial horizon scheduler trace) ended)
       parameter utility excludedPayoff).apply outcome
-  obtain ⟨nativeSE, nativeLaw⟩ :=
-    sequentialEquilibrium_of_copied_comparisons_limit_of_lawError sourceObserve targetObserve
+  obtain ⟨nativeSE, nativeDistribution⟩ :=
+    sequentialEquilibrium_of_copied_comparisons_limit_of_distributionError sourceObserve
+      targetObserve
       (instructionCount setup.program + 1) (2 * horizon + 1)
       ((Menu).bounded Initial horizon scheduler) ((Menu).decisionRecall Initial horizon scheduler)
       (payoffComponent setup) intended sourceSequence sourceConverges sourceRational sequence
@@ -221,18 +223,19 @@ private theorem intended_onePacket_sequentialEquilibrium_preserved_of_bounded_ut
         unfold intendedSiteGain payoffComponent at compared
         simpa only [localGain, assessmentComparisonWith, expect_map, targetObserve, sourceObserve,
           readoutExclusion, payoffComponent, Function.comp_def] using compared)
-      lawError lawVanishes initialized limit index increasing converges consistent
+      distributionError lawVanishes initialized limit index increasing converges consistent
       (fun who site free law => by
         rw [← limit.continuationContext_eq_truncated_of_bounded
           ((Menu).bounded Initial horizon scheduler).wellFoundedHistories
           ((Menu).bounded Initial horizon scheduler)]
         exact freeOptimal who site (not_not.mp free) law)
-  have readoutLaw := congrArg (fun law => law.map Prod.fst) nativeLaw
+  have readoutLaw := congrArg (fun law => law.map Prod.fst) nativeDistribution
   simp only [PMF.map_comp, targetObserve, sourceObserve, readoutExclusion,
     intendedReadoutExclusion, Function.comp_def] at readoutLaw
-  refine ⟨limit, fidelity, nativeSE, ?_, nativeLaw⟩
+  refine ⟨limit, fidelity, nativeSE, ?_, nativeDistribution⟩
   intro final supported control current
-  exact onePacket_defaulted_eq_empty_of_readout_law setup timeouts leaks bounds Initial horizon
+  exact onePacket_defaulted_eq_empty_of_readout_distribution setup timeouts leaks bounds Initial
+    horizon
     scheduler wellFormed intended.strategy limit.strategy (2 * horizon + 1) readoutLaw final
       supported control current
 

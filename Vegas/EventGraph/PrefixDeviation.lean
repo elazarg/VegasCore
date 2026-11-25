@@ -35,7 +35,7 @@ theorem runPlan_congr_profile_selected (left right : graph.BehavioralProfile)
           (selected : {event : graph.EventId // event ∈ next.cut.enabled}),
           selected ∈ (scheduler (graph.publicObserve next) next.cut.enabled
             (enabled_nonempty_of_not_terminal next notTerminal)).support →
-          actionLaw left next selected.1 = actionLaw right next selected.1) →
+          actionDistribution left next selected.1 = actionDistribution right next selected.1) →
       graph.runPlan (graph.policyPlan left scheduler) fuel config =
         graph.runPlan (graph.policyPlan right scheduler) fuel config := by
   intro fuel
@@ -155,9 +155,10 @@ theorem runPolicies_prefixReplay (relaxed : graph.RevealRelaxedOrdered)
     rw [PMF.pure_map, PMF.support_pure, Set.mem_singleton_iff] at chosen
     exact congrArg Subtype.val chosen.symm
   cases ownerEq : (graph.nodes selected.1).actor with
-  | none => rw [actionLaw_of_ownerless _ _ ownerEq, actionLaw_of_ownerless _ _ ownerEq]
+  | none => rw [actionDistribution_of_ownerless _ _ ownerEq, actionDistribution_of_ownerless _ _
+    ownerEq]
   | some owner =>
-    rw [actionLaw_of_actor _ _ ownerEq, actionLaw_of_actor _ _ ownerEq]
+    rw [actionDistribution_of_actor _ _ ownerEq, actionDistribution_of_actor _ _ ownerEq]
     by_cases inactive : owner ∈ config.defaulted
     · rw [dite_eq_left inactive, dite_eq_left inactive]
     rw [dite_eq_right inactive, dite_eq_right inactive]

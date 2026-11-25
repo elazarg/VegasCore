@@ -123,7 +123,8 @@ theorem trace_eq_start_of_none :
   | .start => rfl
   | .extend (source := before) _ joint _ realized => by
       exfalso
-      change none ∈ ((application setup timeouts leaks).transition (initialLaw setup) horizon
+      change none ∈ ((application setup timeouts leaks).transition
+        (initialDistribution setup) horizon
         scheduler
         before joint).support at realized
       cases before with
@@ -178,7 +179,8 @@ theorem replayStepMatches_respond (assessment : setup.intendedModel.BehavioralAs
     (acting : control.actor = some actor)
     (joint : Player → Option (application setup timeouts leaks).Action)
     {after : (application setup timeouts leaks).ProtocolState}
-    (realized : after ∈ ((application setup timeouts leaks).transition (initialLaw setup) horizon
+    (realized : after ∈ ((application setup timeouts leaks).transition
+      (initialDistribution setup) horizon
       scheduler
       (some control) joint).support) :
     ReplayStepMatches setup timeouts leaks assessment who history pending (some control) joint
@@ -240,7 +242,7 @@ theorem replayStepMatches_initial (assessment : setup.intendedModel.BehavioralAs
     (joint : Player → Option (application setup timeouts leaks).Action)
     (initialMass : (setup.protocolStep none (fun _ => none)
         (decodedPoint setup after.execution.application.config)).toReal =
-      (initialLaw setup after.execution.application).toReal) :
+      (initialDistribution setup after.execution.application).toReal) :
     ReplayStepMatches setup timeouts leaks assessment who setup.intendedProtocol.initHistory 1 none
       joint
       (some after) := by
@@ -256,7 +258,7 @@ theorem replayStepMatches_initial (assessment : setup.intendedModel.BehavioralAs
         (decodedPoint setup after.execution.application.config)).toReal) * 1 =
     setup.intendedModel.counterfactualReachProbability assessment.strategy who
       (ExecutionProtocol.Trace.start : setup.intendedProtocol.Trace setup.intendedProtocol.init) *
-      (initialLaw setup after.execution.application).toReal * 1
+      (initialDistribution setup after.execution.application).toReal * 1
   rw [initialMass]
   ring
 

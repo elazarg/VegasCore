@@ -24,7 +24,7 @@ open GameTheory.Protocol GameTheory.Math.Probability Interaction EventGraphRunti
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr} [IExpr.ResultTypes L]
     {setup : Setup (Player := Player) (L := L)}
     {Signal : Type*} (signal : State L setup.context → Signal)
-    (supported : ∀ key, key ∈ (setup.initialLaw.map signal).support)
+    (supported : ∀ key, key ∈ (setup.initialDistribution.map signal).support)
     (inside : ∀ key who (site : (setup.conditionInitial signal key).intendedModel.InformationSite
       who) (history : setup.intendedModel.InformationHistory who site.1),
       setup.initialComponent signal key history.1.state)
@@ -39,14 +39,14 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr} [IExp
     (intended : setup.intendedModel.BehavioralAssessment)
     (equilibrium : setup.IntendedSequentialEquilibrium parameter utility intended)
     (baseKey : Signal) (read : Player → (application setup timeouts leaks).PlayerView → Signal)
-    (observed : ∀ draw ∈ setup.initialLaw.support,
+    (observed : ∀ draw ∈ setup.initialDistribution.support,
       ∀ execution : (application setup timeouts leaks).Execution,
       State.Invariant (graph := setup.informationGraph) (setup.eventInputs draw)
         execution.application → ∀ who,
       read who (execution.observe (application setup timeouts leaks) who) = signal draw)
 
 local notation "raw" => bounds.rawMenu timeouts leaks
-local notation "globalLaw" => Vegas.initialLaw setup
+local notation "globalLaw" => Vegas.initialDistribution setup
 local notation "compiled" => compileComponent signal supported inside spec intended equilibrium
 /-- A decision callback reads its current view; the inactive information state
 has a unique legal action and may use any component. -/
@@ -95,7 +95,7 @@ theorem compileComponent_sequentialEquilibrium
         (fun key => (compiled key).equilibrium.2)
   · have decoded := decodeProfile_componentAssessment (raw) supported infoRead observed
       read (fun _ _ _ => rfl) assessments
-    have law := (raw).runFrom_stateLaw globalLaw horizon scheduler A.strategy
+    have law := (raw).runFrom_stateDistribution globalLaw horizon scheduler A.strategy
       ((raw).protocol globalLaw horizon scheduler).initHistory
     change ((raw).run globalLaw horizon scheduler A.strategy).map _ = _ at law
     change ((raw).run globalLaw horizon scheduler A.strategy).bind
@@ -104,20 +104,21 @@ theorem compileComponent_sequentialEquilibrium
     change (((application setup timeouts leaks).finish globalLaw horizon scheduler
       ((raw).decodeProfile globalLaw horizon scheduler A.strategy) none).bind _) = _
     rw [show (raw).decodeProfile globalLaw horizon scheduler A.strategy = _ from decoded]
-    exact compileComponent_outcomeLaw signal supported inside spec intended equilibrium read
+    exact compileComponent_outcomeDistribution signal supported inside spec intended equilibrium
+      read
       observed formed (spec baseKey).observation (fun key => conditionInitial_observation_eq
         (setup := setup) (signal := signal) (spec key) (spec baseKey) (audit key) (deposits key))
 
 local notation "app" => application setup timeouts leaks
 local notation "one" => bounds.onePacketMenu timeouts leaks
 local notation "component" key => setup.conditionInitial signal key
-local notation "componentLaw" key => Vegas.initialLaw (component key)
+local notation "componentLaw" key => Vegas.initialDistribution (component key)
 local notation "globalAssessment" => compiledComponentAssessment signal supported inside spec
   intended equilibrium baseKey read observed
 
 /-- Any global start at the control of a legal initialized component history has
 the complete terminal state law of that component's compiled clients. -/
-theorem compiledComponent_runFrom_stateLaw
+theorem compiledComponent_runFrom_stateDistribution
     (key : Signal)
     (localStart : ((raw).protocol (componentLaw key) horizon scheduler).History)
     (globalStart : ((raw).protocol globalLaw horizon scheduler).History)
@@ -127,18 +128,18 @@ theorem compiledComponent_runFrom_stateLaw
         ExecutionProtocol.History.state =
       (app).finish (componentLaw key) horizon scheduler (compiled key).clients
         localStart.state := by
-  rw [(raw).runFrom_stateLaw, sameState, started]
+  rw [(raw).runFrom_stateDistribution, sameState, started]
   have decoded := decodeProfile_componentAssessment (raw) supported infoRead observed read
     (fun _ _ _ => rfl) (fun k => (compiled k).assessment)
   rw [show (raw).decodeProfile globalLaw horizon scheduler (globalAssessment).strategy = _
     from decoded]
   have trace := (raw).toRawTrace (componentLaw key) horizon scheduler localStart.trace
   rw [started] at trace
-  change ((app).protocol (serviceInitialLaw (component key) setup.informationDependencies)
+  change ((app).protocol (serviceInitialDistribution (component key) setup.informationDependencies)
     horizon scheduler).Trace (some control) at trace
-  rw [serviceInitialLaw_eq_inputs (component key)] at trace
+  rw [serviceInitialDistribution_eq_inputs (component key)] at trace
   have invariant := reactive_history_invariant timeouts leaks
-    ((component key).initialLaw.map setup.eventInputs) horizon scheduler trace
+    ((component key).initialDistribution.map setup.eventInputs) horizon scheduler trace
   obtain ⟨inputs, member, valid⟩ := invariant
   obtain ⟨draw, supportedDraw, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp member
   obtain ⟨selected, globalMember⟩ := mem_support_fiberPosterior (supported key) supportedDraw
@@ -170,7 +171,8 @@ theorem compiledComponent_continuation_at_sourceBoundary
     (valid : SourceProgram.ProtocolState.Intended setup.program point) :
     ((raw).runFrom globalLaw horizon scheduler (globalAssessment).strategy globalStart).bind
         (fun final => (spec baseKey).observation final.state) =
-      (setup.continuationLaw (setup.intendedOpeningProfile intended.strategy) (some point)).map
+      (setup.continuationDistribution (setup.intendedOpeningProfile intended.strategy)
+        (some point)).map
         (fun terminal => (some terminal, utility (setup.parameterOutcome parameter terminal))) ∧
     ∀ final ∈ ((raw).runFrom globalLaw horizon scheduler (globalAssessment).strategy
         globalStart).support,
@@ -193,7 +195,8 @@ theorem compiledComponent_continuation_at_sourceBoundary
         change none = some _ at normState
         cases normState
     | some control => exact ⟨control, rfl⟩
-  have transported := compiledComponent_runFrom_stateLaw signal supported inside spec intended
+  have transported := compiledComponent_runFrom_stateDistribution signal supported inside spec
+    intended
     equilibrium baseKey read observed key localStart globalStart control started sameState
   obtain ⟨settles, clean⟩ := (compiled key).clients_continuation_at_sourceBoundary rank
     nativeStart localStart matched anchor state boundary point decoded valid
@@ -205,7 +208,7 @@ theorem compiledComponent_continuation_at_sourceBoundary
     rw [← PMF.bind_map, transported, ← sameObservation]
     refine settles.trans ?_
     have profile := setup.conditionInitial_openingProfile signal key intended.strategy
-    change (SourceProgram.ProtocolState.continuationLaw setup.program
+    change (SourceProgram.ProtocolState.continuationDistribution setup.program
       ((component key).intendedOpeningProfile
         (fun who => setup.conditionInitial_policy signal key who (intended.strategy who)))
       point).map _ = _

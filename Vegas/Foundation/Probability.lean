@@ -10,7 +10,7 @@ public import Mathlib.Algebra.Order.Ring.Rat
 /-!
 # Exact finite probability syntax
 
-Game semantics uses `PMF` directly. `RationalLaw` is syntax data for an
+Game semantics uses `PMF` directly. `RationalDistribution` is syntax data for an
 explicit finite probability table: it retains exact rational masses for
 execution backends while its normalization proof ensures that construction can
 never produce a partial or malformed semantic law.
@@ -25,11 +25,11 @@ open scoped ENNReal NNReal
 
 /-- An explicitly enumerated probability law with exact rational masses.
 Repeated values are permitted; their masses combine under `denote`. -/
-structure RationalLaw (α : Type) where
+structure RationalDistribution (α : Type) where
   entries : List (α × ℚ≥0)
   normalized : (entries.map Prod.snd).sum = 1
 
-namespace RationalLaw
+namespace RationalDistribution
 
 variable {α : Type}
 
@@ -45,7 +45,7 @@ private theorem cast_sum (weights : List ℚ≥0) :
   | cons head tail ih =>
       simp only [List.sum_cons, List.map_cons, NNRat.cast_add, ENNReal.coe_add, ih]
 
-theorem indexed_mass_sum (law : RationalLaw α) :
+theorem indexed_mass_sum (law : RationalDistribution α) :
     ∑ index : Fin law.entries.length, entryMass (law.entries.get index) = 1 := by
   rw [← List.sum_ofFn]
   have hcast := congrArg (fun weight : ℚ≥0 => ((weight : ℝ≥0) : ℝ≥0∞)) law.normalized
@@ -61,24 +61,24 @@ theorem indexed_mass_sum (law : RationalLaw α) :
 /-- The exact law on table-entry indices.  This is the canonical policy for a
 trusted oracle: the runtime receives an index and deterministically reads the
 corresponding value from the retained table. -/
-def indexLaw (law : RationalLaw α) : PMF (Fin law.entries.length) :=
+def indexDistribution (law : RationalDistribution α) : PMF (Fin law.entries.length) :=
   PMF.ofFintype (fun index => entryMass (law.entries.get index)) law.indexed_mass_sum
 
 /-- Read the value named by one retained table entry. -/
-def entryValue (law : RationalLaw α) (index : Fin law.entries.length) : α :=
+def entryValue (law : RationalDistribution α) (index : Fin law.entries.length) : α :=
   (law.entries.get index).1
 
 /-- Interpret an exact rational table as GameTheory's canonical finite law.
 The finite index carrier makes this work even when `α` is infinite. -/
-def denote (law : RationalLaw α) : PMF α :=
-  law.indexLaw.map law.entryValue
+def denote (law : RationalDistribution α) : PMF α :=
+  law.indexDistribution.map law.entryValue
 
-@[simp] theorem map_entryValue_indexLaw (law : RationalLaw α) :
-    law.indexLaw.map law.entryValue = law.denote := rfl
+@[simp] theorem map_entryValue_indexDistribution (law : RationalDistribution α) :
+    law.indexDistribution.map law.entryValue = law.denote := rfl
 
 /-- The probability of a value is the sum of the exact table entries that
 name it. Repeated entries therefore combine rather than overwrite. -/
-theorem denote_apply [DecidableEq α] (law : RationalLaw α) (value : α) :
+theorem denote_apply [DecidableEq α] (law : RationalDistribution α) (value : α) :
     law.denote value =
       ∑ index : Fin law.entries.length,
         if value = (law.entries.get index).1 then entryMass (law.entries.get index)
@@ -87,23 +87,23 @@ theorem denote_apply [DecidableEq α] (law : RationalLaw α) (value : α) :
   rw [PMF.map_apply, tsum_fintype]
   apply Finset.sum_congr rfl
   intro index _
-  unfold indexLaw entryValue
+  unfold indexDistribution entryValue
   rw [PMF.ofFintype_apply]
   by_cases heq : value = (law.entries.get index).1
   · simp [heq]
   · simp
 
 /-- An exact table has finitely many values of positive probability. -/
-theorem denote_support_finite (law : RationalLaw α) : law.denote.support.Finite := by
+theorem denote_support_finite (law : RationalDistribution α) : law.denote.support.Finite := by
   unfold denote
   rw [PMF.support_map]
   exact (Set.toFinite _).image _
 
 /-- The point law as exact syntax. -/
-def pure (value : α) : RationalLaw α where
+def pure (value : α) : RationalDistribution α where
   entries := [(value, 1)]
   normalized := by simp
 
-end RationalLaw
+end RationalDistribution
 
 end Vegas

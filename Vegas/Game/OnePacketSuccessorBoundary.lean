@@ -36,7 +36,8 @@ private theorem clear_transition_prefix {horizon rank : Nat}
     (joint : Player → Option (application setup timeouts leaks).Action)
     (ordered : before.execution.application.config.cut.IsPrefix rank)
     (seen : ReadySeen setup leaks rank before.execution)
-    (reached : some after ∈ ((application setup timeouts leaks).transition (initialLaw setup)
+    (reached : some after ∈ ((application setup timeouts leaks).transition
+      (initialDistribution setup)
       horizon scheduler (some before) joint).support)
     (clear : after.execution.application.config.defaulted = ∅) :
     (after.execution.application.config = before.execution.application.config ∧
@@ -101,16 +102,17 @@ variable [Fintype Player] {bounds : MessageBounds setup.informationGraph}
   {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
   (completes : ∀ control : (application setup timeouts leaks).Control,
-    ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some control) →
     control.execution.application.config.defaulted = ∅ →
     (application setup timeouts leaks).terminal (some control) →
     control.execution.application.config.cut.Terminal)
 
 local notation "menu" => bounds.onePacketMenu timeouts leaks
-local notation "N" => onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+local notation "N" => onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon
   scheduler
-local notation "E" => ReactiveApplication.ResponseMenu.protocol menu (initialLaw setup) horizon
+local notation "E" =>
+  ReactiveApplication.ResponseMenu.protocol menu (initialDistribution setup) horizon
   scheduler
 local notation "Clear" => ReactiveApplication.stateInvariant
   (app := application setup timeouts leaks)
@@ -155,21 +157,25 @@ theorem counted_stopped_boundary_of_intended
   have atRank := (ready_iff_rank setup _ rank ordered event).mp ready
   have initialSeen : ReadySeen setup leaks rank control.execution :=
     readySeen_of_rawTrace timeouts leaks
-      ((menu).toRawTrace (initialLaw setup) horizon scheduler (current ▸ start.trace)) ordered
+      ((menu).toRawTrace (initialDistribution setup) horizon scheduler
+        (current ▸ start.trace)) ordered
   have preserved : ∀ history, ¬ stopped history → ¬ (E).terminal history.state →
       property history → ∀ next ∈ ((N).runBehavioralFrom players 1 history).support,
         property next := by
     intro history going running ⟨before, state, cases⟩ next member
     obtain ⟨⟨joint, _legal, realized⟩, _⟩ :=
       (N).mem_support_runBehavioralFrom_one players running member
-    change next.state ∈ ((application setup timeouts leaks).transition (initialLaw setup) horizon
+    change next.state ∈ ((application setup timeouts leaks).transition
+      (initialDistribution setup) horizon
       scheduler history.state joint).support at realized
     rw [state] at realized
     obtain ⟨after, afterState, _recallPrefix⟩ :=
-      (application setup timeouts leaks).transition_recall_prefix (initialLaw setup) horizon
+      (application setup timeouts leaks).transition_recall_prefix
+        (initialDistribution setup) horizon
         scheduler before next.state joint realized
     refine ⟨after, afterState, fun nextClear => ?_⟩
-    have beforeClear := native_clear_before_transition timeouts leaks (initialLaw setup) horizon
+    have beforeClear := native_clear_before_transition timeouts leaks
+      (initialDistribution setup) horizon
       scheduler joint realized (by
         intro found foundState
         cases Option.some.inj (afterState.symm.trans foundState)
@@ -187,7 +193,7 @@ theorem counted_stopped_boundary_of_intended
   obtain ⟨last, lastState, cases⟩ := (N).runBehavioralUntil_support_history_closed certificate
     players stopped property preserved start
       ⟨control, current, fun _ => Or.inl ⟨ordered, initialSeen⟩⟩ final supported
-  have rawTrace := (menu).toRawTrace (initialLaw setup) horizon scheduler
+  have rawTrace := (menu).toRawTrace (initialDistribution setup) horizon scheduler
     (lastState ▸ final.trace)
   have lastDecoded : decodedPoint setup last.execution.application.config = some point := by
     simpa only [lastState, nativeDecodedState] using decoded
@@ -220,7 +226,8 @@ theorem counted_stopped_boundary_of_intended
   obtain ⟨idle, nextPrefix, seen⟩ := finished
   change actor = none at idle
   subst idle
-  have accounted := (application setup timeouts leaks).raw_trace_horizon (initialLaw setup) horizon
+  have accounted := (application setup timeouts leaks).raw_trace_horizon
+    (initialDistribution setup) horizon
     scheduler rawTrace
   change anchor.environmentRecall.length + remaining = horizon at accounted
   have boundaryState : final.state =
@@ -242,12 +249,12 @@ theorem counted_stopped_boundary_of_intended
 
 variable {delay bound : setup.informationGraph.EventId → Nat}
   (opportunity : ∀ control : (application setup timeouts leaks).Control,
-    ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some control) →
     control.execution.application.config.defaulted = ∅ →
     OpportunityAt timeouts leaks control.execution delay)
   (inclusion : ∀ control : (application setup timeouts leaks).Control,
-    ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some control) →
     control.execution.application.config.defaulted = ∅ →
     ProtectedInclusionAt timeouts leaks control.execution bound)
@@ -280,7 +287,8 @@ theorem counted_firstActivation_honest_successorBoundary
     (supported : final ∈ ((N).runBehavioralUntil certificate
       (Profile.update (sig := (N).behavioralSignature) players who
         ((players who).withLaw info
-          (honestChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler source who
+          (honestChoice setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
+            source who
             info)))
       (fun stop => LateStopped setup timeouts leaks bounds horizon scheduler rank stop ∨
         ¬ Clear stop.state) history).support) :
@@ -295,7 +303,7 @@ theorem counted_firstActivation_honest_successorBoundary
       sourceServicePrefix? setup (rank + 1) anchor.application.config = some target ∧
       ReachedBoundary setup timeouts leaks horizon scheduler (rank + 1) anchor := by
   classical
-  have law := counted_firstActivation_honest_sourceLaw (timeouts := timeouts) opportunity
+  have law := counted_firstActivation_honest_sourceDistribution (timeouts := timeouts) opportunity
     inclusion timely completes covers capacity source certificate players history
     current clear event pending never ordered decoded intendedPoint info observed
   have decodedSupported : nativeDecodedState setup timeouts leaks final.state ∈

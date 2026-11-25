@@ -38,20 +38,22 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 /-- **The image of a history does not depend on the allowed inputs.** -/
 theorem mapTrace_allowed_congr (swap : HiddenSwap setup.informationGraph)
     {first second : Set setup.informationGraph.Inputs}
-    (firstClosed : ∀ state ∈ (initialLaw setup).support, state.config.inputs ∈ first →
-      state.swap swap ∈ (initialLaw setup).support)
-    (secondClosed : ∀ state ∈ (initialLaw setup).support, state.config.inputs ∈ second →
-      state.swap swap ∈ (initialLaw setup).support)
+    (firstClosed : ∀ state ∈ (initialDistribution setup).support, state.config.inputs ∈ first →
+      state.swap swap ∈ (initialDistribution setup).support)
+    (secondClosed : ∀ state ∈ (initialDistribution setup).support, state.config.inputs ∈ second →
+      state.swap swap ∈ (initialDistribution setup).support)
     (bounded : ∀ handle raw, raw ∈ bounds.values → swap.raw handle raw ∈ bounds.values)
     (failures : ∀ event, swap.values.ExpiryFixed event) :
     ∀ {state} (trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace
       state)
       (firstGuard : SwapGuardState setup timeouts swap first state)
       (secondGuard : SwapGuardState setup timeouts swap second state),
-    (onePacketSwapSymmetry (timeouts := timeouts) bounds (initialLaw setup) horizon scheduler swap
+    (onePacketSwapSymmetry (timeouts := timeouts) bounds (initialDistribution setup) horizon
+      scheduler swap
       firstClosed
         bounded failures).mapTrace trace firstGuard =
-      (onePacketSwapSymmetry (timeouts := timeouts) bounds (initialLaw setup) horizon scheduler swap
+      (onePacketSwapSymmetry (timeouts := timeouts) bounds
+        (initialDistribution setup) horizon scheduler swap
         secondClosed
         bounded failures).mapTrace trace secondGuard
   | _, .start, _, _ => rfl
@@ -91,10 +93,10 @@ theorem eventInputs_injective :
 
 omit [Fintype Player] in
 /-- The mass of the initial state of a draw is the mass of the draw. -/
-theorem initialLaw_initial (draw : State L setup.context) :
-    initialLaw setup (EventGraphRuntime.State.initial (graph := setup.informationGraph)
+theorem initialDistribution_initial (draw : State L setup.context) :
+    initialDistribution setup (EventGraphRuntime.State.initial (graph := setup.informationGraph)
         (setup.eventInputs draw)) =
-      setup.initialLaw draw := by
+      setup.initialDistribution draw := by
   have injective : Function.Injective fun draw : State L setup.context =>
       EventGraphRuntime.State.initial (graph := setup.informationGraph) (setup.eventInputs draw) :=
         by
@@ -103,16 +105,17 @@ theorem initialLaw_initial (draw : State L setup.context) :
     exact congrArg (fun state : EventGraphRuntime.State setup.informationGraph =>
       state.config.inputs)
       same
-  exact GameTheory.Math.Probability.pmf_map_apply_of_injective setup.initialLaw injective draw
+  exact GameTheory.Math.Probability.pmf_map_apply_of_injective setup.initialDistribution injective
+    draw
 
 omit [Fintype Player] in
 /-- A state of the initial law's support is the initial state of its inputs. -/
 theorem eq_initial_of_mem_support {state : EventGraphRuntime.State setup.informationGraph}
-    (member : state ∈ (initialLaw setup).support) :
-    ∃ draw ∈ setup.initialLaw.support,
+    (member : state ∈ (initialDistribution setup).support) :
+    ∃ draw ∈ setup.initialDistribution.support,
       state = EventGraphRuntime.State.initial (graph := setup.informationGraph) (setup.eventInputs
         draw) := by
-  rw [initialLaw, serviceInitialLaw, PMF.support_map] at member
+  rw [initialDistribution, serviceInitialDistribution, PMF.support_map] at member
   obtain ⟨draw, drawMember, rfl⟩ := member
   exact ⟨draw, drawMember, rfl⟩
 

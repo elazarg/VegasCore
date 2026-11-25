@@ -41,14 +41,14 @@ theorem lateLeak_intended_outcome_not_preserved (G : LateLeakParameters)
     (∀ A : (lateLeakModel G false).BehavioralAssessment,
       A.IsSequentialEquilibrium (lateLeak_antichain G false) (lateLeak_terminates G false)
           (lateLeakPayoff G false) →
-        lateLeakOutcomeLaw G false A.strategy = lateLeakIntendedOutcome) ∧
+        lateLeakOutcomeDistribution G false A.strategy = lateLeakIntendedOutcome) ∧
     (∃ A : (lateLeakModel G true).BehavioralAssessment,
       A.IsSequentialEquilibrium (lateLeak_antichain G true) (lateLeak_terminates G true)
         (lateLeakPayoff G true)) ∧
     ∀ A : (lateLeakModel G true).BehavioralAssessment,
       A.IsSequentialEquilibrium (lateLeak_antichain G true) (lateLeak_terminates G true)
           (lateLeakPayoff G true) →
-        lateLeakOutcomeLaw G true A.strategy ≠ lateLeakIntendedOutcome :=
+        lateLeakOutcomeDistribution G true A.strategy ≠ lateLeakIntendedOutcome :=
   ⟨(lateLeak_intended_equilibria G).1, (lateLeak_intended_equilibria G).2,
     lateLeak_exists_sequentialEquilibrium G true, lateLeak_no_intended_equilibrium pays⟩
 
@@ -91,14 +91,14 @@ theorem lateLeak_not_preserved_for_every_margin (R D c : ℝ) (reward_pos : 0 < 
       (∀ A : (lateLeakModel ⟨R, D, c, q⟩ false).BehavioralAssessment,
         A.IsSequentialEquilibrium (lateLeak_antichain ⟨R, D, c, q⟩ false)
             (lateLeak_terminates ⟨R, D, c, q⟩ false) (lateLeakPayoff ⟨R, D, c, q⟩ false) →
-          lateLeakOutcomeLaw ⟨R, D, c, q⟩ false A.strategy = lateLeakIntendedOutcome) ∧
+          lateLeakOutcomeDistribution ⟨R, D, c, q⟩ false A.strategy = lateLeakIntendedOutcome) ∧
       (∃ A : (lateLeakModel ⟨R, D, c, q⟩ true).BehavioralAssessment,
         A.IsSequentialEquilibrium (lateLeak_antichain ⟨R, D, c, q⟩ true)
           (lateLeak_terminates ⟨R, D, c, q⟩ true) (lateLeakPayoff ⟨R, D, c, q⟩ true)) ∧
       ∀ A : (lateLeakModel ⟨R, D, c, q⟩ true).BehavioralAssessment,
         A.IsSequentialEquilibrium (lateLeak_antichain ⟨R, D, c, q⟩ true)
             (lateLeak_terminates ⟨R, D, c, q⟩ true) (lateLeakPayoff ⟨R, D, c, q⟩ true) →
-          lateLeakOutcomeLaw ⟨R, D, c, q⟩ true A.strategy ≠ lateLeakIntendedOutcome :=
+          lateLeakOutcomeDistribution ⟨R, D, c, q⟩ true A.strategy ≠ lateLeakIntendedOutcome :=
   ⟨lateLeakInclusionThreshold_lt_one reward_pos margin charge, fun q above =>
     lateLeak_intended_outcome_not_preserved _
       (lateLeak_deferralPays_of_threshold reward_pos margin charge q above)⟩

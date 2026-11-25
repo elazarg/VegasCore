@@ -78,12 +78,12 @@ theorem lateCommit_failure_next
     (imageOfBinding : BindingImage (timeouts := timeouts) (setup := setup) (leaks := leaks) → Y)
     (imageBinding : ∀ state, lumping.image key state =
       imageOfBinding (bindingImage (timeouts := timeouts) event who payload state))
-    (start : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (start : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).History)
     {remaining : Nat} {execution : (application setup timeouts leaks).Execution}
     (current : start.state = some ⟨remaining, some who, execution⟩)
     (keptOf : ∀ (history : ((bounds.onePacketMenu timeouts leaks).protocol
-        (initialLaw setup) horizon scheduler).History)
+        (initialDistribution setup) horizon scheduler).History)
         (control : (application setup timeouts leaks).Control),
       history.state = some control →
       control.execution.application.config = execution.application.config →
@@ -102,7 +102,7 @@ theorem lateCommit_failure_next
     (succeeds : candidateSucceeds ((application setup timeouts leaks).submit execution.application
       who
       material) (who, .prepared serial) payload = true)
-    (next : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (next : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).History)
     (nextState : next.state = some ⟨remaining, none,
       execution.respond (application setup timeouts leaks) who response⟩) :
@@ -170,12 +170,12 @@ theorem lateCommit_historyFailure
     (imageOfBinding : BindingImage (timeouts := timeouts) (setup := setup) (leaks := leaks) → Y)
     (imageBinding : ∀ state, lumping.image key state =
       imageOfBinding (bindingImage (timeouts := timeouts) event who payload state))
-    (start : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (start : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).History)
     {remaining : Nat} {execution : (application setup timeouts leaks).Execution}
     (current : start.state = some ⟨remaining, some who, execution⟩)
     (keptOf : ∀ (history : ((bounds.onePacketMenu timeouts leaks).protocol
-        (initialLaw setup) horizon scheduler).History)
+        (initialDistribution setup) horizon scheduler).History)
         (control : (application setup timeouts leaks).Control),
       history.state = some control →
       control.execution.application.config = execution.application.config →
@@ -188,7 +188,7 @@ theorem lateCommit_historyFailure
     (installed : ∀ player, (onePacketInformation setup timeouts leaks bounds horizon
       scheduler).BehavioralPolicy player)
     (agreeLonger : ∀ history : ((bounds.onePacketMenu timeouts leaks).protocol
-        (initialLaw setup) horizon scheduler).History,
+        (initialDistribution setup) horizon scheduler).History,
       (∀ control, history.state = some control →
         (execution.logs who).length < (control.execution.logs who).length) →
       ∀ player, installed player
@@ -221,9 +221,10 @@ theorem lateCommit_historyFailure
   classical
   let menu := bounds.onePacketMenu timeouts leaks
   let model := onePacketInformation setup timeouts leaks bounds horizon scheduler
-  have bounded := menu.bounded (initialLaw setup) horizon scheduler
+  have bounded := menu.bounded (initialDistribution setup) horizon scheduler
   let certificate := bounded.wellFoundedHistories
-  have stepStates := menu.run_one_response (initialLaw setup) horizon scheduler installed start
+  have stepStates := menu.run_one_response (initialDistribution setup) horizon scheduler installed
+    start
     who remaining execution current
   rw [decodeProfile_eq_map, responseLaw, PMF.pure_map] at stepStates
   have nextState : ∀ next ∈ (model.runBehavioralFrom installed 1 start).support,
@@ -252,8 +253,9 @@ theorem lateCommit_historyFailure
     intro later path _ player
     apply agreeLonger later
     intro control laterState
-    have rawPath := menu.reaches_raw (initialLaw setup) horizon scheduler path
-    have grown := (application setup timeouts leaks).reaches_recall_prefix (initialLaw setup)
+    have rawPath := menu.reaches_raw (initialDistribution setup) horizon scheduler path
+    have grown := (application setup timeouts leaks).reaches_recall_prefix
+      (initialDistribution setup)
       horizon
       scheduler rawPath _ control (nextState next nextMember) laterState who
     exact lt_of_lt_of_le nextRecall grown.length_le
@@ -275,12 +277,13 @@ theorem lateCommit_historyFailure
 
 section Certificate
 
-variable [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
-  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+variable [(application setup timeouts leaks).FiniteNature (initialDistribution setup) scheduler]
+  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds
+    (initialDistribution setup) horizon
     scheduler).InfoState who)]
 
 local notation "onePacketN" =>
-  onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+  onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
 
 variable (setup timeouts leaks bounds horizon scheduler) in
 /-- **The lumped failure of a late commitment** at a slot: the certificate's
@@ -289,7 +292,7 @@ def certificateCommitFailure (sequence : ℕ → setup.intendedModel.BehavioralA
     (scale : ℕ → ℝ) (scale_pos : ∀ n, 0 < scale n) (scale_le_one : ∀ n, scale n ≤ 1)
     {slots : Nat} (covers : bounds.CoversOutputValues) (capacity : 1 ≤ bounds.candidateCount)
     (slotsLe : slots ≤ bounds.candidateCount)
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialDistribution setup)
       horizon scheduler slots p))
     (targetSequence : ℕ → (onePacketN).BehavioralAssessment)
     (assembled : OnePacketAssembled setup timeouts leaks bounds horizon scheduler sequence scale
@@ -308,12 +311,12 @@ def certificateCommitFailure (sequence : ℕ → setup.intendedModel.BehavioralA
 
 open Classical in
 theorem certificate_commit_decisionFailure
-    [Finite ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    [Finite ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).History]
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (scale : ℕ → ℝ) (scale_pos : ∀ n, 0 < scale n) (scale_le_one : ∀ n, scale n ≤ 1)
     {slots : Nat}
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialDistribution setup)
       horizon scheduler slots p))
     (targetSequence : ℕ → (onePacketN).BehavioralAssessment)
     (assembled : OnePacketAssembled setup timeouts leaks bounds horizon scheduler sequence scale
@@ -362,10 +365,10 @@ theorem certificate_commit_decisionFailure
   classical
   let menu := bounds.onePacketMenu timeouts leaks
   let model := onePacketN
-  have rawTrace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+  have rawTrace : ((application setup timeouts leaks).protocol (initialDistribution setup) horizon
     scheduler).Trace
       (some ⟨remaining, some who, execution⟩) :=
-    menu.toRawTrace (initialLaw setup) horizon scheduler (current ▸ history.1.trace)
+    menu.toRawTrace (initialDistribution setup) horizon scheduler (current ▸ history.1.trace)
   have pendingHere := pending
   rw [atSite] at pendingHere
   obtain ⟨turn, _, _, unrecorded⟩ := pendingEvent_spec (timeouts := timeouts) pendingHere
@@ -429,9 +432,9 @@ theorem certificate_commit_decisionFailure
         simp only [installed, Profile.update_same]
         have different : (onePacketN).infoOf player later.trace ≠ site.1 := by
           rw [atSite]
-          change ((bounds.onePacketMenu timeouts leaks).signals (initialLaw setup) horizon
+          change ((bounds.onePacketMenu timeouts leaks).signals (initialDistribution setup) horizon
             scheduler).infoOf player later.trace ≠ _
-          rw [(bounds.onePacketMenu timeouts leaks).info (initialLaw setup) horizon
+          rw [(bounds.onePacketMenu timeouts leaks).info (initialDistribution setup) horizon
             scheduler player later.trace]
           cases laterState : later.state with
           | none => simp [ReactiveApplication.observe]
@@ -461,12 +464,12 @@ open Classical in
 has primitive failure close to its actual certificate kernel on every forced row.
 The candidate-success fact is derived from the actual one-packet response. -/
 theorem certificate_lateCommit_historyDecisionFailure
-    [Finite ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    [Finite ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).History]
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (scale : ℕ → ℝ) (scale_pos : ∀ n, 0 < scale n) (scale_le_one : ∀ n, scale n ≤ 1)
     {slots : Nat}
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialDistribution setup)
       horizon scheduler slots p))
     (targetSequence : ℕ → (onePacketN).BehavioralAssessment)
     (assembled : OnePacketAssembled setup timeouts leaks bounds horizon scheduler sequence scale

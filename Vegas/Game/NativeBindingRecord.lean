@@ -41,7 +41,7 @@ theorem decidedOpportunity_binding_response_record
     {horizon remaining : Nat} (scheduler : ((reactiveApplication timeouts) leaks).Scheduler)
     (bound : (serviceGraph setup deps).EventId → Nat)
     (inclusion : ProtectedInclusion timeouts leaks
-      (serviceInitialLaw setup deps) horizon scheduler bound)
+      (serviceInitialDistribution setup deps) horizon scheduler bound)
     (owner : Player) (event : (serviceGraph setup deps).EventId)
     (ownerSolitary : (serviceGraph setup deps).OwnerSolitary event)
     (owned : (serviceGraph setup deps).actor? event = some owner)
@@ -53,7 +53,7 @@ theorem decidedOpportunity_binding_response_record
     (actionEq : action = cast (congrArg EventField.Action binding.symm) (some result))
     (execution : ((reactiveApplication timeouts) leaks).Execution)
     (trace : (((reactiveApplication timeouts) leaks).protocol
-      (serviceInitialLaw setup deps) horizon scheduler).Trace
+      (serviceInitialDistribution setup deps) horizon scheduler).Trace
       (some ⟨remaining, some owner, execution⟩))
     (first : turnIndex timeouts leaks owner event
       (execution.logs owner) (execution.observe ((reactiveApplication timeouts) leaks) owner) =
@@ -137,7 +137,7 @@ theorem decidedOpportunity_binding_response_record
     dsimp only [entry, message]
     rw [respondEntry_of_transmission execution owner canonical material sends]
     exact canonical_freshCall trace bound owner event turn fits action material sends
-  have signed := signedCommitments_history timeouts leaks (serviceInitialLaw setup deps)
+  have signed := signedCommitments_history timeouts leaks (serviceInitialDistribution setup deps)
     (fun state supported => by
       obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ supported
       exact ⟨_, rfl⟩) horizon scheduler trace
@@ -170,7 +170,7 @@ theorem decidedOpportunity_binding_response_record
     rw [stateEq]
     exact witness
   obtain ⟨afterTrace⟩ := app.raw_trace_respond
-    (serviceInitialLaw setup deps) horizon scheduler remaining
+    (serviceInitialDistribution setup deps) horizon scheduler remaining
     execution owner canonical trace
   have certified := witnessAfter.binding_action_output binding
   rw [actionEq] at certified
@@ -180,7 +180,7 @@ theorem decidedOpportunity_binding_response_record
     simpa only [cast_cast, cast_eq] using reversed
   intro stopped reached completed
   have accounted : after.environmentRecall.length + remaining = horizon :=
-    app.raw_trace_horizon (serviceInitialLaw setup deps) horizon scheduler afterTrace
+    app.raw_trace_horizon (serviceInitialDistribution setup deps) horizon scheduler afterTrace
   have countEq : horizon - after.environmentRecall.length = remaining := by omega
   have reachedHorizon : stopped ∈ (app.runUntilHorizon scheduler players
       (fun final => event ∈ final.application.config.cut.completed) horizon after).support := by
@@ -189,7 +189,7 @@ theorem decidedOpportunity_binding_response_record
       (horizon - after.environmentRecall.length) after).support
     rw [countEq]
     exact reached
-  rw [serviceInitialLaw_eq_inputs setup] at afterTrace inclusion
+  rw [serviceInitialDistribution_eq_inputs setup] at afterTrace inclusion
   have records := EventGraphRuntime.FreshCall.accepted_binding_record timeouts leaks scheduler
     players bound inclusion event ownerSolitary owner payload binding owned after afterTrace
     (configEq.symm ▸ ready) action output entry message recorded call sole witnessAfter noRepeat
@@ -205,7 +205,7 @@ theorem decidedOpportunity_first_binding_record
     {horizon remaining : Nat} (scheduler : ((reactiveApplication timeouts) leaks).Scheduler)
     (delay bound : (serviceGraph setup deps).EventId → Nat)
     (contract : AsyncContract timeouts leaks
-      (serviceInitialLaw setup deps) horizon scheduler delay bound)
+      (serviceInitialDistribution setup deps) horizon scheduler delay bound)
     (timely : AsyncTimely timeouts delay bound)
     (owner : Player) (event : (serviceGraph setup deps).EventId)
     (ownerSolitary : (serviceGraph setup deps).OwnerSolitary event)
@@ -215,7 +215,7 @@ theorem decidedOpportunity_first_binding_record
     (result : PublicationResult (L.Val payload))
     (current middle : ((reactiveApplication timeouts) leaks).Execution)
     (trace : (((reactiveApplication timeouts) leaks).protocol
-      (serviceInitialLaw setup deps) horizon scheduler).Trace
+      (serviceInitialDistribution setup deps) horizon scheduler).Trace
       (some ⟨remaining + 1, none, current⟩))
     (truthful : OwnSubmissionsAtTurn timeouts leaks current owner)
     (answered : ActivationsAnswered setup leaks current)
@@ -267,7 +267,7 @@ theorem decidedOpportunity_first_binding_record
     intro entry present
     rw [congrFun recallEq owner] at present
     exact truthful entry present
-  obtain ⟨middleTrace⟩ := app.raw_trace_environment (serviceInitialLaw setup deps) horizon
+  obtain ⟨middleTrace⟩ := app.raw_trace_environment (serviceInitialDistribution setup deps) horizon
     scheduler remaining current middle (.activate owner) trace selected moved
   exact decidedOpportunity_binding_response_record timeouts leaks scheduler bound
     contract.inclusion owner event ownerSolitary owned payload binding players
@@ -632,7 +632,7 @@ theorem fixed_reference_binding_record_runRounds
     {horizon remaining : Nat} {acting : Option Player}
     (execution : (serviceApplication setup deps duration leaks).Execution)
     (trace : ((serviceApplication setup deps duration leaks).protocol
-      (serviceInitialLaw setup deps) horizon scheduler).Trace
+      (serviceInitialDistribution setup deps) horizon scheduler).Trace
       (some ⟨remaining, acting, execution⟩))
     (truthful : OwnSubmissionsAtTurn (serviceTimeouts setup deps duration) leaks execution owner)
     (untouched : Untouched setup leaks event execution)
@@ -650,7 +650,7 @@ theorem fixed_reference_binding_record_runRounds
           some (cast (congrArg EventField.Value binding.symm) result)) := by
   let app := serviceApplication setup deps duration leaks
   have signed := signedCommitments_history (serviceTimeouts setup deps duration) leaks
-    (serviceInitialLaw setup deps) (fun state supported => by
+    (serviceInitialDistribution setup deps) (fun state supported => by
       obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ supported
       exact ⟨_, rfl⟩) horizon scheduler trace
   have clean : BindingCallsFixed leaks owner event

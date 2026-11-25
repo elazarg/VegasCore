@@ -105,7 +105,8 @@ theorem replayMatches_of_actorCompletions
       refine ⟨replayMatches_of_actorCompletions assessment who prior
         priorMatches,
         fun history replayed => ?_⟩
-      change after ∈ ((application setup timeouts leaks).transition (initialLaw setup) horizon
+      change after ∈ ((application setup timeouts leaks).transition
+        (initialDistribution setup) horizon
         scheduler
         before joint).support at realized
       cases before with
@@ -129,7 +130,8 @@ theorem replayMatches_of_actorCompletions
                   some (residual.lift (ProtocolState.entry residual.program residual.source)) := by
                 rw [intendedHistory?_state (timeouts := timeouts) prior replayed]
                 exact decodedPoint_eq residual
-              have path := (reactive_protocol_graph_steps timeouts) leaks (initialLaw setup)
+              have path := (reactive_protocol_graph_steps timeouts) leaks
+                (initialDistribution setup)
                 horizon scheduler control next joint realized
               cases dropped : next.execution.application.config.history.drop
                   control.execution.application.config.history.length with
@@ -150,7 +152,7 @@ theorem replayMatches_of_actorCompletions
                             history _ control next acting joint residual current ready member owner
                       | some mover =>
                           have raw := (bounds.onePacketMenu timeouts leaks).toRawTrace
-                            (initialLaw setup) horizon scheduler prior
+                            (initialDistribution setup) horizon scheduler prior
                           have facts := legalFacts setup leaks horizon scheduler control raw
                           have active := control.execution.application.active_of_ready_owned
                             facts.quiescent ready owner
@@ -271,7 +273,8 @@ def ForcedBeliefInputs.ofReplay {sequence : ℕ → setup.intendedModel.Behavior
       site.1)]
     [DecidableEq (setup.intendedModel.InformationHistory who sourceSite.1)]
     {scale floors : ℕ → ℝ} {depth : ℕ} {slack : ℝ} {n : ℕ}
-    (forced : forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks) (initialLaw
+    (forced : forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks)
+      (initialDistribution
       setup) horizon
       scheduler who site.1)
     (decision : site.1 = some (past, view))

@@ -10,7 +10,7 @@ public import Vegas.Pending.FixedOpportunity
 public import Vegas.Pending.PrefixBoundary
 public import Interaction.ReactiveRawRoundTrace
 public import Vegas.Pending.FirstTurnMixture
-public import Vegas.Pending.TurnClientActionLaw
+public import Vegas.Pending.TurnClientActionDistribution
 
 @[expose] public section
 
@@ -767,7 +767,7 @@ theorem foreign_firstTurn_mixture
     let players := Function.update honest focal deviation
     PrefixBoundary (inputs.map State.initial) scheduler players event.val execution →
       execution.environmentRecall.length ≤ horizon →
-      let law := actionLaw reference execution.application.config event
+      let law := actionDistribution reference execution.application.config event
       let stop := fun final : (app).Execution => event ∈ final.application.config.cut.completed
       (app).runUntilHorizon scheduler players stop horizon execution =
       law.bind fun action => (app).runUntilHorizon scheduler
@@ -781,7 +781,8 @@ theorem foreign_firstTurn_mixture
     players follows execution (fun _ other => solitary _ other ready) boundary.supported
     (boundary.untouched event le_rfl owner) bounded law (fun current same selected => by
       simpa only [law, same] using
-        referencePolicy_actionLaw timeouts leaks reference owner current event selected owned)
+        referencePolicy_actionDistribution timeouts leaks reference owner current event selected
+          owned)
   rw [mixed]
   apply bind_congr_on_support _
   intro action _

@@ -71,7 +71,8 @@ theorem canonicalSlot_fresh_of_used
     {scheduler : (serviceApplication setup deps duration leaks).Scheduler}
     {control : (serviceApplication setup deps duration leaks).Control}
     (trace :
-        ((serviceApplication setup deps duration leaks).protocol (serviceInitialLaw setup deps)
+        ((serviceApplication setup deps duration leaks).protocol
+          (serviceInitialDistribution setup deps)
         horizon scheduler).Trace (some control))
     (who : Player) (atTurn : OwnSubmissionsAtTurn
       (serviceTimeouts setup deps duration) leaks control.execution who)
@@ -84,7 +85,7 @@ theorem canonicalSlot_fresh_of_used
         (control.execution.logs who) event = false) :
     control.execution.application.candidates.lookup
       (who, .prepared (control.execution.application.publicView.bindingCount who)) = .fresh := by
-  rw [serviceInitialLaw_eq_inputs setup] at trace
+  rw [serviceInitialDistribution_eq_inputs setup] at trace
   exact EventGraphRuntime.canonicalSlot_fresh_of_used (serviceTimeouts setup deps duration) leaks
     trace who atTurn valid event ownerSolitary turn unrecorded
 
@@ -94,7 +95,8 @@ theorem canonicalSlotsUsed_respond
     {scheduler : (serviceApplication setup deps duration leaks).Scheduler}
     {middle : (serviceApplication setup deps duration leaks).Execution} {who : Player}
     (trace :
-        ((serviceApplication setup deps duration leaks).protocol (serviceInitialLaw setup deps)
+        ((serviceApplication setup deps duration leaks).protocol
+          (serviceInitialDistribution setup deps)
         horizon scheduler).Trace (some ⟨remaining, some who, middle⟩))
     {policy : (serviceApplication setup deps duration leaks).Policy}
     (canonical : EventGraphRuntime.SubmitsCanonically (serviceTimeouts setup deps duration)
@@ -108,7 +110,7 @@ theorem canonicalSlotsUsed_respond
     EventGraphRuntime.CanonicalSlotsUsed (serviceTimeouts setup deps duration) leaks
         (middle.respond (serviceApplication setup deps duration leaks) who response)
       who := by
-  rw [serviceInitialLaw_eq_inputs setup] at trace
+  rw [serviceInitialDistribution_eq_inputs setup] at trace
   exact EventGraphRuntime.canonicalSlotsUsed_respond (serviceTimeouts setup deps duration) leaks
     serial trace canonical chosen atTurn valid
 
@@ -122,7 +124,8 @@ theorem canonicalSlots_round
     (submitsAtTurn : SubmitsAtTurn setup leaks (players who) who)
     {execution next : (serviceApplication setup deps duration leaks).Execution}
     (trace :
-        ((serviceApplication setup deps duration leaks).protocol (serviceInitialLaw setup deps)
+        ((serviceApplication setup deps duration leaks).protocol
+          (serviceInitialDistribution setup deps)
         horizon scheduler).Trace (some ⟨remaining + 1, none, execution⟩))
     (atTurn : OwnSubmissionsAtTurn (serviceTimeouts setup deps duration) leaks execution who)
     (valid : EventGraphRuntime.CanonicalSlotsUsed (serviceTimeouts setup deps duration)
@@ -134,7 +137,7 @@ theorem canonicalSlots_round
       (serviceTimeouts setup deps duration) leaks next who ∧
         EventGraphRuntime.CanonicalSlotsUsed (serviceTimeouts setup deps duration)
           leaks next who := by
-  rw [serviceInitialLaw_eq_inputs setup] at trace
+  rw [serviceInitialDistribution_eq_inputs setup] at trace
   exact EventGraphRuntime.canonicalSlots_round (serviceTimeouts setup deps duration) leaks
     serial canonical submitsAtTurn trace atTurn valid reached
 
@@ -150,14 +153,16 @@ theorem canonicalSlots_roundsFrom_reference
       timing reference
         who) (count : Nat) (execution : (serviceApplication setup deps duration leaks).Execution)
     (reached : execution ∈
-        ((serviceApplication setup deps duration leaks).roundsFrom (serviceInitialLaw setup deps)
+        ((serviceApplication setup deps duration leaks).roundsFrom
+          (serviceInitialDistribution setup deps)
         scheduler players count).support) : OwnSubmissionsAtTurn
           (serviceTimeouts setup deps duration) leaks execution who ∧
       EventGraphRuntime.CanonicalSlotsUsed (serviceTimeouts setup deps duration)
         leaks execution who := by
-  rw [serviceInitialLaw_eq_inputs setup] at reached
+  rw [serviceInitialDistribution_eq_inputs setup] at reached
   exact EventGraphRuntime.canonicalSlots_roundsFrom (serviceTimeouts setup deps duration) leaks
-    (setup.initialLaw.map setup.eventInputs) serial scheduler players who timing reference follows
+    (setup.initialDistribution.map setup.eventInputs) serial scheduler players who timing reference
+      follows
     count execution reached
 
 /-- Compiled source clients preserve canonical slots along all supported initialized rounds. -/
@@ -170,7 +175,8 @@ theorem canonicalSlots_roundsFrom
     (follows : players who = serviceTurnPolicy setup deps duration leaks bound turns timing profile
         who) (count : Nat) (execution : (serviceApplication setup deps duration leaks).Execution)
     (reached : execution ∈
-        ((serviceApplication setup deps duration leaks).roundsFrom (serviceInitialLaw setup deps)
+        ((serviceApplication setup deps duration leaks).roundsFrom
+          (serviceInitialDistribution setup deps)
         scheduler players count).support) : OwnSubmissionsAtTurn
           (serviceTimeouts setup deps duration) leaks execution who ∧
       EventGraphRuntime.CanonicalSlotsUsed (serviceTimeouts setup deps duration)
@@ -188,7 +194,8 @@ theorem canonicalSlot_resources_of_used
     (capacity : (serviceGraph setup deps).order.eventCount ≤ bounds.candidateCount)
     {control : (serviceApplication setup deps duration leaks).Control}
     (trace :
-        ((serviceApplication setup deps duration leaks).protocol (serviceInitialLaw setup deps)
+        ((serviceApplication setup deps duration leaks).protocol
+          (serviceInitialDistribution setup deps)
         horizon scheduler).Trace (some control))
     (who : Player) (atTurn : OwnSubmissionsAtTurn
       (serviceTimeouts setup deps duration) leaks control.execution who)
@@ -257,7 +264,7 @@ theorem FreshCall.sole {horizon : Nat}
     {bound : (serviceGraph setup deps).EventId → Nat}
     {control : (serviceApplication setup deps duration leaks).Control}
     (trace : ((serviceApplication setup deps duration leaks).protocol
-      (serviceInitialLaw setup deps) horizon scheduler).Trace (some control))
+      (serviceInitialDistribution setup deps) horizon scheduler).Trace (some control))
     (owner : Player) (event : (serviceGraph setup deps).EventId)
     (once : OneCallPerEvent setup leaks control.execution owner)
     (earlier : List (serviceApplication setup deps duration leaks).PlayerEntry)
@@ -269,7 +276,7 @@ theorem FreshCall.sole {horizon : Nat}
     ∀ other ∈ earlier ++ later, ¬ EmitsOtherFor (serviceTimeouts setup deps duration) leaks
       other event message.id := by
   have signed := signedCommitments_history (serviceTimeouts setup deps duration) leaks
-    (serviceInitialLaw setup deps) (fun state supported => by
+    (serviceInitialDistribution setup deps) (fun state supported => by
       obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ supported
       exact ⟨_, rfl⟩) horizon scheduler trace
   have submitted (current : (serviceApplication setup deps duration leaks).PlayerEntry)
@@ -427,7 +434,7 @@ theorem sourceServiceTurnPolicy_freshCalls_reference
       reference who) (count : Nat)
     (execution : (serviceApplication setup deps duration leaks).Execution)
     (reached : execution ∈ ((serviceApplication setup deps duration leaks).roundsFrom
-      (serviceInitialLaw setup deps) scheduler players count).support) :
+      (serviceInitialDistribution setup deps) scheduler players count).support) :
     OwnFreshCalls setup leaks bound execution who ∧
       OneCallPerEvent setup leaks execution who := by
   let app := serviceApplication setup deps duration leaks
@@ -457,7 +464,7 @@ theorem sourceServiceTurnPolicy_freshCalls
       profile who) (count : Nat)
     (execution : (serviceApplication setup deps duration leaks).Execution)
     (reached : execution ∈ ((serviceApplication setup deps duration leaks).roundsFrom
-      (serviceInitialLaw setup deps) scheduler players count).support) :
+      (serviceInitialDistribution setup deps) scheduler players count).support) :
     OwnFreshCalls setup leaks bound execution who ∧
       OneCallPerEvent setup leaks execution who := by
   apply sourceServiceTurnPolicy_freshCalls_reference (deps := deps) (duration := duration)

@@ -54,7 +54,7 @@ def OpenableCommitmentInvariant (who : Player) (entry : (application setup timeo
     (application setup timeouts leaks).ProtocolState → Prop
   | none => False
   | some control =>
-      Nonempty (((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup)
+      Nonempty (((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup)
         horizon scheduler).Trace (some control)) ∧
       RecordsEntry setup timeouts leaks who entry (some control) ∧ entry.emitted = some message ∧
       message.sender = who ∧ message.payload.call = .commitment event candidate ∧
@@ -97,12 +97,12 @@ theorem openableCommitmentInvariant_transition {who : Player}
     (unfinished : ∀ control, before = some control →
       event ∉ control.execution.application.config.cut.completed)
     (joint : Player → Option (application setup timeouts leaks).Action)
-    (legal : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (legal : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Legal before joint)
     (holds : OpenableCommitmentInvariant setup timeouts leaks bounds horizon scheduler who entry
       message event candidate outputEq value sent ready action before)
     (reached : after ∈ (((bounds.onePacketMenu timeouts leaks).protocol
-      (initialLaw setup) horizon scheduler).step before ⟨joint, legal⟩).support) :
+      (initialDistribution setup) horizon scheduler).step before ⟨joint, legal⟩).support) :
     OpenableCommitmentInvariant setup timeouts leaks bounds horizon scheduler who entry message
       event
       candidate outputEq value sent ready action after := by
@@ -112,28 +112,32 @@ theorem openableCommitmentInvariant_transition {who : Player}
       obtain ⟨⟨trace⟩, records, emitted, sender, call, fixed, frozen, _⟩ := holds
       have pending := unfinished control rfl
       have atSent := frozen pending
-      have afterRecords := recordsEntry_transition (timeouts := timeouts) who entry (initialLaw
+      have afterRecords := recordsEntry_transition (timeouts := timeouts) who entry
+        (initialDistribution
         setup) horizon scheduler _ after joint records reached
       cases after with
       | none => exact afterRecords.elim
       | some next =>
           have nextTrace : ((bounds.onePacketMenu timeouts leaks).protocol
-              (initialLaw setup) horizon scheduler).Trace (some next) :=
+              (initialDistribution setup) horizon scheduler).Trace (some next) :=
             .extend trace joint legal reached
           have kept := (keepsFixedCandidates_step timeouts leaks).transition
-            (initialLaw setup) horizon scheduler control next joint reached
+            (initialDistribution setup) horizon scheduler control next joint reached
           have lookupEq := kept candidate (by
             rw [fixed]
             exact fun impossible => by cases impossible)
           have owned : setup.informationGraph.actor? event = some who := nodeView_bind_actor
             outputEq codeEq
-          have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup)
+          have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace
+            (initialDistribution setup)
             horizon scheduler trace
-          have nextRawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup)
+          have nextRawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace
+            (initialDistribution setup)
             horizon scheduler nextTrace
           have facts := legalFacts setup leaks horizon scheduler _ rawTrace
           have nextFacts := legalFacts setup leaks horizon scheduler _ nextRawTrace
-          rcases reactive_protocol_primary_or_stutter timeouts leaks (initialLaw setup) horizon
+          rcases reactive_protocol_primary_or_stutter timeouts leaks
+            (initialDistribution setup) horizon
             scheduler control next joint facts.quiescent reached with
             same | ⟨completed, completedReady, found, primary, member, drained⟩
           · refine ⟨⟨nextTrace⟩, afterRecords, emitted, sender, call, lookupEq.trans fixed,
@@ -228,10 +232,10 @@ theorem openableCommitmentInvariant_transition {who : Player}
 /-- Native first-completion classification at the monotone target stop. -/
 theorem openableCommitment_stop (bounds : MessageBounds setup.informationGraph) (horizon : Nat)
     (scheduler : (application setup timeouts leaks).Scheduler)
-    (certificate : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup)
+    (certificate : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup)
       horizon scheduler).WellFoundedHistories)
     (players : ∀ player, ((bounds.onePacketMenu timeouts leaks).information
-      (initialLaw setup) horizon scheduler).BehavioralPolicy player)
+      (initialDistribution setup) horizon scheduler).BehavioralPolicy player)
     {who : Player} {entry : (application setup timeouts leaks).PlayerEntry}
     {message : Message Player (WitnessedPacket setup.informationGraph)} {event :
       setup.informationGraph.EventId}
@@ -245,17 +249,17 @@ theorem openableCommitment_stop (bounds : MessageBounds setup.informationGraph) 
       Option (PublicationResult (L.Val payload))) = some (.success value))
     {rank : Nat} (ordered : sent.cut.IsPrefix rank)
     (terminalCompleted : ∀ (final : (application setup timeouts leaks).Control),
-      ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+      ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
         scheduler).Trace (some final) →
       (application setup timeouts leaks).terminal (some final) →
       final.execution.application.config = sent →
       event ∈ final.execution.application.config.cut.completed)
-    (start : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (start : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).History)
     (holds : OpenableCommitmentInvariant setup timeouts leaks bounds horizon scheduler who entry
       message
       event candidate outputEq value sent ready action start.state) :
-    ∀ stop ∈ (((bounds.onePacketMenu timeouts leaks).information (initialLaw setup)
+    ∀ stop ∈ (((bounds.onePacketMenu timeouts leaks).information (initialDistribution setup)
         horizon scheduler).runBehavioralUntil certificate players
         (LateStopped setup timeouts leaks bounds horizon scheduler rank) start).support,
       ∃ final, stop.state = some final ∧
@@ -265,9 +269,10 @@ theorem openableCommitment_stop (bounds : MessageBounds setup.informationGraph) 
               final.execution.application.config = primary.drain.config) := by
   intro stop member
   let menu := bounds.onePacketMenu timeouts leaks
-  let model := menu.information (initialLaw setup) horizon scheduler
+  let model := menu.information (initialDistribution setup) horizon scheduler
   have rankEq := (ready_iff_rank setup sent rank ordered event).mp ready
-  have unfinishedOf : ∀ history : (menu.protocol (initialLaw setup) horizon scheduler).History,
+  have unfinishedOf : ∀ history : (menu.protocol (initialDistribution setup) horizon
+    scheduler).History,
       ¬ LateStopped setup timeouts leaks bounds horizon scheduler rank history →
       ∀ control, history.state = some control →
         event ∉ control.execution.application.config.cut.completed := by
@@ -370,7 +375,7 @@ action binding the successful value `value` leaves the openable-commitment
 invariant, from the configuration of the decision, at the state it reaches. -/
 theorem openableCommitmentInvariant_slot {remaining : Nat} {who : Player}
     {execution : (application setup timeouts leaks).Execution}
-    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some ⟨remaining, some who, execution⟩))
     {event : setup.informationGraph.EventId} {payload : L.Ty}
     {outputEq : setup.informationGraph.outputLayout event = .binding who payload}
@@ -386,7 +391,7 @@ theorem openableCommitmentInvariant_slot {remaining : Nat} {who : Player}
     (permitted : countPermits ((application setup timeouts leaks).outputs (execution.logs who))
       (slotEnvelope setup timeouts leaks who (execution.logs who)
         (execution.observe (application setup timeouts leaks) who) event slot) = true)
-    (afterTrace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup)
+    (afterTrace : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup)
       horizon scheduler).Trace (some ⟨remaining, none, execution.respond (application setup
         timeouts leaks)
         who (slotResponse setup timeouts leaks who (execution.logs who)

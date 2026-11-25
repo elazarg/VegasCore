@@ -226,11 +226,11 @@ theorem runPolicies_canonical_submit_compile {Γ : SourceCtx Player L}
         ((toInformationGraph program).submitProfile (compileEventProfile program profile))
           inputs).map
           graph.fromSequentialConfig :=
-      (canonical_fromSequential_config_law graph _ inputs).symm
+      (canonical_fromSequential_config_distribution graph _ inputs).symm
     _ = ((toInformationGraph program).runPolicies (toInformationGraph program).canonicalScheduler
         (compileEventProfile program profile) inputs).map graph.fromSequentialConfig := by
       rw [runPolicies_canonical_submit_compile_information program profile submits inputs]
-    _ = _ := canonical_fromSequential_config_law graph _ inputs
+    _ = _ := canonical_fromSequential_config_distribution graph _ inputs
 
 /-- Canonical repair preserves the full law against any graph-policy replacement,
 for every dependency choice. The replacement need not submit or disclose. -/
@@ -256,14 +256,14 @@ theorem runPolicies_canonical_submit_compile_update {Γ : SourceCtx Player L}
         (Profile.update (sig := (toInformationGraph program).gameSignature)
           ((toInformationGraph program).submitProfile (compileEventProfile program profile))
             who policy) inputs).map graph.fromSequentialConfig :=
-      (canonical_fromSequential_config_law graph _ inputs).symm
+      (canonical_fromSequential_config_distribution graph _ inputs).symm
     _ = ((toInformationGraph program).runPolicies (toInformationGraph program).canonicalScheduler
         (Profile.update (sig := (toInformationGraph program).gameSignature)
           (compileEventProfile program profile) who policy) inputs).map graph.fromSequentialConfig
             := by
       rw [runPolicies_canonical_submit_compile_update_information program profile who submits
         policy inputs]
-    _ = _ := canonical_fromSequential_config_law graph _ inputs
+    _ = _ := canonical_fromSequential_config_distribution graph _ inputs
 
 /-- Source-prefix clients with total binding submissions, on any valid dependency choice. -/
 def compilePrescribedProfile {Γ : SourceCtx Player L} {openNames : Finset VarId}
@@ -344,7 +344,7 @@ theorem runPolicies_canonical_compilePrescribedProfile {Γ : SourceCtx Player L}
   rw [submitProfile_prefixProfile,
     runPolicies_canonical_prefixProfile _ (submitsBindings_submitProfile _ _)]
   rw [runPolicies_canonical_submit_compile program deps profile submits inputs]
-  exact (canonical_fromSequential_config_law graph _ inputs).symm
+  exact (canonical_fromSequential_config_distribution graph _ inputs).symm
 
 theorem compilePolicyTable_submitBindings {Field : Type}
     {layout : Field → EventField Player L} :
@@ -445,9 +445,10 @@ theorem runPlan_canonical_prescribed_compile_of_reachable
         (rankSort_history_of_reachable (fun prior selected earlier =>
           (EventOrder.sequential.mem_predecessors prior selected).mpr earlier) currentReach))
   cases actor : G.actor? event with
-  | none => rw [actionLaw_of_ownerless _ _ actor, actionLaw_of_ownerless _ _ actor]
+  | none => rw [actionDistribution_of_ownerless _ _ actor, actionDistribution_of_ownerless _ _
+    actor]
   | some who =>
-    rw [actionLaw_of_actor _ _ actor, actionLaw_of_actor _ _ actor]
+    rw [actionDistribution_of_actor _ _ actor, actionDistribution_of_actor _ _ actor]
     by_cases inactive : who ∈ current.defaulted
     · rw [dite_eq_left inactive, dite_eq_left inactive]
     rw [dite_eq_right inactive, dite_eq_right inactive]

@@ -32,7 +32,7 @@ variable {Principal : Type} [Finite Principal] [DecidableEq Principal]
     normal.action who past view response ∈ raw.actions who past view)
   (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
 
-theorem canonical_initial_stateLaw
+theorem canonical_initial_stateDistribution
     (source : ∀ who,
       ((normal.menu raw).information initial horizon scheduler).BehavioralPolicy who)
     (fuel : Nat) :
@@ -53,7 +53,7 @@ theorem canonical_initial_stateLaw
 
 /-- At every raw information site, the prescribed continuation's normalized
 final-state law is the source continuation's final-state law. -/
-theorem canonical_assessmentLaw
+theorem canonical_assessmentDistribution
     (source : ((normal.menu raw).information initial horizon scheduler).BehavioralAssessment)
     (target : (raw.information initial horizon scheduler).BehavioralAssessment)
     (strategy : target.strategy = (fun player => normal.canonicalPolicy raw stable closed
@@ -85,7 +85,7 @@ theorem canonical_assessmentLaw
 
 /-- A raw whole-policy deviation and its alias-erased source deviation induce
 the same normalized final-state law at every raw information site. -/
-theorem aliasDeviation_assessmentLaw
+theorem aliasDeviation_assessmentDistribution
     (source : ((normal.menu raw).information initial horizon scheduler).BehavioralAssessment)
     (target : (raw.information initial horizon scheduler).BehavioralAssessment)
     (strategy : target.strategy = (fun player => normal.canonicalPolicy raw stable closed
@@ -110,7 +110,7 @@ theorem aliasDeviation_assessmentLaw
   rw [strategy, ← beliefs, PMF.bind_map, PMF.map_bind, PMF.map_bind]
   apply bind_congr_on_support _
   intro history _
-  have law := normal.aliasDeviation_historyLaw raw stable closed initial horizon scheduler
+  have law := normal.aliasDeviation_historyDistribution raw stable closed initial horizon scheduler
     source.strategy who alternative history.1 past view (history.2.trans observed)
   rw [PMF.map_comp] at law
   exact law
@@ -153,10 +153,10 @@ def aliasIncentiveSimulation
         normal.aliasDeviation raw initial horizon scheduler who
           (data who deviation.1).1 deviation.2)) ?_ ?_
   · intro who deviation
-    exact normal.canonical_assessmentLaw raw stable closed initial horizon scheduler
+    exact normal.canonical_assessmentDistribution raw stable closed initial horizon scheduler
       source target strategy who deviation.1 (beliefs who deviation.1)
   · intro who deviation
-    exact normal.aliasDeviation_assessmentLaw raw stable closed initial horizon scheduler
+    exact normal.aliasDeviation_assessmentDistribution raw stable closed initial horizon scheduler
       source target strategy who deviation.1 (beliefs who deviation.1)
         (data who deviation.1).1 (data who deviation.1).2
           (Classical.choose_spec (hasData who deviation.1)) deviation.2
@@ -207,7 +207,7 @@ theorem exists_canonical_sequentialEquilibrium [app.FiniteNature initial schedul
       equilibrium (fun _ _ => ⟨finiteMap _ _ _, finiteMap _ _ _⟩)
       (fun _ _ => ⟨finiteMap _ _ _, finiteMap _ _ _⟩)
   · rw [strategy]
-    exact normal.canonical_initial_stateLaw raw stable closed initial horizon scheduler
+    exact normal.canonical_initial_stateDistribution raw stable closed initial horizon scheduler
       source.strategy (2 * horizon + 1)
 
 end Interaction.ReactiveApplication.SubmissionNormalization

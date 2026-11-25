@@ -33,17 +33,18 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
   {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
-  [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
-  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+  [(application setup timeouts leaks).FiniteNature (initialDistribution setup) scheduler]
+  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds
+    (initialDistribution setup) horizon
     scheduler).InfoState who)]
   [Finite setup.intendedProtocol.History]
 
 local instance : Fintype ((bounds.onePacketMenu timeouts leaks).protocol
-    (initialLaw setup) horizon scheduler).History :=
-  (bounds.onePacketMenu timeouts leaks).historyFintype (initialLaw setup) horizon scheduler
+    (initialDistribution setup) horizon scheduler).History :=
+  (bounds.onePacketMenu timeouts leaks).historyFintype (initialDistribution setup) horizon scheduler
 
 local notation "onePacketN" =>
-  onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+  onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
 
 section BaseInputs
 
@@ -77,7 +78,7 @@ structure OnePacketBaseInputs (sequence : ℕ → setup.intendedModel.Behavioral
   own turn at which the player owes no failure, along every fully mixed Bayes
   sequence of assembled profiles. -/
   counterpartInputs : ∀ (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds
-    (initialLaw setup) horizon
+    (initialDistribution setup) horizon
       scheduler slots p)) (targetSequence : ℕ → (onePacketN).BehavioralAssessment),
     OnePacketAssembled setup timeouts leaks bounds horizon scheduler sequence scale scale_pos
       scale_le_one
@@ -85,11 +86,11 @@ structure OnePacketBaseInputs (sequence : ℕ → setup.intendedModel.Behavioral
     (∀ n, (targetSequence n).IsFullyMixed) →
     (∀ n, BehavioralAssessment.IsBayesConsistent (onePacketN) (targetSequence n)
       ((bounds.onePacketMenu timeouts leaks).decisionRecall
-        (initialLaw setup) horizon scheduler).decisionInformationAntichain) →
+        (initialDistribution setup) horizon scheduler).decisionInformationAntichain) →
     ∀ who (site : (onePacketN).InformationSite who),
-      ¬ FreeAgent setup timeouts leaks bounds (initialLaw setup)
+      ¬ FreeAgent setup timeouts leaks bounds (initialDistribution setup)
         horizon scheduler ((onePacketN).agentAt site) →
-      ¬ OwingAgent setup timeouts leaks bounds (initialLaw setup)
+      ¬ OwingAgent setup timeouts leaks bounds (initialDistribution setup)
         horizon scheduler ((onePacketN).agentAt site) →
       ∀ {past : List (application setup timeouts leaks).PlayerEntry}
         {view : (application setup timeouts leaks).PlayerView}, site.1 = some (past, view) →
@@ -103,7 +104,7 @@ structure OnePacketBaseInputs (sequence : ℕ → setup.intendedModel.Behavioral
   decision (`Vegas.projectedDecision_of_forcedAgent`), late deliveries
   included. -/
   ownInputs : ∀ (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds
-    (initialLaw setup) horizon
+    (initialDistribution setup) horizon
       scheduler slots p)) (targetSequence : ℕ → (onePacketN).BehavioralAssessment),
     OnePacketAssembled setup timeouts leaks bounds horizon scheduler sequence scale scale_pos
       scale_le_one
@@ -111,11 +112,11 @@ structure OnePacketBaseInputs (sequence : ℕ → setup.intendedModel.Behavioral
     (∀ n, (targetSequence n).IsFullyMixed) →
     (∀ n, BehavioralAssessment.IsBayesConsistent (onePacketN) (targetSequence n)
       ((bounds.onePacketMenu timeouts leaks).decisionRecall
-        (initialLaw setup) horizon scheduler).decisionInformationAntichain) →
+        (initialDistribution setup) horizon scheduler).decisionInformationAntichain) →
     ∀ who (site : (onePacketN).InformationSite who),
-      ¬ FreeAgent setup timeouts leaks bounds (initialLaw setup)
+      ¬ FreeAgent setup timeouts leaks bounds (initialDistribution setup)
         horizon scheduler ((onePacketN).agentAt site) →
-      ¬ OwingAgent setup timeouts leaks bounds (initialLaw setup)
+      ¬ OwingAgent setup timeouts leaks bounds (initialDistribution setup)
         horizon scheduler ((onePacketN).agentAt site) →
       ∀ {past : List (application setup timeouts leaks).PlayerEntry}
         {view : (application setup timeouts leaks).PlayerView} (atSite : site.1 = some (past, view))
@@ -142,7 +143,7 @@ and replay inputs there. -/
 def OnePacketBaseInputs.beliefInputs {sequence : ℕ → setup.intendedModel.BehavioralAssessment}
     {slots : Nat}
     (inputs : OnePacketBaseInputs setup timeouts leaks bounds horizon scheduler sequence slots)
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialDistribution setup)
       horizon scheduler slots p))
     (targetSequence : ℕ → (onePacketN).BehavioralAssessment)
     (assembled : OnePacketAssembled setup timeouts leaks bounds horizon scheduler sequence
@@ -152,11 +153,11 @@ def OnePacketBaseInputs.beliefInputs {sequence : ℕ → setup.intendedModel.Beh
     (mixed : ∀ n, (targetSequence n).IsFullyMixed)
     (bayes : ∀ n, BehavioralAssessment.IsBayesConsistent (onePacketN) (targetSequence n)
       ((bounds.onePacketMenu timeouts leaks).decisionRecall
-        (initialLaw setup) horizon scheduler).decisionInformationAntichain)
+        (initialDistribution setup) horizon scheduler).decisionInformationAntichain)
     (who : Player) (site : (onePacketN).InformationSite who)
-    (forced : ¬ FreeAgent setup timeouts leaks bounds (initialLaw setup)
+    (forced : ¬ FreeAgent setup timeouts leaks bounds (initialDistribution setup)
       horizon scheduler ((onePacketN).agentAt site))
-    (notOwing : ¬ OwingAgent setup timeouts leaks bounds (initialLaw setup)
+    (notOwing : ¬ OwingAgent setup timeouts leaks bounds (initialDistribution setup)
       horizon scheduler ((onePacketN).agentAt
       site))
     {past : List (application setup timeouts leaks).PlayerEntry}
@@ -189,16 +190,17 @@ def OnePacketOwnInputs.ofAssembled (wellFormed : setup.WellFormed)
     (covers : bounds.CoversOutputValues) (coversInputs : bounds.CoversInputValues)
     (capacity : ∀ who, bindingEventCount setup.informationGraph who < bounds.candidateCount)
     {slots : Nat}
-    {weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
+    {weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialDistribution setup)
       horizon scheduler slots p)}
     {targetSequence : ℕ → (onePacketN).BehavioralAssessment}
     (assembled : OnePacketAssembled setup timeouts leaks bounds horizon scheduler sequence scale
       scale_pos
       scale_le_one weights targetSequence)
     {who : Player} {site : (onePacketN).InformationSite who}
-    (notFree : ¬ FreeAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+    (notFree : ¬ FreeAgent setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
       ((onePacketN).agentAt site))
-    (notOwing : ¬ OwingAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+    (notOwing : ¬ OwingAgent setup timeouts leaks bounds (initialDistribution setup) horizon
+      scheduler
       ((onePacketN).agentAt site))
     {sourceSite : setup.intendedModel.InformationSite who}
     {past : List (application setup timeouts leaks).PlayerEntry}
@@ -240,7 +242,8 @@ def OnePacketOwnInputs.ofAssembled (wellFormed : setup.WellFormed)
     operationalWeight setup timeouts leaks who (steps.mass n)
       (operationalRecord setup timeouts leaks bounds horizon scheduler history.1.trace)
   convert fiber_sum_eq_between (timeouts := timeouts) (who := who) (steps := steps) wellFormed
-    (forcedAgent_of_not_free setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+    (forcedAgent_of_not_free setup timeouts leaks bounds (initialDistribution setup) horizon
+      scheduler
       notFree) atSite projected
     (own n) (sourceMixed n) turn (bindingFieldsCovered_of_covers covers coversInputs)
     point sourceSite.2.choose using 1
@@ -259,7 +262,7 @@ def OnePacketBaseInputs.ofCounterparts (wellFormed : setup.WellFormed)
     (slots_pos : 0 < bounds.candidateCount)
     (counterparts : ∀
       (weights : ℕ → ∀ p,
-        PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
+        PMF (OnePacketPart setup timeouts leaks bounds (initialDistribution setup)
           horizon scheduler bounds.candidateCount p))
       (targetSequence : ℕ → (onePacketN).BehavioralAssessment),
       OnePacketAssembled setup timeouts leaks bounds horizon scheduler sequence
@@ -270,11 +273,11 @@ def OnePacketBaseInputs.ofCounterparts (wellFormed : setup.WellFormed)
       (∀ n, (targetSequence n).IsFullyMixed) →
       (∀ n, BehavioralAssessment.IsBayesConsistent (onePacketN) (targetSequence n)
         ((bounds.onePacketMenu timeouts leaks).decisionRecall
-          (initialLaw setup) horizon scheduler).decisionInformationAntichain) →
+          (initialDistribution setup) horizon scheduler).decisionInformationAntichain) →
       ∀ who (site : (onePacketN).InformationSite who),
-        ¬ FreeAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+        ¬ FreeAgent setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
       ((onePacketN).agentAt site) →
-        ¬ OwingAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+        ¬ OwingAgent setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
       ((onePacketN).agentAt site) →
         ∀ {past : List (application setup timeouts leaks).PlayerEntry}
           {view : (application setup timeouts leaks).PlayerView}, site.1 = some (past, view) →
@@ -310,9 +313,11 @@ section LateBounds
 
 variable (setup timeouts leaks bounds horizon scheduler)
 
-omit [Fintype Player] [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
+omit [Fintype Player] [(application setup timeouts leaks).FiniteNature
+    (initialDistribution setup) scheduler]
   [Finite setup.intendedProtocol.History]
-  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds
+    (initialDistribution setup) horizon
     scheduler).InfoState who)] in
 /-- A late delivery is a decision input showing the player's own turn. -/
 theorem lateDelivery_input {who : Player} {info : (application setup timeouts leaks).Info}
@@ -337,7 +342,7 @@ theorem OnePacketBaseInputs.lateUnforced {sequence : ℕ → setup.intendedModel
     {slots : Nat}
     (inputs : OnePacketBaseInputs setup timeouts leaks bounds horizon scheduler sequence slots)
     (wellFormed : setup.WellFormed)
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialDistribution setup)
       horizon scheduler slots p))
     (targetSequence : ℕ → (onePacketN).BehavioralAssessment)
     (assembled : OnePacketAssembled setup timeouts leaks bounds horizon scheduler sequence
@@ -347,26 +352,30 @@ theorem OnePacketBaseInputs.lateUnforced {sequence : ℕ → setup.intendedModel
     (mixed : ∀ n, (targetSequence n).IsFullyMixed)
     (bayes : ∀ n, BehavioralAssessment.IsBayesConsistent (onePacketN) (targetSequence n)
       ((bounds.onePacketMenu timeouts leaks).decisionRecall
-        (initialLaw setup) horizon scheduler).decisionInformationAntichain) :
+        (initialDistribution setup) horizon scheduler).decisionInformationAntichain) :
     ∃ unforcedDrift : ℕ → ℝ, Tendsto unforcedDrift atTop (nhds 0) ∧
       ∀ n who (site : (onePacketN).InformationSite who),
-        ¬ FreeAgent setup timeouts leaks bounds (initialLaw setup)
+        ¬ FreeAgent setup timeouts leaks bounds (initialDistribution setup)
           horizon scheduler ((onePacketN).agentAt site) →
-        ¬ OwingAgent setup timeouts leaks bounds (initialLaw setup)
+        ¬ OwingAgent setup timeouts leaks bounds (initialDistribution setup)
           horizon scheduler ((onePacketN).agentAt site) →
-        ownedKeyed (FreeAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler)
-          (LateDeliveryAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler)
+        ownedKeyed (FreeAgent setup timeouts leaks bounds (initialDistribution setup) horizon
+          scheduler)
+          (LateDeliveryAgent setup timeouts leaks bounds (initialDistribution setup) horizon
+            scheduler)
           ((onePacketN).agentAt site) →
         expect ((targetSequence n).belief who site) (fun history =>
           if ForcedState setup timeouts leaks who history.1.state then (0 : ℝ) else 1) ≤
           unforcedDrift n := by
   let LateSite := fun {who : Player} (site : (onePacketN).InformationSite who) =>
-    ¬ FreeAgent setup timeouts leaks bounds (initialLaw setup)
+    ¬ FreeAgent setup timeouts leaks bounds (initialDistribution setup)
       horizon scheduler ((onePacketN).agentAt site) ∧
-      ¬ OwingAgent setup timeouts leaks bounds (initialLaw setup)
+      ¬ OwingAgent setup timeouts leaks bounds (initialDistribution setup)
         horizon scheduler ((onePacketN).agentAt site) ∧
-      ownedKeyed (FreeAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler)
-        (LateDeliveryAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler)
+      ownedKeyed (FreeAgent setup timeouts leaks bounds (initialDistribution setup) horizon
+        scheduler)
+        (LateDeliveryAgent setup timeouts leaks bounds (initialDistribution setup) horizon
+          scheduler)
         ((onePacketN).agentAt site)
   let mass := fun (n : ℕ) {who : Player} (site : (onePacketN).InformationSite who) =>
     expect ((targetSequence n).belief who site) (fun history =>
@@ -392,7 +401,7 @@ theorem OnePacketBaseInputs.lateUnforced {sequence : ℕ → setup.intendedModel
       obtain ⟨input, atSite, event, turn⟩ := lateDelivery_input setup timeouts leaks present.2.2.2.1
       have notFree := present.2.1
       have notOwing := present.2.2.1
-      have forced := forcedAgent_of_not_free setup timeouts leaks bounds (initialLaw setup)
+      have forced := forcedAgent_of_not_free setup timeouts leaks bounds (initialDistribution setup)
         horizon scheduler notFree
       have debtFree := siteDebtFree_of_not_owing setup timeouts leaks bounds horizon scheduler
         notOwing

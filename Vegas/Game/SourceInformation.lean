@@ -142,7 +142,7 @@ publication payloads need not range over finite types; fresh bindings and the
 setup draw must be finite. Correlated private initialization is retained. -/
 theorem finite_history [Finite Player] (setup : Setup (Player := Player) (L := L))
     (finite : setup.program.FiniteBindingTypes) (admission : CommitmentInterface setup.program)
-    [setup.FiniteInitialLaw] :
+    [setup.FiniteInitialSupport] :
     Finite (setup.executionProtocol admission).History :=
   (setup.uniformReference_fullyMixed finite admission).finite_history
     (setup.protocol_bounded admission)

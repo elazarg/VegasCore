@@ -32,7 +32,7 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {spec : ClientSpec setup timeouts leaks bounds horizon scheduler
     parameter utility excludedPayoff}
 
-local notation "Initial" => initialLaw setup
+local notation "Initial" => initialDistribution setup
 local notation "app" => application setup timeouts leaks
 local notation "raw" => bounds.rawMenu timeouts leaks
 local notation "model" => ReactiveApplication.ResponseMenu.information
@@ -45,7 +45,7 @@ variable {intended : setup.intendedModel.BehavioralAssessment}
 
 /-- Every stochastic observation of the complete source configuration and settled
 payoff has its intended law; the observation needs no finite-support premise. -/
-theorem clients_postprocessLaw {Result : Type}
+theorem clients_postprocessDistribution {Result : Type}
     (read : Option (Config Player L setup.program.terminalCtx) × (Player → ℝ) → PMF Result) :
     ((app).finish Initial horizon scheduler compiled.clients none).bind
         (fun state => (spec.observation state).bind read) =
@@ -53,11 +53,11 @@ theorem clients_postprocessLaw {Result : Type}
         (instructionCount setup.program + 1)).bind
         (fun final =>
           read (intendedReadoutExclusion setup parameter utility excludedPayoff final)) := by
-  have same := congrArg (fun law => law.bind read) compiled.clients_outcomeLaw
+  have same := congrArg (fun law => law.bind read) compiled.clients_outcomeDistribution
   simpa only [PMF.bind_bind, PMF.bind_map, Function.comp_def] using same
 
 /-- Ledger clients preserve every stochastic observation of the same certified joint law. -/
-theorem ledgerClients_postprocessLaw (unobserved : leaks.DeliversNothing) {Result : Type}
+theorem ledgerClients_postprocessDistribution (unobserved : leaks.DeliversNothing) {Result : Type}
     (read : Option (Config Player L setup.program.terminalCtx) × (Player → ℝ) → PMF Result) :
     ((app).finish Initial horizon scheduler compiled.ledgerClients none).bind
         (fun state => (spec.observation state).bind read) =
@@ -66,7 +66,7 @@ theorem ledgerClients_postprocessLaw (unobserved : leaks.DeliversNothing) {Resul
         (fun final =>
           read (intendedReadoutExclusion setup parameter utility excludedPayoff final)) := by
   rw [compiled.ledgerClients_finish_eq_clients unobserved]
-  exact compiled.clients_postprocessLaw read
+  exact compiled.clients_postprocessDistribution read
 
 end ClientCompilation
 
@@ -74,7 +74,7 @@ namespace ClientSpec
 
 /-- Every intended sequential-equilibrium joint law has a runtime equilibrium
 implementation with no public defaults or audit charges on its supported paths. -/
-theorem intended_outcomeLaws_subset (spec : ClientSpec setup timeouts leaks bounds
+theorem intended_outcomeDistributions_subset (spec : ClientSpec setup timeouts leaks bounds
     horizon scheduler parameter utility excludedPayoff) :
     {law | ∃ intended : setup.intendedModel.BehavioralAssessment,
       setup.IntendedSequentialEquilibrium parameter utility intended ∧
@@ -97,7 +97,7 @@ theorem intended_outcomeLaws_subset (spec : ClientSpec setup timeouts leaks boun
   rintro law ⟨intended, equilibrium, rfl⟩
   let compiled := spec.compile intended equilibrium
   exact ⟨compiled.assessment, compiled.equilibrium, compiled.noDefaults,
-    compiled.noCharges, compiled.outcomeLaw⟩
+    compiled.noCharges, compiled.outcomeDistribution_eq⟩
 
 end ClientSpec
 

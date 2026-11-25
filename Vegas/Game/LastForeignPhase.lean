@@ -111,7 +111,7 @@ theorem lastForeign_phase
     (scheduler : (serviceApplication setup deps duration leaks).Scheduler) (horizon : Nat)
     (delay bound : (serviceGraph setup deps).EventId → Nat) (turns : Nat)
     (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
-      (serviceInitialLaw setup deps) horizon scheduler delay bound)
+      (serviceInitialDistribution setup deps) horizon scheduler delay bound)
     (timely : AsyncTimely (serviceTimeouts setup deps duration) delay bound)
     (base : (serviceGraph setup deps).BehavioralProfile)
     (referenceIndependent : ReadyIndependent ((serviceGraph setup deps).normalizeProfile base))
@@ -130,7 +130,8 @@ theorem lastForeign_phase
     {Seed : Type} (prior : PMF Seed)
     (execution : Seed → (serviceApplication setup deps duration leaks).Execution)
     (supported : ∀ seed ∈ prior.support, execution seed ∈
-      ((serviceApplication setup deps duration leaks).roundsFrom (serviceInitialLaw setup deps)
+      ((serviceApplication setup deps duration leaks).roundsFrom
+        (serviceInitialDistribution setup deps)
         scheduler (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound
           turns (firstTurnTiming setup turns deps) ((serviceGraph setup deps).normalizeProfile
             base)) who deviation)
@@ -207,9 +208,9 @@ theorem lastForeign_phase
     rw [outputEq]
     exact fun impossible => impossible
   have traceAt (seed : Seed) (present : seed ∈ prior.support) :
-      Nonempty ((app.protocol (serviceInitialLaw setup deps) horizon scheduler).Trace
+      Nonempty ((app.protocol (serviceInitialDistribution setup deps) horizon scheduler).Trace
         (some ⟨horizon - (execution seed).environmentRecall.length, none, execution seed⟩)) :=
-    app.raw_trace_roundsFrom (serviceInitialLaw setup deps) horizon scheduler players _
+    app.raw_trace_roundsFrom (serviceInitialDistribution setup deps) horizon scheduler players _
       (bounded seed present) _ (supported seed present)
   have quiescentAt (seed : Seed) (present : seed ∈ prior.support) :
       ∀ query, ¬ (execution seed).application.AutomaticReady query := by
@@ -232,7 +233,7 @@ theorem lastForeign_phase
     app.runUntil_of_stop scheduler others _ _ _ completed
   have mixture (seed : Seed) (present : seed ∈ prior.support)
       (pending : event ∉ (execution seed).application.config.cut.completed) :
-      phase seed = (actionLaw R (execution seed).application.config event).bind
+      phase seed = (actionDistribution R (execution seed).application.config event).bind
         (decided seed) := by
     have ready := readyAt seed present pending
     have active := activeAt seed present pending
@@ -260,7 +261,7 @@ theorem lastForeign_phase
       follows (execution seed) (fun _ other => solitary _ other ready) (supported seed present)
       (untouched seed present pending owner) (bounded seed present) law
       (fun current same _ => callback current same)
-    rw [actionLaw_of_actor _ _ ownedNode, dite_eq_right active]
+    rw [actionDistribution_of_actor _ _ ownedNode, dite_eq_right active]
     exact mixed
   have continued (seed : Seed) (present : seed ∈ prior.support)
       (pending : event ∉ (execution seed).application.config.cut.completed)
@@ -304,7 +305,7 @@ theorem lastForeign_phase
     obtain ⟨used, enough, rounds, _⟩ := app.runUntil_runRounds scheduler
       (Function.update players owner (member action)) stop remaining (execution seed) final
       reached
-    obtain ⟨finalTrace⟩ := app.raw_trace_runRounds (serviceInitialLaw setup deps) horizon
+    obtain ⟨finalTrace⟩ := app.raw_trace_runRounds (serviceInitialDistribution setup deps) horizon
       scheduler (Function.update players owner (member action)) (remaining - used) used
       (execution seed) final (by simpa only [Nat.sub_add_cancel enough] using trace) rounds
     have quiet := (legalFacts setup leaks horizon scheduler _ finalTrace).quiescent
@@ -312,12 +313,13 @@ theorem lastForeign_phase
       ownedAdvance_runKey event owned _ ready action]
   let choiceAt : RunKey G → PMF (G.Action event) := fun current =>
     if found : ∃ config : G.Config, runKey config = current then
-      actionLaw R found.choose event
+      actionDistribution R found.choose event
     else PMF.pure ((G.nodes event).failureAction owner ownedNode)
-  have choiceKey (config : G.Config) : choiceAt (runKey config) = actionLaw R config event := by
+  have choiceKey (config : G.Config) : choiceAt (runKey config) = actionDistribution R config event
+    := by
     have found : ∃ other : G.Config, runKey other = runKey config := ⟨config, rfl⟩
     change (if found : ∃ other : G.Config, runKey other = runKey config then
-      actionLaw R found.choose event else _) = _
+      actionDistribution R found.choose event else _) = _
     rw [dite_eq_left found]
     exact referenceIndependent.congr found.choose_spec event
   let advance := fun current (action : G.Action event) =>
@@ -517,7 +519,7 @@ theorem lastForeign_phase
     have drained (state : EventGraphRuntime.State G) :
         continuation state.drain.config = continuation state.config := by
       simp only [continuation, keyTarget_runKey independentP]
-      exact State.drain_lastErasedLaw independentP state
+      exact State.drain_lastErasedDistribution independentP state
     have foreignNode : (G.nodes event).actor ≠ some who := by
       rw [ownedNode]
       exact fun same => foreign (Option.some.inj same)
@@ -536,10 +538,11 @@ theorem lastForeign_phase
         (lastPick_eq_of_alone who _ (fun other otherReady => alone _ other ready otherReady) _)
       have mapped := congrArg (PMF.map erasedKey) stepped
       rw [PMF.map_bind] at mapped
-      change lastErasedLaw P who (execution seed).application.config = _ at mapped
+      change lastErasedDistribution P who (execution seed).application.config = _ at mapped
       rw [mapped]
       unfold eventStep
-      rw [actionLaw_lastDeviationProfile_other base who policy _ foreignNode, PMF.bind_bind]
+      rw [actionDistribution_lastDeviationProfile_other base who policy _ foreignNode,
+        PMF.bind_bind]
       rfl
     · push Not at pending
       change (phase seed).bind (fun final => continuation final.application.config) =

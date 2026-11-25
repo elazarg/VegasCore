@@ -57,7 +57,7 @@ under every public scheduler of a reveal-relaxed dependency choice. -/
 theorem isεNash_compilePrescribedProfile (setup : Setup (Player := Player) (L := L))
     (deps : setup.dataflowGraph.Dependencies)
     (relaxed : (setup.dataflowGraph.withDependencies deps).RevealRelaxedOrdered)
-    (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw] {Parameter : Type}
+    (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialSupport] {Parameter : Type}
     (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
     (excluded : Player → ℝ) (low : ∀ outcome who, excluded who ≤ utility outcome who)
@@ -132,7 +132,8 @@ theorem isεNash_compilePrescribedProfile (setup : Setup (Player := Player) (L :
 
 /-- Submitting, disclosing source policies retain the joint full-configuration and fixed-exit
 payoff law under every public scheduler, without equilibrium or finiteness premises. -/
-private theorem compilePrescribedProfile_run_law (setup : Setup (Player := Player) (L := L))
+private theorem compilePrescribedProfile_run_distribution (setup : Setup (Player := Player)
+    (L := L))
     (deps : setup.dataflowGraph.Dependencies)
     (relaxed : (setup.dataflowGraph.withDependencies deps).RevealRelaxedOrdered)
     {Parameter : Type} (parameter : State L setup.context → Parameter)
@@ -167,18 +168,18 @@ private theorem compilePrescribedProfile_run_law (setup : Setup (Player := Playe
   rw [canonical] at law
   change ((setup.graphInputs deps).bind (graph.runPolicies scheduler
     (graph.prefixProfile submitted))).map _ = _
-  refine law.trans ((setup.canonical_graphObservation_law deps parameter utility excluded
+  refine law.trans ((setup.canonical_graphObservation_distribution deps parameter utility excluded
     compiled).trans ?_)
-  have sourceLaw := canonical_setup_law setup source
+  have sourceDistribution := canonical_setup_distribution setup source
   have mapped := congrArg (PMF.map fun terminal : Config Player L setup.program.terminalCtx =>
     (some terminal, fun who => exclusionUtility setup.program excluded utility
-      (setup.parameterOutcome parameter terminal) who)) sourceLaw
+      (setup.parameterOutcome parameter terminal) who)) sourceDistribution
   rw [PMF.map_comp] at mapped
   exact mapped
 
 /-- Submitting, disclosing source policies preserve the complete source-configuration and
 fixed-exit payoff law in the graph game, under every permitted scheduler. -/
-theorem compilePrescribedProfile_law (setup : Setup (Player := Player) (L := L))
+theorem compilePrescribedProfile_distribution (setup : Setup (Player := Player) (L := L))
     (deps : setup.dataflowGraph.Dependencies)
     (relaxed : (setup.dataflowGraph.withDependencies deps).RevealRelaxedOrdered)
     {Parameter : Type} (parameter : State L setup.context → Parameter)
@@ -202,7 +203,8 @@ theorem compilePrescribedProfile_law (setup : Setup (Player := Player) (L := L))
     funext outcome
     simp only [Function.comp_apply, graphObservation, dite_eq_left outcome.2, graphReadout]
   rw [observed, ← PMF.map_comp, gameForm_play_map_val]
-  exact setup.compilePrescribedProfile_run_law deps relaxed parameter utility excluded source
+  exact setup.compilePrescribedProfile_run_distribution deps relaxed parameter utility excluded
+    source
     submits disclosing scheduler
 
 /-- Every disclosing intended extension has prescribed clients with the same Nash error
@@ -210,7 +212,7 @@ for every dependency choice retaining the reveal-relaxed information barriers. -
 theorem isεNash_compileIntendedExtension (setup : Setup (Player := Player) (L := L))
     [Finite Player] (deps : setup.dataflowGraph.Dependencies)
     (relaxed : (setup.dataflowGraph.withDependencies deps).RevealRelaxedOrdered)
-    (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw]
+    (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialSupport]
     (wellFormed : setup.WellFormed) {Parameter : Type}
     (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
@@ -256,7 +258,7 @@ theorem isεNash_compileIntendedExtension (setup : Setup (Player := Player) (L :
 
 /-- Every disclosing intended extension retains the full configuration and payoff law.
 No equilibrium, finite binding-type, finite initial-support or payoff-bound premise is needed. -/
-theorem compileIntendedExtension_law (setup : Setup (Player := Player) (L := L))
+theorem compileIntendedExtension_distribution (setup : Setup (Player := Player) (L := L))
     [Finite Player] (deps : setup.dataflowGraph.Dependencies)
     (relaxed : (setup.dataflowGraph.withDependencies deps).RevealRelaxedOrdered)
     (wellFormed : setup.WellFormed) {Parameter : Type}
@@ -289,12 +291,13 @@ theorem compileIntendedExtension_law (setup : Setup (Player := Player) (L := L))
     dsimp only [source, repaired, admission]
     rw [setup.decodeBehavioralProfile_submittedSourceProfile,
       compilePrescribedProfile_submitBindings]
-  have sourceLaw := setup.compilePrescribedProfile_law deps relaxed parameter utility excluded
+  have sourceDistribution := setup.compilePrescribedProfile_distribution deps relaxed parameter
+    utility excluded
     source (setup.submittedSourceProfile_submits target)
     (fun who => setup.submittedSourceProfile_disclosing target who (disclosing who)) scheduler
-  rw [clientsEq] at sourceLaw
-  refine sourceLaw.trans ?_
-  have protocolLaw := (setup.protocol_readout_law admission).1 repaired
+  rw [clientsEq] at sourceDistribution
+  refine sourceDistribution.trans ?_
+  have protocolLaw := (setup.protocol_readout_distribution_eq admission).1 repaired
   have viaSome : (setup.run source).map (fun terminal => (some terminal, fun who =>
       exclusion (setup.parameterOutcome parameter terminal) who)) =
       ((setup.run source).map some).map (fun readout => (readout, fun who =>
@@ -341,7 +344,7 @@ theorem compileIntendedExtension_clean (setup : Setup (Player := Player) (L := L
     (setup.graphReadout deps outcome).defaulted = ∅ ∧
       ∀ who, failedReveals setup.program who (publicOutcome setup.program
         (setup.graphReadout deps outcome)) = 0 := by
-  have law := setup.compileIntendedExtension_law deps relaxed wellFormed (fun _ => ())
+  have law := setup.compileIntendedExtension_distribution deps relaxed wellFormed (fun _ => ())
     (fun _ _ => (0 : ℝ)) (fun _ => 0) intended target agrees disclosing scheduler
   have readoutLaw := congrArg (PMF.map Prod.fst) law
   simp only [PMF.map_comp, Function.comp_def] at readoutLaw

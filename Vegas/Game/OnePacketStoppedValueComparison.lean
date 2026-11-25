@@ -37,10 +37,10 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (scheduler : (application setup timeouts leaks).Scheduler)
 
 local notation "Menu" => bounds.onePacketMenu timeouts leaks
-local notation "N" => onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+local notation "N" => onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon
   scheduler
 local notation "E" => ReactiveApplication.ResponseMenu.protocol
-  (bounds.onePacketMenu timeouts leaks) (initialLaw setup) horizon scheduler
+  (bounds.onePacketMenu timeouts leaks) (initialDistribution setup) horizon scheduler
 local notation "Clear" => ReactiveApplication.stateInvariant
   (app := application setup timeouts leaks)
     (fun native : EventGraphRuntime.State setup.informationGraph =>
@@ -54,7 +54,7 @@ open Classical in
 /-- Replacing the continuation at public default or own latent debt by the
 declared exit value charges only foreign defaults before own debt. -/
 theorem terminal_value_sub_stopped_le_foreign_default
-    (completes : CompletesPlay timeouts leaks (initialLaw setup) horizon scheduler)
+    (completes : CompletesPlay timeouts leaks (initialDistribution setup) horizon scheduler)
     (certificate : (E).WellFoundedHistories)
     (players : ∀ who, (N).BehavioralPolicy who) (who : Player)
     {payoffBound : ℝ} (nonnegative : 0 ≤ payoffBound)
@@ -120,7 +120,8 @@ theorem terminal_value_sub_stopped_le_foreign_default
         exact missing ⟨current, same, member⟩
       obtain ⟨current, same, member⟩ := own
       exact (exclusionBase_expect_of_defaulted parameter utility excludedPayoff (Menu)
-        (initialLaw setup) horizon scheduler certificate players final current same who member).2
+        (initialDistribution setup) horizon scheduler certificate players final current same who
+          member).2
     · have ended := ((N).mem_support_runBehavioralUntil certificate players stopped start final
         supported).resolve_left halted
       change continued final = if stopped final then excludedPayoff who else payoff final
@@ -151,11 +152,11 @@ theorem terminal_value_sub_stopped_le_foreign_default
 
 section Assembled
 
-variable [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
+variable [(application setup timeouts leaks).FiniteNature (initialDistribution setup) scheduler]
   [Finite setup.intendedProtocol.History]
 
 local instance stoppedComparisonHistoryFintype : Fintype (E).History :=
-  (Menu).historyFintype (initialLaw setup) horizon scheduler
+  (Menu).historyFintype (initialDistribution setup) horizon scheduler
 
 open Classical in
 /-- On the supplied native assessments, every local law has the same uniform
@@ -173,19 +174,21 @@ theorem assembled_terminal_stopped_comparison_bounds
       (2 * horizon + 2) n)
     (covers : bounds.CoversOutputValues) (coversInputs : bounds.CoversInputValues)
     (capacity : ∀ who, bindingEventCount setup.informationGraph who < bounds.candidateCount)
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialDistribution setup)
       horizon scheduler bounds.candidateCount p))
     (targetSequence : ℕ → (N).BehavioralAssessment)
     (assembled : OnePacketAssembled setup timeouts leaks bounds horizon scheduler sequence scale
       positive le_one weights targetSequence)
     (mixed : ∀ n, (targetSequence n).IsFullyMixed)
     (bayes : ∀ n, BehavioralAssessment.IsBayesConsistent (N) (targetSequence n)
-      ((Menu).decisionRecall (initialLaw setup) horizon scheduler).decisionInformationAntichain)
+      ((Menu).decisionRecall (initialDistribution setup) horizon
+        scheduler).decisionInformationAntichain)
     {delay bound : setup.informationGraph.EventId → Nat}
-    (opportunity : Opportunity timeouts leaks (initialLaw setup) horizon scheduler delay)
-    (inclusion : ProtectedInclusion timeouts leaks (initialLaw setup) horizon scheduler bound)
+    (opportunity : Opportunity timeouts leaks (initialDistribution setup) horizon scheduler delay)
+    (inclusion : ProtectedInclusion timeouts leaks (initialDistribution setup) horizon scheduler
+      bound)
     (timely : (AsyncTimely timeouts) delay bound)
-    (completes : CompletesPlay timeouts leaks (initialLaw setup) horizon scheduler)
+    (completes : CompletesPlay timeouts leaks (initialDistribution setup) horizon scheduler)
     {payoffBound : ℝ} (nonnegative : 0 ≤ payoffBound)
     (payoffBounded : ∀ who (final : (E).History),
       |exclusionBase setup timeouts parameter utility excludedPayoff leaks final.state who| ≤
@@ -193,9 +196,9 @@ theorem assembled_terminal_stopped_comparison_bounds
     (excludedBounded : ∀ who, |excludedPayoff who| ≤ payoffBound) :
     ∃ error : ℕ → ℝ, Tendsto error atTop (nhds 0) ∧
       ∀ n who (site : (N).InformationSite who),
-        ¬ Vegas.FreeAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+        ¬ Vegas.FreeAgent setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
           ((N).agentAt site) →
-        ¬ Vegas.OwingAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+        ¬ Vegas.OwingAgent setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
           ((N).agentAt site) →
         ∀ {past : List (application setup timeouts leaks).PlayerEntry}
           {view : (application setup timeouts leaks).PlayerView}, site.1 = some (past, view) →
@@ -203,7 +206,7 @@ theorem assembled_terminal_stopped_comparison_bounds
           view.application.publicView.ownTurn? who = some event →
         let common := (targetSequence n).strategy
         let certificate :=
-          ((Menu).bounded (initialLaw setup) horizon scheduler).wellFoundedHistories
+          ((Menu).bounded (initialDistribution setup) horizon scheduler).wellFoundedHistories
         let stopped := fun final : (E).History => ¬ Clear final.state ∨
           DecodedState setup timeouts leaks (failureProfile setup.program)
             (ProtocolState.OwesFailure who setup.program) final.state
@@ -284,7 +287,8 @@ theorem assembled_terminal_stopped_comparison_bounds
       dsimp only at current
       subst state
       have clear : execution.application.config.defaulted = ∅ :=
-        (informationHistory_clear timeouts) leaks (Menu) (initialLaw setup) horizon scheduler site
+        (informationHistory_clear timeouts) leaks (Menu) (initialDistribution setup) horizon
+          scheduler site
           (Classical.not_not.mp notFree).1 ⟨⟨_, trace⟩, observed⟩ _ rfl
       have nativeTurn : execution.application.publicView.ownTurn? who = some event := by
         change (execution.observe (application setup timeouts leaks)
@@ -303,9 +307,11 @@ theorem assembled_terminal_stopped_comparison_bounds
       have foreignMass := assembled_foreign_exit_mass_le_rank setup timeouts leaks bounds horizon
         scheduler wellFormed covers capacity sequence scale positive le_one weights targetSequence
         assembled n who ((common who).withLaw site.1 law)
-        (fun control prior _ => opportunity control ((Menu).toRawTrace (initialLaw setup) horizon
+        (fun control prior _ => opportunity control ((Menu).toRawTrace
+          (initialDistribution setup) horizon
           scheduler prior))
-        (fun control prior _ => inclusion control ((Menu).toRawTrace (initialLaw setup) horizon
+        (fun control prior _ => inclusion control ((Menu).toRawTrace
+          (initialDistribution setup) horizon
           scheduler prior)) timely certificate (fun _ => False) ⟨remaining, some who, execution⟩
         trace event nativeTurn clear regular
       simp only [or_false] at foreignMass
@@ -320,8 +326,9 @@ theorem assembled_terminal_stopped_comparison_bounds
         refine (ENNReal.toReal_mono (outerMeasure_ne_top _ _)
           (MeasureTheory.measure_mono subset)).trans ?_
         exact foreignMass
-      have depth := (application setup timeouts leaks).trace_bound (initialLaw setup) horizon
-        scheduler ((Menu).toRawTrace (initialLaw setup) horizon scheduler trace)
+      have depth := (application setup timeouts leaks).trace_bound
+        (initialDistribution setup) horizon
+        scheduler ((Menu).toRawTrace (initialDistribution setup) horizon scheduler trace)
       have rankBound : ((application setup timeouts leaks).rank horizon
           (some ⟨remaining, some who, execution⟩) : ℝ) ≤ 2 * horizon + 1 := by
         exact_mod_cast (show (application setup timeouts leaks).rank horizon
@@ -351,7 +358,7 @@ theorem assembled_terminal_stopped_comparison_bounds
           (targetSequence n) site law = expect belief (terminalValue law) := by
       rw [localValue_eq_continuationContext (2 * horizon + 1) (fun final => final.state)
         (exclusionBase setup timeouts parameter utility excludedPayoff leaks) (targetSequence n)
-        site ((Menu).bounded (initialLaw setup) horizon scheduler),
+        site ((Menu).bounded (initialDistribution setup) horizon scheduler),
         BehavioralAssessment.continuationContext_value, expect_bind_of_finite]
     rw [actual]
     have averaged := expect_mono (μ := belief) (fun history _ => rowBound law history)

@@ -269,11 +269,11 @@ private theorem primary_owned_joint {Seed Choice : Type} {Γ Δ : SourceCtx Play
 /-- An owned disclosure head has an observation-local source kernel even when
 automatic service has already passed it. The next typed source checkpoint keeps
 an automatic-only path to the actual stopped native configuration. -/
-theorem sourceService_deviator_reveal_law
+theorem sourceService_deviator_reveal_distribution
     {Seed : Type} {horizon : Nat}
     {scheduler : (serviceApplication setup deps duration leaks).Scheduler}
     (complete : CompletesPlay (serviceTimeouts setup deps duration) leaks
-      (serviceInitialLaw setup deps) horizon scheduler)
+      (serviceInitialDistribution setup deps) horizon scheduler)
     (bound : (serviceGraph setup deps).EventId → Nat) (turns : Nat)
     (wholeProfile : BehavioralProfile setup.program) (who : Player)
     (deviation : (serviceApplication setup deps duration leaks).Policy)
@@ -375,10 +375,11 @@ theorem sourceService_deviator_reveal_law
     rw [← eventRank] at ordered
     exact ordered.ready event.isLt
   have traceAt (seed : Seed) (supported : seed ∈ prior.support) :
-      Nonempty ((app.protocol (serviceInitialLaw setup deps) horizon scheduler).Trace
+      Nonempty ((app.protocol (serviceInitialDistribution setup deps) horizon scheduler).Trace
         (some ⟨horizon - (execution seed).environmentRecall.length, none, execution seed⟩)) := by
     obtain ⟨physicalRank, physical⟩ := boundary seed supported
-    exact app.raw_trace_roundsFrom (serviceInitialLaw setup deps) horizon scheduler players _
+    exact app.raw_trace_roundsFrom (serviceInitialDistribution setup deps) horizon scheduler
+      players _
       (bounded seed supported) _ physical.supported
   have quiescentAt (seed : Seed) (supported : seed ∈ prior.support) :
       ∀ query, ¬ (execution seed).application.AutomaticReady query := by
@@ -509,7 +510,8 @@ theorem sourceService_deviator_reveal_law
         · exact done
         · obtain ⟨used, enough, rounds, lengthEq⟩ := app.runUntil_runRounds scheduler players _
             remaining (execution seed) final reached
-          obtain ⟨finalTrace⟩ := app.raw_trace_runRounds (serviceInitialLaw setup deps) horizon
+          obtain ⟨finalTrace⟩ := app.raw_trace_runRounds (serviceInitialDistribution setup deps)
+            horizon
             scheduler players (remaining - used) used (execution seed) final
             (by simpa only [Nat.sub_add_cancel enough] using trace) rounds
           have terminal := complete _ finalTrace (by
@@ -580,11 +582,11 @@ theorem sourceService_deviator_reveal_law
 /-- An owned binding head has an observation-local source kernel, including
 public omission and opaque unusability. A defaulted head advances only its typed
 source checkpoint; its actual physical continuation remains at the same endpoint. -/
-theorem sourceService_deviator_commit_law
+theorem sourceService_deviator_commit_distribution
     {Seed : Type} {horizon : Nat}
     {scheduler : (serviceApplication setup deps duration leaks).Scheduler}
     (complete : CompletesPlay (serviceTimeouts setup deps duration) leaks
-      (serviceInitialLaw setup deps) horizon scheduler)
+      (serviceInitialDistribution setup deps) horizon scheduler)
     (bound : (serviceGraph setup deps).EventId → Nat) (turns : Nat)
     (wholeProfile : BehavioralProfile setup.program) (who : Player)
     (deviation : (serviceApplication setup deps duration leaks).Policy)
@@ -685,10 +687,11 @@ theorem sourceService_deviator_commit_law
     rw [← eventRank] at ordered
     exact ordered.ready event.isLt
   have traceAt (seed : Seed) (supported : seed ∈ prior.support) :
-      Nonempty ((app.protocol (serviceInitialLaw setup deps) horizon scheduler).Trace
+      Nonempty ((app.protocol (serviceInitialDistribution setup deps) horizon scheduler).Trace
         (some ⟨horizon - (execution seed).environmentRecall.length, none, execution seed⟩)) := by
     obtain ⟨physicalRank, physical⟩ := boundary seed supported
-    exact app.raw_trace_roundsFrom (serviceInitialLaw setup deps) horizon scheduler players _
+    exact app.raw_trace_roundsFrom (serviceInitialDistribution setup deps) horizon scheduler
+      players _
       (bounded seed supported) _ physical.supported
   have quiescentAt (seed : Seed) (supported : seed ∈ prior.support) :
       ∀ query, ¬ (execution seed).application.AutomaticReady query := by
@@ -817,7 +820,8 @@ theorem sourceService_deviator_commit_law
         · exact done
         · obtain ⟨used, enough, rounds, lengthEq⟩ := app.runUntil_runRounds scheduler players _
             remaining (execution seed) final reached
-          obtain ⟨finalTrace⟩ := app.raw_trace_runRounds (serviceInitialLaw setup deps) horizon
+          obtain ⟨finalTrace⟩ := app.raw_trace_runRounds (serviceInitialDistribution setup deps)
+            horizon
             scheduler players (remaining - used) used (execution seed) final
             (by simpa only [Nat.sub_add_cancel enough] using trace) rounds
           have terminal := complete _ finalTrace (by

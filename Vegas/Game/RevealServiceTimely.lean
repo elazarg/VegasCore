@@ -68,7 +68,7 @@ theorem canonicalServiceDecision_opening_transmits {horizon : Nat}
     {scheduler : (serviceApplication setup deps duration leaks).Scheduler}
     (control : (serviceApplication setup deps duration leaks).Control)
     (trace : ((serviceApplication setup deps duration leaks).protocol
-      (serviceInitialLaw setup deps) horizon scheduler).Trace (some control))
+      (serviceInitialDistribution setup deps) horizon scheduler).Trace (some control))
     (owner : Player) (event : (serviceGraph setup deps).EventId)
     (turn : control.execution.application.publicView.ownTurn? owner = some event)
     (publication : ((serviceGraph setup deps).outputLayout event).IsPublication)
@@ -151,7 +151,7 @@ private theorem publicationSettled_round {event : (serviceGraph setup deps).Even
     {scheduler : (serviceApplication setup deps duration leaks).Scheduler}
     {delay bound : (serviceGraph setup deps).EventId → Nat}
     (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
-        (serviceInitialLaw setup deps) horizon scheduler delay bound)
+        (serviceInitialDistribution setup deps) horizon scheduler delay bound)
     (timely : AsyncTimely (serviceTimeouts setup deps duration) delay bound)
     (players : Player → (serviceApplication setup deps duration leaks).Policy) (owner : Player)
     {turns : Nat} (reference : (serviceGraph setup deps).BehavioralProfile)
@@ -161,20 +161,22 @@ private theorem publicationSettled_round {event : (serviceGraph setup deps).Even
     (count : Nat) (within : count + 1 ≤ horizon)
     (execution next : (serviceApplication setup deps duration leaks).Execution)
     (supported : execution ∈ ((serviceApplication setup deps duration leaks).roundsFrom
-      (serviceInitialLaw setup deps) scheduler players count).support)
+      (serviceInitialDistribution setup deps) scheduler players count).support)
     (called : PublicationSettled setup leaks bound execution owner event)
     (reached : next ∈ ((serviceApplication setup deps duration leaks).round scheduler players
       execution).support) :
     PublicationSettled setup leaks bound next owner event := by
   let app := serviceApplication setup deps duration leaks
-  obtain ⟨trace⟩ := app.raw_trace_roundsFrom (serviceInitialLaw setup deps) horizon scheduler
+  obtain ⟨trace⟩ := app.raw_trace_roundsFrom (serviceInitialDistribution setup deps) horizon
+    scheduler
     players count (by omega) execution supported
   rw [show horizon - count = (horizon - (count + 1)) + 1 by omega] at trace
   have facts := legalFacts setup leaks horizon scheduler _ trace
   have answered := roundsFrom_activationsAnswered count execution supported
   have atTurn := SubmitsAtTurn.roundsFrom setup leaks (players := players) (who := owner)
     (follows ▸ sourceServiceTurnPolicy_submitsAtTurn_reference setup leaks bound turns
-      (firstTurnTiming setup turns deps) reference owner) (serviceInitialLaw setup deps) count
+      (firstTurnTiming setup turns deps) reference owner) (serviceInitialDistribution setup deps)
+        count
     execution supported
   obtain ⟨command, selected, middle, moved, cases⟩ := round_cases setup leaks reached
   have recallEq := app.environmentStep_recall execution middle command moved
@@ -246,7 +248,7 @@ private theorem publicationSettled_round {event : (serviceGraph setup deps).Even
       (serviceTimeouts setup deps duration) bound event := by
     rw [appEq]
     exact fits
-  obtain ⟨middleTrace⟩ := app.raw_trace_environment (serviceInitialLaw setup deps) horizon
+  obtain ⟨middleTrace⟩ := app.raw_trace_environment (serviceInitialDistribution setup deps) horizon
     scheduler (horizon - (count + 1)) execution middle (.activate owner) trace selected moved
   rw [active] at middleTrace
   rcases bindingHolds_or_fails middle.application.config event ready publication with
@@ -308,7 +310,7 @@ private theorem publicationSettled_roundsFrom {event : (serviceGraph setup deps)
     {scheduler : (serviceApplication setup deps duration leaks).Scheduler}
     {delay bound : (serviceGraph setup deps).EventId → Nat}
     (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
-        (serviceInitialLaw setup deps) horizon scheduler delay bound)
+        (serviceInitialDistribution setup deps) horizon scheduler delay bound)
     (timely : AsyncTimely (serviceTimeouts setup deps duration) delay bound)
     (players : Player → (serviceApplication setup deps duration leaks).Policy) (owner : Player)
     {turns : Nat} (reference : (serviceGraph setup deps).BehavioralProfile)
@@ -317,7 +319,7 @@ private theorem publicationSettled_roundsFrom {event : (serviceGraph setup deps)
       (firstTurnTiming setup turns deps) reference owner) :
     ∀ count execution, count ≤ horizon →
       execution ∈ ((serviceApplication setup deps duration leaks).roundsFrom
-        (serviceInitialLaw setup deps) scheduler players count).support →
+        (serviceInitialDistribution setup deps) scheduler players count).support →
       PublicationSettled setup leaks bound execution owner event := by
   let app := serviceApplication setup deps duration leaks
   intro count
@@ -344,7 +346,7 @@ theorem honestPublication_withinDeadline {horizon : Nat}
     {scheduler : (serviceApplication setup deps duration leaks).Scheduler}
     {delay bound : (serviceGraph setup deps).EventId → Nat}
     (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
-        (serviceInitialLaw setup deps) horizon scheduler delay bound)
+        (serviceInitialDistribution setup deps) horizon scheduler delay bound)
     (timely : AsyncTimely (serviceTimeouts setup deps duration) delay bound)
     (players : Player → (serviceApplication setup deps duration leaks).Policy) (owner : Player)
     {turns : Nat} (reference : (serviceGraph setup deps).BehavioralProfile)
@@ -354,7 +356,7 @@ theorem honestPublication_withinDeadline {horizon : Nat}
     (count : Nat) (within : count ≤ horizon)
     (execution : (serviceApplication setup deps duration leaks).Execution)
     (supported : execution ∈ ((serviceApplication setup deps duration leaks).roundsFrom
-      (serviceInitialLaw setup deps) scheduler players count).support)
+      (serviceInitialDistribution setup deps) scheduler players count).support)
     (event : (serviceGraph setup deps).EventId)
     (unique : (serviceGraph setup deps).OwnerSolitary event)
     (owned : (serviceGraph setup deps).actor? event = some owner)
@@ -363,7 +365,8 @@ theorem honestPublication_withinDeadline {horizon : Nat}
     (holds : BindingHolds execution.application.config event) :
     execution.application.WithinDeadline (serviceTimeouts setup deps duration) event := by
   let app := serviceApplication setup deps duration leaks
-  obtain ⟨trace⟩ := app.raw_trace_roundsFrom (serviceInitialLaw setup deps) horizon scheduler
+  obtain ⟨trace⟩ := app.raw_trace_roundsFrom (serviceInitialDistribution setup deps) horizon
+    scheduler
     players count within execution supported
   by_cases turned : ∃ entry ∈ execution.logs owner,
       entry.beforeView.application.publicView.ownTurn? owner = some event

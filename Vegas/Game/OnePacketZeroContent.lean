@@ -43,7 +43,7 @@ zero whose packet names the event of the player's turn commits at a binding
 event of that turn. -/
 theorem zeroContent_binding_of_turn (assessment : setup.intendedModel.BehavioralAssessment)
     {remaining : Nat} {who : Player} {execution : (application setup timeouts leaks).Execution}
-    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some ⟨remaining, some who, execution⟩))
     (response : (application setup timeouts leaks).Action)
     (member : response ∈ bounds.onePacketActions timeouts leaks who (execution.logs who)
@@ -137,7 +137,7 @@ failure at the decoded point, a transmitting response of content factor zero
 commits at a binding event of the player's turn. -/
 theorem zeroContent_binding (assessment : setup.intendedModel.BehavioralAssessment)
     {remaining : Nat} {who : Player} {execution : (application setup timeouts leaks).Execution}
-    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some ⟨remaining, some who, execution⟩))
     (notOwed : ∀ point, decodedPoint setup execution.application.config = some point →
       ¬ ProtocolState.OwesFailure who setup.program point)
@@ -153,10 +153,10 @@ theorem zeroContent_binding (assessment : setup.intendedModel.BehavioralAssessme
         (setup.informationGraph.nodes event) = .bind who payload),
       execution.application.publicView.ownTurn? who = some event ∧
       nodeView setup.informationGraph event = .bind who payload outputEq codeEq := by
-  have rawTrace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+  have rawTrace : ((application setup timeouts leaks).protocol (initialDistribution setup) horizon
     scheduler).Trace
       (some ⟨remaining, some who, execution⟩) :=
-    (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon scheduler
+    (bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup) horizon scheduler
       trace
   obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (timeouts := timeouts) (failureProfile
     setup.program)

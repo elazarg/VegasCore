@@ -36,14 +36,14 @@ def SafeForeignPublications {g : Vegas.EventGraph Player L} (inputs : PMF g.Inpu
     nodeView g event = .resolve owner payload binding checks outputEq codeEq →
     ∀ initial ∈ inputs.support, ∀ config : g.Config, config.Reachable initial →
       config.cut.Ready event → owner ∉ config.defaulted →
-      ∀ action ∈ (actionLaw reference config event).support,
+      ∀ action ∈ (actionDistribution reference config event).support,
         (cast (congrArg EventField.Action outputEq) action : Bool) = true →
         openingAccepted event config.store = true
 
 /-- If the other players disclose only accepted openings, every raw unilateral
 ledger deviation has one behavioral graph policy with the same configuration
 law at all canonical prefixes and at the terminal stop. -/
-theorem safePublication_deviation_config_law {horizon turns : Nat}
+theorem safePublication_deviation_config_distribution {horizon turns : Nat}
     (scheduler : (app).Scheduler) (delay bound : (G).EventId → Nat)
     (inputs : PMF (G).Inputs) (reference : (G).BehavioralProfile)
     (contract : AsyncContract timeouts leaks (inputs.map State.initial) horizon scheduler
@@ -94,7 +94,7 @@ theorem safePublication_deviation_config_law {horizon turns : Nat}
 /-- One graph behavioral deviation realizes a raw ledger deviation at every
 canonical prefix, and hence on the terminal configuration, when the other
 players use first-turn clients for the effective-opening reference profile. -/
-theorem effectiveOpening_deviation_config_law {horizon turns : Nat}
+theorem effectiveOpening_deviation_config_distribution {horizon turns : Nat}
     (scheduler : (app).Scheduler) (delay bound : (G).EventId → Nat)
     (inputs : PMF (G).Inputs) (base : (G).BehavioralProfile)
     (contract : AsyncContract timeouts leaks (inputs.map State.initial) horizon scheduler
@@ -116,7 +116,7 @@ theorem effectiveOpening_deviation_config_law {horizon turns : Nat}
         inputs.bind ((G).runPolicies (G).canonicalScheduler
           (Function.update reference focal policy))
     := by
-  apply safePublication_deviation_config_law timeouts leaks scheduler delay bound inputs
+  apply safePublication_deviation_config_distribution timeouts leaks scheduler delay bound inputs
     (effectiveOpening base) contract timely focal deviation
   intro event owner foreign payload binding checks outputEq codeEq node initial supported
     config reachable ready active action chosen disclose

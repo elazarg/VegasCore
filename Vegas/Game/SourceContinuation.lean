@@ -117,7 +117,8 @@ theorem runBehavioralFrom_readout [Finite Player]
     (enough : setup.protocolRemaining history.state ≤ fuel) :
     ((setup.informationModel admission).runBehavioralFrom profile fuel history).map
         (fun final => setup.protocolReadout final.state) =
-      (setup.continuationLaw (setup.decodeBehavioralProfile admission profile) history.state).map
+      (setup.continuationDistribution (setup.decodeBehavioralProfile admission profile)
+        history.state).map
         some := by
   have permitted (who : Player) :
       (setup.decodeBehavioralProfile admission profile who).Admitted setup.program admission :=

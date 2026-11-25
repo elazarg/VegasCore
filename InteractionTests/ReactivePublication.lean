@@ -48,7 +48,7 @@ theorem rejected_is_not_reincluded :
       (ready.includePending app (false, 0)).receipts = [((false, 0), false)] := ⟨rfl, rfl⟩
 
 /-- The service's at-most-once guard also refuses the spent identifier. -/
-theorem rejected_service_law :
+theorem rejected_service_distribution :
     app.atMostOnceCommand (ready.observeEnvironment app) (.include (false, 0)) = .wait := rfl
 
 def retried : app.Execution :=
@@ -59,7 +59,7 @@ theorem retry_is_fresh :
     app.atMostOnceCommand (retried.observeEnvironment app) (.include (false, 1)) =
       .include (false, 1) := rfl
 
-theorem retry_service_law :
+theorem retry_service_distribution :
     ((retried.environmentStep app
       (app.atMostOnceCommand (retried.observeEnvironment app) (.include (false, 1)))).map
         (fun execution => execution.receipts)) =

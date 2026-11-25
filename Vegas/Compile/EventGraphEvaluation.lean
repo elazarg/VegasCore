@@ -114,15 +114,15 @@ theorem compilePublicExpr_eval? {Field : Type} [DecidableEq Field]
 omit [DecidableEq Player] in
 /-- Compiled public distribution evaluation retains exactly the source's
 normalized rational table under local typed context-reference agreement. -/
-theorem compilePublicDist_evalLaw? {Field : Type} [DecidableEq Field]
+theorem compilePublicDist_evalRationalDistribution? {Field : Type} [DecidableEq Field]
     {layout : Field → Vegas.EventGraph.EventField Player L}
     {Γ : SourceCtx Player L} (refs : ContextRefs layout Γ)
     (state : State L Γ) (store : Vegas.EventGraph.Store layout)
     (agree : refs.Agrees state store) {payload : L.Ty}
     (law : L.DistExpr (SourcePublicCtx L Γ) payload) :
-    (compilePublicDist refs law).evalLaw? store =
-      some (L.evalLaw law (sourcePublicEnv state)) := by
-  apply Vegas.EventGraph.PublicDist.evalLaw?_eq_of_reads
+    (compilePublicDist refs law).evalRationalDistribution? store =
+      some (L.evalRationalDistribution law (sourcePublicEnv state)) := by
+  apply Vegas.EventGraph.PublicDist.evalRationalDistribution?_eq_of_reads
   intro name input source _
   exact publicRead_get_of_agrees refs state store agree source
 

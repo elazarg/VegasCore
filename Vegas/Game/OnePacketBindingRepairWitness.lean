@@ -36,7 +36,8 @@ theorem repair_binding_history_of_intended_witness
     {past : List (application setup timeouts leaks).PlayerEntry}
     {view : (application setup timeouts leaks).PlayerView}
     (decision : site.1 = some (past, view))
-    (forced : forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks) (initialLaw
+    (forced : forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks)
+      (initialDistribution
       setup)
       horizon scheduler focal site.1)
     {event : setup.informationGraph.EventId} (turn : view.application.publicView.ownTurn? focal =
@@ -134,7 +135,8 @@ theorem counterpart_of_intended_witness_repairs
     {past : List (application setup timeouts leaks).PlayerEntry}
     {view : (application setup timeouts leaks).PlayerView}
     (decision : site.1 = some (past, view))
-    (forced : forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks) (initialLaw
+    (forced : forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks)
+      (initialDistribution
       setup)
       horizon scheduler focal site.1)
     {event : setup.informationGraph.EventId} (turn : view.application.publicView.ownTurn? focal =

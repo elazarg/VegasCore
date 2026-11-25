@@ -23,12 +23,12 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
   (bounds : MessageBounds setup.informationGraph) (horizon : Nat)
   (scheduler : (application setup timeouts leaks).Scheduler)
-  [Fintype ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup)
+  [Fintype ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup)
     horizon scheduler).History]
-  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup)
+  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialDistribution setup)
     horizon scheduler).InfoState who)]
 
-local notation "Initial" => initialLaw setup
+local notation "Initial" => initialDistribution setup
 local notation "onePacketN" => onePacketModel setup timeouts leaks bounds Initial horizon scheduler
 local notation "menu" => bounds.onePacketMenu timeouts leaks
 local notation "NP" => ReactiveApplication.ResponseMenu.protocol
@@ -203,7 +203,8 @@ private theorem nonkeyed_componentGain_eq_zero {Outcome : Type*}
   obtain ⟨identify, same⟩ := freeKeyedComponent_of_not_free
     (key := agentLateKey setup timeouts leaks bounds Initial horizon scheduler)
     (keyed := LateDeliveryAgent setup timeouts leaks bounds Initial horizon scheduler)
-    (unforcedLaw setup timeouts leaks bounds Initial horizon scheduler scale nonnegative le_one)
+    (unforcedDistribution setup timeouts leaks bounds Initial horizon scheduler scale nonnegative
+      le_one)
     prescribed keyed notFree
   have constant : onePacketComponent setup timeouts leaks bounds Initial horizon scheduler source
     (slots := slots)
@@ -322,7 +323,8 @@ theorem componentGain_le_of_common_values {Parameter : Type}
       (LateDeliveryAgent setup timeouts leaks bounds Initial horizon scheduler)
       (agentLateKey setup timeouts leaks bounds Initial horizon scheduler)
       (OwingAgent setup timeouts leaks bounds Initial horizon scheduler)
-      (unforcedLaw setup timeouts leaks bounds Initial horizon scheduler scale nonnegative le_one)
+      (unforcedDistribution setup timeouts leaks bounds Initial horizon scheduler scale nonnegative
+        le_one)
       (fun agent => slotPrescribedComponent setup timeouts leaks bounds Initial horizon scheduler
         source
         scale nonnegative le_one agent.1 agent.2.1)

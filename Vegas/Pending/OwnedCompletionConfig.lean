@@ -86,7 +86,7 @@ theorem recalledAction_of_step (before : graph.Config) (event : graph.EventId)
 /-- The stopped configuration law of any native client at an active, solitary
 owned event is the primary graph step with the action read from actual owner
 recall, followed by the graph's deterministic automatic drain. -/
-theorem owned_completed_config_law
+theorem owned_completed_config_distribution
     (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (scheduler : ((reactiveApplication timeouts) leaks).Scheduler)
@@ -141,7 +141,7 @@ theorem owned_completed_config_law
 /-- If a native execution is already at the drain of a graph checkpoint,
 advancing an automatic head takes no more native rounds. Its graph step still
 advances exactly one rank, and then drains to the unchanged native endpoint. -/
-theorem defaulted_completed_config_law
+theorem defaulted_completed_config_distribution
     (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (scheduler : ((reactiveApplication timeouts) leaks).Scheduler)
@@ -180,7 +180,7 @@ private theorem active_owned_quiescent
 only on the focal player's graph observation. Active events extract their
 action from native recall. At a defaulted head, every action has the same
 drained graph step and the physical run has already stopped. -/
-theorem focal_owned_checkpoint_traffic_law
+theorem focal_owned_checkpoint_traffic_distribution
     (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (scheduler : ((reactiveApplication timeouts) leaks).Scheduler)
@@ -302,7 +302,8 @@ theorem focal_owned_checkpoint_traffic_law
       · have same := activeAligned seed supported inactive
         have beforeReady : (execution seed).application.config.cut.Ready event := same ▸ readyAt
         have beforeActive : focal ∉ (execution seed).application.config.defaulted := same ▸ inactive
-        have stopped := owned_completed_config_law timeouts leaks scheduler players event focal
+        have stopped := owned_completed_config_distribution timeouts leaks scheduler players event
+          focal
           owned (horizon - (execution seed).environmentRecall.length) (execution seed)
           beforeReady (fun _ otherReady => solitary _ otherReady beforeReady) beforeActive
           (active_owned_quiescent _ event focal owned solitary beforeReady beforeActive) traffic
@@ -316,7 +317,7 @@ theorem focal_owned_checkpoint_traffic_law
 /-- Sample final native traffic from the focal player's initial graph observation.
 Reading the owned action from this same traffic gives the exact joint law of
 the drained configuration and traffic, including their correlation. -/
-theorem focal_owned_completed_traffic_law
+theorem focal_owned_completed_traffic_distribution
     (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (scheduler : ((reactiveApplication timeouts) leaks).Scheduler)
@@ -359,14 +360,15 @@ theorem focal_owned_completed_traffic_law
     (State.drainConfig_of_quiescent (execution seed).application
       (active_owned_quiescent _ event focal owned solitary (ready seed member)
         (active seed member))).symm
-  exact focal_owned_checkpoint_traffic_law timeouts leaks scheduler bound turns timing reference
+  exact focal_owned_checkpoint_traffic_distribution timeouts leaks scheduler bound turns timing
+    reference
     focal deviation event owned solitary horizon prior execution config noise factor ready aligned
     completed
 
 /-- At a solitary active event of the focal player, actual native traffic
 induces an action law of its graph observation alone. The exact stopped
 configuration law uses that action followed by deterministic automatic service. -/
-theorem focal_owned_completed_config_law
+theorem focal_owned_completed_config_distribution
     (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (scheduler : ((reactiveApplication timeouts) leaks).Scheduler)
@@ -401,7 +403,8 @@ theorem focal_owned_completed_config_law
                 ((config seed).step event ready action).map State.drainConfig
             else PMF.pure (config seed) := by
   intro app config traffic observe players phase noise factor ready active completed
-  obtain ⟨channel, joint⟩ := focal_owned_completed_traffic_law timeouts leaks scheduler bound
+  obtain ⟨channel, joint⟩ := focal_owned_completed_traffic_distribution timeouts leaks scheduler
+    bound
     turns timing reference focal deviation event owned solitary horizon prior execution noise
     factor ready active completed
   let pick := fun extra : BindingTraffic timeouts leaks =>
@@ -420,7 +423,7 @@ theorem focal_owned_completed_config_law
 /-- The initialized focal phase needs no traffic-factorization premise. The
 initial contents may be correlated, and the service contract supplies
 completion of the selected event even on a silent deviation. -/
-theorem focal_initial_completed_config_law
+theorem focal_initial_completed_config_distribution
     (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (scheduler : ((reactiveApplication timeouts) leaks).Scheduler)
@@ -455,7 +458,8 @@ theorem focal_initial_completed_config_law
     exact (PMF.mem_support_bind_iff _ _ _).mpr
       ⟨State.initial seed, (PMF.mem_support_map_iff _ _ _).mpr ⟨seed, member, rfl⟩,
         (PMF.mem_support_pure_iff _ _).mpr rfl⟩
-  obtain ⟨law, stopped⟩ := focal_owned_completed_config_law timeouts leaks scheduler bound turns
+  obtain ⟨law, stopped⟩ := focal_owned_completed_config_distribution timeouts leaks scheduler bound
+    turns
     timing reference focal deviation event owned solitary horizon inputs start noise factor
     (fun _ _ => ready) (by intro seed _; change focal ∉ (∅ : Finset Player); simp)
     (fun seed member final reached =>
@@ -470,7 +474,7 @@ theorem focal_initial_completed_config_law
 /-- On a single-event graph the observation-local focal action realizes the
 complete arbitrary-deviation configuration law. The horizon may extend past
 the completion round. -/
-theorem focal_single_event_config_law
+theorem focal_single_event_config_distribution
     (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (scheduler : ((reactiveApplication timeouts) leaks).Scheduler)
@@ -509,7 +513,8 @@ theorem focal_single_event_config_law
   have solitary : graph.Solitary event := by
     intro _ other _ _
     exact same other
-  obtain ⟨law, phaseLaw⟩ := focal_initial_completed_config_law timeouts leaks scheduler bound turns
+  obtain ⟨law, phaseLaw⟩ := focal_initial_completed_config_distribution timeouts leaks scheduler
+    bound turns
     timing reference focal deviation event owned solitary ready inputs horizon completes
   let policy : graph.BehavioralPolicy focal :=
     fun other _ observed _ => (same other).symm ▸ law observed
@@ -556,7 +561,8 @@ theorem focal_single_event_config_law
   unfold runPolicies run
   rw [count, runPlan_canonical_succ _ 0 initial available.not_terminal event available
     (fun other _ => (same other).ge)]
-  simp only [runPlan, PMF.bind_pure, eventStep, actionLaw_of_actor _ _ owned, dite_eq_right active,
+  simp only [runPlan, PMF.bind_pure, eventStep, actionDistribution_of_actor _ _ owned,
+    dite_eq_right active,
     Function.update_self, policy]
   apply bind_congr_on_support _
   intro action _

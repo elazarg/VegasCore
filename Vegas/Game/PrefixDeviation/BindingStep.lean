@@ -23,7 +23,7 @@ open SourceProgram EventGraph EventGraphRuntime Interaction GameTheory.Math.Prob
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {graph : Vegas.EventGraph Player L}
 
-private theorem foreign_binding_shadow_law
+private theorem foreign_binding_shadow_distribution
     (profile : graph.BehavioralProfile) (event : graph.EventId)
     (owner focal : Player) (different : owner ≠ focal) (payload : L.Ty)
     (binding : graph.outputLayout event = .binding owner payload) (count : Nat)
@@ -35,11 +35,11 @@ private theorem foreign_binding_shadow_law
     (table : Seed → graph.Config) (traffic : Seed → Traffic)
     (noise : DecisionView focal Γ → PMF Traffic)
     (sourceHead : Config Player L Γ → PMF (Option (PublicationResult (L.Val payload))))
-    (head : ∀ seed ∈ prior.support, actionLaw profile (ghost seed).1 event =
+    (head : ∀ seed ∈ prior.support, actionDistribution profile (ghost seed).1 event =
       (sourceHead (source seed)).map
         (fun choice => cast (congrArg EventField.Action binding.symm) choice))
     (submits : ∀ seed ∈ prior.support, ∀ action ∈
-      (actionLaw profile (ghost seed).1 event).support,
+      (actionDistribution profile (ghost seed).1 event).support,
         (graph.outputLayout event).Submitted action)
     (law : prior.map (fun seed =>
         ((source seed, (ghost seed, bindingObservers focal (table seed))), traffic seed)) =
@@ -132,7 +132,7 @@ private theorem binding_head_support_of_observers
     (ordered : config.cut.IsPrefix event.val) (ready : config.cut.Ready event)
     (owner focal : Player) (different : owner ≠ focal) (payload : L.Ty)
     (binding : graph.outputLayout event = .binding owner payload)
-    (submits : ∀ action ∈ (actionLaw profile config event).support,
+    (submits : ∀ action ∈ (actionDistribution profile config event).support,
       (graph.outputLayout event).Submitted action) (count : Nat)
     (honest : graph.PublicObservation ×
       ((other : {other : Player // other ≠ focal}) → graph.PlayerObservation other.1))
@@ -140,7 +140,7 @@ private theorem binding_head_support_of_observers
       (count + 1) config).map (bindingObservers focal)).support) :
     let chosen := (cast (congrArg (fun field => Option field.Value) binding)
       ((honest.2 ⟨owner, different⟩).store (.inr event))).getD .failure
-    some chosen ∈ ((actionLaw profile config event).map
+    some chosen ∈ ((actionDistribution profile config event).map
       (fun action => cast (congrArg EventField.Action binding) action)).support := by
   intro chosen
   obtain ⟨final, finalSupport, finalRead⟩ := (PMF.mem_support_map_iff _ _ _).mp selected
@@ -201,11 +201,11 @@ private theorem foreign_binding_choice_supported
     (table : Seed → graph.Config) (traffic : Seed → Traffic)
     (noise : DecisionView focal Γ → PMF Traffic)
     (sourceHead : Config Player L Γ → PMF (Option (PublicationResult (L.Val payload))))
-    (head : ∀ seed ∈ prior.support, actionLaw profile (ghost seed).1 event =
+    (head : ∀ seed ∈ prior.support, actionDistribution profile (ghost seed).1 event =
       (sourceHead (source seed)).map
         (fun choice => cast (congrArg EventField.Action binding.symm) choice))
     (submits : ∀ seed ∈ prior.support, ∀ action ∈
-      (actionLaw profile (ghost seed).1 event).support,
+      (actionDistribution profile (ghost seed).1 event).support,
         (graph.outputLayout event).Submitted action)
     (law : prior.map (fun seed =>
         ((source seed, (ghost seed, bindingObservers focal (table seed))), traffic seed)) =
@@ -268,11 +268,11 @@ private theorem foreign_binding_shadow_continuation
     let prescribed := graph.prefixProfile reference
     let placeholder := graph.prefixProfile (Function.update reference focal
       (submittedFailurePolicy (graph := graph) focal))
-    (∀ seed ∈ prior.support, actionLaw placeholder (ghost seed).1 event =
+    (∀ seed ∈ prior.support, actionDistribution placeholder (ghost seed).1 event =
       (sourceHead (source seed)).map
         (fun choice => cast (congrArg EventField.Action binding.symm) choice)) →
     (∀ seed ∈ prior.support, ∀ action ∈
-      (actionLaw placeholder (ghost seed).1 event).support,
+      (actionDistribution placeholder (ghost seed).1 event).support,
         (graph.outputLayout event).Submitted action) →
     (prior.map (fun seed =>
         ((source seed, (ghost seed, bindingObservers focal (table seed))), traffic seed)) =
@@ -314,7 +314,8 @@ private theorem foreign_binding_shadow_continuation
     exact foreign_binding_choice_supported placeholder event owner focal different payload
       binding tableCount prior source ghost table traffic noise sourceHead head submits factor
         seed supported
-  have joint := foreign_binding_shadow_law placeholder event owner focal different payload binding
+  have joint := foreign_binding_shadow_distribution placeholder event owner focal different payload
+    binding
     tableCount guard prior source ghost table traffic noise sourceHead head submits factor
   dsimp only at joint
   let nextBase := (prior.map (fun seed => (source seed, ghost seed))).bind fun hidden =>
@@ -339,8 +340,8 @@ private theorem foreign_binding_shadow_continuation
   have actor : graph.actor? event = some owner :=
     EventCode.actor_eq_of_binding (graph.nodes event) binding
   have sameHead (config : graph.Config) :
-      actionLaw placeholder config event = actionLaw prescribed config event := by
-    rw [actionLaw_of_actor _ _ actor, actionLaw_of_actor _ _ actor]
+      actionDistribution placeholder config event = actionDistribution prescribed config event := by
+    rw [actionDistribution_of_actor _ _ actor, actionDistribution_of_actor _ _ actor]
     split
     · rfl
     · change (Function.update reference focal (submittedFailurePolicy focal) owner) event actor
@@ -731,7 +732,7 @@ theorem nativeBindingContinuation_foreign
     if inactive : owner ∈ config.defaulted then PMF.pure none
     else commitKernel profile (config.view owner) inactive
   have head : ∀ seed ∈ supportedPrior.support,
-      actionLaw placeholder (currentGhost seed).1 event =
+      actionDistribution placeholder (currentGhost seed).1 event =
         (sourceHead (readSource seed)).map
           (fun choice => cast (congrArg EventField.Action binding.symm) choice) := by
     intro seed _
@@ -750,7 +751,7 @@ theorem nativeBindingContinuation_foreign
     simpa only [placeholder, referenceEq, sourceHead, readSource,
       dite_eq_right sourceActive, currentGhost] using exactHead
   have submitting : ∀ seed ∈ supportedPrior.support, ∀ action ∈
-      (actionLaw placeholder (currentGhost seed).1 event).support,
+      (actionDistribution placeholder (currentGhost seed).1 event).support,
         (setup.informationGraph.outputLayout event).Submitted action := by
     intro seed _ action selected
     have global : setup.informationGraph.SubmitsBindings placeholder := by
@@ -763,7 +764,7 @@ theorem nativeBindingContinuation_foreign
     have active : owner ∉ (currentGhost seed).1.defaulted := by
       rw [(currentGhost seed).2.2.2]
       simp
-    rw [actionLaw_of_actor _ _ actor, dite_eq_right active] at selected
+    rw [actionDistribution_of_actor _ _ actor, dite_eq_right active] at selected
     exact global owner event actor (setup.informationGraph.playerObserve owner
       (currentGhost seed).1) active action selected
   have countEq : finish - (rank + 1) + 1 = finish - rank := by omega
@@ -1173,7 +1174,7 @@ open SourceProgram EventGraph EventGraphRuntime Interaction GameTheory.Protocol
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {graph : Vegas.EventGraph Player L}
 
-private theorem focal_binding_good_successor_law
+private theorem focal_binding_good_successor_distribution
     (profile : graph.BehavioralProfile) (submits : graph.SubmitsBindings profile)
     (event : graph.EventId) (focal : Player) (payload : L.Ty)
     (binding : graph.outputLayout event = .binding focal payload)
@@ -1186,7 +1187,7 @@ private theorem focal_binding_good_successor_law
     (prior : PMF ({source : Config Player L Γ // focal ∉ source.defaulted} ×
       {ghost : graph.Config // ghost.cut.Ready event ∧
         ghost.cut.IsPrefix event.val ∧ ghost.defaulted = ∅}))
-    (head : ∀ hidden ∈ prior.support, actionLaw profile hidden.2.1 event =
+    (head : ∀ hidden ∈ prior.support, actionDistribution profile hidden.2.1 event =
       PMF.pure (cast (congrArg EventField.Action binding.symm)
         (some (.failure : PublicationResult (L.Val payload)))))
     (kernel : DecisionView focal Γ → PMF (Option (PublicationResult (L.Val payload))))
@@ -1285,7 +1286,8 @@ private theorem focal_binding_good_successor_law
         apply bind_congr_on_support _
         intro action _
         cases action <;> rfl
-  have posterior := binding_good_successor_law profile count focal choices nextPrior nextSource
+  have posterior := binding_good_successor_distribution profile count focal choices nextPrior
+    nextSource
     (fun seed => advance (ghost seed) (chosen (nextSource seed))) table traffic submitted noise
       good optional present
   simpa only [PMF.bind_map, Function.comp_def] using posterior
@@ -1310,7 +1312,7 @@ private theorem fixedBinding_submitted_stop
     (relaxed : (serviceGraph setup deps).RevealRelaxedOrdered)
     {delay : (serviceGraph setup deps).EventId → Nat}
     (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
-      (serviceInitialLaw setup deps) horizon scheduler delay bound)
+      (serviceInitialDistribution setup deps) horizon scheduler delay bound)
     (timely : AsyncTimely (serviceTimeouts setup deps duration) delay bound)
     (reference : (serviceGraph setup deps).BehavioralProfile) (focal : Player)
     (players : Player → (serviceApplication setup deps duration leaks).Policy)
@@ -1319,7 +1321,8 @@ private theorem fixedBinding_submitted_stop
         (firstTurnTiming setup turns deps) reference owner)
     (anchor : (serviceApplication setup deps duration leaks).Execution)
     (trace : ((serviceApplication setup deps duration leaks).protocol
-      (serviceInitialLaw setup deps) horizon scheduler).Trace (some ⟨budget, none, anchor⟩))
+      (serviceInitialDistribution setup deps) horizon scheduler).Trace
+        (some ⟨budget, none, anchor⟩))
     (truthful : ∀ owner, owner ≠ focal → OwnSubmissionsAtTurn
       (serviceTimeouts setup deps duration) leaks anchor owner)
     (answered : ActivationsAnswered setup leaks anchor)
@@ -1493,7 +1496,7 @@ private theorem nativeBindingContinuation_owned_good
     (relaxed : (serviceGraph setup deps).RevealRelaxedOrdered)
     {delay : (serviceGraph setup deps).EventId → Nat}
     (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
-      (serviceInitialLaw setup deps) horizon scheduler delay bound)
+      (serviceInitialDistribution setup deps) horizon scheduler delay bound)
     (timely : AsyncTimely (serviceTimeouts setup deps duration) delay bound)
     (wholeProfile : BehavioralProfile setup.program)
     (reference : setup.informationGraph.BehavioralProfile)
@@ -1559,9 +1562,9 @@ private theorem nativeBindingContinuation_owned_good
         ∀ observation active, members seed owner node
           (EventCode.actor_eq_of_binding (G.nodes node) output) observation active =
             PMF.pure (cast (congrArg EventField.Action output.symm) (some result))) →
-    (∀ seed ∈ prior.support, anchor seed ∈ (app.roundsFrom (serviceInitialLaw setup deps)
+    (∀ seed ∈ prior.support, anchor seed ∈ (app.roundsFrom (serviceInitialDistribution setup deps)
       scheduler (players seed) (anchor seed).environmentRecall.length).support) →
-    (∀ seed ∈ prior.support, Nonempty ((app.protocol (serviceInitialLaw setup deps) horizon
+    (∀ seed ∈ prior.support, Nonempty ((app.protocol (serviceInitialDistribution setup deps) horizon
       scheduler).Trace (some ⟨budget seed, none, anchor seed⟩))) →
     (∀ seed ∈ prior.support, (anchor seed).application.config.cut.IsPrefix start) →
     (∀ seed ∈ prior.support, (anchor seed).application.config.defaulted = ∅) →
@@ -1724,7 +1727,7 @@ private theorem nativeBindingContinuation_owned_good
     (EventGraph.SubmitsBindings.update setup.informationGraph referenceSubmits focal _
       (setup.informationGraph.policySubmitsBindings_submitPolicy focal _)).prefix
   have pureHead : ∀ hidden ∈ (prior.map fun seed => (source seed, ghost seed)).support,
-      actionLaw placeholder hidden.2.1 event = PMF.pure
+      actionDistribution placeholder hidden.2.1 event = PMF.pure
         (cast (congrArg EventField.Action binding.symm) (some (.failure :
           PublicationResult (L.Val payload)))) := by
     intro hidden member
@@ -1732,14 +1735,15 @@ private theorem nativeBindingContinuation_owned_good
     have actor : setup.informationGraph.actor? event = some focal :=
       EventCode.actor_eq_of_binding _ binding
     have active : focal ∉ (ghost seed).1.defaulted := by rw [(ghost seed).2.2.2]; simp
-    rw [actionLaw_of_actor _ _ actor, dite_eq_right active]
+    rw [actionDistribution_of_actor _ _ actor, dite_eq_right active]
     dsimp only [placeholder, EventGraph.prefixProfile, EventGraph.prefixPolicy]
     rw [Function.update_self]
     exact submittedFailurePolicy_binding (graph := setup.informationGraph) focal event actor
       payload infoBinding _ _
   have canonicalJoint := joint
   have boundedInfo : finish ≤ setup.informationGraph.order.eventCount := bounded
-  have posteriorFactor := focal_binding_good_successor_law placeholder globalSubmits event focal
+  have posteriorFactor := focal_binding_good_successor_distribution placeholder globalSubmits event
+    focal
     payload binding (finish - (event.val + 1)) (by omega) (by
       intro node first last
       exact bindings node (by omega) (by omega)) guard
@@ -1789,7 +1793,8 @@ private theorem nativeBindingContinuation_owned_good
   have currentRemaining (seed : Seed) (member : seed ∈ prior.support) :
       horizon - (execution seed).environmentRecall.length = budget seed - used seed := by
     obtain ⟨raw⟩ := trace seed member
-    have countedTrace := app.raw_trace_horizon (serviceInitialLaw setup deps) horizon scheduler raw
+    have countedTrace := app.raw_trace_horizon (serviceInitialDistribution setup deps) horizon
+      scheduler raw
     have length := app.runRounds_environmentRecall_length scheduler (players seed) (used seed)
       (anchor seed) (execution seed) (supported seed member)
     have enough := counted seed member
@@ -2003,7 +2008,7 @@ private theorem native_owned_binding_bad_forfeit
     {horizon : Nat} (scheduler : (serviceApplication setup deps duration leaks).Scheduler)
     {delay bound : (serviceGraph setup deps).EventId → Nat}
     (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
-      (serviceInitialLaw setup deps) horizon scheduler delay bound)
+      (serviceInitialDistribution setup deps) horizon scheduler delay bound)
     (players : Player → (serviceApplication setup deps duration leaks).Policy)
     {Parameter : Type} (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ) {forfeit : ℝ}
@@ -2044,7 +2049,8 @@ private theorem native_owned_binding_bad_forfeit
     (pending : event ∉ before.application.config.cut.completed)
     (completed : event ∈ final.application.config.cut.completed)
     (supported : final ∈ ((serviceApplication setup deps duration leaks).roundsFrom
-      (serviceInitialLaw setup deps) scheduler players final.environmentRecall.length).support)
+      (serviceInitialDistribution setup deps) scheduler players
+        final.environmentRecall.length).support)
     (bounded : final.environmentRecall.length ≤ horizon) :
     let choice := OwnAction.binding focal name payload
       (decodeActionAt setup.program event final.application.config.history)
@@ -2157,7 +2163,7 @@ private theorem nativeBindingContinuation_owned_expected
     (relaxed : (serviceGraph setup deps).RevealRelaxedOrdered)
     {delay : (serviceGraph setup deps).EventId → Nat}
     (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
-      (serviceInitialLaw setup deps) horizon scheduler delay bound)
+      (serviceInitialDistribution setup deps) horizon scheduler delay bound)
     (timely : AsyncTimely (serviceTimeouts setup deps duration) delay bound)
     (wholeProfile : BehavioralProfile setup.program)
     (reference : setup.informationGraph.BehavioralProfile)
@@ -2227,9 +2233,9 @@ private theorem nativeBindingContinuation_owned_expected
         ∀ observation active, members seed owner node
           (EventCode.actor_eq_of_binding (G.nodes node) output) observation active =
             PMF.pure (cast (congrArg EventField.Action output.symm) (some result))) →
-    (∀ seed ∈ prior.support, anchor seed ∈ (app.roundsFrom (serviceInitialLaw setup deps)
+    (∀ seed ∈ prior.support, anchor seed ∈ (app.roundsFrom (serviceInitialDistribution setup deps)
       scheduler (players seed) (anchor seed).environmentRecall.length).support) →
-    (∀ seed ∈ prior.support, Nonempty ((app.protocol (serviceInitialLaw setup deps) horizon
+    (∀ seed ∈ prior.support, Nonempty ((app.protocol (serviceInitialDistribution setup deps) horizon
       scheduler).Trace (some ⟨budget seed, none, anchor seed⟩))) →
     (∀ seed ∈ prior.support, (anchor seed).application.config.cut.IsPrefix start) →
     (∀ seed ∈ prior.support, (anchor seed).application.config.defaulted = ∅) →
@@ -2340,19 +2346,22 @@ private theorem nativeBindingContinuation_owned_expected
   obtain ⟨sourceBound, _sourceNonnegative, sourceBounded⟩ :=
     setup.graphPayoff_abs_bound setup.informationDependencies parameter utility spread focal
   have currentSupported (seed : Seed) (member : seed ∈ prior.support) :
-      execution seed ∈ (app.roundsFrom (serviceInitialLaw setup deps) scheduler (players seed)
+      execution seed ∈ (app.roundsFrom (serviceInitialDistribution setup deps) scheduler
+        (players seed)
         (execution seed).environmentRecall.length).support := by
     have length := app.runRounds_environmentRecall_length scheduler (players seed) (used seed)
       (anchor seed) (execution seed) (supported seed member)
     rw [length]
-    exact app.roundsFrom_runRounds scheduler (players seed) (serviceInitialLaw setup deps)
+    exact app.roundsFrom_runRounds scheduler (players seed) (serviceInitialDistribution setup deps)
       (anchor seed).environmentRecall.length (used seed) (anchor seed) (execution seed)
       (anchorSupported seed member) (supported seed member)
   have currentTrace (seed : Seed) (member : seed ∈ prior.support) :
-      ∃ remaining, Nonempty ((app.protocol (serviceInitialLaw setup deps) horizon scheduler).Trace
+      ∃ remaining, Nonempty ((app.protocol (serviceInitialDistribution setup deps) horizon
+        scheduler).Trace
         (some ⟨remaining, none, execution seed⟩)) := by
     obtain ⟨raw⟩ := trace seed member
-    obtain ⟨current⟩ := app.raw_trace_runRounds (serviceInitialLaw setup deps) horizon scheduler
+    obtain ⟨current⟩ := app.raw_trace_runRounds (serviceInitialDistribution setup deps) horizon
+      scheduler
       (players seed) (budget seed - used seed) (used seed) (anchor seed) (execution seed)
       (by simpa only [Nat.sub_add_cancel (counted seed member)] using raw)
       (supported seed member)
@@ -2360,16 +2369,17 @@ private theorem nativeBindingContinuation_owned_expected
   have currentBound (seed : Seed) (member : seed ∈ prior.support) :
       (execution seed).environmentRecall.length ≤ horizon := by
     obtain ⟨remaining, ⟨raw⟩⟩ := currentTrace seed member
-    have available := app.raw_trace_horizon (serviceInitialLaw setup deps) horizon scheduler raw
+    have available := app.raw_trace_horizon (serviceInitialDistribution setup deps) horizon
+      scheduler raw
     dsimp only at available
     omega
   have anchorInitial (seed : Seed) (member : seed ∈ prior.support) :
       ∃ initial : State L setup.context, EventGraph.Config.Reachable (graph := G)
         (setup.eventInputs initial) (anchor seed).application.config := by
     obtain ⟨raw⟩ := trace seed member
-    rw [serviceInitialLaw_eq_inputs setup] at raw
+    rw [serviceInitialDistribution_eq_inputs setup] at raw
     obtain ⟨inputs, selected, facts⟩ := reactive_history_invariant
-      (serviceTimeouts setup deps duration) leaks (setup.initialLaw.map setup.eventInputs)
+      (serviceTimeouts setup deps duration) leaks (setup.initialDistribution.map setup.eventInputs)
       horizon scheduler raw
     obtain ⟨initial, _selected, same⟩ := (PMF.mem_support_map_iff _ _ _).mp selected
     exact ⟨initial, same ▸ facts.reachable⟩
@@ -2483,7 +2493,7 @@ theorem nativeBindingContinuation_owned
     (relaxed : (serviceGraph setup deps).RevealRelaxedOrdered)
     {delay : (serviceGraph setup deps).EventId → Nat}
     (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
-      (serviceInitialLaw setup deps) horizon scheduler delay bound)
+      (serviceInitialDistribution setup deps) horizon scheduler delay bound)
     (timely : AsyncTimely (serviceTimeouts setup deps duration) delay bound)
     (wholeProfile : BehavioralProfile setup.program)
     (reference : setup.informationGraph.BehavioralProfile)

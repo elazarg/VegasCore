@@ -157,7 +157,7 @@ def transitionSourceFactor (assessment : setup.intendedModel.BehavioralAssessmen
     (who : Player) : (application setup timeouts leaks).ProtocolState →
       (Player → Option (application setup timeouts leaks).Action) →
         (application setup timeouts leaks).ProtocolState → ℝ
-  | none, _, some after => (initialLaw setup after.execution.application).toReal
+  | none, _, some after => (initialDistribution setup after.execution.application).toReal
   | some before, joint, some after =>
       match before.actor with
       | some actor =>
@@ -172,12 +172,12 @@ variable [Fintype Player] (bounds : MessageBounds setup.informationGraph) (horiz
 
 /-- The native protocol of the one-packet game from the default initial law. -/
 abbrev onePacketProtocol :=
-  (bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon scheduler
+  (bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon scheduler
 
 /-- The information model of the one-packet game from the default initial
 law. -/
 abbrev onePacketInformation :=
-  onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+  onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
 
 /-- **The source weight.** The product, along a native history, of the source
 factors of its transitions for the observer `who`. -/
@@ -206,7 +206,8 @@ def RegularStep (assessment : setup.intendedModel.BehavioralAssessment) (who : P
       (Player → Option (application setup timeouts leaks).Action) →
         (application setup timeouts leaks).ProtocolState → Prop
   | some before, joint, some after => ∀ actor, before.actor = some actor → actor ≠ who →
-      (forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks) (initialLaw setup)
+      (forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks)
+        (initialDistribution setup)
         horizon
           scheduler actor ((application setup timeouts leaks).observe actor (some before)) ∧
         ForcedState setup timeouts leaks who (some before)) ∧
@@ -387,7 +388,8 @@ structure OperationalSteps (sequence : ℕ → setup.intendedModel.BehavioralAss
       ⟨joint, legal⟩).support) (control next : (application setup timeouts leaks).Control)
     (actor : Player), before = some control → after = some next →
     control.actor = some actor → actor ≠ who →
-    forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks) (initialLaw setup)
+    forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks)
+      (initialDistribution setup)
       horizon
       scheduler actor ((application setup timeouts leaks).observe actor (some control)) →
     ForcedState setup timeouts leaks who (some control) →
@@ -463,7 +465,7 @@ theorem onePacket_infoOf (player : Player) {state : (application setup timeouts
     (trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace state) :
     (onePacketInformation setup timeouts leaks bounds horizon scheduler).infoOf player trace =
       (application setup timeouts leaks).observe player state :=
-  (bounds.onePacketMenu timeouts leaks).info (initialLaw setup) horizon scheduler player
+  (bounds.onePacketMenu timeouts leaks).info (initialDistribution setup) horizon scheduler player
     trace
 
 /-- An idle player's only choice has mass one. -/
@@ -519,7 +521,8 @@ theorem stepProb_of_idle
     (idle : (application setup timeouts leaks).actor before = none) :
     InformationModel.stepProb (onePacketInformation setup timeouts leaks bounds horizon scheduler)
         profile prior ⟨joint, legal⟩ after =
-      ((application setup timeouts leaks).transition (initialLaw setup) horizon scheduler before
+      ((application setup timeouts leaks).transition (initialDistribution setup) horizon scheduler
+        before
         joint
         after).toReal := by
   unfold InformationModel.stepProb
@@ -544,7 +547,8 @@ theorem stepProb_of_actor
       (profile actor _ (InformationModel.choicesOfLegal
         (onePacketInformation setup timeouts leaks bounds horizon scheduler) prior ⟨joint, legal⟩
           actor)).toReal *
-      ((application setup timeouts leaks).transition (initialLaw setup) horizon scheduler before
+      ((application setup timeouts leaks).transition (initialDistribution setup) horizon scheduler
+        before
         joint
         after).toReal := by
   unfold InformationModel.stepProb
@@ -562,7 +566,8 @@ omit [Fintype Player] in
 theorem transition_respond (control : (application setup timeouts leaks).Control) {actor : Player}
     (acting : control.actor = some actor)
     (joint : Player → Option (application setup timeouts leaks).Action) :
-    (application setup timeouts leaks).transition (initialLaw setup) horizon scheduler (some
+    (application setup timeouts leaks).transition (initialDistribution setup) horizon scheduler
+      (some
       control)
         joint =
       PMF.pure (some { control with
@@ -580,7 +585,8 @@ theorem transition_environment (control : (application setup timeouts leaks).Con
     (idle : control.actor = none) (joint : Player → Option (application setup timeouts
       leaks).Action)
     {after : (application setup timeouts leaks).ProtocolState}
-    (reached : after ∈ ((application setup timeouts leaks).transition (initialLaw setup) horizon
+    (reached : after ∈ ((application setup timeouts leaks).transition
+      (initialDistribution setup) horizon
       scheduler
       (some control) joint).support) :
     ∃ next : (application setup timeouts leaks).Control, after = some next ∧
@@ -641,7 +647,8 @@ theorem step_factor {sequence : ℕ → setup.intendedModel.BehavioralAssessment
     rintro _ rfl
     rw [sub_self, abs_zero]
     exact mul_nonneg (steps.error_nonneg n) stepNonneg
-  change after ∈ ((application setup timeouts leaks).transition (initialLaw setup) horizon scheduler
+  change after ∈ ((application setup timeouts leaks).transition
+    (initialDistribution setup) horizon scheduler
     before joint).support at realized
   cases before with
   | none =>
@@ -650,13 +657,15 @@ theorem step_factor {sequence : ℕ → setup.intendedModel.BehavioralAssessment
         := some
         ⟨horizon, none, ReactiveApplication.Execution.initial (application setup timeouts leaks)
           initial⟩)
-      have transitionMass : ((application setup timeouts leaks).transition (initialLaw setup)
+      have transitionMass : ((application setup timeouts leaks).transition
+        (initialDistribution setup)
         horizon
           scheduler none joint (some ⟨horizon, none, ReactiveApplication.Execution.initial
-            (application setup timeouts leaks) initial⟩)) = initialLaw setup initial := by
-        rw [show (application setup timeouts leaks).transition (initialLaw setup) horizon scheduler
+            (application setup timeouts leaks) initial⟩)) = initialDistribution setup initial := by
+        rw [show (application setup timeouts leaks).transition
+          (initialDistribution setup) horizon scheduler
           none
-            joint = (initialLaw setup).map (fun state => some
+            joint = (initialDistribution setup).map (fun state => some
               (⟨horizon, none, ReactiveApplication.Execution.initial (application setup timeouts
                 leaks)
                 state⟩ : (application setup timeouts leaks).Control)) from rfl]
@@ -689,7 +698,8 @@ theorem step_factor {sequence : ℕ → setup.intendedModel.BehavioralAssessment
           rw [transition_respond (timeouts := timeouts) control acting joint,
             PMF.mem_support_pure_iff] at realized
           subst realized
-          have transitionOne : ((application setup timeouts leaks).transition (initialLaw setup)
+          have transitionOne : ((application setup timeouts leaks).transition
+            (initialDistribution setup)
             horizon
               scheduler (some control) joint (some { control with
                 actor := none
@@ -755,7 +765,8 @@ theorem step_factor {sequence : ℕ → setup.intendedModel.BehavioralAssessment
             ring
           · obtain ⟨⟨forced, observerForced⟩, positive⟩ := regular actor acting owner
             have bound := steps.component n prior joint legal (by
-              change _ ∈ ((application setup timeouts leaks).transition (initialLaw setup) horizon
+              change _ ∈ ((application setup timeouts leaks).transition
+                (initialDistribution setup) horizon
                 scheduler (some control) joint).support
               rw [transition_respond (timeouts := timeouts) control acting joint]
               exact (PMF.mem_support_pure_iff _ _).mpr rfl) control _ actor rfl rfl acting owner
@@ -886,7 +897,7 @@ theorem trace_length_le : ∀ {state}
       simp [ReactiveApplication.rank])
   | _, .extend (source := before) (target := after) prior joint legal realized => by
       have previous := trace_length_le prior
-      have lower := (application setup timeouts leaks).rank_step (initialLaw setup) horizon
+      have lower := (application setup timeouts leaks).rank_step (initialDistribution setup) horizon
         scheduler
         before after joint legal.1 realized
       simp only [ExecutionProtocol.Trace.length]

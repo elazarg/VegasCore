@@ -5,7 +5,7 @@ module
 public import Vegas.Game.ProgramPaymentNash
 public import Vegas.Source.Utility
 public import Vegas.EventGraph.RankedConfig
-public import Vegas.EventGraph.SequentialLaw
+public import Vegas.EventGraph.SequentialDistribution
 
 @[expose] public section
 
@@ -108,17 +108,17 @@ theorem le_graphPayoff (setup : Setup (Player := Player) (L := L))
 abbrev graphInputs (setup : Setup (Player := Player) (L := L))
     (deps : setup.dataflowGraph.Dependencies) :
     PMF (setup.dataflowGraph.withDependencies deps).Inputs :=
-  setup.initialLaw.map fun initial => setup.eventInputs initial
+  setup.initialDistribution.map fun initial => setup.eventInputs initial
 
 theorem graphInputs_support_finite (setup : Setup (Player := Player) (L := L))
     (deps : setup.dataflowGraph.Dependencies)
-    [setup.FiniteInitialLaw] : (setup.graphInputs deps).support.Finite := by
+    [setup.FiniteInitialSupport] : (setup.graphInputs deps).support.Finite := by
   rw [PMF.support_map]
-  exact setup.initialLaw_support_finite.image _
+  exact setup.initialDistribution_support_finite.image _
 
 theorem graphRun_support_finite (setup : Setup (Player := Player) (L := L))
     (deps : setup.dataflowGraph.Dependencies)
-    (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw]
+    (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialSupport]
     (profile : (setup.dataflowGraph.withDependencies deps).BehavioralProfile)
     (scheduler : (setup.dataflowGraph.withDependencies deps).PublicScheduler) :
     ((setup.graphInputs deps).bind
@@ -188,7 +188,7 @@ theorem graphObservation_factors (setup : Setup (Player := Player) (L := L))
 /-- Canonical execution has the joint source-order configuration and fixed-exit
 payoff law of the compiled source-information game, for every dependency choice
 and arbitrary setup initial law. -/
-theorem canonical_graphObservation_law (setup : Setup (Player := Player) (L := L))
+theorem canonical_graphObservation_distribution (setup : Setup (Player := Player) (L := L))
     (deps : setup.dataflowGraph.Dependencies)
     {Parameter : Type} (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
@@ -213,7 +213,8 @@ theorem canonical_graphObservation_law (setup : Setup (Player := Player) (L := L
   rw [play, PMF.map_bind, PMF.map_bind]
   apply bind_congr_on_support _
   intro initial _
-  have law := (setup.dataflowGraph.withDependencies deps).canonical_fromSequential_config_law
+  have law := (setup.dataflowGraph.withDependencies
+    deps).canonical_fromSequential_config_distribution
     profile initial
   have outcomes : (setup.informationGraph.terminalOutcomes
       setup.informationGraph.canonicalScheduler profile initial).map
@@ -262,7 +263,7 @@ theorem expect_graphPayoff_canonical
   let project : Option (Config Player L setup.program.terminalCtx) × (Player → ℝ) → ℝ :=
     fun observation => observation.2 who
   have law := congrArg (fun law => expect law project)
-    (setup.canonical_graphObservation_law deps parameter utility excludedPayoff profile)
+    (setup.canonical_graphObservation_distribution deps parameter utility excludedPayoff profile)
   simp only [expect_map, Function.comp_def, graphObservation, project] at law
   exact law
 

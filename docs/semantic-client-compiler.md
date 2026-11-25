@@ -103,7 +103,7 @@ settled payoff vector, with zero audit charges, from every matching legal
 one-packet/raw history pair. At clean intended source boundaries it retains the
 joint full source configuration and ordinary utility vector, with no defaults
 or failed reveals. The artifact stores this as `ClientCompilation.continuation`,
-in addition to the initialized guarantees in `ClientCompilation.outcomeLaw`
+in addition to the initialized guarantees in `ClientCompilation.outcomeDistribution_eq`
 and `ClientCompilation.noCharges`.
 
 The [audit and raw-alias transport](../Vegas/Game/OnePacketAssessmentExtension.lean)
@@ -143,8 +143,8 @@ delivery.
 
 `ClientCompilation.clients_strategy` proves that restricting decoded
 physical clients recovers the selected behavioral strategy exactly.
-`ClientCompilation.clients_stateLaw` identifies the physical execution
-state law with the assessment's state law. Its `ClientCompilation.clients_outcomeLaw` composes
+`ClientCompilation.clients_stateDistribution` identifies the physical execution
+state law with the assessment's state law. Its `ClientCompilation.clients_outcomeDistribution` composes
 that identity with source preservation, retaining the full source configuration and default history jointly with the settled payoff vector.
 
 `ClientCompilation.clients_sequentiallyRational` states the incentive
@@ -198,12 +198,12 @@ no game-specific client policy is an input.
 ## Observable laws and coverage
 
 [Observable closure](../Vegas/Game/ClientObservables.lean) exports
-`ClientCompilation.clients_postprocessLaw` and its ledger counterpart.
+`ClientCompilation.clients_postprocessDistribution` and its ledger counterpart.
 Any common stochastic observation of the certified full-configuration/payoff pair
 has exactly the intended law. Deterministic readers are the pure-kernel case;
 the observation kernel itself needs no finite-support premise.
 
-`Vegas.ClientSpec.intended_outcomeLaws_subset` states the coverage
+`Vegas.ClientSpec.intended_outcomeDistributions_subset` states the coverage
 conclusion as set inclusion: every intended SE joint law belongs to the clean
 bounded-runtime SE laws. Additional runtime equilibria and their outcome laws
 are not characterized by this inclusion.

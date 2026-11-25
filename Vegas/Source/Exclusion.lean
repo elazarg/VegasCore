@@ -381,7 +381,7 @@ theorem publicationsDefaulted_trace (setup : Setup (Player := Player) (L := L))
       have earlier := setup.publicationsDefaulted_trace admission prior
       cases before with
       | none =>
-          change after ∈ (setup.initialLaw.map fun initial =>
+          change after ∈ (setup.initialDistribution.map fun initial =>
             some (ProtocolState.entry setup.program (Config.initial initial))).support at reached
           obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ reached
           exact ProtocolState.publicationsDefaulted_entry setup.program _

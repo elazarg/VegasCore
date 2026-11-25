@@ -102,7 +102,7 @@ theorem same_scheduler_input :
       (reactiveApplication_activation_schedulerInput timeouts leaks sent observed .bob
         observed_supported).symm
 
-theorem every_scheduler_same_law (scheduler : app.Scheduler) :
+theorem every_scheduler_same_distribution (scheduler : app.Scheduler) :
     scheduler missed.environmentRecall (missed.observeEnvironment app) =
       scheduler observed.environmentRecall (observed.observeEnvironment app) :=
   reactiveApplication_activation_scheduler timeouts leaks scheduler sent missed observed .bob

@@ -86,7 +86,7 @@ theorem owesFailureState_of_deviation (admission : CommitmentInterface setup.pro
         (fun offered => new ⟨permitted.1, offered⟩) after supported
 
 theorem initialConfig_intended (wellFormed : setup.WellFormed) {initial : State L setup.context}
-    (supported : initial ∈ setup.initialLaw.support) :
+    (supported : initial ∈ setup.initialDistribution.support) :
     (Config.initial initial).Intended setup.obligations where
   clear := rfl
   unique := setup.namesNodup
@@ -106,7 +106,7 @@ theorem intendedState_trace (wellFormed : setup.WellFormed) :
       have earlier := intendedState_trace wellFormed prior
       cases before with
       | none =>
-          change _ ∈ (setup.initialLaw.map fun initial =>
+          change _ ∈ (setup.initialDistribution.map fun initial =>
             some (ProtocolState.entry setup.program (Config.initial initial))).support
               at realized
           rw [PMF.support_map] at realized
@@ -377,7 +377,7 @@ every intended information set, reached or not. It has the intended joint law of
 terminal store and payoff, and no reveal fails on any history it reaches. -/
 theorem intended_forfeit_sequentialEquilibrium_preserved [Finite Player]
     (admission : CommitmentInterface setup.program)
-    (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw]
+    (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialSupport]
     (wellFormed : setup.WellFormed) {Parameter : Type}
     (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
@@ -456,7 +456,7 @@ theorem intended_forfeit_sequentialEquilibrium_preserved [Finite Player]
         (restriction.site who site).1 →
         PMF (setup.intendedModel.Choice who site.1) :=
     fun _ _ _ => PMF.pure (Classical.arbitrary _)
-  obtain ⟨target, sequential, agrees, beliefs, historyLaw, jointLaw⟩ :=
+  obtain ⟨target, sequential, agrees, beliefs, historyLaw, jointDistribution⟩ :=
     restriction.sequentialEquilibrium_extends_of_comparator_unclocked
       setup.intended_decision_antichain intendedTerminates sourceTerminates
       (setup.uniformReference finite _) (setup.uniformReference_fullyMixed finite _)
@@ -520,7 +520,7 @@ theorem intended_forfeit_sequentialEquilibrium_preserved [Finite Player]
     exact setup.failedReveals_eq_zero_of_intendedState
       (setup.intendedState_trace wellFormed intendedFinal.trace) who read
   · have readouts := congrArg (PMF.map fun pair => (setup.protocolReadout pair.1.state, pair.2))
-      jointLaw
+      jointDistribution
     simp only [PMF.map_comp] at readouts
     exact readouts.symm
 
@@ -533,7 +533,7 @@ set, and the joint typed-readout/payoff law, and its
 equilibrium paths have neither a public default nor a failed reveal. -/
 theorem intended_sequentialEquilibrium_preserved [Finite Player]
     (admission : CommitmentInterface setup.program)
-    (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw]
+    (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialSupport]
     (wellFormed : setup.WellFormed) {Parameter : Type}
     (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
@@ -601,7 +601,7 @@ theorem intended_sequentialEquilibrium_preserved [Finite Player]
       (setup.informationModel admission).Choice who (restriction.site who site).1 →
         PMF (setup.intendedModel.Choice who site.1) :=
     fun _ _ _ => PMF.pure (Classical.arbitrary _)
-  obtain ⟨target, sequential, agrees, beliefs, historyLaw, jointLaw⟩ :=
+  obtain ⟨target, sequential, agrees, beliefs, historyLaw, jointDistribution⟩ :=
     restriction.sequentialEquilibrium_extends_of_comparator_unclocked
       setup.intended_decision_antichain intendedTerminates sourceTerminates
       (setup.uniformReference finite _) (setup.uniformReference_fullyMixed finite _)
@@ -653,7 +653,7 @@ theorem intended_sequentialEquilibrium_preserved [Finite Player]
     intro who
     exact setup.failedReveals_eq_zero_of_intendedState known who read
   · have readouts := congrArg (PMF.map fun pair => (setup.protocolReadout pair.1.state, pair.2))
-      jointLaw
+      jointDistribution
     simp only [PMF.map_comp] at readouts
     exact readouts.symm
 

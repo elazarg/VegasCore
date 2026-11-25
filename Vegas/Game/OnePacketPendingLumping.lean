@@ -1173,20 +1173,20 @@ theorem controlStep_other_of_pending
       control.execution.application.config.cut.Ready event)
     (owned : setup.informationGraph.actor? event = some owner) {other : Player}
     (acting : control.actor = some other) (different : other ≠ owner) :
-    (application setup timeouts leaks).controlStep (initialLaw setup) horizon scheduler
-        ((bounds.onePacketMenu timeouts leaks).decodeProfile (initialLaw setup) horizon
+    (application setup timeouts leaks).controlStep (initialDistribution setup) horizon scheduler
+        ((bounds.onePacketMenu timeouts leaks).decodeProfile (initialDistribution setup) horizon
           scheduler profile) (some control) =
       PMF.pure (some { control with
         actor := none
         execution := control.execution.respond (application setup timeouts leaks) other ⟨none⟩ })
           := by
-  have silent : ((bounds.onePacketMenu timeouts leaks).decodeProfile (initialLaw setup)
+  have silent : ((bounds.onePacketMenu timeouts leaks).decodeProfile (initialDistribution setup)
       horizon scheduler profile other (control.execution.logs other)
       (control.execution.observe (application setup timeouts leaks) other)) = PMF.pure ⟨none⟩ := by
     apply pmf_eq_pure_of_support_subset_singleton
     intro action chosen
     have member := (bounds.onePacketMenu timeouts leaks).decodeProfile_support
-      (initialLaw setup) horizon scheduler profile other _ _ action chosen
+      (initialDistribution setup) horizon scheduler profile other _ _ action chosen
     have quiet := onePacket_silent_of_pending (timeouts := timeouts) bounds horizon scheduler owner
       history forced
       current ready owned other different action member
@@ -1212,9 +1212,10 @@ theorem controlStep_history
       (onePacketInformation setup timeouts leaks bounds horizon scheduler).BehavioralPolicy player)
     (history : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).History)
     {next : (application setup timeouts leaks).ProtocolState}
-    (member : next ∈ ((application setup timeouts leaks).controlStep (initialLaw setup) horizon
+    (member : next ∈ ((application setup timeouts leaks).controlStep
+      (initialDistribution setup) horizon
       scheduler
-      ((bounds.onePacketMenu timeouts leaks).decodeProfile (initialLaw setup) horizon
+      ((bounds.onePacketMenu timeouts leaks).decodeProfile (initialDistribution setup) horizon
         scheduler profile) history.state).support) :
     ∃ extended : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).History,
       extended.state = next := by
@@ -1230,12 +1231,14 @@ theorem controlStep_history
         change current = none at idle
         subst remaining idle
         refine ⟨⟨_, trace⟩, ?_⟩
-        have law : (application setup timeouts leaks).controlStep (initialLaw setup) horizon
+        have law : (application setup timeouts leaks).controlStep
+          (initialDistribution setup) horizon
           scheduler
-            ((bounds.onePacketMenu timeouts leaks).decodeProfile (initialLaw setup) horizon
+            ((bounds.onePacketMenu timeouts leaks).decodeProfile (initialDistribution setup) horizon
               scheduler profile) (some ⟨0, none, execution⟩) =
             PMF.pure (some ⟨0, none, execution⟩) := rfl
-        change next ∈ ((application setup timeouts leaks).controlStep (initialLaw setup) horizon
+        change next ∈ ((application setup timeouts leaks).controlStep
+          (initialDistribution setup) horizon
           scheduler
           _ (some ⟨0, none, execution⟩)).support at member
         rw [law, PMF.mem_support_pure_iff] at member
@@ -1263,7 +1266,7 @@ theorem controlStep_history
             rw [PMF.mem_support_bind_iff] at member
             obtain ⟨action, chosen, reached⟩ := member
             have menu := (bounds.onePacketMenu timeouts leaks).decodeProfile_support
-              (initialLaw setup) horizon scheduler profile who _ _ action chosen
+              (initialDistribution setup) horizon scheduler profile who _ _ action chosen
             have legal : protocol.Legal (some control)
                 (fun observer => if observer = who then some action else none) := by
               refine ⟨stopped, fun observer => ?_⟩
@@ -1284,9 +1287,9 @@ theorem bindingInvariant_of_history
     {control : (application setup timeouts leaks).Control} (current : history.state = some
       control) :
     control.execution.application.BindingInvariant := by
-  have raw := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon
+  have raw := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup) horizon
     scheduler history.trace
-  have binding := ((reactiveBindingInvariant timeouts) leaks).history (initialLaw setup)
+  have binding := ((reactiveBindingInvariant timeouts) leaks).history (initialDistribution setup)
     horizon scheduler (fun state member => by
       obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ member
       exact State.initial_bindingInvariant _) raw
@@ -1319,10 +1322,10 @@ theorem round_image_congr_of_forced (who : Player) (remaining : Nat)
       (setup.informationGraph.nodes event) = .resolve owner payload binding checks}
     (view : nodeView setup.informationGraph event = .resolve owner payload binding checks outputEq
       codeEq) :
-    ((application setup timeouts leaks).transition (initialLaw setup) horizon scheduler
+    ((application setup timeouts leaks).transition (initialDistribution setup) horizon scheduler
         (some ⟨remaining + 1, none, first⟩) (fun _ => none)).map (pendingImage (timeouts :=
           timeouts) event) =
-      ((application setup timeouts leaks).transition (initialLaw setup) horizon scheduler
+      ((application setup timeouts leaks).transition (initialDistribution setup) horizon scheduler
         (some ⟨remaining + 1, none, second⟩) (fun _ => none)).map (pendingImage (timeouts :=
           timeouts) event) := by
   have firstValid := bindingInvariant_of_history (timeouts := timeouts) bounds horizon scheduler
@@ -1331,13 +1334,16 @@ theorem round_image_congr_of_forced (who : Player) (remaining : Nat)
     bindingInvariant_of_history (timeouts := timeouts) bounds horizon scheduler secondHistory
       secondCurrent
   have bindings := SameOperational.binding (timeouts := timeouts) same ready view
-  have firstRaw := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon
+  have firstRaw := (bounds.onePacketMenu timeouts leaks).toRawTrace
+    (initialDistribution setup) horizon
     scheduler (firstCurrent ▸ firstHistory.trace)
-  have secondRaw := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon
+  have secondRaw := (bounds.onePacketMenu timeouts leaks).toRawTrace
+    (initialDistribution setup) horizon
     scheduler (secondCurrent ▸ secondHistory.trace)
   have firstQuiescent := (legalFacts setup leaks horizon scheduler _ firstRaw).quiescent
   have secondQuiescent := (legalFacts setup leaks horizon scheduler _ secondRaw).quiescent
-  apply round_image_congr (timeouts := timeouts) (initialLaw setup) horizon scheduler remaining
+  apply round_image_congr (timeouts := timeouts) (initialDistribution setup) horizon scheduler
+    remaining
     first second same pending
     ready firstQuiescent secondQuiescent view
   intro id message found
@@ -1358,7 +1364,8 @@ omit [Fintype Player] in
 theorem controlStep_graphSteps (players : Player → (application setup timeouts leaks).Policy)
     (control : (application setup timeouts leaks).Control) {next : (application setup timeouts
       leaks).ProtocolState}
-    (member : next ∈ ((application setup timeouts leaks).controlStep (initialLaw setup) horizon
+    (member : next ∈ ((application setup timeouts leaks).controlStep
+      (initialDistribution setup) horizon
       scheduler players (some control)).support) :
     ∃ control' : (application setup timeouts leaks).Control, next = some control' ∧
       Relation.ReflTransGen EventGraph.Config.Step control.execution.application.config

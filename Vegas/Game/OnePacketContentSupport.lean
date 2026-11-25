@@ -142,7 +142,7 @@ theorem onePacket_sentSourceAction (who : Player)
 /-- Every history of the one-packet game decodes at its completed prefix. -/
 theorem onePacket_decodes (profile : BehavioralProfile setup.program)
     {control : (application setup timeouts leaks).Control}
-    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some control)) :
     ∃ rank point, control.execution.application.config.cut.IsPrefix rank ∧
       sourceServicePrefix? setup rank control.execution.application.config = some point := by
@@ -156,7 +156,7 @@ execution is positive names the player's turn, and its recall has not submitted
 for that event. -/
 theorem onePacket_content_pos (assessment : setup.intendedModel.BehavioralAssessment)
     {control : (application setup timeouts leaks).Control}
-    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some control))
     (who : Player) (response : (application setup timeouts leaks).Action)
     (member : response ∈ bounds.onePacketActions timeouts leaks who
@@ -193,7 +193,7 @@ theorem onePacket_content_pos (assessment : setup.intendedModel.BehavioralAssess
         decoded _ turn] at supported
       cases (PMF.mem_support_pure_iff _ _).mp supported
   | some event =>
-      have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup)
+      have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup)
         horizon scheduler trace
       have ready : control.execution.application.config.cut.Ready event :=
         (control.execution.application.publicView_eventReady event).mp
@@ -213,9 +213,10 @@ theorem onePacket_content_pos (assessment : setup.intendedModel.BehavioralAssess
       | false => rfl
       | true =>
           exfalso
-          have rawTrace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+          have rawTrace : ((application setup timeouts leaks).protocol
+            (initialDistribution setup) horizon
               scheduler).Trace (some control) :=
-            (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon
+            (bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup) horizon
               scheduler trace
           obtain ⟨entry, entryMember, submitted⟩ := List.any_eq_true.mp recorded
           have submittedEq := of_decide_eq_true submitted
@@ -229,7 +230,8 @@ theorem onePacket_content_pos (assessment : setup.intendedModel.BehavioralAssess
               dsimp only at submittedEq
               have emitted := (transmissionsEmitted_serviceInvariant (timeouts := timeouts)
                 scheduler).history
-                (initialLaw setup) horizon (fun _ _ _ _ member => (List.not_mem_nil member).elim)
+                (initialDistribution setup) horizon (fun _ _ _ _ member =>
+                  (List.not_mem_nil member).elim)
                 rawTrace who entry entryMember earlier transmits
               obtain ⟨message, emits, call⟩ := emitted
               have output : message ∈ (application setup timeouts leaks).outputs

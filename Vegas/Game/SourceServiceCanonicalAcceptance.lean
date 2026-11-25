@@ -34,7 +34,7 @@ theorem canonicalServiceDecision_freshServiceAcceptable {horizon : Nat}
     {scheduler : (serviceApplication setup deps duration leaks).Scheduler}
     {control : (serviceApplication setup deps duration leaks).Control}
     (trace : ((serviceApplication setup deps duration leaks).protocol
-      (serviceInitialLaw setup deps) horizon scheduler).Trace (some control))
+      (serviceInitialDistribution setup deps) horizon scheduler).Trace (some control))
     (who : Player) (event : (serviceGraph setup deps).EventId)
     (turn : control.execution.application.publicView.ownTurn? who = some event)
     (within : control.execution.application.publicView.WithinDeadline
@@ -51,7 +51,7 @@ theorem canonicalServiceDecision_freshServiceAcceptable {horizon : Nat}
         (serviceApplication setup deps duration leaks).packet
           ((serviceApplication setup deps duration leaks).submit control.execution.application
             who material) who (control.execution.network.known who) material⟩ := by
-  rw [serviceInitialLaw_eq_inputs setup] at trace
+  rw [serviceInitialDistribution_eq_inputs setup] at trace
   exact EventGraphRuntime.canonicalServiceDecision_freshServiceAcceptable
     (timeouts := serviceTimeouts setup deps duration) (leaks := leaks) (control := control)
     trace who event turn within action material submits
@@ -64,7 +64,7 @@ theorem canonical_freshCall {horizon : Nat}
     {scheduler : (serviceApplication setup deps duration leaks).Scheduler}
     {control : (serviceApplication setup deps duration leaks).Control}
     (trace : ((serviceApplication setup deps duration leaks).protocol
-      (serviceInitialLaw setup deps) horizon scheduler).Trace (some control))
+      (serviceInitialDistribution setup deps) horizon scheduler).Trace (some control))
     (bound : (serviceGraph setup deps).EventId → Nat)
     (who : Player) (event : (serviceGraph setup deps).EventId)
     (turn : control.execution.application.publicView.ownTurn? who = some event)
@@ -90,7 +90,7 @@ theorem canonical_freshCall {horizon : Nat}
         (serviceApplication setup deps duration leaks).packet
           ((serviceApplication setup deps duration leaks).submit control.execution.application
             who material) who (control.execution.network.known who) material⟩ := by
-  rw [serviceInitialLaw_eq_inputs setup] at trace
+  rw [serviceInitialDistribution_eq_inputs setup] at trace
   exact EventGraphRuntime.canonical_freshCall (timeouts := serviceTimeouts setup deps duration)
     (leaks := leaks) (control := control) trace bound who event turn fits action material submits
 

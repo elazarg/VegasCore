@@ -80,7 +80,8 @@ theorem forcedState_of_transition {who : Player} {before : (application setup ti
     {after : (application setup timeouts leaks).ProtocolState}
     (prior : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some before))
     (joint : Player → Option (application setup timeouts leaks).Action)
-    (realized : after ∈ ((application setup timeouts leaks).transition (initialLaw setup) horizon
+    (realized : after ∈ ((application setup timeouts leaks).transition
+      (initialDistribution setup) horizon
       scheduler
       (some before) joint).support)
     (forced : ForcedState setup timeouts leaks who after) :
@@ -105,7 +106,8 @@ theorem forcedState_of_transition {who : Player} {before : (application setup ti
         subst read
         exact denied ⟨_, decodedPoint_eq residual, forced⟩
       obtain ⟨nextRank, ⟨nextResidual⟩, afterHolds⟩ := decodedHolds_transition closed
-        (initialLaw setup) horizon scheduler (some before) (some next) joint beforeHolds realized
+        (initialDistribution setup) horizon scheduler (some before)
+          (some next) joint beforeHolds realized
       rw [decodedPoint_eq nextResidual, Option.some.injEq] at decoded
       subst decoded
       exact afterHolds _ nextResidual.decode forcedTarget

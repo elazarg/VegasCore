@@ -106,10 +106,10 @@ theorem normalized_opening_trace
             :: operationalRecord setup timeouts leaks bounds horizon scheduler prior := by
   intro app material response remembered
   have originalCount := (countRecall_history timeouts) leaks
-    ((bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon scheduler
+    ((bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup) horizon scheduler
       prior)
   have repairedCount := (countRecall_history timeouts) leaks
-    ((bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon scheduler
+    ((bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup) horizon scheduler
       imagePrior)
   have materialShape : material = ⟨⟨.opening event candidate raw, none⟩, material.evidence⟩ := by
     simp only [material, WitnessedSubmission.normalizeReactive,

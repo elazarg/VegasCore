@@ -43,7 +43,8 @@ theorem forcedAgent_of_responder_preserving_repair (wellFormed : setup.WellForme
     {past : List (application setup timeouts leaks).PlayerEntry}
     {view : (application setup timeouts leaks).PlayerView}
     (decision : site.1 = some (past, view))
-    (forced : forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks) (initialLaw
+    (forced : forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks)
+      (initialDistribution
       setup)
       horizon scheduler focal site.1)
     {event : setup.informationGraph.EventId} (turn : view.application.publicView.ownTurn? focal =
@@ -83,7 +84,8 @@ theorem forcedAgent_of_responder_preserving_repair (wellFormed : setup.WellForme
       (some control) ⟨joint, legal⟩).support)
     (isPrefix : TracePrefix (prior.extend joint legal realized) history.1.trace)
     (acting : control.actor = some responder) :
-    forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks) (initialLaw setup)
+    forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks)
+      (initialDistribution setup)
       horizon scheduler
       responder ((application setup timeouts leaks).observe responder (some control)) := by
   classical
@@ -176,7 +178,7 @@ theorem forcedAgent_of_responder_preserving_repair (wellFormed : setup.WellForme
         current)),
       TracePrefix priorTrace image → forcedAgent (timeouts := timeouts) (bounds.onePacketMenu
         timeouts leaks)
-        (initialLaw setup) horizon scheduler responder
+        (initialDistribution setup) horizon scheduler responder
           ((application setup timeouts leaks).observe responder (some current)) := by
     intro current priorTrace prefixOf
     exact forcedAgent_of_splice (timeouts := timeouts) wellFormed priors covered
@@ -185,7 +187,8 @@ theorem forcedAgent_of_responder_preserving_repair (wellFormed : setup.WellForme
       (decodedPoint_staticAt witnessDecoded) readyOwn succeed priorTrace prefixOf different
   have forcedRecord := forcedAgent_of_recorded_decision (timeouts := timeouts) image responder
     forcedPrefixes imageMember
-  change forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks) (initialLaw setup)
+  change forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks)
+    (initialDistribution setup)
     horizon
     scheduler responder
       ((onePacketInformation setup timeouts leaks bounds horizon scheduler).infoOf
@@ -206,7 +209,8 @@ theorem forcedAgent_of_intended_witness_repairs (wellFormed : setup.WellFormed)
     {past : List (application setup timeouts leaks).PlayerEntry}
     {view : (application setup timeouts leaks).PlayerView}
     (decision : site.1 = some (past, view))
-    (forced : forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks) (initialLaw
+    (forced : forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks)
+      (initialDistribution
       setup)
       horizon scheduler focal site.1)
     {event : setup.informationGraph.EventId} (turn : view.application.publicView.ownTurn? focal =
@@ -230,7 +234,8 @@ theorem forcedAgent_of_intended_witness_repairs (wellFormed : setup.WellFormed)
       (some control) ⟨joint, legal⟩).support)
     (isPrefix : TracePrefix (prior.extend joint legal realized) history.1.trace)
     (acting : control.actor = some responder) :
-    forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks) (initialLaw setup)
+    forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks)
+      (initialDistribution setup)
       horizon scheduler
       responder ((application setup timeouts leaks).observe responder (some control)) := by
   refine forcedAgent_of_responder_preserving_repair (timeouts := timeouts) wellFormed priors covered

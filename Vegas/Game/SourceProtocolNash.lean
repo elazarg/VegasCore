@@ -47,7 +47,7 @@ omit [Finite Player] in
 /-- Play over source histories has the written-order law. Every legal protocol
 profile reads out as the source profile it decodes to, and every admitted source
 profile, played through the protocol, reads out as itself. -/
-theorem protocol_readout_law :
+theorem protocol_readout_distribution_eq :
     (∀ profile : Profile (setup.informationModel admission).behavioralSignature,
       ((setup.informationModel admission).runBehavioral profile
           (instructionCount setup.program + 1)).map
@@ -96,7 +96,7 @@ variable {Observation : Type}
 
 /-- The whole utility-vector law agrees for every protocol profile, not only
 encoded equilibria. Undefined and infinite expectations are therefore preserved. -/
-theorem protocol_payoff_law
+theorem protocol_payoff_distribution
     (utility : Observation → Player → ℝ)
     (profile : Profile (setup.informationModel admission).behavioralSignature) :
     ((setup.informationModel admission).runBehavioral profile
@@ -134,7 +134,7 @@ theorem protocol_euPreferenceWithin_iff
       ((setup.observedGameForm readout).play (setup.decodeBehavioralProfile admission second)) := by
   have has (profile : Profile (setup.informationModel admission).behavioralSignature) :=
     hasExpectation_observed_law_iff _ _ _ _ (fun values : Player → ℝ => values who)
-      (setup.protocol_payoff_law admission readout utility profile)
+      (setup.protocol_payoff_distribution admission readout utility profile)
   have value (profile : Profile (setup.informationModel admission).behavioralSignature) :
       extendedExpectedUtility
         (fun final owner => (setup.protocolReadout final.state).elim 0
@@ -144,7 +144,7 @@ theorem protocol_euPreferenceWithin_iff
       extendedExpectedUtility utility who
         ((setup.observedGameForm readout).play (setup.decodeBehavioralProfile admission profile)) :=
     extendedExpect_observed_law_eq _ _ _ _ (fun values : Player → ℝ => values who)
-      (setup.protocol_payoff_law admission readout utility profile)
+      (setup.protocol_payoff_distribution admission readout utility profile)
   exact and_congr (has first) (and_congr (has second) (by rw [value first, value second]))
 
 /-- Admission may remove source deviations, so a full-source equilibrium remains

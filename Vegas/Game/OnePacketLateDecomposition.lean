@@ -48,17 +48,18 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
   (bounds : MessageBounds setup.informationGraph) (horizon : Nat)
   (scheduler : (application setup timeouts leaks).Scheduler)
-  [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
-  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+  [(application setup timeouts leaks).FiniteNature (initialDistribution setup) scheduler]
+  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds
+    (initialDistribution setup) horizon
     scheduler).InfoState who)]
 
 local notation "onePacketN" =>
-  onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+  onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
 
 /-- **The failure set of an agent of the one-packet game**: the event-level
 failed histories of its pending event, and none without one. -/
 def onePacketFailed (agent : (onePacketN).InformationAgent (onePacketN).playedInformation) :
-    Set ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    Set ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).History :=
   match pendingEvent setup timeouts leaks agent.1 agent.2.1 with
   | none => ∅
@@ -75,7 +76,7 @@ open Classical in
 at the point the history's configuration decodes to after `rank` events, when
 that point is a point of the intended game; the exclusion payoff otherwise. -/
 def decodedPointValue (profile : BehavioralProfile setup.program) (who : Player) (rank : Nat)
-    (history : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup)
+    (history : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup)
       horizon scheduler).History) : ℝ :=
   match history.state with
   | none => excludedPayoff who
@@ -107,13 +108,14 @@ site's failure set otherwise. -/
 def historyStopValue (assessment : (onePacketN).BehavioralAssessment)
     (profile : BehavioralProfile setup.program) {who : Player}
     (site : (onePacketN).InformationSite who) (law : PMF ((onePacketN).Choice who site.1))
-    (history : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup)
+    (history : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup)
       horizon scheduler).History) : ℝ :=
   let menu := bounds.onePacketMenu timeouts leaks
-  let certificate := (menu.bounded (initialLaw setup) horizon scheduler).wellFoundedHistories
+  let certificate := (menu.bounded (initialDistribution setup) horizon
+    scheduler).wellFoundedHistories
   let installed := Profile.update (sig := (onePacketN).behavioralSignature) assessment.strategy
     who ((assessment.strategy who).withLaw site.1 law)
-  let payoff := fun final : (menu.protocol (initialLaw setup) horizon scheduler).History =>
+  let payoff := fun final : (menu.protocol (initialDistribution setup) horizon scheduler).History =>
     if final ∈ onePacketFailed setup timeouts leaks bounds horizon scheduler ((onePacketN).agentAt
       site)
     then 0 else exclusionBase setup timeouts parameter utility excludedPayoff leaks final.state who
@@ -164,8 +166,9 @@ private theorem expect_mem_Icc {α : Type*} (law : PMF α) (payoff : α → ℝ)
     (fun point _ => (within point).1) (payoffIntegrable_constant law low) integrable
   rwa [expect_constant] at lower
 
-omit [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
-  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+omit [(application setup timeouts leaks).FiniteNature (initialDistribution setup) scheduler]
+  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds
+    (initialDistribution setup) horizon
     scheduler).InfoState who)] in
 /-- **The continuation value of a site is between the exclusion payoff and the
 upper utility.** Under the hypotheses of `Vegas.sourcePointValue_mem_Icc` for
@@ -176,7 +179,7 @@ theorem siteValue_mem_Icc (assessment : (onePacketN).BehavioralAssessment)
     (site : (onePacketN).InformationSite who)
     (upper : ℝ) (le_upper : ∀ outcome, utility outcome who ≤ upper)
     (below : ∀ point, IntendedReached setup point →
-      ∀ terminal ∈ (ProtocolState.continuationLaw setup.program profile point).support,
+      ∀ terminal ∈ (ProtocolState.continuationDistribution setup.program profile point).support,
         excludedPayoff who ≤ utility (setup.parameterOutcome parameter terminal) who) :
     excludedPayoff who ≤ siteValue setup timeouts leaks bounds horizon scheduler parameter utility
         excludedPayoff assessment profile site ∧

@@ -78,7 +78,8 @@ private theorem regularTrace_of_debtFree_weight (wellFormed : setup.WellFormed)
         (pos_and_pos_or_neg_and_neg_of_mul_pos positive).resolve_right fun negative =>
           absurd negative.1 (not_lt.mpr (othersSourceWeight_nonneg (timeouts := timeouts) assessment
             who prior))
-      have realizedRaw : some control ∈ ((application setup timeouts leaks).transition (initialLaw
+      have realizedRaw : some control ∈ ((application setup timeouts leaks).transition
+        (initialDistribution
         setup)
           horizon scheduler before joint).support := realized
       cases before with
@@ -93,7 +94,7 @@ private theorem regularTrace_of_debtFree_weight (wellFormed : setup.WellFormed)
           have forced := fun player =>
             forcedState_of_debtFree (timeouts := timeouts) wellFormed prior freeCurrent player
           refine ⟨⟨⟨⟨_, prior⟩, ?_, forced actor⟩, forced who⟩, ?_⟩
-          · exact (bounds.onePacketMenu timeouts leaks).info (initialLaw setup)
+          · exact (bounds.onePacketMenu timeouts leaks).info (initialDistribution setup)
               horizon scheduler actor _
           · unfold transitionSourceFactor at factorPos
             simp only [acting, other, ↓reduceIte] at factorPos

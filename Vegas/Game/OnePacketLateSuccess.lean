@@ -5,7 +5,7 @@ module
 public import GameTheoryExtensions.Analysis.Protocol.StoppedTerminalBound
 public import Vegas.Game.SourceServiceAsyncStep
 public import Vegas.Game.RevealServiceCalendarState
-public import Vegas.Game.OnePacketLawApproximation
+public import Vegas.Game.OnePacketDistributionApproximation
 public import Vegas.Game.OnePacketExclusionPayoff
 public import Vegas.Game.OnePacketIntendedProjection
 public import Vegas.Game.OnePacketCompletion
@@ -154,11 +154,12 @@ theorem pendingAt_serviceInvariant (scheduler : (application setup timeouts leak
 pending at some rank. -/
 theorem pendingAt_history {horizon : Nat} {scheduler : (application setup timeouts leaks).Scheduler}
     {control : (application setup timeouts leaks).Control}
-    (trace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((application setup timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace
       (some control)) :
     ∃ rank, PendingAt setup timeouts leaks rank control.execution :=
-  (pendingAt_serviceInvariant (timeouts := timeouts) scheduler).history (initialLaw setup) horizon
+  (pendingAt_serviceInvariant (timeouts := timeouts) scheduler).history
+    (initialDistribution setup) horizon
     (fun state supported => by
       obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ supported
       exact ⟨0, EventOrder.Cut.empty_isPrefix _, fun _ entry member =>
@@ -185,23 +186,23 @@ variable [Fintype Player] {bounds : MessageBounds setup.informationGraph} {horiz
 /-- At the first completion stop, the ready event has one primary graph step
 followed by the native automatic completion. -/
 theorem lateStop_primary_drain
-    (certificate : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup)
+    (certificate : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup)
       horizon scheduler).WellFoundedHistories)
     (players : ∀ player, ((bounds.onePacketMenu timeouts leaks).information
-      (initialLaw setup) horizon scheduler).BehavioralPolicy player)
+      (initialDistribution setup) horizon scheduler).BehavioralPolicy player)
     {sent : setup.informationGraph.Config} {rank : Nat} (ordered : sent.cut.IsPrefix rank)
     {event : setup.informationGraph.EventId} (ready : sent.cut.Ready event)
     (terminalCompleted : ∀ (final : (application setup timeouts leaks).Control),
-      ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+      ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
         scheduler).Trace (some final) →
       (application setup timeouts leaks).terminal (some final) →
       final.execution.application.config = sent →
       event ∈ final.execution.application.config.cut.completed)
-    (start : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (start : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).History) {control : (application setup timeouts leaks).Control}
     (current : start.state = some control)
     (atSent : control.execution.application.config = sent) :
-    ∀ stop ∈ (((bounds.onePacketMenu timeouts leaks).information (initialLaw setup)
+    ∀ stop ∈ (((bounds.onePacketMenu timeouts leaks).information (initialDistribution setup)
         horizon scheduler).runBehavioralUntil certificate players
         (LateStopped setup timeouts leaks bounds horizon scheduler rank) start).support,
       ∃ final, stop.state = some final ∧
@@ -211,7 +212,7 @@ theorem lateStop_primary_drain
             final.execution.application.config = primary.drain.config := by
   intro stop member
   let menu := bounds.onePacketMenu timeouts leaks
-  let model := menu.information (initialLaw setup) horizon scheduler
+  let model := menu.information (initialDistribution setup) horizon scheduler
   have rankEq := (ready_iff_rank setup sent rank ordered event).mp ready
   let held := fun reachedState : (application setup timeouts leaks).ProtocolState =>
     ∃ reachedControl, reachedState = some reachedControl ∧
@@ -224,17 +225,19 @@ theorem lateStop_primary_drain
     (LateStopped setup timeouts leaks bounds horizon scheduler rank) held
     (fun history going _ joint legal target holds reached => by
       obtain ⟨before, beforeState, atBefore⟩ := holds
-      have reached' : target ∈ ((application setup timeouts leaks).transition (initialLaw setup)
+      have reached' : target ∈ ((application setup timeouts leaks).transition
+        (initialDistribution setup)
         horizon scheduler history.state joint).support := reached
       rw [beforeState] at reached'
       obtain ⟨next, rfl, _⟩ := (application setup timeouts leaks).transition_recall_prefix
-        (initialLaw setup) horizon scheduler before target joint reached'
+        (initialDistribution setup) horizon scheduler before target joint reached'
       refine ⟨next, rfl, ?_⟩
       rcases atBefore with same | ⟨action, primary, inStep, drained⟩
-      · have rawTrace := menu.toRawTrace (initialLaw setup) horizon scheduler
+      · have rawTrace := menu.toRawTrace (initialDistribution setup) horizon scheduler
           (beforeState ▸ history.trace)
         have facts := legalFacts setup leaks horizon scheduler before rawTrace
-        rcases reactive_protocol_primary_or_stutter timeouts leaks (initialLaw setup) horizon
+        rcases reactive_protocol_primary_or_stutter timeouts leaks
+          (initialDistribution setup) horizon
           scheduler before next joint facts.quiescent reached' with
           stays | ⟨completed, completedReady, found, primary, inStep, drained⟩
         · exact Or.inl (stays.trans same)
@@ -284,7 +287,7 @@ variable (setup timeouts leaks) in
 /-- The intended, fresh source point at the actual endpoint after the target
 source event completes. -/
 def completionPoint (rank : Nat) (fresh : (application setup timeouts leaks).Control → Prop)
-    (history : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup)
+    (history : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup)
       horizon scheduler).History) : Option (ProtocolState setup.program) :=
   match history.state with
   | none => none
@@ -303,9 +306,9 @@ variable (setup timeouts leaks) in
 target event has completed and that endpoint is intended and fresh. -/
 def completionValue (profile : BehavioralProfile setup.program) (rank : Nat)
     (fresh : (application setup timeouts leaks).Control → Prop) (who : Player)
-    (fallback : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup)
+    (fallback : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup)
       horizon scheduler).History → ℝ)
-    (history : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup)
+    (history : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup)
       horizon scheduler).History) : ℝ :=
   (completionPoint setup timeouts leaks bounds horizon scheduler rank fresh history).elim
     (fallback history) (sourcePointValue setup parameter utility excludedPayoff profile who)
@@ -324,20 +327,22 @@ variable [Fintype Player] (bounds : MessageBounds setup.informationGraph) {horiz
 runtime. -/
 theorem onePacket_step_transition
     (profile : ∀ who,
-      (onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+      (onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon
         scheduler).BehavioralPolicy who)
-    {history next : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup)
+    {history next : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup)
       horizon scheduler).History}
-    (running : ¬ ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup)
+    (running : ¬ ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup)
       horizon scheduler).terminal history.state)
-    (member : next ∈ ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+    (member : next ∈ ((onePacketModel setup timeouts leaks bounds
+      (initialDistribution setup) horizon
       scheduler).runBehavioralFrom profile 1 history).support) :
     ∃ joint : Player → Option (application setup timeouts leaks).Action,
-      next.state ∈ ((application setup timeouts leaks).transition (initialLaw setup) horizon
+      next.state ∈ ((application setup timeouts leaks).transition
+        (initialDistribution setup) horizon
         scheduler
         history.state joint).support := by
   obtain ⟨⟨joint, _, realized⟩, _⟩ :=
-    (onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+    (onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon
       scheduler).mem_support_runBehavioralFrom_one profile running member
   exact ⟨joint, realized⟩
 

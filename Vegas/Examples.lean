@@ -11,7 +11,7 @@ public import Vegas.Examples.BoundedAuctionRoster
 public import Vegas.Examples.BoundedAuctionService
 public import Vegas.Examples.CommitRevealAuction
 public import Vegas.Examples.CommitTimingInformationSource
-public import Vegas.Examples.ConcurrentRevealOrderLaw
+public import Vegas.Examples.ConcurrentRevealOrderDistribution
 public import Vegas.Examples.CorrelatedInitialBits
 public import Vegas.Examples.CorrelatedInitialBitsEquilibrium
 public import Vegas.Examples.CorrelatedInitialBitsInformation
@@ -25,7 +25,7 @@ public import Vegas.Examples.OddsEvensEquilibrium
 public import Vegas.Examples.OddsEvensConcurrentGraph
 public import Vegas.Examples.OddsEvensConcurrentNative
 public import Vegas.Examples.OddsEvensFairDecode
-public import Vegas.Examples.OddsEvensFairLaw
+public import Vegas.Examples.OddsEvensFairDistribution
 public import Vegas.Examples.OddsEvensFairProfile
 public import Vegas.Examples.OddsEvensFairSequential
 public import Vegas.Examples.OddsEvensFairValue

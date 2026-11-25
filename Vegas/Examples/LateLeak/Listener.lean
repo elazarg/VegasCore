@@ -50,7 +50,7 @@ theorem lateLeak_listener_support_maximal {A : (lateLeakModel G late).Behavioral
     (site : (lateLeakModel G late).InformationSite .listener) (signal : LateLeakSignal)
     (at_signal : site.1 = .asked signal) (answer other : LateLeakAnswer)
     (fitsAnswer : answer.fits signal) (fitsOther : other.fits signal)
-    (supported : lateLeakReplyLaw A.strategy signal (some (.reply answer)) ≠ 0) :
+    (supported : lateLeakReplyDistribution A.strategy signal (some (.reply answer)) ≠ 0) :
     lateLeakAnswerReward A site other ≤ lateLeakAnswerReward A site answer := by
   rcases site with ⟨info, decision⟩
   change info = .asked signal at at_signal
@@ -60,7 +60,7 @@ theorem lateLeak_listener_support_maximal {A : (lateLeakModel G late).Behavioral
   have maximal := problem.rational_support_maximal A
     ((A.isSequentiallyRational_iff_with _ _).mp rational)
     ⟨some (.reply answer), ⟨answer, rfl, fitsAnswer⟩⟩ (by
-      rw [lateLeakReplyLaw_apply _ _ _ fitsAnswer] at supported
+      rw [lateLeakReplyDistribution_apply _ _ _ fitsAnswer] at supported
       exact (PMF.mem_support_iff _ _).mpr supported)
     ⟨some (.reply other), ⟨other, rfl, fitsOther⟩⟩
   simp only [InformationModel.ContinuationDecision.expectedReward,
@@ -83,16 +83,18 @@ theorem lateLeak_answerReward_const (A : (lateLeakModel G late).BehavioralAssess
   rw [state_eq]
   exact each secret resolution signal_eq
 
-theorem lateLeakReplyLaw_bitZero (profile : LateLeakProfile G late) (signal : LateLeakSignal)
+theorem lateLeakReplyDistribution_bitZero (profile : LateLeakProfile G late)
+    (signal : LateLeakSignal)
     (failed : signal.success = false) :
-    (lateLeakReplyLaw profile signal (some (.reply (.failure false)))).toReal =
+    (lateLeakReplyDistribution profile signal (some (.reply (.failure false)))).toReal =
       1 - lateLeakBitOneProb profile signal := by
   classical
-  have computed := lateLeak_expect_two_point (lateLeakReplyLaw profile signal)
+  have computed := lateLeak_expect_two_point (lateLeakReplyDistribution profile signal)
     (some (.reply (.failure true)))
     (fun choice => if some (LateLeakMove.reply (.failure false)) = choice then 1 else 0)
     1 (fun choice supported different => by
-      obtain ⟨answer, rfl, fits⟩ := lateLeakReplyLaw_support profile signal choice supported
+      obtain ⟨answer, rfl, fits⟩ := lateLeakReplyDistribution_support profile signal choice
+        supported
       cases answer with
       | failure bit =>
           cases bit
@@ -115,7 +117,7 @@ theorem lateLeak_rational_leaked_failure {A : (lateLeakModel G late).BehavioralA
     intro secret resolution signal_eq
     cases resolution <;> simp_all [lateLeakSignal, lateLeakListenerPayoff,
       LateLeakResolution.succeeded]
-  have wrong : lateLeakReplyLaw A.strategy (.leakedFailure bit)
+  have wrong : lateLeakReplyDistribution A.strategy (.leakedFailure bit)
       (some (.reply (.failure (!bit)))) = 0 := by
     by_contra supported
     have maximal := lateLeak_listener_support_maximal rational site _ at_signal
@@ -124,7 +126,7 @@ theorem lateLeak_rational_leaked_failure {A : (lateLeakModel G late).BehavioralA
     cases bit <;> norm_num at maximal
   cases bit
   · simpa [lateLeakBitOneProb] using congrArg ENNReal.toReal wrong
-  · have zero := lateLeakReplyLaw_bitZero A.strategy (.leakedFailure true) rfl
+  · have zero := lateLeakReplyDistribution_bitZero A.strategy (.leakedFailure true) rfl
     rw [show (!true) = false from rfl] at wrong
     rw [wrong, ENNReal.toReal_zero] at zero
     simp only [ite_true]
@@ -248,7 +250,7 @@ theorem lateLeak_rational_guesses {A : (lateLeakModel G late).BehavioralAssessme
     (label : LateLeakLabel) (unlikely : lateLeakAnswerReward A site (.guess label) = 0) :
     lateLeakSafeProb A.strategy signal = 0 := by
   by_contra positive
-  have supported : lateLeakReplyLaw A.strategy signal (some (.reply .safe)) ≠ 0 := by
+  have supported : lateLeakReplyDistribution A.strategy signal (some (.reply .safe)) ≠ 0 := by
     intro zero
     exact positive (by rw [lateLeakSafeProb, zero, ENNReal.toReal_zero])
   have bound (other : LateLeakLabel) : lateLeakAnswerReward A site (.guess other) ≤ 2 / 5 :=

@@ -63,8 +63,8 @@ theorem runPlan_actionTable_prefix
         exact otherReady.1 ((ordered.2 other).mpr (by omega))
       obtain ⟨owner, actor⟩ := owned event (by rfl) (by dsimp only [event]; omega)
       have pureAction : ∃ action,
-          actionLaw (actionTableProfile table) config event = PMF.pure action := by
-        rw [actionLaw_of_actor _ _ actor]
+          actionDistribution (actionTableProfile table) config event = PMF.pure action := by
+        rw [actionDistribution_of_actor _ _ actor]
         split
         · exact ⟨_, rfl⟩
         · exact ⟨table event, rfl⟩

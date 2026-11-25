@@ -34,13 +34,14 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
   {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
-  [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
-  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+  [(application setup timeouts leaks).FiniteNature (initialDistribution setup) scheduler]
+  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds
+    (initialDistribution setup) horizon
     scheduler).InfoState who)]
   [Finite setup.intendedProtocol.History]
 
 local notation "onePacketN" =>
-  onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+  onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
 
 /-- **The honest-counterpart inputs from domination.** At the tremble scale over
 the combined floor of the source sequence to a depth, a regular counterpart of
@@ -87,8 +88,9 @@ def OnePacketCounterpartInputs.ofDomination
 variable [DecidableEq (CellTy Player L)]
 
 omit [Finite setup.intendedProtocol.History] [DecidableEq (CellTy Player L)]
-  [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
-  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+  [(application setup timeouts leaks).FiniteNature (initialDistribution setup) scheduler]
+  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds
+    (initialDistribution setup) horizon
     scheduler).InfoState who)] in
 /-- A history at a decision input is initialized and decodes. -/
 theorem decoded_of_decision {who : Player} {past : List (application setup timeouts
@@ -112,9 +114,9 @@ omit [Finite setup.intendedProtocol.History] [DecidableEq (CellTy Player L)] in
 /-- **A debt-free witness.** At a site whose agent is forced and owes no failure,
 some history of the site decodes to a point at which nobody owes a failure. -/
 theorem exists_debtFree_witness {who : Player} {site : (onePacketN).InformationSite who}
-    (forced : ¬ FreeAgent setup timeouts leaks bounds (initialLaw setup)
+    (forced : ¬ FreeAgent setup timeouts leaks bounds (initialDistribution setup)
       horizon scheduler ((onePacketN).agentAt site))
-    (notOwing : ¬ OwingAgent setup timeouts leaks bounds (initialLaw setup)
+    (notOwing : ¬ OwingAgent setup timeouts leaks bounds (initialDistribution setup)
       horizon scheduler ((onePacketN).agentAt
       site)) :
     ∃ (witness : (onePacketN).InformationHistory who site.1)
@@ -123,9 +125,10 @@ theorem exists_debtFree_witness {who : Player} {site : (onePacketN).InformationS
         decodedPoint setup control.execution.application.config = some w ∧
         ∀ player, ¬ ProtocolState.OwesFailure player setup.program w := by
   have isForced : forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks)
-    (initialLaw setup)
+    (initialDistribution setup)
       horizon scheduler who site.1 :=
-    forcedAgent_of_not_free setup timeouts leaks bounds (initialLaw setup) horizon scheduler forced
+    forcedAgent_of_not_free setup timeouts leaks bounds (initialDistribution setup) horizon
+      scheduler forced
   obtain ⟨history, info, forcedState⟩ := isForced
   obtain ⟨state, trace⟩ := history
   cases state with
@@ -166,7 +169,7 @@ def OnePacketCounterpartInputs.ofReachComparisons
       (combinedFloor setup timeouts leaks bounds horizon scheduler (sequence n)) (2 * horizon +
         2) n)
     {slots : Nat}
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialDistribution setup)
       horizon scheduler slots p))
     {targetSequence : ℕ → (onePacketN).BehavioralAssessment}
     (assembled : OnePacketAssembled setup timeouts leaks bounds horizon scheduler sequence scale

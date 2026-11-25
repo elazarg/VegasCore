@@ -37,7 +37,7 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (scheduler : (application setup timeouts leaks).Scheduler)
 
 local notation "NativeScheduler" => scheduler
-local notation "N" => onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+local notation "N" => onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon
   scheduler
 local notation "Clear" => ReactiveApplication.stateInvariant
   (app := application setup timeouts leaks)
@@ -48,12 +48,12 @@ local notation "Clear" => ReactiveApplication.stateInvariant
 profile gives a total mass at most square plus scale to every response event
 disjoint from source-main support. The original common weights are retained. -/
 theorem assembled_event_le_of_disjoint_main
-    [(application setup timeouts leaks).FiniteNature (initialLaw setup) (NativeScheduler)]
+    [(application setup timeouts leaks).FiniteNature (initialDistribution setup) (NativeScheduler)]
     [∀ who, DecidableEq ((N).InfoState who)]
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (scale : ℕ → ℝ) (positive : ∀ n, 0 < scale n) (le_one : ∀ n, scale n ≤ 1)
     {slots : Nat}
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialDistribution setup)
       horizon scheduler slots p))
     (targetSequence : ℕ → (N).BehavioralAssessment)
     (assembled : OnePacketAssembled setup timeouts leaks bounds horizon scheduler sequence scale
@@ -62,20 +62,22 @@ theorem assembled_event_le_of_disjoint_main
     (who : Player) (info : (application setup timeouts leaks).Info)
     (nonlate : ¬ LateDelivery setup timeouts leaks who info)
     (occurs : ∃ history : (ReactiveApplication.ResponseMenu.protocol
-      (bounds.onePacketMenu timeouts leaks) (initialLaw setup) horizon
+      (bounds.onePacketMenu timeouts leaks) (initialDistribution setup) horizon
         (NativeScheduler)).History, (N).infoOf who history.trace = info)
     (forced : Vegas.forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks)
-      (initialLaw setup)
+      (initialDistribution setup)
       horizon (NativeScheduler) who info)
     (clear : info.isSome → (ClearInput timeouts) leaks info)
     (event : Set ((N).Choice who info))
     (disjoint : Disjoint
-      (honestChoice setup timeouts leaks bounds (initialLaw setup) horizon (NativeScheduler)
+      (honestChoice setup timeouts leaks bounds (initialDistribution setup) horizon
+        (NativeScheduler)
         (sequence n)
         who info).support event) :
     ((((targetSequence n).strategy who info).toOuterMeasure event).toReal) ≤ (scale n) ^ 2 +
       scale n := by
-  let main := honestChoice setup timeouts leaks bounds (initialLaw setup) horizon (NativeScheduler)
+  let main := honestChoice setup timeouts leaks bounds (initialDistribution setup) horizon
+    (NativeScheduler)
     (sequence n) who info
   let law := (targetSequence n).strategy who info
   have dominates : ∀ choice, slotRetention (scale n) * (main choice).toReal ≤
@@ -107,7 +109,8 @@ private theorem responseChoice_getD_eq
     (who : Player) (past : List (application setup timeouts leaks).PlayerEntry)
     (view : (application setup timeouts leaks).PlayerView)
     (choice : (N).Choice who (some (past, view))) :
-    responseChoice setup timeouts leaks bounds (initialLaw setup) horizon (NativeScheduler) who
+    responseChoice setup timeouts leaks bounds (initialDistribution setup) horizon
+      (NativeScheduler) who
       (some (past, view)) (choice.1.getD ⟨none⟩) = choice := by
   classical
   rcases choice with ⟨value, allowed⟩
@@ -121,13 +124,13 @@ private theorem responseChoice_getD_eq
 focal policy, puts at most square plus scale on violating the foreign fresh-main
 condition. Idle, focal, and nonfirst callbacks have no such violation. -/
 theorem assembled_joint_mainActivation_failure_le
-    [(application setup timeouts leaks).FiniteNature (initialLaw setup) (NativeScheduler)]
+    [(application setup timeouts leaks).FiniteNature (initialDistribution setup) (NativeScheduler)]
     [∀ who, DecidableEq ((N).InfoState who)]
     (wellFormed : setup.WellFormed)
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (scale : ℕ → ℝ) (positive : ∀ n, 0 < scale n) (le_one : ∀ n, scale n ≤ 1)
     {slots : Nat}
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialDistribution setup)
       horizon scheduler slots p))
     (targetSequence : ℕ → (N).BehavioralAssessment)
     (assembled : OnePacketAssembled setup timeouts leaks bounds horizon scheduler sequence scale
@@ -152,30 +155,31 @@ theorem assembled_joint_mainActivation_failure_le
         (some control) draw.1}).toReal) ≤ (scale n) ^ 2 + scale n := by
   classical
   let profile := Function.update ((targetSequence n).strategy) focal focalPolicy
-  let jointLaw := (N).behavioralJoint profile trace running
+  let jointDistribution := (N).behavioralJoint profile trace running
   let bad : Set {joint : Player → Option (application setup timeouts leaks).Action //
       (onePacketProtocol setup timeouts leaks bounds horizon (NativeScheduler)).Legal
         (some control) joint} :=
     {draw | ¬ MainActivationStep setup timeouts leaks bounds horizon (NativeScheduler) (sequence n)
       focal (some control) draw.1}
-  change (jointLaw.toOuterMeasure bad).toReal ≤ _
+  change (jointDistribution.toOuterMeasure bad).toReal ≤ _
   by_cases eligible : ∃ owner, control.actor = some owner ∧ owner ≠ focal ∧
       FirstActivation setup timeouts leaks owner (some (control.execution.logs owner,
         control.execution.observe (application setup timeouts leaks) owner))
   · obtain ⟨owner, active, different, first⟩ := eligible
     let info := some (control.execution.logs owner,
       control.execution.observe (application setup timeouts leaks) owner)
-    let main := honestChoice setup timeouts leaks bounds (initialLaw setup) horizon
+    let main := honestChoice setup timeouts leaks bounds (initialDistribution setup) horizon
       (NativeScheduler)
       (sequence n) owner info
     let optionBad := {selected : Option (application setup timeouts leaks).Action |
-      responseChoice setup timeouts leaks bounds (initialLaw setup) horizon (NativeScheduler) owner
+      responseChoice setup timeouts leaks bounds (initialDistribution setup) horizon
+        (NativeScheduler) owner
         info
         (selected.getD ⟨none⟩) ∉ main.support}
     have infoEq : (N).infoOf owner trace = info := by
       rw [onePacket_infoOf]
       simp only [ReactiveApplication.observe, active, ↓reduceIte, info]
-    have marginal : jointLaw.map (fun draw => draw.1 owner) =
+    have marginal : jointDistribution.map (fun draw => draw.1 owner) =
         ((targetSequence n).strategy owner info).map Subtype.val := by
       calc
         _ = (profile owner ((N).infoOf owner trace)).map Subtype.val :=
@@ -195,7 +199,7 @@ theorem assembled_joint_mainActivation_failure_le
         exact outside (supported owner active different first)
     have choiceEvent : Subtype.val ⁻¹' optionBad = main.supportᶜ := by
       ext choice
-      change (responseChoice setup timeouts leaks bounds (initialLaw setup) horizon
+      change (responseChoice setup timeouts leaks bounds (initialDistribution setup) horizon
         (NativeScheduler) owner
         info (choice.1.getD ⟨none⟩) ∉ main.support) ↔ choice ∉ main.support
       rw [responseChoice_getD_eq]
@@ -204,11 +208,12 @@ theorem assembled_joint_mainActivation_failure_le
         trace clear regular
         notOwed owner)
     rw [infoEq] at forced
-    have massEq : (jointLaw.toOuterMeasure bad).toReal =
+    have massEq : (jointDistribution.toOuterMeasure bad).toReal =
         (((targetSequence n).strategy owner info).toOuterMeasure main.supportᶜ).toReal := by
       calc
-        (jointLaw.toOuterMeasure bad).toReal =
-            ((jointLaw.map (fun draw => draw.1 owner)).toOuterMeasure optionBad).toReal := by
+        (jointDistribution.toOuterMeasure bad).toReal =
+            ((jointDistribution.map (fun draw => draw.1 owner)).toOuterMeasure optionBad).toReal :=
+              by
           rw [PMF.toOuterMeasure_map_apply, eventEq]
           rfl
         _ = ((((targetSequence n).strategy owner info).map Subtype.val).toOuterMeasure
@@ -220,14 +225,14 @@ theorem assembled_joint_mainActivation_failure_le
       ⟨control.execution.logs owner,
         control.execution.observe (application setup timeouts leaks) owner, rfl, clear⟩
     calc
-      (jointLaw.toOuterMeasure bad).toReal = _ := massEq
+      (jointDistribution.toOuterMeasure bad).toReal = _ := massEq
       _ ≤ _ := assembled_event_le_of_disjoint_main setup timeouts leaks bounds horizon
         scheduler sequence scale positive le_one weights targetSequence assembled n owner info
         (not_lateDelivery_of_firstActivation (timeouts := timeouts) first) ⟨⟨some control, trace⟩,
           infoEq⟩ forced clearInfo
         main.supportᶜ disjoint_compl_right
-  · have zero : jointLaw.toOuterMeasure bad = 0 :=
-      (PMF.toOuterMeasure_apply_eq_zero_iff jointLaw bad).mpr
+  · have zero : jointDistribution.toOuterMeasure bad = 0 :=
+      (PMF.toOuterMeasure_apply_eq_zero_iff jointDistribution bad).mpr
         (Set.disjoint_left.mpr fun draw _ outside => outside fun owner active different first =>
           (eligible ⟨owner, active, different, first⟩).elim)
     rw [zero, ENNReal.toReal_zero]
@@ -301,14 +306,14 @@ private theorem oneStep_marker_mass_eq_joint
 callback leaves source-main support is bounded by square plus scale times the
 actual remaining protocol rank. The focal policy is arbitrary. -/
 theorem assembled_marker_mass_le_rank
-    [(application setup timeouts leaks).FiniteNature (initialLaw setup) (NativeScheduler)]
+    [(application setup timeouts leaks).FiniteNature (initialDistribution setup) (NativeScheduler)]
     [∀ who, DecidableEq ((N).InfoState who)]
     (wellFormed : setup.WellFormed) (covers : bounds.CoversOutputValues)
     (capacity : ∀ who, bindingEventCount setup.informationGraph who < bounds.candidateCount)
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (scale : ℕ → ℝ) (positive : ∀ n, 0 < scale n) (le_one : ∀ n, scale n ≤ 1)
     {slots : Nat}
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialDistribution setup)
       horizon scheduler slots p))
     (targetSequence : ℕ → (N).BehavioralAssessment)
     (assembled : OnePacketAssembled setup timeouts leaks bounds horizon scheduler sequence scale
@@ -391,7 +396,7 @@ theorem assembled_marker_mass_le_rank
     cases beforeState
     obtain ⟨after, afterState, _recall⟩ := (application setup timeouts
       leaks).transition_recall_prefix
-      (initialLaw setup) horizon (NativeScheduler) before target draw.1 realized
+      (initialDistribution setup) horizon (NativeScheduler) before target draw.1 realized
     cases afterState
     have main : MainActivationTraceAfter setup timeouts leaks bounds horizon (NativeScheduler)
       (sequence n)
@@ -434,7 +439,7 @@ theorem assembled_marker_mass_le_rank
       intro history next valid going running member
       obtain ⟨⟨joint, legal, realized⟩, _⟩ :=
         (N).mem_support_runBehavioralFrom_one profile running member
-      exact (application setup timeouts leaks).rank_step (initialLaw setup) horizon
+      exact (application setup timeouts leaks).rank_step (initialDistribution setup) horizon
         (NativeScheduler)
         history.state next.state joint running realized)
     (by
@@ -555,7 +560,8 @@ theorem stopped_foreignFailure_marked
     ¬ MainActivationTraceAfter setup timeouts leaks bounds horizon (NativeScheduler) source focal
       startTrace.length final.trace := by
   classical
-  have boundary := responseMenu_stopped_exclusion_boundary timeouts leaks (initialLaw setup)
+  have boundary := responseMenu_stopped_exclusion_boundary timeouts leaks
+    (initialDistribution setup)
     horizon (NativeScheduler) (bounds.onePacketMenu timeouts leaks) certificate profile
     (fun history => DecodedState setup timeouts leaks (failureProfile setup.program)
       (ProtocolState.OwesFailure focal setup.program) history.state ∨ extraStop history)
@@ -571,14 +577,16 @@ theorem stopped_foreignFailure_marked
   subst finalState
   rcases boundary with finalClear | ⟨remaining, execution, prior, command, next, priorClear,
     priorGoing, _chosen, reached, endpoint, startPrefix, targetPrefix⟩
-  · have rawTarget := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup)
+  · have rawTarget := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup)
       horizon scheduler target
-    have initialEq : initialLaw setup = (setup.initialLaw.map setup.eventInputs).map
+    have initialEq : initialDistribution setup = (setup.initialDistribution.map
+      setup.eventInputs).map
         (EventGraphRuntime.State.initial (graph := setup.informationGraph)) :=
-      serviceInitialLaw_eq_inputs (deps := setup.informationDependencies) setup
+      serviceInitialDistribution_eq_inputs (deps := setup.informationDependencies) setup
     rw [initialEq] at rawTarget
     have evidence : ExclusionEvidence 0 ∅ finalControl.execution.application :=
-      ExclusionEvidence.history timeouts leaks (setup.initialLaw.map setup.eventInputs) horizon
+      ExclusionEvidence.history timeouts leaks (setup.initialDistribution.map setup.eventInputs)
+        horizon
         scheduler rawTarget
     have impossible := (evidence.defaulted_zero owner).mpr ⟨event, owned, failed⟩
     change finalControl.execution.application.config.defaulted = ∅ at finalClear
@@ -605,14 +613,14 @@ theorem stopped_foreignFailure_marked
 profile have probability at most square plus scale times remaining protocol rank.
 The focal policy is arbitrary, and the runner stops at focal source debt. -/
 theorem assembled_foreign_failure_mass_le_rank
-    [(application setup timeouts leaks).FiniteNature (initialLaw setup) (NativeScheduler)]
+    [(application setup timeouts leaks).FiniteNature (initialDistribution setup) (NativeScheduler)]
     [∀ who, DecidableEq ((N).InfoState who)]
     (wellFormed : setup.WellFormed) (covers : bounds.CoversOutputValues)
     (capacity : ∀ who, bindingEventCount setup.informationGraph who < bounds.candidateCount)
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (scale : ℕ → ℝ) (positive : ∀ n, 0 < scale n) (le_one : ∀ n, scale n ≤ 1)
     {slots : Nat}
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialDistribution setup)
       horizon scheduler slots p))
     (targetSequence : ℕ → (N).BehavioralAssessment)
     (assembled : OnePacketAssembled setup timeouts leaks bounds horizon scheduler sequence scale
@@ -707,14 +715,17 @@ private theorem foreign_failure_of_unclear_survival (focal : Player)
   cases state with
   | none => exact (unclear trivial).elim
   | some control =>
-    have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon
+    have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace
+      (initialDistribution setup) horizon
       scheduler trace
-    have initialEq : initialLaw setup = (setup.initialLaw.map setup.eventInputs).map
+    have initialEq : initialDistribution setup = (setup.initialDistribution.map
+      setup.eventInputs).map
         (EventGraphRuntime.State.initial (graph := setup.informationGraph)) :=
-      serviceInitialLaw_eq_inputs (deps := setup.informationDependencies) setup
+      serviceInitialDistribution_eq_inputs (deps := setup.informationDependencies) setup
     rw [initialEq] at rawTrace
     have evidence : ExclusionEvidence 0 ∅ control.execution.application :=
-      ExclusionEvidence.history timeouts leaks (setup.initialLaw.map setup.eventInputs) horizon
+      ExclusionEvidence.history timeouts leaks (setup.initialDistribution.map setup.eventInputs)
+        horizon
         scheduler rawTrace
     change control.execution.application.config.defaulted ≠ ∅ at unclear
     obtain ⟨owner, member⟩ := Finset.nonempty_iff_ne_empty.mpr unclear
@@ -727,14 +738,14 @@ private theorem foreign_failure_of_unclear_survival (focal : Player)
 /-- The actual foreign first-exit event of the debt-stopped common comparison
 profile is bounded by square plus scale times remaining protocol rank. -/
 theorem assembled_foreign_exit_mass_le_rank
-    [(application setup timeouts leaks).FiniteNature (initialLaw setup) (NativeScheduler)]
+    [(application setup timeouts leaks).FiniteNature (initialDistribution setup) (NativeScheduler)]
     [∀ who, DecidableEq ((N).InfoState who)]
     (wellFormed : setup.WellFormed) (covers : bounds.CoversOutputValues)
     (capacity : ∀ who, bindingEventCount setup.informationGraph who < bounds.candidateCount)
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (scale : ℕ → ℝ) (positive : ∀ n, 0 < scale n) (le_one : ∀ n, scale n ≤ 1)
     {slots : Nat}
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialDistribution setup)
       horizon scheduler slots p))
     (targetSequence : ℕ → (N).BehavioralAssessment)
     (assembled : OnePacketAssembled setup timeouts leaks bounds horizon scheduler sequence scale

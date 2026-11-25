@@ -24,7 +24,7 @@ public import GameTheoryExtensionsTests.SignedKernelPullback
 public import GameTheoryExtensionsTests.StoppedCharge
 public import GameTheoryExtensionsTests.SupportedChoiceContinuation
 public import GameTheoryExtensionsTests.TotalVariation
-public import GameTheoryExtensionsTests.ZeroSumOutcomeLaws
+public import GameTheoryExtensionsTests.ZeroSumOutcomeDistributions
 public import GameTheoryExtensionsTests.ProportionalBeliefTransport
 
 @[expose] public section

@@ -4,7 +4,7 @@ module
 
 public import Vegas.Pending.ReactiveGraphSteps
 public import Vegas.EventGraph.SolitaryEvent
-public import Vegas.Pending.ExclusionPolicyLaw
+public import Vegas.Pending.ExclusionPolicyDistribution
 public import Vegas.Pending.CanonicalOutcomeHead
 
 @[expose] public section
@@ -317,7 +317,7 @@ theorem chance_runUntil_bind_runPlan (timeouts : EventTimeouts graph.sequentiali
     (fun config ready action => ownerless_step_bind_runPlan profile config event ready ownerless
       action) ownerless
 
-private theorem runPlan_output_law {compiled : Vegas.EventGraph Player L}
+private theorem runPlan_output_distribution {compiled : Vegas.EventGraph Player L}
     (plan : compiled.EventPlan) (fuel : Nat) (config : compiled.Config)
     (event : compiled.EventId) (completed : event ∈ config.cut.completed) :
     (compiled.runPlan plan fuel config).map (fun final => final.outputs event) =
@@ -330,7 +330,7 @@ private theorem runPlan_output_law {compiled : Vegas.EventGraph Player L}
 
 /-- Once a ready chance event has completed, its stopped output has exactly
 its graph sampling law, including any automatic completions after the draw. -/
-theorem chance_completed_output_law
+theorem chance_completed_output_distribution
     (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (serial : graph.ActorSerial)
@@ -353,15 +353,18 @@ theorem chance_completed_output_law
   let choices := fun who event (actor : graph.actor? event = some who) =>
     PMF.pure ((graph.nodes event).failureAction who actor)
   let profile : graph.BehavioralProfile := fun who event actor _ _ => choices who event actor
-  have independent : ReadyIndependent profile := serial.readyIndependent_of_eventLaws choices
+  have independent : ReadyIndependent profile := serial.readyIndependent_of_eventDistributions
+    choices
   let plan := graph.policyPlan profile graph.canonicalScheduler
   let read := fun config : graph.Config => config.outputs event
   have keyed (left right : graph.Config) (same : runKey left = runKey right) :
       read left = read right := congrFun (congrArg (fun key => key.2.1) same) (.inr event)
   have waiting := chance_runUntil_bind_continuation timeouts leaks
-    (outcomeLaw profile read) (fun state => outcomeLaw_drain independent read keyed state)
+    (outcomeDistribution profile read) (fun state => outcomeDistribution_drain independent read
+      keyed state)
     scheduler players event solitary
-    (fun config ready action => step_bind_outcomeLaw_ownerless profile read config event ready
+    (fun config ready action => step_bind_outcomeDistribution_ownerless profile read config event
+      ready
       (fun other pending => by
         obtain ⟨earlier, earlierReady, before⟩ :=
           config.cut.exists_ready_le_of_unfinished other pending
@@ -370,7 +373,7 @@ theorem chance_completed_output_law
   change _ = (graph.runPlan plan execution.application.config.remaining
     execution.application.config).map read at waiting
   have law := waiting
-  dsimp only [outcomeLaw, read] at law
+  dsimp only [outcomeDistribution, read] at law
   have left :
       ((((reactiveApplication timeouts) leaks).runUntil scheduler players
         (fun final => event ∈ final.application.config.cut.completed) count execution).bind
@@ -382,7 +385,7 @@ theorem chance_completed_output_law
     rw [← PMF.bind_pure_comp]
     apply bind_congr_on_support _
     intro final supported
-    exact runPlan_output_law plan _ _ event (completed final supported)
+    exact runPlan_output_distribution plan _ _ event (completed final supported)
   change _ = (graph.runPlan plan execution.application.config.remaining
     execution.application.config).map (fun final => final.outputs event) at law
   rw [left] at law
@@ -403,7 +406,7 @@ theorem chance_completed_output_law
   rw [← PMF.bind_pure_comp]
   apply bind_congr_on_support _
   intro next supported
-  apply runPlan_output_law plan fuel next event
+  apply runPlan_output_distribution plan fuel next event
   rw [execution.application.config.step_cut event ready _ next supported,
     EventOrder.Cut.mem_complete]
   exact Or.inl rfl

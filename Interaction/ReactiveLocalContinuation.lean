@@ -100,7 +100,7 @@ theorem run_commit_response
   rw [selected, Option.getD_some]
 
 open Classical in
-theorem run_local_law_finish
+theorem run_local_distribution_finish
     (profile : ∀ who, (menu.information initial horizon scheduler).BehavioralPolicy who)
     (history : (menu.protocol initial horizon scheduler).History)
     (who : Principal) (remaining : Nat) (execution : app.Execution)
@@ -140,7 +140,7 @@ theorem run_local_law_finish
   have firstLaw := menu.run_one_response initial horizon scheduler updated history who
     remaining execution current
   rw [decoded, PMF.map_comp] at firstLaw
-  have split := model.one_step_then_baseline_eq_local_law
+  have split := model.one_step_then_baseline_eq_local_distribution
     (menu.decisionRecall initial horizon scheduler).decisionInformationAntichain
     profile who alternative history active fuel
   simp only [alternative, InformationModel.BehavioralPolicy.withLaw_self] at split
@@ -175,7 +175,7 @@ theorem run_local_law_finish
 open Classical in
 /-- A fixed assessment site can index the local lottery once its equality
 with the actual history's information is supplied explicitly. -/
-theorem run_local_law_finish_of_information
+theorem run_local_distribution_finish_of_information
     (profile : ∀ who, (menu.information initial horizon scheduler).BehavioralPolicy who)
     (history : (menu.protocol initial horizon scheduler).History)
     (who : Principal) (remaining : Nat) (execution : app.Execution)
@@ -192,7 +192,8 @@ theorem run_local_law_finish_of_information
         app.finish initial horizon scheduler (menu.decodeProfile initial horizon scheduler profile)
           (some ⟨remaining, none, execution.respond app who response⟩) := by
   subst information
-  exact menu.run_local_law_finish initial horizon scheduler profile history who remaining execution
+  exact menu.run_local_distribution_finish initial horizon scheduler profile history who remaining
+    execution
     current law fuel enough
 
 end Interaction.ReactiveApplication.ResponseMenu

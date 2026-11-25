@@ -48,14 +48,14 @@ theorem lateLeak_model_infoOf (G : LateLeakParameters) (late : Bool) (who : Late
 /-! ## The state kernel -/
 
 /-- The mover's law over its own options at a state. -/
-def lateLeakMoveLaw (profile : LateLeakProfile G late) (state : LateLeakState) :
+def lateLeakMoveDistribution (profile : LateLeakProfile G late) (state : LateLeakState) :
     PMF (Option LateLeakMove) :=
   (profile state.mover (lateLeakView state.mover state)).map Subtype.val
 
 /-- One step of play from a state. -/
 def lateLeakKernel (profile : LateLeakProfile G late) (state : LateLeakState) :
     PMF LateLeakState :=
-  (lateLeakMoveLaw profile state).bind (lateLeakAdvance G state)
+  (lateLeakMoveDistribution profile state).bind (lateLeakAdvance G state)
 
 /-- One step of play from a law over states. -/
 def lateLeakFlow (profile : LateLeakProfile G late) (law : PMF LateLeakState) :
@@ -93,14 +93,14 @@ theorem lateLeak_joint_bind_step (profile : LateLeakProfile G late)
             history.state.mover) = _
         rw [ExecutionProtocol.singletonJoint_self]
     _ = _ := by
-        rw [lateLeak_model_infoOf, lateLeakKernel, lateLeakMoveLaw, PMF.bind_map]
+        rw [lateLeak_model_infoOf, lateLeakKernel, lateLeakMoveDistribution, PMF.bind_map]
         rfl
 
 theorem lateLeakKernel_finished (profile : LateLeakProfile G late) (secret : LateLeakType)
     (resolution : LateLeakResolution) (answer : LateLeakAnswer) :
     lateLeakKernel profile (.finished secret resolution answer) =
       PMF.pure (.finished secret resolution answer) := by
-  change (lateLeakMoveLaw profile _).bind (fun _ => PMF.pure _) = _
+  change (lateLeakMoveDistribution profile _).bind (fun _ => PMF.pure _) = _
   exact PMF.bind_const _ _
 
 /-- The state law of behavioral play is the iterated state kernel. -/
@@ -165,26 +165,26 @@ theorem lateLeakValue_finished (profile : LateLeakProfile G late) (payoff : Late
   | succ fuel ih => rw [lateLeakValue_succ, lateLeakKernel_finished, expect_pure, ih]
 
 /-- The sender's law over its options at one of its states. -/
-def lateLeakOpeningLaw (profile : LateLeakProfile G late) (state : LateLeakState) :
+def lateLeakOpeningDistribution (profile : LateLeakProfile G late) (state : LateLeakState) :
     PMF (Option LateLeakMove) :=
   (profile .sender (.full state)).map Subtype.val
 
 /-- The listener's law over its options after a signal. -/
-def lateLeakReplyLaw (profile : LateLeakProfile G late) (signal : LateLeakSignal) :
+def lateLeakReplyDistribution (profile : LateLeakProfile G late) (signal : LateLeakSignal) :
     PMF (Option LateLeakMove) :=
   (profile .listener (.asked signal)).map Subtype.val
 
 /-- The probability that the sender opens now at a state. -/
 def lateLeakOpenProb (profile : LateLeakProfile G late) (state : LateLeakState) : ℝ :=
-  (lateLeakOpeningLaw profile state (some (.opening true))).toReal
+  (lateLeakOpeningDistribution profile state (some (.opening true))).toReal
 
 /-- The probability of the safe answer after a signal. -/
 def lateLeakSafeProb (profile : LateLeakProfile G late) (signal : LateLeakSignal) : ℝ :=
-  (lateLeakReplyLaw profile signal (some (.reply .safe))).toReal
+  (lateLeakReplyDistribution profile signal (some (.reply .safe))).toReal
 
 /-- The probability of the bit guess `1` after a signal. -/
 def lateLeakBitOneProb (profile : LateLeakProfile G late) (signal : LateLeakSignal) : ℝ :=
-  (lateLeakReplyLaw profile signal (some (.reply (.failure true)))).toReal
+  (lateLeakReplyDistribution profile signal (some (.reply (.failure true)))).toReal
 
 theorem lateLeakInclusion_true : (lateLeakInclusion G true).toReal = lateLeakInclusionProb G := by
   simp only [lateLeakInclusion, PMF.ofFintype_apply, ite_true]
@@ -238,7 +238,7 @@ theorem lateLeak_expect_inclusion (g : Bool → ℝ) :
 /-- The value of an answering state. -/
 def lateLeakAnswerValue (profile : LateLeakProfile G late) (payoff : LateLeakState → ℝ)
     (secret : LateLeakType) (resolution : LateLeakResolution) : ℝ :=
-  expect (lateLeakReplyLaw profile (lateLeakSignal secret resolution))
+  expect (lateLeakReplyDistribution profile (lateLeakSignal secret resolution))
     fun choice => payoff (.finished secret resolution (lateLeakReplyOf choice))
 
 /-- The value of sending a late opening. -/
@@ -276,7 +276,7 @@ theorem lateLeakValue_answering (profile : LateLeakProfile G late) (payoff : Lat
     lateLeakValue profile payoff (fuel + 1) (.answering secret resolution) =
       lateLeakAnswerValue profile payoff secret resolution := by
   rw [lateLeakValue_succ]
-  change expect ((lateLeakReplyLaw profile (lateLeakSignal secret resolution)).bind
+  change expect ((lateLeakReplyDistribution profile (lateLeakSignal secret resolution)).bind
     (lateLeakAdvance G (.answering secret resolution))) _ = _
   rw [expect_bind_of_finite]
   simp only [lateLeakAdvance, expect_pure, lateLeakValue_finished, lateLeakAnswerValue]
@@ -296,7 +296,7 @@ theorem lateLeakValue_secondLate (profile : LateLeakProfile G late) (payoff : La
     lateLeakValue profile payoff (fuel + 2) (.secondLate secret) =
       lateLeakSecondValue profile payoff secret := by
   rw [lateLeakValue_succ]
-  change expect ((lateLeakOpeningLaw profile (.secondLate secret)).bind
+  change expect ((lateLeakOpeningDistribution profile (.secondLate secret)).bind
     (lateLeakAdvance G (.secondLate secret))) _ = _
   rw [expect_bind_of_finite, lateLeak_expect_two_point _ (some (.opening true)) _
     (lateLeakAnswerValue profile payoff secret .withheld)]
@@ -309,7 +309,7 @@ theorem lateLeakValue_firstLate (profile : LateLeakProfile G late) (payoff : Lat
     lateLeakValue profile payoff (fuel + 3) (.firstLate secret) =
       lateLeakFirstValue profile payoff secret := by
   rw [lateLeakValue_succ]
-  change expect ((lateLeakOpeningLaw profile (.firstLate secret)).bind
+  change expect ((lateLeakOpeningDistribution profile (.firstLate secret)).bind
     (lateLeakAdvance G (.firstLate secret))) _ = _
   rw [expect_bind_of_finite, lateLeak_expect_two_point _ (some (.opening true)) _
     (lateLeakSecondValue profile payoff secret)]
@@ -322,7 +322,7 @@ theorem lateLeakValue_protectedTurn (profile : LateLeakProfile G late)
     lateLeakValue profile payoff (fuel + 4) (.protectedTurn secret) =
       lateLeakProtectedValue profile payoff secret := by
   rw [lateLeakValue_succ]
-  change expect ((lateLeakOpeningLaw profile (.protectedTurn secret)).bind
+  change expect ((lateLeakOpeningDistribution profile (.protectedTurn secret)).bind
     (lateLeakAdvance G (.protectedTurn secret))) _ = _
   rw [expect_bind_of_finite, lateLeak_expect_two_point _ (some (.opening true)) _
     (lateLeakFirstValue profile payoff secret)]
@@ -336,18 +336,18 @@ theorem lateLeakValue_initial (profile : LateLeakProfile G late) (payoff : LateL
     lateLeakValue profile payoff (fuel + 5) .initial =
       expect lateLeakPrior fun secret => lateLeakProtectedValue profile payoff secret := by
   rw [lateLeakValue_succ]
-  change expect ((lateLeakMoveLaw profile .initial).bind
+  change expect ((lateLeakMoveDistribution profile .initial).bind
     fun _ => lateLeakPrior.map LateLeakState.protectedTurn) _ = _
   rw [PMF.bind_const, expect_map]
   simp only [Function.comp_def, lateLeakValue_protectedTurn]
 
 /-! ## Updating one player -/
 
-theorem lateLeakReplyLaw_update_sender (profile : LateLeakProfile G late)
+theorem lateLeakReplyDistribution_update_sender (profile : LateLeakProfile G late)
     (policy : (lateLeakModel G late).BehavioralPolicy .sender) (signal : LateLeakSignal) :
-    lateLeakReplyLaw (lateLeakUpdate profile .sender policy) signal =
-      lateLeakReplyLaw profile signal := by
-  simp only [lateLeakReplyLaw, lateLeakUpdate, Profile.update_of_ne _ _ (by decide :
+    lateLeakReplyDistribution (lateLeakUpdate profile .sender policy) signal =
+      lateLeakReplyDistribution profile signal := by
+  simp only [lateLeakReplyDistribution, lateLeakUpdate, Profile.update_of_ne _ _ (by decide :
     LateLeakRole.listener ≠ LateLeakRole.sender)]
 
 theorem lateLeakAnswerValue_update_sender (profile : LateLeakProfile G late)
@@ -355,7 +355,7 @@ theorem lateLeakAnswerValue_update_sender (profile : LateLeakProfile G late)
     (secret : LateLeakType) (resolution : LateLeakResolution) :
     lateLeakAnswerValue (lateLeakUpdate profile .sender policy) payoff secret resolution =
       lateLeakAnswerValue profile payoff secret resolution := by
-  simp only [lateLeakAnswerValue, lateLeakReplyLaw_update_sender]
+  simp only [lateLeakAnswerValue, lateLeakReplyDistribution_update_sender]
 
 theorem lateLeakSendValue_update_sender (profile : LateLeakProfile G late)
     (policy : (lateLeakModel G late).BehavioralPolicy .sender) (payoff : LateLeakState → ℝ)
@@ -364,11 +364,11 @@ theorem lateLeakSendValue_update_sender (profile : LateLeakProfile G late)
       lateLeakSendValue profile payoff secret included dropped := by
   simp only [lateLeakSendValue, lateLeakAnswerValue_update_sender]
 
-theorem lateLeakOpeningLaw_update_sender (profile : LateLeakProfile G late)
+theorem lateLeakOpeningDistribution_update_sender (profile : LateLeakProfile G late)
     (policy : (lateLeakModel G late).BehavioralPolicy .sender) (state : LateLeakState) :
-    lateLeakOpeningLaw (lateLeakUpdate profile .sender policy) state =
+    lateLeakOpeningDistribution (lateLeakUpdate profile .sender policy) state =
       (policy (.full state)).map Subtype.val := by
-  simp only [lateLeakOpeningLaw, lateLeakUpdate, Profile.update_same]
+  simp only [lateLeakOpeningDistribution, lateLeakUpdate, Profile.update_same]
 
 /-- The sender's option to open now, or not, at one of its states. -/
 def lateLeakOpenChoice (G : LateLeakParameters) (late : Bool) (state : LateLeakState) (now : Bool)
@@ -430,22 +430,24 @@ theorem lateLeak_reachWeight_init (profile : LateLeakProfile G late) :
 there, times the transition mass. -/
 theorem lateLeakKernel_apply (profile : LateLeakProfile G late) (state target : LateLeakState) :
     lateLeakKernel profile state target =
-      ∑' choice, lateLeakMoveLaw profile state choice * lateLeakAdvance G state choice target :=
+      ∑' choice, lateLeakMoveDistribution profile state choice * lateLeakAdvance G state choice
+        target :=
   PMF.bind_apply _ _ _
 
 theorem lateLeakKernel_initial (profile : LateLeakProfile G late) (secret : LateLeakType) :
     lateLeakKernel profile .initial (.protectedTurn secret) = lateLeakPrior secret := by
-  change ((lateLeakMoveLaw profile .initial).bind
+  change ((lateLeakMoveDistribution profile .initial).bind
     fun _ => lateLeakPrior.map LateLeakState.protectedTurn) _ = _
   rw [PMF.bind_const]
   exact pmf_map_apply_of_injective _ (fun _ _ same => LateLeakState.protectedTurn.inj same) _
 
 /-- Every option of the sender at one of its states is to open now or not. -/
-theorem lateLeakOpeningLaw_support (profile : LateLeakProfile G late) (state : LateLeakState)
+theorem lateLeakOpeningDistribution_support (profile : LateLeakProfile G late)
+    (state : LateLeakState)
     (acting : state.actor = some .sender) (choice : Option LateLeakMove)
-    (supported : choice ∈ (lateLeakOpeningLaw profile state).support) :
+    (supported : choice ∈ (lateLeakOpeningDistribution profile state).support) :
     ∃ now, choice = some (.opening now) := by
-  rw [lateLeakOpeningLaw, PMF.mem_support_map_iff] at supported
+  rw [lateLeakOpeningDistribution, PMF.mem_support_map_iff] at supported
   obtain ⟨option, _, rfl⟩ := supported
   have menu := option.2
   change option.1 ∈ lateLeakMenu late (.full state) at menu
@@ -462,25 +464,26 @@ private theorem kernel_sender_apply (profile : LateLeakProfile G late)
     (acting : state.actor = some .sender) (now : Bool)
     (only : ∀ other, other ≠ now → lateLeakAdvance G state (some (.opening other)) target = 0) :
     lateLeakKernel profile state target =
-      lateLeakOpeningLaw profile state (some (.opening now)) *
+      lateLeakOpeningDistribution profile state (some (.opening now)) *
         lateLeakAdvance G state (some (.opening now)) target := by
   rw [lateLeakKernel_apply]
-  have law : lateLeakMoveLaw profile state = lateLeakOpeningLaw profile state := by
+  have law : lateLeakMoveDistribution profile state =
+      lateLeakOpeningDistribution profile state := by
     have mover : state.mover = .sender := by simp [LateLeakState.mover, acting]
-    unfold lateLeakMoveLaw lateLeakOpeningLaw
+    unfold lateLeakMoveDistribution lateLeakOpeningDistribution
     rw [mover]
     rfl
   rw [law, tsum_eq_single (some (LateLeakMove.opening now))]
   intro choice different
-  by_cases supported : choice ∈ (lateLeakOpeningLaw profile state).support
-  · obtain ⟨other, rfl⟩ := lateLeakOpeningLaw_support profile state acting choice supported
+  by_cases supported : choice ∈ (lateLeakOpeningDistribution profile state).support
+  · obtain ⟨other, rfl⟩ := lateLeakOpeningDistribution_support profile state acting choice supported
     have : other ≠ now := fun same => different (by rw [same])
     rw [only other this, mul_zero]
   · rw [(PMF.apply_eq_zero_iff _ _).mpr supported, zero_mul]
 
 theorem lateLeakKernel_protected_open (profile : LateLeakProfile G late) (secret : LateLeakType) :
     lateLeakKernel profile (.protectedTurn secret) (.answering secret .protectedOpen) =
-      lateLeakOpeningLaw profile (.protectedTurn secret) (some (.opening true)) := by
+      lateLeakOpeningDistribution profile (.protectedTurn secret) (some (.opening true)) := by
   rw [kernel_sender_apply profile _ _ rfl true]
   · simp [lateLeakAdvance]
   · intro other different
@@ -490,7 +493,7 @@ theorem lateLeakKernel_protected_open (profile : LateLeakProfile G late) (secret
 
 theorem lateLeakKernel_protected_wait (profile : LateLeakProfile G late) (secret : LateLeakType) :
     lateLeakKernel profile (.protectedTurn secret) (.firstLate secret) =
-      lateLeakOpeningLaw profile (.protectedTurn secret) (some (.opening false)) := by
+      lateLeakOpeningDistribution profile (.protectedTurn secret) (some (.opening false)) := by
   rw [kernel_sender_apply profile _ _ rfl false]
   · simp [lateLeakAdvance]
   · intro other different
@@ -500,7 +503,7 @@ theorem lateLeakKernel_protected_wait (profile : LateLeakProfile G late) (secret
 
 theorem lateLeakKernel_first_hold (profile : LateLeakProfile G late) (secret : LateLeakType) :
     lateLeakKernel profile (.firstLate secret) (.secondLate secret) =
-      lateLeakOpeningLaw profile (.firstLate secret) (some (.opening false)) := by
+      lateLeakOpeningDistribution profile (.firstLate secret) (some (.opening false)) := by
   rw [kernel_sender_apply profile _ _ rfl false]
   · simp [lateLeakAdvance]
   · intro other different
@@ -512,7 +515,7 @@ theorem lateLeakKernel_first_send (profile : LateLeakProfile G late) (secret : L
     (included : Bool) :
     lateLeakKernel profile (.firstLate secret)
         (.answering secret (if included then .firstIncluded else .firstDropped)) =
-      lateLeakOpeningLaw profile (.firstLate secret) (some (.opening true)) *
+      lateLeakOpeningDistribution profile (.firstLate secret) (some (.opening true)) *
         lateLeakInclusion G included := by
   rw [kernel_sender_apply profile _ _ rfl true]
   · congr 1
@@ -528,7 +531,7 @@ theorem lateLeakKernel_second_send (profile : LateLeakProfile G late) (secret : 
     (included : Bool) :
     lateLeakKernel profile (.secondLate secret)
         (.answering secret (if included then .secondIncluded else .secondDropped)) =
-      lateLeakOpeningLaw profile (.secondLate secret) (some (.opening true)) *
+      lateLeakOpeningDistribution profile (.secondLate secret) (some (.opening true)) *
         lateLeakInclusion G included := by
   rw [kernel_sender_apply profile _ _ rfl true]
   · congr 1
@@ -771,7 +774,8 @@ def lateLeakListenerDecision (G : LateLeakParameters) (late : Bool) (site :
       lateLeak_listener_fiber_state (late := late) (signal := signal) ⟨history.1, by
         rw [history.2, at_signal]⟩
     change lateLeakValue profile (lateLeakStatePayoff G .listener) (4 + 1) history.1.state = _
-    rw [state_eq, lateLeakValue_answering, lateLeakAnswerValue, lateLeakReplyLaw, signal_eq,
+    rw [state_eq, lateLeakValue_answering, lateLeakAnswerValue, lateLeakReplyDistribution,
+      signal_eq,
       ← at_signal, expect_map]
     rfl
   realize profile choice := by

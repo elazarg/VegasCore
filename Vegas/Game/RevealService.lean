@@ -111,8 +111,9 @@ abbrev serviceApplication :=
 
 /-- The prior over initial values, compiled to initial states of the service
 graph of a dependency choice. -/
-def serviceInitialLaw : PMF (EventGraphRuntime.State (serviceGraph setup deps)) :=
-  setup.initialLaw.map (fun initial => EventGraphRuntime.State.initial (setup.eventInputs initial))
+def serviceInitialDistribution : PMF (EventGraphRuntime.State (serviceGraph setup deps)) :=
+  setup.initialDistribution.map (fun initial => EventGraphRuntime.State.initial
+    (setup.eventInputs initial))
 
 /-- Each player selects an unrestricted native policy; the outcome is the
 configuration of the existing service application at the supplied horizon. -/
@@ -122,15 +123,15 @@ def serviceGame
   sig := { Strategy := fun _ => (serviceApplication setup deps duration leaks).Policy
            Outcome := (serviceGraph setup deps).Config }
   play players := ((serviceApplication setup deps duration leaks).roundsFrom
-    (serviceInitialLaw setup deps) scheduler players horizon).map
+    (serviceInitialDistribution setup deps) scheduler players horizon).map
       fun final => final.application.config
 
 
 /-- A finitely supported prior compiles to finitely many initial states. -/
-theorem serviceInitialLaw_support_finite [setup.FiniteInitialLaw] :
-    (serviceInitialLaw setup deps).support.Finite := by
-  rw [serviceInitialLaw, PMF.support_map]
-  exact setup.initialLaw_support_finite.image _
+theorem serviceInitialDistribution_support_finite [setup.FiniteInitialSupport] :
+    (serviceInitialDistribution setup deps).support.Finite := by
+  rw [serviceInitialDistribution, PMF.support_map]
+  exact setup.initialDistribution_support_finite.image _
 
 end Configured
 
@@ -142,8 +143,8 @@ abbrev application (timeouts : EventTimeouts setup.informationGraph)
   (reactiveApplication timeouts) leaks
 
 /-- The initial law of the default sequential graph. -/
-abbrev initialLaw : PMF (EventGraphRuntime.State setup.informationGraph) :=
-  serviceInitialLaw setup setup.informationDependencies
+abbrev initialDistribution : PMF (EventGraphRuntime.State setup.informationGraph) :=
+  serviceInitialDistribution setup setup.informationDependencies
 
 
 end Vegas

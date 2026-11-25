@@ -28,7 +28,7 @@ strategic profile. Correlations in the setup law are retained. -/
 theorem behavioralStateStep_none
     (profile : Profile (setup.informationModel admission).behavioralSignature) :
     setup.behavioralStateStep admission profile none =
-      setup.initialLaw.map (fun initial =>
+      setup.initialDistribution.map (fun initial =>
         some (ProtocolState.entry setup.program (Config.initial initial))) := by
   simp [behavioralStateStep, protocolStep, PMF.bind_const]
 

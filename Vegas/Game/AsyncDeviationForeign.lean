@@ -134,10 +134,10 @@ theorem binding_response_matched
     (same : foreignReadout (leaks := leaks) focal owner event left =
       foreignReadout (leaks := leaks) focal owner event right)
     (leftTrace : ((serviceApplication setup deps duration leaks).protocol
-      (serviceInitialLaw setup deps) horizon scheduler).Trace
+      (serviceInitialDistribution setup deps) horizon scheduler).Trace
         (some ⟨leftRemaining + 1, none, left⟩))
     (rightTrace : ((serviceApplication setup deps duration leaks).protocol
-      (serviceInitialLaw setup deps) horizon scheduler).Trace
+      (serviceInitialDistribution setup deps) horizon scheduler).Trace
         (some ⟨rightRemaining + 1, none, right⟩))
     (leftReady : left.application.config.cut.Ready event)
     (rightReady : right.application.config.cut.Ready event)
@@ -173,7 +173,7 @@ theorem binding_response_matched
       (bindingTraffic (serviceTimeouts setup deps duration)) leaks focal
         (rightActive.respond (serviceApplication setup deps duration leaks) owner
           rightResponse) := by
-  rw [serviceInitialLaw_eq_inputs setup] at leftTrace rightTrace
+  rw [serviceInitialDistribution_eq_inputs setup] at leftTrace rightTrace
   exact EventGraphRuntime.binding_response_matched (timeouts := serviceTimeouts setup deps duration)
     ownerSolitary foreign outputEq codeEq node leftChoice rightChoice admitted same
     leftTrace rightTrace leftReady rightReady leftOwn leftSlots rightOwn rightSlots selected
@@ -199,10 +199,10 @@ theorem binding_stopped_readout_congr
       cut.Ready other → other = event)
     (leftStart rightStart : (serviceApplication setup deps duration leaks).Execution)
     (leftTrace : ((serviceApplication setup deps duration leaks).protocol
-      (serviceInitialLaw setup deps) horizon scheduler).Trace
+      (serviceInitialDistribution setup deps) horizon scheduler).Trace
         (some ⟨leftRemaining + count, none, leftStart⟩))
     (rightTrace : ((serviceApplication setup deps duration leaks).protocol
-      (serviceInitialLaw setup deps) horizon scheduler).Trace
+      (serviceInitialDistribution setup deps) horizon scheduler).Trace
         (some ⟨rightRemaining + count, none, rightStart⟩))
     (leftReady : leftStart.application.config.cut.Ready event)
     (rightReady : rightStart.application.config.cut.Ready event)
@@ -228,7 +228,7 @@ theorem binding_stopped_readout_congr
           (cast (congrArg EventField.Action outputEq.symm) rightChoice)))
       (fun final => event ∈ final.application.config.cut.completed) count rightStart).map
         (foreignReadout (leaks := leaks) focal owner event) := by
-  rw [serviceInitialLaw_eq_inputs setup] at leftTrace rightTrace
+  rw [serviceInitialDistribution_eq_inputs setup] at leftTrace rightTrace
   exact EventGraphRuntime.binding_stopped_readout_congr
     (timeouts := serviceTimeouts setup deps duration) serial scheduler focal deviation bound
     foreign outputEq codeEq node leftChoice rightChoice admitted alone leftStart rightStart
@@ -286,13 +286,13 @@ theorem sourceService_binding_traffic_congr
     (serviceTurnPolicy setup setup.informationDependencies timeouts.duration leaks bound turns
       (firstTurnTiming setup turns) wholeProfile) focal deviation
   have leftPrefix : PrefixBoundary (timeouts := timeouts) (leaks := leaks)
-      ((setup.initialLaw.map setup.eventInputs).map EventGraphRuntime.State.initial)
+      ((setup.initialDistribution.map setup.eventInputs).map EventGraphRuntime.State.initial)
       scheduler players event.val left := by
-    simpa only [← serviceInitialLaw_eq_inputs setup] using leftBoundary
+    simpa only [← serviceInitialDistribution_eq_inputs setup] using leftBoundary
   have rightPrefix : PrefixBoundary (timeouts := timeouts) (leaks := leaks)
-      ((setup.initialLaw.map setup.eventInputs).map EventGraphRuntime.State.initial)
+      ((setup.initialDistribution.map setup.eventInputs).map EventGraphRuntime.State.initial)
       scheduler players event.val right := by
-    simpa only [← serviceInitialLaw_eq_inputs setup] using rightBoundary
+    simpa only [← serviceInitialDistribution_eq_inputs setup] using rightBoundary
   exact EventGraphRuntime.foreign_binding_fixed_traffic_congr
     (timeouts := timeouts) (turns := turns) serial scheduler bound
     (compileEventProfile setup.program wholeProfile) focal owner deviation foreign event solitary
@@ -443,13 +443,13 @@ theorem sourceService_opening_traffic_congr
     (serviceTurnPolicy setup setup.informationDependencies timeouts.duration leaks bound turns
       (firstTurnTiming setup turns) wholeProfile) focal deviation
   have leftPrefix : PrefixBoundary (timeouts := timeouts) (leaks := leaks)
-      ((setup.initialLaw.map setup.eventInputs).map EventGraphRuntime.State.initial)
+      ((setup.initialDistribution.map setup.eventInputs).map EventGraphRuntime.State.initial)
       scheduler players event.val left := by
-    simpa only [← serviceInitialLaw_eq_inputs setup] using leftBoundary
+    simpa only [← serviceInitialDistribution_eq_inputs setup] using leftBoundary
   have rightPrefix : PrefixBoundary (timeouts := timeouts) (leaks := leaks)
-      ((setup.initialLaw.map setup.eventInputs).map EventGraphRuntime.State.initial)
+      ((setup.initialDistribution.map setup.eventInputs).map EventGraphRuntime.State.initial)
       scheduler players event.val right := by
-    simpa only [← serviceInitialLaw_eq_inputs setup] using rightBoundary
+    simpa only [← serviceInitialDistribution_eq_inputs setup] using rightBoundary
   exact EventGraphRuntime.foreign_publication_fixed_traffic_congr (timeouts := timeouts)
     serial scheduler bound turns (firstTurnTiming setup turns)
     (compileEventProfile setup.program wholeProfile) focal owner deviation foreign event solitary
@@ -509,13 +509,13 @@ theorem sourceService_withholding_traffic_congr
     (serviceTurnPolicy setup setup.informationDependencies timeouts.duration leaks bound turns
       (firstTurnTiming setup turns) wholeProfile) focal deviation
   have leftPrefix : PrefixBoundary (timeouts := timeouts) (leaks := leaks)
-      ((setup.initialLaw.map setup.eventInputs).map EventGraphRuntime.State.initial)
+      ((setup.initialDistribution.map setup.eventInputs).map EventGraphRuntime.State.initial)
       scheduler players event.val left := by
-    simpa only [← serviceInitialLaw_eq_inputs setup] using leftBoundary
+    simpa only [← serviceInitialDistribution_eq_inputs setup] using leftBoundary
   have rightPrefix : PrefixBoundary (timeouts := timeouts) (leaks := leaks)
-      ((setup.initialLaw.map setup.eventInputs).map EventGraphRuntime.State.initial)
+      ((setup.initialDistribution.map setup.eventInputs).map EventGraphRuntime.State.initial)
       scheduler players event.val right := by
-    simpa only [← serviceInitialLaw_eq_inputs setup] using rightBoundary
+    simpa only [← serviceInitialDistribution_eq_inputs setup] using rightBoundary
   exact EventGraphRuntime.foreign_publication_fixed_traffic_congr (timeouts := timeouts)
     serial scheduler bound turns (firstTurnTiming setup turns)
     (compileEventProfile setup.program wholeProfile) focal owner deviation foreign event solitary

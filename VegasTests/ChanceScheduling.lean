@@ -25,7 +25,7 @@ abbrev parallelOrder : EventOrder where
   predecessors _ := ∅
   predecessor_lt := by simp
 
-def fairBool : RationalLaw Bool where
+def fairBool : RationalDistribution Bool where
   entries := [(false, 1 / 2), (true, 1 / 2)]
   normalized := by norm_num
 
@@ -51,7 +51,7 @@ example (scheduler : chanceGraph.PublicScheduler) :
     (chanceGraph.terminalOutcomes scheduler (compileEventProfile chanceSource chanceProfile)
       (encodeInputs (Env.empty (CellVal simpleExpr)))).map (terminalConfig chanceSource) =
       SourceProgram.run chanceSource chanceProfile (Env.empty (CellVal simpleExpr)) :=
-  scheduled_terminalConfig_law chanceSource scheduler chanceProfile _
+  scheduled_terminalConfig_distribution_eq chanceSource scheduler chanceProfile _
 
 abbrev mixedOutputs : Fin 2 → EventField Bool simpleExpr :=
   Fin.cases (.publicData .bool) fun _ => .binding false .bool
@@ -102,10 +102,10 @@ private theorem sampled_active (who : Bool) : who ∉ sampledTrue.defaulted := b
 
 /-- The obstructing coin result has positive mass in the original evaluator. -/
 private theorem trueSupported : true ∈ fairBool.denote.support := by
-  rw [RationalLaw.denote, PMF.support_map]
+  rw [RationalDistribution.denote, PMF.support_map]
   refine ⟨⟨1, by change (1 : Nat) < 2; decide⟩, ?_, rfl⟩
-  rw [PMF.mem_support_iff, RationalLaw.indexLaw, PMF.ofFintype_apply]
-  norm_num [fairBool, RationalLaw.entryMass]
+  rw [PMF.mem_support_iff, RationalDistribution.indexDistribution, PMF.ofFintype_apply]
+  norm_num [fairBool, RationalDistribution.entryMass]
 
 private theorem sampleSupported :
     sampledTrue ∈ (mixedInitial.step 0 (mixedReady 0) PUnit.unit).support := by

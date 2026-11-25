@@ -44,13 +44,13 @@ theorem run_map_withinTV {Y : Type*}
         fun final => φ final.state)
       ((fun law => law.bind image)^[fuel] (PMF.pure (φ history.state))) := by
   let : Fintype Principal := Fintype.ofFinite Principal
-  have stateLaw := menu.run_map_controlSteps initial horizon scheduler profile fuel history
+  have stateDistribution := menu.run_map_controlSteps initial horizon scheduler profile fuel history
   have lumped := (iterate_bind_map_withinTV _ φ image keep δ kept close fuel history.state
     start).2
   rw [show (((menu.information initial horizon scheduler).runBehavioralFrom profile fuel
       history).map fun final => φ final.state) =
       (((menu.information initial horizon scheduler).runBehavioralFrom profile fuel
-        history).map History.state).map φ from (PMF.map_comp _ _ _).symm, stateLaw]
+        history).map History.state).map φ from (PMF.map_comp _ _ _).symm, stateDistribution]
   exact lumped
 
 end Interaction.ReactiveApplication.ResponseMenu

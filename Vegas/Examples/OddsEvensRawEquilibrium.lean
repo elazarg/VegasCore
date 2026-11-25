@@ -3,7 +3,7 @@ module
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 public import Vegas.Examples.OddsEvensService
-public import Vegas.Examples.OddsEvensFairLaw
+public import Vegas.Examples.OddsEvensFairDistribution
 public import Vegas.Examples.OddsEvensEquilibrium
 public import Vegas.Game.SequentialCompilation
 public import Vegas.Pending.ThinnedCountCollection
@@ -106,7 +106,7 @@ theorem intended_equilibrium_preserved
           (intendedReadoutExclusion OddsEvens.setup (fun _ => ()) OddsEvens.sourceUtility
             (fun _ => 0)) := by
   intro raw observe audit settle
-  let : app.FiniteNature (Vegas.initialLaw OddsEvens.setup) serviceScheduler :=
+  let : app.FiniteNature (Vegas.initialDistribution OddsEvens.setup) serviceScheduler :=
     (inferInstance : app.FiniteNature initial serviceScheduler)
   obtain ⟨compiled⟩ := Vegas.intended_raw_sequentialEquilibrium_preserved
     specification intended equilibrium
@@ -114,7 +114,7 @@ theorem intended_equilibrium_preserved
   have rational := compiled.equilibrium
   have clear := compiled.noDefaults
   have noCharges := compiled.noCharges
-  have joint := compiled.outcomeLaw
+  have joint := compiled.outcomeDistribution_eq
   refine ⟨target, ?_, clear, noCharges, joint⟩
   exact rational
 
@@ -139,7 +139,7 @@ theorem fair_equilibrium_exists :
       (raw.run initial steps serviceScheduler target.strategy).bind
         (fun final => (settle final.state).map fun payoffs =>
           (sourceReadout OddsEvens.setup rt leaks final.state, payoffs)) =
-              OddsEvens.uniformJointLaw ∧
+              OddsEvens.uniformJointDistribution ∧
       ∀ who, expect (
         (raw.run initial steps serviceScheduler target.strategy).bind
         (fun final => (settle final.state).map fun payoffs =>
@@ -149,11 +149,11 @@ theorem fair_equilibrium_exists :
   obtain ⟨target, rational, clear, noCharges, joint⟩ :=
     intended_equilibrium_preserved OddsEvens.uniformAssessment (by
       exact OddsEvens.uniformAssessment_equilibrium)
-  have sourceLaw := OddsEvens.uniform_source_joint_law
-  have actual := joint.trans sourceLaw
+  have sourceDistribution := OddsEvens.uniform_source_joint_distribution
+  have actual := joint.trans sourceDistribution
   refine ⟨target, rational, clear, noCharges, actual, ?_⟩
   intro who
   rw [actual]
-  exact OddsEvens.uniformJointLaw_expected who
+  exact OddsEvens.uniformJointDistribution_expected_payoff who
 
 end Vegas.Examples.OddsEvensRaw

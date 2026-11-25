@@ -118,7 +118,7 @@ are read from these records; completion order is not. -/
 def storeRecall (graph : Vegas.EventGraph Player L) (config : graph.Config) :=
   (config.store, completionOf config)
 
-def outputLaw (config : graph.Config) (event : graph.EventId)
+def outputDistribution (config : graph.Config) (event : graph.EventId)
     (ready : config.cut.Ready event) (action : graph.Action event) :
     PMF (graph.outputLayout event).Value :=
   ((graph.nodes event).eval? (config.effectiveAction event action) config.store).get
@@ -126,20 +126,20 @@ def outputLaw (config : graph.Config) (event : graph.EventId)
       (config.effectiveAction event action) config.store
       (fun _ read => config.read_available ready read))
 
-private theorem step_eq_outputLaw_map (config : graph.Config) (event : graph.EventId)
+private theorem step_eq_outputDistribution_map (config : graph.Config) (event : graph.EventId)
     (ready : config.cut.Ready event) (action : graph.Action event) :
     config.step event ready action =
-      (outputLaw config event ready action).map (config.complete event ready action) := rfl
+      (outputDistribution config event ready action).map (config.complete event ready action) := rfl
 
-private theorem outputLaw_after_complete {config : graph.Config}
+private theorem outputDistribution_after_complete {config : graph.Config}
     {completed reader : graph.EventId} (completedReady : config.cut.Ready completed)
     (readerReady : config.cut.Ready reader) (different : completed ≠ reader)
     (differ : graph.ActorsDiffer completed reader)
     (completedAction : graph.Action completed)
     (value : (graph.outputLayout completed).Value) (readerAction : graph.Action reader) :
-    outputLaw (config.complete completed completedReady completedAction value) reader
+    outputDistribution (config.complete completed completedReady completedAction value) reader
         (readerReady.after_complete completedReady different.symm) readerAction =
-      outputLaw config reader readerReady readerAction := by
+      outputDistribution config reader readerReady readerAction := by
   have effective := effectiveAction_complete_of_actorsDiffer config completedReady differ
     completedAction value readerAction
   have evalEq := eval?_after_complete completedReady readerReady completedAction value
@@ -160,7 +160,7 @@ private theorem outputLaw_after_complete {config : graph.Config}
       rw [hleft, effective] at evalEq
       have hright : (graph.nodes reader).eval? (config.effectiveAction reader readerAction)
           config.store = some law := evalEq.symm
-      simp only [outputLaw, hleft, hright, Option.get_some]
+      simp only [outputDistribution, hleft, hright, Option.get_some]
 
 /-- Completing two ready events of different actors records each completion as
 it would have been recorded first. -/
@@ -226,8 +226,8 @@ private theorem stepThen_map (config : graph.Config) (first second : graph.Event
     {β : Type} (observe : graph.Config → β) :
     (stepThen config first second firstReady secondReady different
       firstAction secondAction).map observe =
-    (outputLaw config first firstReady firstAction).bind fun firstValue =>
-      (outputLaw config second secondReady secondAction).map fun secondValue =>
+    (outputDistribution config first firstReady firstAction).bind fun firstValue =>
+      (outputDistribution config second secondReady secondAction).map fun secondValue =>
         observe ((config.complete first firstReady firstAction firstValue).complete second
           (secondReady.after_complete firstReady different.symm)
           secondAction secondValue) := by
@@ -238,14 +238,14 @@ private theorem stepThen_map (config : graph.Config) (first second : graph.Event
     if ready : afterFirst.cut.Ready second then
       (afterFirst.step second ready secondAction).map observe
     else PMF.pure (observe afterFirst))]
-  · rw [step_eq_outputLaw_map, PMF.bind_map]
+  · rw [step_eq_outputDistribution_map, PMF.bind_map]
     apply bind_congr_on_support _
     intro firstValue _
     have ready : (config.complete first firstReady firstAction firstValue).cut.Ready second :=
       secondReady.after_complete firstReady different.symm
     simp only [Function.comp_apply, dite_eq_left ready]
-    rw [step_eq_outputLaw_map, PMF.map_comp,
-      outputLaw_after_complete firstReady secondReady different differ]
+    rw [step_eq_outputDistribution_map, PMF.map_comp,
+      outputDistribution_after_complete firstReady secondReady different differ]
     rfl
   · intro afterFirst member
     have ready : afterFirst.cut.Ready second := by

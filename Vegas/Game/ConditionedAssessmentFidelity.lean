@@ -25,9 +25,9 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr} [IExp
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph)}
   {scheduler : (application setup timeouts leaks).Scheduler} {horizon : Nat}
   {bounds : MessageBounds setup.informationGraph}
-  (supported : ∀ key, key ∈ (setup.initialLaw.map signal).support)
+  (supported : ∀ key, key ∈ (setup.initialDistribution.map signal).support)
   (read : Player → (application setup timeouts leaks).Info → Signal)
-  (observed : ∀ draw ∈ setup.initialLaw.support,
+  (observed : ∀ draw ∈ setup.initialDistribution.support,
     ∀ execution : (application setup timeouts leaks).Execution,
     State.Invariant (graph := setup.informationGraph) (setup.eventInputs draw)
       execution.application → ∀ who,
@@ -36,9 +36,9 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr} [IExp
 
 local notation "raw" => bounds.rawMenu timeouts leaks
 local notation "one" => bounds.onePacketMenu timeouts leaks
-local notation "fullLaw" => Vegas.initialLaw setup
+local notation "fullLaw" => Vegas.initialDistribution setup
 local notation "part" => fun k => setup.conditionInitial signal k
-local notation "law" => fun k => Vegas.initialLaw (setup.conditionInitial signal k)
+local notation "law" => fun k => Vegas.initialDistribution (setup.conditionInitial signal k)
 
 /-- At a genuine global site, every raw history has one component history with identical
 controls, actions, and observations. -/
@@ -105,7 +105,7 @@ theorem componentAssessment_belief_replay {who : Player}
   let embed := setup.conditionInitial_history signal key (supported key)
   have localLaw := (compiled key).raw_belief_replay source native localSite matched
     projected forced shown turn
-  have sourceLaw := setup.conditionInitial_assessment_belief_map signal key (supported key)
+  have sourceDistribution := setup.conditionInitial_assessment_belief_map signal key (supported key)
     (inside key) intended who source
   calc
     _ = (((compiled key).assessment.belief who localSite).map replay).map (Option.map embed) := by
@@ -115,7 +115,7 @@ theorem componentAssessment_belief_replay {who : Player}
       rfl
     _ = _ := by
       rw [show ((compiled key).assessment.belief who localSite).map replay = _ from localLaw]
-      rw [← sourceLaw, PMF.map_comp, PMF.map_comp]
+      rw [← sourceDistribution, PMF.map_comp, PMF.map_comp]
       rfl
 
 omit [Fintype Player] in

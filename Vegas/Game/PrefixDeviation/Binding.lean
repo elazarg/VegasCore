@@ -43,7 +43,7 @@ private theorem nativeBindingContinuation_finish
     (relaxed : (serviceGraph setup deps).RevealRelaxedOrdered)
     {delay : (serviceGraph setup deps).EventId → Nat}
     (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
-      (serviceInitialLaw setup deps) horizon scheduler delay bound)
+      (serviceInitialDistribution setup deps) horizon scheduler delay bound)
     (timely : AsyncTimely (serviceTimeouts setup deps duration) delay bound)
     (wholeProfile : BehavioralProfile setup.program)
     (reference : setup.informationGraph.BehavioralProfile) (focal : Player)
@@ -96,11 +96,11 @@ private theorem nativeBindingContinuation_finish
     have honest := congrArg (fun value => value.1.2) same
     exact honest.symm.trans (congrArg (fun current => bindingObservers focal current.2) hidden)
   have currentSupport : ∀ seed ∈ prior.support, execution seed ∈
-      (app.roundsFrom (serviceInitialLaw setup deps) scheduler (players seed)
+      (app.roundsFrom (serviceInitialDistribution setup deps) scheduler (players seed)
         (execution seed).environmentRecall.length).support := by
     intro seed member
     have reached := app.roundsFrom_runRounds scheduler (players seed)
-      (serviceInitialLaw setup deps) (anchor seed).environmentRecall.length (used seed)
+      (serviceInitialDistribution setup deps) (anchor seed).environmentRecall.length (used seed)
       (anchor seed) (execution seed) (anchorSupported seed member) (supported seed member)
     rw [app.runRounds_environmentRecall_length scheduler (players seed) (used seed)
       (anchor seed) (execution seed) (supported seed member)]
@@ -109,7 +109,8 @@ private theorem nativeBindingContinuation_finish
       horizon - (execution seed).environmentRecall.length = budget seed - used seed := by
     intro seed member
     obtain ⟨raw⟩ := trace seed member
-    have initialBudget := app.raw_trace_horizon (serviceInitialLaw setup deps) horizon scheduler raw
+    have initialBudget := app.raw_trace_horizon (serviceInitialDistribution setup deps) horizon
+      scheduler raw
     have length := app.runRounds_environmentRecall_length scheduler (players seed) (used seed)
       (anchor seed) (execution seed) (supported seed member)
     dsimp only at initialBudget
@@ -128,9 +129,9 @@ private theorem nativeBindingContinuation_finish
       exact Function.update_of_ne different _ _
     obtain ⟨raw⟩ := trace seed member
     have nativeTrace := raw
-    rw [serviceInitialLaw_eq_inputs setup] at nativeTrace
+    rw [serviceInitialDistribution_eq_inputs setup] at nativeTrace
     obtain ⟨input, _inputMember, valid⟩ := reactive_history_invariant
-      (serviceTimeouts setup deps duration) leaks (setup.initialLaw.map setup.eventInputs)
+      (serviceTimeouts setup deps duration) leaks (setup.initialDistribution.map setup.eventInputs)
       horizon scheduler nativeTrace
     have nativeOrdered : (nativeGhost seed).cut.IsPrefix finish := by
       have cuts : (nativeGhost seed).cut =
@@ -203,7 +204,8 @@ private theorem nativeBindingContinuation_finish
       (execution seed).environmentRecall.length ≤ horizon := by
     intro seed member
     obtain ⟨raw⟩ := trace seed member
-    have budgetEq := app.raw_trace_horizon (serviceInitialLaw setup deps) horizon scheduler raw
+    have budgetEq := app.raw_trace_horizon (serviceInitialDistribution setup deps) horizon
+      scheduler raw
     have length := app.runRounds_environmentRecall_length scheduler (players seed) (used seed)
       (anchor seed) (execution seed) (supported seed member)
     have enough := counted seed member
@@ -217,10 +219,11 @@ private theorem nativeBindingContinuation_finish
       (firstTurnTiming setup turns deps) (effectiveOpening (G.prefixProfile (members seed)))
       (Function.update_of_ne different _ _) _ _ (currentSupport seed member)
   have currentTrace : ∀ seed ∈ prior.support, Nonempty
-      ((app.protocol (serviceInitialLaw setup deps) horizon scheduler).Trace
+      ((app.protocol (serviceInitialDistribution setup deps) horizon scheduler).Trace
         (some ⟨horizon - (execution seed).environmentRecall.length, none, execution seed⟩)) := by
     intro seed member
-    exact app.raw_trace_roundsFrom (serviceInitialLaw setup deps) horizon scheduler (players seed)
+    exact app.raw_trace_roundsFrom (serviceInitialDistribution setup deps) horizon scheduler
+      (players seed)
       (execution seed).environmentRecall.length (currentBound seed member) (execution seed)
       (currentSupport seed member)
   have coupled : ∀ left ∈ prior.support, ∀ right ∈ prior.support,
@@ -303,7 +306,8 @@ private theorem nativeBindingContinuation_finish
     obtain ⟨_clearFinal, ordered, _key, _extra, _enough, _countedFinal⟩ :=
       endpoint entry.1 selected entry.2 reached
     refine ⟨?_, ordered, ?_⟩
-    · exact app.roundsFrom_runUntil scheduler (players entry.1) (serviceInitialLaw setup deps)
+    · exact app.roundsFrom_runUntil scheduler (players entry.1)
+        (serviceInitialDistribution setup deps)
         stop (horizon - (execution entry.1).environmentRecall.length) (execution entry.1) entry.2
         (currentSupport entry.1 selected) reached
     · exact blockRun_untouched
@@ -317,7 +321,8 @@ private theorem nativeBindingContinuation_finish
     obtain ⟨_finalClear, _ordered, _key, extra, enough, countedFinal⟩ :=
       endpoint entry.1 selected entry.2 reached
     obtain ⟨raw⟩ := trace entry.1 selected
-    have budgetEq := app.raw_trace_horizon (serviceInitialLaw setup deps) horizon scheduler raw
+    have budgetEq := app.raw_trace_horizon (serviceInitialDistribution setup deps) horizon
+      scheduler raw
     have length := app.runRounds_environmentRecall_length scheduler (players entry.1)
       (used entry.1 + extra) (anchor entry.1) entry.2 countedFinal
     dsimp only at budgetEq
@@ -336,7 +341,7 @@ private theorem nativeBindingContinuation_finish
     (fun entry member => (endpoint entry.1 (stagedSupport entry member).1 entry.2
       (stagedSupport entry member).2).2.2.1) nextNoise nextFactor
   refine ⟨policy, ?_⟩
-  have nativeLaw : (staged.bind fun entry => app.runToHorizon scheduler (players entry.1)
+  have nativeDistribution : (staged.bind fun entry => app.runToHorizon scheduler (players entry.1)
       horizon entry.2) = prior.bind fun seed =>
         app.runToHorizon scheduler (players seed) horizon (execution seed) := by
     simp only [staged, PMF.bind_bind, PMF.bind_map, Function.comp_def]
@@ -344,7 +349,7 @@ private theorem nativeBindingContinuation_finish
     intro seed _
     exact (app.runToHorizon_eq_runUntilHorizon_bind scheduler (players seed) stop horizon
       (execution seed)).symm
-  have sourceLaw : (staged.bind fun entry => setup.informationGraph.runPlan
+  have sourceDistribution : (staged.bind fun entry => setup.informationGraph.runPlan
       (setup.informationGraph.policyPlan (Function.update
         (setup.informationGraph.prefixProfile reference) focal policy)
         setup.informationGraph.canonicalScheduler) (eventCount frame.program) (ghost entry.1)) =
@@ -353,7 +358,7 @@ private theorem nativeBindingContinuation_finish
           (setup.informationGraph.prefixProfile reference) focal policy)
           setup.informationGraph.canonicalScheduler) (eventCount frame.program) (ghost seed) := by
     simp only [staged, PMF.bind_bind, PMF.bind_map, Function.comp_def, PMF.bind_const]
-  rw [nativeLaw, sourceLaw] at compare
+  rw [nativeDistribution, sourceDistribution] at compare
   exact compare
 
 private theorem sourceResidual_binding_interval_induction
@@ -441,7 +446,7 @@ theorem nativeBindingContinuation_binding_interval [Finite Player]
     (relaxed : (serviceGraph setup deps).RevealRelaxedOrdered)
     {delay : (serviceGraph setup deps).EventId → Nat}
     (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
-      (serviceInitialLaw setup deps) horizon scheduler delay bound)
+      (serviceInitialDistribution setup deps) horizon scheduler delay bound)
     (timely : AsyncTimely (serviceTimeouts setup deps duration) delay bound)
     (intended : GameTheory.Profile setup.intendedModel.behavioralSignature)
     (target : GameTheory.Profile (setup.informationModel
@@ -534,13 +539,13 @@ private theorem roundsFrom_effective_reference_support_of_untouched
     (count : Nat) (after : (serviceApplication setup deps duration leaks).Execution)
     (unseen : ∀ event, changed event → Untouched setup leaks event after)
     (reached : after ∈ ((serviceApplication setup deps duration leaks).roundsFrom
-      (serviceInitialLaw setup deps) scheduler
+      (serviceInitialDistribution setup deps) scheduler
       (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps)
           (effectiveOpening ((serviceGraph setup deps).prefixProfile left)))
           focal deviation) count).support) :
     after ∈ ((serviceApplication setup deps duration leaks).roundsFrom
-      (serviceInitialLaw setup deps) scheduler
+      (serviceInitialDistribution setup deps) scheduler
       (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps)
           (effectiveOpening ((serviceGraph setup deps).prefixProfile right)))
@@ -641,21 +646,22 @@ theorem nativeSourceContinuation_of_binding_interval
       (congrArg (fun key => key.2.2) (keys seed present))
     exact status.trans (sourceClear seed present)
   have rawTrace (seed : Seed) (present : seed ∈ prior.support) :
-      Nonempty ((app.protocol (serviceInitialLaw setup deps) horizon scheduler).Trace
+      Nonempty ((app.protocol (serviceInitialDistribution setup deps) horizon scheduler).Trace
         (some ⟨horizon - (execution seed).environmentRecall.length, none, execution seed⟩)) :=
-    app.raw_trace_roundsFrom (serviceInitialLaw setup deps) horizon scheduler (players seed)
+    app.raw_trace_roundsFrom (serviceInitialDistribution setup deps) horizon scheduler
+      (players seed)
       (execution seed).environmentRecall.length (budget seed present) (execution seed)
         (boundary seed present).supported
   have actualReach (seed : Seed) (present : seed ∈ prior.support) :
       ∃ inputs, (execution seed).application.config.Reachable inputs := by
     obtain ⟨trace⟩ := rawTrace seed present
-    rw [serviceInitialLaw_eq_inputs setup] at trace
+    rw [serviceInitialDistribution_eq_inputs setup] at trace
     obtain ⟨inputs, _, invariant⟩ := reactive_history_invariant
       (serviceTimeouts setup deps duration)
-      leaks (setup.initialLaw.map setup.eventInputs) horizon scheduler trace
+      leaks (setup.initialDistribution.map setup.eventInputs) horizon scheduler trace
     exact ⟨inputs, invariant.reachable⟩
   have discipline (raw : G.BehavioralProfile) (current : app.Execution)
-      (present : current ∈ (app.roundsFrom (serviceInitialLaw setup deps) scheduler
+      (present : current ∈ (app.roundsFrom (serviceInitialDistribution setup deps) scheduler
         (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
           (firstTurnTiming setup turns deps) (effectiveOpening (G.prefixProfile raw)))
             focal deviation) current.environmentRecall.length).support) :
@@ -695,7 +701,7 @@ theorem nativeSourceContinuation_of_binding_interval
       exact future seed present owner event actor _ _ before
   have anchorSupport (sample : Seed × setup.informationGraph.Config)
       (present : sample ∈ staged.support) :
-      execution sample.1 ∈ (app.roundsFrom (serviceInitialLaw setup deps) scheduler
+      execution sample.1 ∈ (app.roundsFrom (serviceInitialDistribution setup deps) scheduler
         (frozenPlayers sample) (execution sample.1).environmentRecall.length).support := by
     apply roundsFrom_effective_reference_support_of_untouched scheduler bound turns
       (members sample.1) (frozen sample)
@@ -770,7 +776,8 @@ theorem nativeSourceContinuation_of_binding_interval
       ((pair.1.1, bindingObservers focal pair.1.2), pair.2)) factorExtended
     simpa only [staged, PMF.map_bind, PMF.map_comp, PMF.bind_map, PMF.bind_bind,
       Function.comp_def] using projected
-  have nativeLaw : prior.bind (fun seed => app.runToHorizon scheduler (players seed) horizon
+  have nativeDistribution : prior.bind (fun seed => app.runToHorizon scheduler
+    (players seed) horizon
       (execution seed)) = staged.bind (fun sample =>
         app.runToHorizon scheduler (frozenPlayers sample) horizon (execution sample.1)) := by
     simp only [staged, PMF.bind_bind, PMF.bind_map]
@@ -846,8 +853,8 @@ theorem nativeSourceContinuation_of_binding_interval
         (((boundary sample.1 (support sample present).1).ordered.2 event).mp done)
   obtain ⟨policy, comparison⟩ := comparison
   refine ⟨policy, ?_⟩
-  rw [nativeLaw]
-  have sourceLaw : (staged.bind fun sample => setup.informationGraph.runPlan
+  rw [nativeDistribution]
+  have sourceDistribution : (staged.bind fun sample => setup.informationGraph.runPlan
       (setup.informationGraph.policyPlan (Function.update
         (setup.informationGraph.prefixProfile reference) focal policy)
         setup.informationGraph.canonicalScheduler) (eventCount frame.program) (ghost sample.1)) =
@@ -856,6 +863,6 @@ theorem nativeSourceContinuation_of_binding_interval
           (setup.informationGraph.prefixProfile reference) focal policy)
           setup.informationGraph.canonicalScheduler) (eventCount frame.program) (ghost seed)) := by
     simp only [staged, PMF.bind_bind, PMF.bind_map, Function.comp_def, PMF.bind_const]
-  rwa [sourceLaw] at comparison
+  rwa [sourceDistribution] at comparison
 
 end Vegas

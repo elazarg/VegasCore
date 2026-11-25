@@ -69,7 +69,7 @@ theorem uniformOn_toOuterMeasure_apply {s : Finset α} (nonempty : s.Nonempty)
   · simp [div_eq_mul_inv]
 
 /-- Every point of a finite nonempty carrier has real mass one over its size. -/
-theorem toReal_uniformLaw_apply [Fintype α] [Nonempty α] (a : α) :
+theorem toReal_uniformDistribution_apply [Fintype α] [Nonempty α] (a : α) :
     ((uniformLaw α) a).toReal = (Fintype.card α : ℝ)⁻¹ := by
   rw [uniformLaw_apply, ENNReal.toReal_inv, ENNReal.toReal_natCast]
 

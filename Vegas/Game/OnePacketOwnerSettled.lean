@@ -136,11 +136,12 @@ omit [Fintype Player] in
 runtime from its initial law. -/
 theorem inputFailureRecord_of_trace (who : Player)
     {control : (application setup timeouts leaks).Control}
-    (trace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((application setup timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace
       (some control)) :
     InputFailureRecord setup timeouts leaks who control.execution :=
-  (inputFailureRecord_serviceInvariant (timeouts := timeouts) who scheduler).history (initialLaw
+  (inputFailureRecord_serviceInvariant (timeouts := timeouts) who scheduler).history
+    (initialDistribution
     setup) horizon
     (fun state supported => by
       obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ supported
@@ -192,17 +193,18 @@ private theorem privateTo_cases {who : Player} {field : setup.informationGraph.F
 omit [Fintype Player] in
 private theorem reachable_of_trace
     {control : (application setup timeouts leaks).Control}
-    (trace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((application setup timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace
       (some control)) :
     ∃ inputs, control.execution.application.config.Reachable inputs := by
   have native := trace
-  change (((reactiveApplication timeouts) leaks).protocol (initialLaw setup)
+  change (((reactiveApplication timeouts) leaks).protocol (initialDistribution setup)
     horizon scheduler).Trace (some control) at native
-  rw [initialLaw, serviceInitialLaw_eq_inputs (deps := setup.informationDependencies) setup]
+  rw [initialDistribution, serviceInitialDistribution_eq_inputs
+    (deps := setup.informationDependencies) setup]
     at native
   obtain ⟨inputs, _supported, valid⟩ := (reactive_history_invariant timeouts) leaks
-    (setup.initialLaw.map setup.eventInputs) horizon scheduler native
+    (setup.initialDistribution.map setup.eventInputs) horizon scheduler native
   exact ⟨inputs, valid.reachable⟩
 
 /-- **No private field of a debt-free owner stores a failure.** -/
@@ -215,7 +217,7 @@ theorem noFailure_of_debtFree {control : (application setup timeouts leaks).Cont
       control.execution.application.config.store field = some value →
         ¬ (setup.informationGraph.layout field).IsFailure value := by
   intro field privateTo value stored failed
-  have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup)
+  have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup)
     horizon scheduler trace
   rcases privateTo_cases privateTo with ⟨payload, layoutEq⟩ | ⟨payload, layoutEq⟩
   · have general : ∀ (kind : EventGraph.EventField Player L)
@@ -263,7 +265,7 @@ theorem disclosed_of_debtFree {control : (application setup timeouts leaks).Cont
         completion.decision.map (cast (congrArg EventGraph.EventField.Action outputEq)) =
           some true := by
   intro record member owned payload outputEq
-  have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup)
+  have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup)
     horizon scheduler trace
   obtain ⟨inputs, reachable⟩ := reachable_of_trace (timeouts := timeouts) rawTrace
   have completed := (control.execution.application.config.history_exact record.event).mp
@@ -310,13 +312,13 @@ theorem ownOutput_eq_of_event {control : (application setup timeouts leaks).Cont
     (firstNamed : first.payload.call.event? setup.informationGraph = some event)
     (secondNamed : second.payload.call.event? setup.informationGraph = some event) : first = second
       := by
-  have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup)
+  have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup)
     horizon scheduler trace
   have clean := (bounds.onePacketMenu_countClean timeouts leaks scheduler).history
-    (initialLaw setup) horizon (fun state _ => (countClean_initial timeouts) leaks state)
+    (initialDistribution setup) horizon (fun state _ => (countClean_initial timeouts) leaks state)
     trace
-  have signed := signedCommitments_history timeouts leaks (initialLaw setup)
-    (serviceInitialLaw_initialized setup) horizon scheduler rawTrace
+  have signed := signedCommitments_history timeouts leaks (initialDistribution setup)
+    (serviceInitialDistribution_initialized setup) horizon scheduler rawTrace
   obtain ⟨firstEntry, firstEntryMember, firstEmitted⟩ := List.mem_filterMap.mp firstMember
   obtain ⟨secondEntry, secondEntryMember, secondEmitted⟩ := List.mem_filterMap.mp secondMember
   have firstSender := (signed.emissions who firstEntry firstEntryMember first firstEmitted).1
@@ -361,13 +363,13 @@ theorem openable_of_pending {control : (application setup timeouts leaks).Contro
     ∃ raw, control.execution.application.candidates.lookup (who, .prepared serial) =
       .openable raw := by
   obtain ⟨message, output, event, call⟩ := named
-  have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup)
+  have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup)
     horizon scheduler trace
   have clean := (bounds.onePacketMenu_countClean timeouts leaks scheduler).history
-    (initialLaw setup) horizon (fun state _ => (countClean_initial timeouts) leaks state)
+    (initialDistribution setup) horizon (fun state _ => (countClean_initial timeouts) leaks state)
     trace
-  have signed := signedCommitments_history timeouts leaks (initialLaw setup)
-    (serviceInitialLaw_initialized setup) horizon scheduler rawTrace
+  have signed := signedCommitments_history timeouts leaks (initialDistribution setup)
+    (serviceInitialDistribution_initialized setup) horizon scheduler rawTrace
   obtain ⟨entry, entryMember, entryEmitted⟩ := List.mem_filterMap.mp output
   obtain ⟨k, inside, entryEq⟩ := List.getElem_of_mem entryMember
   obtain ⟨_, _, _, _, _, recorded⟩ := recallRecord_of_trace (timeouts := timeouts) trace control rfl
@@ -463,7 +465,7 @@ theorem openable_of_pending {control : (application setup timeouts leaks).Contro
             some (cast (congrArg EventGraph.EventField.Value layoutEq) value) at read
           rw [success] at read
           have valid : control.execution.application.BindingInvariant :=
-            ((reactiveBindingInvariant timeouts) leaks).history (initialLaw setup) horizon
+            ((reactiveBindingInvariant timeouts) leaks).history (initialDistribution setup) horizon
               scheduler (fun state member => by
                 obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ member
                 exact State.initial_bindingInvariant _) rawTrace
@@ -496,7 +498,7 @@ theorem ownerSettled_of_trace {control : (application setup timeouts leaks).Cont
       (control.execution.logs who))) control.execution.application where
   noFailure := noFailure_of_debtFree (timeouts := timeouts) trace debtFree
   bindAction completion member owner payload outputEq codeEq := by
-    have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup)
+    have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup)
       horizon scheduler trace
     obtain ⟨inputs, reachable⟩ := reachable_of_trace (timeouts := timeouts) rawTrace
     exact reachable.binding_output completion member owner payload outputEq codeEq

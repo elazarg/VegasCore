@@ -176,7 +176,7 @@ theorem keyTarget_closure (base : (serviceGraph setup deps).BehavioralProfile) (
       keyTarget ((serviceGraph setup deps).lastDeviationProfile base who policy) who
         (runKey config) := by
   rw [keyTarget_runKey independent, keyTarget_runKey independent,
-    lastErasedLaw_closure_deviation base who policy independent]
+    lastErasedDistribution_closure_deviation base who policy independent]
 
 /-- **A solitary phase through the closure, for pending events.** A solitary
 phase whose joint law, averaged target and patched policy are known for the raw
@@ -230,9 +230,11 @@ theorem pending_closure_joint (base : (serviceGraph setup deps).BehavioralProfil
             keyTarget ((serviceGraph setup deps).lastDeviationProfile base who (build policy)) who
               (runKey (execution seed).application.config)) ∧
         ∀ policy (config : (serviceGraph setup deps).Config) other, other ≠ event →
-          actionLaw ((serviceGraph setup deps).lastDeviationProfile base who (build policy))
+          actionDistribution ((serviceGraph setup deps).lastDeviationProfile base who
+            (build policy))
               config other =
-            actionLaw ((serviceGraph setup deps).lastDeviationProfile base who policy) config
+            actionDistribution ((serviceGraph setup deps).lastDeviationProfile base who policy)
+              config
               other) :
     ∀ {Seed : Type} (prior : PMF Seed)
       (execution : Seed → (serviceApplication setup deps duration leaks).Execution),
@@ -334,7 +336,7 @@ theorem pending_closure_joint (base : (serviceGraph setup deps).BehavioralProfil
       intro seed member
       rw [startEq seed member]
   · rw [keyTarget_runKey (independent _), keyTarget_runKey (independent _)]
-    exact lastErasedLaw_patch_completed event (fun current other different =>
+    exact lastErasedDistribution_patch_completed event (fun current other different =>
       agree policy current other different) _
       (Config.Step.path_completed_mono (closure_path R who _) done)
 

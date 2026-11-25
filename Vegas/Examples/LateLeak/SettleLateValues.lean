@@ -175,10 +175,10 @@ theorem settleLateSettleValue_send (profile : SettleLateProfile G late)
 
 /-! ## Values along the late turns -/
 
-theorem settleLateSecondValue_of_law (profile : SettleLateProfile G late)
+theorem settleLateSecondValue_of_distribution (profile : SettleLateProfile G late)
     (payoff : SettleLateState → ℝ) (secret : LateLeakType) (early : Option Bool)
     (first : SettleLateFirst) (ping : Bool) (packet : SettleLatePacket)
-    (law : settleLateSenderLaw profile (.secondTurn secret early first.packet ping) =
+    (law : settleLateSenderDistribution profile (.secondTurn secret early first.packet ping) =
       PMF.pure (some (.emit packet))) :
     settleLateSecondValue profile payoff secret early first ping =
       settleLateSettleValue profile payoff secret early first ping packet := by
@@ -201,27 +201,27 @@ theorem settleLateEmitValue_opening (profile : SettleLateProfile G late)
       settleLateLeakProb G * settleLateWatchValue profile payoff secret early (.opening true) +
         (1 - settleLateLeakProb G) *
           settleLateWatchValue profile payoff secret early (.opening false) := by
-  rw [settleLateEmitValue, settleLateFirstLaw, expect_map]
+  rw [settleLateEmitValue, settleLateFirstDistribution, expect_map]
   exact settleLate_expect_leakCoin _
 
 theorem settleLateEmitValue_signal (profile : SettleLateProfile G late)
     (payoff : SettleLateState → ℝ) (secret : LateLeakType) (early : Option Bool) (word : Bool) :
     settleLateEmitValue profile payoff secret early (.signal word) =
       settleLateWatchValue profile payoff secret early (.signal word) := by
-  rw [settleLateEmitValue, settleLateFirstLaw, expect_pure]
+  rw [settleLateEmitValue, settleLateFirstDistribution, expect_pure]
 
 theorem settleLateEmitValue_silent (profile : SettleLateProfile G late)
     (payoff : SettleLateState → ℝ) (secret : LateLeakType) (early : Option Bool) :
     settleLateEmitValue profile payoff secret early .silent =
       settleLateWatchValue profile payoff secret early .silent := by
-  rw [settleLateEmitValue, settleLateFirstLaw, expect_pure]
+  rw [settleLateEmitValue, settleLateFirstDistribution, expect_pure]
 
 /-- The sender of a type plays the core packet at its second late turns after a
 silent protected turn. -/
 def SettleLateCorePlay (profile : SettleLateProfile G late) (secret : LateLeakType) : Prop :=
-  ∀ ping, settleLateSenderLaw profile (.secondTurn secret none .silent ping) =
+  ∀ ping, settleLateSenderDistribution profile (.secondTurn secret none .silent ping) =
       PMF.pure (some (.emit .opening)) ∧
-    settleLateSenderLaw profile (.secondTurn secret none .opening ping) =
+    settleLateSenderDistribution profile (.secondTurn secret none .opening ping) =
       PMF.pure (some (.emit .silent))
 
 theorem settleLate_rational_corePlay (pays : G.DeferralPays)
@@ -243,8 +243,8 @@ theorem settleLateEmitValue_silent_core (profile : SettleLateProfile G late)
           settleLateSettleValue profile (settleLateStatePayoff G .sender) secret none
             (.opening false) false .silent := by
   rw [settleLateEmitValue_silent, settleLateWatchValue_eq,
-    settleLateSecondValue_of_law _ _ _ _ _ _ _ (core true).1,
-    settleLateSecondValue_of_law _ _ _ _ _ _ _ (core false).1,
+    settleLateSecondValue_of_distribution _ _ _ _ _ _ _ (core true).1,
+    settleLateSecondValue_of_distribution _ _ _ _ _ _ _ (core false).1,
     settleLateSettleValue_send, settleLateSettleValue_send]
   rfl
 
@@ -263,10 +263,10 @@ theorem settleLateEmitValue_opening_core (profile : SettleLateProfile G late)
           settleLateEmitValue profile (settleLateStatePayoff G .sender) secret none .silent := by
   rw [settleLateEmitValue_opening, settleLateEmitValue_silent_core profile secret core,
     settleLateWatchValue_eq, settleLateWatchValue_eq,
-    settleLateSecondValue_of_law _ _ _ _ (.opening true) _ _ (core true).2,
-    settleLateSecondValue_of_law _ _ _ _ (.opening true) _ _ (core false).2,
-    settleLateSecondValue_of_law _ _ _ _ (.opening false) _ _ (core true).2,
-    settleLateSecondValue_of_law _ _ _ _ (.opening false) _ _ (core false).2]
+    settleLateSecondValue_of_distribution _ _ _ _ (.opening true) _ _ (core true).2,
+    settleLateSecondValue_of_distribution _ _ _ _ (.opening true) _ _ (core false).2,
+    settleLateSecondValue_of_distribution _ _ _ _ (.opening false) _ _ (core true).2,
+    settleLateSecondValue_of_distribution _ _ _ _ (.opening false) _ _ (core false).2]
   rfl
 
 /-! ## The first-turn preference -/

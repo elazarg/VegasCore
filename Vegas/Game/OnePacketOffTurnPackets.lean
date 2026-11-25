@@ -31,7 +31,7 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
 event of the sender for which the sender has no packet on the ledger. -/
 private theorem submission_atTurn_or_unsent {remaining : Nat} {who : Player}
     {execution : (application setup timeouts leaks).Execution}
-    (trace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((application setup timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace
       (some ⟨remaining, some who, execution⟩))
     (action : (application setup timeouts leaks).Action)
@@ -115,12 +115,13 @@ private theorem submissions_at_turn_or_defaulted : ∀ {state}
       have recursive := fun next same => submissions_at_turn_or_defaulted
         prior next same
       subst current
-      have realizedRaw : some control ∈ ((application setup timeouts leaks).transition (initialLaw
+      have realizedRaw : some control ∈ ((application setup timeouts leaks).transition
+        (initialDistribution
         setup)
           horizon scheduler before joint).support := realized
       cases before with
       | none =>
-          change some control ∈ ((initialLaw setup).map fun state => some
+          change some control ∈ ((initialDistribution setup).map fun state => some
             (⟨horizon, none, ReactiveApplication.Execution.initial (application setup timeouts
               leaks)
               state⟩ : (application setup timeouts leaks).Control)).support at realizedRaw
@@ -134,10 +135,11 @@ private theorem submissions_at_turn_or_defaulted : ∀ {state}
               player ∈ current.execution.application.config.defaulted →
                 player ∈ control.execution.application.config.defaulted := by
             intro inactive
-            exact (reactive_protocol_defaulted_mono timeouts) leaks (initialLaw setup) horizon
+            exact (reactive_protocol_defaulted_mono timeouts) leaks
+              (initialDistribution setup) horizon
               scheduler current control joint realizedRaw inactive
           have rawPrior := (bounds.onePacketMenu timeouts leaks).toRawTrace
-            (initialLaw setup) horizon scheduler prior
+            (initialDistribution setup) horizon scheduler prior
           rcases current with ⟨remaining, acting, execution⟩
           cases acting with
           | some responder =>
@@ -186,7 +188,8 @@ private theorem submissions_at_turn_or_defaulted : ∀ {state}
                   · exact (earlier player entry entryMember event submitted).imp id (persist player)
           | none =>
               intro player entry entryMember event submitted
-              rcases transition_idle_cases (timeouts := timeouts) (initialLaw setup) horizon
+              rcases transition_idle_cases (timeouts := timeouts)
+                (initialDistribution setup) horizon
                 scheduler
                   ⟨remaining, none, execution⟩ rfl joint realizedRaw with same | ⟨command, moved⟩
               · rw [same] at entryMember
@@ -221,7 +224,8 @@ decision input of `who`, along every history of the input, every submission of
 another player names the event at that player's turn when it was made. -/
 theorem submittedAtTurn_of_forcedSite {who : Player}
     {info : (onePacketInformation setup timeouts leaks bounds horizon scheduler).InfoState who}
-    (forced : forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks) (initialLaw
+    (forced : forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks)
+      (initialDistribution
       setup) horizon
       scheduler who info)
     {past : List (application setup timeouts leaks).PlayerEntry}

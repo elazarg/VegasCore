@@ -18,7 +18,7 @@ open scoped ENNReal
 variable {Player : Type} [DecidableEq Player] [Finite Player] {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
   {Signal : Type*} (signal : State L setup.context → Signal) (value : Signal)
-  (supported : value ∈ (setup.initialLaw.map signal).support)
+  (supported : value ∈ (setup.initialDistribution.map signal).support)
 
 /-- After initialization, restricting to a supported component preserves the full
 history law of every continuation, for every behavioral profile and fuel. -/

@@ -395,7 +395,7 @@ theorem lastChance_phase
   have drained (state : EventGraphRuntime.State G) :
       continuation state.drain.config = continuation state.config := by
     simp only [continuation, keyTarget_runKey independentP]
-    exact State.drain_lastErasedLaw independentP state
+    exact State.drain_lastErasedDistribution independentP state
   have headStep (config : G.Config) (ready : config.cut.Ready event)
       (action : G.Action event) :
       (config.step event ready action).bind continuation = continuation config := by
@@ -406,10 +406,10 @@ theorem lastChance_phase
         _)
     have mapped := congrArg (PMF.map erasedKey) stepped
     rw [PMF.map_bind] at mapped
-    change lastErasedLaw P who config = _ at mapped
+    change lastErasedDistribution P who config = _ at mapped
     rw [mapped]
     unfold eventStep
-    rw [actionLaw_of_ownerless _ _ ownerlessNode, PMF.pure_bind,
+    rw [actionDistribution_of_ownerless _ _ ownerlessNode, PMF.pure_bind,
       (G.nodes event).action_eq_of_actor_none ownerlessNode action
         (EventCode.actionOfActorNone (G.nodes event) ownerlessNode)]
     rfl

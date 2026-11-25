@@ -136,7 +136,8 @@ theorem counterpart_of_witness (wellFormed : setup.WellFormed)
   have fixes : swap.Fixes who :=
     fixes_between sameView (fun _ _ accepted => accepted_owner_of_trace (timeouts := timeouts) trace
       accepted)
-  let symmetry := onePacketSwapSymmetry (timeouts := timeouts) bounds (initialLaw setup) horizon
+  let symmetry := onePacketSwapSymmetry (timeouts := timeouts) bounds
+    (initialDistribution setup) horizon
     scheduler swap
     (initialClosed_swapAllowed swap) bounded failures
   have imageInfo := infoOf_mapTrace_of_fixes (timeouts := timeouts) swap (initialClosed_swapAllowed

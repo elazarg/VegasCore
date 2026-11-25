@@ -227,39 +227,39 @@ theorem canonical_source (goal : Bool) : canonical false goal = canonical false 
   · subst state; simp [canonical, active]
   · simp [canonical, active, empty]
 
-theorem canonical_root_law (split goal : Bool) :
+theorem canonical_root_distribution (split goal : Bool) :
     ((model split).runBehavioral (canonical split goal) 2).map History.state =
       PMF.pure [none] := by
   rw [InformationModel.runBehavioral, run_states]
   simp [Function.iterate_succ_apply', kernel, canonical, active,
     initHistory, PMF.pure_bind]
 
-theorem canonical_branch_law (goal : Bool) (history : (arena true).History)
+theorem canonical_branch_distribution (goal : Bool) (history : (arena true).History)
     (atBranch : history.state = [some false]) :
     ((model true).runBehavioralFrom (canonical true goal) 2 history).map History.state =
       PMF.pure [some goal, some false] := by
   rw [run_states, atBranch]
   simp [Function.iterate_succ_apply', kernel, canonical, active, PMF.pure_bind]
 
-def stateLaw {split : Bool} (profile : Profile (model split).behavioralSignature)
+def stateDistribution {split : Bool} (profile : Profile (model split).behavioralSignature)
     (state : State) : PMF State :=
   (fun law => law.bind (kernel profile))^[2] (PMF.pure state)
 
-theorem branch_law (profile : Profile (model true).behavioralSignature) :
-    stateLaw profile [some false] =
+theorem branch_distribution (profile : Profile (model true).behavioralSignature) :
+    stateDistribution profile [some false] =
       (profile () [some false]).map (fun choice => [choice.val.getD none, some false]) := by
-  simp [stateLaw, Function.iterate_succ_apply', kernel, active, PMF.pure_bind,
+  simp [stateDistribution, Function.iterate_succ_apply', kernel, active, PMF.pure_bind,
     ← PMF.bind_pure_comp, Function.comp_def]
 
 theorem canonical_state_root (split goal : Bool) :
-    stateLaw (canonical split goal) [] = PMF.pure [none] := by
-  have law := canonical_root_law split goal
+    stateDistribution (canonical split goal) [] = PMF.pure [none] := by
+  have law := canonical_root_distribution split goal
   rw [InformationModel.runBehavioral, run_states] at law
   exact law
 
 theorem canonical_state_branch (goal : Bool) :
-    stateLaw (canonical true goal) [some false] = PMF.pure [some goal, some false] := by
-  rw [branch_law]
+    stateDistribution (canonical true goal) [some false] = PMF.pure [some goal, some false] := by
+  rw [branch_distribution]
   simp [canonical, active, PMF.pure_map]
 
 theorem reward_pair_le_one (goal : Bool) (action : Outcome) :
@@ -273,20 +273,20 @@ theorem context_value {split : Bool} (assessment : (model split).BehavioralAsses
     (alternative : (model split).BehavioralPolicy ()) :
     (assessment.truncatedContinuationContext site (fun h => reward goal h.state)
         2).value alternative =
-      expect (stateLaw (Profile.update assessment.strategy () alternative) site.1)
+      expect (stateDistribution (Profile.update assessment.strategy () alternative) site.1)
         (reward goal) := by
   rw [InformationModel.BehavioralAssessment.truncatedContinuationContext_value,
     expect_bind_tower _ _ _ (payoffIntegrable_of_finite _ _)]
   calc
     _ = expect (assessment.belief () site) (fun _ =>
-        expect (stateLaw (Profile.update assessment.strategy () alternative) site.1)
+        expect (stateDistribution (Profile.update assessment.strategy () alternative) site.1)
           (reward goal)) := by
       apply expect_congr_on_support
       intro history _
       have same : history.1.state = site.1 := by simpa using history.2
       have laws := congrArg (fun law => expect law (reward goal))
         (run_states (Profile.update assessment.strategy () alternative) 2 history.1)
-      simpa only [expect_map, Function.comp_def, same, stateLaw] using laws
+      simpa only [expect_map, Function.comp_def, same, stateDistribution] using laws
     _ = _ := expect_constant _ _
 
 theorem update_own (split : Bool) (profile : Profile (model split).behavioralSignature) :
@@ -315,7 +315,7 @@ theorem canonical_rational (split goal : Bool)
     exact expect_le_const _ _ (reward_integrable _ _) _ (fun state _ => reward_le_two goal state)
   · rw [branch, canonical_state_branch, expect_pure]
     have value : reward goal [some goal, some false] = 1 := by simp [reward]
-    rw [value, branch_law, expect_map]
+    rw [value, branch_distribution, expect_map]
     apply expect_le_const _ _ (payoffIntegrable_of_finite _ _)
     intro choice _
     exact reward_pair_le_one goal _
@@ -366,20 +366,20 @@ theorem update_unit {split : Bool}
 theorem rational_branch_value (goal : Bool) (assessment : (model true).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRationalFor fun _ site =>
         assessment.truncatedContinuationContext site (fun h => reward goal h.state) 2) :
-    1 ≤ expect (stateLaw assessment.strategy [some false]) (reward goal) := by
+    1 ≤ expect (stateDistribution assessment.strategy [some false]) (reward goal) := by
   have bound := (Context.isLocallyOptimal_iff_of_integrable (payoffIntegrable_of_finite _ _)
     fun _ _ => payoffIntegrable_of_finite _ _).mp (rational () branchSite)
       ((canonical true goal) ()) (Set.mem_univ _)
   rw [context_value, context_value, update_own, update_unit, branch_site_value] at bound
-  change expect (stateLaw (canonical true goal) [some false]) (reward goal) ≤ _ at bound
+  change expect (stateDistribution (canonical true goal) [some false]) (reward goal) ≤ _ at bound
   rw [canonical_state_branch, expect_pure] at bound
   simpa only [reward, List.cons.injEq, List.cons_ne_self, and_false, ↓reduceIte,
     List.headD_cons, ite_eq_left rfl] using bound
 
 theorem branch_opposite_reward_bound (profile : Profile (model true).behavioralSignature) :
-    expect (stateLaw profile [some false]) (reward false) +
-      expect (stateLaw profile [some false]) (reward true) ≤ 1 := by
-  rw [← expect_add (reward_integrable _ _) (reward_integrable _ _), branch_law, expect_map]
+    expect (stateDistribution profile [some false]) (reward false) +
+      expect (stateDistribution profile [some false]) (reward true) ≤ 1 := by
+  rw [← expect_add (reward_integrable _ _) (reward_integrable _ _), branch_distribution, expect_map]
   apply expect_le_const _ _ (payoffIntegrable_of_finite _ _)
   intro choice _
   simp only [Function.comp_apply]
@@ -403,15 +403,16 @@ theorem no_common_rational_strategy :
   have sum := branch_opposite_reward_bound first.strategy
   linarith
 
-def outcomeLaw {split : Bool} (assessment : (model split).BehavioralAssessment) : PMF Outcome :=
+def outcomeDistribution {split : Bool} (assessment : (model split).BehavioralAssessment) : PMF
+    Outcome :=
   ((model split).runBehavioral assessment.strategy 2).map (fun h => h.state.headD none)
 
 theorem canonical_outcome (split goal : Bool) (assessment : (model split).BehavioralAssessment)
     (strategy : assessment.strategy = canonical split goal) :
-    outcomeLaw assessment = PMF.pure none := by
+    outcomeDistribution assessment = PMF.pure none := by
   have law := congrArg (fun law => law.map (fun state : State => state.headD none))
-    (canonical_root_law split goal)
-  simpa only [outcomeLaw, strategy, PMF.map_comp, PMF.pure_map, List.headD_cons,
+    (canonical_root_distribution split goal)
+  simpa only [outcomeDistribution, strategy, PMF.map_comp, PMF.pure_map, List.headD_cons,
     Function.comp_def] using law
 
 /-- One source equilibrium works for both utilities. Its outcome is implementable
@@ -422,7 +423,7 @@ theorem outcome_implementation_without_uniform_compiler :
     ∃ source : (model false).BehavioralAssessment,
       (∀ goal, isEquilibrium false goal source) ∧
       (∀ goal, ∃ target : (model true).BehavioralAssessment,
-        isEquilibrium true goal target ∧ outcomeLaw target = outcomeLaw source) ∧
+        isEquilibrium true goal target ∧ outcomeDistribution target = outcomeDistribution source) ∧
       ¬ ∃ translate : Profile (model false).behavioralSignature →
           Profile (model true).behavioralSignature,
         ∀ goal, ∃ target : (model true).BehavioralAssessment,

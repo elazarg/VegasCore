@@ -31,28 +31,31 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
-local notation "N" => onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+local notation "N" => onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon
   scheduler
 
 variable (wellFormed : setup.WellFormed)
   {delay bound : setup.informationGraph.EventId → Nat}
   (opportunity : ∀ control : (application setup timeouts leaks).Control,
-    ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon scheduler).Trace
+    ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
+      scheduler).Trace
       (some control) → control.execution.application.config.defaulted = ∅ →
     OpportunityAt timeouts leaks control.execution delay)
   (inclusion : ∀ control : (application setup timeouts leaks).Control,
-    ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon scheduler).Trace
+    ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
+      scheduler).Trace
       (some control) → control.execution.application.config.defaulted = ∅ →
     ProtectedInclusionAt timeouts leaks control.execution bound)
   (timely : AsyncTimely timeouts delay bound)
   (completes : ∀ control : (application setup timeouts leaks).Control,
-    ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon scheduler).Trace
+    ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
+      scheduler).Trace
       (some control) → control.execution.application.config.defaulted = ∅ →
     (application setup timeouts leaks).terminal (some control) →
     control.execution.application.config.cut.Terminal)
   (covers : bounds.CoversOutputValues)
   (capacity : ∀ player, bindingEventCount setup.informationGraph player < bounds.candidateCount)
-  (certificate : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup)
+  (certificate : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup)
     horizon scheduler).WellFoundedHistories)
   (reference : setup.intendedModel.BehavioralAssessment) (full : reference.IsFullyMixed)
 
@@ -79,7 +82,8 @@ theorem exists_sourceDecisionRealization_of_intended_history
         covers capacity certificate reference full who sourceHistory.1.trace point sourceState
     obtain ⟨site, realizes, history, same⟩ :=
       exists_sourceDecisionRealization_of_boundary opportunity timely completes certificate
-        (honestProfile setup timeouts leaks bounds (initialLaw setup) horizon scheduler reference)
+        (honestProfile setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
+          reference)
         rank start execution current boundary point decoded intended source sourceHistory
           sourceState
     exact ⟨site, realizes, history, same⟩

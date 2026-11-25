@@ -78,7 +78,7 @@ publicly defaults its owner. The publication provenance is derived from the hist
 theorem decoded_owesFailure_defaulted_of_readout
     {menu : (application setup timeouts leaks).ResponseMenu} {horizon : Nat}
     {scheduler : (application setup timeouts leaks).Scheduler}
-    (who : Player) (history : (menu.protocol (initialLaw setup) horizon scheduler).History)
+    (who : Player) (history : (menu.protocol (initialDistribution setup) horizon scheduler).History)
     (owed : DecodedState setup timeouts leaks profile (ProtocolState.OwesFailure
       who setup.program) history.state)
     (terminal : Config Player L setup.program.terminalCtx)
@@ -102,7 +102,7 @@ theorem decoded_owesFailure_exclusionBase_of_readout {Parameter : Type}
     (excludedPayoff : Player → ℝ)
     {menu : (application setup timeouts leaks).ResponseMenu} {horizon : Nat}
     {scheduler : (application setup timeouts leaks).Scheduler}
-    (who : Player) (history : (menu.protocol (initialLaw setup) horizon scheduler).History)
+    (who : Player) (history : (menu.protocol (initialDistribution setup) horizon scheduler).History)
     (owed : DecodedState setup timeouts leaks profile (ProtocolState.OwesFailure
       who setup.program) history.state)
     (terminal : Config Player L setup.program.terminalCtx)

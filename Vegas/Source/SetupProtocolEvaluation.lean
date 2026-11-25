@@ -21,24 +21,25 @@ open GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol GameTheory.Math.P
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
-def continuationLaw (setup : Setup (Player := Player) (L := L))
+def continuationDistribution (setup : Setup (Player := Player) (L := L))
     (profile : BehavioralProfile setup.program) :
     setup.ProtocolState → PMF (Config Player L setup.program.terminalCtx)
   | none => setup.run profile
-  | some state => SourceProgram.ProtocolState.continuationLaw setup.program profile state
+  | some state => SourceProgram.ProtocolState.continuationDistribution setup.program profile state
 
 def protocolReadout (setup : Setup (Player := Player) (L := L))
     (state : setup.ProtocolState) : Option (Config Player L setup.program.terminalCtx) :=
   state.bind (SourceProgram.ProtocolState.readout setup.program)
 
-theorem continuationLaw_terminal (setup : Setup (Player := Player) (L := L))
+theorem continuationDistribution_terminal (setup : Setup (Player := Player) (L := L))
     (profile : BehavioralProfile setup.program) (state : setup.ProtocolState)
     (stopped : state.elim False (SourceProgram.ProtocolState.terminal setup.program)) :
-    (setup.continuationLaw profile state).map some =
+    (setup.continuationDistribution profile state).map some =
       PMF.pure (setup.protocolReadout state) := by
   cases state with
   | none => exact stopped.elim
   | some state =>
-      exact SourceProgram.ProtocolState.continuationLaw_terminal setup.program profile state stopped
+      exact SourceProgram.ProtocolState.continuationDistribution_terminal setup.program profile
+        state stopped
 
 end Vegas.SourceProgram.Setup

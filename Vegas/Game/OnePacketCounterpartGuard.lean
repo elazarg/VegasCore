@@ -136,7 +136,7 @@ its decoded point finds. -/
 theorem decoded_initialCellsAt : ∀ {state}
     (_ : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace state)
     (control : (application setup timeouts leaks).Control), state = some control →
-    ∃ initial ∈ setup.initialLaw.support,
+    ∃ initial ∈ setup.initialDistribution.support,
       control.execution.application.config.inputs = setup.eventInputs initial ∧
       ∃ point, decodedPoint setup control.execution.application.config = some point ∧
         InitialCellsAt initial point
@@ -144,7 +144,8 @@ theorem decoded_initialCellsAt : ∀ {state}
   | _, .extend (source := before) prior joint _ realized, control, current => by
       have recursive := fun next same => decoded_initialCellsAt prior next same
       subst current
-      change some control ∈ ((application setup timeouts leaks).transition (initialLaw setup)
+      change some control ∈ ((application setup timeouts leaks).transition
+        (initialDistribution setup)
         horizon
         scheduler before joint).support at realized
       cases before with
@@ -152,14 +153,15 @@ theorem decoded_initialCellsAt : ∀ {state}
           rw [ReactiveApplication.transition, PMF.support_map] at realized
           obtain ⟨drawn, drawnMember, drawnEq⟩ := realized
           cases Option.some.inj drawnEq
-          have drawnSupport : drawn ∈ (initialLaw setup).support := drawnMember
-          rw [initialLaw, serviceInitialLaw, PMF.support_map] at drawnSupport
+          have drawnSupport : drawn ∈ (initialDistribution setup).support := drawnMember
+          rw [initialDistribution, serviceInitialDistribution, PMF.support_map] at drawnSupport
           obtain ⟨initial, member, rfl⟩ := drawnSupport
           exact ⟨initial, member, rfl, _, decodedPoint_initial initial,
             initialCellsAt_entry initial⟩
       | some current =>
           obtain ⟨initial, member, inputsEq, point, decoded, found⟩ := recursive current rfl
-          have path := reactive_protocol_graph_steps timeouts leaks (initialLaw setup) horizon
+          have path := reactive_protocol_graph_steps timeouts leaks
+            (initialDistribution setup) horizon
             scheduler current control joint realized
           have sameInputs := EventGraph.Config.Step.path_inputs_eq path
           refine ⟨initial, member, sameInputs.trans inputsEq, ?_⟩
@@ -187,7 +189,7 @@ variable {p q : ProtocolState setup.program}
 decoded point and a point finding the cells of a supported setup draw, when the
 initial handles are compatible with the swap. -/
 theorem inputs_mem_swapAllowed_of_drawn
-    (drawn : ∃ other ∈ setup.initialLaw.support, InitialCellsAt other q)
+    (drawn : ∃ other ∈ setup.initialDistribution.support, InitialCellsAt other q)
     (handlePairs : Handle setup.informationGraph → Option (Raw L × Raw L))
     (compatible : (HiddenSwap.ofPairs (betweenPairs publicAgree succeed)
       handlePairs).InitialHandlesCompatible)
@@ -201,10 +203,10 @@ theorem inputs_mem_swapAllowed_of_drawn
   rw [decodedP, Option.some.injEq] at pointEq
   subst pointEq
   obtain ⟨other, otherMember, otherFound⟩ := drawn
-  have drawnMember : ∀ draw ∈ setup.initialLaw.support,
+  have drawnMember : ∀ draw ∈ setup.initialDistribution.support,
       EventGraphRuntime.State.initial (graph := setup.informationGraph) (setup.eventInputs draw) ∈
-        (initialLaw setup).support := fun draw drawMember => by
-    rw [initialLaw, serviceInitialLaw, PMF.support_map]
+        (initialDistribution setup).support := fun draw drawMember => by
+    rw [initialDistribution, serviceInitialDistribution, PMF.support_map]
     exact ⟨draw, drawMember, rfl⟩
   refine ⟨_, drawnMember initial member, inputsEq.symm, ?_⟩
   rw [State.swap_initial _ compatible]
@@ -295,7 +297,7 @@ decoded point `p`, the swap between `p` and a point `q` finding the cells of a
 supported setup draw, at the table of handles accepted at the end, is guarded
 when `p` and `q` agree on the commitment every ready or completed reveal reads. -/
 theorem swapGuardState_of_agree
-    (drawn : ∃ other ∈ setup.initialLaw.support, InitialCellsAt other q)
+    (drawn : ∃ other ∈ setup.initialDistribution.support, InitialCellsAt other q)
     {control : (application setup timeouts leaks).Control}
     (trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some control))
     (decodedP : decodedPoint setup control.execution.application.config = some p)

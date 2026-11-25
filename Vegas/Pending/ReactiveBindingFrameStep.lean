@@ -251,7 +251,7 @@ theorem sample_coupling (frame : Frame timeouts leaks memory owner original repa
         law outputEq codeEq node, execution.application.config.step_eq_map_of_code event ready
           outputEq (.sample payload law) codeEq PUnit.unit draw evaluates, PMF.map_comp]
       rfl
-    have nativeLaw : app.environment execution.application (.executeSample event) =
+    have nativeDistribution : app.environment execution.application (.executeSample event) =
         draw.map (fun value => execution.application.complete event ready
           (cast (congrArg EventField.Action outputEq.symm) PUnit.unit)
           (cast (congrArg EventField.Value outputEq.symm) value)) := by
@@ -270,7 +270,7 @@ theorem sample_coupling (frame : Frame timeouts leaks memory owner original repa
       exact empty
     simp only [ReactiveApplication.Execution.environmentStep, PMF.map_comp]
     change (app.environment execution.application (.executeSample event)).map _ = _
-    rw [nativeLaw, PMF.map_comp]
+    rw [nativeDistribution, PMF.map_comp]
     rfl
   refine ⟨draw.map (fun value => (next original ready value, next repaired rightReady value)),
     ?_, ?_, ?_⟩

@@ -21,7 +21,7 @@ open Vegas GameTheory GameTheory.Math.Probability
 
 noncomputable section
 
-instance : SourceSetup.fairSetup.FiniteInitialLaw := by
+instance : SourceSetup.fairSetup.FiniteInitialSupport := by
   constructor
   refine Set.Finite.subset (Set.Finite.union ?_ ?_)
     (support_mix_subset (1 / 2) (by norm_num) (by norm_num) _ _) <;> simp
@@ -45,7 +45,7 @@ example (scheduler : SourceSetup.fairSetup.informationGraph.PublicScheduler)
             (Profile.update
               (sig := SourceProgram.gameSignature SourceSetup.fairSetup.program)
               (SourceSetup.profile chosen) who alternative) := by
-  have law := scheduled_setup_deviation_law SourceSetup.fairSetup
+  have law := scheduled_setup_deviation_distribution SourceSetup.fairSetup
     scheduler (SourceSetup.profile chosen) who replacement
   exact ⟨PMF.pure (backtranslateEventPolicy SourceSetup.fairSetup.program who replacement), by
     simpa only [SourceProgram.Setup.eventGame, EventGraph.gameForm,
@@ -53,7 +53,7 @@ example (scheduler : SourceSetup.fairSetup.informationGraph.PublicScheduler)
 
 abbrev mixedSetup := SourceSemantics.mixedSetup
 
-instance : mixedSetup.FiniteInitialLaw := ⟨by simp [mixedSetup, SourceSemantics.mixedSetup]⟩
+instance : mixedSetup.FiniteInitialSupport := ⟨by simp [mixedSetup, SourceSemantics.mixedSetup]⟩
 
 /-- The strategic theorem does not require sample-free code, homogeneous
 payloads, universally accepting guards, or commitments created during play. -/

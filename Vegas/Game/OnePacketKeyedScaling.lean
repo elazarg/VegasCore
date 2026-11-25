@@ -13,10 +13,10 @@ A bijection between the histories of two sites that keeps regularity and the
 operational record, and multiplies the base weight by a common nonzero factor,
 makes every record fiber of the second site that multiple of the first's
 (`Vegas.fiber_of_equiv_scaled`), so the sites' normalized base laws agree
-(`Vegas.baseLawAgrees_of_equiv_scaled`). An exchange of the owner's hidden
+(`Vegas.BaseExpectationAgrees_of_equiv_scaled`). An exchange of the owner's hidden
 initial values scales the prior by such a common factor when hidden initial
 cells are independent, so a hidden swap scaling the base weight by a common
-factor gives agreeing base laws (`Vegas.baseLawAgrees_of_swap_scaled`).
+factor gives agreeing base laws (`Vegas.BaseExpectationAgrees_of_swap_scaled`).
 -/
 
 noncomputable section
@@ -73,7 +73,7 @@ theorem fiber_of_equiv_scaled {who : Player}
 
 open Classical in
 /-- **Base agreement from a scaling correspondence.** -/
-theorem baseLawAgrees_of_equiv_scaled {who : Player}
+theorem BaseExpectationAgrees_of_equiv_scaled {who : Player}
     [Finite (onePacketProtocol setup timeouts leaks bounds horizon scheduler).History]
     (base : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).History → ℝ)
     (regular : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).History → Prop)
@@ -91,8 +91,8 @@ theorem baseLawAgrees_of_equiv_scaled {who : Player}
     (factor : ℝ) (factor_ne : factor ≠ 0)
     (baseEq : ∀ history, base (swap history).1 = factor * base history.1)
     (payoff : List (Option (OperationalState setup timeouts leaks)) → ℝ) :
-    BaseLawAgrees (timeouts := timeouts) base regular first second payoff :=
-  baseLawAgrees_of_fibers (timeouts := timeouts) base regular first second factor factor_ne
+    BaseExpectationAgrees (timeouts := timeouts) base regular first second payoff :=
+  BaseExpectationAgrees_of_fibers (timeouts := timeouts) base regular first second factor factor_ne
     (fiber_of_equiv_scaled (timeouts := timeouts) base regular first second swap regularEq recordEq
       factor baseEq)
     payoff
@@ -102,15 +102,15 @@ that guards the histories of two sites and exchanges them, the swap keeps every
 operational record, so if it also keeps regularity and multiplies the base
 weight of the first site's histories by a common nonzero factor, the two sites'
 base laws agree on every payoff of the record. -/
-theorem baseLawAgrees_of_swap_scaled {who : Player}
+theorem BaseExpectationAgrees_of_swap_scaled {who : Player}
     [Finite (onePacketProtocol setup timeouts leaks bounds horizon scheduler).History]
     (base : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).History → ℝ)
     (regular : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).History → Prop)
     (first second : (onePacketInformation setup timeouts leaks bounds horizon
       scheduler).InformationSite who)
     (swap : HiddenSwap setup.informationGraph) (allowed : Set setup.informationGraph.Inputs)
-    (initialClosed : ∀ state ∈ (initialLaw setup).support, state.config.inputs ∈ allowed →
-      state.swap swap ∈ (initialLaw setup).support)
+    (initialClosed : ∀ state ∈ (initialDistribution setup).support, state.config.inputs ∈ allowed →
+      state.swap swap ∈ (initialDistribution setup).support)
     (bounded : ∀ handle raw, raw ∈ bounds.values → swap.raw handle raw ∈ bounds.values)
     (failures : ∀ event, swap.values.ExpiryFixed event)
     (allowedClosed : ∀ inputs ∈ allowed,
@@ -130,7 +130,8 @@ theorem baseLawAgrees_of_swap_scaled {who : Player}
       (member : (onePacketInformation setup timeouts leaks bounds horizon scheduler).infoOf who
         history.trace = first.1),
       (onePacketInformation setup timeouts leaks bounds horizon scheduler).infoOf who
-        ((onePacketSwapSymmetry (timeouts := timeouts) bounds (initialLaw setup) horizon scheduler
+        ((onePacketSwapSymmetry (timeouts := timeouts) bounds
+          (initialDistribution setup) horizon scheduler
           swap initialClosed
           bounded failures).mapHistory history (guardedFirst history member)).trace = second.1)
     (toFirst : ∀ (history : (onePacketProtocol setup timeouts leaks bounds horizon
@@ -138,14 +139,16 @@ theorem baseLawAgrees_of_swap_scaled {who : Player}
       (member : (onePacketInformation setup timeouts leaks bounds horizon scheduler).infoOf who
         history.trace = second.1),
       (onePacketInformation setup timeouts leaks bounds horizon scheduler).infoOf who
-        ((onePacketSwapSymmetry (timeouts := timeouts) bounds (initialLaw setup) horizon scheduler
+        ((onePacketSwapSymmetry (timeouts := timeouts) bounds
+          (initialDistribution setup) horizon scheduler
           swap initialClosed
           bounded failures).mapHistory history (guardedSecond history member)).trace = first.1)
     (regularEq : ∀ (history : (onePacketProtocol setup timeouts leaks bounds horizon
       scheduler).History)
       (member : (onePacketInformation setup timeouts leaks bounds horizon scheduler).infoOf who
         history.trace = first.1),
-      regular ((onePacketSwapSymmetry (timeouts := timeouts) bounds (initialLaw setup) horizon
+      regular ((onePacketSwapSymmetry (timeouts := timeouts) bounds
+        (initialDistribution setup) horizon
         scheduler swap
         initialClosed bounded failures).mapHistory history (guardedFirst history member)) ↔
         regular history)
@@ -154,15 +157,15 @@ theorem baseLawAgrees_of_swap_scaled {who : Player}
       scheduler).History)
       (member : (onePacketInformation setup timeouts leaks bounds horizon scheduler).infoOf who
         history.trace = first.1),
-      base ((onePacketSwapSymmetry (timeouts := timeouts) bounds (initialLaw setup) horizon
+      base ((onePacketSwapSymmetry (timeouts := timeouts) bounds (initialDistribution setup) horizon
         scheduler swap
         initialClosed bounded failures).mapHistory history (guardedFirst history member)) =
         factor * base history)
     (payoff : List (Option (OperationalState setup timeouts leaks)) → ℝ) :
-    BaseLawAgrees (timeouts := timeouts) base regular first second payoff :=
-  baseLawAgrees_of_equiv_scaled (timeouts := timeouts) base regular first second
+    BaseExpectationAgrees (timeouts := timeouts) base regular first second payoff :=
+  BaseExpectationAgrees_of_equiv_scaled (timeouts := timeouts) base regular first second
     (StateSymmetry.exchange (onePacketSwapSymmetry_involutive (timeouts := timeouts) bounds
-      (initialLaw setup) horizon
+      (initialDistribution setup) horizon
       scheduler swap initialClosed bounded failures allowedClosed) _ _ guardedFirst guardedSecond
       toSecond toFirst)
     (fun history => regularEq history.1 history.2)

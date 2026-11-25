@@ -3,7 +3,7 @@ module
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 public import Vegas.Game.StoppedHonestResponseCount
-public import Vegas.Game.OnePacketLawApproximation
+public import Vegas.Game.OnePacketDistributionApproximation
 public import GameTheoryExtensions.Protocol.ContinuationHorizon
 
 @[expose] public section
@@ -117,7 +117,8 @@ theorem onePacket_bounded_readout_exclusion_withinTV
           excludedPayoff))
       ((setup.intendedModel.runBehavioral intended (instructionCount setup.program + 1)).map
         (intendedReadoutExclusion setup parameter utility excludedPayoff)) := by
-  have joint := onePacket_honest_readout_exclusion_law setup timeouts leaks bounds initial horizon
+  have joint := onePacket_honest_readout_exclusion_distribution setup timeouts leaks bounds initial
+    horizon
     scheduler parameter utility excludedPayoff assessment intended (2 * horizon + 1) honestLaw
   have close := (onePacket_bounded_withinTV_honest setup timeouts leaks bounds initial horizon
     scheduler assessment profile nonnegative le_one dominates).map

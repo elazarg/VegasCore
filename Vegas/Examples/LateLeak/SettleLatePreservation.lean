@@ -128,11 +128,11 @@ and emitting one first-turn packet. -/
 theorem settleLate_deferral_bounded
     {A : (settleLateModel G true).BehavioralAssessment}
     (rational : A.IsSequentiallyRational (settleLate_terminates G true) (settleLatePayoff G true))
-    (same : settleLateOutcomeLaw G true A.strategy = settleLateIntendedOutcome)
+    (same : settleLateOutcomeDistribution G true A.strategy = settleLateIntendedOutcome)
     (secret : LateLeakType) (packet : SettleLatePacket) :
     settleLateEmitValue A.strategy (settleLateStatePayoff G .sender) secret none packet ≤
       G.reward / 2 := by
-  obtain ⟨opens, quiet, safe⟩ := settleLate_intended_law_forces A.strategy same secret
+  obtain ⟨opens, quiet, safe⟩ := settleLate_intended_distribution_forces A.strategy same secret
   have optimal := settleLate_rational_at_state rational (settleLateProtectedSite G true secret)
     (fun history => settleLate_protectedTurn_fiber history)
     (settleLateDeferral G (A.strategy .sender) secret packet)
@@ -148,7 +148,7 @@ theorem settleLate_no_intended_equilibrium (pays : G.DeferralPays)
     (A : (settleLateModel G true).BehavioralAssessment)
     (equilibrium : A.IsSequentialEquilibrium (settleLate_antichain G true)
       (settleLate_terminates G true) (settleLatePayoff G true)) :
-    settleLateOutcomeLaw G true A.strategy ≠ settleLateIntendedOutcome := by
+    settleLateOutcomeDistribution G true A.strategy ≠ settleLateIntendedOutcome := by
   intro same
   obtain ⟨rational, consistent⟩ := equilibrium
   have R0 := pays.reward_pos.le
@@ -195,14 +195,14 @@ theorem settleLate_intended_outcome_not_preserved (G : SettleLateParameters)
     (∀ A : (settleLateModel G false).BehavioralAssessment,
       A.IsSequentialEquilibrium (settleLate_antichain G false) (settleLate_terminates G false)
           (settleLatePayoff G false) →
-        settleLateOutcomeLaw G false A.strategy = settleLateIntendedOutcome) ∧
+        settleLateOutcomeDistribution G false A.strategy = settleLateIntendedOutcome) ∧
     (∃ A : (settleLateModel G true).BehavioralAssessment,
       A.IsSequentialEquilibrium (settleLate_antichain G true) (settleLate_terminates G true)
         (settleLatePayoff G true)) ∧
     ∀ A : (settleLateModel G true).BehavioralAssessment,
       A.IsSequentialEquilibrium (settleLate_antichain G true) (settleLate_terminates G true)
           (settleLatePayoff G true) →
-        settleLateOutcomeLaw G true A.strategy ≠ settleLateIntendedOutcome :=
+        settleLateOutcomeDistribution G true A.strategy ≠ settleLateIntendedOutcome :=
   ⟨(settleLate_intended_equilibria G).1, (settleLate_intended_equilibria G).2,
     settleLate_exists_sequentialEquilibrium G true, settleLate_no_intended_equilibrium pays⟩
 
@@ -259,7 +259,7 @@ theorem settleLate_not_preserved_for_every_margin (R D c : ℝ) (reward_pos : 0 
         A.IsSequentialEquilibrium (settleLate_antichain ⟨⟨R, D, c, q⟩, leak, packetCost⟩ false)
             (settleLate_terminates ⟨⟨R, D, c, q⟩, leak, packetCost⟩ false)
             (settleLatePayoff ⟨⟨R, D, c, q⟩, leak, packetCost⟩ false) →
-          settleLateOutcomeLaw ⟨⟨R, D, c, q⟩, leak, packetCost⟩ false A.strategy =
+          settleLateOutcomeDistribution ⟨⟨R, D, c, q⟩, leak, packetCost⟩ false A.strategy =
             settleLateIntendedOutcome) ∧
       (∃ A : (settleLateModel ⟨⟨R, D, c, q⟩, leak, packetCost⟩ true).BehavioralAssessment,
         A.IsSequentialEquilibrium (settleLate_antichain ⟨⟨R, D, c, q⟩, leak, packetCost⟩ true)
@@ -269,7 +269,7 @@ theorem settleLate_not_preserved_for_every_margin (R D c : ℝ) (reward_pos : 0 
         A.IsSequentialEquilibrium (settleLate_antichain ⟨⟨R, D, c, q⟩, leak, packetCost⟩ true)
             (settleLate_terminates ⟨⟨R, D, c, q⟩, leak, packetCost⟩ true)
             (settleLatePayoff ⟨⟨R, D, c, q⟩, leak, packetCost⟩ true) →
-          settleLateOutcomeLaw ⟨⟨R, D, c, q⟩, leak, packetCost⟩ true A.strategy ≠
+          settleLateOutcomeDistribution ⟨⟨R, D, c, q⟩, leak, packetCost⟩ true A.strategy ≠
             settleLateIntendedOutcome :=
   ⟨settleLateInclusionThreshold_lt_one reward_pos margin charge leak.2.1, fun q above =>
     settleLate_intended_outcome_not_preserved _

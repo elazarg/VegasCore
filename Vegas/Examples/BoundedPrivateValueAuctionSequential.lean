@@ -495,9 +495,9 @@ private theorem source_optimal_of_active (prior : PMF (Player → Bid)) (who : P
     (state : (setup prior).ProtocolState)
     (active : (setup prior).intendedProtocol.active state who)
     (intended : (setup prior).IntendedState state) :
-    expect ((setup prior).continuationLaw profile state)
+    expect ((setup prior).continuationDistribution profile state)
         (fun terminal => terminalPayoff terminal who) ≤
-      expect ((setup prior).continuationLaw truthful state)
+      expect ((setup prior).continuationDistribution truthful state)
         (fun terminal => terminalPayoff terminal who) := by
   cases who with
   | alice =>
@@ -549,10 +549,10 @@ private theorem history_comparison (who : Player)
     (site : (setup prior).intendedModel.InformationSite who)
     (history : (setup prior).intendedModel.InformationHistory who site.val)
     (deviation : (setup prior).intendedModel.BehavioralPolicy who) :
-    expect ((setup prior).continuationLaw (sourceProfile prior
+    expect ((setup prior).continuationDistribution (sourceProfile prior
       (Profile.update (truthfulProfile prior) who deviation)) history.val.state)
       (fun terminal => utility ((setup prior).parameterOutcome values terminal) who) ≤
-    expect ((setup prior).continuationLaw truthful history.val.state)
+    expect ((setup prior).continuationDistribution truthful history.val.state)
       (fun terminal => utility ((setup prior).parameterOutcome values terminal) who) := by
   apply source_optimal_of_active prior who _
     (fun actor => (setup prior).intendedSourceProfile_honest (.values program) _ actor)
@@ -581,7 +581,7 @@ private theorem intended_continuation_value
     expect ((setup prior).intendedModel.runBehavioralTerminalFrom
       (setup prior).intended_bounded.wellFoundedHistories profile history)
       (terminalUtility prior who) =
-    expect ((setup prior).continuationLaw (sourceProfile prior profile) history.state)
+    expect ((setup prior).continuationDistribution (sourceProfile prior profile) history.state)
       (fun terminal => utility ((setup prior).parameterOutcome values terminal) who) := by
   let restriction := (setup prior).intendedRestriction (.values program)
   let target := (setup prior).intendedSourceProfile (.values program) profile
@@ -595,13 +595,14 @@ private theorem intended_continuation_value
     ((setup prior).intendedSourceProfile_extends (.values program) profile) fuel history
   have readout := congrArg (PMF.map fun final => (setup prior).protocolReadout final.state)
     embedding
-  have sourceLaw := (setup prior).runBehavioralFrom_readout (.values program) target fuel
+  have sourceDistribution := (setup prior).runBehavioralFrom_readout (.values program) target fuel
     (restriction.history history) enough
   have law : ((setup prior).intendedModel.runBehavioralFrom profile fuel history).map
       (fun final => (setup prior).protocolReadout final.state) =
-      ((setup prior).continuationLaw (sourceProfile prior profile) history.state).map some := by
+      ((setup prior).continuationDistribution (sourceProfile prior profile)
+        history.state).map some := by
     rw [PMF.map_comp] at readout
-    exact readout.trans sourceLaw
+    exact readout.trans sourceDistribution
   rw [(setup prior).intendedModel.runBehavioralTerminalFrom_eq_runBehavioralFrom_of_bounded
     (setup prior).intended_bounded.wellFoundedHistories (setup prior).intended_bounded]
   have valued := congrArg (fun law => expect law (fun terminal => terminal.elim 0
@@ -655,13 +656,13 @@ theorem truthfulAssessment_equilibrium :
   ⟨truthfulProfile_rational prior (truthfulAssessment prior) (truthfulAssessment_strategy prior),
     truthfulAssessment_consistent prior⟩
 
-theorem truthfulAssessment_readout_law :
+theorem truthfulAssessment_readout_distribution :
     ((setup prior).intendedModel.runBehavioral (truthfulAssessment prior).strategy
       (instructionCount program + 1)).map
       (fun final => (setup prior).protocolReadout final.state) =
         prior.map (fun types => some (finalConfig types (types .alice) (types .bob))) := by
   rw [truthfulAssessment_strategy]
-  have same := (setup prior).continuationLaw_eq_of_intended_extension (wellFormed prior)
+  have same := (setup prior).continuationDistribution_eq_of_intended_extension (wellFormed prior)
     (.values program) (truthfulProfile prior)
     ((setup prior).intendedSourceProfile (.values program) (truthfulProfile prior))
     ((setup prior).intendedSourceProfile_extends (.values program) (truthfulProfile prior))
@@ -670,11 +671,11 @@ theorem truthfulAssessment_readout_law :
     (setup prior).run ((setup prior).intendedOpeningProfile (truthfulProfile prior)) at same
   rw [sourceProfile_truthful] at same
   have law := (setup prior).intendedOpeningProfile_run (wellFormed prior) (truthfulProfile prior)
-  rw [← same, truthful_source_law, PMF.map_comp] at law
+  rw [← same, truthful_source_distribution, PMF.map_comp] at law
   exact law
 
 
-theorem truthfulAssessment_joint_law :
+theorem truthfulAssessment_joint_distribution :
     ((setup prior).intendedModel.runBehavioral (truthfulAssessment prior).strategy
       (instructionCount program + 1)).map (fun final =>
         ((setup prior).protocolReadout final.state, fun who => terminalUtility prior who final)) =
@@ -684,7 +685,7 @@ theorem truthfulAssessment_joint_law :
   have valued := congrArg (PMF.map (fun readout : Option
       (Config Player simpleExpr program.terminalCtx) => (readout, fun who => readout.elim 0
         (fun terminal => utility ((setup prior).parameterOutcome values terminal) who))))
-    (truthfulAssessment_readout_law prior)
+    (truthfulAssessment_readout_distribution prior)
   rw [PMF.map_comp, PMF.map_comp] at valued
   refine valued.trans ?_
   apply map_congr_on_support _

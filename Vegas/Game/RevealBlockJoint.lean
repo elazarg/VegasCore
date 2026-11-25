@@ -86,7 +86,7 @@ theorem ledgerBlock_joint {horizon : Nat}
     {delay : (serviceGraph setup deps).EventId → Nat}
     (bound : (serviceGraph setup deps).EventId → Nat) (turns : Nat)
     (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
-        (serviceInitialLaw setup deps) horizon scheduler delay bound)
+        (serviceInitialDistribution setup deps) horizon scheduler delay bound)
     (timely : AsyncTimely (serviceTimeouts setup deps duration) delay bound)
     (reference : (serviceGraph setup deps).BehavioralProfile)
     (decides : ∀ (config : (serviceGraph setup deps).Config)
@@ -112,7 +112,8 @@ theorem ledgerBlock_joint {horizon : Nat}
     {Seed : Type} (prior : PMF Seed)
     (execution : Seed → (serviceApplication setup deps duration leaks).Execution)
     (supported : ∀ seed ∈ prior.support, execution seed ∈
-      ((serviceApplication setup deps duration leaks).roundsFrom (serviceInitialLaw setup deps)
+      ((serviceApplication setup deps duration leaks).roundsFrom
+        (serviceInitialDistribution setup deps)
         scheduler (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound
           turns (firstTurnTiming setup turns deps) reference) who deviation)
         (execution seed).environmentRecall.length).support)
@@ -262,9 +263,9 @@ theorem ledgerBlock_joint {horizon : Nat}
     have lengths : (execution left).environmentRecall.length =
         (execution right).environmentRecall.length :=
       congrArg (fun value => value.2.2.1.length) same
-    obtain ⟨leftTrace⟩ := app.raw_trace_roundsFrom (serviceInitialLaw setup deps) horizon
+    obtain ⟨leftTrace⟩ := app.raw_trace_roundsFrom (serviceInitialDistribution setup deps) horizon
       scheduler players _ (bounded left leftMember) _ (supported left leftMember)
-    obtain ⟨rightTrace⟩ := app.raw_trace_roundsFrom (serviceInitialLaw setup deps) horizon
+    obtain ⟨rightTrace⟩ := app.raw_trace_roundsFrom (serviceInitialDistribution setup deps) horizon
       scheduler players _ (bounded right rightMember) _ (supported right rightMember)
     have agree : AcceptedAgree who start finish (execution left).application.config
         (execution right).application.config := by

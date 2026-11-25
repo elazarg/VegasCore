@@ -295,25 +295,25 @@ theorem regular_nonneg (w : NearProductWeights π ω) (h : Ω) : 0 ≤ w.regular
 
 variable [Fintype O] [Fintype E]
 
-/-- The normalized law of the retained coordinate under all regular and
-irregular outcomes. -/
-def nativeLaw (w : NearProductWeights π ω) (o : O) : ℝ :=
+/-- Normalized mass of a retained-coordinate value across regular and irregular
+outcomes. -/
+def nativeMarginalMass (w : NearProductWeights π ω) (o : O) : ℝ :=
   ((∑ h with (π h).1 = o, w.regular h) + ∑ g with ω g = o, w.remainder g) /
     ((∑ h, w.regular h) + ∑ g, w.remainder g)
 
-/-- The normalized law of the retained coordinate under the source law. -/
-def sourceLaw (w : NearProductWeights π ω) (o : O) : ℝ :=
+/-- Normalized mass of a retained-coordinate value under the source weights. -/
+def sourceMarginalMass (w : NearProductWeights π ω) (o : O) : ℝ :=
   (∑ e, w.source (o, e)) / ∑ x, w.source x
 
-/-- The normalized retained-coordinate laws of the native and source weights
-are within `errorBound` in `ℓ¹`. -/
-theorem sum_abs_nativeLaw_sub_sourceLaw_le (w : NearProductWeights π ω) :
-    ∑ o, |w.nativeLaw o - w.sourceLaw o| ≤ w.errorBound := by
+/-- The normalized retained-coordinate distributions induced by the native and
+source weights are within `errorBound` in `ℓ¹`. -/
+theorem sum_abs_nativeMarginalMass_sub_sourceMarginalMass_le (w : NearProductWeights π ω) :
+    ∑ o, |w.nativeMarginalMass o - w.sourceMarginalMass o| ≤ w.errorBound := by
   set m : O → ℝ := fun o => ∑ h with (π h).1 = o, w.regular h
   set s : O → ℝ := fun o => ∑ g with ω g = o, w.remainder g
   have m_total : ∑ o, m o = ∑ h, w.regular h := sum_fiberwise univ (fun h => (π h).1) _
   have s_total : ∑ o, s o = ∑ g, w.remainder g := sum_fiberwise univ ω _
-  have native_eq : ∀ o, w.nativeLaw o = (m o + s o) / ∑ o', (m o' + s o') := fun o => by
+  have native_eq : ∀ o, w.nativeMarginalMass o = (m o + s o) / ∑ o', (m o' + s o') := fun o => by
     rw [sum_add_distrib, m_total, s_total]
     rfl
   have contamination := sum_abs_div_sum_add_sub_div_sum_le
@@ -327,9 +327,9 @@ theorem sum_abs_nativeLaw_sub_sourceLaw_le (w : NearProductWeights π ω) :
     w.source_eq_mul w.regular_close w.fiber_close w.factorError_nonneg w.factorError_lt_one
     w.fiberError_nonneg w.fiberError_lt_one w.regular_pos
   rw [← m_total] at regular
-  calc ∑ o, |w.nativeLaw o - w.sourceLaw o|
+  calc ∑ o, |w.nativeMarginalMass o - w.sourceMarginalMass o|
       ≤ ∑ o, (|(m o + s o) / ∑ o', (m o' + s o') - m o / ∑ o', m o'| +
-          |m o / ∑ o', m o' - w.sourceLaw o|) := sum_le_sum fun o _ => by
+          |m o / ∑ o', m o' - w.sourceMarginalMass o|) := sum_le_sum fun o _ => by
         rw [native_eq]
         exact abs_sub_le _ _ _
     _ ≤ 2 * w.remainderRatio / (1 + w.remainderRatio) +

@@ -95,26 +95,26 @@ theorem foreign_nonmain_prefix_of_firstFailure
         before.execution.observe (application setup timeouts leaks) owner)) = some event ∧
       (∀ previous ∈ before.execution.logs owner,
         ¬ ActivatedAt setup timeouts leaks owner event previous) ∧
-      responseChoice setup timeouts leaks bounds (initialLaw setup) horizon
+      responseChoice setup timeouts leaks bounds (initialDistribution setup) horizon
         scheduler owner
         (some (before.execution.logs owner,
           before.execution.observe (application setup timeouts leaks) owner)) response ∉
-        (honestChoice setup timeouts leaks bounds (initialLaw setup) horizon
+        (honestChoice setup timeouts leaks bounds (initialDistribution setup) horizon
           scheduler source owner
           (some (before.execution.logs owner,
             before.execution.observe (application setup timeouts leaks) owner))).support := by
-  have rawPrior := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup)
+  have rawPrior := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup)
     horizon scheduler trace
-  have rawTarget := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup)
+  have rawTarget := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup)
     horizon scheduler target
-  have initialEq : initialLaw setup = (setup.initialLaw.map setup.eventInputs).map
+  have initialEq : initialDistribution setup = (setup.initialDistribution.map setup.eventInputs).map
       (EventGraphRuntime.State.initial (graph := setup.informationGraph)) :=
-    serviceInitialLaw_eq_inputs (deps := setup.informationDependencies) setup
+    serviceInitialDistribution_eq_inputs (deps := setup.informationDependencies) setup
   rw [initialEq] at rawPrior rawTarget
   have priorEvidence := ExclusionEvidence.history timeouts leaks
-    (setup.initialLaw.map setup.eventInputs) horizon scheduler rawPrior
+    (setup.initialDistribution.map setup.eventInputs) horizon scheduler rawPrior
   have targetEvidence := ExclusionEvidence.history timeouts leaks
-    (setup.initialLaw.map setup.eventInputs) horizon scheduler rawTarget
+    (setup.initialDistribution.map setup.eventInputs) horizon scheduler rawTarget
   have active : owner ∉ execution.application.config.defaulted := by simp [clear]
   have introduced : owner ∈ next.application.config.defaulted :=
     (targetEvidence.defaulted_zero owner).mpr ⟨failedEvent, owned, failed⟩
@@ -139,7 +139,7 @@ theorem foreign_nonmain_prefix_of_firstFailure
         ¬ ActivatedAt setup timeouts leaks owner event previous := by
     rcases origin with ⟨message, member, _included, sender, named⟩ | ⟨_, entered, activated, due⟩
     · have recorded := eventRecorded_of_pending setup leaks
-          ((bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon
+          ((bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup) horizon
             scheduler trace) owner event message
         member sender named
       exact foreign_firstActivation_prefix_of_recorded (timeouts := timeouts) wellFormed source
@@ -165,16 +165,19 @@ theorem foreign_nonmain_prefix_of_firstFailure
       (before.execution.logs owner) (before.execution.observe (application setup timeouts leaks)
         owner) :=
     localLegal.2
-  have selected : (responseChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+  have selected : (responseChoice setup timeouts leaks bounds
+    (initialDistribution setup) horizon scheduler
       owner (some (before.execution.logs owner,
         before.execution.observe (application setup timeouts leaks) owner)) response).1 = some
           response := by
     simp only [responseChoice, dite_eq_left offered]
-  have notMain : responseChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+  have notMain : responseChoice setup timeouts leaks bounds
+    (initialDistribution setup) horizon scheduler
     owner
       (some (before.execution.logs owner,
         before.execution.observe (application setup timeouts leaks) owner)) response ∉
-      (honestChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler source owner
+      (honestChoice setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
+        source owner
         (some (before.execution.logs owner,
           before.execution.observe (application setup timeouts leaks) owner))).support := by
     rcases before with ⟨responsesLeft, actor, earlierExecution⟩

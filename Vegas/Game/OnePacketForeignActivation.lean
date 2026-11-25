@@ -71,14 +71,14 @@ theorem foreign_firstActivation_prefix_of_due
         before.execution.observe (application setup timeouts leaks) owner)) = some event ∧
       ∀ previous ∈ before.execution.logs owner,
         ¬ ActivatedAt setup timeouts leaks owner event previous := by
-  have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup)
+  have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup)
     horizon scheduler trace
   have occurred := opportunity event owner entered owned
     ((control.execution.application.publicView_eventReady event).mpr ready) activated (by
       have margin := timely event (by simp only [owned, Option.isSome_some])
       omega)
   obtain ⟨entry, remembered, atTurn⟩ := recalled_turn_of_ownerActivatedSince timeouts leaks
-    (initialLaw setup) horizon scheduler control rawTrace idle event
+    (initialDistribution setup) horizon scheduler control rawTrace idle event
     (setup.informationGraph.sequentialize_solitary event).ownerSolitary owner entered owned occurred
   have occurs : ∃ entry ∈ control.execution.logs owner,
       ActivatedAt setup timeouts leaks owner event entry := ⟨entry, remembered, atTurn⟩

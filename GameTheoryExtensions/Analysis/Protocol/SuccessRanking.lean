@@ -9,7 +9,7 @@ public import GameTheoryExtensions.Analysis.Protocol.CopiedSiteLimit
 /-! # Local values and failure probabilities at an information site
 
 At an information site, installing a local law yields a law over observed
-outcomes (`GameTheory.Protocol.InformationModel.localLaw`) and the expected
+outcomes (`GameTheory.Protocol.InformationModel.localOutcomeDistribution`) and the expected
 utility of its player (`GameTheory.Protocol.InformationModel.localValue`); the
 local gain is the comparison used by the limit obligations of
 `GameTheory.Protocol.InformationModel.PooledLimitCertificate`
@@ -62,12 +62,12 @@ def localRun (law : PMF (N.Choice who site.1)) : PMF T.History :=
 
 /-- The observed law of installing a local law at a site, from the site's
 belief. -/
-def localLaw (law : PMF (N.Choice who site.1)) : PMF Outcome :=
+def localOutcomeDistribution (law : PMF (N.Choice who site.1)) : PMF Outcome :=
   (localRun fuel assessment site law).map observe
 
 /-- The expected utility of installing a local law at a site. -/
 def localValue (law : PMF (N.Choice who site.1)) : ℝ :=
-  expect (localLaw fuel observe assessment site law) (utility · who)
+  expect (localOutcomeDistribution fuel observe assessment site law) (utility · who)
 
 /-- The local gain of a law at a site: the comparison of the limit obligations
 of a pooled component family. -/
@@ -98,7 +98,7 @@ theorem localValue_eq_expect_localRun (law : PMF (N.Choice who site.1)) :
     localValue fuel observe utility assessment site law =
       expect (localRun fuel assessment site law)
         (fun history => utility (observe history) who) := by
-  unfold localValue localLaw
+  unfold localValue localOutcomeDistribution
   rw [expect_map]
   rfl
 
@@ -108,7 +108,7 @@ theorem localGain_eq_sub (law : PMF (N.Choice who site.1)) :
     localGain fuel observe utility assessment site law =
       localValue fuel observe utility assessment site law -
         localValue fuel observe utility assessment site (assessment.strategy who site.1) := by
-  simp only [localGain, localValue, localLaw, localRun, assessmentComparisonWith,
+  simp only [localGain, localValue, localOutcomeDistribution, localRun, assessmentComparisonWith,
     BehavioralPolicy.withLaw_eq_self]
 
 /-- The local gain of the assessed local law is zero. -/
@@ -124,7 +124,7 @@ theorem localValue_eq_continuationContext (bounded : T.BoundedHorizon fuel)
           (fun history => utility (observe history) who)).value
         ((assessment.strategy who).withLaw site.1 law) := by
   rw [assessment.continuationContext_eq_truncated_of_bounded _ bounded]
-  simp only [localValue, localLaw, localRun, expect_map]
+  simp only [localValue, localOutcomeDistribution, localRun, expect_map]
   rfl
 
 /-- **Local values are affine in the local law.** -/

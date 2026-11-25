@@ -2,7 +2,7 @@ module
 
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-public import Vegas.Game.OnePacketHonestStoppedLaw
+public import Vegas.Game.OnePacketHonestStoppedDistribution
 public import Vegas.Game.StoppedHonestComparison
 public import Vegas.Game.SourceDebtObservation
 
@@ -27,27 +27,27 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {scheduler : (application setup timeouts leaks).Scheduler}
   {delay bound : setup.informationGraph.EventId → Nat}
   (opportunity : ∀ control : (application setup timeouts leaks).Control,
-    ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some control) →
     control.execution.application.config.defaulted = ∅ →
     OpportunityAt timeouts leaks control.execution delay)
   (inclusion : ∀ control : (application setup timeouts leaks).Control,
-    ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some control) →
     control.execution.application.config.defaulted = ∅ →
     ProtectedInclusionAt timeouts leaks control.execution bound)
   (timely : (AsyncTimely timeouts) delay bound)
   (completes : ∀ control : (application setup timeouts leaks).Control,
-    ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some control) →
     control.execution.application.config.defaulted = ∅ →
     (application setup timeouts leaks).terminal (some control) →
     control.execution.application.config.cut.Terminal)
 
-local notation "N" => onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+local notation "N" => onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon
   scheduler
 local notation "E" => ReactiveApplication.ResponseMenu.protocol
-  (bounds.onePacketMenu timeouts leaks) (initialLaw setup) horizon scheduler
+  (bounds.onePacketMenu timeouts leaks) (initialDistribution setup) horizon scheduler
 local notation "Clear" => ReactiveApplication.stateInvariant
   (app := application setup timeouts leaks)
     (fun native : EventGraphRuntime.State setup.informationGraph =>
@@ -70,7 +70,7 @@ theorem counted_stopped_boundary_value_sub_le
     (intended : ProtocolState.Intended setup.program point)
     (profile : ∀ who, (N).BehavioralPolicy who)
     {retention : ℝ} (nonnegative : 0 ≤ retention) (le_one : retention ≤ 1)
-    (dominates : DominatesHonestFrom setup timeouts leaks bounds (initialLaw setup) horizon
+    (dominates : DominatesHonestFrom setup timeouts leaks bounds (initialDistribution setup) horizon
       scheduler
       assessment retention profile start)
     {Parameter : Type} (parameter : State L setup.context → Parameter)
@@ -95,7 +95,8 @@ theorem counted_stopped_boundary_value_sub_le
         (application setup timeouts leaks).rank horizon start.state := by
   classical
   intro stopped
-  let honest := honestProfile setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+  let honest := honestProfile setup timeouts leaks bounds (initialDistribution setup) horizon
+    scheduler
     assessment
   let payoff := fun final : (E).History => if stopped final then excludedPayoff who else
     exclusionBase setup timeouts parameter utility excludedPayoff leaks final.state who
@@ -105,21 +106,24 @@ theorem counted_stopped_boundary_value_sub_le
     split
     · exact excludedBounded
     · exact payoffBounded final
-  have sourceLaw := counted_honest_boundary_readout_law (timeouts := timeouts) opportunity inclusion
+  have sourceDistribution := counted_honest_boundary_readout_distribution
+    (timeouts := timeouts) opportunity inclusion
     timely completes covers capacity assessment certificate rank start execution state
       boundary point decoded intended
   have sourceEq : sourceContinuation setup (setup.intendedOpeningProfile assessment.strategy) rank
       execution.application.config =
-        (setup.continuationLaw (setup.intendedOpeningProfile assessment.strategy)
+        (setup.continuationDistribution (setup.intendedOpeningProfile assessment.strategy)
           (some point)).map some := by
     exact congrArg (fun decoded =>
-      (setup.continuationLaw (setup.intendedOpeningProfile assessment.strategy) decoded).map some)
+      (setup.continuationDistribution (setup.intendedOpeningProfile assessment.strategy)
+        decoded).map some)
       decoded
   have decodedPointEq := (decodedPoint_eq_of_isPrefix boundary.ordered).trans decoded
-  obtain ⟨lawEq, noStop⟩ := honest_debt_stopped_terminal_law_of_readout_law (timeouts := timeouts)
+  obtain ⟨lawEq, noStop⟩ := honest_debt_stopped_terminal_distribution_of_readout_distribution
+    (timeouts := timeouts)
     bounds wellFormed
     assessment certificate start point (decodedPoint_staticAt decodedPointEq) intended
-    (sourceLaw.trans sourceEq) who
+    (sourceDistribution.trans sourceEq) who
   have reference : expect ((N).runBehavioralUntil certificate honest stopped start) payoff =
       expect (sourceContinuation setup (setup.intendedOpeningProfile assessment.strategy) rank
         execution.application.config)
@@ -146,20 +150,20 @@ theorem counted_stopped_boundary_value_sub_le
             have projected : sourceReadout setup timeouts leaks final.state ∈
                 (sourceContinuation setup (setup.intendedOpeningProfile assessment.strategy) rank
                   execution.application.config).support := by
-              rw [← sourceLaw]
+              rw [← sourceDistribution]
               exact (PMF.mem_support_map_iff _ _ _).mpr ⟨final, member, rfl⟩
             change sourceReadout setup timeouts leaks final.state ∈
-              ((setup.continuationLaw (setup.intendedOpeningProfile assessment.strategy)
+              ((setup.continuationDistribution (setup.intendedOpeningProfile assessment.strategy)
                 (sourceServicePrefix? setup rank execution.application.config)).map some).support
               at projected
             obtain ⟨terminal, _, read⟩ := (PMF.mem_support_map_iff _ _ _).mp projected
             exact exclusionBase_eq_readout_of_readout setup timeouts parameter utility
               excludedPayoff leaks final.state terminal read.symm who
-      _ = _ := by rw [sourceLaw]
+      _ = _ := by rw [sourceDistribution]
   change |expect _ payoff - _| ≤ _
   rw [← reference]
   have comparison := onePacket_stopped_expect_sub_le_remainingResponses setup timeouts leaks bounds
-    (initialLaw setup) horizon scheduler
+    (initialDistribution setup) horizon scheduler
     assessment certificate stopped profile start nonnegative le_one dominates payoff boundNonneg
       bounded
   exact comparison.trans (mul_le_mul_of_nonneg_left

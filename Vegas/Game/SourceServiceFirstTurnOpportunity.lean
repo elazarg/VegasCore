@@ -42,11 +42,12 @@ theorem firstTurn_inclusionFits {event : (serviceGraph setup deps).EventId}
     {scheduler : (serviceApplication setup deps duration leaks).Scheduler}
     {delay bound : (serviceGraph setup deps).EventId → Nat}
     (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
-        (serviceInitialLaw setup deps) horizon scheduler delay bound)
+        (serviceInitialDistribution setup deps) horizon scheduler delay bound)
     (timely : AsyncTimely (serviceTimeouts setup deps duration) delay bound)
     {remaining : Nat} {execution : (serviceApplication setup deps duration leaks).Execution}
     (trace :
-        ((serviceApplication setup deps duration leaks).protocol (serviceInitialLaw setup deps)
+        ((serviceApplication setup deps duration leaks).protocol
+          (serviceInitialDistribution setup deps)
         horizon scheduler).Trace (some ⟨remaining, none, execution⟩))
     (answered : ActivationsAnswered setup leaks execution)
     {owner : Player}
@@ -58,7 +59,7 @@ theorem firstTurn_inclusionFits {event : (serviceGraph setup deps).EventId}
         some 0) :
     execution.application.publicView.InclusionFitsDeadline (serviceTimeouts setup deps duration)
         bound event := by
-  rw [serviceInitialLaw_eq_inputs setup] at contract trace
+  rw [serviceInitialDistribution_eq_inputs setup] at contract trace
   exact EventGraphRuntime.firstTurn_inclusionFits (serviceTimeouts setup deps duration) leaks
     ownerSolitary contract timely trace answered owned ready first
 

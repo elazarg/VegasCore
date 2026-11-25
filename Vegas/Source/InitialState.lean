@@ -77,7 +77,7 @@ def parameterRun {Parameter : Type} (setup : Setup (Player := Player) (L := L))
     (parameter : State L setup.context → Parameter)
     (profile : BehavioralProfile setup.program) :
     PMF (Parameter × PublicOutcome setup.program) :=
-  setup.initialLaw.bind fun initial =>
+  setup.initialDistribution.bind fun initial =>
     (SourceProgram.run setup.program profile initial).map fun terminal =>
       (parameter initial, publicOutcome setup.program terminal)
 

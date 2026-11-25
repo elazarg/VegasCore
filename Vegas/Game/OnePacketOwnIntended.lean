@@ -46,7 +46,8 @@ theorem notOwes_of_transition {who : Player} {before after : (application setup 
   leaks).Control}
     (prior : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some before))
     (joint : Player → Option (application setup timeouts leaks).Action)
-    (realized : some after ∈ ((application setup timeouts leaks).transition (initialLaw setup)
+    (realized : some after ∈ ((application setup timeouts leaks).transition
+      (initialDistribution setup)
       horizon scheduler (some before) joint).support)
     (notOwed : ∀ point, decodedPoint setup after.execution.application.config = some point →
       ¬ ProtocolState.OwesFailure who setup.program point) :
@@ -65,7 +66,7 @@ theorem notOwes_of_transition {who : Player} {before after : (application setup 
     cases Option.some.inj (foundEq.symm.trans decoded)
     exact owes
   obtain ⟨_, ⟨next⟩, owed⟩ := decodedHolds_transition (owesFailure_stepClosed who)
-    (initialLaw setup) horizon scheduler (some before) (some after) joint holds realized
+    (initialDistribution setup) horizon scheduler (some before) (some after) joint holds realized
   exact notOwed _ (decodedPoint_eq next) (owed _ next.decode)
 
 /-- If the endpoint owes no failure, every actual initialized prefix is intended

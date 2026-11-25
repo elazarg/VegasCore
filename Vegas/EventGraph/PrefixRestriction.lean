@@ -351,14 +351,14 @@ theorem Config.restrictionOf_completed_path {before after : graph.Config}
 
 /-- Equal full-key continuation laws retain identical past records and stores.
 Only containment of the completed cuts is needed; the two policies may differ. -/
-theorem Config.restrictionOf_of_canonicalLaw_eq
+theorem Config.restrictionOf_of_canonicalDistribution_eq
     (leftProfile rightProfile : graph.BehavioralProfile) (small large : graph.Config)
     (within : small.cut.completed ⊆ large.cut.completed)
-    (same : canonicalLaw leftProfile small = canonicalLaw rightProfile large) :
+    (same : canonicalDistribution leftProfile small = canonicalDistribution rightProfile large) :
     small.RestrictionOf (fun event => event ∈ small.cut.completed) large := by
-  obtain ⟨key, member⟩ := (canonicalLaw leftProfile small).support_nonempty
+  obtain ⟨key, member⟩ := (canonicalDistribution leftProfile small).support_nonempty
   obtain ⟨left, leftMember, leftKey⟩ := (PMF.mem_support_map_iff _ _ _).mp member
-  have other : key ∈ (canonicalLaw rightProfile large).support := by rwa [← same]
+  have other : key ∈ (canonicalDistribution rightProfile large).support := by rwa [← same]
   obtain ⟨right, rightMember, rightKey⟩ := (PMF.mem_support_map_iff _ _ _).mp other
   have keys : runKey left = runKey right := leftKey.trans rightKey.symm
   have leftRestricted := Config.restrictionOf_completed_path
@@ -385,12 +385,13 @@ theorem Config.restrictionOf_of_canonicalLaw_eq
       · simp only [leftRestricted.store, FieldWithin, ite_eq_right done]
 
 /-- At the same cut, equal full-key continuation laws determine the current key. -/
-theorem Config.runKey_eq_of_canonicalLaw_eq
+theorem Config.runKey_eq_of_canonicalDistribution_eq
     (leftProfile rightProfile : graph.BehavioralProfile) (left right : graph.Config)
     (cuts : left.cut = right.cut)
-    (same : canonicalLaw leftProfile left = canonicalLaw rightProfile right) :
+    (same : canonicalDistribution leftProfile left = canonicalDistribution rightProfile right) :
     runKey left = runKey right := by
-  have restricted := Config.restrictionOf_of_canonicalLaw_eq leftProfile rightProfile left right
+  have restricted := Config.restrictionOf_of_canonicalDistribution_eq leftProfile rightProfile left
+    right
     (by rw [cuts]) same
   refine Prod.ext cuts (Prod.ext ?_ ?_)
   · funext field
@@ -415,10 +416,10 @@ theorem Config.runKey_eq_of_canonicalLaw_eq
 
 /-- A ready publication sees the successful binding and guard verdict recorded
 by a donor with the same full canonical continuation law. -/
-theorem Config.Reachable.ready_publication_of_canonicalLaw_eq
+theorem Config.Reachable.ready_publication_of_canonicalDistribution_eq
     {inputs : graph.Inputs} {current : graph.Config} (reachable : current.Reachable inputs)
     (currentProfile donorProfile : graph.BehavioralProfile) (donor : graph.Config)
-    (same : canonicalLaw currentProfile current = canonicalLaw donorProfile donor)
+    (same : canonicalDistribution currentProfile current = canonicalDistribution donorProfile donor)
     (event : graph.EventId) (ready : current.cut.Ready event)
     (owner : Player) (payload : L.Ty)
     (binding : FieldRef graph.layout (.binding owner payload))
@@ -431,9 +432,9 @@ theorem Config.Reachable.ready_publication_of_canonicalLaw_eq
       donor.store = some (.success value)) :
     binding.get? current.store = some (.success value) ∧
       GuardCheck.allAccepted? checks current.store (.success value) = some true := by
-  obtain ⟨key, member⟩ := (canonicalLaw currentProfile current).support_nonempty
+  obtain ⟨key, member⟩ := (canonicalDistribution currentProfile current).support_nonempty
   obtain ⟨left, leftMember, leftKey⟩ := (PMF.mem_support_map_iff _ _ _).mp member
-  have other : key ∈ (canonicalLaw donorProfile donor).support := by rwa [← same]
+  have other : key ∈ (canonicalDistribution donorProfile donor).support := by rwa [← same]
   obtain ⟨right, rightMember, rightKey⟩ := (PMF.mem_support_map_iff _ _ _).mp other
   have keys : runKey left = runKey right := leftKey.trans rightKey.symm
   have leftPath := runPlan_graph_steps (graph.policyPlan currentProfile graph.canonicalScheduler)

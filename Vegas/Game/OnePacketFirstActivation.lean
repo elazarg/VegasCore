@@ -99,12 +99,12 @@ under pointwise counted opportunity, including arbitrary prior source counterfac
 theorem firstActivation_inclusionFits_of_counted_opportunity
     (horizon : Nat) (scheduler : (N).Scheduler) (delay bound : setup.informationGraph.EventId → Nat)
     (opportunity : ∀ control : (N).Control,
-      ((nativeMenu).protocol (initialLaw setup) horizon scheduler).Trace (some control) →
+      ((nativeMenu).protocol (initialDistribution setup) horizon scheduler).Trace (some control) →
       control.execution.application.config.defaulted = ∅ →
       OpportunityAt timeouts leaks control.execution delay)
     (timely : (AsyncTimely timeouts) delay bound)
     {state : (N).ProtocolState}
-    (trace : ((nativeMenu).protocol (initialLaw setup) horizon scheduler).Trace state)
+    (trace : ((nativeMenu).protocol (initialDistribution setup) horizon scheduler).Trace state)
     {remaining : Nat} {who : Player} {execution : (N).Execution}
     (current : state = some ⟨remaining, some who, execution⟩)
     (clear : execution.application.config.defaulted = ∅)
@@ -115,19 +115,21 @@ theorem firstActivation_inclusionFits_of_counted_opportunity
     execution.application.publicView.InclusionFitsDeadline timeouts bound event := by
   let service := scheduler
   obtain ⟨previous, ⟨countedTrace⟩, applicationEq, recallEq⟩ :=
-    (nativeMenu).decision_predecessor (initialLaw setup) horizon service trace current
+    (nativeMenu).decision_predecessor (initialDistribution setup) horizon service trace current
   have spec := PublicView.ownTurn?_spec _ who event turn
   have ready := (execution.application.publicView_eventReady event).mp spec.1
   have strategic : (setup.informationGraph.actor? event).isSome = true := by rw [spec.2]; rfl
-  have previousTrace := (nativeMenu).toRawTrace (initialLaw setup) horizon service countedTrace
+  have previousTrace := (nativeMenu).toRawTrace (initialDistribution setup) horizon service
+    countedTrace
   have inputTrace := previousTrace
   change (((reactiveApplication timeouts) leaks).protocol
-    (initialLaw setup) horizon service).Trace _ at inputTrace
-  rw [initialLaw, serviceInitialLaw_eq_inputs (deps := setup.informationDependencies) setup]
+    (initialDistribution setup) horizon service).Trace _ at inputTrace
+  rw [initialDistribution, serviceInitialDistribution_eq_inputs
+    (deps := setup.informationDependencies) setup]
     at inputTrace
   have valid := (reactive_history_invariant timeouts) leaks
-    (setup.initialLaw.map setup.eventInputs) horizon service inputTrace
-  change ∃ draw ∈ (setup.initialLaw.map setup.eventInputs).support,
+    (setup.initialDistribution.map setup.eventInputs) horizon service inputTrace
+  change ∃ draw ∈ (setup.initialDistribution.map setup.eventInputs).support,
     State.Invariant (graph := setup.informationGraph) draw previous.application at valid
   obtain ⟨draw, _, invariant⟩ := valid
   rw [applicationEq] at invariant
@@ -137,7 +139,7 @@ theorem firstActivation_inclusionFits_of_counted_opportunity
     exact clear
   have actual := opportunity ⟨remaining + 1, none, previous⟩ countedTrace previousClear
   have fits := inclusionFitsDeadline_of_unrecalled_turn timeouts leaks
-    (initialLaw setup) horizon service
+    (initialDistribution setup) horizon service
     ⟨remaining + 1, none, previous⟩ previousTrace rfl delay bound timely actual event
     (setup.informationGraph.sequentialize_solitary event).ownerSolitary who spec.2
     (by rw [applicationEq]; exact spec.1) entered (by rw [applicationEq]; exact activated)

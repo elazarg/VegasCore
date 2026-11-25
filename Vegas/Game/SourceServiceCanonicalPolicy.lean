@@ -5,7 +5,7 @@ module
 public import Vegas.Game.SourceServicePolicy
 public import Vegas.Pending.TurnClient
 public import Vegas.Pending.ReactiveSubmissionRecall
-public import Vegas.Compile.EventGraphPolicyLaw
+public import Vegas.Compile.EventGraphPolicyDistribution
 public import Vegas.Game.SourceServiceFacts
 public import GameTheoryExtensions.Math.Probability.Support
 
@@ -129,7 +129,7 @@ theorem sourceServiceCanonicalPolicy_at_event_history_reference
     {scheduler : (serviceApplication setup deps duration leaks).Scheduler}
     (control : (serviceApplication setup deps duration leaks).Control)
     (trace : ((serviceApplication setup deps duration leaks).protocol
-      (serviceInitialLaw setup deps) horizon scheduler).Trace (some control))
+      (serviceInitialDistribution setup deps) horizon scheduler).Trace (some control))
     (event : (serviceGraph setup deps).EventId)
     (selected : control.execution.application.publicView.ownTurn? who = some event)
     (owned : (serviceGraph setup deps).actor? event = some who) :
@@ -161,7 +161,7 @@ theorem sourceServiceCanonicalPolicy_at_event_history
     {scheduler : (serviceApplication setup deps duration leaks).Scheduler}
     (control : (serviceApplication setup deps duration leaks).Control)
     (trace : ((serviceApplication setup deps duration leaks).protocol
-      (serviceInitialLaw setup deps) horizon scheduler).Trace (some control))
+      (serviceInitialDistribution setup deps) horizon scheduler).Trace (some control))
     (event : (serviceGraph setup deps).EventId)
     (selected : control.execution.application.publicView.ownTurn? who = some event)
     (owned : (serviceGraph setup deps).actor? event = some who) :
@@ -261,9 +261,9 @@ theorem serviceCanonicalPolicy_commit_of_observation {Γ : SourceCtx Player L}
         source.defaults (source.history owner) at law
     rw [compilePolicyTable_commit_of_decode refs embedding.ref (profile owner) rfl _ _ inactive _
       (sourceObserve owner source.state) decoded] at law
-    have actionLaw := eq_map_cast_of_cast_eq
+    have actionDistribution := eq_map_cast_of_cast_eq
       (congrArg EventGraph.EventField.Action (embedding.layout_eq headIndex)) _ _ law
-    rw [actionLaw, PMF.map_comp]
+    rw [actionDistribution, PMF.map_comp]
     rfl
 
 /-- At its selected source turn, the local commitment distribution is retained exactly. -/
@@ -389,9 +389,9 @@ theorem sourceServiceCanonicalPolicy_reveal {Γ : SourceCtx Player L}
         source.defaults (source.history owner) at law
     rw [compilePolicyTable_reveal_of_decode refs embedding.ref (profile owner) rfl _ _ inactive _
       (sourceObserve owner source.state) decoded] at law
-    have actionLaw := eq_map_cast_of_cast_eq
+    have actionDistribution := eq_map_cast_of_cast_eq
       (congrArg EventGraph.EventField.Action (embedding.layout_eq headIndex)) _ _ law
-    rw [actionLaw, PMF.map_comp]
+    rw [actionDistribution, PMF.map_comp]
     rfl
 
 

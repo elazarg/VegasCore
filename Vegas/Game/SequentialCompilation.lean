@@ -5,7 +5,7 @@ module
 public import Vegas.Game.ClientSpecification
 public import Vegas.Game.ClientContinuation
 public import Vegas.Game.OnePacketEquilibriumPreservation
-public import Vegas.Game.OnePacketRawLaw
+public import Vegas.Game.OnePacketRawDistribution
 
 @[expose] public section
 
@@ -33,7 +33,7 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
-local notation "Initial" => initialLaw setup
+local notation "Initial" => initialDistribution setup
 
 variable {Parameter : Type} {parameter : State L setup.context → Parameter}
   {utility : Parameter × PublicOutcome setup.program → Player → ℝ}
@@ -51,14 +51,15 @@ theorem intended_raw_sequentialEquilibrium_preserved
     Nonempty (ClientCompilation spec intended) := by
   let := spec.finiteNature
   let := spec.finiteSource
-  obtain ⟨native, fidelity, nativeSE, nativeClear, nativeLaw⟩ :=
+  obtain ⟨native, fidelity, nativeSE, nativeClear, nativeDistribution⟩ :=
     intended_onePacket_sequentialEquilibrium_preserved (timeouts := timeouts) parameter utility
       excludedPayoff spec.wellFormed spec.prior spec.opportunity
       spec.inclusion spec.completes spec.timely spec.exitBelow intended equilibrium
       spec.outputValues spec.inputValues spec.capacity
   obtain ⟨target, refinement, targetSE, clean, states, joint⟩ :=
     intended_raw_sequentialEquilibrium_of_onePacket (timeouts := timeouts) (initial := Initial)
-      parameter utility excludedPayoff intended native nativeSE nativeLaw spec.evidenceService
+      parameter utility excludedPayoff intended native nativeSE nativeDistribution
+        spec.evidenceService
       spec.observationRate spec.deliveryRate spec.delivery_nonnegative spec.coverage
       spec.lowerUtility spec.upperUtility spec.lower_le spec.le_upper spec.deposit
       spec.deposit_nonnegative spec.funded

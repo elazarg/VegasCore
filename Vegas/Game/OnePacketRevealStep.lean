@@ -87,7 +87,7 @@ silence and the slot tier give a realized response with positive content its
 content factor times their factors. -/
 theorem onePacket_pendingReveal_masses (assessment : setup.intendedModel.BehavioralAssessment)
     (covers : bounds.CoversOutputValues) {control : (application setup timeouts leaks).Control}
-    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some control))
     (who : Player) (event : setup.informationGraph.EventId)
     (turn : control.execution.application.publicView.ownTurn? who = some event)
@@ -108,12 +108,13 @@ theorem onePacket_pendingReveal_masses (assessment : setup.intendedModel.Behavio
         who))
     (positive : 0 < contentFactor setup timeouts leaks assessment who control.execution
       (control.execution.respond (application setup timeouts leaks) who response) response)
-    (choice : (onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+    (choice : (onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon
       scheduler).Choice who
       (some (control.execution.logs who,
         control.execution.observe (application setup timeouts leaks) who)))
     (chosen : choice.1 = some response) :
-    (honestChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler assessment who _
+    (honestChoice setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
+      assessment who _
         choice).toReal =
       contentFactor setup timeouts leaks assessment who control.execution
           (control.execution.respond (application setup timeouts leaks) who response) response *
@@ -122,7 +123,8 @@ theorem onePacket_pendingReveal_masses (assessment : setup.intendedModel.Behavio
           ((control.execution.respond (application setup timeouts leaks) who response).observe
             (application setup timeouts leaks) who)) ∧
     (∀ {slots : Nat} (slot : Fin slots),
-      (lateChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler assessment who _
+      (lateChoice setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
+        assessment who _
           (some slot) choice).toReal =
         contentFactor setup timeouts leaks assessment who control.execution
             (control.execution.respond (application setup timeouts leaks) who response) response *
@@ -130,7 +132,8 @@ theorem onePacket_pendingReveal_masses (assessment : setup.intendedModel.Behavio
             ((control.execution.respond (application setup timeouts leaks) who response).logs who)
             ((control.execution.respond (application setup timeouts leaks) who response).observe
               (application setup timeouts leaks) who))) ∧
-    (PMF.pure (silenceChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler who _)
+    (PMF.pure (silenceChoice setup timeouts leaks bounds (initialDistribution setup) horizon
+      scheduler who _)
         choice).toReal =
       contentFactor setup timeouts leaks assessment who control.execution
           (control.execution.respond (application setup timeouts leaks) who response) response *
@@ -138,7 +141,8 @@ theorem onePacket_pendingReveal_masses (assessment : setup.intendedModel.Behavio
           ((control.execution.respond (application setup timeouts leaks) who response).logs who)
           ((control.execution.respond (application setup timeouts leaks) who response).observe
             (application setup timeouts leaks) who)) ∧
-    (slotChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler assessment who _
+    (slotChoice setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
+      assessment who _
         choice).toReal =
       contentFactor setup timeouts leaks assessment who control.execution
           (control.execution.respond (application setup timeouts leaks) who response) response *
@@ -165,10 +169,11 @@ theorem onePacket_pendingReveal_masses (assessment : setup.intendedModel.Behavio
   have slotEq := onePacket_slotChoice_reveal (timeouts := timeouts) assessment trace who event turn
     node
   have lateEq : ∀ {slots : Nat} (slot : Fin slots),
-      lateChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler assessment who
+      lateChoice setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
+        assessment who
           (some (control.execution.logs who,
             control.execution.observe (application setup timeouts leaks) who)) (some slot) =
-        PMF.pure (responseChoice setup timeouts leaks bounds (initialLaw setup) horizon
+        PMF.pure (responseChoice setup timeouts leaks bounds (initialDistribution setup) horizon
           scheduler who
           (some (control.execution.logs who,
             control.execution.observe (application setup timeouts leaks) who))
@@ -177,7 +182,8 @@ theorem onePacket_pendingReveal_masses (assessment : setup.intendedModel.Behavio
             (cast (congrArg EventGraph.EventField.Action outputEq.symm) true))) := by
     intro slots slot
     rw [lateChoice_some_eq_map (timeouts := timeouts) assessment who _ _ event turn slot]
-    rw [map_congr_support (g := fun _ => responseChoice setup timeouts leaks bounds (initialLaw
+    rw [map_congr_support (g := fun _ => responseChoice setup timeouts leaks bounds
+      (initialDistribution
       setup)
         horizon scheduler who (some (control.execution.logs who,
           control.execution.observe (application setup timeouts leaks) who))
@@ -185,14 +191,16 @@ theorem onePacket_pendingReveal_masses (assessment : setup.intendedModel.Behavio
           (control.execution.observe (application setup timeouts leaks) who) event
           (cast (congrArg EventGraph.EventField.Action outputEq.symm) true))) _
       fun other supported => by
-        change responseChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler who _
+        change responseChoice setup timeouts leaks bounds (initialDistribution setup) horizon
+          scheduler who _
           (slotResponse setup timeouts leaks who _ _ event slot.val other) = _
         unfold slotResponse
         rw [onePacket_honest_discloses (timeouts := timeouts) assessment trace who event turn
           outputEq other supported]
         simp only [node]]
     exact PMF.map_const _ _
-  have disclosureValue : (responseChoice setup timeouts leaks bounds (initialLaw setup) horizon
+  have disclosureValue : (responseChoice setup timeouts leaks bounds
+    (initialDistribution setup) horizon
     scheduler
       who (some (control.execution.logs who,
         control.execution.observe (application setup timeouts leaks) who))
@@ -203,14 +211,15 @@ theorem onePacket_pendingReveal_masses (assessment : setup.intendedModel.Behavio
         (control.execution.observe (application setup timeouts leaks) who) event
         (cast (congrArg EventGraph.EventField.Action outputEq.symm) true)) := by
     simp only [responseChoice, offered, ↓reduceDIte]
-  have notSilence : responseChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+  have notSilence : responseChoice setup timeouts leaks bounds
+    (initialDistribution setup) horizon scheduler
     who
       (some (control.execution.logs who,
         control.execution.observe (application setup timeouts leaks) who))
       ((canonicalServiceDecision timeouts) leaks who (control.execution.logs who)
         (control.execution.observe (application setup timeouts leaks) who) event
         (cast (congrArg EventGraph.EventField.Action outputEq.symm) true)) ≠
-      silenceChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler who
+      silenceChoice setup timeouts leaks bounds (initialDistribution setup) horizon scheduler who
         (some (control.execution.logs who,
           control.execution.observe (application setup timeouts leaks) who)) := by
     intro same
@@ -269,7 +278,8 @@ theorem onePacket_pendingReveal_masses (assessment : setup.intendedModel.Behavio
       rw [turn] at turnNamed
       cases Option.some.inj turnNamed
       have responseEq := unique response member material sends packetEvent
-      have choiceEq : choice = responseChoice setup timeouts leaks bounds (initialLaw setup) horizon
+      have choiceEq : choice = responseChoice setup timeouts leaks bounds
+        (initialDistribution setup) horizon
           scheduler who (some (control.execution.logs who,
             control.execution.observe (application setup timeouts leaks) who))
           ((canonicalServiceDecision timeouts) leaks who (control.execution.logs who)

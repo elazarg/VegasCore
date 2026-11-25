@@ -4,7 +4,7 @@ module
 
 public import Vegas.Game.SourceServiceTurnPolicy
 public import Vegas.Game.SourceServiceCompletion
-public import Vegas.Pending.GraphCompletionLaw
+public import Vegas.Pending.GraphCompletionDistribution
 public import GameTheoryExtensions.Math.Probability.TotalVariation
 
 @[expose] public section
@@ -68,7 +68,7 @@ theorem runRounds_config_terminal
     terminal.terminal
 
 end Generic
-/-- The approximate version of `BoundaryContinuationLaw`: from every completion
+/-- The approximate version of `BoundaryContinuationMatches`: from every completion
 boundary within the horizon, the players' run is within `error rank` of the
 source continuation. -/
 def BoundaryContinuationWithin (scheduler : (application setup timeouts leaks).Scheduler)
@@ -85,13 +85,14 @@ def BoundaryContinuationWithin (scheduler : (application setup timeouts leaks).S
       (sourceContinuation setup profile rank execution.application.config)
 
 /-- With no error, the approximate law is the exact one. -/
-theorem BoundaryContinuationWithin.law {scheduler : (application setup timeouts leaks).Scheduler}
+theorem BoundaryContinuationWithin.matches_of_zero {scheduler :
+    (application setup timeouts leaks).Scheduler}
     {horizon : Nat} {players : Player → (application setup timeouts leaks).Policy}
     {profile : BehavioralProfile setup.program} {error : Nat → ℝ}
     (within : BoundaryContinuationWithin setup timeouts leaks scheduler horizon players profile
       error)
     (zero : ∀ rank, error rank = 0) :
-    BoundaryContinuationLaw setup leaks scheduler horizon players profile := by
+    BoundaryContinuationMatches setup leaks scheduler horizon players profile := by
   intro rank execution boundary bounded
   have close := within rank execution boundary bounded
   rw [zero rank] at close
@@ -119,12 +120,12 @@ variable (setup leaks)
 
 /-- Local completion laws determine every terminal native readout.
 Automatic completion may cross several source instructions before the next boundary. -/
-theorem CompletionBoundary.runToHorizon_law {Outcome : Type*}
+theorem CompletionBoundary.runToHorizon_distribution {Outcome : Type*}
     (profile : setup.informationGraph.BehavioralProfile) (read : setup.informationGraph.Config →
       Outcome)
     {scheduler : (application setup timeouts leaks).Scheduler}
     {players : Player → (application setup timeouts leaks).Policy} {horizon : Nat}
-    (completes : (CompletesPlay timeouts) leaks (initialLaw setup) horizon scheduler)
+    (completes : (CompletesPlay timeouts) leaks (initialDistribution setup) horizon scheduler)
     (completionLaw : ∀ (event : setup.informationGraph.EventId)
       (execution : (application setup timeouts leaks).Execution),
       CompletionBoundary setup leaks scheduler players event.val execution →
@@ -148,7 +149,8 @@ theorem CompletionBoundary.runToHorizon_law {Outcome : Type*}
   let plan := setup.informationGraph.policyPlan profile setup.informationGraph.canonicalScheduler
   let atBoundary := fun before : (application setup timeouts leaks).Execution =>
     ∃ rank, CompletionBoundary setup leaks scheduler players rank before
-  have localLaw : EventCompletionLaw plan read scheduler players horizon atBoundary := by
+  have localLaw : EventCompletionPreservesReadout plan read scheduler players horizon atBoundary :=
+    by
     intro before ⟨actualRank, current⟩ within nonterminal
     have active : actualRank < setup.informationGraph.order.eventCount := by
       apply lt_of_le_of_ne current.ordered.1

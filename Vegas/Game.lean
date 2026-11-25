@@ -5,7 +5,7 @@ module
 public import Vegas.Game.AsyncClientObservables
 public import Vegas.Game.AsyncDeviationChoice
 public import Vegas.Game.AsyncDeviationForeign
-public import Vegas.Game.AsyncDeviationLaw
+public import Vegas.Game.AsyncDeviationDistribution
 public import Vegas.Game.AsyncDeviationReadout
 public import Vegas.Game.AsyncServiceDeviationBound
 public import Vegas.Game.AsyncServiceNash
@@ -75,7 +75,7 @@ public import Vegas.Game.OnePacketCertificateCounterpart
 public import Vegas.Game.OnePacketCertificateLumping
 public import Vegas.Game.OnePacketCertificateField
 public import Vegas.Game.OnePacketChanceMass
-public import Vegas.Game.OnePacketChanceStoppedLaw
+public import Vegas.Game.OnePacketChanceStoppedDistribution
 public import Vegas.Game.OnePacketClearRecord
 public import Vegas.Game.OnePacketClearRegularity
 public import Vegas.Game.OnePacketCommitDecisionFailure
@@ -87,7 +87,7 @@ public import Vegas.Game.OnePacketCompletedBindings
 public import Vegas.Game.OnePacketCompletion
 public import Vegas.Game.OnePacketCompletionCases
 public import Vegas.Game.OnePacketCompletionContent
-public import Vegas.Game.OnePacketCompletionLaw
+public import Vegas.Game.OnePacketCompletionDistribution
 public import Vegas.Game.OnePacketComponentSteps
 public import Vegas.Game.OnePacketConditionalPrior
 public import Vegas.Game.OnePacketContentFloor
@@ -142,7 +142,7 @@ public import Vegas.Game.OnePacketStrategyFidelity
 public import Vegas.Game.OnePacketBeliefFidelity
 public import Vegas.Game.OnePacketContinuationFidelity
 public import Vegas.Game.OnePacketContinuationPayoff
-public import Vegas.Game.OnePacketChanceSourceLaw
+public import Vegas.Game.OnePacketChanceSourceDistribution
 public import Vegas.Game.OnePacketFidelityAssembly
 public import Vegas.Game.OnePacketSourceCoverage
 public import Vegas.Game.OnePacketRawCoverage
@@ -174,10 +174,10 @@ public import Vegas.Game.OnePacketHonestContinuation
 public import Vegas.Game.OnePacketHonestDecision
 public import Vegas.Game.OnePacketHonestForced
 public import Vegas.Game.OnePacketHonestRecall
-public import Vegas.Game.OnePacketHonestStoppedLaw
+public import Vegas.Game.OnePacketHonestStoppedDistribution
 public import Vegas.Game.OnePacketHonestTerminalApproximation
 public import Vegas.Game.OnePacketInitialFloor
-public import Vegas.Game.OnePacketInitializedLaw
+public import Vegas.Game.OnePacketInitializedDistribution
 public import Vegas.Game.OnePacketIntendedProjection
 public import Vegas.Game.OnePacketIrregularBound
 public import Vegas.Game.OnePacketKeyedRecords
@@ -187,7 +187,7 @@ public import Vegas.Game.OnePacketLateCertificate
 public import Vegas.Game.OnePacketLateCommitFailure
 public import Vegas.Game.OnePacketLateCommitments
 public import Vegas.Game.OnePacketLateCompletion
-public import Vegas.Game.OnePacketLateCompletionLaw
+public import Vegas.Game.OnePacketLateCompletionDistribution
 public import Vegas.Game.OnePacketLateDecomposition
 public import Vegas.Game.OnePacketLateLumping
 public import Vegas.Game.OnePacketLateMasses
@@ -197,7 +197,7 @@ public import Vegas.Game.OnePacketLateSending
 public import Vegas.Game.OnePacketLateSuccess
 public import Vegas.Game.OnePacketLateSuccessFree
 public import Vegas.Game.OnePacketLateUniform
-public import Vegas.Game.OnePacketLawApproximation
+public import Vegas.Game.OnePacketDistributionApproximation
 public import Vegas.Game.OnePacketLumpingInstance
 public import Vegas.Game.OnePacketMainActivation
 public import Vegas.Game.OnePacketMainActivationRegularity
@@ -205,7 +205,7 @@ public import Vegas.Game.OnePacketMainContent
 public import Vegas.Game.OnePacketMainResponseSafety
 public import Vegas.Game.OnePacketOffTurnPackets
 public import Vegas.Game.OnePacketOpenableCommitment
-public import Vegas.Game.OnePacketOpeningLaw
+public import Vegas.Game.OnePacketOpeningDistribution
 public import Vegas.Game.OnePacketOpeningUnique
 public import Vegas.Game.OnePacketOperationalFactors
 public import Vegas.Game.OnePacketOperationalReads
@@ -219,7 +219,7 @@ public import Vegas.Game.OnePacketOwnerInfo
 public import Vegas.Game.OnePacketOwnerInfoSite
 public import Vegas.Game.OnePacketOwnerKeyed
 public import Vegas.Game.OnePacketOwnerKeyedLate
-public import Vegas.Game.OnePacketOwnerLaws
+public import Vegas.Game.OnePacketOwnerDistributions
 public import Vegas.Game.OnePacketOwnerPrior
 public import Vegas.Game.OnePacketOwnerPriorSite
 public import Vegas.Game.OnePacketOwnerRecall
@@ -264,14 +264,14 @@ public import Vegas.Game.OnePacketSilence
 public import Vegas.Game.OnePacketSilenceMasses
 public import Vegas.Game.OnePacketSilentShape
 public import Vegas.Game.OnePacketSiteConsistent
-public import Vegas.Game.OnePacketSiteLaws
+public import Vegas.Game.OnePacketSiteDistributions
 public import Vegas.Game.OnePacketSiteLinearity
 public import Vegas.Game.OnePacketSlotChoiceMasses
 public import Vegas.Game.OnePacketSlotContent
 public import Vegas.Game.OnePacketSlotError
-public import Vegas.Game.OnePacketSlotLaw
-public import Vegas.Game.OnePacketSlotLawDischarge
-public import Vegas.Game.OnePacketSlotLawForced
+public import Vegas.Game.OnePacketSlotDistribution
+public import Vegas.Game.OnePacketSlotDistributionDischarge
+public import Vegas.Game.OnePacketSlotDistributionForced
 public import Vegas.Game.OnePacketSlotMasses
 public import Vegas.Game.OnePacketSlotTrembles
 public import Vegas.Game.OnePacketSlotVisibility
@@ -285,7 +285,7 @@ public import Vegas.Game.OnePacketStepPositive
 public import Vegas.Game.OnePacketStoppedAcceptance
 public import Vegas.Game.OnePacketStoppedContinuationValue
 public import Vegas.Game.OnePacketStoppedSettlement
-public import Vegas.Game.OnePacketStoppedSourceLaw
+public import Vegas.Game.OnePacketStoppedSourceDistribution
 public import Vegas.Game.OnePacketSuccessorBoundary
 public import Vegas.Game.OnePacketSureFailure
 public import Vegas.Game.OnePacketSwapBaseWeight
@@ -319,7 +319,7 @@ public import Vegas.Game.OnePacketCommittedContinuationValue
 public import Vegas.Game.OnePacketCommittedValueAffine
 public import Vegas.Game.OnePacketCompletionPotential
 public import Vegas.Game.OnePacketDisclosureComparison
-public import Vegas.Game.OnePacketEventPhaseLaw
+public import Vegas.Game.OnePacketEventPhaseDistribution
 public import Vegas.Game.NativeExitContinuation
 public import Vegas.Game.OnePacketFirstActivationValue
 public import Vegas.Game.OnePacketIntendedCommitmentComparison
@@ -334,7 +334,7 @@ public import Vegas.Game.OnePacketNonLateChoices
 public import Vegas.Game.OnePacketLocalPhaseValue
 public import Vegas.Game.OnePacketCommonCompletion
 public import Vegas.Game.OnePacketComponents
-public import Vegas.Game.OnePacketRawLaw
+public import Vegas.Game.OnePacketRawDistribution
 public import Vegas.Game.PaymentPreservation
 public import Vegas.Game.NativePaymentReadout
 public import Vegas.Game.OnePacketPendingFailure
@@ -351,7 +351,7 @@ public import Vegas.Game.RevealService
 public import Vegas.Game.RevealServiceCalendarState
 public import Vegas.Game.RevealServicePayoffs
 public import Vegas.Game.RevealServiceRosterPolicy
-public import Vegas.Game.ServiceHonestLaw
+public import Vegas.Game.ServiceHonestDistribution
 public import Vegas.Game.ServiceInformation
 public import Vegas.Game.ServiceObservation
 public import Vegas.Game.RosterSubmissionOpportunity
@@ -382,7 +382,7 @@ public import Vegas.Game.SourceDebtContinuation
 public import Vegas.Game.SourceDebtObservation
 public import Vegas.Game.SourceServiceFacts
 public import Vegas.Game.SourceServiceFirstTurnCompletion
-public import Vegas.Game.SourceClientPrefixLaw
+public import Vegas.Game.SourceClientPrefixDistribution
 public import Vegas.Game.SourceServiceFirstTurnMixture
 public import Vegas.Game.SourceServiceFirstTurnOpportunity
 public import Vegas.Game.SourceServiceMenu
@@ -405,7 +405,7 @@ public import Vegas.Game.SourceTerminalReadout
 public import Vegas.Game.StoppedHonestComparison
 public import Vegas.Game.StoppedHonestResponseCount
 public import Vegas.Game.TerminalObservation
-public import Vegas.Game.TerminalObservationLaws
+public import Vegas.Game.TerminalObservationDistributions
 public import Vegas.Game.OnePacketOwingOptimality
 public import Vegas.Game.OnePacketKeyedValueBounds
 public import Vegas.Game.OnePacketEquilibriumPreservation
@@ -419,8 +419,8 @@ public import Vegas.Game.RevealServiceRankedReadout
 public import Vegas.Game.RevealServiceReference
 public import Vegas.Game.RevealServiceTimely
 public import Vegas.Game.RevealServiceSoleSegment
-public import Vegas.Game.RevealServiceHonestLaw
-public import Vegas.Game.RevealServiceOutcomeLaw
+public import Vegas.Game.RevealServiceHonestDistribution
+public import Vegas.Game.RevealServiceOutcomeDistribution
 public import Vegas.Game.DeviationSimulation
 public import Vegas.Game.OwnedPhaseJoint
 public import Vegas.Game.LastOwnedPhase
@@ -429,8 +429,8 @@ public import Vegas.Game.ReferenceForeignTraffic
 public import Vegas.Game.LastForeignPhase
 public import Vegas.Game.RevealBlockTraffic
 public import Vegas.Game.RevealServiceEffectiveTimely
-public import Vegas.Game.RevealServiceEffectiveHonestLaw
-public import Vegas.Game.RevealServiceEffectiveOutcomeLaw
+public import Vegas.Game.RevealServiceEffectiveHonestDistribution
+public import Vegas.Game.RevealServiceEffectiveOutcomeDistribution
 public import Vegas.Game.RevealBlockRecords
 public import Vegas.Game.RevealBlockEndpoint
 public import Vegas.Game.RevealBlockCoupling
@@ -444,7 +444,7 @@ public import Vegas.Game.RevealBlockPhase
 public import Vegas.Game.RevealPhasing
 public import Vegas.Game.RevealPhaseBoundary
 public import Vegas.Game.RevealDeviationSimulation
-public import Vegas.Game.RevealDeviationLaw
+public import Vegas.Game.RevealDeviationDistribution
 public import Vegas.Game.RevealTurnRecall
 public import Vegas.Game.RevealRunCoupling
 public import Vegas.Game.RevealRunClosure
@@ -472,7 +472,7 @@ public import Vegas.Game.BindingPrefixSampling
 public import Vegas.Game.NativeBindingTableSampling
 public import Vegas.Game.BindingSourceCheckpoint
 public import Vegas.Game.BindingBlockCompletion
-public import Vegas.Game.PrefixClientOutcomeLaw
+public import Vegas.Game.PrefixClientOutcomeDistribution
 public import Vegas.Game.IntendedPrefixContinuation
 public import Vegas.Game.PublicationSurvival
 public import Vegas.Game.BindingSourceFill

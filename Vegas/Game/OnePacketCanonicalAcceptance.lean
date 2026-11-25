@@ -44,7 +44,7 @@ packet for an event other than a given own packet for that event. -/
 theorem onePacket_not_emitsOtherFor {horizon : Nat}
     {scheduler : (application setup timeouts leaks).Scheduler} {control : (application setup
       timeouts leaks).Control}
-    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some control))
     (who : Player) (event : setup.informationGraph.EventId)
     (message : Message Player (WitnessedPacket setup.informationGraph))
@@ -54,17 +54,17 @@ theorem onePacket_not_emitsOtherFor {horizon : Nat}
       who) :
     ¬ EmitsOtherFor timeouts leaks entry event message.id := by
   rintro ⟨other, emitted, sender, otherNamed, different⟩
-  have rawTrace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+  have rawTrace : ((application setup timeouts leaks).protocol (initialDistribution setup) horizon
     scheduler).Trace
       (some control) :=
-    (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon scheduler
+    (bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup) horizon scheduler
       trace
   have clean := (bounds.onePacketMenu_countClean timeouts leaks scheduler).history
-    (initialLaw setup) horizon (fun state _ => (countClean_initial timeouts) leaks state)
+    (initialDistribution setup) horizon (fun state _ => (countClean_initial timeouts) leaks state)
     trace
   have recalled := clean.1
-  have signed := signedCommitments_history timeouts leaks (initialLaw setup)
-    (serviceInitialLaw_initialized setup) horizon scheduler rawTrace
+  have signed := signedCommitments_history timeouts leaks (initialDistribution setup)
+    (serviceInitialDistribution_initialized setup) horizon scheduler rawTrace
   -- Both packets are inputs of the network, signed by `who`.
   have messageSender : message.sender = who := by
     obtain ⟨recorded, recordedMember, recordedEmitted⟩ := List.mem_filterMap.mp member

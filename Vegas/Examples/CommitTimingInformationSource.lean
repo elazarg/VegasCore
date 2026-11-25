@@ -55,13 +55,13 @@ def sourceInitial (bit : Bool) : State simpleExpr initialCtx :=
 
 def initialParameter (state : State simpleExpr initialCtx) : Bool := state.get .here
 
-def bitLaw : PMF Bool :=
+def bitDistribution : PMF Bool :=
   mix (1 / 2) (by norm_num) (by norm_num) (PMF.pure false) (PMF.pure true)
 
 def setup : Setup (Player := Player) (L := simpleExpr) where
   context := initialCtx
   namesNodup := by decide
-  initialLaw := bitLaw.map sourceInitial
+  initialDistribution := bitDistribution.map sourceInitial
   obligations := ∅
   program := program
   accounts := rfl
@@ -74,28 +74,28 @@ theorem sourceInitial_injective : Function.Injective sourceInitial := by
   intro first second same
   exact congrArg initialParameter same
 
-theorem bitLaw_fullSupport (bit : Bool) : bit ∈ bitLaw.support := by
+theorem bitDistribution_fullSupport (bit : Bool) : bit ∈ bitDistribution.support := by
   cases bit
   · exact mem_support_mix_left (1 / 2) (by norm_num) (by norm_num) (by norm_num)
       (μ := PMF.pure false) (ν := PMF.pure true) (a := false) (by simp)
   · exact mem_support_mix_right (1 / 2) (by norm_num) (by norm_num) (by norm_num)
       (μ := PMF.pure false) (ν := PMF.pure true) (a := true) (by simp)
 
-instance finiteInitial : setup.FiniteInitialLaw where
+instance finiteInitial : setup.FiniteInitialSupport where
   support_finite := by
-    change (bitLaw.map sourceInitial).support.Finite
+    change (bitDistribution.map sourceInitial).support.Finite
     rw [PMF.support_map]
-    exact (Set.toFinite bitLaw.support).image sourceInitial
+    exact (Set.toFinite bitDistribution.support).image sourceInitial
 
-theorem initialLaw_support (state : State simpleExpr initialCtx) :
-    state ∈ setup.initialLaw.support ↔ ∃ bit, state = sourceInitial bit := by
-  change state ∈ (bitLaw.map sourceInitial).support ↔ _
+theorem initialDistribution_support (state : State simpleExpr initialCtx) :
+    state ∈ setup.initialDistribution.support ↔ ∃ bit, state = sourceInitial bit := by
+  change state ∈ (bitDistribution.map sourceInitial).support ↔ _
   rw [PMF.support_map]
   constructor
   · rintro ⟨bit, _, rfl⟩
     exact ⟨bit, rfl⟩
   · rintro ⟨bit, rfl⟩
-    exact ⟨bit, bitLaw_fullSupport bit, rfl⟩
+    exact ⟨bit, bitDistribution_fullSupport bit, rfl⟩
 
 theorem alice_initial_observation (first second : Bool) :
     sourceObserve alice (sourceInitial first) = sourceObserve alice (sourceInitial second) := by
@@ -210,11 +210,12 @@ theorem utility_finalConfig (bit guess helper : Bool) :
 
 theorem setup_run_constant (guess helper : Bool) :
     setup.run (constantProfile guess helper) =
-      bitLaw.map (fun bit => finalConfig bit guess helper) := by
-  change (bitLaw.map sourceInitial).bind
+      bitDistribution.map (fun bit => finalConfig bit guess helper) := by
+  change (bitDistribution.map sourceInitial).bind
     (fun initial => program.run (constantProfile guess helper) initial) = _
   rw [PMF.bind_map]
-  change bitLaw.bind (fun bit => program.run (constantProfile guess helper) (sourceInitial bit)) = _
+  change bitDistribution.bind (fun bit => program.run (constantProfile guess helper)
+    (sourceInitial bit)) = _
   simp only [run_constant]
   rfl
 
@@ -222,13 +223,13 @@ theorem constant_profile_alice_value (guess helper : Bool) :
     expect (setup.run (constantProfile guess helper)) (fun terminal => utility terminal alice) =
       1 / 2 := by
   rw [setup_run_constant, expect_map]
-  change expect bitLaw (fun bit => utility (finalConfig bit guess helper) alice) = 1 / 2
+  change expect bitDistribution (fun bit => utility (finalConfig bit guess helper) alice) = 1 / 2
   have values : (fun bit => utility (finalConfig bit guess helper) alice) =
       fun bit => if guess = bit then (1 : ℝ) else 0 := by
     funext bit
     exact (utility_finalConfig bit guess helper).1
   rw [values]
-  simp only [bitLaw, expect_mix_of_finite, expect_pure]
+  simp only [bitDistribution, expect_mix_of_finite, expect_pure]
   cases guess <;> norm_num
 
 theorem constant_profile_bob_value (guess helper : Bool) :
@@ -236,7 +237,7 @@ theorem constant_profile_bob_value (guess helper : Bool) :
       (fun terminal => utility terminal bob) = 0 := by
   rw [setup_run_constant, expect_map]
   calc
-    _ = expect bitLaw (fun _ => (0 : ℝ)) := expect_congr_on_support
+    _ = expect bitDistribution (fun _ => (0 : ℝ)) := expect_congr_on_support
       (fun bit _ => (utility_finalConfig bit guess helper).2)
     _ = 0 := expect_zero _
 
@@ -385,8 +386,9 @@ private theorem honestSourceProfile_alice_value
   let guesses := (selected alice).1 rfl
     ((Config.initial (sourceInitial false)).view alice) (by decide)
   have law : setup.run selected =
-      bitLaw.bind (fun bit => program.run selected (sourceInitial bit)) := by
-    change (bitLaw.map sourceInitial).bind (fun initial => program.run selected initial) = _
+      bitDistribution.bind (fun bit => program.run selected (sourceInitial bit)) := by
+    change (bitDistribution.map sourceInitial).bind (fun initial => program.run selected initial) =
+      _
     rw [PMF.bind_map]
     rfl
   have integrable : PayoffIntegrable (setup.run selected)
@@ -397,7 +399,7 @@ private theorem honestSourceProfile_alice_value
   rw [law] at integrable ⊢
   rw [expect_bind_tower _ _ _ integrable]
   calc
-    _ = expect bitLaw (fun bit => expect guesses
+    _ = expect bitDistribution (fun bit => expect guesses
         (fun choice => guessReward bit (choice.getD .failure))) := by
       apply expect_congr_on_support
       intro bit _
@@ -409,9 +411,9 @@ private theorem honestSourceProfile_alice_value
           ((Config.initial (sourceInitial false)).view alice) (by decide))
           (fun value => guessReward bit (value.getD .failure))
       simpa only [expect_map, Function.comp_def, id_eq] using readout
-    _ = expect guesses (fun guess => expect bitLaw
+    _ = expect guesses (fun guess => expect bitDistribution
         (fun bit => guessReward bit (guess.getD .failure))) :=
-      expect_comm_of_support_finite bitLaw guesses (Set.toFinite _) (Set.toFinite _)
+      expect_comm_of_support_finite bitDistribution guesses (Set.toFinite _) (Set.toFinite _)
         (fun bit guess => guessReward bit (guess.getD .failure))
     _ = expect guesses (fun _ => (1 / 2 : ℝ)) := by
       apply expect_congr_on_support
@@ -432,7 +434,8 @@ private theorem honestSourceProfile_alice_value
           obtain ⟨_, value, _, rfl⟩ := allowed
           rw [action, OwnAction.binding_commit] at same
           rw [← same]
-          simp only [Option.getD_some, guessReward, bitLaw, expect_mix_of_finite, expect_pure]
+          simp only [Option.getD_some, guessReward, bitDistribution, expect_mix_of_finite,
+            expect_pure]
           cases value <;> norm_num
     _ = 1 / 2 := expect_constant _ _
 

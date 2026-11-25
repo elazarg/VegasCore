@@ -82,7 +82,7 @@ theorem delivered_commitment_view_eq (first second : Bool) :
 /-- Any subsequent computation that receives only the wire pool has the same
 law. This excludes access to the private table or an authorized opening; it
 does not establish security for an unrestricted ideal-service context. -/
-theorem wire_continuation_law {Outcome : Type}
+theorem wire_continuation_distribution {Outcome : Type}
     (continueWith : Pool → PMF Outcome) (first second : Bool) :
     continueWith (expose (honestSetup first)).pool =
       continueWith (expose (honestSetup second)).pool := rfl

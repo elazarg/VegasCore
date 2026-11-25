@@ -3,7 +3,7 @@ module
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 public import Vegas.Game.RevealClosureSolitary
-public import Vegas.Game.RevealDeviationLaw
+public import Vegas.Game.RevealDeviationDistribution
 
 @[expose] public section
 
@@ -37,7 +37,7 @@ theorem solitary_phaseJoint {horizon : Nat}
     {delay : (serviceGraph setup deps).EventId → Nat}
     (bound : (serviceGraph setup deps).EventId → Nat) (turns : Nat)
     (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
-        (serviceInitialLaw setup deps) horizon scheduler delay bound)
+        (serviceInitialDistribution setup deps) horizon scheduler delay bound)
     (timely : AsyncTimely (serviceTimeouts setup deps duration) delay bound)
     (base : (serviceGraph setup deps).BehavioralProfile)
     (referenceIndependent : ReadyIndependent ((serviceGraph setup deps).normalizeProfile base))
@@ -181,7 +181,7 @@ theorem closureDeviationSimulation {horizon : Nat}
     {delay : (serviceGraph setup deps).EventId → Nat}
     (bound : (serviceGraph setup deps).EventId → Nat) (turns : Nat)
     (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
-        (serviceInitialLaw setup deps) horizon scheduler delay bound)
+        (serviceInitialDistribution setup deps) horizon scheduler delay bound)
     (timely : AsyncTimely (serviceTimeouts setup deps duration) delay bound)
     (base : (serviceGraph setup deps).BehavioralProfile)
     (decides : ∀ (config : (serviceGraph setup deps).Config)
@@ -270,7 +270,7 @@ theorem closureDeviationSimulation {horizon : Nat}
       have terminal := terminalOf execution boundary
       simp only [point]
       rw [closure_eq_of_terminal R who terminal, keyTarget_runKey (independent _),
-        lastErasedLaw_terminal _ _ _ terminal, readErased_runKey]
+        lastErasedDistribution_terminal _ _ _ terminal, readErased_runKey]
     exact DeviationSimulation.of_frozen frozen (base who) settled
   have smaller : rank < G.order.eventCount := lt_of_le_of_ne within last
   let event : G.EventId := ⟨rank, smaller⟩
@@ -309,12 +309,12 @@ theorem closureDeviationSimulation {horizon : Nat}
 the ledger law of the erased key a deviation of one player reaches by the horizon
 is the last-served erased-key law of a normalized graph deviation of the base
 from the initial configuration, with no condition on the runs of reveals. -/
-theorem closure_deviation_erased_law {horizon : Nat}
+theorem closure_deviation_erased_distribution {horizon : Nat}
     {scheduler : (serviceApplication setup deps duration leaks).Scheduler}
     {delay : (serviceGraph setup deps).EventId → Nat}
     (bound : (serviceGraph setup deps).EventId → Nat) (turns : Nat)
     (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
-        (serviceInitialLaw setup deps) horizon scheduler delay bound)
+        (serviceInitialDistribution setup deps) horizon scheduler delay bound)
     (timely : AsyncTimely (serviceTimeouts setup deps duration) delay bound)
     (base : (serviceGraph setup deps).BehavioralProfile)
     (decides : ∀ (config : (serviceGraph setup deps).Config)
@@ -339,15 +339,15 @@ theorem closure_deviation_erased_law {horizon : Nat}
     (relaxed : RelaxedOrder (serviceGraph setup deps))
     (concurrent : (serviceGraph setup deps).RevealsOnlyConcurrent) :
     ∃ policy : (serviceGraph setup deps).BehavioralPolicy who,
-      (serviceInitialLaw setup deps).bind (fun state =>
+      (serviceInitialDistribution setup deps).bind (fun state =>
         ((serviceApplication setup deps duration leaks).runToHorizon scheduler
           (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
             (firstTurnTiming setup turns deps) ((serviceGraph setup deps).normalizeProfile base))
             who deviation) horizon
           (ReactiveApplication.Execution.initial (serviceApplication setup deps duration leaks)
             state)).map fun final => readErased (runKey final.application.config)) =
-      (serviceInitialLaw setup deps).bind fun state =>
-        lastErasedLaw ((serviceGraph setup deps).lastDeviationProfile base who policy) who
+      (serviceInitialDistribution setup deps).bind fun state =>
+        lastErasedDistribution ((serviceGraph setup deps).lastDeviationProfile base who policy) who
           state.config := by
   classical
   let G := serviceGraph setup deps
@@ -360,12 +360,12 @@ theorem closure_deviation_erased_law {horizon : Nat}
     ReactiveApplication.Execution.initial app state
   let point := fun execution : app.Execution => runKey (closure R who execution.application.config)
   let noise := fun view : Option (G.PlayerObservation who) =>
-    if present : ∃ state ∈ (serviceInitialLaw setup deps).support,
+    if present : ∃ state ∈ (serviceInitialDistribution setup deps).support,
         keyView who (point (start state)) = view then
       PMF.pure (traffic (start present.choose))
-    else PMF.pure (traffic (start (serviceInitialLaw setup deps).support_nonempty.choose))
-  have trafficOf : ∀ first ∈ (serviceInitialLaw setup deps).support,
-      ∀ second ∈ (serviceInitialLaw setup deps).support,
+    else PMF.pure (traffic (start (serviceInitialDistribution setup deps).support_nonempty.choose))
+  have trafficOf : ∀ first ∈ (serviceInitialDistribution setup deps).support,
+      ∀ second ∈ (serviceInitialDistribution setup deps).support,
       keyView who (point (start first)) = keyView who (point (start second)) →
       traffic (start first) = traffic (start second) := by
     intro first firstMember second secondMember same
@@ -376,16 +376,16 @@ theorem closure_deviation_erased_law {horizon : Nat}
     obtain ⟨secondInitial, _, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp secondMember
     exact initial_bindingTraffic_eq_of_keyView (duration := duration) (leaks := leaks) who _ _
       raw
-  have factor : (serviceInitialLaw setup deps).map (fun state =>
+  have factor : (serviceInitialDistribution setup deps).map (fun state =>
       (point (start state), traffic (start state))) =
-      ((serviceInitialLaw setup deps).map fun state => point (start state)).bind
+      ((serviceInitialDistribution setup deps).map fun state => point (start state)).bind
         fun current => (noise (keyView who current)).map fun extra => (current, extra) := by
     rw [PMF.bind_map]
-    change (serviceInitialLaw setup deps).bind (fun state => PMF.pure
+    change (serviceInitialDistribution setup deps).bind (fun state => PMF.pure
       (point (start state), traffic (start state))) = _
     apply bind_congr_on_support _
     intro state supported
-    have present : ∃ other ∈ (serviceInitialLaw setup deps).support,
+    have present : ∃ other ∈ (serviceInitialDistribution setup deps).support,
         keyView who (point (start other)) = keyView who (point (start state)) :=
       ⟨state, supported, rfl⟩
     simp only [noise, Function.comp_apply, dite_eq_left present, PMF.pure_map]
@@ -393,7 +393,7 @@ theorem closure_deviation_erased_law {horizon : Nat}
     rw [trafficOf state supported present.choose member same.symm]
   obtain ⟨policy, law⟩ := closureDeviationSimulation bound turns contract timely base decides
     referenceIndependent who deviation independent relaxed concurrent 0 (Nat.zero_le _)
-    (serviceInitialLaw setup deps) start
+    (serviceInitialDistribution setup deps) start
     (fun state supported => initial_phaseBoundary scheduler players state supported) noise
     factor
   refine ⟨policy, Eq.trans ?_ (law.trans (bind_congr_on_support _ fun state _ => ?_))⟩

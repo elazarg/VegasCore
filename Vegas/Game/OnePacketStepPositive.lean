@@ -2,7 +2,7 @@ module
 
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-public import Vegas.Game.OnePacketSlotLawForced
+public import Vegas.Game.OnePacketSlotDistributionForced
 public import Vegas.Game.OnePacketIrregularBound
 
 @[expose] public section
@@ -119,8 +119,9 @@ theorem stepResponse_pos_of_respond {slots : Nat}
       nlinarith
     exact mul_pos (by linarith) (by nlinarith [mul_pos squarePos slotPos])
 
-variable [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
-  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+variable [(application setup timeouts leaks).FiniteNature (initialDistribution setup) scheduler]
+  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds
+    (initialDistribution setup) horizon
     scheduler).InfoState who)]
 
 /-- **The certificate's operational mass is positive at every response** whose
@@ -136,7 +137,7 @@ theorem certificate_mass_pos (wellFormed : setup.WellFormed)
     (covers : bounds.CoversOutputValues)
     (capacity : ∀ who, bindingEventCount setup.informationGraph who < bounds.candidateCount)
     {slots : Nat}
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialDistribution setup)
       horizon scheduler slots p))
     (who : Player)
     (error_tendsto : Tendsto (fun n => slotError (scale n) (floor n)

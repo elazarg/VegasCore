@@ -8,7 +8,7 @@ public import Vegas.Compile.EventGraphHistory
 public import Vegas.Compile.EventGraphObservation
 public import Vegas.Game.EventCompilation
 public import Vegas.Pending.EventApplication
-public import Vegas.Pending.ExclusionPolicyLaw
+public import Vegas.Pending.ExclusionPolicyDistribution
 public import VegasTests.SourceSemantics
 
 @[expose] public section
@@ -111,7 +111,7 @@ example (scheduler : pairGraph.PublicScheduler) (profile : pairGraph.BehavioralP
 def pairSetup : SourceProgram.Setup (Player := Bool) (L := simpleExpr) where
   context := []
   namesNodup := by decide
-  initialLaw := PMF.pure (Env.empty (CellVal simpleExpr))
+  initialDistribution := PMF.pure (Env.empty (CellVal simpleExpr))
   obligations := ∅
   program := pairSource
   accounts := rfl
@@ -121,7 +121,7 @@ def pairSetup : SourceProgram.Setup (Player := Bool) (L := simpleExpr) where
 The exact configuration law requires neither a mixture nor finite payloads. -/
 example (scheduler : pairSetup.informationGraph.PublicScheduler)
     (replacement : pairSetup.informationGraph.BehavioralPolicy false) :
-    (pairSetup.initialLaw.bind fun initial =>
+    (pairSetup.initialDistribution.bind fun initial =>
       (pairSetup.informationGraph.terminalOutcomes scheduler
         (GameTheory.Profile.update (sig := pairSetup.informationGraph.gameSignature)
           (compileEventProfile pairSource pairProfile) false replacement)
@@ -129,7 +129,7 @@ example (scheduler : pairSetup.informationGraph.PublicScheduler)
       pairSetup.run (GameTheory.Profile.update
         (sig := SourceProgram.gameSignature pairSource) pairProfile false
         (backtranslateEventPolicy pairSource false replacement)) :=
-  scheduled_setup_deviation_law pairSetup scheduler pairProfile false replacement
+  scheduled_setup_deviation_distribution pairSetup scheduler pairProfile false replacement
 
 /-- The typed catalog retains the original optional payload separately from
 the failure-aware publication result. -/
@@ -169,7 +169,7 @@ example (scheduler : SourceSemantics.mixedSetup.informationGraph.PublicScheduler
         (terminalState SourceSemantics.mixedSetup.program) =
       (SourceProgram.run SourceSemantics.mixedSetup.program profile
         SourceSemantics.mixedState).map SourceProgram.Config.state :=
-  scheduled_terminalState_law SourceSemantics.mixedSetup.program scheduler profile
+  scheduled_terminalState_distribution SourceSemantics.mixedSetup.program scheduler profile
     SourceSemantics.mixedState
 
 def rejectingGraph := toInformationGraph SourceSemantics.falseGuardProgram

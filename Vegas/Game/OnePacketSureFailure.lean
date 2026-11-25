@@ -44,7 +44,7 @@ handle, and whose recall of `who` holds an entry emitting the commitment of
 `event` to `candidate`, one protocol transition installs, if anything, that
 candidate at the event. -/
 theorem onePacket_accepted_new {control next : (application setup timeouts leaks).Control}
-    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some control))
     {who : Player} {entry : (application setup timeouts leaks).PlayerEntry}
     {message : Message Player (WitnessedPacket setup.informationGraph)}
@@ -55,14 +55,15 @@ theorem onePacket_accepted_new {control next : (application setup timeouts leaks
     (owned : setup.informationGraph.actor? event = some who)
     (vacant : control.execution.application.accepted (.inr event) = none)
     (joint : Player → Option (application setup timeouts leaks).Action)
-    (reached : some next ∈ ((application setup timeouts leaks).transition (initialLaw setup) horizon
+    (reached : some next ∈ ((application setup timeouts leaks).transition
+      (initialDistribution setup) horizon
       scheduler (some control) joint).support) :
     ∀ handle, next.execution.application.accepted (.inr event) = some handle →
       handle = candidate := by
   intro installed filled
-  have rawTrace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+  have rawTrace : ((application setup timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some control) :=
-    (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon scheduler
+    (bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup) horizon scheduler
       trace
   have facts := legalFacts setup leaks horizon scheduler _ rawTrace
   have unchanged (same : next.execution.application.accepted (.inr event) =

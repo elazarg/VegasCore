@@ -7,7 +7,7 @@ public import Vegas.Game.OwnedPhaseJoint
 public import Vegas.EventGraph.LastKeyTarget
 public import Vegas.EventGraph.PrefixRestriction
 public import Vegas.EventGraph.OwnedStep
-public import Vegas.Pending.LastErasedKeyLaw
+public import Vegas.Pending.LastErasedKeyDistribution
 public import Vegas.Pending.ReactiveGraphSteps
 
 @[expose] public section
@@ -363,9 +363,10 @@ theorem lastOwned_phase_patched
           keyTarget ((serviceGraph setup deps).lastDeviationProfile base who (build policy)) who
             (runKey (execution seed).application.config)) ∧
       ∀ policy (config : (serviceGraph setup deps).Config) other, other ≠ event →
-        actionLaw ((serviceGraph setup deps).lastDeviationProfile base who (build policy)) config
+        actionDistribution ((serviceGraph setup deps).lastDeviationProfile base who
+          (build policy)) config
             other =
-          actionLaw ((serviceGraph setup deps).lastDeviationProfile base who policy) config
+          actionDistribution ((serviceGraph setup deps).lastDeviationProfile base who policy) config
             other := by
   classical
   let G := serviceGraph setup deps
@@ -622,7 +623,7 @@ theorem lastOwned_phase_patched
     obtain ⟨action, picked⟩ := (advanced other otherSupport final reached).2 otherPending
     exact ⟨action, by rw [← extras, ← finalEq]; exact picked⟩
   refine ⟨build, nextNoise, ?_, ?_, fun policy config other different =>
-    actionLaw_lastDeviationProfile_patch_of_ne base who event _ policy config different⟩
+    actionDistribution_lastDeviationProfile_patch_of_ne base who event _ policy config different⟩
   · change (prior.bind fun seed => (phase seed).map fun final =>
       (runKey final.application.config, traffic final)) =
       (prior.bind fun seed => (phase seed).map fun final =>
@@ -631,8 +632,9 @@ theorem lastOwned_phase_patched
   · intro policy
     let P := fun tail : G.BehavioralPolicy who => G.lastDeviationProfile base who tail
     have agree (config : G.Config) (other : G.EventId) (different : other ≠ event) :
-        actionLaw (P (build policy)) config other = actionLaw (P policy) config other :=
-      actionLaw_lastDeviationProfile_patch_of_ne base who event _ policy config different
+        actionDistribution (P (build policy)) config other = actionDistribution
+          (P policy) config other :=
+      actionDistribution_lastDeviationProfile_patch_of_ne base who event _ policy config different
     change (prior.bind fun seed => (phase seed).bind fun final =>
       keyTarget (P policy) who (runKey final.application.config)) =
       prior.bind fun seed => keyTarget (P (build policy)) who (key seed)
@@ -661,11 +663,11 @@ theorem lastOwned_phase_patched
         by_cases pending : event ∉ (execution seed).application.config.cut.completed
         · have ready := readyAt seed supported pending
           have active := activeAt seed supported pending
-          rw [lastErasedLaw_patch_step event agree _ ready
+          rw [lastErasedDistribution_patch_step event agree _ ready
             (lastPick_eq_of_alone who _ (fun other otherReady => alone _ other ready otherReady)
               _)]
           unfold eventStep
-          rw [actionLaw_lastDeviationProfile_owned base who _ _ ownedNode active]
+          rw [actionDistribution_lastDeviationProfile_owned base who _ _ ownedNode active]
           simp only [build, patchPolicy, ↓reduceIte]
           rw [ownedHead_self, PMF.bind_bind, PMF.bind_map, PMF.bind_bind]
           apply bind_congr_on_support _
@@ -675,9 +677,9 @@ theorem lastOwned_phase_patched
           simp only [Function.comp_apply, picked, Option.elim_some, PMF.pure_bind]
           rw [step_eq_ownedStepped event owned _ ready action, PMF.pure_bind,
             ownedAdvance_runKey event owned _ ready action, keyTarget_runKey (independent _),
-            State.drainConfig_lastErasedLaw (independent _)]
+            State.drainConfig_lastErasedDistribution (independent _)]
         · push Not at pending
-          rw [lastErasedLaw_patch_completed event agree _ pending]
+          rw [lastErasedDistribution_patch_completed event agree _ pending]
           simp only [stay seed _ (Or.inr pending), PMF.bind_const]
           exact keyTarget_runKey (independent _) _
       _ = _ := PMF.bind_map _ _ _

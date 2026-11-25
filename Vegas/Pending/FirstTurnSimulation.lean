@@ -4,9 +4,9 @@ module
 
 public import Vegas.Pending.FirstTurnAction
 public import Vegas.Pending.FirstTurnMixture
-public import Vegas.Pending.GraphEventStepLaw
+public import Vegas.Pending.GraphEventStepDistribution
 public import Vegas.Pending.ChanceCompletionConfig
-public import Vegas.Pending.TurnClientActionLaw
+public import Vegas.Pending.TurnClientActionDistribution
 
 @[expose] public section
 
@@ -24,7 +24,7 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 /-- At a sequential event boundary the stopped configuration has the graph
 step and automatic drain law whenever the ready event's owner follows the
 reference first-turn policy. All other native policies may vary freely. -/
-theorem firstTurn_event_config_law_of_owner_follows
+theorem firstTurn_event_config_distribution_of_owner_follows
     (timeouts : EventTimeouts graph.sequentialize)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph.sequentialize))
     {horizon turns : Nat} (scheduler : (reactiveApplication timeouts leaks).Scheduler)
@@ -58,8 +58,9 @@ theorem firstTurn_event_config_law_of_owner_follows
       bounded ready.1 reached
   cases owned : graph.sequentialize.actor? event with
   | none =>
-      simp only [EventGraph.eventStep, EventGraph.actionLaw_of_ownerless _ _ owned, PMF.pure_bind]
-      exact chance_completed_config_law timeouts leaks
+      simp only [EventGraph.eventStep, EventGraph.actionDistribution_of_ownerless _ _ owned,
+        PMF.pure_bind]
+      exact chance_completed_config_distribution timeouts leaks
         (fun node => (graph.sequentialize_solitary node).ownerSolitary)
         scheduler players event owned (graph.sequentialize_solitary event) _
         execution ready (fun final reached => (progress final reached).2.2.1)
@@ -68,13 +69,14 @@ theorem firstTurn_event_config_law_of_owner_follows
         players execution.environmentRecall.length bounded execution boundary.supported
       obtain ⟨initial, supported, valid⟩ := reactive_history_invariant timeouts leaks
         inputs horizon scheduler trace
-      let law := EventGraph.actionLaw reference execution.application.config event
+      let law := EventGraph.actionDistribution reference execution.application.config event
       have mixture := firstTurn_mixture timeouts leaks scheduler bound reference owner event owned
         players (follows owner owned) execution (fun _ other =>
           graph.sequentialize_solitary event _ other ready)
         boundary.supported (boundary.untouched event le_rfl owner) bounded law
         (fun current same selected => by
-          simpa only [same] using referencePolicy_actionLaw timeouts leaks reference owner current
+          simpa only [same] using referencePolicy_actionDistribution timeouts leaks reference owner
+            current
             event selected owned)
       let drain := fun config : graph.sequentialize.Config => PMF.pure (State.drainConfig config)
       calc
@@ -103,7 +105,7 @@ theorem firstTurn_event_config_law_of_owner_follows
 
 /-- From each reached sequential event boundary, the next completed ledger configuration has
 the law of the graph action and step followed by automatic completion. -/
-theorem firstTurn_event_config_law
+theorem firstTurn_event_config_distribution
     (timeouts : EventTimeouts graph.sequentialize)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph.sequentialize))
     {horizon turns : Nat} (scheduler : (reactiveApplication timeouts leaks).Scheduler)
@@ -129,11 +131,11 @@ theorem firstTurn_event_config_law
       (EventGraph.eventStep reference
         execution.application.config event (boundary.ordered.ready event.isLt)).map
           State.drainConfig := by
-  exact firstTurn_event_config_law_of_owner_follows timeouts leaks scheduler delay bound
+  exact firstTurn_event_config_distribution_of_owner_follows timeouts leaks scheduler delay bound
     inputs reference contract timely realizable event _ (fun _ _ => rfl) execution boundary bounded
 
 /-- Sequential first-turn clients realize the full canonical graph configuration distribution. -/
-theorem firstTurn_config_law
+theorem firstTurn_config_distribution
     (timeouts : EventTimeouts graph.sequentialize)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph.sequentialize))
     {horizon turns : Nat} (scheduler : (reactiveApplication timeouts leaks).Scheduler)
@@ -147,8 +149,8 @@ theorem firstTurn_config_law
       (turnPolicy timeouts leaks bound turns (EventGraphRuntime.firstTurnTiming graph.sequentialize
         turns) reference) horizon).map (fun execution => execution.application.config) =
       ((graph.sequentialize.canonicalGame inputs).play reference).map Subtype.val :=
-  config_law_of_event_steps inputs reference contract.completes
-    (firstTurn_event_config_law timeouts leaks scheduler delay bound inputs reference
+  config_distribution_of_event_steps inputs reference contract.completes
+    (firstTurn_event_config_distribution timeouts leaks scheduler delay bound inputs reference
       contract timely realizable)
 
 end Vegas.EventGraphRuntime

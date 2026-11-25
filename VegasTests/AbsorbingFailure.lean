@@ -122,7 +122,7 @@ example (scheduler : (toInformationGraph twoOpenings).PublicScheduler) :
         [OwnAction.reveal () 0 false]) := by
   calc
     _ = (twoOpenings.run withholdThenOpen initialBindings).map openingSummary := by
-      rw [← PMF.map_comp, scheduled_terminalConfig_law]
+      rw [← PMF.map_comp, scheduled_terminalConfig_distribution_eq]
     _ = _ := withholding_run
 
 /-- Binding omission is compiled to public default and later automatic failure,
@@ -137,7 +137,7 @@ example (scheduler : (toInformationGraph twoBindings).PublicScheduler) :
         [OwnAction.commit (L := simpleExpr) () 0 .bool none]) := by
   calc
     _ = (twoBindings.run omitThenBind (Env.empty (CellVal simpleExpr))).map bindingSummary := by
-      rw [← PMF.map_comp, scheduled_terminalConfig_law]
+      rw [← PMF.map_comp, scheduled_terminalConfig_distribution_eq]
     _ = _ := omission_run
 
 /-- An accepted unopenable binding remains active through the next compiled
@@ -155,7 +155,7 @@ example (scheduler : (toInformationGraph twoBindings).PublicScheduler) :
   calc
     _ = (twoBindings.run unusableThenBind (Env.empty (CellVal simpleExpr))).map
         bindingSummary := by
-      rw [← PMF.map_comp, scheduled_terminalConfig_law]
+      rw [← PMF.map_comp, scheduled_terminalConfig_distribution_eq]
     _ = _ := unusable_run
 
 end VegasTests.AbsorbingFailure
@@ -270,7 +270,7 @@ example :
         (encodeInputs (Env.empty (CellVal simpleExpr)))).map
       (bobChosenBinding ∘ terminalConfig foreignOmission) =
       PMF.pure (.success true) := by
-  rw [← PMF.map_comp, scheduled_terminalConfig_law]
+  rw [← PMF.map_comp, scheduled_terminalConfig_distribution_eq]
   exact source_bob_observes_omission
 
 end VegasTests.AbsorbingFailure

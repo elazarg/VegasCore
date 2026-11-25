@@ -177,7 +177,7 @@ theorem pending_of_lateDelivery {control : (application setup timeouts leaks).Co
   obtain ⟨rfl, rfl⟩ := Prod.mk.inj (Option.some.inj infoEq)
   obtain ⟨_, ready, _, unrecorded⟩ := pendingEvent_spec (timeouts := timeouts) pending
   refine ⟨event, (State.publicView_eventReady _ event).mp ready, fun message member named => ?_⟩
-  have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup)
+  have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup)
     horizon scheduler trace
   have recorded := (history_eventRecorded_iff (timeouts := timeouts) rawTrace who event).mpr
     ⟨message, member, named⟩

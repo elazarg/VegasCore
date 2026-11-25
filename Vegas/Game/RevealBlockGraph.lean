@@ -100,7 +100,7 @@ theorem honest_complete_records {who : Player}
 profile whose honest owners open a block reveal exactly when its opening is
 accepted, the last-served erased-key law inside a flat block equals that law
 after completing every honest block reveal, each with its exact record. -/
-theorem lastErasedLaw_honest_block {who : Player} {start finish : Nat}
+theorem lastErasedDistribution_honest_block {who : Player} {start finish : Nat}
     (shaped : BlockShaped (graph := serviceGraph setup deps) start finish)
     (flat : BlockFlat (graph := serviceGraph setup deps) start finish)
     (publications : ∀ event : (serviceGraph setup deps).EventId, start ≤ event.val →
@@ -117,7 +117,7 @@ theorem lastErasedLaw_honest_block {who : Player} {start finish : Nat}
       nodeView (serviceGraph setup deps) event =
         .resolve owner payload binding checks outputEq codeEq →
       owner ≠ who → owner ∉ config.defaulted →
-        actionLaw profile config event = PMF.pure (cast (congrArg EventField.Action
+        actionDistribution profile config event = PMF.pure (cast (congrArg EventField.Action
           outputEq.symm) (openingAccepted event config.store)))
     (origin : (serviceGraph setup deps).Config) :
     ∀ (count : Nat) (current : (serviceGraph setup deps).Config), current.remaining = count →
@@ -132,7 +132,7 @@ theorem lastErasedLaw_honest_block {who : Player} {start finish : Nat}
         Relation.ReflTransGen Config.Step current final ∧ InBlock start finish final ∧
         Relation.ReflTransGen Config.Step origin final ∧
         BlockRecordsSound who start finish origin final ∧
-        lastErasedLaw profile who current = lastErasedLaw profile who final ∧
+        lastErasedDistribution profile who current = lastErasedDistribution profile who final ∧
         (∀ event : (serviceGraph setup deps).EventId, start ≤ event.val →
           event.val < finish → event ∉ final.cut.completed →
             (serviceGraph setup deps).actor? event = some who) ∧
@@ -182,8 +182,9 @@ theorem lastErasedLaw_honest_block {who : Player} {start finish : Nat}
     rw [stepEq, PMF.support_pure]
     rfl
   have moved : Config.Step current next := ⟨picked, pickedReady, action, member⟩
-  have lawEq : lastErasedLaw profile who current = lastErasedLaw profile who next := by
-    unfold lastErasedLaw
+  have lawEq : lastErasedDistribution profile who current = lastErasedDistribution profile who next
+    := by
+    unfold lastErasedDistribution
     rw [lastRun_step profile who current notTerminal picked pickedReady rfl, PMF.map_bind]
     unfold eventStep
     rw [honestLaw current picked owner payload binding checks outputEq codeEq node honest

@@ -69,14 +69,14 @@ theorem serviceReference_binding_prefix_mixture
       start ≤ prior.val → prior.val ≤ event.val →
       (serviceGraph setup deps).actor? prior = some owner → Untouched setup leaks prior execution)
     (trace : ((serviceApplication setup deps duration leaks).protocol
-      (serviceInitialLaw setup deps) horizon scheduler).Trace
+      (serviceInitialDistribution setup deps) horizon scheduler).Trace
         (some ⟨remaining + count, none, execution⟩)) :
     let app := serviceApplication setup deps duration leaks
     let reference := (serviceGraph setup deps).prefixProfile profile
     let players := turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
       (firstTurnTiming setup turns deps) reference
     app.runUntil scheduler background stop count execution =
-      (actionLaw reference ghost event).bind (fun action =>
+      (actionDistribution reference ghost event).bind (fun action =>
         app.runUntil scheduler
           (Function.update background owner (fun past view =>
             if turnIndex (serviceTimeouts setup deps duration)
@@ -86,7 +86,7 @@ theorem serviceReference_binding_prefix_mixture
             else players owner past view)) stop count execution) := by
   classical
   intro app reference players
-  let law := actionLaw reference ghost event
+  let law := actionDistribution reference ghost event
   let first := fun past view => turnIndex (serviceTimeouts setup deps duration)
     leaks owner event past view = some 0
   let member := fun (action : (serviceGraph setup deps).Action event) past view =>
@@ -109,7 +109,7 @@ theorem serviceReference_binding_prefix_mixture
     exact (sourceServiceTurn_first selected).2 entry memberEntry
       (sourceServiceTurn_first earlier).1
   have atFirst : ∀ left current,
-      (app.protocol (serviceInitialLaw setup deps) horizon scheduler).Trace
+      (app.protocol (serviceInitialDistribution setup deps) horizon scheduler).Trace
         (some ⟨left + 1, none, current⟩) →
       invariant current → ¬ stop current →
       ∀ command ∈ (scheduler current.environmentRecall (current.observeEnvironment app)).support,
@@ -165,7 +165,8 @@ theorem serviceReference_binding_prefix_mixture
         have actualRecord := (records.resolve_left currentActive).1
         rw [sameApplication]
         exact actualRecord.trans recorded.symm
-    obtain ⟨middleTrace⟩ := app.raw_trace_environment (serviceInitialLaw setup deps) horizon
+    obtain ⟨middleTrace⟩ := app.raw_trace_environment (serviceInitialDistribution setup deps)
+      horizon
       scheduler left current middle (.activate owner) currentTrace selected moved
     have callback := serviceReference_callback_of_binding_paths relaxed profile
       execution.application.config ghost start initialReach ordered middle middlePath ghostPath
@@ -192,7 +193,7 @@ theorem serviceReference_binding_prefix_mixture
         exact compiled.trans (by rw [PMF.bind_map]; rfl)
       · simp only [fits, ite_false, PMF.bind_const]
   have preserved : ∀ left current,
-      (app.protocol (serviceInitialLaw setup deps) horizon scheduler).Trace
+      (app.protocol (serviceInitialDistribution setup deps) horizon scheduler).Trace
         (some ⟨left + 1, none, current⟩) →
       invariant current → ¬ stop current →
       ∀ next ∈ (app.round scheduler (Function.update background owner (players owner))
@@ -222,7 +223,8 @@ theorem serviceReference_binding_prefix_mixture
     refine ⟨⟨0, ?_⟩, .refl⟩
     simp only [ReactiveApplication.runRounds, PMF.mem_support_pure_iff]
   have mixed := app.runUntil_mixture_at_first
-    (serviceInitialLaw setup deps) horizon scheduler background owner (players owner) law member
+    (serviceInitialDistribution setup deps) horizon scheduler background owner
+      (players owner) law member
     first once (by intro action past view away; simp only [member, away, ite_false])
     stop invariant atFirst preserved count remaining execution trace initial clean
   simpa only [restored] using mixed

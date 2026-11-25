@@ -170,7 +170,7 @@ theorem ownedRequestsEmitted_respond (execution : (application setup timeouts le
 theorem ownedRequestsEmitted_history {horizon : Nat}
     {scheduler : (application setup timeouts leaks).Scheduler}
     {control : (application setup timeouts leaks).Control}
-    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some control)) :
     OwnedRequestsEmitted setup timeouts leaks control.execution :=
   (show (bounds.onePacketMenu timeouts leaks).ServiceInvariant scheduler
@@ -180,20 +180,20 @@ theorem ownedRequestsEmitted_history {horizon : Nat}
       environment := fun execution next command valid _ reached =>
         ownedRequestsEmitted_environment (timeouts := timeouts) leaks execution next command valid
           reached }).history
-    (initialLaw setup) horizon (fun _ _ _ _ member => (List.not_mem_nil member).elim) trace
+    (initialDistribution setup) horizon (fun _ _ _ _ member => (List.not_mem_nil member).elim) trace
 
 /-- Along every history of the one-packet game, every packet a player recalls
 emitting is in the network. -/
 theorem output_mem_inputs_of_trace {horizon : Nat}
     {scheduler : (application setup timeouts leaks).Scheduler}
     {control : (application setup timeouts leaks).Control}
-    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some control))
     (who : Player) (packet : Message Player (WitnessedPacket setup.informationGraph))
     (output : packet ∈ (application setup timeouts leaks).outputs (control.execution.logs who)) :
     packet ∈ control.execution.network.inputs := by
   have clean := (bounds.onePacketMenu_countClean timeouts leaks scheduler).history
-    (initialLaw setup) horizon (fun state _ => (countClean_initial timeouts) leaks state)
+    (initialDistribution setup) horizon (fun state _ => (countClean_initial timeouts) leaks state)
     trace
   rw [← clean.1.1 who] at output
   exact (List.mem_filter.mp output).1
@@ -204,7 +204,7 @@ handle of its sender that no earlier packet of the sender named. -/
 theorem commitment_facts_of_trace {horizon : Nat}
     {scheduler : (application setup timeouts leaks).Scheduler}
     {control : (application setup timeouts leaks).Control}
-    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some control))
     (packet : Message Player (WitnessedPacket setup.informationGraph))
     (input : packet ∈ control.execution.network.inputs) (named : setup.informationGraph.EventId)
@@ -214,7 +214,7 @@ theorem commitment_facts_of_trace {horizon : Nat}
       ∀ other, EarlierOwnPacket control.execution.network.inputs packet other →
         ∀ named', other.payload.call ≠ .commitment named' candidate := by
   have clean := (bounds.onePacketMenu_countClean timeouts leaks scheduler).history
-    (initialLaw setup) horizon (fun state _ => (countClean_initial timeouts) leaks state)
+    (initialDistribution setup) horizon (fun state _ => (countClean_initial timeouts) leaks state)
     trace
   have correct := ((countPermits_eq_true_iff _ _).mp (clean.2 packet input)).2.1
   unfold CountCallCorrect at correct
@@ -226,7 +226,7 @@ game, two commitments in the network never name one handle for two events. -/
 theorem commitment_unique_of_trace {horizon : Nat}
     {scheduler : (application setup timeouts leaks).Scheduler}
     {control : (application setup timeouts leaks).Control}
-    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some control))
     (first : Message Player (WitnessedPacket setup.informationGraph))
     (firstInput : first ∈ control.execution.network.inputs)
@@ -238,7 +238,7 @@ theorem commitment_unique_of_trace {horizon : Nat}
     (secondCall : second.payload.call = .commitment secondEvent candidate) :
     firstEvent = secondEvent := by
   have clean := (bounds.onePacketMenu_countClean timeouts leaks scheduler).history
-    (initialLaw setup) horizon (fun state _ => (countClean_initial timeouts) leaks state)
+    (initialDistribution setup) horizon (fun state _ => (countClean_initial timeouts) leaks state)
     trace
   obtain ⟨firstOwner, _, firstFresh⟩ :=
     commitment_facts_of_trace (timeouts := timeouts) bounds trace first firstInput firstEvent
@@ -266,7 +266,7 @@ resolve event that is ready or completed, and the requested handle is accepted,
 if at all, only at the binding field of that event. -/
 theorem certificate_field {horizon : Nat} {scheduler : (application setup timeouts leaks).Scheduler}
     {control : (application setup timeouts leaks).Control}
-    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some control))
     (sender : Player) (recalled : (application setup timeouts leaks).PlayerEntry)
     (member : recalled ∈ control.execution.logs sender)
@@ -281,15 +281,15 @@ theorem certificate_field {horizon : Nat} {scheduler : (application setup timeou
       ∀ field, control.execution.application.accepted field = some fact.handle →
         field = binding.field := by
   let inputs := control.execution.network.inputs
-  have rawTrace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+  have rawTrace : ((application setup timeouts leaks).protocol (initialDistribution setup) horizon
     scheduler).Trace
       (some control) :=
-    (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon scheduler
+    (bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup) horizon scheduler
       trace
   have clean := (bounds.onePacketMenu_countClean timeouts leaks scheduler).history
-    (initialLaw setup) horizon (fun state _ => (countClean_initial timeouts) leaks state)
+    (initialDistribution setup) horizon (fun state _ => (countClean_initial timeouts) leaks state)
     trace
-  have signed := signedCommitments_history timeouts leaks (initialLaw setup)
+  have signed := signedCommitments_history timeouts leaks (initialDistribution setup)
     (fun state supported => by
       obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ supported
       exact ⟨_, rfl⟩) horizon scheduler rawTrace

@@ -102,7 +102,7 @@ theorem intendedCommitment_sourcePolicy_gain
     ⟨response, material, serial, selected, sends, packet, after, turn⟩, ?_⟩
   rintro ⟨start, observed⟩ point regular decoded
   have observedState : (application setup timeouts leaks).observe who start.state = site.1 :=
-    ((bounds.onePacketMenu timeouts leaks).info (initialLaw setup) horizon scheduler who
+    ((bounds.onePacketMenu timeouts leaks).info (initialDistribution setup) horizon scheduler who
       start.trace).symm.trans observed
   rcases state : start.state with _ | ⟨remaining, actor, execution⟩
   · rw [state] at decoded
@@ -122,7 +122,8 @@ theorem intendedCommitment_sourcePolicy_gain
     (PublicView.ownTurn?_spec _ who event turn).1
   have owned := (PublicView.ownTurn?_spec _ who event turn).2
   have pointDecoded : decodedPoint setup execution.application.config = some point := decoded
-  have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon
+  have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace
+    (initialDistribution setup) horizon
     scheduler start.trace
   rw [state] at rawTrace
   have acts : ProtocolView.actor who setup.program (ProtocolState.observe who setup.program point) =

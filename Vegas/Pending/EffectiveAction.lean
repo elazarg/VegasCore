@@ -29,7 +29,7 @@ def EffectiveAction (config : graph.Config)
 def RealizableProfile (inputs : PMF graph.Inputs) (reference : graph.BehavioralProfile) : Prop :=
   ∀ initial ∈ inputs.support, ∀ config : graph.Config, config.Reachable initial →
     ∀ event, config.cut.Ready event →
-      ∀ action ∈ (EventGraph.actionLaw reference config event).support,
+      ∀ action ∈ (EventGraph.actionDistribution reference config event).support,
       EffectiveAction config event action
 
 end Vegas.EventGraphRuntime

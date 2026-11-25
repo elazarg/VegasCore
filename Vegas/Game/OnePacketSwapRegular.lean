@@ -72,9 +72,9 @@ variable (wellFormed : setup.WellFormed) {first second : setup.intendedProtocol.
   {publicAgree : PublicCellsAgree setup p q} {succeed : CommitmentCellsSucceed setup p q}
   (handlePairs : Handle setup.informationGraph → Option (Raw L × Raw L))
   {allowed : Set setup.informationGraph.Inputs}
-  (initialClosed : ∀ state ∈ (initialLaw setup).support, state.config.inputs ∈ allowed →
+  (initialClosed : ∀ state ∈ (initialDistribution setup).support, state.config.inputs ∈ allowed →
     state.swap (HiddenSwap.ofPairs (betweenPairs publicAgree succeed) handlePairs) ∈
-      (initialLaw setup).support)
+      (initialDistribution setup).support)
   (bounded : ∀ handle raw, raw ∈ bounds.values →
     (HiddenSwap.ofPairs (betweenPairs publicAgree succeed) handlePairs).raw handle raw ∈
       bounds.values)
@@ -126,17 +126,20 @@ theorem regularTrace_mapTrace_of_weight_pos
       intendedHistory? setup timeouts leaks bounds horizon scheduler trace = some replay →
       TracePrefix replay.trace first.trace →
       0 < othersSourceWeight setup timeouts leaks bounds horizon scheduler assessment who
-        ((onePacketSwapSymmetry (timeouts := timeouts) bounds (initialLaw setup) horizon scheduler
+        ((onePacketSwapSymmetry (timeouts := timeouts) bounds
+          (initialDistribution setup) horizon scheduler
           (HiddenSwap.ofPairs (betweenPairs publicAgree succeed) handlePairs) initialClosed
           bounded (EventGraph.ValueSwap.ofPairs_expiryFixed _)).mapTrace trace guarded) →
       RegularTrace setup timeouts leaks bounds horizon scheduler assessment who
-        ((onePacketSwapSymmetry (timeouts := timeouts) bounds (initialLaw setup) horizon scheduler
+        ((onePacketSwapSymmetry (timeouts := timeouts) bounds
+          (initialDistribution setup) horizon scheduler
           (HiddenSwap.ofPairs (betweenPairs publicAgree succeed) handlePairs) initialClosed
           bounded (EventGraph.ValueSwap.ofPairs_expiryFixed _)).mapTrace trace guarded)
   | _, .start, _, _, _, _, _ => trivial
   | _, .extend (source := before) (target := after) prior joint legal realized, guarded, replay,
       replayed, firstPrefix, positive => by
-      have priorGuard := (onePacketSwapSymmetry (timeouts := timeouts) bounds (initialLaw setup)
+      have priorGuard := (onePacketSwapSymmetry (timeouts := timeouts) bounds
+        (initialDistribution setup)
         horizon scheduler
         (HiddenSwap.ofPairs (betweenPairs publicAgree succeed) handlePairs) initialClosed
         bounded (EventGraph.ValueSwap.ofPairs_expiryFixed _)).guard_source prior legal realized
@@ -153,7 +156,8 @@ theorem regularTrace_mapTrace_of_weight_pos
       have priorNonneg := othersSourceWeight_nonneg (timeouts := timeouts) (bounds := bounds)
         (horizon := horizon)
         (scheduler := scheduler) assessment who
-        ((onePacketSwapSymmetry (timeouts := timeouts) bounds (initialLaw setup) horizon scheduler
+        ((onePacketSwapSymmetry (timeouts := timeouts) bounds
+          (initialDistribution setup) horizon scheduler
           (HiddenSwap.ofPairs (betweenPairs publicAgree succeed) handlePairs) initialClosed
           bounded (EventGraph.ValueSwap.ofPairs_expiryFixed _)).mapTrace prior priorGuard)
       have factorNonneg := transitionSourceFactor_nonneg (timeouts := timeouts) (setup := setup)
@@ -182,12 +186,13 @@ theorem regularTrace_mapTrace_of_weight_pos
                 wellFormed firstState
                 secondState sameLength handlePairs initialClosed bounded player prior priorGuard
                 previousReplay previousPrefix
-              refine ⟨⟨⟨⟨_, (onePacketSwapSymmetry (timeouts := timeouts) bounds (initialLaw setup)
+              refine ⟨⟨⟨⟨_, (onePacketSwapSymmetry (timeouts := timeouts) bounds
+                (initialDistribution setup)
                 horizon scheduler
                 (HiddenSwap.ofPairs (betweenPairs publicAgree succeed) handlePairs) initialClosed
                 bounded (EventGraph.ValueSwap.ofPairs_expiryFixed _)).mapTrace prior priorGuard⟩,
                   ?_, forced actor⟩, forced who⟩, ?_⟩
-              · exact (bounds.onePacketMenu timeouts leaks).info (initialLaw setup)
+              · exact (bounds.onePacketMenu timeouts leaks).info (initialDistribution setup)
                   horizon scheduler actor _
               · have actingCurrent : current.actor = some actor := acting
                 change 0 < transitionSourceFactor setup timeouts leaks assessment who
@@ -211,7 +216,8 @@ theorem intendedHistory?_mapTrace_full {state : (application setup timeouts leak
       handlePairs) allowed state)
     (replayed : intendedHistory? setup timeouts leaks bounds horizon scheduler trace = some first) :
     intendedHistory? setup timeouts leaks bounds horizon scheduler
-        ((onePacketSwapSymmetry (timeouts := timeouts) bounds (initialLaw setup) horizon scheduler
+        ((onePacketSwapSymmetry (timeouts := timeouts) bounds
+          (initialDistribution setup) horizon scheduler
           (HiddenSwap.ofPairs (betweenPairs publicAgree succeed) handlePairs) initialClosed
           bounded (EventGraph.ValueSwap.ofPairs_expiryFixed _)).mapTrace trace guarded) = some
             second := by
@@ -235,7 +241,8 @@ theorem othersSourceWeight_mapTrace (assessment : setup.intendedModel.Behavioral
     (turn : (control.execution.observe (application setup timeouts leaks)
       who).application.publicView.ownTurn? who = some event) :
     othersSourceWeight setup timeouts leaks bounds horizon scheduler assessment who
-        ((onePacketSwapSymmetry (timeouts := timeouts) bounds (initialLaw setup) horizon scheduler
+        ((onePacketSwapSymmetry (timeouts := timeouts) bounds
+          (initialDistribution setup) horizon scheduler
           (HiddenSwap.ofPairs (betweenPairs publicAgree succeed) handlePairs) initialClosed
           bounded (EventGraph.ValueSwap.ofPairs_expiryFixed _)).mapTrace trace guarded) =
       setup.intendedModel.counterfactualReachProbability assessment.strategy who
@@ -247,7 +254,8 @@ theorem othersSourceWeight_mapTrace (assessment : setup.intendedModel.Behavioral
     sameLength
     handlePairs initialClosed bounded who trace guarded replayed .refl
   have matching := actorCompletionsMatch_of_forced (timeouts := timeouts) assessment who
-    ((onePacketSwapSymmetry (timeouts := timeouts) bounds (initialLaw setup) horizon scheduler
+    ((onePacketSwapSymmetry (timeouts := timeouts) bounds (initialDistribution setup) horizon
+      scheduler
       (HiddenSwap.ofPairs (betweenPairs publicAgree succeed) handlePairs) initialClosed
       bounded (EventGraph.ValueSwap.ofPairs_expiryFixed _)).mapTrace trace guarded) _ rfl forced
   have imageTurn : ((HiddenSwap.control (timeouts := timeouts) (HiddenSwap.ofPairs (betweenPairs
@@ -261,7 +269,8 @@ theorem othersSourceWeight_mapTrace (assessment : setup.intendedModel.Behavioral
     rw [HiddenSwap.observe_execution]
     exact turn
   have settled := unsettledContent_eq_one_of_ownTurn (timeouts := timeouts) assessment who
-    ((onePacketSwapSymmetry (timeouts := timeouts) bounds (initialLaw setup) horizon scheduler
+    ((onePacketSwapSymmetry (timeouts := timeouts) bounds (initialDistribution setup) horizon
+      scheduler
       (HiddenSwap.ofPairs (betweenPairs publicAgree succeed) handlePairs) initialClosed
       bounded (EventGraph.ValueSwap.ofPairs_expiryFixed _)).mapTrace trace guarded) forced imageTurn
   rw [othersSourceWeight_eq_replay (timeouts := timeouts) assessment who _ imageReplay
@@ -299,7 +308,8 @@ theorem regularTrace_mapTrace {assessment : setup.intendedModel.BehavioralAssess
     (turn : (control.execution.observe (application setup timeouts leaks)
       who).application.publicView.ownTurn? who = some event) :
     RegularTrace setup timeouts leaks bounds horizon scheduler assessment who
-      ((onePacketSwapSymmetry (timeouts := timeouts) bounds (initialLaw setup) horizon scheduler
+      ((onePacketSwapSymmetry (timeouts := timeouts) bounds
+        (initialDistribution setup) horizon scheduler
         (HiddenSwap.ofPairs (betweenPairs publicAgree succeed) handlePairs) initialClosed
         bounded (EventGraph.ValueSwap.ofPairs_expiryFixed _)).mapTrace trace guarded) := by
   refine regularTrace_mapTrace_of_weight_pos (timeouts := timeouts) wellFormed firstState

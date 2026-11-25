@@ -4,7 +4,7 @@ module
 
 public import Vegas.Compile.EventGraphPrefixReadout
 public import Vegas.Source.BehavioralStateKernel
-public import Vegas.Compile.EventGraphPolicyLaw
+public import Vegas.Compile.EventGraphPolicyDistribution
 public import Vegas.Compile.EventGraphStep
 public import Vegas.Source.DisclosureSupport
 public import Vegas.Source.DisclosureBehavioral
@@ -132,7 +132,7 @@ def SourceResidual.EffectiveDisclosures {rank : Nat} {config : setup.information
 /-- A fixed graph completion preserves its typed source residual and its
 exact source-step atom. The successor witness supplies the same decoder and
 policy transport as the reached residual, including failed disclosures. -/
-private theorem SourceResidual.step_mass_and_law {rank : Nat}
+private theorem SourceResidual.step_mass_and_distribution {rank : Nat}
     {before : setup.informationGraph.Config}
     (residual : SourceResidual setup profile rank before)
     (event : setup.informationGraph.EventId) (ready : before.cut.Ready event)
@@ -491,12 +491,13 @@ theorem SourceResidual.step_mass {rank : Nat} {before : setup.informationGraph.C
           (fun _ => decodeEventAction setup.program event action))
         (next.lift (ProtocolState.entry next.program next.source)) =
           (before.step event ready action) after := by
-  obtain ⟨next, reached, mass, _⟩ := residual.step_mass_and_law event ready action after member
+  obtain ⟨next, reached, mass, _⟩ := residual.step_mass_and_distribution event ready action after
+    member
   exact ⟨next, reached, mass⟩
 
 /-- Decoding after a fixed graph action gives the exact source step law for
 the decoded action, including all well-formed successors. -/
-theorem SourceResidual.step_law {rank : Nat} {before : setup.informationGraph.Config}
+theorem SourceResidual.step_distribution {rank : Nat} {before : setup.informationGraph.Config}
     (residual : SourceResidual setup profile rank before)
     (event : setup.informationGraph.EventId) (ready : before.cut.Ready event)
     (action : setup.informationGraph.Action event) :
@@ -505,7 +506,7 @@ theorem SourceResidual.step_law {rank : Nat} {before : setup.informationGraph.Co
         (residual.lift (ProtocolState.entry residual.program residual.source))
         (fun _ => decodeEventAction setup.program event action)).map some := by
   obtain ⟨after, member⟩ := PMF.support_nonempty (before.step event ready action)
-  obtain ⟨_, _, _, law, _⟩ := residual.step_mass_and_law event ready action after member
+  obtain ⟨_, _, _, law, _⟩ := residual.step_mass_and_distribution event ready action after member
   exact law
 
 /-- Completing the ready event with any action keeps a residual, one rank
@@ -534,7 +535,7 @@ theorem SourceResidual.step_effective {rank : Nat} {before : setup.informationGr
     (member : after ∈ (before.step event ready action).support) :
     ∃ next : SourceResidual setup profile (rank + 1) after, next.EffectiveDisclosures := by
   obtain ⟨next, _, _, _, preserved⟩ :=
-    residual.step_mass_and_law event ready action after member
+    residual.step_mass_and_distribution event ready action after member
   exact ⟨next, preserved effective⟩
 
 /-- A finite path of actual graph steps retains a source residual at its
@@ -568,7 +569,7 @@ theorem SourceResidual.lift_terminal {rank : Nat} {config : setup.informationGra
 
 /-- One actual compiled behavioral event decodes to the original source
 behavioral step, including chance and forced failure for a defaulted owner. -/
-theorem SourceResidual.eventStep_law [Fintype Player] {rank : Nat}
+theorem SourceResidual.eventStep_distribution [Fintype Player] {rank : Nat}
     {before : setup.informationGraph.Config} (residual : SourceResidual setup profile rank before)
     (event : setup.informationGraph.EventId) (ready : before.cut.Ready event) :
     (EventGraph.eventStep (compileEventProfile setup.program profile) before event ready).map
@@ -594,14 +595,15 @@ theorem SourceResidual.eventStep_law [Fintype Player] {rank : Nat}
       (fun owner => decide (owner ∉ before.defaulted))) (Fin.ext atRank.symm)
   rw [EventGraph.eventStep, PMF.map_bind]
   calc
-    _ = (EventGraph.actionLaw (compileEventProfile setup.program profile) before event).bind
+    _ = (EventGraph.actionDistribution (compileEventProfile setup.program profile) before
+      event).bind
         (fun action => (ProtocolState.step setup.program point
           (fun _ => decodeEventAction setup.program event action)).map some) :=
-      bind_congr_on_support _ fun action _ => residual.step_law event ready action
+      bind_congr_on_support _ fun action _ => residual.step_distribution event ready action
     _ = _ := by
       cases ownerEq : setup.informationGraph.actor? event with
       | none =>
-          rw [EventGraph.actionLaw_of_ownerless _ _ ownerEq, PMF.pure_bind]
+          rw [EventGraph.actionDistribution_of_ownerless _ _ ownerEq, PMF.pure_bind]
           have inactive (who : Player) :
               ProtocolView.actor who setup.program (ProtocolState.observe who setup.program point)
                 = none := by rw [actor, ownerEq]; rfl
@@ -609,14 +611,15 @@ theorem SourceResidual.eventStep_law [Fintype Player] {rank : Nat}
             ProtocolState.step_eq_of_noActor _ _ _ inactive]
       | some owner =>
           by_cases inactive : owner ∈ before.defaulted
-          · rw [EventGraph.actionLaw_of_actor _ _ ownerEq, dite_eq_left inactive, PMF.pure_bind]
+          · rw [EventGraph.actionDistribution_of_actor _ _ ownerEq, dite_eq_left inactive,
+            PMF.pure_bind]
             have noActor : ProtocolView.actor owner setup.program
                 (ProtocolState.observe owner setup.program point) = none := by
               rw [actor, ownerEq]
               simp [inactive]
             rw [ProtocolState.behavioralStateStep_of_actor_none _ _ _ owner noActor,
               ProtocolState.step_eq_of_actor_none owner _ _ _ noActor]
-          · rw [EventGraph.actionLaw_of_actor _ _ ownerEq, dite_eq_right inactive]
+          · rw [EventGraph.actionDistribution_of_actor _ _ ownerEq, dite_eq_right inactive]
             have acts (who : Player) : ProtocolView.actor who setup.program
                 (ProtocolState.observe who setup.program point) = some owner := by
               rw [actor, ownerEq]
@@ -639,7 +642,7 @@ theorem SourceResidual.eventStep_law [Fintype Player] {rank : Nat}
 
 /-- The ordinary canonical graph runner, stopped after a bounded number of
 events, decodes to the source behavioral law after exactly as many steps. -/
-theorem SourceResidual.runPlan_prefix_law [Fintype Player] {rank : Nat}
+theorem SourceResidual.runPlan_prefix_distribution [Fintype Player] {rank : Nat}
     {before : setup.informationGraph.Config} (residual : SourceResidual setup profile rank before)
     (count : Nat) (bounded : rank + count ≤ eventCount setup.program) :
     (setup.informationGraph.runPlan
@@ -687,7 +690,7 @@ theorem SourceResidual.runPlan_prefix_law [Fintype Player] {rank : Nat}
           simp only [EventGraph.runPlan, PMF.bind_pure, Function.comp_apply, decode, next.decode,
             advance, Option.elim_some]
           rw [show rank + (count + 1) = rank + count + 1 by omega]
-          exact next.eventStep_law event ready
+          exact next.eventStep_distribution event ready
         _ = _ := by
           change ((graph.runPlan plan count before).map
             (sourceServicePrefix? setup (rank + count))).bind advance = _
@@ -696,7 +699,7 @@ theorem SourceResidual.runPlan_prefix_law [Fintype Player] {rank : Nat}
 
 /-- Every bounded graph prefix from compiled inputs has the original source
 prefix law, retaining the complete decoded source protocol state. -/
-theorem compileEventProfile_prefix_law [Fintype Player]
+theorem compileEventProfile_prefix_distribution [Fintype Player]
     (setup : Setup (Player := Player) (L := L)) (profile : BehavioralProfile setup.program)
     (initial : State L setup.context) (count : Nat) (bounded : count ≤ eventCount setup.program) :
     (setup.informationGraph.runPlan
@@ -707,24 +710,24 @@ theorem compileEventProfile_prefix_law [Fintype Player]
       ((fun law => law.bind (ProtocolState.behavioralStateStep setup.program profile))^[count]
         (PMF.pure (ProtocolState.entry setup.program (Config.initial initial)))).map some := by
   simpa only [Nat.zero_add, SourceResidual.initial, id_eq] using
-    (SourceResidual.initial setup profile initial).runPlan_prefix_law count
+    (SourceResidual.initial setup profile initial).runPlan_prefix_distribution count
       (by simpa only [Nat.zero_add] using bounded)
 
 /-- The bounded prefix law holds under the setup's entire joint initial
 distribution, including correlated private inputs. -/
-theorem compileEventProfile_initial_prefix_law [Fintype Player]
+theorem compileEventProfile_initial_prefix_distribution [Fintype Player]
     (setup : Setup (Player := Player) (L := L)) (profile : BehavioralProfile setup.program)
     (count : Nat) (bounded : count ≤ eventCount setup.program) :
-    ((setup.initialLaw.map setup.eventInputs).bind (fun inputs =>
+    ((setup.initialDistribution.map setup.eventInputs).bind (fun inputs =>
       setup.informationGraph.runPlan
         (setup.informationGraph.policyPlan (compileEventProfile setup.program profile)
           setup.informationGraph.canonicalScheduler) count
         (EventGraph.Config.initial inputs))).map (sourceServicePrefix? setup count) =
-      (setup.initialLaw.bind fun initial =>
+      (setup.initialDistribution.bind fun initial =>
         (fun law => law.bind (ProtocolState.behavioralStateStep setup.program profile))^[count]
           (PMF.pure (ProtocolState.entry setup.program (Config.initial initial)))).map some := by
   rw [PMF.bind_map, PMF.map_bind, PMF.map_bind]
   exact bind_congr_on_support _ fun initial _ =>
-    compileEventProfile_prefix_law setup profile initial count bounded
+    compileEventProfile_prefix_distribution setup profile initial count bounded
 
 end Vegas

@@ -223,12 +223,12 @@ theorem lateLeak_equilibrium_protected_safe_mass_gap (pays : G.DeferralPays)
         (2 * (lateLeakInclusionProb G * G.reward -
           (1 - lateLeakInclusionProb G) * (G.forfeit + G.dropCharge)) - G.reward) ≤
       G.reward * ((lateLeakIntendedOutcome (.finished (bit, .a) .protectedOpen .safe)).toReal -
-        (lateLeakOutcomeLaw G true A.strategy
+        (lateLeakOutcomeDistribution G true A.strategy
           (.finished (bit, .a) .protectedOpen .safe)).toReal) := by
   obtain ⟨bit, bound⟩ :=
     lateLeak_equilibrium_protected_safe_bound pays cost_nonnegative equilibrium
   refine ⟨bit, ?_⟩
-  rw [lateLeakIntendedOutcome_apply, lateLeakOutcomeLaw_protected_safe]
+  rw [lateLeakIntendedOutcome_apply, lateLeakOutcomeDistribution_protected_safe]
   have prior_nonnegative : 0 ≤ (lateLeakPrior (bit, .a)).toReal := ENNReal.toReal_nonneg
   have prior_lower : (3 / 20 : ℝ) ≤ (lateLeakPrior (bit, .a)).toReal := by
     cases bit <;> norm_num [lateLeakPrior, PMF.ofFintype_apply]
@@ -248,7 +248,7 @@ theorem lateLeak_sample_protected_safe_mass_gap
       (lateLeakPayoff LateLeakParameters.sample true)) :
     ∃ bit, (267 / 2000 : ℝ) ≤
       (lateLeakIntendedOutcome (.finished (bit, .a) .protectedOpen .safe)).toReal -
-        (lateLeakOutcomeLaw LateLeakParameters.sample true A.strategy
+        (lateLeakOutcomeDistribution LateLeakParameters.sample true A.strategy
           (.finished (bit, .a) .protectedOpen .safe)).toReal := by
   obtain ⟨bit, bound⟩ := lateLeak_equilibrium_protected_safe_mass_gap
     LateLeakParameters.sample_deferralPays (by norm_num [LateLeakParameters.sample]) equilibrium
@@ -264,7 +264,7 @@ theorem lateLeak_equilibrium_totalVariation_lower_bound (pays : G.DeferralPays)
     (equilibrium : A.IsSequentialEquilibrium (lateLeak_antichain G true)
       (lateLeak_terminates G true) (lateLeakPayoff G true))
     {error : ℝ}
-    (close : PMF.WithinTV error (lateLeakOutcomeLaw G true A.strategy)
+    (close : PMF.WithinTV error (lateLeakOutcomeDistribution G true A.strategy)
       lateLeakIntendedOutcome) :
     (3 / 20 : ℝ) * (2 * (lateLeakInclusionProb G * G.reward -
         (1 - lateLeakInclusionProb G) * (G.forfeit + G.dropCharge)) - G.reward) ≤
@@ -283,7 +283,8 @@ theorem lateLeak_sample_totalVariation_lower_bound
       (lateLeak_terminates LateLeakParameters.sample true)
       (lateLeakPayoff LateLeakParameters.sample true))
     {error : ℝ}
-    (close : PMF.WithinTV error (lateLeakOutcomeLaw LateLeakParameters.sample true A.strategy)
+    (close : PMF.WithinTV error (lateLeakOutcomeDistribution LateLeakParameters.sample true
+      A.strategy)
       lateLeakIntendedOutcome) :
     (267 / 2000 : ℝ) ≤ error := by
   obtain ⟨bit, gap⟩ := lateLeak_sample_protected_safe_mass_gap equilibrium

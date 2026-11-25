@@ -82,7 +82,7 @@ def Setup.parameterPaymentUtility {Parameter : Type}
 
 /-- Canonical compilation preserves each player's aggregated instruction-payment
 sum, before the setup's exit override. -/
-theorem canonical_transfer_law (program : SourceProgram Player L Γ O)
+theorem canonical_transfer_distribution (program : SourceProgram Player L Γ O)
     (profile : BehavioralProfile program) (state : State L Γ) :
     ((toInformationGraph program).terminalOutcomes (toInformationGraph program).canonicalScheduler
         (compileEventProfile program profile) (encodeInputs state)).map
@@ -92,7 +92,7 @@ theorem canonical_transfer_law (program : SourceProgram Player L Γ O)
   have law := congrArg
     (fun distribution : PMF (List (Player × Int)) => distribution.map
       (fun entries who => (transferAmount entries who : ℝ)))
-    (Vegas.canonical_payout_law program profile state)
+    (Vegas.canonical_payout_distribution program profile state)
   calc
     _ = (program.run profile state).map
         (fun terminal who =>

@@ -22,7 +22,7 @@ variable {Player : Type} [DecidableEq Player] [Finite Player]
   {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
   {Signal : Type*} (signal : State L setup.context → Signal) (value : Signal)
-  (supported : value ∈ (setup.initialLaw.map signal).support)
+  (supported : value ∈ (setup.initialDistribution.map signal).support)
 
 /-- Conditioning the initializer retains the probability of every legal local
 joint action after transporting the actual source policies. -/
@@ -83,24 +83,24 @@ omit [Finite Player] in
 /-- The actual initialization kernel has the same proportional atom law as
 the conditional initial state, before any strategic action is taken. -/
 theorem conditionInitial_protocolStep_initial_scale
-    (supported : value ∈ (setup.initialLaw.map signal).support)
+    (supported : value ∈ (setup.initialDistribution.map signal).support)
     (initial : State L setup.context) (same : signal initial = value)
     (joint : Player → Option (OwnAction Player L)) :
-    (setup.initialLaw.map signal) value *
+    (setup.initialDistribution.map signal) value *
         (setup.conditionInitial signal value).protocolStep none joint
           (some (ProtocolState.entry setup.program (Config.initial initial))) =
       setup.protocolStep none joint
         (some (ProtocolState.entry setup.program (Config.initial initial))) := by
-  change (setup.initialLaw.map signal) value *
-    ((fiberPosterior setup.initialLaw signal value).map
+  change (setup.initialDistribution.map signal) value *
+    ((fiberPosterior setup.initialDistribution signal value).map
       (fun initial => some (ProtocolState.entry setup.program (Config.initial initial))))
         (some (ProtocolState.entry setup.program (Config.initial initial))) = _
   rw [pmf_map_apply_of_injective _ (initialEntry_injective setup),
-    show setup.protocolStep none joint = setup.initialLaw.map
+    show setup.protocolStep none joint = setup.initialDistribution.map
       (fun initial => some (ProtocolState.entry setup.program (Config.initial initial)))
         from rfl,
     pmf_map_apply_of_injective _ (initialEntry_injective setup)]
-  exact setup.conditionInitial_initialLaw_scale signal value supported initial same
+  exact setup.conditionInitial_initialDistribution_scale signal value supported initial same
 
 /-- All post-initial joint/transition coefficients agree after transporting
 the source policies and the actual source trace. -/
@@ -133,11 +133,11 @@ theorem conditionInitial_stepProb_initial
       ((setup.conditionInitial signal value).intendedProtocol.step none ⟨joint, legal⟩).support) :
     InformationModel.stepProb setup.intendedModel policies
         (setup.conditionInitial_trace signal value supported trace) ⟨joint, legal⟩ after =
-      ((setup.initialLaw.map signal) value).toReal *
+      ((setup.initialDistribution.map signal) value).toReal *
         InformationModel.stepProb (setup.conditionInitial signal value).intendedModel
           (fun who => setup.conditionInitial_policy signal value who (policies who)) trace
             ⟨joint, legal⟩ after := by
-  change after ∈ ((fiberPosterior setup.initialLaw signal value).map
+  change after ∈ ((fiberPosterior setup.initialDistribution signal value).map
     (fun initial => some (ProtocolState.entry setup.program (Config.initial initial)))).support
       at realized
   obtain ⟨initial, present, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp realized
@@ -149,7 +149,7 @@ theorem conditionInitial_stepProb_initial
   rw [setup.conditionInitial_behavioralJoint_probability signal value supported policies
     trace joint legal]
   change _ * (setup.protocolStep none joint _).toReal =
-    ((setup.initialLaw.map signal) value).toReal *
+    ((setup.initialDistribution.map signal) value).toReal *
       (_ * ((setup.conditionInitial signal value).protocolStep none joint _).toReal)
   rw [← kernel]
   ring
@@ -167,14 +167,14 @@ the initial signal mass. The empty unsampled root is deliberately excluded. -/
 theorem conditionInitial_historyReachWeight_toReal
     (setup : Setup (Player := Player) (L := L)) {Signal : Type*}
     (signal : State L setup.context → Signal) (value : Signal)
-    (supported : value ∈ (setup.initialLaw.map signal).support)
+    (supported : value ∈ (setup.initialDistribution.map signal).support)
     (policies : ∀ who, setup.intendedModel.BehavioralPolicy who) :
     ∀ {state : setup.ProtocolState}
       (trace : (setup.conditionInitial signal value).intendedProtocol.Trace state),
       0 < trace.length →
       (setup.intendedModel.historyReachWeight policies
         ⟨state, setup.conditionInitial_trace signal value supported trace⟩).toReal =
-        ((setup.initialLaw.map signal) value).toReal *
+        ((setup.initialDistribution.map signal) value).toReal *
           ((setup.conditionInitial signal value).intendedModel.historyReachWeight
             (fun who => setup.conditionInitial_policy signal value who (policies who))
             ⟨state, trace⟩).toReal
@@ -213,7 +213,7 @@ theorem conditionInitial_historyReachWeight_scale
     (positive : 0 < trace.length) :
     setup.intendedModel.historyReachWeight policies
         ⟨state, setup.conditionInitial_trace signal value supported trace⟩ =
-      (setup.initialLaw.map signal) value *
+      (setup.initialDistribution.map signal) value *
         (setup.conditionInitial signal value).intendedModel.historyReachWeight
           (fun who => setup.conditionInitial_policy signal value who (policies who))
           ⟨state, trace⟩ := by

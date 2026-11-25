@@ -32,20 +32,20 @@ def serviceScheduler : (serviceApplication setup dependencies serviceDuration le
 
 private theorem serviceContract :
     AsyncContract (serviceTimeouts setup dependencies serviceDuration) leaks
-      (serviceInitialLaw setup dependencies) serviceHorizon serviceScheduler
+      (serviceInitialDistribution setup dependencies) serviceHorizon serviceScheduler
       (fun _ => 3) (fun _ => 2) := by
   change AsyncContract (PeriodicService.timeouts graph) leaks
-    (serviceInitialLaw setup dependencies) PeriodicService.horizon
+    (serviceInitialDistribution setup dependencies) PeriodicService.horizon
     (PeriodicService.scheduler graph (Equiv.refl Bool) leaks) (fun _ => 3) (fun _ => 2)
   have supplied := PeriodicService.contract (graph := graph) (roster := Equiv.refl Bool)
-    (leaks := leaks) (inputLaw := setup.initialLaw.map setup.eventInputs)
+    (leaks := leaks) (inputLaw := setup.initialDistribution.map setup.eventInputs)
     (by rw [event_count]) (by
       intro event
       obtain ⟨who, owned⟩ := all_owned event
       rw [owned]
       rfl)
   simpa only [serviceDuration, serviceScheduler, serviceTimeouts, serviceHorizon,
-    PeriodicService.timeouts, PeriodicService.initial, serviceInitialLaw,
+    PeriodicService.timeouts, PeriodicService.initial, serviceInitialDistribution,
     PMF.map_comp, Function.comp_def] using supplied
 
 private theorem serviceTimely :
@@ -60,7 +60,7 @@ def clients : Player → (serviceApplication setup dependencies serviceDuration 
 /-- The compiled periodic application preserves the fair Nash equilibrium and its full law. -/
 theorem native_equilibrium :
     let app := serviceApplication setup dependencies serviceDuration leaks
-    let native := app.roundsFrom (serviceInitialLaw setup dependencies) serviceScheduler
+    let native := app.roundsFrom (serviceInitialDistribution setup dependencies) serviceScheduler
       clients serviceHorizon
     IsεNash (serviceGame setup dependencies serviceDuration leaks serviceScheduler serviceHorizon)
       (setup.graphForfeitConfigPayoff dependencies (fun _ => ()) sourceUtility 200) 0 clients ∧
@@ -73,7 +73,7 @@ theorem native_equilibrium :
     native.map (fun final =>
       (serviceRankedReadout setup dependencies serviceDuration leaks (app.finished final),
         setup.graphForfeitConfigPayoff dependencies (fun _ => ()) sourceUtility 200
-          final.application.config)) = uniformJointLaw ∧
+          final.application.config)) = uniformJointDistribution ∧
     ∀ who, expect native (fun final => setup.graphForfeitConfigPayoff dependencies (fun _ => ())
       sourceUtility 200 final.application.config who) = 100 := by
   intro app native
@@ -81,7 +81,7 @@ theorem native_equilibrium :
     setup dependencies relaxed finiteBindingTypes wellFormed (fun _ => ()) sourceUtility 200
     utility_spread uniformAssessment.strategy target target_extends 0 uniform_isNash
     serviceDuration leaks serviceScheduler (fun _ => 2) serviceContract serviceTimely
-  have exactLaw := law.trans uniform_joint_law
+  have exactLaw := law.trans uniform_joint_distribution
   refine ⟨nash, fun final reached => clean final ?_, exactLaw, ?_⟩
   · -- Compare the laws, not the memberships, which would evaluate the concrete game.
     refine Eq.mp (congrArg (fun law => final ∈ PMF.support law) ?_) reached
@@ -89,6 +89,6 @@ theorem native_equilibrium :
   intro who
   have expected := congrArg (fun law => expect law (fun observed => observed.2 who)) exactLaw
   rw [expect_map] at expected
-  exact expected.trans (uniformJointLaw_expected who)
+  exact expected.trans (uniformJointDistribution_expected_payoff who)
 
 end Vegas.Examples.OddsEvensConcurrent

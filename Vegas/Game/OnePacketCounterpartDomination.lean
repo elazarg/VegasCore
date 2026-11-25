@@ -246,7 +246,8 @@ theorem reach_le_upperWeight
                       (steps.mass_nonneg n (operationalState setup timeouts
                         leaks (some control))
                         (operationalState setup timeouts leaks (some next)))]
-                  · change some next ∈ ((application setup timeouts leaks).transition (initialLaw
+                  · change some next ∈ ((application setup timeouts leaks).transition
+                      (initialDistribution
                       setup)
                       horizon scheduler (some control) joint).support at realized
                     rw [transition_respond (timeouts := timeouts) control acting joint,

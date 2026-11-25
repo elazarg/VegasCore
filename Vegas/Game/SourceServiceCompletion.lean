@@ -113,7 +113,8 @@ theorem roundsFrom_activationsAnswered
     {players : Player → (serviceApplication setup deps duration leaks).Policy} (count : Nat)
     (execution : (serviceApplication setup deps duration leaks).Execution)
     (supported : execution ∈
-        ((serviceApplication setup deps duration leaks).roundsFrom (serviceInitialLaw setup deps)
+        ((serviceApplication setup deps duration leaks).roundsFrom
+          (serviceInitialDistribution setup deps)
         scheduler players count).support) :
     ActivationsAnswered setup leaks execution := by
   exact EventGraphRuntime.roundsFrom_activationsAnswered
@@ -260,11 +261,13 @@ players reach by complete rounds from initialization. -/
 abbrev CompletionBoundary (scheduler : (serviceApplication setup deps duration leaks).Scheduler)
     (players : Player → (serviceApplication setup deps duration leaks).Policy) (rank : Nat)
     (execution : (serviceApplication setup deps duration leaks).Execution) : Prop :=
-  EventGraphRuntime.PrefixBoundary (serviceInitialLaw setup deps) scheduler players rank execution
+  EventGraphRuntime.PrefixBoundary (serviceInitialDistribution setup deps) scheduler players rank
+    execution
 
 /-- From every completion boundary within the horizon, the players' run to the
 horizon has the source continuation law of the configuration's typed prefix. -/
-def BoundaryContinuationLaw (scheduler : (serviceApplication setup deps duration leaks).Scheduler)
+def BoundaryContinuationMatches (scheduler : (serviceApplication setup deps duration
+    leaks).Scheduler)
     (horizon : Nat) (players : Player → (serviceApplication setup deps duration leaks).Policy)
     (profile : BehavioralProfile setup.program) : Prop := ∀ rank
     (execution : (serviceApplication setup deps duration leaks).Execution), CompletionBoundary setup
@@ -273,7 +276,7 @@ def BoundaryContinuationLaw (scheduler : (serviceApplication setup deps duration
         execution).map
     (fun final => serviceSourceReadout setup deps duration leaks
         ((serviceApplication setup deps duration leaks).finished final)) =
-    (setup.continuationLaw profile
+    (setup.continuationDistribution profile
         (serviceSourcePrefix? setup deps rank execution.application.config)).map some
 
 end Ranked
@@ -289,7 +292,7 @@ variable {setup} in
 theorem readySeen_of_rawTrace {horizon rank : Nat}
     {scheduler : (application setup timeouts leaks).Scheduler}
     {control : (application setup timeouts leaks).Control}
-    (trace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((application setup timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace
       (some control))
     (ordered : control.execution.application.config.cut.IsPrefix rank) :
@@ -311,7 +314,7 @@ boundary, whose configuration is a prefix at `rank`, with every event from
 `rank` on untouched and every own submission made at its author's turn. -/
 structure ReachedBoundary (horizon : Nat) (scheduler : (application setup timeouts leaks).Scheduler)
     (rank : Nat) (execution : (application setup timeouts leaks).Execution) : Prop where
-  trace : Nonempty (((application setup timeouts leaks).protocol (initialLaw setup) horizon
+  trace : Nonempty (((application setup timeouts leaks).protocol (initialDistribution setup) horizon
     scheduler).Trace (some ⟨horizon - execution.environmentRecall.length, none, execution⟩))
   bounded : execution.environmentRecall.length ≤ horizon
   ordered : execution.application.config.cut.IsPrefix rank
@@ -332,7 +335,7 @@ variable {setup : Setup (Player := Player) (L := L)}
 /-- Every initialized raw native history has a residual of the same source evaluator. -/
 theorem SourceResidual.of_rawTrace (profile : BehavioralProfile setup.program)
     (horizon : Nat) (scheduler : (application setup timeouts leaks).Scheduler) :
-    ∀ {state} (_trace : ((application setup timeouts leaks).protocol (initialLaw setup)
+    ∀ {state} (_trace : ((application setup timeouts leaks).protocol (initialDistribution setup)
       horizon scheduler).Trace state) (control : (application setup timeouts leaks).Control),
       state = some control →
       ∃ rank,
@@ -345,7 +348,7 @@ theorem SourceResidual.of_rawTrace (profile : BehavioralProfile setup.program)
       subst current
       cases before with
       | none =>
-          change some control ∈ ((initialLaw setup).map fun state =>
+          change some control ∈ ((initialDistribution setup).map fun state =>
             some ⟨horizon, none, ReactiveApplication.Execution.initial
               (application setup timeouts leaks) state⟩).support at realized
           obtain ⟨state, supported, same⟩ := PMF.support_map .. ▸ realized
@@ -355,7 +358,7 @@ theorem SourceResidual.of_rawTrace (profile : BehavioralProfile setup.program)
       | some previous =>
           obtain ⟨rank, ⟨residual⟩⟩ := ih previous rfl
           exact residual.path (reactive_protocol_graph_steps timeouts leaks
-            (initialLaw setup) horizon scheduler previous control joint realized)
+            (initialDistribution setup) horizon scheduler previous control joint realized)
 
 end
 
@@ -373,14 +376,15 @@ theorem runUntilHorizon_stop {horizon : Nat}
     {scheduler : (serviceApplication setup deps duration leaks).Scheduler}
     {delay bound : (serviceGraph setup deps).EventId → Nat}
     (contract : AsyncContract (serviceTimeouts setup deps duration) leaks
-        (serviceInitialLaw setup deps) horizon scheduler delay bound)
+        (serviceInitialDistribution setup deps) horizon scheduler delay bound)
     (players : Player → (serviceApplication setup deps duration leaks).Policy)
     (stop : (serviceApplication setup deps duration leaks).Execution → Prop) [DecidablePred stop]
     (terminalStops : ∀ execution : (serviceApplication setup deps duration leaks).Execution,
       execution.application.config.cut.Terminal → stop execution)
     (execution : (serviceApplication setup deps duration leaks).Execution)
     (supported : execution ∈ ((serviceApplication setup deps duration leaks).roundsFrom
-      (serviceInitialLaw setup deps) scheduler players execution.environmentRecall.length).support)
+      (serviceInitialDistribution setup deps) scheduler players
+        execution.environmentRecall.length).support)
     (bounded : execution.environmentRecall.length ≤ horizon) :
     ∀ final ∈ ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler players
       stop horizon execution).support, stop final := by
@@ -393,9 +397,11 @@ theorem runUntilHorizon_stop {horizon : Nat}
   · exact done
   obtain ⟨used, enough, rounds, _⟩ := app.runUntil_runRounds scheduler players stop remaining
     execution final reached
-  obtain ⟨trace⟩ := app.raw_trace_roundsFrom (serviceInitialLaw setup deps) horizon scheduler
+  obtain ⟨trace⟩ := app.raw_trace_roundsFrom (serviceInitialDistribution setup deps) horizon
+    scheduler
     players execution.environmentRecall.length bounded execution supported
-  obtain ⟨finalTrace⟩ := app.raw_trace_runRounds (serviceInitialLaw setup deps) horizon scheduler
+  obtain ⟨finalTrace⟩ := app.raw_trace_runRounds (serviceInitialDistribution setup deps) horizon
+    scheduler
     players (remaining - used) used execution final
     (by simpa only [Nat.sub_add_cancel enough] using trace) rounds
   apply terminalStops
@@ -445,19 +451,19 @@ section
 open EventGraph
 
 /-- Canonical graph play and the initialized service continuation use the same input law. -/
-theorem service_play_outcomeLaw (setup : Setup (Player := Player) (L := L))
+theorem service_play_outcomeDistribution (setup : Setup (Player := Player) (L := L))
     (deps : setup.dataflowGraph.Dependencies)
     (profile : (serviceGraph setup deps).BehavioralProfile) {Outcome : Type*}
     (read : (serviceGraph setup deps).Config → Outcome) :
-    (((serviceGraph setup deps).gameForm (setup.initialLaw.map setup.eventInputs)
+    (((serviceGraph setup deps).gameForm (setup.initialDistribution.map setup.eventInputs)
         (serviceGraph setup deps).canonicalScheduler).play profile).map
         (fun outcome => read outcome.1) =
-      (serviceInitialLaw setup deps).bind fun state =>
-        outcomeLaw profile read state.config := by
-  change ((setup.initialLaw.map (fun initial => setup.eventInputs initial)).bind
+      (serviceInitialDistribution setup deps).bind fun state =>
+        outcomeDistribution profile read state.config := by
+  change ((setup.initialDistribution.map (fun initial => setup.eventInputs initial)).bind
       (fun inputs => (serviceGraph setup deps).terminalOutcomes
         (serviceGraph setup deps).canonicalScheduler profile inputs)).map _ = _
-  rw [PMF.map_bind, PMF.bind_map, serviceInitialLaw, PMF.bind_map]
+  rw [PMF.map_bind, PMF.bind_map, serviceInitialDistribution, PMF.bind_map]
   apply bind_congr_on_support _
   intro initial _
   simp only [Function.comp_apply]
@@ -468,7 +474,7 @@ theorem service_play_outcomeLaw (setup : Setup (Player := Player) (L := L))
       (serviceGraph setup deps).Config).remaining =
         (serviceGraph setup deps).order.eventCount := by
     simp [EventGraph.Config.remaining, EventGraph.Config.initial, EventOrder.Cut.empty]
-  unfold outcomeLaw EventGraph.runPolicies EventGraph.run
+  unfold outcomeDistribution EventGraph.runPolicies EventGraph.run
   change _ = ((serviceGraph setup deps).runPlan _
     (EventGraph.Config.initial (setup.eventInputs initial) :
       (serviceGraph setup deps).Config).remaining _).map read
@@ -500,18 +506,19 @@ theorem roundsFrom_reference_support_of_untouched
     (count : Nat) (after : (serviceApplication setup deps duration leaks).Execution)
     (unseen : ∀ event, changed event → Untouched setup leaks event after)
     (reached : after ∈ ((serviceApplication setup deps duration leaks).roundsFrom
-      (serviceInitialLaw setup deps) scheduler
+      (serviceInitialDistribution setup deps) scheduler
       (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps) ((serviceGraph setup deps).prefixProfile left))
           focal deviation) count).support) :
     after ∈ ((serviceApplication setup deps duration leaks).roundsFrom
-      (serviceInitialLaw setup deps) scheduler
+      (serviceInitialDistribution setup deps) scheduler
       (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps) ((serviceGraph setup deps).prefixProfile right))
           focal deviation) count).support := by
   classical
   apply ReactiveApplication.roundsFrom_support_of_recorded_policy_eq
-    (serviceApplication setup deps duration leaks) (serviceInitialLaw setup deps) scheduler _ _
+    (serviceApplication setup deps duration leaks) (serviceInitialDistribution setup deps)
+      scheduler _ _
       count after reached
   intro who entry member past
   by_cases own : who = focal

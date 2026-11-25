@@ -15,7 +15,7 @@ fully supported component laws, which may vary along a sequence, with weights
 chosen together by rational completion in the agent normal form; agents may be
 pooled to share their weights, so that a move chosen by the pool reveals
 nothing that distinguishes its members
-(`exists_sequentialEquilibrium_limit_of_pooled_comparisons_of_lawError`). Agents are
+(`exists_sequentialEquilibrium_limit_of_pooled_comparisons_of_distributionError`). Agents are
 split in advance into free and compared ones. A free agent's limit components
 span all of its laws, typically one choice per component trembled toward a
 fixed reference with a vanishing weight, so its optimality at the limit comes
@@ -66,7 +66,7 @@ vanishing error. If the target observation laws approach the perturbed source
 laws, a target sequential equilibrium exists that has the source law, plays at
 every agent whose components converge a mixture of the limit components, and is
 the limit of one subsequence of the perturbed family. -/
-theorem exists_sequentialEquilibrium_limit_of_pooled_comparisons_of_lawError
+theorem exists_sequentialEquilibrium_limit_of_pooled_comparisons_of_distributionError
     {Outcome : Type*} (sourceObserve : E.History → Outcome) (targetObserve : T.History → Outcome)
     (sourceFuel targetFuel : Nat)
     (targetBounded : T.BoundedHorizon targetFuel) (targetRecall : N.DecisionRecall)
@@ -154,7 +154,7 @@ theorem exists_sequentialEquilibrium_limit_of_pooled_comparisons_of_lawError
                       (sourceSequence n) who deviation
                     expect sourceComparison.alternative (utility · who) -
                       expect sourceComparison.prescribed (utility · who)) + comparisonError n)
-    (lawApproximation :
+    (distributionApproximation :
       ∀ (weights : ℕ → ∀ p, PMF (Part p)) (targetSequence : ℕ → N.BehavioralAssessment),
         (∀ n, (targetSequence n).strategy = N.agentBehavior N.playedInformation fallback
           fun agent => (weights n (pool agent)).bind (component n agent)) →
@@ -171,12 +171,12 @@ theorem exists_sequentialEquilibrium_limit_of_pooled_comparisons_of_lawError
               expect comparison.alternative (utility · agent.1) -
                 expect comparison.prescribed (utility · agent.1)
             else 0) ≤ 0) →
-        ∃ lawError : ℕ → ℝ, Tendsto lawError atTop (nhds 0) ∧
+        ∃ distributionError : ℕ → ℝ, Tendsto distributionError atTop (nhds 0) ∧
           ∀ n outcome,
             |(((N.runBehavioral (targetSequence n).strategy targetFuel).map targetObserve)
                 outcome).toReal -
               (((M.runBehavioral (sourceSequence n).strategy sourceFuel).map sourceObserve)
-                outcome).toReal| ≤ lawError n) :
+                outcome).toReal| ≤ distributionError n) :
     ∃ target : N.BehavioralAssessment,
       target.IsSequentialEquilibriumFor targetRecall.decisionInformationAntichain
         (fun who site => target.truncatedContinuationContext site
@@ -239,8 +239,8 @@ theorem exists_sequentialEquilibrium_limit_of_pooled_comparisons_of_lawError
     memberRational weights sequence played mixed bayes pooled
   obtain ⟨comparisonError, errorVanishes, comparisons⟩ :=
     localComparisons weights sequence played mixed bayes pooled
-  obtain ⟨lawError, lawErrorVanishes, approximation⟩ :=
-    lawApproximation weights sequence played mixed bayes pooled
+  obtain ⟨distributionError, distributionErrorVanishes, approximation⟩ :=
+    distributionApproximation weights sequence played mixed bayes pooled
   have choiceBound (n : ℕ) (who : Player) (site : N.InformationSite who)
       (compared : N.agentAt site ∉ free) (choice : N.Choice who site.1) :
       let comparison := N.assessmentComparisonWith (N.truncatedRunner targetFuel) targetObserve
@@ -281,13 +281,14 @@ theorem exists_sequentialEquilibrium_limit_of_pooled_comparisons_of_lawError
       refine ⟨mixture, ?_⟩
       dsimp only at sourced ⊢
       linarith
-  have result := sequentialEquilibrium_of_copied_comparisons_limit_of_lawError sourceObserve
+  have result := sequentialEquilibrium_of_copied_comparisons_limit_of_distributionError
+    sourceObserve
     targetObserve sourceFuel targetFuel targetBounded targetRecall utility source sourceSequence
     sourceConverges sourceRational sequence (fun _ site => N.agentAt site ∉ free)
     (fun n => comparisonError n + memberError n)
     (by simpa only [zero_add] using errorVanishes.add memberVanishes)
     (fun n who site compared choice => choiceBound n who site compared choice)
-    lawError lawErrorVanishes
+    distributionError distributionErrorVanishes
     approximation target index increasing
     converges consistent (fun who site kept law => by
       obtain ⟨limitComponent, componentConverges, spanning⟩ :=
@@ -308,7 +309,7 @@ theorem exists_sequentialEquilibrium_limit_of_pooled_comparisons_of_lawError
 open Classical in
 /-- **A pooled component family with its obligations.** The data and the
 local and law obligations of
-`exists_sequentialEquilibrium_limit_of_pooled_comparisons_of_lawError` for one
+`exists_sequentialEquilibrium_limit_of_pooled_comparisons_of_distributionError` for one
 source assessment sequence: a fallback policy, pools of agents sharing weights,
 fully supported components, the free agents with spanning limit components,
 and the three obligations, each required for every weights family that the
@@ -399,7 +400,7 @@ structure PooledLimitCertificate {Outcome : Type*} (sourceObserve : E.History �
                     (sourceSequence n) who deviation
                   expect sourceComparison.alternative (utility · who) -
                     expect sourceComparison.prescribed (utility · who)) + comparisonError n
-  lawApproximation : ∀ (weights : ℕ → ∀ p, PMF (Part p)) (targetSequence : ℕ →
+  distributionApproximation : ∀ (weights : ℕ → ∀ p, PMF (Part p)) (targetSequence : ℕ →
       N.BehavioralAssessment),
       (∀ n, (targetSequence n).strategy = N.agentBehavior N.playedInformation fallback
         fun agent => (weights n (pool agent)).bind (component n agent)) →
@@ -416,12 +417,12 @@ structure PooledLimitCertificate {Outcome : Type*} (sourceObserve : E.History �
             expect comparison.alternative (utility · agent.1) -
               expect comparison.prescribed (utility · agent.1)
           else 0) ≤ 0) →
-      ∃ lawError : ℕ → ℝ, Tendsto lawError atTop (nhds 0) ∧
+      ∃ distributionError : ℕ → ℝ, Tendsto distributionError atTop (nhds 0) ∧
         ∀ n outcome,
           |(((N.runBehavioral (targetSequence n).strategy targetFuel).map targetObserve)
               outcome).toReal -
             (((M.runBehavioral (sourceSequence n).strategy sourceFuel).map sourceObserve)
-              outcome).toReal| ≤ lawError n
+              outcome).toReal| ≤ distributionError n
 
 attribute [instance] PooledLimitCertificate.poolFinite PooledLimitCertificate.poolDecidable
   PooledLimitCertificate.partFinite PooledLimitCertificate.partNonempty
@@ -448,11 +449,11 @@ theorem PooledLimitCertificate.exists_sequentialEquilibrium {Outcome : Type*}
       (N.runBehavioral target.strategy targetFuel).map targetObserve =
         (M.runBehavioral source.strategy sourceFuel).map sourceObserve := by
   obtain ⟨target, equilibrium, law, _⟩ :=
-    exists_sequentialEquilibrium_limit_of_pooled_comparisons_of_lawError sourceObserve
+    exists_sequentialEquilibrium_limit_of_pooled_comparisons_of_distributionError sourceObserve
       targetObserve sourceFuel targetFuel targetBounded targetRecall utility source sourceSequence
       sourceConverges sourceRational certificate.fallback certificate.pool certificate.component
       certificate.componentFull certificate.free certificate.freeSpanning
-      certificate.memberRational certificate.localComparisons certificate.lawApproximation
+      certificate.memberRational certificate.localComparisons certificate.distributionApproximation
   exact ⟨target, equilibrium, law⟩
 
 end GameTheory.Protocol.InformationModel

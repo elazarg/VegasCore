@@ -23,9 +23,9 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {horizon : Nat} {scheduler : (application setup timeouts leaks).Scheduler}
 
 variable (menu : (application setup timeouts leaks).ResponseMenu)
-  (supported : ∀ value, value ∈ (setup.initialLaw.map signal).support)
+  (supported : ∀ value, value ∈ (setup.initialDistribution.map signal).support)
   (read : Player → (application setup timeouts leaks).Info → Signal)
-  (observed : ∀ draw ∈ setup.initialLaw.support,
+  (observed : ∀ draw ∈ setup.initialDistribution.support,
     ∀ execution : (application setup timeouts leaks).Execution,
     State.Invariant (graph := setup.informationGraph) (setup.eventInputs draw)
       execution.application → ∀ who,
@@ -34,14 +34,14 @@ variable (menu : (application setup timeouts leaks).ResponseMenu)
   (viewRead : Player → (application setup timeouts leaks).PlayerView → Signal)
   (same : ∀ who past view, read who (some (past, view)) = viewRead who view)
 
-local notation "law" k => Vegas.initialLaw (setup.conditionInitial signal k)
+local notation "law" k => Vegas.initialDistribution (setup.conditionInitial signal k)
 
 include same in
 /-- Decoding the single glued assessment chooses each player's component client
 from its existing view, for every callback and every recalled history. -/
 theorem decodeProfile_componentAssessment
     (assessments : ∀ k, (menu.information (law k) horizon scheduler).BehavioralAssessment) :
-    menu.decodeProfile (Vegas.initialLaw setup) horizon scheduler
+    menu.decodeProfile (Vegas.initialDistribution setup) horizon scheduler
       (ledger_componentAssessment menu supported read observed assessments).strategy =
     signalClients (setup := setup) (timeouts := timeouts) (leaks := leaks) viewRead (fun k =>
       menu.decodeProfile (law k) horizon scheduler (assessments k).strategy) := by

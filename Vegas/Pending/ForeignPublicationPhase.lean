@@ -133,7 +133,7 @@ theorem foreign_safe_publication_checkpoint_successor_traffic_factor
         PrefixBoundary (inputs.map State.initial) scheduler players event.val (execution seed)) →
       (∀ seed ∈ prior.support, (execution seed).environmentRecall.length ≤ horizon) →
       (∀ seed ∈ prior.support, owner ∉ (config seed).defaulted →
-        ∀ action ∈ (actionLaw reference (config seed) event).support,
+        ∀ action ∈ (actionDistribution reference (config seed) event).support,
           (cast (congrArg EventField.Action outputEq) action : Bool) = true →
             openingAccepted event (config seed).store = true) →
       ∃ nextNoise : graph.PlayerObservation focal → PMF _,
@@ -217,7 +217,7 @@ theorem foreign_safe_publication_checkpoint_primary_traffic_factor
         PrefixBoundary (inputs.map State.initial) scheduler players event.val (execution seed)) →
       (∀ seed ∈ prior.support, (execution seed).environmentRecall.length ≤ horizon) →
       (∀ seed ∈ prior.support, owner ∉ (config seed).defaulted →
-        ∀ action ∈ (actionLaw reference (config seed) event).support,
+        ∀ action ∈ (actionDistribution reference (config seed) event).support,
           (cast (congrArg EventField.Action outputEq) action : Bool) = true →
             openingAccepted event (config seed).store = true) →
       ∃ nextNoise : graph.PlayerObservation focal → PMF _,
@@ -233,7 +233,7 @@ theorem foreign_safe_publication_checkpoint_primary_traffic_factor
     scheduler delay bound reference contract timely focal owner deviation foreign event solitary
     binding checks outputEq codeEq node prior execution config noise factor ordered native
     boundary bounded safe
-  exact ⟨nextNoise, primary_rank_traffic_of_checkpoint_law prior phase config (fun final =>
+  exact ⟨nextNoise, primary_rank_traffic_of_checkpoint_distribution prior phase config (fun final =>
     final.application.config) execution traffic observe event reference nextNoise ordered joint⟩
 
 end Checkpoints
@@ -266,7 +266,7 @@ theorem physicalPrefix_foreign_safe_publication_policyStep
     (node : nodeView (G) event = .resolve owner payload binding checks outputEq codeEq)
     (safe : ∀ initial ∈ inputs.support, ∀ config : (G).Config, config.Reachable initial →
       config.cut.Ready event → owner ∉ config.defaulted →
-      ∀ action ∈ (actionLaw reference config event).support,
+      ∀ action ∈ (actionDistribution reference config event).support,
         (cast (congrArg EventField.Action outputEq) action : Bool) = true →
           openingAccepted event config.store = true) :
     let players := Function.update (turnPolicy timeouts leaks bound turns

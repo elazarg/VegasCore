@@ -346,9 +346,9 @@ theorem drawn_splicePoint
     (independent : setup.PrivateInputsIndependentGiven signal)
     (observable : setup.PublicInitialSignal signal)
     (agree : PublicCellsAgree setup p w) {r : Player}
-    (drawnP : ∃ initial ∈ setup.initialLaw.support, InitialCellsAt initial p)
-    (drawnW : ∃ initial ∈ setup.initialLaw.support, InitialCellsAt initial w) :
-    ∃ initial ∈ setup.initialLaw.support,
+    (drawnP : ∃ initial ∈ setup.initialDistribution.support, InitialCellsAt initial p)
+    (drawnW : ∃ initial ∈ setup.initialDistribution.support, InitialCellsAt initial w) :
+    ∃ initial ∈ setup.initialDistribution.support,
       InitialCellsAt initial (ProtocolState.splicePoint setup.program r p w) := by
   obtain ⟨mine, mineMember, mineCells⟩ := drawnP
   obtain ⟨others, othersMember, otherCells⟩ := drawnW

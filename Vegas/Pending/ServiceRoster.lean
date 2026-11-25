@@ -35,7 +35,7 @@ abbrev rosterApplication [DecidableEq Player] (graph : EventGraph Player L)
   (reactiveApplication (rosterTimeouts graph)) leaks
 
 /-- Initialize the sequential graph roster from a law on its typed inputs. -/
-abbrev rosterInitialLaw [DecidableEq Player] (graph : EventGraph Player L)
+abbrev rosterInitialDistribution [DecidableEq Player] (graph : EventGraph Player L)
     (inputs : PMF graph.Inputs) :
     PMF (EventGraphRuntime.State graph.sequentialize) :=
   inputs.map EventGraphRuntime.State.initial
@@ -128,10 +128,10 @@ instance rosterScheduler_finiteNature (graph : EventGraph Player L)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph.sequentialize))
     [leaks.FiniteSupport] (rosters : graph.EventId → List Player)
     (network : (NetworkPolicy (rosterTimeouts graph)) leaks) :
-    (rosterApplication graph leaks).FiniteNature (rosterInitialLaw graph inputs)
+    (rosterApplication graph leaks).FiniteNature (rosterInitialDistribution graph inputs)
       (rosterScheduler graph leaks rosters network) where
   initial_finite := by
-    rw [rosterInitialLaw, PMF.support_map]
+    rw [rosterInitialDistribution, PMF.support_map]
     exact (Fact.out : inputs.support.Finite).image _
   scheduler_finite past view := by
     cases selected : (rosterPlan graph rosters)[past.length]? with

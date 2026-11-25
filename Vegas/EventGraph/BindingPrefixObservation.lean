@@ -255,7 +255,7 @@ theorem prefixObservation_playerObserve_of_binding_paths
     · obtain ⟨owner, payload, binding⟩ := bindings prior (Nat.le_of_not_gt old) earlier
       simp only [binding, EventField.IsPublic] at publicOutput
 
-theorem prefixProfile_actionLaw_of_binding_paths
+theorem prefixProfile_actionDistribution_of_binding_paths
     (relaxed : graph.RevealRelaxedOrdered) (profile : graph.BehavioralProfile)
     {inputs : graph.Inputs} (origin left right : graph.Config) (start : Nat)
     (originReach : origin.Reachable inputs) (ordered : origin.cut.IsPrefix start)
@@ -269,12 +269,12 @@ theorem prefixProfile_actionLaw_of_binding_paths
       ∃ owner payload, graph.outputLayout prior = .binding owner payload)
     (own : ∀ prior : graph.EventId, prior.val < event.val →
       graph.actor? prior = some who → completionOf left prior = completionOf right prior) :
-    actionLaw (graph.prefixProfile profile) left event =
-      actionLaw (graph.prefixProfile profile) right event := by
+    actionDistribution (graph.prefixProfile profile) left event =
+      actionDistribution (graph.prefixProfile profile) right event := by
   have same := prefixObservation_playerObserve_of_binding_paths relaxed origin left right start
     originReach ordered leftPath rightPath who event owned notPublication leftReady rightReady
     bindings own
-  rw [actionLaw_of_actor _ _ owned, actionLaw_of_actor _ _ owned,
+  rw [actionDistribution_of_actor _ _ owned, actionDistribution_of_actor _ _ owned,
     dite_eq_right leftActive, dite_eq_right rightActive]
   change profile who event owned _ _ = profile who event owned _ _
   have congrPolicy (before after : graph.PlayerObservation who) (same : before = after)
@@ -453,7 +453,7 @@ theorem binding_frame_of_typed_action
   exact ⟨record, physical⟩
 
 /-- Replacing only focal binding records preserves every honest prefix kernel. -/
-theorem prefixProfile_actionLaw_of_cropped_binding_fill
+theorem prefixProfile_actionDistribution_of_cropped_binding_fill
     (relaxed : graph.RevealRelaxedOrdered) (profile : graph.BehavioralProfile)
     (focal : Player) {inputs : graph.Inputs}
     (origin donor filled : graph.Config) (start rank : Nat)
@@ -471,8 +471,8 @@ theorem prefixProfile_actionLaw_of_cropped_binding_fill
     (owner : Player) (honest : owner ≠ focal) (event : graph.EventId)
     (eventRank : event.val = rank) (owned : graph.actor? event = some owner)
     (notPublication : ¬ (graph.outputLayout event).IsPublication) :
-    actionLaw (graph.prefixProfile profile) filled event =
-      actionLaw (graph.prefixProfile profile) donor event := by
+    actionDistribution (graph.prefixProfile profile) filled event =
+      actionDistribution (graph.prefixProfile profile) donor event := by
   have inside : rank < graph.order.eventCount := by rw [← eventRank]; exact event.isLt
   have readyDonor : donor.cut.Ready event := by
     have ready := donorOrdered.ready inside
@@ -482,7 +482,7 @@ theorem prefixProfile_actionLaw_of_cropped_binding_fill
     have ready := filledOrdered.ready inside
     have same : (⟨rank, inside⟩ : graph.EventId) = event := Fin.ext eventRank.symm
     exact same ▸ ready
-  apply prefixProfile_actionLaw_of_binding_paths relaxed profile origin filled donor start
+  apply prefixProfile_actionDistribution_of_binding_paths relaxed profile origin filled donor start
     originReach before filledPath donorPath owner event owned notPublication readyFilled readyDonor
       (by rw [filledClear]; simp) (by rw [donorClear]; simp)
   · intro prior lower upper

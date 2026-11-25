@@ -59,7 +59,7 @@ def values (state : State simpleExpr context) : Player → Bid
 def setup (prior : PMF (Player → Bid)) : Setup (Player := Player) (L := simpleExpr) where
   context := context
   namesNodup := by decide
-  initialLaw := prior.map initial
+  initialDistribution := prior.map initial
   obligations := ∅
   program := program
   accounts := rfl
@@ -70,7 +70,7 @@ def uniformPrior : PMF (Player → Bid) := uniformLaw _
 theorem finiteBindingTypes : program.FiniteBindingTypes :=
   ⟨inferInstance, inferInstance, trivial⟩
 
-instance (prior : PMF (Player → Bid)) : (setup prior).FiniteInitialLaw where
+instance (prior : PMF (Player → Bid)) : (setup prior).FiniteInitialSupport where
   support_finite := by
     change (prior.map initial).support.Finite
     rw [PMF.support_map]
@@ -149,7 +149,7 @@ theorem truthful_run_initial (types : Player → Bid) :
   rw [dite_eq_right (by change Player.bob ∉ (∅ : Finset Player); decide), PMF.pure_bind]
   rfl
 
-theorem truthful_source_law (prior : PMF (Player → Bid)) :
+theorem truthful_source_distribution (prior : PMF (Player → Bid)) :
     (setup prior).run truthful = prior.map
       (fun types => finalConfig types (types .alice) (types .bob)) := by
   change (prior.map initial).bind (program.run truthful) = _
@@ -169,7 +169,7 @@ theorem initial_values (state : State simpleExpr context) : initial (values stat
     | there absent => cases absent
 
 theorem initial_mass (state : State simpleExpr context) :
-    (setup uniformPrior).initialLaw state = (Fintype.card (Player → Bid) : ENNReal)⁻¹ := by
+    (setup uniformPrior).initialDistribution state = (Fintype.card (Player → Bid) : ENNReal)⁻¹ := by
   classical
   change (uniformPrior.map initial) state = _
   rw [PMF.map_apply]

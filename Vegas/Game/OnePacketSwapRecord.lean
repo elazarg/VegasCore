@@ -119,15 +119,16 @@ variable [Fintype Player] {bounds : MessageBounds setup.informationGraph}
 
 /-- **The image of a history has the same operational record.** -/
 theorem operationalRecord_mapTrace (swap : HiddenSwap setup.informationGraph)
-    (initialClosed : ∀ state ∈ (initialLaw setup).support, state.config.inputs ∈ allowed →
-      state.swap swap ∈ (initialLaw setup).support)
+    (initialClosed : ∀ state ∈ (initialDistribution setup).support, state.config.inputs ∈ allowed →
+      state.swap swap ∈ (initialDistribution setup).support)
     (bounded : ∀ handle raw, raw ∈ bounds.values → swap.raw handle raw ∈ bounds.values)
     (failures : ∀ event, swap.values.ExpiryFixed event) :
     ∀ {state} (trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace
       state)
       (guarded : SwapGuardState setup timeouts swap allowed state),
     operationalRecord setup timeouts leaks bounds horizon scheduler
-        ((onePacketSwapSymmetry (timeouts := timeouts) bounds (initialLaw setup) horizon scheduler
+        ((onePacketSwapSymmetry (timeouts := timeouts) bounds
+          (initialDistribution setup) horizon scheduler
           swap initialClosed
           bounded failures).mapTrace trace guarded) =
       operationalRecord setup timeouts leaks bounds horizon scheduler trace

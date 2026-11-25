@@ -28,10 +28,10 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {bounds : MessageBounds setup.informationGraph} {horizon : Nat}
   {scheduler : (application setup timeouts leaks).Scheduler}
 
-local notation "N" => onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+local notation "N" => onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon
   scheduler
 local notation "E" => ReactiveApplication.ResponseMenu.protocol
-  (bounds.onePacketMenu timeouts leaks) (initialLaw setup) horizon scheduler
+  (bounds.onePacketMenu timeouts leaks) (initialDistribution setup) horizon scheduler
 
 /-- An actually reached intended native boundary has an actual intended source history. -/
 theorem intendedReached_of_reachedBoundary
@@ -67,9 +67,9 @@ theorem intended_sourceContinuation_converges
     (converges : BehavioralAssessmentConvergesPointwise sequence target)
     (point : ProtocolState setup.program) (reached : IntendedReached setup point) :
     PMFConvergesPointwise
-      (fun n => (setup.continuationLaw
+      (fun n => (setup.continuationDistribution
         (setup.intendedOpeningProfile (sequence n).strategy) (some point)).map some)
-      ((setup.continuationLaw
+      ((setup.continuationDistribution
         (setup.intendedOpeningProfile target.strategy) (some point)).map some) := by
   let := Fintype.ofFinite Player
   obtain ⟨history, state⟩ := reached
@@ -80,7 +80,7 @@ theorem intended_sourceContinuation_converges
       (setup.intendedModel.runBehavioralTerminalFrom
         setup.intended_bounded.wellFoundedHistories source.strategy history).map
           (fun final => setup.protocolReadout final.state) =
-      (setup.continuationLaw (setup.intendedOpeningProfile source.strategy)
+      (setup.continuationDistribution (setup.intendedOpeningProfile source.strategy)
         (some point)).map some := by
     rw [setup.intendedModel.runBehavioralTerminalFrom_eq_runBehavioralFrom_of_bounded
       setup.intended_bounded.wellFoundedHistories setup.intended_bounded]
@@ -96,8 +96,8 @@ namespace OnePacketComparison
 
 /-- The selected common assessment limit has the exact intended continuation law
 at every reached clean source boundary, including boundaries of zero equilibrium reach. -/
-theorem assembled_boundary_readout_law_of_converges
-    [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
+theorem assembled_boundary_readout_distribution_of_converges
+    [(application setup timeouts leaks).FiniteNature (initialDistribution setup) scheduler]
     [∀ who, DecidableEq ((N).InfoState who)]
     (wellFormed : setup.WellFormed) (covers : bounds.CoversOutputValues)
     (capacity : ∀ player, bindingEventCount setup.informationGraph player < bounds.candidateCount)
@@ -107,7 +107,7 @@ theorem assembled_boundary_readout_law_of_converges
     (scale : ℕ → ℝ) (positive : ∀ n, 0 < scale n) (le_one : ∀ n, scale n ≤ 1)
     (vanishes : Tendsto scale atTop (nhds 0))
     {slots : Nat}
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialDistribution setup)
       horizon scheduler slots p))
     (targetSequence : ℕ → (N).BehavioralAssessment)
     (assembled : OnePacketAssembled setup timeouts leaks bounds horizon scheduler sourceSequence
@@ -118,18 +118,18 @@ theorem assembled_boundary_readout_law_of_converges
       (fun n => targetSequence (index n)) target)
     {delay bound : setup.informationGraph.EventId → Nat}
     (opportunity : ∀ control : (application setup timeouts leaks).Control,
-      ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+      ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
         scheduler).Trace (some control) →
       control.execution.application.config.defaulted = ∅ →
       OpportunityAt timeouts leaks control.execution delay)
     (inclusion : ∀ control : (application setup timeouts leaks).Control,
-      ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+      ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
         scheduler).Trace (some control) →
       control.execution.application.config.defaulted = ∅ →
       ProtectedInclusionAt timeouts leaks control.execution bound)
     (timely : (AsyncTimely timeouts) delay bound)
     (completes : ∀ control : (application setup timeouts leaks).Control,
-      ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+      ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
         scheduler).Trace (some control) →
       control.execution.application.config.defaulted = ∅ →
       (application setup timeouts leaks).terminal (some control) →
@@ -149,7 +149,7 @@ theorem assembled_boundary_readout_law_of_converges
   classical
   let error : ℕ → ℝ := fun n => (1 - slotRetention (scale (index n))) *
     (application setup timeouts leaks).remainingResponses horizon start.state
-  have sourceLaw := intended_sourceContinuation_converges wellFormed sourceConverges point
+  have sourceDistribution := intended_sourceContinuation_converges wellFormed sourceConverges point
     (intendedReached_of_reachedBoundary wellFormed rank start anchor state boundary point
       decoded intended)
   have sourceLimit : PMFConvergesPointwise
@@ -160,7 +160,7 @@ theorem assembled_boundary_readout_law_of_converges
         anchor.application.config) := by
     intro outcome
     simpa only [sourceContinuation, decoded, Function.comp_def] using
-      (sourceLaw outcome).comp increasing.tendsto_atTop
+      (sourceDistribution outcome).comp increasing.tendsto_atTop
   have targetLimit := ((N).runBehavioralTerminalFrom_convergesPointwise certificate
     targetConverges.strategy start).map
       (fun final => sourceReadout setup timeouts leaks final.state)
@@ -179,21 +179,24 @@ theorem assembled_boundary_readout_law_of_converges
     scheduler wellFormed covers capacity sourceSequence scale positive le_one weights
     targetSequence assembled (index n) opportunity inclusion timely completes certificate rank
     start anchor state boundary point decoded intended
-  have close := onePacket_terminal_withinTV_honest setup timeouts leaks bounds (initialLaw setup)
+  have close := onePacket_terminal_withinTV_honest setup timeouts leaks bounds
+    (initialDistribution setup)
     horizon scheduler (sourceSequence (index n)) certificate
     (targetSequence (index n)).strategy start retentionNonnegative retentionSmall dominates
-  have budget := ((bounds.onePacketMenu timeouts leaks).expectedResponses_bounds (initialLaw setup)
+  have budget := ((bounds.onePacketMenu timeouts leaks).expectedResponses_bounds
+    (initialDistribution setup)
     horizon scheduler certificate
-    (honestProfile setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+    (honestProfile setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
       (sourceSequence (index n))) (fun _ => False) start).2
   have expanded : PMF.WithinTV (error n)
       ((N).runBehavioralTerminalFrom certificate
-        (honestProfile setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+        (honestProfile setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
           (sourceSequence (index n))) start)
       ((N).runBehavioralTerminalFrom certificate (targetSequence (index n)).strategy start) :=
     close.mono (mul_le_mul_of_nonneg_left budget (sub_nonneg.mpr retentionSmall))
   have projected := expanded.map (fun final => sourceReadout setup timeouts leaks final.state)
-  rw [counted_honest_boundary_readout_law (timeouts := timeouts) opportunity inclusion timely
+  rw [counted_honest_boundary_readout_distribution (timeouts := timeouts) opportunity inclusion
+    timely
     completes covers capacity (sourceSequence (index n)) certificate rank start anchor state
       boundary point decoded intended] at projected
   exact (statisticalDistance_le_iff _ _ _).mpr projected.symm

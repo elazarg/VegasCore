@@ -73,16 +73,17 @@ theorem source_initial_traffic_factorization
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup deps)))
     (focal : Player) :
     ∃ noise : DecisionView focal setup.context → PMF _,
-      setup.initialLaw.map (fun initial =>
+      setup.initialDistribution.map (fun initial =>
         (Config.initial initial,
           (bindingTraffic (serviceTimeouts setup deps duration)) leaks focal
             (ReactiveApplication.Execution.initial (serviceApplication setup deps duration leaks)
               (EventGraphRuntime.State.initial (graph := serviceGraph setup deps)
                 (setup.eventInputs initial))))) =
-      (setup.initialLaw.map Config.initial).bind fun source =>
+      (setup.initialDistribution.map Config.initial).bind fun source =>
         (noise (source.view focal)).map fun extra => (source, extra) := by
   exact initial_bindingTraffic_factorization_of_view (serviceTimeouts setup deps duration)
-    leaks focal setup.initialLaw setup.eventInputs Config.initial (fun config => config.view focal)
+    leaks focal setup.initialDistribution setup.eventInputs Config.initial
+      (fun config => config.view focal)
     (fun left _ right _ same => source_initial_playerObservation_eq setup focal left right same)
 
 end Vegas

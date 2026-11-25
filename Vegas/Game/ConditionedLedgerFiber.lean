@@ -30,13 +30,15 @@ variable (menu : (application setup timeouts leaks).ResponseMenu)
 /-- Every initialized global trace belongs to the component of its actual draw.
 The invariant identifies that same draw at the last ledger control. -/
 theorem ledgerTrace_component
-    (allSupported : ∀ value, value ∈ (setup.initialLaw.map signal).support)
-    {state} (trace : (menu.protocol (Vegas.initialLaw setup) horizon scheduler).Trace state) :
+    (allSupported : ∀ value, value ∈ (setup.initialDistribution.map signal).support)
+    {state} (trace : (menu.protocol (Vegas.initialDistribution setup) horizon scheduler).Trace
+      state) :
     ∀ (control : (app).Control) (_atControl : state = some control),
-      ∃ draw ∈ setup.initialLaw.support,
+      ∃ draw ∈ setup.initialDistribution.support,
         State.Invariant (graph := setup.informationGraph) (setup.eventInputs draw)
           control.execution.application ∧
-        ∃ t : (menu.protocol (Vegas.initialLaw (setup.conditionInitial signal (signal draw)))
+        ∃ t : (menu.protocol (Vegas.initialDistribution (setup.conditionInitial signal
+          (signal draw)))
           horizon scheduler).Trace state,
           menu.traceOfInitialSupportSubset
             (setup.conditionInitial_ledgerSupport signal (signal draw) (allSupported _)) t =
@@ -51,12 +53,13 @@ theorem ledgerTrace_component
       obtain ⟨s, positive, atControl⟩ := (PMF.mem_support_map_iff _ _ _).mp realized
       cases atControl
       obtain ⟨draw, member, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp positive
-      have localDraw : draw ∈ (setup.conditionInitial signal (signal draw)).initialLaw.support := by
-        change draw ∈ (fiberPosterior setup.initialLaw signal (signal draw)).support
+      have localDraw : draw ∈ (setup.conditionInitial signal
+        (signal draw)).initialDistribution.support := by
+        change draw ∈ (fiberPosterior setup.initialDistribution signal (signal draw)).support
         rw [fiberPosterior_support _ _ _ (allSupported _)]
         exact ⟨rfl, member⟩
       have localState : State.initial (graph := setup.informationGraph) (setup.eventInputs draw) ∈
-          (Vegas.initialLaw (setup.conditionInitial signal (signal draw))).support :=
+          (Vegas.initialDistribution (setup.conditionInitial signal (signal draw))).support :=
         (PMF.mem_support_map_iff _ _ _).mpr ⟨draw, localDraw, rfl⟩
       have root := menu.trace_at_root prior
       subst prior
@@ -73,9 +76,9 @@ theorem ledgerTrace_component
       refine ⟨draw, member, preserved, .extend t joint legal realized, ?_⟩
       simp only [ReactiveApplication.ResponseMenu.traceOfInitialSupportSubset, same]
 
-variable (allSupported : ∀ value, value ∈ (setup.initialLaw.map signal).support)
+variable (allSupported : ∀ value, value ∈ (setup.initialDistribution.map signal).support)
   (read : Player → (application setup timeouts leaks).Info → Signal)
-  (observed : ∀ draw ∈ setup.initialLaw.support,
+  (observed : ∀ draw ∈ setup.initialDistribution.support,
     ∀ execution : (application setup timeouts leaks).Execution,
     State.Invariant (graph := setup.informationGraph) (setup.eventInputs draw)
       execution.application → ∀ who,
@@ -88,7 +91,8 @@ include observed
 /-- Every history with the same genuine decision view belongs to the component
 identified by that player's existing observation, for arbitrary legal responses. -/
 theorem ledgerInfoHistory_component_surjective (who : Player)
-    (site : (menu.information (Vegas.initialLaw setup) horizon scheduler).InformationSite who) :
+    (site : (menu.information (Vegas.initialDistribution setup) horizon scheduler).InformationSite
+      who) :
     Function.Surjective
       (menu.infoHistoryOfInitialSupportSubset (scheduler := scheduler) (horizon := horizon)
         (setup.conditionInitial_ledgerSupport signal (read who site.1) (allSupported _))
@@ -96,7 +100,7 @@ theorem ledgerInfoHistory_component_surjective (who : Player)
   intro history
   obtain ⟨⟨state, trace⟩, atSite⟩ := history
   have active := InformationModel.InformationSite.active
-    (M := menu.information (Vegas.initialLaw setup) horizon scheduler) site
+    (M := menu.information (Vegas.initialDistribution setup) horizon scheduler) site
     ⟨⟨state, trace⟩, atSite⟩
   cases state with
   | none => cases active
@@ -114,7 +118,7 @@ theorem ledgerInfoHistory_component_surjective (who : Player)
       rw [view]
       exact (observed draw member control.execution valid who).symm
     obtain ⟨t, mapped⟩ : ∃ t :
-        (menu.protocol (Vegas.initialLaw (setup.conditionInitial signal (read who site.1)))
+        (menu.protocol (Vegas.initialDistribution (setup.conditionInitial signal (read who site.1)))
         horizon scheduler).Trace (some control), menu.traceOfInitialSupportSubset
           (setup.conditionInitial_ledgerSupport signal (read who site.1) (allSupported _)) t =
             trace := by
@@ -127,11 +131,12 @@ theorem ledgerInfoHistory_component_surjective (who : Player)
     · apply Subtype.ext
       exact congrArg (History.mk _) mapped
 
-local notation "law" k => Vegas.initialLaw (setup.conditionInitial signal k)
+local notation "law" k => Vegas.initialDistribution (setup.conditionInitial signal k)
 
 /-- A genuine global decision is the identical decision view in the player's component. -/
 def ledger_componentSite (who : Player)
-    (site : (menu.information (Vegas.initialLaw setup) horizon scheduler).InformationSite who) :
+    (site : (menu.information (Vegas.initialDistribution setup) horizon scheduler).InformationSite
+      who) :
     (menu.information (law (read who site.1)) horizon scheduler).InformationSite who := by
   refine ⟨site.1, ?_⟩
   obtain ⟨h, running, action, allowed⟩ := site.2
@@ -140,7 +145,7 @@ def ledger_componentSite (who : Player)
   refine ⟨t, ?_, action, ?_⟩
   · have eq := congrArg (fun x => x.1.state) mapped
     exact eq.symm ▸ running
-  · rw [menu.information_menu_initial_eq (initial := Vegas.initialLaw setup)]
+  · rw [menu.information_menu_initial_eq (initial := Vegas.initialDistribution setup)]
     exact allowed
 
 /-- One assessment implements the component assessments at every decision site,
@@ -148,7 +153,8 @@ transporting their actual history beliefs to the full raw menu. -/
 def ledger_componentAssessment
     (assessments : ∀ value,
       (menu.information (law value) horizon scheduler).BehavioralAssessment) :
-    (menu.information (Vegas.initialLaw setup) horizon scheduler).BehavioralAssessment where
+    (menu.information (Vegas.initialDistribution setup) horizon scheduler).BehavioralAssessment
+      where
   strategy := menu.signalStrategy read (fun value => (assessments value).strategy)
   belief who site := ((assessments (read who site.1)).belief who
     (ledger_componentSite menu allSupported read observed who site)).map

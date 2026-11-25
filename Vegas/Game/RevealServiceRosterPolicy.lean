@@ -37,7 +37,7 @@ def rosterOffset (setup : Setup (Player := Player) (L := L))
 
 /-- A timing law: for each event with an owner, a distribution over the owner's
 visits in that event's roster. -/
-abbrev TimingLaw (setup : Setup (Player := Player) (L := L))
+abbrev TurnTimingDistribution (setup : Setup (Player := Player) (L := L))
     (rosters : setup.informationGraph.EventId → List Player) : Type :=
   ∀ event who, setup.informationGraph.actor? event = some who → PMF (Fin ((rosters event).count
     who))

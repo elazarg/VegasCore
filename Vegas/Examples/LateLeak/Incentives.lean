@@ -28,40 +28,41 @@ theorem lateLeak_toReal_le_one {α : Type*} (μ : PMF α) (x : α) : (μ x).toRe
 
 /-! ## The listener's options -/
 
-theorem lateLeakReplyLaw_support (profile : LateLeakProfile G late) (signal : LateLeakSignal)
+theorem lateLeakReplyDistribution_support (profile : LateLeakProfile G late)
+    (signal : LateLeakSignal)
     (choice : Option LateLeakMove)
-    (supported : choice ∈ (lateLeakReplyLaw profile signal).support) :
+    (supported : choice ∈ (lateLeakReplyDistribution profile signal).support) :
     ∃ answer, choice = some (.reply answer) ∧ answer.fits signal := by
-  rw [lateLeakReplyLaw, PMF.mem_support_map_iff] at supported
+  rw [lateLeakReplyDistribution, PMF.mem_support_map_iff] at supported
   obtain ⟨option, _, rfl⟩ := supported
   exact option.2
 
-theorem lateLeakReplyLaw_apply (profile : LateLeakProfile G late) (signal : LateLeakSignal)
+theorem lateLeakReplyDistribution_apply (profile : LateLeakProfile G late) (signal : LateLeakSignal)
     (answer : LateLeakAnswer) (fits : answer.fits signal) :
-    lateLeakReplyLaw profile signal (some (.reply answer)) =
+    lateLeakReplyDistribution profile signal (some (.reply answer)) =
       profile .listener (.asked signal) ⟨some (.reply answer), ⟨answer, rfl, fits⟩⟩ :=
   pmf_map_apply_of_injective _ Subtype.val_injective
     (⟨some (.reply answer), ⟨answer, rfl, fits⟩⟩ :
       (lateLeakModel G late).Choice .listener (.asked signal))
 
-theorem lateLeakOpeningLaw_apply (profile : LateLeakProfile G late) (state : LateLeakState)
+theorem lateLeakOpeningDistribution_apply (profile : LateLeakProfile G late) (state : LateLeakState)
     (now : Bool) (allowed : some (LateLeakMove.opening now) ∈ lateLeakMenu late (.full state)) :
-    lateLeakOpeningLaw profile state (some (.opening now)) =
+    lateLeakOpeningDistribution profile state (some (.opening now)) =
       profile .sender (.full state) ⟨some (.opening now), allowed⟩ :=
   pmf_map_apply_of_injective _ Subtype.val_injective
     (⟨some (.opening now), allowed⟩ : (lateLeakModel G late).Choice .sender (.full state))
 
 /-- At one of the sender's states, waiting has the remaining probability. -/
-theorem lateLeakOpeningLaw_wait (profile : LateLeakProfile G late) (state : LateLeakState)
+theorem lateLeakOpeningDistribution_wait (profile : LateLeakProfile G late) (state : LateLeakState)
     (acting : state.actor = some .sender) :
-    (lateLeakOpeningLaw profile state (some (.opening false))).toReal =
+    (lateLeakOpeningDistribution profile state (some (.opening false))).toReal =
       1 - lateLeakOpenProb profile state := by
   classical
-  have computed := lateLeak_expect_two_point (lateLeakOpeningLaw profile state)
+  have computed := lateLeak_expect_two_point (lateLeakOpeningDistribution profile state)
     (some (.opening true))
     (fun choice => if some (LateLeakMove.opening false) = choice then 1 else 0)
     1 (fun choice supported different => by
-      obtain ⟨now, rfl⟩ := lateLeakOpeningLaw_support profile state acting choice supported
+      obtain ⟨now, rfl⟩ := lateLeakOpeningDistribution_support profile state acting choice supported
       cases now
       · simp
       · exact (different rfl).elim)
@@ -113,7 +114,7 @@ theorem lateLeak_sender_success_value (profile : LateLeakProfile G late) (secret
   · simp only [lateLeakReplyOf, lateLeakStatePayoff, lateLeakSenderPayoff, lateLeakSenderBase,
       succeeded, dropped, ite_true, Bool.false_eq_true, ite_false, sub_zero, lateLeakSafeProb]
   · intro choice supported different
-    obtain ⟨answer, rfl, fits⟩ := lateLeakReplyLaw_support profile _ choice supported
+    obtain ⟨answer, rfl, fits⟩ := lateLeakReplyDistribution_support profile _ choice supported
     cases answer with
     | safe => exact (different rfl).elim
     | guess label =>
@@ -140,7 +141,7 @@ theorem lateLeak_sender_failure_value (profile : LateLeakProfile G late) (secret
       simp [lateLeakReplyOf, lateLeakStatePayoff, lateLeakSenderPayoff, lateLeakSenderBase,
         failed, lateLeakBitOneProb, lateLeakBitOneGain, lateLeakBitZeroGain, label] <;> ring
   · intro choice supported different
-    obtain ⟨answer, rfl, fits⟩ := lateLeakReplyLaw_support profile _ choice supported
+    obtain ⟨answer, rfl, fits⟩ := lateLeakReplyDistribution_support profile _ choice supported
     cases answer with
     | failure bit =>
         cases bit
@@ -196,7 +197,7 @@ theorem lateLeakOpenProb_update (profile : LateLeakProfile G late)
     (policy : (lateLeakModel G late).BehavioralPolicy .sender) (state : LateLeakState) :
     lateLeakOpenProb (lateLeakUpdate profile .sender policy) state =
       (((policy (.full state)).map Subtype.val) (some (.opening true))).toReal := by
-  rw [lateLeakOpenProb, lateLeakOpeningLaw_update_sender]
+  rw [lateLeakOpenProb, lateLeakOpeningDistribution_update_sender]
 
 theorem lateLeakOpenProb_update_commit_self (profile : LateLeakProfile G late)
     (policy : (lateLeakModel G late).BehavioralPolicy .sender) (state : LateLeakState) (now : Bool)

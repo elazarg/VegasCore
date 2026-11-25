@@ -103,7 +103,7 @@ theorem RosterCalendarInvariant.initial (graph : EventGraph Player L)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph.sequentialize))
     (rosters : graph.EventId → List Player)
     (state : EventGraphRuntime.State graph.sequentialize)
-    (supported : state ∈ (rosterInitialLaw graph inputs).support) :
+    (supported : state ∈ (rosterInitialDistribution graph inputs).support) :
     RosterCalendarInvariant graph leaks rosters
       (some ⟨(rosterPlan graph rosters).length, none,
         ReactiveApplication.Execution.initial (rosterApplication graph leaks)

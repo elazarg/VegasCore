@@ -4,7 +4,7 @@ module
 
 public import Vegas.Game.AsyncServiceRawNash
 public import Vegas.Game.SourceServiceTurnSettlement
-public import Vegas.Game.TerminalObservationLaws
+public import Vegas.Game.TerminalObservationDistributions
 
 @[expose] public section
 
@@ -29,7 +29,7 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (admission : CommitmentInterface service.setup.program)
 
 /-- The actual raw client's common terminal observation, including realized audit settlement. -/
-def clientSettlementLaw {turns : Nat} (timing : TurnTiming service.setup turns
+def clientSettlementDistribution {turns : Nat} (timing : TurnTiming service.setup turns
   service.setup.informationDependencies)
     (source : Profile (service.sourceModel admission).behavioralSignature)
     (sample : List (SettledEvidence service.setup service.setup.informationDependencies) →
@@ -55,7 +55,7 @@ def clientSettlementLaw {turns : Nat} (timing : TurnTiming service.setup turns
               final.state).map (fun config => (config.state, config.defaults))) payoffs
 
 /-- The source law uses the same fixed terminal-input and public-result reader. -/
-def sourceSettlementLaw
+def sourceSettlementDistribution
     (source : Profile (service.sourceModel admission).behavioralSignature)
     (utility : State L service.setup.program.terminalCtx × DefaultHistory Player → Player → ℝ) :
     PMF (TerminalObservation service.setup) :=
@@ -65,7 +65,7 @@ def sourceSettlementLaw
 
 /-- Every source profile's raw clients reproduce its joint law within the
 product deferral error. Neither rationality nor a payoff-range premise is needed. -/
-theorem clientSettlementLaw_withinTV
+theorem clientSettlementDistribution_withinTV
     {turns : Nat} (timing : TurnTiming service.setup turns service.setup.informationDependencies)
     (source : Profile (service.sourceModel admission).behavioralSignature)
     (sample : List (SettledEvidence service.setup service.setup.informationDependencies) →
@@ -74,24 +74,25 @@ theorem clientSettlementLaw_withinTV
     (utility : State L service.setup.program.terminalCtx × DefaultHistory Player → Player → ℝ)
     (deposit : Player → ℝ) :
     PMF.WithinTV timing.deferralError
-      (service.clientSettlementLaw admission timing source sample utility deposit)
-      (service.sourceSettlementLaw admission source utility) := by
-  have close := sourceServiceClients_clientPolicy_settlement_lawError
+      (service.clientSettlementDistribution admission timing source sample utility deposit)
+      (service.sourceSettlementDistribution admission source utility) := by
+  have close := sourceServiceClients_clientPolicy_settlement_distributionError
     (fun event => (service.setup.dataflowGraph.sequentialize_solitary event).ownerSolitary)
     service.contract
     timing
     (service.setup.decodeBehavioralProfile admission source)
-    (firstTurn_readout_law service.setup service.leaks service.contract service.timely
+    (firstTurn_readout_distribution service.setup service.leaks service.contract service.timely
       turns _ (fun _ => BehavioralPolicy.normalizeDisclosures_authentic _ _)) service.rawMenu
     (service.rawMenu_admits admission timing source) sample authentic utility deposit
   convert close.map (Function.uncurry (TerminalObservation.read service.setup)) using 1 <;>
-    simp only [clientSettlementLaw, sourceSettlementLaw, PMF.map_bind, PMF.map_comp,
+    simp only [clientSettlementDistribution, sourceSettlementDistribution, PMF.map_bind,
+      PMF.map_comp,
       Function.comp_def, Function.uncurry]
   rfl
 
 /-- A source event's probability lower bound loses at most the deferral error
 under the actual raw client law, including the realized settlement. -/
-theorem clientSettlementLaw_event_lower_bound
+theorem clientSettlementDistribution_event_lower_bound
     {turns : Nat} (timing : TurnTiming service.setup turns service.setup.informationDependencies)
     (source : Profile (service.sourceModel admission).behavioralSignature)
     (sample : List (SettledEvidence service.setup service.setup.informationDependencies) →
@@ -102,18 +103,20 @@ theorem clientSettlementLaw_event_lower_bound
     (event : Set (TerminalObservation service.setup))
     (lower : ℝ)
     (sourceLower : lower ≤
-      ((service.sourceSettlementLaw admission source utility).toOuterMeasure event).toReal) :
+      ((service.sourceSettlementDistribution admission source utility).toOuterMeasure
+        event).toReal) :
     lower - timing.deferralError ≤
-      ((service.clientSettlementLaw admission timing source sample utility deposit).toOuterMeasure
+      ((service.clientSettlementDistribution admission timing source sample utility
+        deposit).toOuterMeasure
         event).toReal := by
-  have close := service.clientSettlementLaw_withinTV admission timing source sample
+  have close := service.clientSettlementDistribution_withinTV admission timing source sample
     authentic utility deposit
   have gap := (abs_le.mp (close event)).1
   linarith
 
 /-- A bounded observable's source expectation lower bound transfers with error
 equal to the deferral probability times its range width. Integration is explicit. -/
-theorem clientSettlementLaw_expect_lower_bound
+theorem clientSettlementDistribution_expect_lower_bound
     {turns : Nat} (timing : TurnTiming service.setup turns service.setup.informationDependencies)
     (source : Profile (service.sourceModel admission).behavioralSignature)
     (sample : List (SettledEvidence service.setup service.setup.informationDependencies) →
@@ -124,22 +127,25 @@ theorem clientSettlementLaw_expect_lower_bound
     (observable : TerminalObservation service.setup → ℝ)
     (low width lower : ℝ)
     (bounded : ∀ result,
-      result ∈ (service.clientSettlementLaw admission timing source sample utility deposit).support
+      result ∈ (service.clientSettlementDistribution admission timing source sample utility
+        deposit).support
         ∨
-        result ∈ (service.sourceSettlementLaw admission source utility).support →
+        result ∈ (service.sourceSettlementDistribution admission source utility).support →
       low ≤ observable result ∧ observable result ≤ low + width)
     (sourceLower : lower ≤
-      expect (service.sourceSettlementLaw admission source utility) observable) :
-    PayoffIntegrable (service.clientSettlementLaw admission timing source sample utility deposit)
+      expect (service.sourceSettlementDistribution admission source utility) observable) :
+    PayoffIntegrable (service.clientSettlementDistribution admission timing source sample utility
+      deposit)
         observable ∧
-      PayoffIntegrable (service.sourceSettlementLaw admission source utility) observable ∧
+      PayoffIntegrable (service.sourceSettlementDistribution admission source utility) observable ∧
       lower - timing.deferralError * width ≤
-        expect (service.clientSettlementLaw admission timing source sample utility deposit)
+        expect (service.clientSettlementDistribution admission timing source sample utility deposit)
           observable := by
   have absolute (result) (member :
-      result ∈ (service.clientSettlementLaw admission timing source sample utility deposit).support
+      result ∈ (service.clientSettlementDistribution admission timing source sample utility
+        deposit).support
         ∨
-        result ∈ (service.sourceSettlementLaw admission source utility).support) :
+        result ∈ (service.sourceSettlementDistribution admission source utility).support) :
       |observable result| ≤ |low| + |width| := by
     obtain ⟨below, above⟩ := bounded result member
     exact abs_le.mpr ⟨by linarith [neg_abs_le low, abs_nonneg width],
@@ -148,7 +154,7 @@ theorem clientSettlementLaw_expect_lower_bound
     (fun result member => absolute result (Or.inl member)),
     payoffIntegrable_of_bounded_on_support _ _
       (fun result member => absolute result (Or.inr member)), ?_⟩
-  have close := service.clientSettlementLaw_withinTV admission timing source sample
+  have close := service.clientSettlementDistribution_withinTV admission timing source sample
     authentic utility deposit
   have gap := close.symm.expect_sub_le observable low width
     (fun result member => bounded result member.symm)

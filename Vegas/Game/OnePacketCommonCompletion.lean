@@ -99,13 +99,14 @@ private theorem freeOptimal_of_pooled_limits
   have componentsConverge (part : parts (pools ((N).agentAt site))) :
       PMFConvergesPointwise (fun n => laws n ((N).agentAt site) part) (limitComponent part) := by
     have same : (fun n => laws n ((N).agentAt site) part) = fun n =>
-        unforcedLaw setup timeouts leaks bounds initial horizon scheduler (scale n) (positive
+        unforcedDistribution setup timeouts leaks bounds initial horizon scheduler (scale n)
+          (positive
           n).le (le_one n)
           ((N).agentAt site) (identify part) := by
       funext n
       exact freeKeyedComponent_of_free _ _ _ isFree part
     rw [same]
-    exact unforcedLaw_converges setup timeouts leaks bounds initial horizon scheduler scale
+    exact unforcedDistribution_converges setup timeouts leaks bounds initial horizon scheduler scale
       positive le_one
       vanishes ((N).agentAt site) (identify part)
   have finiteOptimal (n : ℕ) (alternative : PMF (parts (pools ((N).agentAt site)))) :

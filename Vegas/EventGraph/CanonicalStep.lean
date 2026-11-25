@@ -142,7 +142,7 @@ theorem runPlan_canonical_actor_cases (profile : graph.BehavioralProfile)
           (graph.runPlan (graph.policyPlan profile graph.canonicalScheduler) fuel) := by
   rw [runPlan_policyPlan_succ profile _ fuel config ready.not_terminal,
     canonicalScheduler_eq_pure config event ready least, PMF.pure_bind, eventStep,
-    actionLaw_of_actor profile config actor, PMF.bind_bind]
+    actionDistribution_of_actor profile config actor, PMF.bind_bind]
 
 /-- At an active canonical owned event, the shared executor runs the actual
 observation-local callback and then that event's semantic step. -/
@@ -188,7 +188,7 @@ theorem runPlan_canonical_ownerless (profile : graph.BehavioralProfile)
           (graph.runPlan (graph.policyPlan profile graph.canonicalScheduler) fuel) := by
   rw [runPlan_policyPlan_succ profile _ fuel config ready.not_terminal,
     canonicalScheduler_eq_pure config event ready least, PMF.pure_bind, eventStep,
-    actionLaw_of_ownerless profile config ownerless, PMF.pure_bind]
+    actionDistribution_of_ownerless profile config ownerless, PMF.pure_bind]
 
 /-- A bounded canonical run advances its completed source prefix by its execution count. -/
 theorem runPlan_canonical_isPrefix

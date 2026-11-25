@@ -25,7 +25,7 @@ variable {Player : Type} [DecidableEq Player] [Finite Player]
   {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
   {Signal : Type*} (signal : State L setup.context → Signal) (value : Signal)
-  (supported : value ∈ (setup.initialLaw.map signal).support)
+  (supported : value ∈ (setup.initialDistribution.map signal).support)
 
 /-- The same genuine decision view in the original source protocol. -/
 def conditionInitial_informationSite {who : Player}
@@ -41,13 +41,13 @@ def conditionInitial_informationSite {who : Player}
 
 open Classical in
 private theorem conditionInitial_information_reach_fiber
-    (supported : value ∈ (setup.initialLaw.map signal).support)
+    (supported : value ∈ (setup.initialDistribution.map signal).support)
     (policies : ∀ who, setup.intendedModel.BehavioralPolicy who) {who : Player}
     (site : (setup.conditionInitial signal value).intendedModel.InformationSite who)
     (inside : ∀ history : setup.intendedModel.InformationHistory who site.1,
       setup.initialComponent signal value history.1.state)
     (history : setup.intendedModel.InformationHistory who site.1) :
-    ((setup.initialLaw.map signal) value)⁻¹ *
+    ((setup.initialDistribution.map signal) value)⁻¹ *
         setup.intendedModel.historyReachWeight policies history.1 =
       ∑' original : (setup.conditionInitial signal value).intendedModel.InformationHistory
         who site.1,
@@ -70,7 +70,7 @@ private theorem conditionInitial_information_reach_fiber
     original.1.trace positive
   rw [tsum_eq_single original]
   · simp only [conditionInitial_informationHistory, ↓reduceIte]
-    change ((setup.initialLaw.map signal) value)⁻¹ *
+    change ((setup.initialDistribution.map signal) value)⁻¹ *
       setup.intendedModel.historyReachWeight policies
         ⟨original.1.state, setup.conditionInitial_trace signal value supported original.1.trace⟩ = _
     rw [scaled, ← mul_assoc, ENNReal.inv_mul_cancel
@@ -92,7 +92,7 @@ theorem conditionInitial_informationMass
       setup.initialComponent signal value history.1.state) :
     (setup.conditionInitial signal value).intendedModel.informationMass
         (fun who => setup.conditionInitial_policy signal value who (policies who)) who site =
-      ((setup.initialLaw.map signal) value)⁻¹ *
+      ((setup.initialDistribution.map signal) value)⁻¹ *
         setup.intendedModel.informationMass policies who
           (setup.conditionInitial_informationSite signal value supported site) := by
   classical

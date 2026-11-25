@@ -47,7 +47,7 @@ def initialState (bit : Bool) : State simpleExpr InitialCtx :=
 def fairSetup : SourceProgram.Setup (Player := Player) (L := simpleExpr) where
   context := InitialCtx
   namesNodup := by decide
-  initialLaw := mix (1 / 2) (by norm_num) (by norm_num)
+  initialDistribution := mix (1 / 2) (by norm_num) (by norm_num)
     (PMF.pure (initialState false)) (PMF.pure (initialState true))
   obligations := {secret}
   program := program
@@ -66,8 +66,8 @@ theorem bob_initial_secret_hidden (bit : Bool) :
   simp
 
 /-- The setup prior really contains both private worlds with equal weight. -/
-theorem fairSetup_initialLaw :
-    fairSetup.initialLaw =
+theorem fairSetup_initialDistribution :
+    fairSetup.initialDistribution =
       mix (1 / 2) (by norm_num) (by norm_num)
         (PMF.pure (initialState false)) (PMF.pure (initialState true)) := by
   rfl

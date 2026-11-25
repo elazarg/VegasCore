@@ -5,7 +5,7 @@ module
 public import Vegas.EventGraph.BindingSubmission
 public import Vegas.EventGraph.PrefixPolicy
 public import Vegas.EventGraph.SequentialNormalization
-public import Vegas.EventGraph.SequentialLaw
+public import Vegas.EventGraph.SequentialDistribution
 
 @[expose] public section
 
@@ -128,9 +128,10 @@ private theorem runPolicies_canonical_prefixProfile_of_total
         (graph.normalizeObservation_playerObserve_of_rankOrdered who config
           (rankSort_history_of_reachable total reachable))
   cases actor : (graph.nodes event).actor with
-  | none => rw [actionLaw_of_ownerless _ _ actor, actionLaw_of_ownerless _ _ actor]
+  | none => rw [actionDistribution_of_ownerless _ _ actor, actionDistribution_of_ownerless _ _
+    actor]
   | some who =>
-    rw [actionLaw_of_actor _ _ actor, actionLaw_of_actor _ _ actor]
+    rw [actionDistribution_of_actor _ _ actor, actionDistribution_of_actor _ _ actor]
     by_cases inactive : who ∈ config.defaulted
     · rw [dite_eq_left inactive, dite_eq_left inactive]
     · rw [dite_eq_right inactive, dite_eq_right inactive]
@@ -148,7 +149,8 @@ theorem runPolicies_canonical_prefixProfile
     graph.runPolicies graph.canonicalScheduler (graph.prefixProfile profile) inputs =
         (graph.sequentialize.runPolicies graph.sequentialize.canonicalScheduler
           (graph.sequentialize.prefixProfile profile) inputs).map graph.fromSequentialConfig :=
-      (graph.canonical_fromSequential_config_law (graph.sequentialize.prefixProfile profile)
+      (graph.canonical_fromSequential_config_distribution (graph.sequentialize.prefixProfile
+        profile)
         inputs).symm
     _ = (graph.sequentialize.runPolicies graph.sequentialize.canonicalScheduler profile
         inputs).map graph.fromSequentialConfig := by
@@ -156,7 +158,7 @@ theorem runPolicies_canonical_prefixProfile
         (fun prior event earlier =>
           (EventOrder.sequential.mem_predecessors prior event).mpr earlier) profile submits inputs]
     _ = graph.runPolicies graph.canonicalScheduler profile inputs :=
-      graph.canonical_fromSequential_config_law profile inputs
+      graph.canonical_fromSequential_config_distribution profile inputs
 
 private theorem terminalOutcomes_canonical_prefixProfile
     (profile : graph.BehavioralProfile) (submits : graph.SubmitsBindings profile)

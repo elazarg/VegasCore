@@ -167,10 +167,10 @@ structure ReadyIndependent (profile : graph.BehavioralProfile) : Prop where
   stable : ∀ (config : graph.Config) {event other : graph.EventId},
     config.cut.Ready event → ∀ (otherReady : config.cut.Ready other), other ≠ event →
       ∀ (action : graph.Action other) (value : (graph.outputLayout other).Value),
-        actionLaw profile (config.complete other otherReady action value) event =
-          actionLaw profile config event
+        actionDistribution profile (config.complete other otherReady action value) event =
+          actionDistribution profile config event
   congr : ∀ {left right : graph.Config}, runKey left = runKey right →
-    ∀ event, actionLaw profile left event = actionLaw profile right event
+    ∀ event, actionDistribution profile left event = actionDistribution profile right event
 
 /-- Ready independence entails actor-local uniqueness on every cut. -/
 theorem ReadyIndependent.actorSerial {graph : Vegas.EventGraph Player L}
@@ -184,7 +184,7 @@ theorem ReadyIndependent.actorSerial {graph : Vegas.EventGraph Player L}
 
 /-- Observation-independent event laws are ready independent under actor-local seriality.
 Binding omissions remain possible; only another actor can complete a simultaneous ready event. -/
-theorem ActorSerial.readyIndependent_of_eventLaws (serial : graph.ActorSerial)
+theorem ActorSerial.readyIndependent_of_eventDistributions (serial : graph.ActorSerial)
     (choices : ∀ who event, graph.actor? event = some who → PMF (graph.Action event)) :
     ReadyIndependent (fun who event actor _ _ => choices who event actor) where
   actorsDiffer config left right leftReady rightReady different owner leftActor rightActor := by
@@ -192,9 +192,10 @@ theorem ActorSerial.readyIndependent_of_eventLaws (serial : graph.ActorSerial)
       rightActor).symm
   stable config event other eventReady otherReady different action value := by
     cases owned : (graph.nodes event).actor with
-    | none => rw [actionLaw_of_ownerless _ _ owned, actionLaw_of_ownerless _ _ owned]
+    | none => rw [actionDistribution_of_ownerless _ _ owned, actionDistribution_of_ownerless _ _
+      owned]
     | some owner =>
-      rw [actionLaw_of_actor _ _ owned, actionLaw_of_actor _ _ owned]
+      rw [actionDistribution_of_actor _ _ owned, actionDistribution_of_actor _ _ owned]
       have notOwned : graph.actor? other ≠ some owner := by
         intro otherActor
         exact different (serial.ready_actor_unique config.cut eventReady otherReady owned
@@ -208,15 +209,16 @@ theorem ActorSerial.readyIndependent_of_eventLaws (serial : graph.ActorSerial)
     have records : completionOf left = completionOf right := congrArg (fun key => key.2.2) same
     have defaulted := defaulted_eq_of_completionOf_eq records
     cases owned : (graph.nodes event).actor with
-    | none => rw [actionLaw_of_ownerless _ _ owned, actionLaw_of_ownerless _ _ owned]
+    | none => rw [actionDistribution_of_ownerless _ _ owned, actionDistribution_of_ownerless _ _
+      owned]
     | some owner =>
-      rw [actionLaw_of_actor _ _ owned, actionLaw_of_actor _ _ owned]
+      rw [actionDistribution_of_actor _ _ owned, actionDistribution_of_actor _ _ owned]
       by_cases inactive : owner ∈ left.defaulted
       · rw [dite_eq_left inactive, dite_eq_left (defaulted ▸ inactive)]
       · rw [dite_eq_right inactive, dite_eq_right (defaulted ▸ inactive)]
 
 /-- The law of the final key under canonical scheduling from one configuration. -/
-def canonicalLaw (profile : graph.BehavioralProfile) (config : graph.Config) :=
+def canonicalDistribution (profile : graph.BehavioralProfile) (config : graph.Config) :=
   (graph.runPlan (graph.policyPlan profile graph.canonicalScheduler) config.remaining config).map
     runKey
 
@@ -249,25 +251,25 @@ theorem runPlan_remaining_canonical_step (profile : graph.BehavioralProfile) (co
     exact config.remaining_step event ready action next stepped
   rw [(by omega : next.remaining = rest)]
 
-theorem canonicalLaw_step (profile : graph.BehavioralProfile) (config : graph.Config)
+theorem canonicalDistribution_step (profile : graph.BehavioralProfile) (config : graph.Config)
     (_notTerminal : ¬ config.cut.Terminal) (event : graph.EventId) (ready : config.cut.Ready event)
     (least : ∀ other, config.cut.Ready other → event ≤ other) :
-    canonicalLaw profile config = (eventStep profile config event ready).bind
-      (canonicalLaw profile) := by
-  unfold canonicalLaw
+    canonicalDistribution profile config = (eventStep profile config event ready).bind
+      (canonicalDistribution profile) := by
+  unfold canonicalDistribution
   rw [runPlan_remaining_canonical_step profile config event ready least, PMF.map_bind]
 
 /-- **(A)** The canonical law is read from the order-free key. -/
-theorem ReadyIndependent.canonicalLaw_congr {profile : graph.BehavioralProfile}
+theorem ReadyIndependent.canonicalDistribution_congr {profile : graph.BehavioralProfile}
     (independent : ReadyIndependent profile) :
     ∀ fuel (left right : graph.Config), left.remaining = fuel → runKey left = runKey right →
-      canonicalLaw profile left = canonicalLaw profile right := by
+      canonicalDistribution profile left = canonicalDistribution profile right := by
   intro fuel
   induction fuel with
   | zero =>
       intro left right remaining same
       have rightRemaining := (remaining_eq_of_runKey_eq same).symm.trans remaining
-      unfold canonicalLaw
+      unfold canonicalDistribution
       rw [remaining, rightRemaining]
       simp only [EventGraph.runPlan, PMF.pure_map, same]
   | succ fuel ih =>
@@ -281,8 +283,8 @@ theorem ReadyIndependent.canonicalLaw_congr {profile : graph.BehavioralProfile}
       have rightReady : right.cut.Ready event := by rw [← cut]; exact ready
       have rightLeast : ∀ other, right.cut.Ready other → event ≤ other := by
         rw [← cut]; exact least
-      rw [canonicalLaw_step profile left notTerminal event ready least,
-        canonicalLaw_step profile right rightNotTerminal event rightReady rightLeast]
+      rw [canonicalDistribution_step profile left notTerminal event ready least,
+        canonicalDistribution_step profile right rightNotTerminal event rightReady rightLeast]
       unfold eventStep
       rw [independent.congr same event, PMF.bind_bind, PMF.bind_bind]
       apply bind_congr_on_support _
@@ -391,12 +393,12 @@ theorem stepThen_map_runKey_comm (config : graph.Config) {left right : graph.Eve
 
 /-- **(B)** Completing any ready event first and then continuing canonically
 is the canonical continuation. -/
-theorem ReadyIndependent.eventStep_bind_canonicalLaw {profile : graph.BehavioralProfile}
+theorem ReadyIndependent.eventStep_bind_canonicalDistribution {profile : graph.BehavioralProfile}
     (independent : ReadyIndependent profile) :
     ∀ fuel (config : graph.Config), config.remaining = fuel →
       ∀ event (ready : config.cut.Ready event),
-        (eventStep profile config event ready).bind (canonicalLaw profile) =
-          canonicalLaw profile config := by
+        (eventStep profile config event ready).bind (canonicalDistribution profile) =
+          canonicalDistribution profile config := by
   intro fuel
   induction fuel with
   | zero =>
@@ -407,18 +409,18 @@ theorem ReadyIndependent.eventStep_bind_canonicalLaw {profile : graph.Behavioral
       intro config remaining event ready
       have notTerminal := ready.not_terminal
       obtain ⟨least, leastReady, leastLe⟩ := exists_least_ready config notTerminal
-      rw [canonicalLaw_step profile config notTerminal least leastReady leastLe]
+      rw [canonicalDistribution_step profile config notTerminal least leastReady leastLe]
       by_cases same : event = least
-      · exact congrArg (fun law => law.bind (canonicalLaw profile))
+      · exact congrArg (fun law => law.bind (canonicalDistribution profile))
           (eventStep_congr_event profile config same ready leastReady)
       -- Each order expands into both action laws and the two fixed steps.
       have expand (first second : graph.EventId) (firstReady : config.cut.Ready first)
           (secondReady : config.cut.Ready second) (different : first ≠ second) :
-          (eventStep profile config first firstReady).bind (canonicalLaw profile) =
-            (actionLaw profile config first).bind fun firstAction =>
-              (actionLaw profile config second).bind fun secondAction =>
+          (eventStep profile config first firstReady).bind (canonicalDistribution profile) =
+            (actionDistribution profile config first).bind fun firstAction =>
+              (actionDistribution profile config second).bind fun secondAction =>
                 (stepThen config first second firstReady secondReady different firstAction
-                  secondAction).bind (canonicalLaw profile) := by
+                  secondAction).bind (canonicalDistribution profile) := by
         unfold eventStep
         rw [PMF.bind_bind]
         apply bind_congr_on_support _
@@ -449,7 +451,7 @@ theorem ReadyIndependent.eventStep_bind_canonicalLaw {profile : graph.Behavioral
       exact bind_eq_of_map_key_eq runKey Set.univ _ _ (Set.subset_univ _) (Set.subset_univ _)
         (stepThen_map_runKey_comm config ready leastReady same
           (independent.actorsDiffer config ready leastReady same) eventAction leastAction) _
-        (fun a _ b _ keys => independent.canonicalLaw_congr _ a b rfl keys)
+        (fun a _ b _ keys => independent.canonicalDistribution_congr _ a b rfl keys)
 
 /-- **(C) Scheduler erasure.** Under every public scheduler a ready-independent
 profile has the canonical law of the final key. -/
@@ -457,12 +459,12 @@ theorem ReadyIndependent.runPlan_map_runKey {profile : graph.BehavioralProfile}
     (independent : ReadyIndependent profile) (scheduler : graph.PublicScheduler) :
     ∀ fuel (config : graph.Config), config.remaining = fuel →
       (graph.runPlan (graph.policyPlan profile scheduler) fuel config).map runKey =
-        canonicalLaw profile config := by
+        canonicalDistribution profile config := by
   intro fuel
   induction fuel with
   | zero =>
       intro config remaining
-      unfold canonicalLaw
+      unfold canonicalDistribution
       rw [remaining]
       simp only [EventGraph.runPlan]
   | succ fuel ih =>
@@ -475,9 +477,9 @@ theorem ReadyIndependent.runPlan_map_runKey {profile : graph.BehavioralProfile}
           ((eventStep profile config selected.1
             ((EventOrder.Cut.mem_enabled _ _).mp selected.2)).bind
               (graph.runPlan (graph.policyPlan profile scheduler) fuel)).map runKey =
-            canonicalLaw profile config := by
+            canonicalDistribution profile config := by
         intro selected
-        rw [PMF.map_bind, ← independent.eventStep_bind_canonicalLaw _ config rfl selected.1
+        rw [PMF.map_bind, ← independent.eventStep_bind_canonicalDistribution _ config rfl selected.1
           ((EventOrder.Cut.mem_enabled _ _).mp selected.2)]
         apply bind_congr_on_support _
         intro next member
@@ -513,12 +515,12 @@ open GameTheory.Math.Probability
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
 
-theorem ReadyIndependent.actionLaw_path_of_unfinished
+theorem ReadyIndependent.actionDistribution_path_of_unfinished
     {profile : graph.BehavioralProfile} (independent : ReadyIndependent profile)
     {before after : graph.Config} {event : graph.EventId}
     (path : Relation.ReflTransGen Config.Step before after)
     (ready : before.cut.Ready event) (unfinished : event ∉ after.cut.completed) :
-    actionLaw profile after event = actionLaw profile before event := by
+    actionDistribution profile after event = actionDistribution profile before event := by
   revert ready
   induction path using Relation.ReflTransGen.head_induction_on with
   | refl => intro _; rfl

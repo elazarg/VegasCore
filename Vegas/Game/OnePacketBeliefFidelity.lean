@@ -61,17 +61,19 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
   (bounds : MessageBounds setup.informationGraph) (horizon : Nat)
   (scheduler : (application setup timeouts leaks).Scheduler)
-  [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
+  [(application setup timeouts leaks).FiniteNature (initialDistribution setup) scheduler]
   [Finite setup.intendedProtocol.History]
-  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds
+    (initialDistribution setup) horizon
     scheduler).InfoState who)]
 
-local notation "N" => onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+local notation "N" => onePacketModel setup timeouts leaks bounds (initialDistribution setup) horizon
   scheduler
 
 local instance beliefFidelityHistoryFintype : Fintype
-    ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon scheduler).History :=
-  (bounds.onePacketMenu timeouts leaks).historyFintype (initialLaw setup) horizon scheduler
+    ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
+      scheduler).History :=
+  (bounds.onePacketMenu timeouts leaks).historyFintype (initialDistribution setup) horizon scheduler
 
 section Assembled
 
@@ -91,7 +93,7 @@ theorem assembled_limit_belief_eq
       (2 * horizon + 2) n)
     (covers : bounds.CoversOutputValues) (coversInputs : bounds.CoversInputValues)
     (capacity : ∀ who, bindingEventCount setup.informationGraph who < bounds.candidateCount)
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialDistribution setup)
       horizon scheduler bounds.candidateCount p))
     (target : ℕ → (N).BehavioralAssessment)
     (assembled : OnePacketAssembled setup timeouts leaks bounds horizon scheduler sequence
@@ -99,16 +101,17 @@ theorem assembled_limit_belief_eq
     (mixed : ∀ n, (target n).IsFullyMixed)
     (bayes : ∀ n, BehavioralAssessment.IsBayesConsistent (N) (target n)
       ((bounds.onePacketMenu timeouts leaks).decisionRecall
-        (initialLaw setup) horizon scheduler).decisionInformationAntichain)
+        (initialDistribution setup) horizon scheduler).decisionInformationAntichain)
     (intended : setup.intendedModel.BehavioralAssessment)
     (native : (N).BehavioralAssessment)
     (sourceConverges : BehavioralAssessmentConvergesPointwise sequence intended)
     (index : ℕ → ℕ) (increasing : StrictMono index)
     (nativeConverges : BehavioralAssessmentConvergesPointwise (fun n => target (index n)) native)
     {who : Player} (site : (N).InformationSite who)
-    (notFree : ¬ FreeAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+    (notFree : ¬ FreeAgent setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
       ((N).agentAt site))
-    (notOwing : ¬ OwingAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+    (notOwing : ¬ OwingAgent setup timeouts leaks bounds (initialDistribution setup) horizon
+      scheduler
       ((N).agentAt site))
     {past : List (application setup timeouts leaks).PlayerEntry}
     {view : (application setup timeouts leaks).PlayerView}
@@ -148,7 +151,7 @@ theorem assembled_limit_belief_replay_exists
       (2 * horizon + 2) n)
     (covers : bounds.CoversOutputValues) (coversInputs : bounds.CoversInputValues)
     (capacity : ∀ who, bindingEventCount setup.informationGraph who < bounds.candidateCount)
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialDistribution setup)
       horizon scheduler bounds.candidateCount p))
     (target : ℕ → (N).BehavioralAssessment)
     (assembled : OnePacketAssembled setup timeouts leaks bounds horizon scheduler sequence
@@ -156,14 +159,15 @@ theorem assembled_limit_belief_replay_exists
     (mixed : ∀ n, (target n).IsFullyMixed)
     (bayes : ∀ n, BehavioralAssessment.IsBayesConsistent (N) (target n)
       ((bounds.onePacketMenu timeouts leaks).decisionRecall
-        (initialLaw setup) horizon scheduler).decisionInformationAntichain)
+        (initialDistribution setup) horizon scheduler).decisionInformationAntichain)
     (native : (N).BehavioralAssessment)
     (index : ℕ → ℕ) (increasing : StrictMono index)
     (nativeConverges : BehavioralAssessmentConvergesPointwise (fun n => target (index n)) native)
     {who : Player} (site : (N).InformationSite who)
-    (notFree : ¬ FreeAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+    (notFree : ¬ FreeAgent setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
       ((N).agentAt site))
-    (notOwing : ¬ OwingAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+    (notOwing : ¬ OwingAgent setup timeouts leaks bounds (initialDistribution setup) horizon
+      scheduler
       ((N).agentAt site))
     {past : List (application setup timeouts leaks).PlayerEntry}
     {view : (application setup timeouts leaks).PlayerView}
@@ -178,7 +182,8 @@ theorem assembled_limit_belief_replay_exists
       some replay
   let bad := fun history : (N).InformationHistory who site.1 =>
     if good history then (0 : ℝ) else 1
-  have forced := forcedAgent_of_not_free setup timeouts leaks bounds (initialLaw setup) horizon
+  have forced := forcedAgent_of_not_free setup timeouts leaks bounds
+    (initialDistribution setup) horizon
     scheduler notFree
   have debtFree := siteDebtFree_of_not_owing setup timeouts leaks bounds horizon scheduler notOwing
   have regularGood (n : ℕ) (history : (N).InformationHistory who site.1)
@@ -217,7 +222,7 @@ theorem assembled_limit_belief_replay_exists
 open Classical in
 /-- The limiting native posterior, replayed by the actual partial replay function, is exactly the
 intended posterior on successful replays. In particular replay failure has zero posterior mass. -/
-theorem assembled_limit_belief_replay_law
+theorem assembled_limit_belief_replay_distribution
     (wellFormed : setup.WellFormed)
     (priors : SequentialPriorCondition setup timeouts leaks bounds horizon scheduler)
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
@@ -230,7 +235,7 @@ theorem assembled_limit_belief_replay_law
       (2 * horizon + 2) n)
     (covers : bounds.CoversOutputValues) (coversInputs : bounds.CoversInputValues)
     (capacity : ∀ who, bindingEventCount setup.informationGraph who < bounds.candidateCount)
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialDistribution setup)
       horizon scheduler bounds.candidateCount p))
     (target : ℕ → (N).BehavioralAssessment)
     (assembled : OnePacketAssembled setup timeouts leaks bounds horizon scheduler sequence
@@ -238,16 +243,17 @@ theorem assembled_limit_belief_replay_law
     (mixed : ∀ n, (target n).IsFullyMixed)
     (bayes : ∀ n, BehavioralAssessment.IsBayesConsistent (N) (target n)
       ((bounds.onePacketMenu timeouts leaks).decisionRecall
-        (initialLaw setup) horizon scheduler).decisionInformationAntichain)
+        (initialDistribution setup) horizon scheduler).decisionInformationAntichain)
     (intended : setup.intendedModel.BehavioralAssessment)
     (native : (N).BehavioralAssessment)
     (sourceConverges : BehavioralAssessmentConvergesPointwise sequence intended)
     (index : ℕ → ℕ) (increasing : StrictMono index)
     (nativeConverges : BehavioralAssessmentConvergesPointwise (fun n => target (index n)) native)
     {who : Player} (site : (N).InformationSite who)
-    (notFree : ¬ FreeAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+    (notFree : ¬ FreeAgent setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
       ((N).agentAt site))
-    (notOwing : ¬ OwingAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+    (notOwing : ¬ OwingAgent setup timeouts leaks bounds (initialDistribution setup) horizon
+      scheduler
       ((N).agentAt site))
     {past : List (application setup timeouts leaks).PlayerEntry}
     {view : (application setup timeouts leaks).PlayerView}

@@ -66,16 +66,16 @@ def program : SourceProgram Player simpleExpr initialCtx {0} :=
 def sourceInitial (bit : Bool) (label : Fin 3) : State simpleExpr initialCtx :=
   Env.cons (.success bit) <| Env.cons (labelValue label) <| Env.empty _
 
-def bitLaw : PMF Bool :=
+def bitDistribution : PMF Bool :=
   mix (9 / 20) (by norm_num) (by norm_num) (PMF.pure true) (PMF.pure false)
 
 def prior : PMF Parameter :=
-  bitLaw.bind fun bit => (uniformLaw (Fin 3)).map fun label => (bit, label)
+  bitDistribution.bind fun bit => (uniformLaw (Fin 3)).map fun label => (bit, label)
 
 def setup : Setup (Player := Player) (L := simpleExpr) where
   context := initialCtx
   namesNodup := by decide
-  initialLaw := prior.map fun parameter => sourceInitial parameter.1 parameter.2
+  initialDistribution := prior.map fun parameter => sourceInitial parameter.1 parameter.2
   obligations := {0}
   program := program
   accounts := rfl
@@ -104,14 +104,14 @@ theorem sourceInitial_injective : Function.Injective
     exact_mod_cast labels
   simp [sameBit, sameLabel]
 
-instance finiteInitial : setup.FiniteInitialLaw where
+instance finiteInitial : setup.FiniteInitialSupport where
   support_finite := by
     change (prior.map (fun parameter => sourceInitial parameter.1 parameter.2)).support.Finite
     rw [PMF.support_map]
     exact (Set.toFinite prior.support).image _
 
-theorem initialLaw_support (state : State simpleExpr initialCtx) :
-    state ∈ setup.initialLaw.support ↔
+theorem initialDistribution_support (state : State simpleExpr initialCtx) :
+    state ∈ setup.initialDistribution.support ↔
       ∃ bit label, state = sourceInitial bit label := by
   change state ∈ (prior.map (fun parameter => sourceInitial parameter.1 parameter.2)).support ↔ _
   rw [PMF.support_map]
@@ -140,7 +140,7 @@ theorem answerGuard_predicts
 theorem wellFormed : setup.WellFormed where
   initialValues := by
     intro initial supported name owner payload cell
-    obtain ⟨bit, label, rfl⟩ := (initialLaw_support initial).mp supported
+    obtain ⟨bit, label, rfl⟩ := (initialDistribution_support initial).mp supported
     cases cell with
     | here => exact ⟨bit, rfl⟩
     | there cell => cases cell with
@@ -510,10 +510,10 @@ theorem initialDraw_supported (bit : Bool) (label : Fin 3) :
     drawnState bit label ∈
       (setup.intendedProtocol.step none ⟨fun _ => none, initialJointLegal⟩).support := by
   change drawnState bit label ∈
-    (setup.initialLaw.map (fun initial => some (ProtocolState.entry program
+    (setup.initialDistribution.map (fun initial => some (ProtocolState.entry program
       (Config.initial initial)))).support
   rw [PMF.support_map]
-  exact ⟨sourceInitial bit label, (initialLaw_support _).mpr ⟨bit, label, rfl⟩, rfl⟩
+  exact ⟨sourceInitial bit label, (initialDistribution_support _).mpr ⟨bit, label, rfl⟩, rfl⟩
 
 def drawnHistory (bit : Bool) (label : Fin 3) : setup.intendedProtocol.History :=
   setup.intendedProtocol.initHistory.extend initialJointLegal (initialDraw_supported bit label)

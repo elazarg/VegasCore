@@ -174,8 +174,8 @@ swap of a history guarded at its end is forced for a player, so is the image of
 each of its initialized prefixes. -/
 theorem forcedState_image_of_tracePrefix (swap : HiddenSwap setup.informationGraph)
     {allowed : Set setup.informationGraph.Inputs}
-    (initialClosed : ∀ state ∈ (initialLaw setup).support, state.config.inputs ∈ allowed →
-      state.swap swap ∈ (initialLaw setup).support)
+    (initialClosed : ∀ state ∈ (initialDistribution setup).support, state.config.inputs ∈ allowed →
+      state.swap swap ∈ (initialDistribution setup).support)
     (bounded : ∀ handle raw, raw ∈ bounds.values → swap.raw handle raw ∈ bounds.values)
     (failures : ∀ event, swap.values.ExpiryFixed event)
     (r : Player) {control : (application setup timeouts leaks).Control}
@@ -185,7 +185,8 @@ theorem forcedState_image_of_tracePrefix (swap : HiddenSwap setup.informationGra
       state)
     (forced : ForcedState setup timeouts leaks r (swap.protocolState state)) :
     ForcedState setup timeouts leaks r (some (swap.control control)) := by
-  let symmetry := onePacketSwapSymmetry (timeouts := timeouts) bounds (initialLaw setup) horizon
+  let symmetry := onePacketSwapSymmetry (timeouts := timeouts) bounds
+    (initialDistribution setup) horizon
     scheduler swap
     initialClosed bounded failures
   induction isPrefix with
@@ -203,8 +204,8 @@ omit [DecidableEq (CellTy Player L)] in
 /-- The swap guard reaches back along a history. -/
 theorem swapGuardState_of_tracePrefix (swap : HiddenSwap setup.informationGraph)
     {allowed : Set setup.informationGraph.Inputs}
-    (initialClosed : ∀ state ∈ (initialLaw setup).support, state.config.inputs ∈ allowed →
-      state.swap swap ∈ (initialLaw setup).support)
+    (initialClosed : ∀ state ∈ (initialDistribution setup).support, state.config.inputs ∈ allowed →
+      state.swap swap ∈ (initialDistribution setup).support)
     (bounded : ∀ handle raw, raw ∈ bounds.values → swap.raw handle raw ∈ bounds.values)
     (failures : ∀ event, swap.values.ExpiryFixed event)
     {first : (application setup timeouts leaks).ProtocolState}
@@ -213,7 +214,8 @@ theorem swapGuardState_of_tracePrefix (swap : HiddenSwap setup.informationGraph)
     (isPrefix : TracePrefix prior trace) (guarded : SwapGuardState setup timeouts swap allowed
       state) :
     SwapGuardState setup timeouts swap allowed first := by
-  let symmetry := onePacketSwapSymmetry (timeouts := timeouts) bounds (initialLaw setup) horizon
+  let symmetry := onePacketSwapSymmetry (timeouts := timeouts) bounds
+    (initialDistribution setup) horizon
     scheduler swap
     initialClosed bounded failures
   induction isPrefix with
@@ -250,7 +252,8 @@ theorem forcedAgent_of_splice (wellFormed : setup.WellFormed)
     {control : (application setup timeouts leaks).Control}
     (prior : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some control))
     (isPrefix : TracePrefix prior trace) (different : r ≠ who) :
-    forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks) (initialLaw setup)
+    forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks)
+      (initialDistribution setup)
       horizon scheduler
       r ((application setup timeouts leaks).observe r (some control)) := by
   have publicAgree := publicCellsAgree_of_observe sameView
@@ -263,13 +266,13 @@ theorem forcedAgent_of_splice (wellFormed : setup.WellFormed)
   have failures : ∀ event, swap.values.ExpiryFixed event :=
     EventGraph.ValueSwap.ofPairs_expiryFixed (betweenPairs publicAgreeQ succeedQ)
   -- The swap toward the splice is guarded at the end of the history.
-  have drawnP : ∃ initial ∈ setup.initialLaw.support, InitialCellsAt initial p := by
+  have drawnP : ∃ initial ∈ setup.initialDistribution.support, InitialCellsAt initial p := by
     obtain ⟨initial, member, _, point, pointEq, found⟩ := decoded_initialCellsAt (timeouts :=
       timeouts) trace current rfl
     rw [decodedP, Option.some.injEq] at pointEq
     subst pointEq
     exact ⟨initial, member, found⟩
-  have drawn : ∃ initial ∈ setup.initialLaw.support, InitialCellsAt initial q := by
+  have drawn : ∃ initial ∈ setup.initialDistribution.support, InitialCellsAt initial q := by
     cases priors with
     | independent _ independent observable =>
       exact drawn_splicePoint independent observable publicAgree drawnP
@@ -310,7 +313,8 @@ theorem forcedAgent_of_splice (wellFormed : setup.WellFormed)
   have forcedPrior := forcedState_image_of_tracePrefix (timeouts := timeouts) swap
     (initialClosed_swapAllowed swap)
     bounded failures r prior isPrefix guarded forcedEnd
-  let symmetry := onePacketSwapSymmetry (timeouts := timeouts) bounds (initialLaw setup) horizon
+  let symmetry := onePacketSwapSymmetry (timeouts := timeouts) bounds
+    (initialDistribution setup) horizon
     scheduler swap
     (initialClosed_swapAllowed swap) bounded failures
   refine ⟨⟨_, symmetry.mapTrace prior guardedPrior⟩, ?_, forcedPrior⟩

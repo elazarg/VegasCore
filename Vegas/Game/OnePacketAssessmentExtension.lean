@@ -23,7 +23,7 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (initial : PMF (State graph)) (horizon : Nat)
   (scheduler : ((reactiveApplication timeouts) leaks).Scheduler)
 
-private theorem map_transport_law {Index : Type*} {Value : Index → Type*}
+private theorem map_transport_distribution {Index : Type*} {Value : Index → Type*}
     (laws : ∀ info, PMF (Value info)) {first second : Index} (same : first = second) :
     (laws first).map (fun value => Eq.mp (congrArg Value same) value) = laws second := by
   subst second
@@ -77,7 +77,7 @@ theorem ExtendsOnePacketAssessment.strategy_map
           same) value)) projected
     _ = effective.strategy who
         ((bounds.onePacketRestriction timeouts leaks initial horizon scheduler).information who
-          sourceSite.1) := map_transport_law (effective.strategy who) same
+          sourceSite.1) := map_transport_distribution (effective.strategy who) same
     _ = _ := strategy who sourceSite
 
 /-- At corresponding sites, normalizing the raw posterior gives exactly the native posterior

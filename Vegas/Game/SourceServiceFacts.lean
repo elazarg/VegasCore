@@ -39,9 +39,9 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup deps)))
 
 /-- The initial native law is the image of the existing typed setup inputs. -/
-theorem serviceInitialLaw_eq_inputs :
-    serviceInitialLaw setup deps =
-      (setup.initialLaw.map setup.eventInputs).map
+theorem serviceInitialDistribution_eq_inputs :
+    serviceInitialDistribution setup deps =
+      (setup.initialDistribution.map setup.eventInputs).map
         (EventGraphRuntime.State.initial (graph := serviceGraph setup deps)) := by
   rw [PMF.map_comp]
   rfl
@@ -51,9 +51,9 @@ theorem legalFacts (horizon : Nat)
     (scheduler : (serviceApplication setup deps duration leaks).Scheduler)
     (control : (serviceApplication setup deps duration leaks).Control)
     (trace : ((serviceApplication setup deps duration leaks).protocol
-      (serviceInitialLaw setup deps) horizon scheduler).Trace (some control)) :
+      (serviceInitialDistribution setup deps) horizon scheduler).Trace (some control)) :
     LegalFacts (serviceTimeouts setup deps duration) leaks control.execution := by
-  rw [serviceInitialLaw_eq_inputs setup] at trace
+  rw [serviceInitialDistribution_eq_inputs setup] at trace
   exact EventGraphRuntime.legalFacts _ leaks _ horizon scheduler control trace
 
 /-- A pending authentic envelope names a submission already retained in its
@@ -62,7 +62,7 @@ theorem eventRecorded_of_pending
     {horizon : Nat} {scheduler : (serviceApplication setup deps duration leaks).Scheduler}
     {control : (serviceApplication setup deps duration leaks).Control}
     (trace : ((serviceApplication setup deps duration leaks).protocol
-      (serviceInitialLaw setup deps) horizon scheduler).Trace (some control))
+      (serviceInitialDistribution setup deps) horizon scheduler).Trace (some control))
     (owner : Player) (event : (serviceGraph setup deps).EventId)
     (message : Message Player (WitnessedPacket (serviceGraph setup deps)))
     (member : message ∈ control.execution.network.pending)
@@ -70,7 +70,7 @@ theorem eventRecorded_of_pending
     (named : message.payload.call.event? (serviceGraph setup deps) = some event) :
     (eventRecorded (serviceTimeouts setup deps duration)) leaks
       (control.execution.logs owner) event = true := by
-  rw [serviceInitialLaw_eq_inputs setup] at trace
+  rw [serviceInitialDistribution_eq_inputs setup] at trace
   exact EventGraphRuntime.eventRecorded_of_pending _ leaks trace owner event message member sender
     named
 

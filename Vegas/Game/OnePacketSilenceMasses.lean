@@ -94,7 +94,7 @@ theorem slotChoice_silence_of_noTurn (assessment : setup.intendedModel.Behaviora
 /-- **No second packet.** Along every history of the one-packet game, the menu
 offers no packet naming an event the player's recall has submitted for. -/
 theorem onePacket_recorded_not_offered {control : (application setup timeouts leaks).Control}
-    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some control))
     (who : Player) (event : setup.informationGraph.EventId)
     (recorded : (eventRecorded timeouts) leaks (control.execution.logs who) event = true)
@@ -103,10 +103,10 @@ theorem onePacket_recorded_not_offered {control : (application setup timeouts le
     response ∉ bounds.onePacketActions timeouts leaks who (control.execution.logs who)
       (control.execution.observe (application setup timeouts leaks) who) := by
   intro member
-  have rawTrace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+  have rawTrace : ((application setup timeouts leaks).protocol (initialDistribution setup) horizon
     scheduler).Trace
       (some control) :=
-    (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon scheduler
+    (bounds.onePacketMenu timeouts leaks).toRawTrace (initialDistribution setup) horizon scheduler
       trace
   unfold EventGraphRuntime.submittedEvent? at named
   cases sends : response.transmission with
@@ -128,7 +128,8 @@ theorem onePacket_recorded_not_offered {control : (application setup timeouts le
           dsimp only at submittedEq
           obtain ⟨message, emits, call⟩ := (transmissionsEmitted_serviceInvariant (timeouts :=
             timeouts) scheduler).history
-            (initialLaw setup) horizon (fun _ _ _ _ member => (List.not_mem_nil member).elim)
+            (initialDistribution setup) horizon (fun _ _ _ _ member =>
+              (List.not_mem_nil member).elim)
             rawTrace who entry entryMember earlier transmits
           have output : message ∈ (application setup timeouts leaks).outputs
               (control.execution.logs who) :=
@@ -163,16 +164,16 @@ theorem onePacket_recorded_not_offered {control : (application setup timeouts le
 that is silent or names the turn's event, for which its recall has submitted, is
 sent as silence. -/
 theorem onePacket_responseChoice_of_recorded {control : (application setup timeouts leaks).Control}
-    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some control))
     (who : Player) (event : setup.informationGraph.EventId)
     (recorded : (eventRecorded timeouts) leaks (control.execution.logs who) event = true)
     (response : (application setup timeouts leaks).Action)
     (names : response = ⟨none⟩ ∨ (submittedEvent? timeouts) leaks response = some event) :
-    responseChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler who
+    responseChoice setup timeouts leaks bounds (initialDistribution setup) horizon scheduler who
         (some (control.execution.logs who,
           control.execution.observe (application setup timeouts leaks) who)) response =
-      silenceChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler who
+      silenceChoice setup timeouts leaks bounds (initialDistribution setup) horizon scheduler who
         (some (control.execution.logs who,
           control.execution.observe (application setup timeouts leaks) who)) := by
   rcases names with silent | named
@@ -260,26 +261,29 @@ the player's turn at an event its recall has submitted for, the as-if-honest
 choice is silence. -/
 theorem honestChoice_silence_of_recorded (assessment : setup.intendedModel.BehavioralAssessment)
     {control : (application setup timeouts leaks).Control}
-    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some control))
     (who : Player) (event : setup.informationGraph.EventId)
     (turn : control.execution.application.publicView.ownTurn? who = some event)
     (recorded : (eventRecorded timeouts) leaks (control.execution.logs who) event = true) :
-    honestChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler assessment who
+    honestChoice setup timeouts leaks bounds (initialDistribution setup) horizon scheduler
+      assessment who
         (some (control.execution.logs who,
           control.execution.observe (application setup timeouts leaks) who)) =
-      PMF.pure (silenceChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler who
+      PMF.pure (silenceChoice setup timeouts leaks bounds (initialDistribution setup) horizon
+        scheduler who
         (some (control.execution.logs who,
           control.execution.observe (application setup timeouts leaks) who))) := by
   change (honestResponse setup timeouts leaks assessment who _ _).map _ = _
   rw [show (honestResponse setup timeouts leaks assessment who (control.execution.logs who)
       (control.execution.observe (application setup timeouts leaks) who)).map
-      (responseChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler who
+      (responseChoice setup timeouts leaks bounds (initialDistribution setup) horizon scheduler who
         (some (control.execution.logs who,
           control.execution.observe (application setup timeouts leaks) who))) =
       (honestResponse setup timeouts leaks assessment who (control.execution.logs who)
         (control.execution.observe (application setup timeouts leaks) who)).map
-        (fun _ => silenceChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler who
+        (fun _ => silenceChoice setup timeouts leaks bounds
+          (initialDistribution setup) horizon scheduler who
           (some (control.execution.logs who,
             control.execution.observe (application setup timeouts leaks) who))) from
     map_congr_support _ fun response supported =>
@@ -293,27 +297,31 @@ the player's turn at an event its recall has submitted for, the slot tier is
 silence. -/
 theorem slotChoice_silence_of_recorded (assessment : setup.intendedModel.BehavioralAssessment)
     {control : (application setup timeouts leaks).Control}
-    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialDistribution setup) horizon
       scheduler).Trace (some control))
     (who : Player) (event : setup.informationGraph.EventId)
     (turn : control.execution.application.publicView.ownTurn? who = some event)
     (recorded : (eventRecorded timeouts) leaks (control.execution.logs who) event = true) :
-    slotChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler assessment who
+    slotChoice setup timeouts leaks bounds (initialDistribution setup) horizon scheduler assessment
+      who
         (some (control.execution.logs who,
           control.execution.observe (application setup timeouts leaks) who)) =
-      PMF.pure (silenceChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler who
+      PMF.pure (silenceChoice setup timeouts leaks bounds (initialDistribution setup) horizon
+        scheduler who
         (some (control.execution.logs who,
           control.execution.observe (application setup timeouts leaks) who))) := by
-  rw [slotChoice_eq_map (timeouts := timeouts) (initialLaw setup) horizon scheduler turn]
+  rw [slotChoice_eq_map (timeouts := timeouts) (initialDistribution setup) horizon scheduler turn]
   rw [show (slotPairs setup timeouts leaks bounds assessment who (control.execution.logs who)
       (control.execution.observe (application setup timeouts leaks) who)).map
-      (fun pair => slotChoiceOf setup timeouts leaks bounds (initialLaw setup) horizon scheduler who
+      (fun pair => slotChoiceOf setup timeouts leaks bounds
+        (initialDistribution setup) horizon scheduler who
         (control.execution.logs who) (control.execution.observe (application setup timeouts
           leaks) who)
         event pair.1 pair.2) =
       (slotPairs setup timeouts leaks bounds assessment who (control.execution.logs who)
         (control.execution.observe (application setup timeouts leaks) who)).map
-        (fun _ => silenceChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler who
+        (fun _ => silenceChoice setup timeouts leaks bounds
+          (initialDistribution setup) horizon scheduler who
           (some (control.execution.logs who,
             control.execution.observe (application setup timeouts leaks) who))) from
     map_congr_support _ fun pair _ =>

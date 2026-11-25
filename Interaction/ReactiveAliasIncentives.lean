@@ -97,7 +97,7 @@ theorem aliasDeviation_finish
 
 variable [Finite Principal]
 
-theorem aliasDeviation_historyLaw
+theorem aliasDeviation_historyDistribution
     (source : ∀ who,
       ((normal.menu raw).information initial horizon scheduler).BehavioralPolicy who)
     (who : Principal)

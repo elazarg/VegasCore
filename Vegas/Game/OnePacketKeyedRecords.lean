@@ -16,10 +16,10 @@ which is the same for every history of the site, times a base weight: the
 source weight times the operational weight of the record
 (`Vegas.reach_near_factorization`). So if the normalized base weights of the
 regular histories of two sites give every unit payoff of the operational record
-the same expectation (`Vegas.BaseLawAgrees`), and the irregular histories carry
-little reach, the two sites' belief laws of operational records are close on
-unit payoffs (`Vegas.recordLaw_near_of_baseLaw`), as for sites with the same
-late-delivery key.
+the same expectation (`Vegas.BaseExpectationAgrees`), and the irregular histories carry
+little reach, the two sites give each unit payoff similar expectations
+(`Vegas.record_expectations_close_of_baseExpectationAgrees`). This applies at sites
+with the same late-delivery key.
 
 Base agreement asks less than a weight-preserving bijection between the sites'
 histories, and holds with correlated priors: within a site, records differ only
@@ -43,9 +43,9 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {scheduler : (application setup timeouts leaks).Scheduler}
 
 open Classical in
-/-- **Agreeing base laws.** The normalized base weights of the regular histories
+/-- **Equal base expectations.** The normalized base weights of the regular histories
 of two sites give a payoff of the operational record the same expectation. -/
-def BaseLawAgrees {who : Player}
+def BaseExpectationAgrees {who : Player}
     [Finite (onePacketProtocol setup timeouts leaks bounds horizon scheduler).History]
     (base : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).History → ℝ)
     (regular : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).History → Prop)
@@ -71,15 +71,15 @@ def BaseLawAgrees {who : Player}
       payoff (operationalRecord setup timeouts leaks bounds horizon scheduler a.1.trace)
 
 open Classical in
-/-- **Record laws at two sites.** Suppose the beliefs at two sites of `who` are
+/-- **Expected record payoffs at two sites.** Suppose the beliefs at two sites of `who` are
 the normalized reach weights of their histories; at every regular history the
 reach is within relative error `ε < 1` of a positive site constant times a base
 weight; the regular base weights of each site have positive total and those of the
-first agree in law with the second's on a unit payoff of the record; and the
+two sites give a chosen unit payoff of the record the same expectation; and the
 irregular histories of each site carry at most `ρ` times its regular reach. Then
 the two beliefs give that payoff of the record expectations within
 `2 ρ / (1 + ρ) + 2 ε / (1 - ε)`. -/
-theorem recordLaw_near_of_baseLaw {who : Player}
+theorem record_expectations_close_of_baseExpectationAgrees {who : Player}
     [Finite (onePacketProtocol setup timeouts leaks bounds horizon scheduler).History]
     (assessment : (onePacketInformation setup timeouts leaks bounds horizon
       scheduler).BehavioralAssessment)
@@ -122,7 +122,7 @@ theorem recordLaw_near_of_baseLaw {who : Player}
     (base₂_pos : 0 < ∑' history : (onePacketInformation setup timeouts leaks bounds horizon
         scheduler).InformationHistory who second.1,
         (if regular history.1 then base history.1 else 0))
-    (agree : BaseLawAgrees (timeouts := timeouts) base regular first second payoff) :
+    (agree : BaseExpectationAgrees (timeouts := timeouts) base regular first second payoff) :
     |expect ((assessment.belief who first).map fun history =>
         operationalRecord setup timeouts leaks bounds horizon scheduler history.1.trace) payoff -
       expect ((assessment.belief who second).map fun history =>
@@ -239,7 +239,7 @@ laws agree on every payoff of the record. The fibers are proportional when a
 record-preserving swap of the owner's committed value at its unrevealed binding
 maps the regular histories of one site onto those of the other, scaling the
 base weight by the ratio of the prior masses of the two values. -/
-theorem baseLawAgrees_of_fibers {who : Player}
+theorem BaseExpectationAgrees_of_fibers {who : Player}
     [Finite (onePacketProtocol setup timeouts leaks bounds horizon scheduler).History]
     (base : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).History → ℝ)
     (regular : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).History → Prop)
@@ -257,12 +257,12 @@ theorem baseLawAgrees_of_fibers {who : Player}
             operationalRecord setup timeouts leaks bounds horizon scheduler a.1.trace = record then
           base a.1 else 0))
     (payoff : List (Option (OperationalState setup timeouts leaks)) → ℝ) :
-    BaseLawAgrees (timeouts := timeouts) base regular first second payoff := by
+    BaseExpectationAgrees (timeouts := timeouts) base regular first second payoff := by
   let := Fintype.ofFinite ((onePacketInformation setup timeouts leaks bounds horizon
     scheduler).InformationHistory who first.1)
   let := Fintype.ofFinite ((onePacketInformation setup timeouts leaks bounds horizon
     scheduler).InformationHistory who second.1)
-  unfold BaseLawAgrees
+  unfold BaseExpectationAgrees
   apply normalized_sum_eq_of_fibers _ _ _ _ c c_ne _ payoff
   intro record
   have fibered := fiber record

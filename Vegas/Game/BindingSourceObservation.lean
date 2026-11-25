@@ -51,12 +51,12 @@ theorem serviceReference_callback_of_binding_paths
     {horizon remaining : Nat} {acting : Option Player}
     {scheduler : (serviceApplication setup deps duration leaks).Scheduler}
     (trace : ((serviceApplication setup deps duration leaks).protocol
-      (serviceInitialLaw setup deps) horizon scheduler).Trace
+      (serviceInitialDistribution setup deps) horizon scheduler).Trace
         (some ⟨remaining, acting, current⟩)) :
     referencePolicy (serviceTimeouts setup deps duration) leaks
         ((serviceGraph setup deps).prefixProfile profile) who (current.logs who)
         (current.observe (serviceApplication setup deps duration leaks) who) =
-      (actionLaw ((serviceGraph setup deps).prefixProfile profile) ghost event).map
+      (actionDistribution ((serviceGraph setup deps).prefixProfile profile) ghost event).map
         ((canonicalServiceDecision (serviceTimeouts setup deps duration)) leaks who
           (current.logs who) (current.observe (serviceApplication setup deps duration leaks) who)
           event) := by
@@ -64,13 +64,13 @@ theorem serviceReference_callback_of_binding_paths
     current.application.active_of_ready_owned
       (legalFacts setup leaks horizon scheduler _ trace).quiescent currentReady owned
   have turn := current.application.ownTurn?_of_ready (relaxed.actorSerial event) currentReady owned
-  have law := prefixProfile_actionLaw_of_binding_paths relaxed profile origin
+  have law := prefixProfile_actionDistribution_of_binding_paths relaxed profile origin
     current.application.config ghost start originReach ordered currentPath ghostPath who event
     owned notPublication currentReady ghostReady currentActive ghostActive bindings own
   rw [sourceServiceCanonicalPolicy_at_event_reference setup leaks
     ((serviceGraph setup deps).prefixProfile profile) who current event turn owned,
     dite_eq_right currentActive]
-  rw [actionLaw_of_actor _ _ owned, dite_eq_right currentActive] at law
+  rw [actionDistribution_of_actor _ _ owned, dite_eq_right currentActive] at law
   exact congrArg (PMF.map _) law
 
 theorem SourceResidual.decode_prefixView

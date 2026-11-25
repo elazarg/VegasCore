@@ -334,7 +334,7 @@ theorem exists_pureMixture {who : Player} :
 law across a whole setup, against unchanged opponents. The draw precedes the
 private initial law, which is what a deviation certificate needs. -/
 theorem exists_pureMixture_run {who : Player} (setup : Setup (Player := Player) (L := L))
-    [setup.FiniteInitialLaw]
+    [setup.FiniteInitialSupport]
     (profile : BehavioralProfile setup.program) (policy : BehavioralPolicy who setup.program)
     (profileFinite : ∀ player, (profile player).HasFiniteSupport setup.program)
     (policyFinite : policy.HasFiniteSupport setup.program) :
@@ -345,10 +345,11 @@ theorem exists_pureMixture_run {who : Player} (setup : Setup (Player := Player) 
             (PurePolicy.toBehavioral setup.program choice)) := by
   obtain ⟨mixture, mixtureFinite, hmixture⟩ :=
     exists_pureMixture setup.program profile policy profileFinite policyFinite
-    ((supportList setup.initialLaw setup.initialLaw_support_finite).map fun initial =>
+    ((supportList setup.initialDistribution setup.initialDistribution_support_finite).map
+      fun initial =>
       Config.initial initial)
   refine ⟨mixture, mixtureFinite, ?_⟩
-  have hrun : ∀ initial ∈ setup.initialLaw.support,
+  have hrun : ∀ initial ∈ setup.initialDistribution.support,
       SourceProgram.run setup.program (Function.update profile who policy) initial =
         mixture.bind fun choice =>
           SourceProgram.run setup.program
