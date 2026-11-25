@@ -3,7 +3,7 @@ module
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 public import Vegas.Pending.ChanceContinuation
-public import Vegas.Pending.LastErasedKeyLaw
+public import Vegas.Pending.ConfigDrain
 
 @[expose] public section
 
@@ -17,42 +17,6 @@ open Interaction EventGraph GameTheory.Math.Probability
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
     {graph : Vegas.EventGraph Player L}
-
-namespace State
-
-private theorem drainFuel_config_congr (fuel : Nat) (left right : State graph)
-    (same : left.config = right.config) :
-    (drainFuel fuel left).config = (drainFuel fuel right).config := by
-  induction fuel generalizing left right with
-  | zero => exact same
-  | succ fuel ih =>
-    obtain ⟨config, accepted, candidates, clock, activated⟩ := left
-    obtain ⟨_, _, _, _, _⟩ := right
-    cases same
-    simp only [drainFuel, AutomaticReady]
-    split <;> rename_i pending
-    · apply ih
-      unfold completeAutomatic completeFailure
-      cases nodeView graph (Classical.choose pending) <;> rfl
-    · rfl
-
-/-- The exact automatic-completion configuration is independent of all runtime tables. -/
-theorem drain_config_eq (state : State graph) :
-    state.drain.config = drainConfig state.config :=
-  drainFuel_config_congr _ state (ofConfig state.config) rfl
-
-/-- Automatic completion fixes the configuration at a quiescent state. -/
-theorem drainConfig_of_quiescent (state : State graph)
-    (quiet : ∀ event, ¬ state.AutomaticReady event) :
-    drainConfig state.config = state.config := by
-  rw [← drain_config_eq state, drain_eq_of_clear state quiet]
-
-/-- Completing an already drained configuration is idempotent. -/
-theorem drainConfig_drain_eq (state : State graph) :
-    drainConfig state.drain.config = drainConfig state.config := by
-  rw [drainConfig_of_quiescent state.drain state.drain_quiescent, state.drain_config_eq]
-
-end State
 
 /-- The first completed sampling boundary has precisely the graph-step configuration
 distribution followed by deterministic automatic completion. -/

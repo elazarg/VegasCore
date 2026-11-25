@@ -2,6 +2,7 @@ module
 
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
+public import Vegas.Pending.ConfigDrain
 public import Vegas.Pending.LastKeyLaw
 public import Vegas.EventGraph.LastErasedLaw
 
@@ -166,13 +167,6 @@ theorem drain_runKey_congr {left right : State graph}
   unfold drain
   rw [fuel]
   exact drainFuel_runKey_congr _ same
-
-/-- The runtime state of a configuration with the initial runtime tables. -/
-def ofConfig (config : graph.Config) : State graph :=
-  { State.initial config.inputs with config := config }
-
-/-- The configuration reached by draining a configuration. -/
-def drainConfig (config : graph.Config) : graph.Config := (ofConfig config).drain.config
 
 /-- Draining a state reaches a configuration with the key of draining its
 configuration. -/

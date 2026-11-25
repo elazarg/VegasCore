@@ -4,7 +4,7 @@ module
 
 public import Vegas.Pending.GraphCompletionLaw
 public import Vegas.Pending.PrefixBoundary
-public import Vegas.Pending.LastErasedKeyLaw
+public import Vegas.Pending.ConfigDrain
 public import Vegas.Pending.ExclusionPolicyLaw
 public import Vegas.EventGraph.SchedulerErasure
 
