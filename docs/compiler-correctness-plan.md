@@ -13,8 +13,9 @@ not assume equilibrium.
 | --- | --- | --- |
 | Source to graph | `Vegas.scheduled_setup_law` | Exact complete source configuration law under every permitted public graph scheduler. |
 | Raw Interaction to graph | `Vegas.EventGraphRuntime.reactive_protocol_graph_refinement` | Every transition between initialized controls follows a finite supported graph path, including automatic completion. Every initialized raw history has a graph-reachable configuration; service completion makes all terminal fields available. |
-| Compiled graph to ledger | `Vegas.sourceServiceClientPolicy_graph_law` | Actual sequential first-opportunity clients and canonical execution of the compiled graph and policy have the same law through every total reader of typed state and public defaults. |
-| Source to ledger | `Vegas.sourceServiceClientPolicy_outcome_law` | Those same physical clients preserve that joint source law for every source profile, without a finite wire catalogue, equilibrium, audit, utility-bound or independent-prior premise. |
+| Ledger to compiled graph | `Vegas.sourceServiceClientPolicy_canonicalGraph_law` | Actual sequential first-opportunity clients have exactly the complete terminal readout law of canonical execution of the compiled graph, run on their disclosure-normalized profile. A runtime discharges the per-event completion law of `Vegas.firstTurnGraphLaw_of_completion_law` and reuses the graph compiler theorem. |
+| Source to ledger | `Vegas.sourceServiceClientPolicy_outcome_law` | The ledger-to-graph law composed with the source-to-graph law: those same physical clients preserve the joint typed-state/default source law for every source profile, without a finite wire catalogue, equilibrium, audit, utility-bound or independent-prior premise. |
+| Original compiled profile to ledger | `Vegas.sourceServiceClientPolicy_graph_law` | The clients and canonical execution of the original profile's compiled policy have the same law through every total reader of typed state and public defaults. |
 | Raw unilateral deviation to source | `Vegas.asyncDeviation_readout_law` | Every physical policy against first-turn clients has one behavioral source deviation with the same typed-state/full-default-history law on the sequential compiled service graph. No finite-player or wire-value catalogue premise. |
 
 The owners are [graph compilation](../Vegas/Compile/EventGraphScheduling.lean),
@@ -34,12 +35,14 @@ actual graph steps with their dependent actions; bookkeeping transitions
 may stutter. This establishes execution safety, not a probability comparison for
 arbitrary raw policies. The exact law concerns prescribed compiled clients.
 
-The second-pass law compares the supported compiler image. It follows by
-comparing the exact source-to-ledger law with the canonical graph law through
-their common typed-state/default readout. The direct source-to-ledger proof
-lifts one local graph-continuation identity through actual completion ranks,
-then applies source readout once. It composes omission/withholding, typed
-acceptance and chance sampling. Strategy completion
+The ledger-to-graph law lifts one local graph-continuation identity through
+actual completion ranks: letting the ledger complete the next event and then
+finishing with the canonical graph plan has the same decoded terminal law as
+finishing with the graph plan alone. It composes omission/withholding, typed
+acceptance and chance sampling. Composing it with the canonical configuration
+law gives the source-to-ledger law. The comparison with the original profile's
+compiled policy goes through their common typed-state/default readout.
+Strategy completion
 and disclosure normalization preserve the original profile's joint
 typed-state/default law; private intentions after failure may differ.
 

@@ -1032,6 +1032,32 @@ private theorem firstTurn_completion_law
       have projected := congrArg (PMF.map read) fixed
       simpa only [PMF.map_bind] using projected
 
+/-- First-turn clients of a profile with authentic disclosures have exactly the terminal
+readout law of the canonical compiled graph, under the asynchronous service contract and its
+reaction/inclusion timing budget. -/
+theorem firstTurnGraphLaw_of_async
+    (timeouts : EventTimeouts setup.informationGraph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
+    {horizon turns : Nat} (scheduler : (application setup timeouts leaks).Scheduler)
+    (delay bound : setup.informationGraph.EventId → Nat)
+    (source : BehavioralProfile setup.program)
+    (contract : AsyncContract timeouts leaks (initialLaw setup) horizon scheduler delay bound)
+    (timely : AsyncTimely timeouts delay bound)
+    (authentic : ∀ who, (source who).AuthenticDisclosures setup.program) :
+    ((application setup timeouts leaks).roundsFrom (initialLaw setup) scheduler
+      (serviceTurnPolicy setup setup.informationDependencies timeouts.duration leaks bound turns
+        (firstTurnTiming setup turns) source) horizon).map
+      (fun execution => sourceReadout setup timeouts leaks
+        ((application setup timeouts leaks).finished execution)) =
+    ((setup.informationGraph.canonicalGame (setup.initialLaw.map setup.eventInputs)).play
+      (compileEventProfile setup.program source)).map
+        (fun terminal => some (terminalConfig setup.program terminal)) := by
+  apply firstTurnGraphLaw_of_completion_law setup timeouts leaks turns source contract.completes
+  dsimp only
+  intro event execution boundary bounded
+  exact firstTurn_completion_law timeouts leaks scheduler delay bound source contract timely
+    authentic event execution boundary bounded
+
 /-- First-turn source clients preserve the full source configuration under the
 asynchronous service contract and its reaction/inclusion timing budget. -/
 theorem firstTurnSourceLaw_of_async
@@ -1053,8 +1079,32 @@ theorem firstTurnSourceLaw_of_async
     authentic event execution boundary bounded
 
 
+/-- Actual first-turn clients have exactly the terminal readout law of the canonical compiled
+graph, run on their disclosure-normalized profile: the ledger-to-graph half of compiler
+correctness. -/
+theorem sourceServiceClientPolicy_canonicalGraph_law
+    (timeouts : EventTimeouts setup.informationGraph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
+    {horizon turns : Nat} (scheduler : (application setup timeouts leaks).Scheduler)
+    (delay bound : setup.informationGraph.EventId → Nat)
+    (original : BehavioralProfile setup.program)
+    (contract : AsyncContract timeouts leaks (initialLaw setup) horizon scheduler delay bound)
+    (timely : AsyncTimely timeouts delay bound) :
+    ((application setup timeouts leaks).roundsFrom (initialLaw setup) scheduler
+      (serviceClientPolicy setup setup.informationDependencies timeouts.duration leaks bound turns
+        (firstTurnTiming setup turns) (normalizeDisclosureProfile setup.program original))
+      horizon).map (fun execution => sourceReadout setup timeouts leaks
+        ((application setup timeouts leaks).finished execution)) =
+    ((setup.informationGraph.canonicalGame (setup.initialLaw.map setup.eventInputs)).play
+      (compileEventProfile setup.program (normalizeDisclosureProfile setup.program original))).map
+        (fun terminal => some (terminalConfig setup.program terminal)) := by
+  rw [sourceServiceClientPolicy_roundsFrom]
+  exact firstTurnGraphLaw_of_async timeouts leaks scheduler delay bound _ contract timely
+    (fun who => BehavioralPolicy.normalizeDisclosures_authentic setup.program (original who))
+
 /-- Actual first-turn clients preserve every observation of the original source's
-full typed state and public default history. -/
+full typed state and public default history: the ledger-to-graph law composed with the
+canonical configuration law. -/
 theorem sourceServiceClientPolicy_outcome_law
     (timeouts : EventTimeouts setup.informationGraph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
@@ -1073,10 +1123,19 @@ theorem sourceServiceClientPolicy_outcome_law
           ((application setup timeouts leaks).finished execution)).map
           (fun final => read (final.state, final.defaults))) =
       (setup.run original).map (fun final => some (read (final.state, final.defaults))) := by
-  apply sourceServiceClientPolicy_outcome_law_of_firstTurn original ?_ read
-  exact firstTurnSourceLaw_of_async timeouts leaks scheduler delay bound
-    (normalizeDisclosureProfile setup.program original) contract timely
-      (fun who => BehavioralPolicy.normalizeDisclosures_authentic setup.program (original who))
+  have graph := congrArg
+    (PMF.map (Option.map fun final : Config Player L setup.program.terminalCtx =>
+      read (final.state, final.defaults)))
+    (sourceServiceClientPolicy_canonicalGraph_law (horizon := horizon) (turns := turns)
+      timeouts leaks scheduler delay bound original contract timely)
+  have source := congrArg
+    (PMF.map fun final : Config Player L setup.program.terminalCtx =>
+      some (read (final.state, final.defaults)))
+    (canonical_setup_law setup (normalizeDisclosureProfile setup.program original))
+  have normalized := congrArg (PMF.map fun output => some (read output))
+    (setup.run_normalizeDisclosures_eq original)
+  simp only [PMF.map_comp, Function.comp_def, Option.map_some] at graph source normalized
+  exact graph.trans (source.trans normalized)
 
 /-- Actual clients and canonical compiled graph execution preserve the same
 typed-state and public-default observations for every source profile. -/
