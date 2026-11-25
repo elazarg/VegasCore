@@ -28,12 +28,13 @@ completion of the source game still requires the stated service contract.
 * source well-formedness and either private-input independence given a signal determined
   by public initial inputs, or at most two players and a single submission opportunity
   per event on every legal one-packet history;
-* finitely many players and intended-source histories;
+* finitely many players;
 * finite support for the physical initial law, scheduler decisions, application
   environment steps and pending-observation kernels;
 * a finite response catalogue and candidate capacity;
 * all-history opportunity, protected inclusion, completion and deadline margins;
-* utility bounds, the exclusion floor and funded evidence coverage.
+* an exclusion floor and evidence coverage that funds each player's terminal
+  raw payoff gain over any terminal one-packet payoff.
 
 `FiniteNature` is the finite-support premise on nature kernels. Finite menus
 and the fixed horizon then imply finitely many legal histories of the bounded

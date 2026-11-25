@@ -111,7 +111,11 @@ catalogue contains all seven bid values and two candidate slots per bidder.
 One compiled assessment retains the source correspondence and full
 configuration/settlement law, with no supported defaults, failed reveals or
 audit charges. Its actual executable cash law is preserved too; each bidder's
-expected utility is 8/7.
+expected utility is 8/7. Adding 100 to all terminal utilities, including each
+bidder's exit utility, preserves the deposit of 48. The guaranteed expected
+charge is 12. Measuring the spread against an interval required to contain
+zero and the shifted exit utility of 94 would incorrectly rule out this
+certificate. [Shifted auction](../Vegas/Examples/BoundedAuctionService.lean)
 
 Useful refinements are an operational evidence-capture producer, a more
 selective service satisfying the same all-history contract, and selective

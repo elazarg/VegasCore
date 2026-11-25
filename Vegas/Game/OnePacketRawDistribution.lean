@@ -59,17 +59,11 @@ theorem intended_raw_sequentialEquilibrium_of_onePacket {Parameter : Type}
     (observationRate deliveryRate : Player → ℝ)
     (delivery_nonnegative : ∀ who, 0 ≤ deliveryRate who)
     (coverage : CountEvidenceCoverage service observationRate deliveryRate)
-    (lowerUtility upperUtility : Player → ℝ)
-    (lower_le : ∀ history : ((raw).protocol initial horizon scheduler).History,
-      ∀ terminal, sourceReadout setup timeouts leaks history.state = some terminal →
-        ∀ who, lowerUtility who ≤ utility (setup.parameterOutcome parameter terminal) who)
-    (le_upper : ∀ history : ((raw).protocol initial horizon scheduler).History,
-      ∀ terminal, sourceReadout setup timeouts leaks history.state = some terminal →
-        ∀ who, utility (setup.parameterOutcome parameter terminal) who ≤ upperUtility who)
     (deposit : Player → ℝ) (deposit_nonnegative : ∀ who, 0 ≤ deposit who)
-    (sufficient : ∀ who,
-      max 0 (max (excludedPayoff who) (upperUtility who)) -
-          min 0 (min (excludedPayoff who) (lowerUtility who)) ≤
+    (sufficient : ∀ (compliant : ((menu).protocol initial horizon scheduler).TerminalHistory)
+      (deviating : ((raw).protocol initial horizon scheduler).TerminalHistory) who,
+      exclusionBase setup timeouts parameter utility excludedPayoff leaks deviating.1.state who -
+        exclusionBase setup timeouts parameter utility excludedPayoff leaks compliant.1.state who ≤
         observationRate who * deliveryRate who * deposit who) :
     let observe := ((reactiveApplication timeouts) leaks).stateTraffic
     let audit := (countAudit timeouts) leaks service.sample
@@ -103,15 +97,7 @@ theorem intended_raw_sequentialEquilibrium_of_onePacket {Parameter : Type}
     bounds.onePacket_raw_sequentialEquilibrium timeouts leaks initial horizon
       scheduler service observationRate deliveryRate delivery_nonnegative coverage base
       (exclusionBase_normalization setup timeouts parameter utility excludedPayoff leaks)
-      (fun who => min 0 (min (excludedPayoff who) (lowerUtility who)))
-      (fun who => max 0 (max (excludedPayoff who) (upperUtility who))) deposit
-      (fun history who => (exclusionBase_mem_Icc setup timeouts parameter utility
-        excludedPayoff leaks
-        lowerUtility upperUtility history.state (lower_le history) (le_upper history) who).1)
-      (fun history who => (exclusionBase_mem_Icc setup timeouts parameter utility
-        excludedPayoff leaks
-        lowerUtility upperUtility history.state (lower_le history) (le_upper history) who).2)
-      deposit_nonnegative sufficient native nativeSE
+      deposit deposit_nonnegative sufficient native nativeSE
   refine ⟨target, refinement, targetSE, clean, states, ?_⟩
   let read := fun state : ((reactiveApplication timeouts) leaks).ProtocolState =>
     sourceReadout setup timeouts leaks state

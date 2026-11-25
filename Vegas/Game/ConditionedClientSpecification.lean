@@ -27,25 +27,26 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr} [IExp
 
 local notation "app" => application setup timeouts leaks
 local notation "raw" => bounds.rawMenu timeouts leaks
+local notation "one" => bounds.onePacketMenu timeouts leaks
 local notation "initial" => Vegas.initialDistribution setup
 
-/-- The original ledger and funding hypotheses give a compiler specification on every supported
-component satisfying the prior condition. Payoff bounds are needed only at the original
-legal histories. The specification uses exactly the supplied audit, deposit and exit utility. -/
+omit [Fintype Player] in
+/-- Before audit deductions, a player's utility at a fixed native state is independent of
+the initial-law component used to reach that state. -/
+theorem conditionInitial_exclusionBase (key : Signal) :
+    exclusionBase (setup.conditionInitial signal key) timeouts parameter utility exit leaks =
+      exclusionBase setup timeouts parameter utility exit leaks := by
+  funext state who
+  cases state <;> rfl
+
+/-- A common service, menu and pairwise funding certificate supplies each supported
+component's specification once that component's prior condition is proved. -/
 def conditionInitial_clientSpec
-    (key : Signal) (supported : key ∈ (setup.initialDistribution.map signal).support)
-    (prior : SequentialPriorCondition (setup.conditionInitial signal key) timeouts leaks
-      bounds horizon scheduler)
-    (nature : (app).FiniteNature initial scheduler) [Finite setup.intendedProtocol.History]
+    (nature : (app).FiniteNature initial scheduler)
     (formed : setup.WellFormed)
     {delay bound : setup.informationGraph.EventId → Nat}
     (service : AsyncContract timeouts leaks initial horizon scheduler delay bound)
     (timely : AsyncTimely timeouts delay bound)
-    (lower upper : Player → ℝ)
-    (bounded : ∀ h : ((raw).protocol initial horizon scheduler).History,
-      ∀ result, sourceReadout setup timeouts leaks h.state = some result → ∀ who,
-        lower who ≤ utility (setup.parameterOutcome parameter result) who ∧
-        utility (setup.parameterOutcome parameter result) who ≤ upper who)
     (exitBelow : ∀ h : setup.intendedProtocol.History,
       ∀ result, setup.protocolReadout h.state = some result → ∀ who,
         exit who ≤ utility (setup.parameterOutcome parameter result) who)
@@ -55,13 +56,17 @@ def conditionInitial_clientSpec
     (capture delivery deposit : Player → ℝ) (deliveryNonneg : ∀ who, 0 ≤ delivery who)
     (coverage : CountEvidenceCoverage evidence capture delivery)
     (depositNonneg : ∀ who, 0 ≤ deposit who)
-    (funded : ∀ who, max 0 (max (exit who) (upper who)) - min 0 (min (exit who) (lower who)) ≤
-      capture who * delivery who * deposit who) :
+    (funded : ∀ (compliant : ((one).protocol initial horizon scheduler).TerminalHistory)
+      (deviating : ((raw).protocol initial horizon scheduler).TerminalHistory) who,
+      exclusionBase setup timeouts parameter utility exit leaks deviating.1.state who -
+        exclusionBase setup timeouts parameter utility exit leaks compliant.1.state who ≤
+          capture who * delivery who * deposit who)
+    (key : Signal) (supported : key ∈ (setup.initialDistribution.map signal).support)
+    (prior : SequentialPriorCondition (setup.conditionInitial signal key) timeouts leaks
+      bounds horizon scheduler) :
     ClientSpec (setup.conditionInitial signal key) timeouts leaks bounds horizon scheduler
       parameter utility exit where
   finiteNature := setup.conditionInitial_finiteNature signal key supported nature
-  finiteSource := Finite.of_injective _ (setup.conditionInitial_history_injective signal key
-    supported)
   wellFormed := setup.conditionInitial_wellFormed signal key supported formed
   prior := prior
   delay := delay
@@ -70,12 +75,6 @@ def conditionInitial_clientSpec
   inclusion := (setup.conditionInitial_asyncContract signal key supported service).inclusion
   completes := (setup.conditionInitial_asyncContract signal key supported service).completes
   timely := timely
-  lowerUtility := lower
-  upperUtility := upper
-  lower_le h result same who := (bounded ((raw).historyOfInitialSupportSubset
-    (setup.conditionInitial_ledgerSupport signal key supported) h) result same who).1
-  le_upper h result same who := (bounded ((raw).historyOfInitialSupportSubset
-    (setup.conditionInitial_ledgerSupport signal key supported) h) result same who).2
   exitBelow h result same who := exitBelow (setup.conditionInitial_history signal key supported h)
     result same who
   outputValues := outputs
@@ -88,16 +87,12 @@ def conditionInitial_clientSpec
   coverage := coverage
   deposit := deposit
   deposit_nonnegative := depositNonneg
-  funded := funded
-
-omit [Fintype Player] in
-/-- Before audit deductions, a player's utility at a fixed native state is independent of
-the initial-law component used to reach that state. -/
-theorem conditionInitial_exclusionBase (key : Signal) :
-    exclusionBase (setup.conditionInitial signal key) timeouts parameter utility exit leaks =
-      exclusionBase setup timeouts parameter utility exit leaks := by
-  funext state who
-  cases state <;> rfl
+  funded compliant deviating who := by
+    have included := setup.conditionInitial_ledgerSupport signal key supported
+    rw [conditionInitial_exclusionBase signal parameter utility exit key]
+    exact funded
+      ⟨(one).historyOfInitialSupportSubset included compliant.1, compliant.2⟩
+      ⟨(raw).historyOfInitialSupportSubset included deviating.1, deviating.2⟩ who
 
 variable {signal parameter utility exit} {first second : Signal}
     (spec₁ : ClientSpec (setup.conditionInitial signal first) timeouts leaks bounds horizon

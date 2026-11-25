@@ -6,6 +6,7 @@ public import Vegas.Examples.OddsEvensService
 public import Vegas.Examples.OddsEvensFairDistribution
 public import Vegas.Examples.OddsEvensEquilibrium
 public import Vegas.Game.SequentialCompilation
+public import Vegas.Game.ClientFunding
 public import Vegas.Pending.ThinnedCountCollection
 
 @[expose] public section
@@ -45,7 +46,6 @@ def specification : Vegas.ClientSpec
     OddsEvens.setup rt leaks Vegas.Examples.OddsEvens.bounds steps serviceScheduler
     (fun _ => ()) Vegas.Examples.OddsEvens.sourceUtility (fun _ => 0) where
   finiteNature := by change app.FiniteNature initial serviceScheduler; infer_instance
-  finiteSource := inferInstance
   wellFormed := Vegas.Examples.OddsEvens.wellFormed
   prior := .independent Vegas.Examples.OddsEvens.signal Vegas.Examples.OddsEvens.independent
     Vegas.Examples.OddsEvens.observable
@@ -55,12 +55,6 @@ def specification : Vegas.ClientSpec
   inclusion := OddsEvensService.contract.inclusion
   completes := OddsEvensService.contract.completes
   timely := PeriodicService.timely (graph := OddsEvens.compiled)
-  lowerUtility := fun _ => 0
-  upperUtility := fun _ => 200
-  lower_le := fun _ terminal _ who => (Vegas.Examples.OddsEvens.sourceUtility_bounds
-    (OddsEvens.setup.parameterOutcome (fun _ => ()) terminal) who).1
-  le_upper := fun _ terminal _ who => (Vegas.Examples.OddsEvens.sourceUtility_bounds
-    (OddsEvens.setup.parameterOutcome (fun _ => ()) terminal) who).2
   exitBelow := fun _ terminal _ who =>
     (Vegas.Examples.OddsEvens.sourceUtility_bounds
       (OddsEvens.setup.parameterOutcome (fun _ => ()) terminal) who).1
@@ -74,7 +68,15 @@ def specification : Vegas.ClientSpec
   coverage := thinnedCountEvidence_coverage halfRate halfRate
   deposit := fun _ => 800
   deposit_nonnegative := fun _ => by norm_num
-  funded := fun _ => by norm_num [Vegas.Examples.OddsEvens.setup, halfRate]
+  funded compliant deviating who := by
+    have compared := ClientSpec.basePayoffGap_le_of_readoutBounds
+      (setup := OddsEvens.setup) (timeouts := rt) (parameter := fun _ => ())
+      (utility := Vegas.Examples.OddsEvens.sourceUtility) (excludedPayoff := fun _ => 0)
+      (leaks := leaks) (fun _ => 0) (fun _ => 200)
+      (fun _ i => Vegas.Examples.OddsEvens.sourceUtility_bounds _ i)
+      compliant.1.state deviating.1.state who
+    norm_num [halfRate] at compared ⊢
+    exact compared
 
 /-- Every intended source equilibrium has a clean raw-runtime realization under
 the concrete two-player service and imperfect audit. -/

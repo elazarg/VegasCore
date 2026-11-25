@@ -178,6 +178,8 @@ variable {Player Observation : Type} [Finite Player] [DecidableEq Player]
 
 /-- A sound terminal audit with a uniform conditional collection guarantee
 extends every restricted sequential equilibrium to the same audited target.
+Funding compares the base payoffs of each pair of restricted and target
+terminal histories.
 
 Collection is required for every extra action at every retained hidden history,
 against arbitrary later strategies. No compliance after a collected or sunk
@@ -193,11 +195,10 @@ theorem sequential_equilibrium_extends_of_terminal_audit
     (observe : T.History → Observation) (audit : Observation → PMF (Player → Bool))
     (matching : ∀ history who, base (restriction.history history) who = sourcePayoff history who)
     (sound : ∀ history who, charge observe audit (restriction.history history) who = 0)
-    (lower upper detection deposit : Player → ℝ)
+    (detection deposit : Player → ℝ)
     (deposit_nonnegative : ∀ who, 0 ≤ deposit who)
-    (source_lower : ∀ history who, lower who ≤ sourcePayoff history who)
-    (target_upper : ∀ history who, base history who ≤ upper who)
-    (sufficient : ∀ who, upper who - detection who * deposit who ≤ lower who)
+    (sufficient : ∀ (compliant : E.TerminalHistory) (raw : T.TerminalHistory) who,
+      base raw.1 who - sourcePayoff compliant.1 who ≤ detection who * deposit who)
     (collection : ∀ (profile : ∀ who, N.BehavioralPolicy who) who
       (site : M.InformationSite who)
       (action : N.Choice who (restriction.site who site).1),
@@ -228,6 +229,24 @@ theorem sequential_equilibrium_extends_of_terminal_audit
                 payoffs))) ∧
       ∀ history ∈ (N.runBehavioralTerminalFrom targetCertificate target.strategy
           T.initHistory).support, ∀ who, charge observe audit history who = 0 := by
+  classical
+  let _ : Finite E.History := Finite.of_injective restriction.history
+    restriction.history.injective
+  let _ := Fintype.ofFinite E.TerminalHistory
+  obtain ⟨terminal, _⟩ := M.terminalCone_nonempty sourceCertificate source.strategy
+    E.initHistory
+  have minimum (who : Player) := Finset.exists_min_image
+    (Finset.univ : Finset E.TerminalHistory) (fun h => sourcePayoff h.1 who)
+    ⟨terminal, Finset.mem_univ terminal⟩
+  let least (who : Player) : E.TerminalHistory := (minimum who).choose
+  let lower (who : Player) := sourcePayoff (least who).1 who
+  let upper (who : Player) := lower who + detection who * deposit who
+  have source_lower (history : E.TerminalHistory) (who : Player) :
+      lower who ≤ sourcePayoff history.1 who :=
+    (minimum who).choose_spec.2 history (Finset.mem_univ _)
+  have target_upper (history : T.TerminalHistory) (who : Player) :
+      base history.1 who ≤ upper who :=
+    (sub_le_iff_le_add'.mp (sufficient (least who) history who))
   have collects : ∀ (profile : ∀ who, N.BehavioralPolicy who) who
       (site : M.InformationSite who)
       (action : N.Choice who (restriction.site who site).1),
@@ -249,12 +268,20 @@ theorem sequential_equilibrium_extends_of_terminal_audit
       (fun who history => by rw [sound, zero_mul, sub_zero]; exact matching history who)
       (fun _ _ _ => True) (fun who _ => lower who) (fun who _ => upper who)
       (fun who _ => detection who) deposit_nonnegative
-      (fun who _ _ _ _ => sufficient who)
-      (fun _ who _ _ _ _ _ final _ => target_upper final who)
+      (fun who _ _ _ _ => (add_sub_cancel_right (lower who) _).le)
+      (fun profile who site action _ _ start final supported => target_upper
+        ⟨final, N.runBehavioralTerminalFrom_support_terminal targetCertificate
+          (Profile.update (sig := N.behavioralSignature) profile who
+            ((profile who).commit (restriction.site who site).1 action))
+          (restriction.history start.1) final supported⟩ who)
       (fun profile who site action extra _ history =>
         collects profile who site action extra history)
       (fun sourceProfile _ _ who _ _ _ _ _ => ⟨sourceProfile who,
-        fun _ _ final _ => ⟨by rw [matching]; exact source_lower final who, sound final who⟩⟩)
+        fun history _ final supported => ⟨by
+          rw [matching]
+          exact source_lower
+            ⟨final, M.runBehavioralTerminalFrom_support_terminal sourceCertificate _
+              history.1 final supported⟩ who, sound final who⟩⟩)
       (fun _ _ _ _ _ _ _ excluded _ => (excluded trivial).elim)
       source sourceEquilibrium
   refine ⟨target, equilibrium, agrees, beliefs, laws, ?_, ?_⟩

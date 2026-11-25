@@ -7,6 +7,7 @@ public import Vegas.Examples.BoundedPrivateValueAuctionSequential
 public import Vegas.Pending.PeriodicServiceCompletion
 public import Vegas.Pending.CountReportSelection
 public import Interaction.MessageNetworkObservation
+public import Vegas.Game.ClientFunding
 public import Vegas.Game.ClientCompiler
 public import Vegas.Game.PaymentPreservation
 
@@ -88,7 +89,6 @@ def fundedSpecification (prior : PMF (Player → Bid)) (rt : EventTimeouts graph
     (priors : SequentialPriorCondition (setup prior) rt leaks bounds steps builder) :
     ClientSpec (setup prior) rt leaks bounds steps builder values utility (fun _ => -6) where
   finiteNature := finiteNature
-  finiteSource := inferInstance
   wellFormed := wellFormed prior
   prior := priors
   delay := delay
@@ -97,10 +97,6 @@ def fundedSpecification (prior : PMF (Player → Bid)) (rt : EventTimeouts graph
   inclusion := service.inclusion
   completes := service.completes
   timely := timely
-  lowerUtility := fun _ => -6
-  upperUtility := fun _ => 6
-  lower_le := fun _ terminal _ who => (utility_bounds _ who).1
-  le_upper := fun _ terminal _ who => (utility_bounds _ who).2
   exitBelow := fun _ terminal _ who => (utility_bounds _ who).1
   outputValues := outputValues
   inputValues := inputValues
@@ -112,7 +108,13 @@ def fundedSpecification (prior : PMF (Player → Bid)) (rt : EventTimeouts graph
   coverage := thinnedFirstCountReports_coverage halfRate halfRate
   deposit := fun _ => 48
   deposit_nonnegative := fun _ => by norm_num
-  funded := fun _ => by norm_num [halfRate]
+  funded compliant deviating who := by
+    have compared := ClientSpec.basePayoffGap_le_of_readoutBounds
+      (setup := setup prior) (timeouts := rt) (parameter := values) (utility := utility)
+      (excludedPayoff := fun _ => -6) (leaks := leaks) (fun _ => -6) (fun _ => 6)
+      (fun _ i => utility_bounds _ i) compliant.1.state deviating.1.state who
+    norm_num [halfRate] at compared ⊢
+    exact compared
 
 /-- Independent uniform bids on the periodic full-pending service. -/
 def specification : ClientSpec game timeouts leaks bounds horizon scheduler
@@ -120,6 +122,38 @@ def specification : ClientSpec game timeouts leaks bounds horizon scheduler
   fundedSpecification uniformPrior timeouts horizon scheduler
     (inferInstanceAs (app.FiniteNature initialDistribution scheduler)) _ _ contract
     (PeriodicService.timely (graph := graph)) (.independent signal independent observable)
+
+/-- Shifting the auction's utility origin by 100 preserves its deposit of 48.
+A funding interval forced to contain both zero and the shifted exit utility
+would require more than the audit's expected charge of 12. -/
+theorem shifted_utility_deposit (who : Player)
+    (compliant : ((bounds.onePacketMenu timeouts leaks).protocol initialDistribution horizon
+      scheduler).TerminalHistory)
+    (deviating : ((bounds.rawMenu timeouts leaks).protocol initialDistribution horizon
+      scheduler).TerminalHistory) :
+    let shifted := specification.addUtilityConstant (fun _ => 100)
+    shifted.deposit who = 48 ∧
+    exclusionBase game timeouts values (fun outcome i => utility outcome i + 100)
+      (fun _ => -6 + 100) leaks deviating.1.state who -
+    exclusionBase game timeouts values (fun outcome i => utility outcome i + 100)
+      (fun _ => -6 + 100) leaks compliant.1.state who ≤
+        shifted.observationRate who * shifted.deliveryRate who * shifted.deposit who ∧
+    ∀ lower upper : ℝ,
+      halfRate.val * halfRate.val * shifted.deposit who <
+        max 0 (max ((-6 : ℝ) + 100) upper) - min 0 (min ((-6 : ℝ) + 100) lower) := by
+  let shifted := specification.addUtilityConstant (fun _ => 100)
+  refine ⟨rfl, shifted.funded compliant deviating who, ?_⟩
+  intro lower upper
+  have exitIncluded : ((-6 : ℝ) + 100) ≤ max 0 (max ((-6 : ℝ) + 100) upper) :=
+    (le_max_left _ _).trans (le_max_right _ _)
+  have zeroIncluded : min 0 (min ((-6 : ℝ) + 100) lower) ≤ 0 := min_le_left _ _
+  calc
+    halfRate.val * halfRate.val * shifted.deposit who = 12 := by
+      change halfRate.val * halfRate.val * 48 = 12
+      norm_num [halfRate]
+    _ < (-6 : ℝ) + 100 := by norm_num
+    _ ≤ max 0 (max ((-6 : ℝ) + 100) upper) - min 0 (min ((-6 : ℝ) + 100) lower) := by
+      simpa only [sub_zero] using sub_le_sub exitIncluded zeroIncluded
 
 /-- One selected raw assessment retains the truthful source assessment and its physical clients. -/
 def compilation : ClientCompilation specification (truthfulAssessment uniformPrior) :=

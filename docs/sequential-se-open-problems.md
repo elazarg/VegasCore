@@ -62,8 +62,9 @@ has been supplied.
 
 The direct capstone has the following substantive premises.
 
-* Well-formed source syntax, finite intended histories, finitely many players,
-  and finite physical nature for the actual bounded execution.
+* A well-formed source setup, finitely many players, and finite branching of
+  physical nature for the actual bounded execution. Finite initial support
+  and wire coverage of binding values imply finitely many intended histories.
 * Either each player's private initial inputs and commitments are independent of the
   remainder given a signal determined by public initial inputs, or there are at most two
   players and the owner of a ready event cannot pass and get a second chance to submit
@@ -74,12 +75,13 @@ The direct capstone has the following substantive premises.
 * The finite wire menu covers every value of each binding, publication and
   initial-input type; these types must be finite. The candidate reserve exceeds the owner's binding-event count as stated in these
   capstones.
-* Utilities have supplied bounds, and each excluded owner's fixed payoff is no
-  greater than its utility at every intended terminal readout.
+* Each excluded owner's fixed payoff is no greater than its utility at every
+  intended terminal readout.
 * Authentic count evidence has uniform observation coverage and delivery
   coverage conditional on the entire observed list; their product times the
-  deposit covers the stated utility spread, including the exclusion override
-  and zero fallback.
+  deposit covers the difference between the player's base payoff at any legal
+  terminal raw history and its base payoff at any legal terminal one-packet
+  history. The base payoff already accounts for exclusion.
 
 There is no complete-pending-observation premise in the native sequential-preservation theorems and no
 independent-per-message-delay premise. Those facts distinguish their scope

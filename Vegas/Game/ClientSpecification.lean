@@ -19,8 +19,9 @@ public import Interaction.ReactiveResponseEvaluation
 /-! # Specifications and artifacts for native sequential compilation
 
 One specification states the source, bounded raw-menu service and audit obligations.
-Its utility bounds concern legal raw-history readouts. A compiled artifact records
-native sequential equilibrium and the complete source-configuration/payoff law.
+Its funding condition compares terminal base payoffs under the one-packet and
+raw menus. A compiled artifact records native sequential equilibrium and the
+complete source-configuration/payoff law.
 -/
 
 noncomputable section
@@ -55,8 +56,6 @@ value carriers. -/
 structure ClientSpec where
   /-- Every physical nature kernel has finite support. -/
   finiteNature : (app).FiniteNature Initial scheduler
-  /-- The intended source game has finitely many legal histories. -/
-  finiteSource : Finite setup.intendedProtocol.History
   wellFormed : setup.WellFormed
   prior : SequentialPriorCondition setup timeouts leaks bounds horizon scheduler
   delay : setup.informationGraph.EventId → Nat
@@ -65,15 +64,6 @@ structure ClientSpec where
   inclusion : ProtectedInclusion timeouts leaks Initial horizon scheduler bound
   completes : CompletesPlay timeouts leaks Initial horizon scheduler
   timely : AsyncTimely timeouts delay bound
-  lowerUtility : Player → ℝ
-  upperUtility : Player → ℝ
-  /-- Bounds cover exactly readouts of legal histories in the supplied raw menu. -/
-  lower_le : ∀ history : ((raw).protocol Initial horizon scheduler).History,
-    ∀ terminal, sourceReadout setup timeouts leaks history.state = some terminal →
-      ∀ who, lowerUtility who ≤ utility (setup.parameterOutcome parameter terminal) who
-  le_upper : ∀ history : ((raw).protocol Initial horizon scheduler).History,
-    ∀ terminal, sourceReadout setup timeouts leaks history.state = some terminal →
-      ∀ who, utility (setup.parameterOutcome parameter terminal) who ≤ upperUtility who
   exitBelow : ∀ (final : setup.intendedProtocol.History) terminal,
     setup.protocolReadout final.state = some terminal →
       ∀ who, excludedPayoff who ≤ utility (setup.parameterOutcome parameter terminal) who
@@ -90,9 +80,12 @@ structure ClientSpec where
   coverage : CountEvidenceCoverage evidenceService observationRate deliveryRate
   deposit : Player → ℝ
   deposit_nonnegative : ∀ who, 0 ≤ deposit who
-  funded : ∀ who,
-    max 0 (max (excludedPayoff who) (upperUtility who)) -
-        min 0 (min (excludedPayoff who) (lowerUtility who)) ≤
+  /-- The guaranteed expected charge covers the gain between any terminal
+  one-packet history and any terminal raw history, measured in base payoffs. -/
+  funded : ∀ (compliant : ((one).protocol Initial horizon scheduler).TerminalHistory)
+    (deviating : ((raw).protocol Initial horizon scheduler).TerminalHistory) who,
+    exclusionBase setup timeouts parameter utility excludedPayoff leaks deviating.1.state who -
+      exclusionBase setup timeouts parameter utility excludedPayoff leaks compliant.1.state who ≤
       observationRate who * deliveryRate who * deposit who
 
 variable {setup timeouts leaks bounds horizon scheduler parameter utility excludedPayoff}

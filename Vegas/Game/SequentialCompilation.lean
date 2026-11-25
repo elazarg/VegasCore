@@ -3,6 +3,8 @@ module
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 public import Vegas.Game.ClientSpecification
+public import Vegas.Game.IntendedHistory
+public import Vegas.Game.SourceServiceChoiceSupport
 public import Vegas.Game.ClientContinuation
 public import Vegas.Game.OnePacketEquilibriumPreservation
 public import Vegas.Game.OnePacketRawDistribution
@@ -39,6 +41,28 @@ variable {Parameter : Type} {parameter : State L setup.context → Parameter}
   {utility : Parameter × PublicOutcome setup.program → Player → ℝ}
   {excludedPayoff : Player → ℝ}
 
+/-- The encoded initial law retains every source input, and the wire catalogue
+covers every binding value. These two finiteness conditions bound the entire
+intended history tree, including off-path decisions. -/
+theorem ClientSpec.finiteSource
+    (spec : ClientSpec setup timeouts leaks bounds horizon scheduler
+      parameter utility excludedPayoff) : Finite setup.intendedProtocol.History := by
+  have imageFinite := spec.finiteNature.initial_finite
+  change ((setup.initialDistribution.map fun draw => EventGraphRuntime.State.initial
+    (graph := setup.informationGraph) (setup.eventInputs draw)).support).Finite at imageFinite
+  rw [PMF.support_map] at imageFinite
+  have : setup.FiniteInitialSupport := ⟨imageFinite.of_finite_image (by
+    intro x _ y _ same
+    exact eventInputs_injective (congrArg
+      (fun state : EventGraphRuntime.State setup.informationGraph => state.config.inputs) same))⟩
+  have covered : bounds.CoversBindingValues := by
+    intro event
+    have allValues := spec.outputValues event
+    cases layout : setup.informationGraph.outputLayout event <;>
+      first | trivial | simpa only [layout] using allValues
+  exact setup.intended_finite_history
+    (sourceService_finiteBindingTypes setup (deps := setup.informationDependencies) bounds covered)
+
 open Classical in
 /-- An intended sequential equilibrium compiles to an actual native assessment
 that is sequentially rational against every policy in the supplied bounded raw
@@ -61,8 +85,7 @@ theorem intended_raw_sequentialEquilibrium_preserved
       parameter utility excludedPayoff intended native nativeSE nativeDistribution
         spec.evidenceService
       spec.observationRate spec.deliveryRate spec.delivery_nonnegative spec.coverage
-      spec.lowerUtility spec.upperUtility spec.lower_le spec.le_upper spec.deposit
-      spec.deposit_nonnegative spec.funded
+      spec.deposit spec.deposit_nonnegative spec.funded
   have fullSE := (target.isSequentialEquilibrium_iff_truncated_of_bounded _ _
     ((bounds.rawMenu timeouts leaks).bounded Initial horizon scheduler).wellFoundedHistories
     ((bounds.rawMenu timeouts leaks).bounded Initial horizon scheduler) _).mpr targetSE

@@ -6,6 +6,7 @@ public import Vegas.Examples.CorrelatedInitialBitsLedger
 public import Vegas.Examples.CorrelatedInitialBitsInformation
 public import Vegas.Game.ConditionedClientCompiler
 public import Vegas.Game.ConditionedClientSpecification
+public import Vegas.Game.ClientFunding
 public import Vegas.Pending.PeriodicServiceCompletion
 public import Vegas.Pending.ThinnedCountCollection
 
@@ -64,25 +65,32 @@ abbrev component (bit : Bool) := setup.conditionInitial signal bit
 
 /-- The same periodic scheduler, full pending observations, deposits and audit in both
 components, with each component's private initializer and source histories. -/
-def specification (bit : Bool) : ClientSpec (component bit) timeouts leaks bounds horizon
+def specification : ∀ bit : Bool, ClientSpec (component bit) timeouts leaks bounds horizon
     scheduler (fun _ => ()) utility (fun _ => 0) :=
-  Setup.conditionInitial_clientSpec (setup := setup) signal (fun _ => ()) utility (fun _ => 0)
-    bit (signal_supported bit)
+  let certificate := Setup.conditionInitial_clientSpec (setup := setup) (bounds := bounds)
+      signal (fun _ => ()) utility (fun _ => 0)
+      (inferInstance : app.FiniteNature (Vegas.initialDistribution setup) scheduler)
+      wellFormed contract (PeriodicService.timely (graph := graph))
+      (fun _ terminal _ who => (utility_bounds (setup.parameterOutcome (fun _ => ()) terminal)
+        who).1)
+      (by intro event; fin_cases event <;> intro value <;>
+          exact Finset.mem_image.mpr ⟨value, Finset.mem_univ _, rfl⟩)
+      (by intro input who payload binding; fin_cases input <;> cases binding)
+      (by intro who; cases who <;> decide)
+      (EvidenceReportService.thinned halfRate halfRate)
+      (fun _ => halfRate.val) (fun _ => halfRate.val) (fun _ => 800)
+      (fun _ => by norm_num [halfRate]) (thinnedCountEvidence_coverage halfRate halfRate)
+      (fun _ => by norm_num)
+      (by
+        intro compliant deviating who
+        have compared := ClientSpec.basePayoffGap_le_of_readoutBounds
+          (setup := setup) (timeouts := timeouts) (parameter := fun _ => ()) (utility := utility)
+          (excludedPayoff := fun _ => 0) (leaks := leaks) (fun _ => 0) (fun _ => 200)
+          (fun _ i => utility_bounds _ i) compliant.1.state deviating.1.state who
+        norm_num [halfRate] at compared ⊢
+        exact compared)
+  fun bit => certificate bit (signal_supported bit)
     (.independent (fun _ => ()) (conditioned_independent bit) (conditioned_observable bit))
-    (inferInstance : app.FiniteNature (Vegas.initialDistribution setup) scheduler)
-    wellFormed contract (PeriodicService.timely (graph := graph))
-    (fun _ => 0) (fun _ => 200)
-    (fun _ terminal _ who => utility_bounds (setup.parameterOutcome (fun _ => ()) terminal) who)
-    (fun _ terminal _ who => (utility_bounds (setup.parameterOutcome (fun _ => ()) terminal)
-      who).1)
-    (by intro event; fin_cases event <;> intro value <;>
-        exact Finset.mem_image.mpr ⟨value, Finset.mem_univ _, rfl⟩)
-    (by intro input who payload binding; fin_cases input <;> cases binding)
-    (by intro who; cases who <;> decide)
-    (EvidenceReportService.thinned halfRate halfRate)
-    (fun _ => halfRate.val) (fun _ => halfRate.val) (fun _ => 800)
-    (fun _ => by norm_num [halfRate]) (thinnedCountEvidence_coverage halfRate halfRate)
-    (fun _ => by norm_num) (fun _ => by norm_num [halfRate])
 
 abbrev compiled (intended : setup.intendedModel.BehavioralAssessment)
     (equilibrium : setup.IntendedSequentialEquilibrium (fun _ => ()) utility intended) :=
