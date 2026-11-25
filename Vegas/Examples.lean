@@ -35,6 +35,7 @@ public import Vegas.Examples.OddsEvensClientPosterior
 public import Vegas.Examples.OddsEvensClientInput
 public import Vegas.Examples.OddsEvensClientOpening
 public import Vegas.Examples.OddsEvensClientOutput
+public import Vegas.Examples.OddsEvensClientExecution
 public import Vegas.Examples.OddsEvensCommitmentObservation
 public import Vegas.Examples.OddsEvensCommitmentPayoff
 public import Vegas.Examples.OddsEvensExecutableClient

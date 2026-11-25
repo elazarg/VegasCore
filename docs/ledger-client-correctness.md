@@ -160,7 +160,18 @@ reads these inputs from the actual typed callback and own recall, with
 pointwise equality to the model decoder on every input. For the allocator, a
 [bounded search](../Vegas/Pending/BoundedCanonicalSlot.lean) using a player's
 recall length agrees with the canonical slot at every initialized service
-history. Execution of the complete typed packet path remains open.
+history. The [executable callback](../Vegas/Examples/OddsEvensClientOutput.lean)
+returns the complete raw packet action from the typed view, own recall and a
+coin. This includes forwarding an available opening certificate and remaining
+silent after an earlier submission. Its fair-coin distribution equals the
+prescribed action distribution at every initialized history.
+
+The [execution theorem](../Vegas/Examples/OddsEvensClientExecution.lean) allows
+either or both players to install this callback. For every scheduler, number
+of rounds and choice of the remaining players’ policies, the complete
+execution distribution agrees with the corresponding run of the prescribed
+clients. This includes packets, receipts, private recall and the application
+state at intermediate rounds.
 
 When both handwritten clients are used, [the honest-prefix theorem](../Vegas/Examples/OddsEvensHonestCommitment.lean)
 shows that the ledger contains no matching certificate before the second
