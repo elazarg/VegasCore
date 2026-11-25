@@ -132,6 +132,12 @@ its preceding own recall. Opponents' actions are unrestricted. This includes
 failures and disclosures caused by opponents, while excluding prior actions
 that the compiled player would never have taken.
 
+For Odds–Evens, every supported client response belongs to the concrete
+bounded menu at every legal decision compatible with that player's own prior
+responses. Choosing silence after an incompatible own response gives a total
+admissible policy. Both statements allow opponents to deviate within the menu.
+See the [client admissibility proofs](../Vegas/Examples/OddsEvensClientAdmissibility.lean).
+
 The desired compiler interface supplies an explicit client for each intended
 equilibrium, and a consistent sequential-equilibrium assessment agreeing with
 that client at every compatible decision of each player. At other decisions,

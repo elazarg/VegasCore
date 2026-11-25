@@ -36,6 +36,7 @@ public import Vegas.Examples.OddsEvensClientInput
 public import Vegas.Examples.OddsEvensClientRecall
 public import Vegas.Examples.OddsEvensClientOpening
 public import Vegas.Examples.OddsEvensClientOutput
+public import Vegas.Examples.OddsEvensClientAdmissibility
 public import Vegas.Examples.OddsEvensClientExecution
 public import Vegas.Examples.OddsEvensCommitmentObservation
 public import Vegas.Examples.OddsEvensCommitmentPayoff
