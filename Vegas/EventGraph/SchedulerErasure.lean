@@ -365,18 +365,19 @@ theorem remaining_eq_of_runKey_eq {left right : graph.Config} (same : runKey lef
   have cut : left.cut = right.cut := congrArg Prod.fst same
   simp only [Config.remaining, cut]
 
-theorem canonicalLaw_step (profile : graph.BehavioralProfile) (config : graph.Config)
-    (notTerminal : ¬ config.cut.Terminal) (event : graph.EventId) (ready : config.cut.Ready event)
+/-- The full canonical configuration law factors through its next graph event. -/
+theorem runPlan_remaining_canonical_step (profile : graph.BehavioralProfile) (config : graph.Config)
+    (event : graph.EventId) (ready : config.cut.Ready event)
     (least : ∀ other, config.cut.Ready other → event ≤ other) :
-    canonicalLaw profile config = (eventStep profile config event ready).bind
-      (canonicalLaw profile) := by
+    let plan := graph.policyPlan profile graph.canonicalScheduler
+    graph.runPlan plan config.remaining config = (eventStep profile config event ready).bind
+      (fun next => graph.runPlan plan next.remaining next) := by
+  dsimp only
   obtain ⟨rest, restEq⟩ : ∃ rest, config.remaining = rest + 1 := by
     have positive : config.remaining ≠ 0 :=
-      fun zero => notTerminal ((config.terminal_iff_remaining_zero).mpr zero)
+      fun zero => ready.not_terminal ((config.terminal_iff_remaining_zero).mpr zero)
     exact ⟨config.remaining - 1, by omega⟩
-  unfold canonicalLaw
-  rw [restEq, runPlan_canonical_succ profile rest config notTerminal event ready least,
-    PMF.map_bind]
+  rw [restEq, runPlan_canonical_succ profile rest config ready.not_terminal event ready least]
   apply bind_congr_on_support _
   intro next member
   have consumed : next.remaining + 1 = config.remaining := by
@@ -386,6 +387,14 @@ theorem canonicalLaw_step (profile : graph.BehavioralProfile) (config : graph.Co
     obtain ⟨action, _, stepped⟩ := member
     exact config.remaining_step event ready action next stepped
   rw [(by omega : next.remaining = rest)]
+
+theorem canonicalLaw_step (profile : graph.BehavioralProfile) (config : graph.Config)
+    (_notTerminal : ¬ config.cut.Terminal) (event : graph.EventId) (ready : config.cut.Ready event)
+    (least : ∀ other, config.cut.Ready other → event ≤ other) :
+    canonicalLaw profile config = (eventStep profile config event ready).bind
+      (canonicalLaw profile) := by
+  unfold canonicalLaw
+  rw [runPlan_remaining_canonical_step profile config event ready least, PMF.map_bind]
 
 /-- **(A)** The canonical law is read from the order-free key. -/
 theorem ReadyIndependent.canonicalLaw_congr {profile : graph.BehavioralProfile}
