@@ -1479,6 +1479,51 @@ theorem Vegas.Paper.sharedSignal_belief_covered {who : Player}
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.sharedSignal_belief_covered
 
+/-- Physical continuations of the same assessment at represented clean source
+boundaries, including off-path ones, preserve the full source configuration and
+ordinary utility, without defaults, failed reveals or audit charges. -/
+theorem Vegas.Paper.sharedSignal_continuation
+    (audit : ∀ key, (spec key).evidenceService = (spec baseKey).evidenceService)
+    (deposits : ∀ key, (spec key).deposit = (spec baseKey).deposit)
+    (rank : Nat)
+    (nativeStart : ((bounds.onePacketMenu timeouts leaks).protocol fullInitial horizon
+      scheduler).History)
+    (rawStart : ((raw).protocol fullInitial horizon scheduler).History)
+    (same : ((reactiveNormalization timeouts) leaks).history (raw)
+      (bounds.rawMenu_recall timeouts leaks) fullInitial horizon scheduler rawStart =
+      (bounds.onePacketRestriction timeouts leaks fullInitial horizon scheduler).history
+        nativeStart)
+    (anchor : (application setup timeouts leaks).Execution)
+    (state : nativeStart.state = some ⟨horizon - anchor.environmentRecall.length, none, anchor⟩)
+    (boundary : ReachedBoundary setup timeouts leaks horizon scheduler rank anchor)
+    (point : ProtocolState setup.program)
+    (decoded : sourceServicePrefix? setup rank anchor.application.config = some point)
+    (valid : ProtocolState.Intended setup.program point) :
+    let clients := (raw).decodeProfile fullInitial horizon scheduler (sharedAssessment).strategy
+    let continuation := (application setup timeouts leaks).finish fullInitial horizon scheduler
+      clients rawStart.state
+    continuation.bind (spec baseKey).observation =
+      (setup.continuationDistribution (setup.intendedOpeningProfile intended.strategy)
+        (some point)).map
+        (fun terminal => (some terminal, utility (setup.parameterOutcome parameter terminal))) ∧
+    ∀ final ∈ continuation.support,
+      ∃ (control : (application setup timeouts leaks).Control)
+        (terminal : Config Player L setup.program.terminalCtx),
+        final = some control ∧
+        sourceReadout setup timeouts leaks final = some terminal ∧
+        control.execution.application.config.defaulted = ∅ ∧
+        (∀ who, failedReveals setup.program who (publicOutcome setup.program terminal) = 0) ∧
+        ∀ who, TerminalAudit.charge (application setup timeouts leaks).stateTraffic
+          ((countAudit timeouts) leaks (spec baseKey).evidenceService.sample) final who = 0 :=
+  Setup.compiledComponent_continuation_at_globalSourceBoundary signal supported sharedFibers spec
+    intended equilibrium baseKey sharedReader common.native audit deposits rank nativeStart
+    rawStart same anchor state boundary point decoded valid
+
+/-- info: 'Vegas.Paper.sharedSignal_continuation' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.sharedSignal_continuation
+
 end SharedInitialSignal
 
 section ConcreteInstances
