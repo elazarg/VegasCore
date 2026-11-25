@@ -134,6 +134,7 @@ public import Vegas.Pending.ReactiveBindingSubmittedResponse
 public import Vegas.Pending.ReactiveBindingWindowDistribution
 public import Vegas.Pending.ReactiveBoundedHandles
 public import Vegas.Pending.ReactiveBoundedValues
+public import Vegas.Pending.BoundedCanonicalSlot
 public import Vegas.Pending.ReactiveCandidateBudget
 public import Vegas.Pending.ReactiveCanonicalDecision
 public import Vegas.Pending.ReactiveCanonicalMenu
