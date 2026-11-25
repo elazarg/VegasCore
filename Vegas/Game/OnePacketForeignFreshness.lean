@@ -121,7 +121,7 @@ theorem firstActivation_response_prefix_of_recall
     (owner : Player) (event : setup.informationGraph.EventId)
     (occurs : ∃ entry ∈ control.execution.logs owner, ActivatedAt setup timeouts leaks owner
       event entry)
-    (submissions : OwnSubmissionsAtTurn setup leaks control.execution owner) :
+    (submissions : OwnSubmissionsAtTurn timeouts leaks control.execution owner) :
     ∃ (before : (application setup timeouts leaks).Control)
       (prior : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some
         before))

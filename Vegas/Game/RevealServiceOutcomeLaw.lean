@@ -193,7 +193,7 @@ theorem concurrentClients_outcome_law (setup : Setup (Player := Player) (L := L)
     {Parameter : Type} (parameter : State L setup.context → Parameter) :
     ((serviceApplication setup setup.revealDependencies duration leaks).roundsFrom
         (serviceInitialLaw setup setup.revealDependencies) scheduler
-        (serviceReferenceTurnPolicy setup setup.revealDependencies duration leaks bound turns
+        (turnPolicy (serviceTimeouts setup setup.revealDependencies duration) leaks bound turns
           (firstTurnTiming setup turns setup.revealDependencies) (concurrentReference setup source))
         horizon).map (fun final =>
           (serviceRankedReadout setup setup.revealDependencies duration leaks
@@ -237,7 +237,7 @@ theorem concurrentClients_state_law (setup : Setup (Player := Player) (L := L))
     {Outcome : Type*} (read : State L setup.program.terminalCtx × DefaultHistory Player → Outcome) :
     ((serviceApplication setup setup.revealDependencies duration leaks).roundsFrom
         (serviceInitialLaw setup setup.revealDependencies) scheduler
-        (serviceReferenceTurnPolicy setup setup.revealDependencies duration leaks bound turns
+        (turnPolicy (serviceTimeouts setup setup.revealDependencies duration) leaks bound turns
           (firstTurnTiming setup turns setup.revealDependencies) (concurrentReference setup source))
         horizon).map (fun final =>
           (serviceRankedReadout setup setup.revealDependencies duration leaks

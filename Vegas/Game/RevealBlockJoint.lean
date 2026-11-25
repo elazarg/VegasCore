@@ -48,7 +48,7 @@ theorem binding_get_of_resolveOutput_success {Field : Type} [DecidableEq Field]
 theorem blockCounters_of_untouched {owner : Player} {event : (serviceGraph setup deps).EventId}
     {execution : (serviceApplication setup deps duration leaks).Execution}
     (untouched : Untouched setup leaks event execution)
-    (own : OwnSubmissionsAtTurn setup leaks execution owner) :
+    (own : OwnSubmissionsAtTurn (serviceTimeouts setup deps duration) leaks execution owner) :
     blockCounters execution owner event = (0, false) := by
   have never : ∀ entry ∈ execution.logs owner,
       entry.beforeView.application.publicView.ownTurn? owner ≠ some event := by
@@ -113,7 +113,7 @@ theorem ledgerBlock_joint {horizon : Nat}
     (execution : Seed → (serviceApplication setup deps duration leaks).Execution)
     (supported : ∀ seed ∈ prior.support, execution seed ∈
       ((serviceApplication setup deps duration leaks).roundsFrom (serviceInitialLaw setup deps)
-        scheduler (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound
+        scheduler (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound
           turns (firstTurnTiming setup turns deps) reference) who deviation)
         (execution seed).environmentRecall.length).support)
     (bounded : ∀ seed ∈ prior.support, (execution seed).environmentRecall.length ≤ horizon)
@@ -123,7 +123,7 @@ theorem ledgerBlock_joint {horizon : Nat}
       start ≤ event.val → event.val < finish → Untouched setup leaks event (execution seed))
     (completes : ∀ seed ∈ prior.support, ∀ final ∈
       ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
-        (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+        (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
           (firstTurnTiming setup turns deps) reference) who deviation)
         (fun current => BlockDone finish current.application.config) horizon
         (execution seed)).support,
@@ -140,7 +140,7 @@ theorem ledgerBlock_joint {horizon : Nat}
       (endKey : RunKey (serviceGraph setup deps) → _ → RunKey (serviceGraph setup deps)),
       (prior.bind fun seed =>
         ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
-          (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+          (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
             (firstTurnTiming setup turns deps) reference) who deviation)
           (fun current => BlockDone finish current.application.config) horizon
           (execution seed)).map fun final => (runKey (execution seed).application.config,
@@ -150,21 +150,21 @@ theorem ledgerBlock_joint {horizon : Nat}
             fun extra => (current, extra)) ∧
       (prior.bind fun seed =>
         ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
-          (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+          (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
             (firstTurnTiming setup turns deps) reference) who deviation)
           (fun current => BlockDone finish current.application.config) horizon
           (execution seed)).map fun final => (runKey final.application.config,
             (bindingTraffic (serviceTimeouts setup deps duration)) leaks who final)) =
         (prior.bind fun seed =>
           ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
-            (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+            (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
               (firstTurnTiming setup turns deps) reference) who deviation)
             (fun current => BlockDone finish current.application.config) horizon
             (execution seed)).map fun final => runKey final.application.config).bind
           (fun current => (nextNoise (keyView who current)).map fun extra => (current, extra)) ∧
       ∀ seed ∈ prior.support, ∀ final ∈
         ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
-          (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+          (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
             (firstTurnTiming setup turns deps) reference) who deviation)
           (fun current => BlockDone finish current.application.config) horizon
           (execution seed)).support,
@@ -174,7 +174,7 @@ theorem ledgerBlock_joint {horizon : Nat}
   let G := serviceGraph setup deps
   let app := serviceApplication setup deps duration leaks
   let timeouts := serviceTimeouts setup deps duration
-  let players := Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound
+  let players := Function.update (turnPolicy timeouts leaks bound
     turns (firstTurnTiming setup turns deps) reference) who deviation
   let run := fun seed => app.runUntilHorizon scheduler players
     (fun current => BlockDone finish current.application.config) horizon (execution seed)
@@ -245,7 +245,8 @@ theorem ledgerBlock_joint {horizon : Nat}
     rw [stopped, PMF.mem_support_pure_iff] at reached
     rw [reached]
   have atTurnOf (seed : Seed) (member : seed ∈ prior.support) :
-      ∀ owner, owner ≠ who → OwnSubmissionsAtTurn setup leaks (execution seed) owner :=
+      ∀ owner, owner ≠ who → OwnSubmissionsAtTurn
+        (serviceTimeouts setup deps duration) leaks (execution seed) owner :=
     fun owner different => (canonicalSlots_roundsFrom_reference serial scheduler players owner
       (firstTurnTiming setup turns deps) reference (Function.update_of_ne different _ _)
       _ (execution seed) (supported seed member)).1

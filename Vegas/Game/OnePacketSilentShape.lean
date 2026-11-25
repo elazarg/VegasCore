@@ -57,7 +57,7 @@ theorem respondEntry_activatedAt {who : Player} {execution : (application setup 
     {event : setup.informationGraph.EventId}
     (turn : execution.application.publicView.ownTurn? who = some event)
     (response : (application setup timeouts leaks).Action) :
-    ActivatedAt setup timeouts leaks who event (respondEntry setup timeouts leaks execution who
+    ActivatedAt setup timeouts leaks who event (respondEntry timeouts leaks execution who
       response) :=
   turn
 
@@ -92,11 +92,11 @@ theorem certificate_firstActivation_lateOwnerShape
       (Profile.update (sig := (onePacketN).behavioralSignature) (targetSequence n).strategy who
         (((targetSequence n).strategy who).withLaw site.1 law)) who event
       execution.application.config
-      (execution.logs who ++ [respondEntry setup timeouts leaks execution who response]) := by
+      (execution.logs who ++ [respondEntry timeouts leaks execution who response]) := by
   intro later laterRemaining reached state holds
   obtain ⟨atSent, extends_, unrecordedHere⟩ := (by simpa only [state] using holds :
     LateUnsent setup timeouts leaks who event execution.application.config
-      (execution.logs who ++ [respondEntry setup timeouts leaks execution who response])
+      (execution.logs who ++ [respondEntry timeouts leaks execution who response])
       (some ⟨laterRemaining, some who, reached⟩))
   rw [Profile.update_same]
   -- The later recall is longer than the site's, so the decision is not the site's.
@@ -121,7 +121,7 @@ theorem certificate_firstActivation_lateOwnerShape
     rw [atSent]
     exact (execution.application.publicView_eventReady event).mp readyView
   have activated : ∃ entry ∈ reached.logs who, ActivatedAt setup timeouts leaks who event entry :=
-    ⟨respondEntry setup timeouts leaks execution who response,
+    ⟨respondEntry timeouts leaks execution who response,
       extends_.subset (List.mem_append_right _ (List.mem_singleton_self _)),
       respondEntry_activatedAt setup timeouts leaks turn response⟩
   exact ⟨_, (certificate_strategyShape setup timeouts leaks bounds horizon scheduler sequence scale
@@ -184,7 +184,7 @@ theorem certificate_firstActivation_lateOwnerShapeFrom
   · -- Later: the late component, after a response at the site.
     obtain ⟨response, extends_⟩ := extended sameRecall
     have unsent : LateUnsent setup timeouts leaks who event execution.application.config
-        (execution.logs who ++ [respondEntry setup timeouts leaks execution who response])
+        (execution.logs who ++ [respondEntry timeouts leaks execution who response])
         later.state := by
       rw [state] at holds ⊢
       exact ⟨holds.1, extends_, holds.2.2⟩

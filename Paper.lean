@@ -395,7 +395,7 @@ theorem Vegas.Paper.intended_concurrent_ledger
       (serviceInitialLaw setup deps) ledgerHorizon scheduler delay bound)
     (timely : AsyncTimely (serviceTimeouts setup deps duration) delay bound) :
     let app := serviceApplication setup deps duration leaks
-    let clients := serviceReferenceTurnPolicy setup deps duration leaks bound turns
+    let clients := turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
       (firstTurnTiming setup turns deps)
       (effectiveOpening (compilePrescribedProfile setup.program deps
         (setup.decodeBehavioralProfile forfeiture target)))
@@ -442,7 +442,7 @@ theorem Vegas.Paper.intended_bindingReveal_ledger
       (serviceInitialLaw setup bindingRevealDeps) ledgerHorizon scheduler delay bound)
     (timely : AsyncTimely (serviceTimeouts setup bindingRevealDeps duration) delay bound) :
     let app := serviceApplication setup bindingRevealDeps duration leaks
-    let clients := serviceReferenceTurnPolicy setup bindingRevealDeps duration leaks bound turns
+    let clients := turnPolicy (serviceTimeouts setup bindingRevealDeps duration) leaks bound turns
       (firstTurnTiming setup turns bindingRevealDeps)
       (effectiveOpening (compilePrescribedProfile setup.program bindingRevealDeps
         (setup.decodeBehavioralProfile forfeiture target)))

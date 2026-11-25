@@ -681,8 +681,8 @@ theorem committed_sourceKernel
       outputEq response member material sends packet after afterTrace
     obtain ⟨_, records, emitted, _, _, stable, _⟩ := acceptance
     have invariant : OpenableCommitmentInvariant setup timeouts leaks bounds horizon scheduler who
-        (respondEntry setup timeouts leaks execution who response)
-        (sentEnvelope setup timeouts leaks execution who material) event (who, .prepared serial)
+        (respondEntry timeouts leaks execution who response)
+        (sentEnvelope timeouts leaks execution who material) event (who, .prepared serial)
           outputEq
         value execution.application.config ready committed next.state := by
       rw [nextState]

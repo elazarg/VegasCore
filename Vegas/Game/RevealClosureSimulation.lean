@@ -54,11 +54,11 @@ theorem solitary_phaseJoint {horizon : Nat}
       ((bindingTraffic (serviceTimeouts setup deps duration)) leaks who) (keyView who)
       (fun policy => keyTarget ((serviceGraph setup deps).lastDeviationProfile base who policy)
         who)
-      (PhaseBoundary scheduler (Function.update (serviceReferenceTurnPolicy setup deps duration
+      (PhaseBoundary scheduler (Function.update (turnPolicy (serviceTimeouts setup deps duration)
         leaks bound turns (firstTurnTiming setup turns deps)
         ((serviceGraph setup deps).normalizeProfile base)) who deviation) horizon event.val)
       (fun execution => (serviceApplication setup deps duration leaks).runUntilHorizon scheduler
-        (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+        (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
           (firstTurnTiming setup turns deps) ((serviceGraph setup deps).normalizeProfile base))
           who deviation)
         (fun current => event ∈ current.application.config.cut.completed) horizon execution) := by
@@ -66,7 +66,7 @@ theorem solitary_phaseJoint {horizon : Nat}
   let G := serviceGraph setup deps
   let R := G.normalizeProfile base
   let app := serviceApplication setup deps duration leaks
-  let players := Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound
+  let players := Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound
     turns (firstTurnTiming setup turns deps) R) who deviation
   have alone := alone_of_not_publication concurrent notPublication
   have endpoint := solitaryPhase_endpoint contract players concurrent event notPublication
@@ -207,7 +207,7 @@ theorem closureDeviationSimulation {horizon : Nat}
     (concurrent : (serviceGraph setup deps).RevealsOnlyConcurrent) :
     ∀ rank, rank ≤ (serviceGraph setup deps).order.eventCount →
       DeviationSimulation scheduler
-        (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+        (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
           (firstTurnTiming setup turns deps) ((serviceGraph setup deps).normalizeProfile base))
           who deviation) horizon readErased
         (fun execution => runKey (closure ((serviceGraph setup deps).normalizeProfile base) who
@@ -215,14 +215,14 @@ theorem closureDeviationSimulation {horizon : Nat}
         ((bindingTraffic (serviceTimeouts setup deps duration)) leaks who) (keyView who)
         (fun policy => keyTarget ((serviceGraph setup deps).lastDeviationProfile base who policy)
           who)
-        (PhaseBoundary scheduler (Function.update (serviceReferenceTurnPolicy setup deps duration
+        (PhaseBoundary scheduler (Function.update (turnPolicy (serviceTimeouts setup deps duration)
           leaks bound turns (firstTurnTiming setup turns deps)
           ((serviceGraph setup deps).normalizeProfile base)) who deviation) horizon rank) := by
   classical
   let G := serviceGraph setup deps
   let R := G.normalizeProfile base
   let app := serviceApplication setup deps duration leaks
-  let players := Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound
+  let players := Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound
     turns (firstTurnTiming setup turns deps) R) who deviation
   let point := fun execution : app.Execution => runKey (closure R who execution.application.config)
   suffices step : ∀ gap rank, G.order.eventCount - rank = gap → rank ≤ G.order.eventCount →
@@ -341,7 +341,7 @@ theorem closure_deviation_erased_law {horizon : Nat}
     ∃ policy : (serviceGraph setup deps).BehavioralPolicy who,
       (serviceInitialLaw setup deps).bind (fun state =>
         ((serviceApplication setup deps duration leaks).runToHorizon scheduler
-          (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+          (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
             (firstTurnTiming setup turns deps) ((serviceGraph setup deps).normalizeProfile base))
             who deviation) horizon
           (ReactiveApplication.Execution.initial (serviceApplication setup deps duration leaks)
@@ -353,7 +353,7 @@ theorem closure_deviation_erased_law {horizon : Nat}
   let G := serviceGraph setup deps
   let R := G.normalizeProfile base
   let app := serviceApplication setup deps duration leaks
-  let players := Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound
+  let players := Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound
     turns (firstTurnTiming setup turns deps) R) who deviation
   let traffic := (bindingTraffic (serviceTimeouts setup deps duration)) leaks who
   let start := fun state : EventGraphRuntime.State G =>

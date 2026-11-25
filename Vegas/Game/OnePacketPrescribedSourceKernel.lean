@@ -270,8 +270,8 @@ private theorem clear_step_effective {before after : setup.informationGraph.Conf
     {event : setup.informationGraph.EventId} (ready : before.cut.Ready event)
     (action : setup.informationGraph.Action event)
     (supported : after ∈ (before.step event ready action).support)
-    (clear : after.defaulted = ∅) : EffectiveAction before event action := by
-  unfold EffectiveAction
+    (clear : after.defaulted = ∅) : EventGraphRuntime.EffectiveAction before event action := by
+  unfold EventGraphRuntime.EffectiveAction
   cases node : nodeView setup.informationGraph event with
   | sample | bind => trivial
   | resolve owner payload binding checks outputEq codeEq =>

@@ -70,7 +70,7 @@ theorem counted_accepted_stop_runFrom
       message event sent action output (some control))
     (atSent : control.execution.application.config = sent)
     (owned : setup.informationGraph.actor? event = some who)
-    (fresh : FreshCall setup leaks who event bound entry message)
+    (fresh : FreshCall timeouts leaks who event bound entry message)
     {Γ : SourceCtx Player L} {names : Finset VarId}
     (program : SourceProgram Player L Γ names) (profile : BehavioralProfile program)
     (refs : ContextRefs setup.informationGraph.layout Γ) (source : SourceProgram.Config Player L Γ)

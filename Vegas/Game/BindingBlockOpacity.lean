@@ -63,14 +63,14 @@ theorem bindingBlock_stopped_traffic_congr
     (leftInside : InBlock start finish leftStart.application.config)
     (rightInside : InBlock start finish rightStart.application.config)
     (leftCanonical : ∀ actor, actor ≠ focal →
-      OwnSubmissionsAtTurn setup leaks leftStart actor ∧
+      OwnSubmissionsAtTurn (serviceTimeouts setup deps duration) leaks leftStart actor ∧
         CanonicalSlotsUsed setup leaks leftStart actor)
     (rightCanonical : ∀ actor, actor ≠ focal →
-      OwnSubmissionsAtTurn setup leaks rightStart actor ∧
+      OwnSubmissionsAtTurn (serviceTimeouts setup deps duration) leaks rightStart actor ∧
         CanonicalSlotsUsed setup leaks rightStart actor) :
     let app := serviceApplication setup deps duration leaks
     let players := fun reference => Function.update
-      (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+      (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps) reference) focal deviation
     (app.runUntil scheduler (players leftReference)
         stop count leftStart).map
@@ -87,7 +87,9 @@ theorem bindingBlock_stopped_traffic_congr
     (¬ BlockDone finish current.application.config →
       InBlock start finish current.application.config) ∧
     ∀ actor, actor ≠ focal →
-      OwnSubmissionsAtTurn setup leaks current actor ∧ CanonicalSlotsUsed setup leaks current actor
+      OwnSubmissionsAtTurn
+        (serviceTimeouts setup deps duration) leaks current actor ∧
+          CanonicalSlotsUsed setup leaks current actor
   have advance (reference : (serviceGraph setup deps).BehavioralProfile) (n : Nat)
       (current : app.Execution) (valid : invariant (n + 1) current)
       (running : ¬ BlockDone finish current.application.config)

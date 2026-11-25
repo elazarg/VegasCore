@@ -132,7 +132,7 @@ theorem concurrent_deviation_erased_law {horizon : Nat}
     ∃ policy : (serviceGraph setup deps).BehavioralPolicy who,
       (serviceInitialLaw setup deps).bind (fun state =>
         ((serviceApplication setup deps duration leaks).runToHorizon scheduler
-          (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+          (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
             (firstTurnTiming setup turns deps) ((serviceGraph setup deps).normalizeProfile base))
             who deviation) horizon
           (ReactiveApplication.Execution.initial (serviceApplication setup deps duration leaks)
@@ -142,7 +142,7 @@ theorem concurrent_deviation_erased_law {horizon : Nat}
           state.config := by
   classical
   let app := serviceApplication setup deps duration leaks
-  let players := Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound
+  let players := Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound
     turns (firstTurnTiming setup turns deps) ((serviceGraph setup deps).normalizeProfile base))
     who deviation
   let traffic := (bindingTraffic (serviceTimeouts setup deps duration)) leaks who

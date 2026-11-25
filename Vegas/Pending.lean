@@ -2,6 +2,23 @@ module
 
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
+public import Vegas.Pending.AcceptedContinuation
+public import Vegas.Pending.ActivationRecall
+public import Vegas.Pending.CallSettlement
+public import Vegas.Pending.CanonicalAcceptance
+public import Vegas.Pending.CanonicalTransmission
+public import Vegas.Pending.EffectiveAction
+public import Vegas.Pending.EventCompletionStopping
+public import Vegas.Pending.ExecutionFacts
+public import Vegas.Pending.FirstCallback
+public import Vegas.Pending.FirstTurnAction
+public import Vegas.Pending.FirstTurnClientSimulation
+public import Vegas.Pending.FirstTurnMixture
+public import Vegas.Pending.FirstTurnSilence
+public import Vegas.Pending.FirstTurnSimulation
+public import Vegas.Pending.FixedOpportunity
+public import Vegas.Pending.GraphCompletionLaw
+public import Vegas.Pending.GraphEventStepLaw
 public import Vegas.Pending.PeriodicService
 public import Vegas.Pending.PeriodicServiceClock
 public import Vegas.Pending.PeriodicServiceCapacity
@@ -152,11 +169,17 @@ public import Vegas.Pending.ReactiveStateInvariant
 public import Vegas.Pending.ReactiveSubmissionRecall
 public import Vegas.Pending.ReactiveUnusableBinding
 public import Vegas.Pending.ReactiveValueSwap
+public import Vegas.Pending.RecordedCall
 public import Vegas.Pending.RevealTranscript
 public import Vegas.Pending.ServicePlan
 public import Vegas.Pending.SilentAction
 public import Vegas.Pending.SilentContinuation
 public import Vegas.Pending.ThinnedCountCollection
+public import Vegas.Pending.TurnClient
+public import Vegas.Pending.TurnClientActionLaw
+public import Vegas.Pending.TurnClientRecovery
+public import Vegas.Pending.TurnClientSubmissions
+public import Vegas.Pending.TurnSubmissionDiscipline
 public import Vegas.Pending.ValueSwapPairs
 
 @[expose] public section

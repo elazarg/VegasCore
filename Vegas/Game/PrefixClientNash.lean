@@ -134,7 +134,7 @@ private theorem native_compileIntendedExtension_isεNash_of_comparison
     let repairedSource := setup.decodeBehavioralProfile admission repaired
     let reference := setup.informationGraph.submitProfile
       (compileEventProfile setup.program repairedSource)
-    let repairedClients := serviceReferenceTurnPolicy setup deps duration leaks bound turns
+    let repairedClients := turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
       (firstTurnTiming setup turns deps)
       (effectiveOpening ((serviceGraph setup deps).prefixProfile reference))
     (∀ focal (replacement : app.Policy), ∃ policy : setup.informationGraph.BehavioralPolicy focal,
@@ -148,7 +148,7 @@ private theorem native_compileIntendedExtension_isεNash_of_comparison
         (setup.graphPayoff setup.informationDependencies parameter utility
           (leastUtility utility) focal)) →
     let source := setup.decodeBehavioralProfile admission target
-    let clients := serviceReferenceTurnPolicy setup deps duration leaks bound turns
+    let clients := turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
       (firstTurnTiming setup turns deps)
       (effectiveOpening (compilePrescribedProfile setup.program deps source))
     let nativeGame := serviceGame setup deps duration leaks scheduler horizon
@@ -184,7 +184,7 @@ private theorem native_compileIntendedExtension_isεNash_of_comparison
     fun who => setup.submittedSourceProfile_disclosing _ who
       (setup.disclosingSourceProfile_disclosing target who)
   have clientsEq : repairedClients = clients := by
-    change serviceReferenceTurnPolicy setup deps duration leaks bound turns
+    change turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
       (firstTurnTiming setup turns deps)
       (effectiveOpening (compilePrescribedProfile setup.program deps repairedSource)) = clients
     dsimp only [repairedSource, repaired, admission, source, clients]
@@ -328,7 +328,7 @@ theorem native_compileIntendedExtension_preserved
     let app := serviceApplication setup deps duration leaks
     let admission := CommitmentInterface.forfeiture setup.program
     let source := setup.decodeBehavioralProfile admission target
-    let clients := serviceReferenceTurnPolicy setup deps duration leaks bound turns
+    let clients := turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
       (firstTurnTiming setup turns deps)
       (effectiveOpening (compilePrescribedProfile setup.program deps source))
     let nativeGame := serviceGame setup deps duration leaks scheduler horizon

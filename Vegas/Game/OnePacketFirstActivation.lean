@@ -4,7 +4,7 @@ module
 
 public import Vegas.Game.OnePacketCanonicalAcceptance
 public import Vegas.Game.SourceServiceFacts
-public import Vegas.Game.SourceServiceFreshCall
+public import Vegas.Pending.RecordedCall
 public import Vegas.Pending.ReactiveFirstOpportunity
 public import Interaction.ReactiveDecisionPredecessor
 
@@ -13,7 +13,7 @@ public import Interaction.ReactiveDecisionPredecessor
 /-! # Recorded response entries
 
 A response appends one entry to its author's recall
-(`Vegas.respondEntry`), and every later transition keeps that entry in place
+(`Vegas.EventGraphRuntime.respondEntry`), and every later transition keeps that entry in place
 (`Vegas.recordsEntry_transition`): at every later history the author's recall
 splits around it (`Vegas.RecordsEntry`). A decision state is reached from an
 idle state by activating its actor, which changes neither the application state
@@ -53,7 +53,7 @@ theorem recordsEntry_respond (execution : (application setup timeouts leaks).Exe
   Player)
     (response : (application setup timeouts leaks).Action) (remaining : Nat)
     (actor : Option Player) :
-    RecordsEntry setup timeouts leaks who (respondEntry setup timeouts leaks execution who response)
+    RecordsEntry setup timeouts leaks who (respondEntry timeouts leaks execution who response)
       (some ⟨remaining, actor, execution.respond (application setup timeouts leaks) who response⟩)
         := by
   refine ⟨execution.logs who, [], ?_⟩

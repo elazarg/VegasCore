@@ -59,7 +59,7 @@ theorem soleSegment_outcomeLaw
     (players : Player → ((reactiveApplication timeouts) leaks).Policy)
     (event : (serviceGraph setup deps).EventId)
     (follows : ∀ owner, (serviceGraph setup deps).actor? event = some owner →
-      players owner = serviceReferenceTurnPolicy setup deps timeouts.duration leaks bound turns
+      players owner = turnPolicy timeouts leaks bound turns
         (firstTurnTiming setup turns deps) client owner)
     (solitary : (serviceGraph setup deps).Solitary event)
     (leading : (serviceGraph setup deps).Leading event)
@@ -96,7 +96,7 @@ theorem soleSegment_outcomeLaw
         ((serviceGraph setup deps).playerObserve owner execution.application.config) active
       have callback (current : app.Execution)
           (same : current.application.config = execution.application.config) :
-          serviceReferencePolicy setup deps timeouts.duration leaks client owner
+          referencePolicy timeouts leaks client owner
               (current.logs owner) (current.observe app owner) =
             law.map (fun action => (canonicalServiceDecision timeouts) leaks owner
               (current.logs owner) (current.observe app owner) event action) := by
@@ -114,9 +114,9 @@ theorem soleSegment_outcomeLaw
         rw [sourceServiceCanonicalPolicy_at_event_reference setup leaks client owner current event
           turn owned, dite_eq_right currentActive]
         exact congrArg (PMF.map _) (kernel _ _ same currentActive active)
-      have mixture := serviceReference_firstTurn_mixture timeouts leaks scheduler bound client
-        owner event owned solitary players (follows owner owned) execution ready supported
-        untouched bounded law callback
+      have mixture := firstTurn_mixture timeouts leaks scheduler bound client owner event owned
+        players (follows owner owned) execution (fun _ other => solitary _ other ready)
+        supported (untouched owner) bounded law (fun current same _ => callback current same)
       rw [mixture, PMF.bind_bind, outcomeLaw_actor client read execution.application.config event
         ready least owner owned active]
       apply bind_congr_on_support _

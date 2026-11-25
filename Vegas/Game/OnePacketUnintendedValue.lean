@@ -60,7 +60,7 @@ theorem unintendedCommitment_phase_owes
     (response : (application setup timeouts leaks).Action) (material : (application setup timeouts
       leaks).Submission)
     (submits : response.transmission = some material) {candidate : Handle setup.informationGraph}
-    (call : (sentEnvelope setup timeouts leaks execution who material).payload.call =
+    (call : (sentEnvelope timeouts leaks execution who material).payload.call =
       .commitment event candidate)
     (fixed : (execution.respond (application setup timeouts leaks) who
       response).application.candidates.lookup candidate ≠ .fresh)
@@ -95,8 +95,8 @@ theorem unintendedCommitment_phase_owes
   have sameConfig := ((reactive_respond_application timeouts) leaks execution who response).1
   have start : UnintendedCommitmentInvariant setup timeouts leaks bounds horizon scheduler profile
     who
-      (respondEntry setup timeouts leaks execution who response)
-      (sentEnvelope setup timeouts leaks execution who material) event candidate outputEq
+      (respondEntry timeouts leaks execution who response)
+      (sentEnvelope timeouts leaks execution who material) event candidate outputEq
       execution.application.config point history.state := by
     rw [current]
     refine ⟨⟨afterTrace⟩, recordsEntry_respond (timeouts := timeouts) execution who response

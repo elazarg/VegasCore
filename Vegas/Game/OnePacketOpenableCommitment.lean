@@ -435,12 +435,12 @@ theorem openableCommitmentInvariant_slot {remaining : Nat} {who : Player}
   have sameConfig : (execution.respond (application setup timeouts leaks) who
       response).application.config = execution.application.config :=
     ((reactive_respond_application timeouts) leaks execution who response).1
-  refine ⟨respondEntry setup timeouts leaks execution who response, sentEnvelope setup timeouts
+  refine ⟨respondEntry timeouts leaks execution who response, sentEnvelope timeouts
     leaks execution who
     material, ⟨afterTrace⟩, recordsEntry_respond (timeouts := timeouts) execution who response
       remaining none, ?_, rfl,
     call, ?_, fun _ => sameConfig, fun done => ?_⟩
-  · change response.transmission.map (sentEnvelope setup timeouts leaks execution who) = _
+  · change response.transmission.map (sentEnvelope timeouts leaks execution who) = _
     rw [sends]
     rfl
   · rw [responded, submitted]

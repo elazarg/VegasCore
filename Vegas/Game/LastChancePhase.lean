@@ -115,7 +115,7 @@ theorem chance_phase_joint
     (completes : ∀ seed ∈ prior.support, ∀ final ∈
       ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
         (Function.update
-          (serviceReferenceTurnPolicy setup deps duration leaks bound turns timing reference) who
+          (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns timing reference) who
           deviation)
         (fun current => event ∈ current.application.config.cut.completed) horizon
         (execution seed)).support,
@@ -129,7 +129,7 @@ theorem chance_phase_joint
       (prior.bind fun seed =>
         ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
           (Function.update
-            (serviceReferenceTurnPolicy setup deps duration leaks bound turns timing reference)
+            (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns timing reference)
             who deviation)
           (fun current => event ∈ current.application.config.cut.completed) horizon
           (execution seed)).map fun final => (runKey final.application.config,
@@ -137,7 +137,7 @@ theorem chance_phase_joint
         (prior.bind fun seed =>
           ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
             (Function.update
-              (serviceReferenceTurnPolicy setup deps duration leaks bound turns timing reference)
+              (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns timing reference)
               who deviation)
             (fun current => event ∈ current.application.config.cut.completed) horizon
             (execution seed)).map fun final => runKey final.application.config).bind
@@ -147,7 +147,7 @@ theorem chance_phase_joint
   let app := serviceApplication setup deps duration leaks
   let timeouts := serviceTimeouts setup deps duration
   let players := Function.update
-    (serviceReferenceTurnPolicy setup deps duration leaks bound turns timing reference) who
+    (turnPolicy timeouts leaks bound turns timing reference) who
     deviation
   let phase := fun seed => app.runUntilHorizon scheduler players
     (fun current => event ∈ current.application.config.cut.completed) horizon (execution seed)
@@ -334,7 +334,7 @@ theorem lastChance_phase
     (completes : ∀ seed ∈ prior.support, ∀ final ∈
       ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
         (Function.update
-          (serviceReferenceTurnPolicy setup deps duration leaks bound turns timing reference) who
+          (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns timing reference) who
           deviation)
         (fun current => event ∈ current.application.config.cut.completed) horizon
         (execution seed)).support,
@@ -348,7 +348,7 @@ theorem lastChance_phase
       (prior.bind fun seed =>
         ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
           (Function.update
-            (serviceReferenceTurnPolicy setup deps duration leaks bound turns timing reference)
+            (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns timing reference)
             who deviation)
           (fun current => event ∈ current.application.config.cut.completed) horizon
           (execution seed)).map fun final => (runKey final.application.config,
@@ -356,7 +356,7 @@ theorem lastChance_phase
         (prior.bind fun seed =>
           ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
             (Function.update
-              (serviceReferenceTurnPolicy setup deps duration leaks bound turns timing reference)
+              (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns timing reference)
               who deviation)
             (fun current => event ∈ current.application.config.cut.completed) horizon
             (execution seed)).map fun final => runKey final.application.config).bind
@@ -364,7 +364,7 @@ theorem lastChance_phase
       ∀ policy, (prior.bind fun seed =>
         ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
           (Function.update
-            (serviceReferenceTurnPolicy setup deps duration leaks bound turns timing reference)
+            (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns timing reference)
             who deviation)
           (fun current => event ∈ current.application.config.cut.completed) horizon
           (execution seed)).bind fun final =>
@@ -377,7 +377,7 @@ theorem lastChance_phase
   let G := serviceGraph setup deps
   let timeouts := serviceTimeouts setup deps duration
   let players := Function.update
-    (serviceReferenceTurnPolicy setup deps duration leaks bound turns timing reference) who
+    (turnPolicy timeouts leaks bound turns timing reference) who
     deviation
   have ownerlessNode : (G.nodes event).actor = none := ownerless
   have readyAt (seed : Seed) (supported : seed ∈ prior.support) :

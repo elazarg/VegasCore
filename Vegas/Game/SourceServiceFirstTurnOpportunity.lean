@@ -53,7 +53,8 @@ theorem firstTurn_inclusionFits {event : (serviceGraph setup deps).EventId}
     (owned : (serviceGraph setup deps).actor? event = some owner)
     (ready : execution.application.config.cut.Ready event)
     {view : (serviceApplication setup deps duration leaks).PlayerView}
-    (first : serviceTurn setup deps duration leaks owner event (execution.logs owner) view =
+    (first : turnIndex (serviceTimeouts setup deps duration)
+      leaks owner event (execution.logs owner) view =
         some 0) :
     execution.application.publicView.InclusionFitsDeadline (serviceTimeouts setup deps duration)
         bound event := by

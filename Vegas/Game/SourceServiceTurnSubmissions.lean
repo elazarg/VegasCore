@@ -6,7 +6,7 @@ public import Vegas.Game.SourceServiceFirstTurnMixture
 public import Vegas.Game.SourceServiceFacts
 public import Vegas.Game.SourceServiceCompletion
 public import Vegas.Pending.ReactiveAcceptedOutput
-public import Vegas.Pending.ReactiveCanonicalMenu
+public import Vegas.Pending.TurnSubmissionDiscipline
 
 @[expose] public section
 
@@ -40,10 +40,9 @@ variable {Player : Type} [DecidableEq Player]
 
 /-- A policy submits fresh packets only for the event that is its player's
 own turn. -/
-def SubmitsAtTurn (policy : (serviceApplication setup deps duration leaks).Policy) (who : Player) :
-    Prop := ∀ past view response, response ∈ (policy past view).support → ∀ event,
-    (submittedEvent? (serviceTimeouts setup deps duration)) leaks response = some event →
-    view.application.publicView.ownTurn? who = some event
+abbrev SubmitsAtTurn (policy : (serviceApplication setup deps duration leaks).Policy)
+    (who : Player) :
+    Prop := EventGraphRuntime.SubmitsAtTurn (serviceTimeouts setup deps duration) leaks policy who
 
 /-- Every recorded fresh submission was for its author's own turn. -/
 def SubmissionsAtTurn (execution : (serviceApplication setup deps duration leaks).Execution) :
@@ -51,60 +50,14 @@ def SubmissionsAtTurn (execution : (serviceApplication setup deps duration leaks
     (submittedEvent? (serviceTimeouts setup deps duration)) leaks entry.action = some event →
     entry.beforeView.application.publicView.ownTurn? who = some event
 
-theorem silentPolicy_submitsAtTurn (who : Player) :
-    SubmitsAtTurn setup leaks (serviceApplication setup deps duration leaks).silentPolicy who := by
-  intro past view response chosen event submitted
-  obtain rfl := (serviceApplication setup deps duration leaks).silentPolicy_cases past view
-      response chosen
-  simp [EventGraphRuntime.submittedEvent?] at submitted
-
-/-- A canonical compiled decision submits only for its own event. -/
-theorem submittedEvent_canonicalServiceDecision (who : Player)
-    (past : List (serviceApplication setup deps duration leaks).PlayerEntry)
-    (view : (serviceApplication setup deps duration leaks).PlayerView)
-    (event : (serviceGraph setup deps).EventId)
-    (action : (serviceGraph setup deps).Action event) (other : (serviceGraph setup deps).EventId)
-    (submitted : (submittedEvent? (serviceTimeouts setup deps duration)) leaks
-      ((canonicalServiceDecision (serviceTimeouts setup deps duration)) leaks who past view event
-          action) = some other) :
-    other = event := by
-  rcases (canonicalServiceDecision_cases (serviceTimeouts setup deps duration)) leaks who past view
-      event action with silent | named
-  · rw [silent] at submitted
-    cases submitted
-  · exact (Option.some.inj (named.symm.trans submitted)).symm
-
 theorem sourceServiceCanonicalPolicy_submitsAtTurn_reference (reference :
     (serviceGraph setup deps).BehavioralProfile)
     (who : Player) :
-    SubmitsAtTurn setup leaks (serviceReferencePolicy setup deps duration leaks reference who)
-        who := by
-  intro past view response chosen event submitted
-  unfold serviceReferencePolicy at chosen
-  split at chosen
-  · rename_i identity
-    split at chosen
-    · rw [PMF.mem_support_pure_iff] at chosen
-      subst chosen
-      simp [EventGraphRuntime.submittedEvent?] at submitted
-    · rename_i turn selected
-      split at chosen
-      · dsimp only at chosen
-        split at chosen
-        · rw [PMF.mem_support_pure_iff] at chosen
-          subst chosen
-          cases submitted
-        · rw [PMF.support_map] at chosen
-          obtain ⟨action, _, rfl⟩ := chosen
-          rw [submittedEvent_canonicalServiceDecision setup leaks who past view turn action event
-            submitted]
-          exact selected
-      · rw [PMF.mem_support_pure_iff] at chosen
-        subst chosen
-        simp [EventGraphRuntime.submittedEvent?] at submitted
-  · rw [PMF.mem_support_pure_iff] at chosen
-    subst chosen
-    simp [EventGraphRuntime.submittedEvent?] at submitted
+    SubmitsAtTurn setup leaks (referencePolicy (serviceTimeouts setup deps duration)
+      leaks reference who)
+        who :=
+  EventGraphRuntime.referencePolicy_submitsAtTurn (serviceTimeouts setup deps duration) leaks
+    reference who
 
 theorem sourceServiceCanonicalPolicy_submitsAtTurn (profile : BehavioralProfile setup.program)
     (who : Player) :
@@ -117,24 +70,10 @@ theorem sourceServiceCanonicalOpportunity_submitsAtTurn_reference
     (bound : (serviceGraph setup deps).EventId → Nat) (reference :
       (serviceGraph setup deps).BehavioralProfile)
     (who : Player) (event : (serviceGraph setup deps).EventId) : SubmitsAtTurn setup leaks
-      (serviceReferenceOpportunity setup deps duration leaks bound reference who event) who := by
-  intro past view response chosen other submitted
-  unfold serviceReferenceOpportunity at chosen
-  split at chosen
-  · exact silentPolicy_submitsAtTurn setup leaks who past view response chosen other submitted
-  · split at chosen
-    · rw [PMF.support_bind] at chosen
-      obtain ⟨decided, decidedChosen, member⟩ := Set.mem_iUnion₂.mp chosen
-      split at member
-      · exact silentPolicy_submitsAtTurn setup leaks who past view response member other
-          submitted
-      · rw [PMF.mem_support_pure_iff] at member
-        subst member
-        exact sourceServiceCanonicalPolicy_submitsAtTurn_reference setup leaks reference who past
-          view
-          response decidedChosen other submitted
-    · exact silentPolicy_submitsAtTurn setup leaks who past view response chosen other
-        submitted
+      (referenceOpportunity (serviceTimeouts setup deps duration) leaks
+        bound reference who event) who :=
+  EventGraphRuntime.referenceOpportunity_submitsAtTurn (serviceTimeouts setup deps duration) leaks
+    bound reference who event
 
 theorem sourceServiceCanonicalOpportunity_submitsAtTurn
     (bound : (serviceGraph setup deps).EventId → Nat) (profile : BehavioralProfile setup.program)
@@ -144,55 +83,15 @@ theorem sourceServiceCanonicalOpportunity_submitsAtTurn
     duration)
     (reference := compileEventProfile setup.program profile)
 
-theorem turnScheduledPolicy_submitsAtTurn
-    (turn : List (serviceApplication setup deps duration leaks).PlayerEntry →
-      (serviceApplication setup deps duration leaks).PlayerView → Option Nat)
-    {slots : Nat} (selected : Option (Fin slots))
-    (opening waiting : (serviceApplication setup deps duration leaks).Policy) (who : Player)
-    (openingAt : SubmitsAtTurn setup leaks opening who)
-    (waitingAt : SubmitsAtTurn setup leaks waiting who) :
-    SubmitsAtTurn setup leaks
-      ((serviceApplication setup deps duration leaks).turnScheduledPolicy turn selected opening
-          waiting) who := by
-  intro past view response chosen event submitted
-  unfold ReactiveApplication.turnScheduledPolicy at chosen
-  split at chosen
-  · exact waitingAt past view response chosen event submitted
-  · split at chosen
-    · exact openingAt past view response chosen event submitted
-    · exact waitingAt past view response chosen event submitted
-
-theorem policyMixture_submitsAtTurn {Index : Type} (initial : PMF Index)
-    (policies : Index → (serviceApplication setup deps duration leaks).Policy) (who : Player)
-    (each : ∀ index, SubmitsAtTurn setup leaks (policies index) who) :
-    SubmitsAtTurn setup leaks
-      ((serviceApplication setup deps duration leaks).policyMixture initial policies).policy
-      who := by
-  intro past view response chosen event submitted
-  rw [ReactiveApplication.policyMixture_policy, PMF.support_bind] at chosen
-  obtain ⟨index, _, member⟩ := Set.mem_iUnion₂.mp chosen
-  exact each index past view response member event submitted
-
 theorem sourceServiceTurnPolicy_submitsAtTurn_reference (bound :
     (serviceGraph setup deps).EventId → Nat)
     (turns : Nat) (timing : TurnTiming setup turns deps)
     (reference : (serviceGraph setup deps).BehavioralProfile) (who : Player) :
     SubmitsAtTurn setup leaks
-        (serviceReferenceTurnPolicy setup deps duration leaks bound turns timing reference who)
-      who := by
-  intro past view response chosen event submitted
-  unfold serviceReferenceTurnPolicy at chosen
-  split at chosen
-  · exact silentPolicy_submitsAtTurn setup leaks who past view response chosen event submitted
-  · split at chosen
-    · rename_i turnEvent _ owned
-      exact policyMixture_submitsAtTurn setup leaks _ _ who (fun slot =>
-        turnScheduledPolicy_submitsAtTurn setup leaks _ _ _ _ who
-          (sourceServiceCanonicalOpportunity_submitsAtTurn_reference setup leaks bound reference who
-            turnEvent)
-          (silentPolicy_submitsAtTurn setup leaks who)) past view response chosen event submitted
-    · exact silentPolicy_submitsAtTurn setup leaks who past view response chosen event
-        submitted
+        (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns timing reference who)
+      who :=
+  EventGraphRuntime.turnPolicy_submitsAtTurn (serviceTimeouts setup deps duration) leaks
+    bound turns timing reference who
 
 theorem sourceServiceTurnPolicy_submitsAtTurn (bound : (serviceGraph setup deps).EventId → Nat)
     (turns : Nat) (timing : TurnTiming setup turns deps)
@@ -212,73 +111,44 @@ theorem decidedTurnPolicy_submitsAtTurn (bound : (serviceGraph setup deps).Event
         (decidedTurnPolicy (duration := duration) setup leaks bound owner event
       action) owner := by
   intro past view response chosen other submitted
+  have silentAt := silentPolicy_submitsAtTurn (serviceTimeouts setup deps duration) leaks owner
   unfold decidedTurnPolicy ReactiveApplication.turnScheduledPolicy at chosen
   dsimp only at chosen
   split at chosen
   · rename_i first
     have turn : view.application.publicView.ownTurn? owner = some event := by
-      unfold serviceTurn at first
+      unfold EventGraphRuntime.turnIndex at first
       split at first
       · assumption
       · cases first
-    unfold decidedOpportunity at chosen
-    split at chosen
-    · exact silentPolicy_submitsAtTurn setup leaks owner past view response chosen other
-        submitted
-    · split at chosen
-      · split at chosen
-        · exact silentPolicy_submitsAtTurn setup leaks owner past view response chosen other
-            submitted
-        · rw [PMF.mem_support_pure_iff] at chosen
-          subst chosen
-          rw [submittedEvent_canonicalServiceDecision setup leaks owner past view event action
-            other submitted]
-          exact turn
-      · exact silentPolicy_submitsAtTurn setup leaks owner past view response chosen other
-          submitted
-  · exact silentPolicy_submitsAtTurn setup leaks owner past view response chosen other submitted
+    let timeouts := serviceTimeouts setup deps duration
+    let decision := canonicalServiceDecision timeouts leaks owner past view event action
+    have fromDecision (equal : response = decision) : other = event := by
+      subst response
+      exact submittedEvent_canonicalServiceDecision timeouts leaks owner past view event action
+        other submitted
+    by_cases prior : eventRecorded timeouts leaks past event
+    · rw [fixedOpportunity, ite_eq_left prior] at chosen
+      exact silentAt past view response chosen other submitted
+    · rw [fixedOpportunity, ite_eq_right prior] at chosen
+      by_cases fits : view.application.publicView.InclusionFitsDeadline timeouts bound event
+      · rw [ite_eq_left fits] at chosen
+        by_cases silent : decision.transmission = none
+        · rw [ite_eq_left silent] at chosen
+          exact silentAt past view response chosen other submitted
+        · rw [ite_eq_right silent, PMF.mem_support_pure_iff] at chosen
+          exact (fromDecision chosen).symm ▸ turn
+      · rw [ite_eq_right fits] at chosen
+        exact silentAt past view response chosen other submitted
+  · exact silentAt past view response chosen other submitted
 
 variable {setup leaks} in
 /-- Submissions at every author's turn are in particular one author's
 submissions at its turns. -/
 theorem SubmissionsAtTurn.own {execution : (serviceApplication setup deps duration leaks).Execution}
     (valid : SubmissionsAtTurn setup leaks execution) (who : Player) :
-    OwnSubmissionsAtTurn setup leaks execution who :=
+    OwnSubmissionsAtTurn (serviceTimeouts setup deps duration) leaks execution who :=
   fun entry member event submitted => valid who entry member event submitted
-
-/-- A round in which `who` submits only at its own turns keeps every recorded
-submission of `who` at its turn, whatever the other players do. -/
-theorem round_ownSubmissionsAtTurn
-    {scheduler : (serviceApplication setup deps duration leaks).Scheduler}
-    {players : Player → (serviceApplication setup deps duration leaks).Policy} {who : Player}
-    (atTurn : SubmitsAtTurn setup leaks (players who) who)
-    {execution next : (serviceApplication setup deps duration leaks).Execution}
-    (valid : OwnSubmissionsAtTurn setup leaks execution who)
-    (reached : next ∈
-        ((serviceApplication setup deps duration leaks).round scheduler players
-        execution).support) :
-    OwnSubmissionsAtTurn setup leaks next who := by
-  let app := serviceApplication setup deps duration leaks
-  obtain ⟨command, _, middle, moved, cases⟩ := round_cases setup leaks reached
-  have recallEq := app.environmentStep_recall execution middle command moved
-  rcases cases with ⟨_, rfl⟩ | ⟨responder, _, response, chosen, rfl⟩
-  · intro entry member
-    rw [recallEq] at member
-    exact valid entry member
-  · intro entry member event submitted
-    by_cases same : responder = who
-    · subst responder
-      obtain ⟨emitted, recalled, _⟩ := respond_recall_self setup leaks middle who response
-      rw [recalled] at member
-      rcases List.mem_append.mp member with prior | fresh
-      · rw [recallEq] at prior
-        exact valid entry prior event submitted
-      · rw [List.mem_singleton] at fresh
-        subst fresh
-        exact atTurn _ _ response chosen event submitted
-    · rw [app.respond_recall_other middle responder who (fun equal => same equal.symm)
-        response, recallEq] at member
-      exact valid entry member event submitted
 
 /-- Every initialized round preserves one player's submission discipline,
 independently of the other players and the initial native law. -/
@@ -289,21 +159,10 @@ theorem SubmitsAtTurn.roundsFrom
     (initial : PMF (serviceApplication setup deps duration leaks).State) :
     ∀ (count : Nat) (execution : (serviceApplication setup deps duration leaks).Execution),
       execution ∈ ((serviceApplication setup deps duration leaks).roundsFrom initial
-        scheduler players count).support → OwnSubmissionsAtTurn setup leaks execution who := by
-  let app := serviceApplication setup deps duration leaks
-  intro count
-  induction count with
-  | zero =>
-      intro execution supported
-      obtain ⟨state, _, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
-      cases (PMF.mem_support_pure_iff _ _).mp reached
-      intro entry member
-      cases member
-  | succ count ih =>
-      intro execution supported
-      rw [app.roundsFrom_succ initial scheduler players count] at supported
-      obtain ⟨prior, priorMember, moved⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
-      exact round_ownSubmissionsAtTurn setup leaks atTurn (ih prior priorMember) moved
+        scheduler players count).support → OwnSubmissionsAtTurn
+          (serviceTimeouts setup deps duration) leaks execution who :=
+  EventGraphRuntime.SubmitsAtTurn.roundsFrom (serviceTimeouts setup deps duration) leaks
+    atTurn initial
 
 /-- A round never changes a candidate whose meaning is fixed. -/
 theorem round_candidate_fixed {scheduler : (serviceApplication setup deps duration leaks).Scheduler}

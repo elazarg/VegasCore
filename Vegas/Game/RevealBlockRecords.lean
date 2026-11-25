@@ -65,7 +65,8 @@ def HonestBlockSubmissions (who : Player) (start finish : Nat)
 was seen ready. -/
 theorem honestBlockSubmissions_start (who : Player) (start finish : Nat)
     (execution : (serviceApplication setup deps duration leaks).Execution)
-    (atTurn : ∀ owner, owner ≠ who → OwnSubmissionsAtTurn setup leaks execution owner)
+    (atTurn : ∀ owner, owner ≠ who → OwnSubmissionsAtTurn
+      (serviceTimeouts setup deps duration) leaks execution owner)
     (untouched : ∀ event : (serviceGraph setup deps).EventId, start ≤ event.val →
       event.val < finish → Untouched setup leaks event execution) :
     HonestBlockSubmissions who start finish execution := by
@@ -107,7 +108,7 @@ theorem honestBlockSubmissions_round {horizon remaining : Nat}
     (running : ¬ BlockDone finish current.application.config)
     (valid : HonestBlockSubmissions who start finish current)
     (reached : next ∈ ((serviceApplication setup deps duration leaks).round scheduler
-      (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+      (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps) reference) who deviation) current).support) :
     HonestBlockSubmissions who start finish next := by
   let app := serviceApplication setup deps duration leaks
@@ -127,7 +128,7 @@ theorem honestBlockSubmissions_round {horizon remaining : Nat}
   intro owner different entry member event early late submitted
   by_cases same : owner = actor
   · subst actor
-    obtain ⟨emitted, recalled, _⟩ := respond_recall_self setup leaks middle owner response
+    obtain ⟨emitted, recalled, _⟩ := respond_recall_self _ leaks middle owner response
     rw [recalled] at member
     rcases List.mem_append.mp member with old | fresh
     · obtain ⟨available, accepted⟩ := middleValid owner different entry old event early late
@@ -142,9 +143,9 @@ theorem honestBlockSubmissions_round {horizon remaining : Nat}
       scheduler remaining current middle (.activate owner) trace selected moved
     rw [active] at middleTrace
     have facts := legalFacts setup leaks horizon scheduler _ middleTrace
-    have follows : Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound
+    have follows : Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound
         turns (firstTurnTiming setup turns deps) reference) who deviation owner =
-        serviceReferenceTurnPolicy setup deps duration leaks bound turns
+        turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
           (firstTurnTiming setup turns deps) reference owner := Function.update_of_ne different _ _
     rw [follows] at chosen
     have middlePublications : ∀ query, middle.application.config.cut.Ready query →
@@ -463,7 +464,7 @@ theorem blockRecordsSound_round
     (current next : (serviceApplication setup deps duration leaks).Execution)
     (supported : current ∈ ((serviceApplication setup deps duration leaks).roundsFrom
       (serviceInitialLaw setup deps) scheduler
-      (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+      (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps) reference) who deviation)
       current.environmentRecall.length).support)
     (bounded : current.environmentRecall.length ≤ horizon)
@@ -472,13 +473,13 @@ theorem blockRecordsSound_round
     (submissions : HonestBlockSubmissions who start finish current)
     (sound : BlockRecordsSound who start finish origin current.application.config)
     (reached : next ∈ ((serviceApplication setup deps duration leaks).round scheduler
-      (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+      (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps) reference) who deviation) current).support) :
     BlockRecordsSound who start finish origin next.application.config := by
   classical
   let app := serviceApplication setup deps duration leaks
   let timeouts := serviceTimeouts setup deps duration
-  let players := Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound
+  let players := Function.update (turnPolicy timeouts leaks bound
     turns (firstTurnTiming setup turns deps) reference) who deviation
   obtain ⟨trace⟩ := app.raw_trace_roundsFrom (serviceInitialLaw setup deps) horizon scheduler
     players current.environmentRecall.length bounded current supported
@@ -536,7 +537,7 @@ theorem blockRecordsSound_round
   have readyCase (ready : current.application.config.cut.Ready event) :
       start ≤ event.val ∧ event.val < finish := shaped _ inside running event ready
   have follows (owner : Player) (different : owner ≠ who) : players owner =
-      serviceReferenceTurnPolicy setup deps duration leaks bound turns
+      turnPolicy timeouts leaks bound turns
         (firstTurnTiming setup turns deps) reference owner := Function.update_of_ne different _ _
   cases command with
   | activate actor =>

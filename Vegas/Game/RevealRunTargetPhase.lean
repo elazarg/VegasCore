@@ -101,7 +101,7 @@ theorem targetStep_joint {horizon : Nat}
     (execution : Seed → (serviceApplication setup deps duration leaks).Execution)
     (supported : ∀ seed ∈ prior.support, execution seed ∈
       ((serviceApplication setup deps duration leaks).roundsFrom (serviceInitialLaw setup deps)
-        scheduler (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound
+        scheduler (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound
           turns (firstTurnTiming setup turns deps)
           ((serviceGraph setup deps).normalizeProfile base)) who deviation)
         (execution seed).environmentRecall.length).support)
@@ -120,7 +120,7 @@ theorem targetStep_joint {horizon : Nat}
       (nextNoise : Option ((serviceGraph setup deps).PlayerObservation who) → PMF _),
       (prior.bind fun seed =>
         ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
-          (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+          (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
             (firstTurnTiming setup turns deps) ((serviceGraph setup deps).normalizeProfile base))
             who deviation)
           (fun current => target ∈ current.application.config.cut.completed) horizon
@@ -133,7 +133,7 @@ theorem targetStep_joint {horizon : Nat}
           (fun current => (channel (keyView who current)).map fun extra => (current, extra)) ∧
       (prior.bind fun seed =>
         ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
-          (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+          (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
             (firstTurnTiming setup turns deps) ((serviceGraph setup deps).normalizeProfile base))
             who deviation)
           (fun current => target ∈ current.application.config.cut.completed) horizon
@@ -143,7 +143,7 @@ theorem targetStep_joint {horizon : Nat}
             (bindingTraffic (serviceTimeouts setup deps duration)) leaks who final)) =
         (prior.bind fun seed =>
           ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
-            (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+            (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
               (firstTurnTiming setup turns deps)
               ((serviceGraph setup deps).normalizeProfile base)) who deviation)
             (fun current => target ∈ current.application.config.cut.completed) horizon
@@ -152,7 +152,7 @@ theorem targetStep_joint {horizon : Nat}
           (fun current => (nextNoise (keyView who current)).map fun extra => (current, extra)) ∧
       ∀ seed ∈ prior.support, ∀ final ∈
         ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
-          (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+          (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
             (firstTurnTiming setup turns deps) ((serviceGraph setup deps).normalizeProfile base))
             who deviation)
           (fun current => target ∈ current.application.config.cut.completed) horizon
@@ -173,7 +173,7 @@ theorem targetStep_joint {horizon : Nat}
   let R := G.normalizeProfile base
   let app := serviceApplication setup deps duration leaks
   let timeouts := serviceTimeouts setup deps duration
-  let players := Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound
+  let players := Function.update (turnPolicy timeouts leaks bound
     turns (firstTurnTiming setup turns deps) R) who deviation
   let stop : G.order.Cut → Prop := fun cut => target ∈ cut.completed
   have stopDone : ∀ cut : G.order.Cut, (∀ event : G.EventId, event.val < finish →
@@ -502,7 +502,7 @@ theorem targetStep_phase {horizon : Nat}
     (execution : Seed → (serviceApplication setup deps duration leaks).Execution)
     (supported : ∀ seed ∈ prior.support, execution seed ∈
       ((serviceApplication setup deps duration leaks).roundsFrom (serviceInitialLaw setup deps)
-        scheduler (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound
+        scheduler (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound
           turns (firstTurnTiming setup turns deps)
           ((serviceGraph setup deps).normalizeProfile base)) who deviation)
         (execution seed).environmentRecall.length).support)
@@ -522,7 +522,7 @@ theorem targetStep_phase {horizon : Nat}
       (nextNoise : Option ((serviceGraph setup deps).PlayerObservation who) → PMF _),
       (prior.bind fun seed =>
         ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
-          (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+          (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
             (firstTurnTiming setup turns deps) ((serviceGraph setup deps).normalizeProfile base))
             who deviation)
           (fun current => target ∈ current.application.config.cut.completed) horizon
@@ -532,7 +532,7 @@ theorem targetStep_phase {horizon : Nat}
             (bindingTraffic (serviceTimeouts setup deps duration)) leaks who final)) =
         (prior.bind fun seed =>
           ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
-          (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+          (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
             (firstTurnTiming setup turns deps) ((serviceGraph setup deps).normalizeProfile base))
             who deviation)
           (fun current => target ∈ current.application.config.cut.completed) horizon
@@ -542,7 +542,7 @@ theorem targetStep_phase {horizon : Nat}
           (fun current => (nextNoise (keyView who current)).map fun extra => (current, extra)) ∧
       ∀ policy, (prior.bind fun seed =>
         ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
-          (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+          (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
             (firstTurnTiming setup turns deps) ((serviceGraph setup deps).normalizeProfile base))
             who deviation)
           (fun current => target ∈ current.application.config.cut.completed) horizon
@@ -558,7 +558,7 @@ theorem targetStep_phase {horizon : Nat}
   let G := serviceGraph setup deps
   let R := G.normalizeProfile base
   let app := serviceApplication setup deps duration leaks
-  let players := Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound
+  let players := Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound
     turns (firstTurnTiming setup turns deps) R) who deviation
   let stepRun := fun seed => app.runUntilHorizon scheduler players
     (fun current => target ∈ current.application.config.cut.completed) horizon (execution seed)
@@ -724,7 +724,7 @@ theorem finalStep_phase {horizon : Nat}
     (execution : Seed → (serviceApplication setup deps duration leaks).Execution)
     (supported : ∀ seed ∈ prior.support, execution seed ∈
       ((serviceApplication setup deps duration leaks).roundsFrom (serviceInitialLaw setup deps)
-        scheduler (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound
+        scheduler (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound
           turns (firstTurnTiming setup turns deps)
           ((serviceGraph setup deps).normalizeProfile base)) who deviation)
         (execution seed).environmentRecall.length).support)
@@ -744,7 +744,7 @@ theorem finalStep_phase {horizon : Nat}
       (nextNoise : Option ((serviceGraph setup deps).PlayerObservation who) → PMF _),
       (prior.bind fun seed =>
         ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
-          (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+          (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
             (firstTurnTiming setup turns deps) ((serviceGraph setup deps).normalizeProfile base))
             who deviation)
           (fun current => BlockDone finish current.application.config) horizon
@@ -754,7 +754,7 @@ theorem finalStep_phase {horizon : Nat}
             (bindingTraffic (serviceTimeouts setup deps duration)) leaks who final)) =
         (prior.bind fun seed =>
           ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
-          (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+          (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
             (firstTurnTiming setup turns deps) ((serviceGraph setup deps).normalizeProfile base))
             who deviation)
           (fun current => BlockDone finish current.application.config) horizon
@@ -764,7 +764,7 @@ theorem finalStep_phase {horizon : Nat}
           (fun current => (nextNoise (keyView who current)).map fun extra => (current, extra)) ∧
       ∀ policy, (prior.bind fun seed =>
         ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
-          (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+          (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
             (firstTurnTiming setup turns deps) ((serviceGraph setup deps).normalizeProfile base))
             who deviation)
           (fun current => BlockDone finish current.application.config) horizon
@@ -781,7 +781,7 @@ theorem finalStep_phase {horizon : Nat}
   let R := G.normalizeProfile base
   let app := serviceApplication setup deps duration leaks
   let timeouts := serviceTimeouts setup deps duration
-  let players := Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound
+  let players := Function.update (turnPolicy timeouts leaks bound
     turns (firstTurnTiming setup turns deps) R) who deviation
   let stop : G.order.Cut → Prop := fun cut =>
     ∀ event : G.EventId, event.val < finish → event ∈ cut.completed

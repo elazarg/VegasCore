@@ -41,10 +41,10 @@ def ownerTurns (owner : Player) (event : (serviceGraph setup deps).EventId)
 theorem serviceTurn_of_turn {owner : Player} {event : (serviceGraph setup deps).EventId}
     (execution : (serviceApplication setup deps duration leaks).Execution)
     (selected : execution.application.publicView.ownTurn? owner = some event) :
-    serviceTurn setup deps duration leaks owner event (execution.logs owner)
+    turnIndex (serviceTimeouts setup deps duration) leaks owner event (execution.logs owner)
         (execution.observe (serviceApplication setup deps duration leaks) owner) =
       some (ownerTurns owner event execution) := by
-  unfold serviceTurn ownerTurns
+  unfold EventGraphRuntime.turnIndex ownerTurns
   split
   · rfl
   · rename_i idle
@@ -269,9 +269,9 @@ theorem foreignRound_readout_congr (scheduler :
       simp only [players, Function.update_self]
       rw [leftPure, rightPure, PMF.pure_map, PMF.pure_map, PMF.pure_map, PMF.pure_map]
       apply congrArg PMF.pure
-      obtain ⟨leftEmitted, leftRecalled, _⟩ := respond_recall_self setup leaks leftActive owner
+      obtain ⟨leftEmitted, leftRecalled, _⟩ := respond_recall_self _ leaks leftActive owner
         leftResponse
-      obtain ⟨rightEmitted, rightRecalled, _⟩ := respond_recall_self setup leaks rightActive
+      obtain ⟨rightEmitted, rightRecalled, _⟩ := respond_recall_self _ leaks rightActive
         owner rightResponse
       refine Prod.ext traffic (Prod.ext ?_ ?_)
       · change ownerTurns owner event (leftActive.respond app owner leftResponse) =
@@ -524,7 +524,7 @@ private theorem decided_policy_canonical
   split at chosen
   · rename_i first
     have turn := (sourceServiceTurn_first first).1
-    unfold decidedOpportunity at chosen
+    unfold fixedOpportunity at chosen
     split at chosen
     · exact (silentPolicy_not_submit chosen material sends).elim
     · rename_i unrecorded
@@ -588,7 +588,7 @@ theorem decidedTurnPolicy_closed {bound : (serviceGraph setup deps).EventId → 
   by_cases first : ownerTurns owner event execution = 0
   · rw [(serviceApplication setup deps duration leaks).turnScheduledPolicy_selected _ (0 : Fin 1)
       _ _ _ _ (by rw [turn, first]; rfl)]
-    unfold decidedOpportunity
+    unfold fixedOpportunity
     by_cases recorded : (eventRecorded (serviceTimeouts setup deps duration)) leaks
         (execution.logs owner) event = true
     · simp only [recorded, ↓reduceIte, ReactiveApplication.silentPolicy_apply]
@@ -620,7 +620,8 @@ theorem decidedTurnPolicy_open {bound : (serviceGraph setup deps).EventId → Na
     (first : ownerTurns owner event execution = 0) :
     decidedTurnPolicy setup leaks bound owner event action (execution.logs owner)
         (execution.observe (serviceApplication setup deps duration leaks) owner) =
-      decidedOpportunity setup leaks bound owner event action (execution.logs owner)
+      fixedOpportunity (serviceTimeouts setup deps duration) leaks
+        bound owner event action (execution.logs owner)
         (execution.observe (serviceApplication setup deps duration leaks) owner) := by
   have turn := serviceTurn_of_turn execution selected
   unfold decidedTurnPolicy
@@ -640,13 +641,14 @@ theorem decidedOpportunity_transmits {bound : (serviceGraph setup deps).EventId 
     (decision : (canonicalServiceDecision (serviceTimeouts setup deps duration)) leaks owner
       (execution.logs owner) (execution.observe (serviceApplication setup deps duration leaks)
         owner) event action = ⟨some material⟩) :
-    decidedOpportunity setup leaks bound owner event action (execution.logs owner)
+    fixedOpportunity (serviceTimeouts setup deps duration) leaks
+      bound owner event action (execution.logs owner)
         (execution.observe (serviceApplication setup deps duration leaks) owner) =
       PMF.pure ⟨some material⟩ := by
   have fitsView : (execution.observe (serviceApplication setup deps duration leaks)
       owner).application.publicView.InclusionFitsDeadline (serviceTimeouts setup deps duration)
         bound event := fits
-  unfold decidedOpportunity
+  unfold fixedOpportunity
   simp only [unrecorded, Bool.false_eq_true, ↓reduceIte, fitsView, decision, reduceCtorEq]
 
 
@@ -666,7 +668,7 @@ private theorem decided_binding_response
     (trace : ((serviceApplication setup deps duration leaks).protocol
       (serviceInitialLaw setup deps) horizon scheduler).Trace
         (some ⟨remaining + 1, none, current⟩))
-    (own : OwnSubmissionsAtTurn setup leaks current owner)
+    (own : OwnSubmissionsAtTurn (serviceTimeouts setup deps duration) leaks current owner)
     (slots : CanonicalSlotsUsed setup leaks current owner)
     (ready : current.application.config.cut.Ready event)
     (selected : (.activate owner : (serviceApplication setup deps duration leaks).Command) ∈
@@ -736,9 +738,9 @@ theorem binding_response_matched
         (some ⟨rightRemaining + 1, none, right⟩))
     (leftReady : left.application.config.cut.Ready event)
     (rightReady : right.application.config.cut.Ready event)
-    (leftOwn : OwnSubmissionsAtTurn setup leaks left owner)
+    (leftOwn : OwnSubmissionsAtTurn (serviceTimeouts setup deps duration) leaks left owner)
     (leftSlots : CanonicalSlotsUsed setup leaks left owner)
-    (rightOwn : OwnSubmissionsAtTurn setup leaks right owner)
+    (rightOwn : OwnSubmissionsAtTurn (serviceTimeouts setup deps duration) leaks right owner)
     (rightSlots : CanonicalSlotsUsed setup leaks right owner)
     (selected : (.activate owner : (serviceApplication setup deps duration leaks).Command) ∈
       (scheduler left.environmentRecall
@@ -876,9 +878,9 @@ theorem binding_stopped_readout_congr
         (some ⟨rightRemaining + count, none, rightStart⟩))
     (leftReady : leftStart.application.config.cut.Ready event)
     (rightReady : rightStart.application.config.cut.Ready event)
-    (leftOwn : OwnSubmissionsAtTurn setup leaks leftStart owner)
+    (leftOwn : OwnSubmissionsAtTurn (serviceTimeouts setup deps duration) leaks leftStart owner)
     (leftSlots : CanonicalSlotsUsed setup leaks leftStart owner)
-    (rightOwn : OwnSubmissionsAtTurn setup leaks rightStart owner)
+    (rightOwn : OwnSubmissionsAtTurn (serviceTimeouts setup deps duration) leaks rightStart owner)
     (rightSlots : CanonicalSlotsUsed setup leaks rightStart owner)
     (same : foreignReadout (leaks := leaks) focal owner event leftStart =
       foreignReadout (leaks := leaks) focal owner event rightStart) :
@@ -903,7 +905,9 @@ theorem binding_stopped_readout_congr
       (some ⟨remaining + count, none, current⟩))) ∧
     (event ∉ current.application.config.cut.completed →
       current.application.config = start.application.config) ∧
-    OwnSubmissionsAtTurn setup leaks current owner ∧ CanonicalSlotsUsed setup leaks current owner
+    OwnSubmissionsAtTurn
+      (serviceTimeouts setup deps duration) leaks current owner ∧
+        CanonicalSlotsUsed setup leaks current owner
   have owned : (serviceGraph setup deps).actor? event = some owner :=
     nodeView_bind_actor outputEq codeEq
   have advance (start : app.Execution) (startReady : start.application.config.cut.Ready event)
@@ -1040,7 +1044,7 @@ theorem sourceService_binding_traffic_congr
       players event.val current) (bounded : current.environmentRecall.length ≤ horizon) :
       Nonempty ((app.protocol (initialLaw setup) horizon scheduler).Trace
         (some ⟨horizon - current.environmentRecall.length, none, current⟩)) ∧
-      OwnSubmissionsAtTurn setup leaks current owner ∧
+      OwnSubmissionsAtTurn timeouts leaks current owner ∧
       CanonicalSlotsUsed setup leaks current owner ∧
       ownerTurns owner event current = 0 ∧
       (eventRecorded timeouts) leaks (current.logs owner) event = false := by
@@ -1110,9 +1114,9 @@ theorem sourceService_foreign_fixedRun
       bound turns
       (firstTurnTiming setup turns) profile
     let member := fun past view =>
-      if serviceTurn setup setup.informationDependencies timeouts.duration leaks owner event past
+      if turnIndex timeouts leaks owner event past
         view = some 0 then
-        decidedOpportunity setup leaks bound owner event action past view
+        fixedOpportunity timeouts leaks bound owner event action past view
       else baseline owner past view
     ((application setup timeouts leaks).runUntilHorizon scheduler
       (Function.update players owner member)
@@ -1126,10 +1130,10 @@ theorem sourceService_foreign_fixedRun
   let app := application setup timeouts leaks
   unfold ReactiveApplication.runUntilHorizon
   let first := fun past view =>
-    serviceTurn setup setup.informationDependencies timeouts.duration leaks owner event past view =
+    turnIndex timeouts leaks owner event past view =
       some 0
   let member := fun past view =>
-    if first past view then decidedOpportunity setup leaks bound owner event action past view
+    if first past view then fixedOpportunity timeouts leaks bound owner event action past view
     else baseline owner past view
   have alone : ∀ (cut : setup.informationGraph.order.Cut) other, cut.Ready event → cut.Ready other →
       other = event := fun cut _ ready otherReady =>
@@ -1157,7 +1161,7 @@ theorem sourceService_foreign_fixedRun
       have serving := middle.application.ownTurn?_of_ready ownerSolitary ready owned
       dsimp only [member, first, decidedTurnPolicy, ReactiveApplication.turnScheduledPolicy]
       simp only [Fin.val_zero]
-      by_cases selected : serviceTurn setup setup.informationDependencies timeouts.duration leaks
+      by_cases selected : turnIndex timeouts leaks
         owner event
           (middle.logs owner) (middle.observe app owner) = some 0
       · simp only [selected, ite_true]
@@ -1172,7 +1176,7 @@ theorem sourceService_foreign_fixedRun
           apply ownTurn?_none_of_alone alone middle.application ready actor
           rw [owned]
           exact fun equal => isOwner (Option.some.inj equal).symm
-        simp only [serviceTurnPolicy, serviceReferenceTurnPolicy, idle,
+        simp only [serviceTurnPolicy, EventGraphRuntime.turnPolicy, idle,
           ReactiveApplication.silentPolicy_apply]
   · intro current holds running next reached
     exact round_ready_of_pending alone (holds running) reached
@@ -1227,10 +1231,10 @@ theorem sourceService_foreign_mixture
   intro action _chosen
   unfold ReactiveApplication.runUntilHorizon
   let first := fun past view =>
-    serviceTurn setup setup.informationDependencies timeouts.duration leaks owner event past view =
+    turnIndex timeouts leaks owner event past view =
       some 0
   let member := fun past view =>
-    if first past view then decidedOpportunity setup leaks bound owner event action past view
+    if first past view then fixedOpportunity timeouts leaks bound owner event action past view
     else baseline owner past view
   have alone : ∀ (cut : setup.informationGraph.order.Cut) other, cut.Ready event → cut.Ready other →
       other = event := fun cut _ ready otherReady =>
@@ -1258,7 +1262,7 @@ theorem sourceService_foreign_mixture
       have serving := middle.application.ownTurn?_of_ready ownerSolitary ready owned
       dsimp only [member, first, decidedTurnPolicy, ReactiveApplication.turnScheduledPolicy]
       simp only [Fin.val_zero]
-      by_cases selected : serviceTurn setup setup.informationDependencies timeouts.duration leaks
+      by_cases selected : turnIndex timeouts leaks
         owner event
           (middle.logs owner) (middle.observe app owner) = some 0
       · simp only [selected, ite_true]
@@ -1273,7 +1277,7 @@ theorem sourceService_foreign_mixture
           apply ownTurn?_none_of_alone alone middle.application ready actor
           rw [owned]
           exact fun equal => isOwner (Option.some.inj equal).symm
-        simp only [serviceTurnPolicy, serviceReferenceTurnPolicy, idle,
+        simp only [serviceTurnPolicy, EventGraphRuntime.turnPolicy, idle,
           ReactiveApplication.silentPolicy_apply]
   · intro current holds running next reached
     exact round_ready_of_pending alone (holds running) reached

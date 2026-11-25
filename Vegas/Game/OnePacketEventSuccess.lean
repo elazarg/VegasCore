@@ -248,11 +248,11 @@ theorem acceptanceInvariant_respond {remaining : Nat} {who : Player}
         who ((canonicalServiceDecision timeouts) leaks who (execution.logs who)
           (execution.observe (application setup timeouts leaks) who) event action)⟩)) :
     ∃ output, AcceptanceInvariant setup timeouts leaks bounds horizon scheduler who
-      (respondEntry setup timeouts leaks execution who ((canonicalServiceDecision timeouts)
+      (respondEntry timeouts leaks execution who ((canonicalServiceDecision timeouts)
         leaks who
         (execution.logs who) (execution.observe (application setup timeouts leaks) who) event
           action))
-      (sentEnvelope setup timeouts leaks execution who material) event execution.application.config
+      (sentEnvelope timeouts leaks execution who material) event execution.application.config
       action output (some ⟨remaining, none, execution.respond (application setup timeouts leaks) who
         ((canonicalServiceDecision timeouts) leaks who (execution.logs who)
           (execution.observe (application setup timeouts leaks) who) event action)⟩) := by

@@ -141,7 +141,7 @@ theorem lastBlock_phase {horizon : Nat}
     (execution : Seed → (serviceApplication setup deps duration leaks).Execution)
     (supported : ∀ seed ∈ prior.support, execution seed ∈
       ((serviceApplication setup deps duration leaks).roundsFrom (serviceInitialLaw setup deps)
-        scheduler (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound
+        scheduler (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound
           turns (firstTurnTiming setup turns deps)
           ((serviceGraph setup deps).normalizeProfile base)) who deviation)
         (execution seed).environmentRecall.length).support)
@@ -152,7 +152,7 @@ theorem lastBlock_phase {horizon : Nat}
       start ≤ event.val → event.val < finish → Untouched setup leaks event (execution seed))
     (completes : ∀ seed ∈ prior.support, ∀ final ∈
       ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
-        (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+        (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
           (firstTurnTiming setup turns deps) ((serviceGraph setup deps).normalizeProfile base))
           who deviation)
         (fun current => BlockDone finish current.application.config) horizon
@@ -168,7 +168,7 @@ theorem lastBlock_phase {horizon : Nat}
       (nextNoise : Option ((serviceGraph setup deps).PlayerObservation who) → PMF _),
       (prior.bind fun seed =>
         ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
-          (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+          (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
             (firstTurnTiming setup turns deps) ((serviceGraph setup deps).normalizeProfile base))
             who deviation)
           (fun current => BlockDone finish current.application.config) horizon
@@ -176,7 +176,7 @@ theorem lastBlock_phase {horizon : Nat}
             (bindingTraffic (serviceTimeouts setup deps duration)) leaks who final)) =
         (prior.bind fun seed =>
           ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
-            (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+            (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
               (firstTurnTiming setup turns deps)
               ((serviceGraph setup deps).normalizeProfile base)) who deviation)
             (fun current => BlockDone finish current.application.config) horizon
@@ -184,7 +184,7 @@ theorem lastBlock_phase {horizon : Nat}
           (fun current => (nextNoise (keyView who current)).map fun extra => (current, extra)) ∧
       ∀ policy, (prior.bind fun seed =>
         ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
-          (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+          (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
             (firstTurnTiming setup turns deps) ((serviceGraph setup deps).normalizeProfile base))
             who deviation)
           (fun current => BlockDone finish current.application.config) horizon
@@ -204,7 +204,7 @@ theorem lastBlock_phase {horizon : Nat}
   let G := serviceGraph setup deps
   let app := serviceApplication setup deps duration leaks
   let timeouts := serviceTimeouts setup deps duration
-  let players := Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound
+  let players := Function.update (turnPolicy timeouts leaks bound
     turns (firstTurnTiming setup turns deps) (G.normalizeProfile base)) who deviation
   let run := fun seed => app.runUntilHorizon scheduler players
     (fun current => BlockDone finish current.application.config) horizon (execution seed)

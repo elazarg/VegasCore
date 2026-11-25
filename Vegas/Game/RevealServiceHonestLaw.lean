@@ -164,7 +164,7 @@ theorem honest_runToHorizon_outcomeLaw
     (keyed : ∀ left right : (serviceGraph setup deps).Config, runKey left = runKey right →
       read left = read right)
     (invariant : ∀ config, read config.erase = read config) :
-    let players := serviceReferenceTurnPolicy setup deps duration leaks bound turns
+    let players := turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
       (firstTurnTiming setup turns deps) reference
     ∀ execution : (serviceApplication setup deps duration leaks).Execution,
       execution ∈ ((serviceApplication setup deps duration leaks).roundsFrom
@@ -306,13 +306,13 @@ theorem honest_roundsFrom_outcomeLaw
       read left = read right)
     (invariant : ∀ config, read config.erase = read config) :
     ((serviceApplication setup deps duration leaks).roundsFrom (serviceInitialLaw setup deps)
-        scheduler (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+        scheduler (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
           (firstTurnTiming setup turns deps) reference) horizon).map
         (fun final => read final.application.config) =
       (serviceInitialLaw setup deps).bind
         (fun state => outcomeLaw reference read state.config) := by
   let app := serviceApplication setup deps duration leaks
-  let players := serviceReferenceTurnPolicy setup deps duration leaks bound turns
+  let players := turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
     (firstTurnTiming setup turns deps) reference
   unfold ReactiveApplication.roundsFrom
   rw [PMF.map_bind]

@@ -157,7 +157,7 @@ theorem nonlate_of_mainActivationTraceAfter
     · rw [sends] at silent
       cases silent
     · exact names
-  let recordedEntry := respondEntry setup timeouts leaks before.execution owner response
+  let recordedEntry := respondEntry timeouts leaks before.execution owner response
   have initialRecord := recordsEntry_respond (timeouts := timeouts) before.execution owner response
     before.remaining none
   have laterRecord : ∀ {state}

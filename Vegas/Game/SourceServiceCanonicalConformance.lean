@@ -136,13 +136,14 @@ theorem freshCallsConform_round_reference
     {bound : (serviceGraph setup deps).EventId → Nat} {turns : Nat}
     {timing : TurnTiming setup turns deps}
     {reference : (serviceGraph setup deps).BehavioralProfile}
-    (follows : players who = serviceReferenceTurnPolicy setup deps duration leaks bound turns timing
+    (follows : players who = turnPolicy (serviceTimeouts setup deps duration) leaks
+      bound turns timing
         reference who)
     {execution next : (serviceApplication setup deps duration leaks).Execution}
     (trace :
         ((serviceApplication setup deps duration leaks).protocol (serviceInitialLaw setup deps)
         horizon scheduler).Trace (some ⟨remaining + 1, none, execution⟩))
-    (atTurn : OwnSubmissionsAtTurn setup leaks execution who)
+    (atTurn : OwnSubmissionsAtTurn (serviceTimeouts setup deps duration) leaks execution who)
     (valid : CanonicalSlotsUsed setup leaks execution who)
     (conform : FreshCallsConform setup leaks execution who)
     (reached : next ∈
@@ -156,8 +157,8 @@ theorem freshCallsConform_round_reference
     unfold FreshCallsConform
     rw [recallEq]
     exact conform
-  have atMiddle : OwnSubmissionsAtTurn setup leaks middle who := by
-    unfold OwnSubmissionsAtTurn
+  have atMiddle : OwnSubmissionsAtTurn (serviceTimeouts setup deps duration) leaks middle who := by
+    unfold EventGraphRuntime.OwnSubmissionsAtTurn
     rw [recallEq]
     exact atTurn
   have validMiddle := canonicalSlotsUsed_environment moved who valid
@@ -169,7 +170,7 @@ theorem freshCallsConform_round_reference
     by_cases same : responder = who
     · subst responder
       rw [follows] at chosen
-      obtain ⟨emittedOption, recalled, _⟩ := respond_recall_self setup leaks middle who response
+      obtain ⟨emittedOption, recalled, _⟩ := respond_recall_self _ leaks middle who response
       intro entry member material message submitted emitted
       rw [recalled] at member
       rcases List.mem_append.mp member with old | new
@@ -222,7 +223,7 @@ theorem freshCallsConform_round
     (trace :
         ((serviceApplication setup deps duration leaks).protocol (serviceInitialLaw setup deps)
         horizon scheduler).Trace (some ⟨remaining + 1, none, execution⟩))
-    (atTurn : OwnSubmissionsAtTurn setup leaks execution who)
+    (atTurn : OwnSubmissionsAtTurn (serviceTimeouts setup deps duration) leaks execution who)
     (valid : CanonicalSlotsUsed setup leaks execution who)
     (conform : FreshCallsConform setup leaks execution who)
     (reached : next ∈
@@ -244,7 +245,8 @@ theorem sourceServiceTurnPolicy_freshServiceEnvelope_reference
     {bound : (serviceGraph setup deps).EventId → Nat} {turns : Nat}
     (timing : TurnTiming setup turns deps)
     (reference : (serviceGraph setup deps).BehavioralProfile)
-    (follows : players who = serviceReferenceTurnPolicy setup deps duration leaks bound turns timing
+    (follows : players who = turnPolicy (serviceTimeouts setup deps duration) leaks
+      bound turns timing
         reference who)
     (count : Nat) (execution : (serviceApplication setup deps duration leaks).Execution)
     (reached : execution ∈

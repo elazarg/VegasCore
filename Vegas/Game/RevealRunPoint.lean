@@ -88,10 +88,10 @@ theorem PhaseBoundary.runPoint
     (relaxed : (serviceGraph setup deps).RevealRelaxedOrdered) {start finish : Nat}
     (run : RevealRun (serviceGraph setup deps) start finish)
     {execution : (serviceApplication setup deps duration leaks).Execution}
-    (boundary : PhaseBoundary scheduler (Function.update (serviceReferenceTurnPolicy setup deps
-      duration leaks bound turns (firstTurnTiming setup turns deps) reference) who deviation)
+    (boundary : PhaseBoundary scheduler (Function.update (turnPolicy (serviceTimeouts setup deps
+      duration) leaks bound turns (firstTurnTiming setup turns deps) reference) who deviation)
       horizon start execution) :
-    RunPoint scheduler (Function.update (serviceReferenceTurnPolicy setup deps duration leaks
+    RunPoint scheduler (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks
       bound turns (firstTurnTiming setup turns deps) reference) who deviation) horizon who start
       finish start execution where
   supported := boundary.supported
@@ -174,21 +174,21 @@ theorem RunPoint.target_endpoint {horizon : Nat}
     (least : ∀ event : (serviceGraph setup deps).EventId, bar ≤ event.val →
       event.val < target.val → (serviceGraph setup deps).actor? event ≠ some who)
     {execution : (serviceApplication setup deps duration leaks).Execution}
-    (point : RunPoint scheduler (Function.update (serviceReferenceTurnPolicy setup deps duration
+    (point : RunPoint scheduler (Function.update (turnPolicy (serviceTimeouts setup deps duration)
       leaks bound turns (firstTurnTiming setup turns deps) reference) who deviation) horizon who
       start finish bar execution)
     (final : (serviceApplication setup deps duration leaks).Execution)
     (reached : final ∈ ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
-      (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+      (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps) reference) who deviation)
       (fun current => target ∈ current.application.config.cut.completed) horizon
       execution).support) :
-    RunPoint scheduler (Function.update (serviceReferenceTurnPolicy setup deps duration leaks
+    RunPoint scheduler (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks
       bound turns (firstTurnTiming setup turns deps) reference) who deviation) horizon who start
       finish (target.val + 1) final := by
   classical
   let G := serviceGraph setup deps
-  let players := Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound
+  let players := Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound
     turns (firstTurnTiming setup turns deps) reference) who deviation
   have before : ∀ event : G.EventId, start ≤ event.val → event.val < target.val →
       G.actor? event = some who → event ∈ execution.application.config.cut.completed := by
@@ -283,20 +283,20 @@ theorem RunPoint.final_endpoint {horizon : Nat}
     (relaxed : (serviceGraph setup deps).RevealRelaxedOrdered) {start finish bar : Nat}
     (run : RevealRun (serviceGraph setup deps) start finish)
     {execution : (serviceApplication setup deps duration leaks).Execution}
-    (point : RunPoint scheduler (Function.update (serviceReferenceTurnPolicy setup deps duration
+    (point : RunPoint scheduler (Function.update (turnPolicy (serviceTimeouts setup deps duration)
       leaks bound turns (firstTurnTiming setup turns deps) reference) who deviation) horizon who
       start finish bar execution)
     (final : (serviceApplication setup deps duration leaks).Execution)
     (reached : final ∈ ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
-      (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+      (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps) reference) who deviation)
       (fun current => BlockDone finish current.application.config) horizon execution).support) :
-    PhaseBoundary scheduler (Function.update (serviceReferenceTurnPolicy setup deps duration leaks
+    PhaseBoundary scheduler (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks
       bound turns (firstTurnTiming setup turns deps) reference) who deviation) horizon finish
       final := by
   classical
   let G := serviceGraph setup deps
-  let players := Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound
+  let players := Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound
     turns (firstTurnTiming setup turns deps) reference) who deviation
   have shaped := run.shaped relaxed
   have done := runUntilHorizon_stop contract players

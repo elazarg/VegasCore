@@ -43,7 +43,7 @@ private def PublicationSettled (bound : (serviceGraph setup deps).EventId → Na
     (∃ entry ∈ execution.logs owner,
       entry.beforeView.application.publicView.ownTurn? owner = some event) →
     (∃ entry ∈ execution.logs owner, ∃ message,
-      FreshCall setup leaks owner event bound entry message) ∨
+      FreshCall (serviceTimeouts setup deps duration) leaks owner event bound entry message) ∨
     BindingFails execution.application.config event
 
 variable {setup leaks}
@@ -134,7 +134,7 @@ private theorem first_of_never
     (turn : execution.application.publicView.ownTurn? owner = some event)
     (never : ∀ entry ∈ execution.logs owner,
       entry.beforeView.application.publicView.ownTurn? owner ≠ some event) :
-    serviceTurn setup deps duration leaks owner event (execution.logs owner)
+    turnIndex (serviceTimeouts setup deps duration) leaks owner event (execution.logs owner)
       (execution.observe (serviceApplication setup deps duration leaks) owner) = some 0 := by
   change (if execution.application.publicView.ownTurn? owner = some event then
     some ((execution.logs owner).countP fun entry =>
@@ -156,7 +156,7 @@ private theorem publicationSettled_round {event : (serviceGraph setup deps).Even
     (players : Player → (serviceApplication setup deps duration leaks).Policy) (owner : Player)
     {turns : Nat} (reference : (serviceGraph setup deps).BehavioralProfile)
     (opens : OpensPublications reference)
-    (follows : players owner = serviceReferenceTurnPolicy setup deps duration leaks bound turns
+    (follows : players owner = turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
       (firstTurnTiming setup turns deps) reference owner)
     (count : Nat) (within : count + 1 ≤ horizon)
     (execution next : (serviceApplication setup deps duration leaks).Execution)
@@ -199,14 +199,14 @@ private theorem publicationSettled_round {event : (serviceGraph setup deps).Even
     · exact Or.inl ⟨entry, by rw [recallSame]; exact member, message, call⟩
     · exact Or.inr (BindingFails.keep kept failed)
   subst who
-  obtain ⟨emitted, recalled, _⟩ := respond_recall_self setup leaks middle owner response
+  obtain ⟨emitted, recalled, _⟩ := respond_recall_self _ leaks middle owner response
   have kept := (keepsStore_step (serviceTimeouts setup deps duration) leaks).respond middle owner
     response
   intro publication ⟨entry, member, turn⟩
   have old (prior : ∃ entry ∈ middle.logs owner,
       entry.beforeView.application.publicView.ownTurn? owner = some event) :
       (∃ entry ∈ (middle.respond app owner response).logs owner, ∃ message,
-        FreshCall setup leaks owner event bound entry message) ∨
+        FreshCall (serviceTimeouts setup deps duration) leaks owner event bound entry message) ∨
       BindingFails (middle.respond app owner response).application.config event := by
     rcases calledMiddle publication prior with ⟨call, callMember, message, isCall⟩ | failed
     · exact Or.inl
@@ -235,7 +235,8 @@ private theorem publicationSettled_round {event : (serviceGraph setup deps).Even
   have activeBefore := execution.application.active_of_ready_owned facts.quiescent readyBefore
     owned
   have first := first_of_never middle owner event turnNow never
-  have firstBefore : serviceTurn setup deps duration leaks owner event (execution.logs owner)
+  have firstBefore : turnIndex (serviceTimeouts setup deps duration)
+    leaks owner event (execution.logs owner)
       (middle.observe app owner) = some 0 := by
     rw [← recallEq]
     exact first
@@ -272,7 +273,7 @@ private theorem publicationSettled_round {event : (serviceGraph setup deps).Even
       exact present
     exact never earlier present (atTurn earlier presentBefore event named)
   rw [follows, sourceServiceTurnPolicy_firstTurn_reference owned first] at chosen
-  unfold serviceReferenceOpportunity at chosen
+  unfold EventGraphRuntime.referenceOpportunity at chosen
   have fitsView : (middle.observe app owner).application.publicView.InclusionFitsDeadline
       (serviceTimeouts setup deps duration) bound event := fitsMiddle
   rw [ite_eq_right (by rw [unrecorded]; exact Bool.false_ne_true), ite_eq_left fitsView,
@@ -312,7 +313,7 @@ private theorem publicationSettled_roundsFrom {event : (serviceGraph setup deps)
     (players : Player → (serviceApplication setup deps duration leaks).Policy) (owner : Player)
     {turns : Nat} (reference : (serviceGraph setup deps).BehavioralProfile)
     (opens : OpensPublications reference)
-    (follows : players owner = serviceReferenceTurnPolicy setup deps duration leaks bound turns
+    (follows : players owner = turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
       (firstTurnTiming setup turns deps) reference owner) :
     ∀ count execution, count ≤ horizon →
       execution ∈ ((serviceApplication setup deps duration leaks).roundsFrom
@@ -348,7 +349,7 @@ theorem honestPublication_withinDeadline {horizon : Nat}
     (players : Player → (serviceApplication setup deps duration leaks).Policy) (owner : Player)
     {turns : Nat} (reference : (serviceGraph setup deps).BehavioralProfile)
     (opens : OpensPublications reference)
-    (follows : players owner = serviceReferenceTurnPolicy setup deps duration leaks bound turns
+    (follows : players owner = turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
       (firstTurnTiming setup turns deps) reference owner)
     (count : Nat) (within : count ≤ horizon)
     (execution : (serviceApplication setup deps duration leaks).Execution)

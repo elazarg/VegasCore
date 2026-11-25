@@ -109,7 +109,7 @@ theorem lateBinding_badMass
         reached.observe (application setup timeouts leaks) who =
           execution.observe (application setup timeouts leaks) who) →
       (reached.logs who ≠ execution.logs who → ∃ response,
-        execution.logs who ++ [respondEntry setup timeouts leaks execution who response] <+:
+        execution.logs who ++ [respondEntry timeouts leaks execution who response] <+:
           reached.logs who) →
       ∀ slot < bounds.candidateCount,
         countPermits ((application setup timeouts leaks).outputs (reached.logs who))

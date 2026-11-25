@@ -45,7 +45,7 @@ def RunStepHolds (scheduler : (serviceApplication setup deps duration leaks).Sch
     (current : (serviceApplication setup deps duration leaks).Execution) : Prop :=
     current ∈ ((serviceApplication setup deps duration leaks).roundsFrom
       (serviceInitialLaw setup deps) scheduler
-      (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+      (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps) reference) who deviation)
       current.environmentRecall.length).support ∧
     current.environmentRecall.length + n ≤ horizon ∧
@@ -102,13 +102,13 @@ theorem runStep_round
         origin (n + 1) current →
       ¬ stop current.application.config.cut →
       ∀ next ∈ ((serviceApplication setup deps duration leaks).round scheduler
-        (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+        (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
           (firstTurnTiming setup turns deps) reference) who deviation) current).support,
         RunStepHolds scheduler bound turns reference who deviation horizon start finish allowed
           origin n next := by
   classical
   let app := serviceApplication setup deps duration leaks
-  let players := Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound
+  let players := Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound
     turns (firstTurnTiming setup turns deps) reference) who deviation
   have notDone (cut : (serviceGraph setup deps).order.Cut) (running : ¬ stop cut) :
       ¬ ∀ event : (serviceGraph setup deps).EventId, event.val < finish →
@@ -209,7 +209,7 @@ theorem runStep_facts
         (serviceGraph setup deps).actor? event = some who → allowed event)
     (supported : execution ∈ ((serviceApplication setup deps duration leaks).roundsFrom
       (serviceInitialLaw setup deps) scheduler
-      (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+      (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps) reference) who deviation)
       execution.environmentRecall.length).support)
     (bounded : execution.environmentRecall.length ≤ horizon)
@@ -218,7 +218,7 @@ theorem runStep_facts
     (submissions : HonestBlockSubmissions who start finish execution)
     (final : (serviceApplication setup deps duration leaks).Execution)
     (reached : final ∈ ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
-      (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+      (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps) reference) who deviation)
       (fun current => stop current.application.config.cut) horizon execution).support) :
     Relation.ReflTransGen Config.Step execution.application.config final.application.config ∧
@@ -229,7 +229,7 @@ theorem runStep_facts
       (¬ BlockDone finish final.application.config →
         InBlock start finish final.application.config) := by
   let app := serviceApplication setup deps duration leaks
-  let players := Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound
+  let players := Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound
     turns (firstTurnTiming setup turns deps) reference) who deviation
   have notDone (cut : (serviceGraph setup deps).order.Cut) (running : ¬ stop cut) :
       ¬ ∀ event : (serviceGraph setup deps).EventId, event.val < finish →

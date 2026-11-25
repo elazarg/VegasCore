@@ -72,7 +72,7 @@ theorem round_responsesActivated
       subst activated
       by_cases same : who = player
       · subst same
-        obtain ⟨emitted, recalled, _⟩ := respond_recall_self setup leaks middle' who response
+        obtain ⟨emitted, recalled, _⟩ := respond_recall_self _ leaks middle' who response
         rw [recalled] at member
         rcases List.mem_append.mp member with prior | fresh
         · rw [recallEq] at prior

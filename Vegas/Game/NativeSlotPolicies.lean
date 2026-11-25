@@ -34,8 +34,8 @@ def fixedTurnPolicy (bound : (serviceGraph setup deps).EventId → Nat)
     (action : (serviceGraph setup deps).Action event)
     (fallback : (serviceApplication setup deps duration leaks).Policy) :
     (serviceApplication setup deps duration leaks).Policy := fun past view =>
-  if serviceTurn setup deps duration leaks owner event past view = some 0 then
-    decidedOpportunity setup leaks bound owner event action past view
+  if turnIndex (serviceTimeouts setup deps duration) leaks owner event past view = some 0 then
+    fixedOpportunity (serviceTimeouts setup deps duration) leaks bound owner event action past view
   else fallback past view
 
 private theorem serviceTurn_first_ne_of_ne
@@ -43,8 +43,8 @@ private theorem serviceTurn_first_ne_of_ne
     (different : other ≠ event)
     (past : List (serviceApplication setup deps duration leaks).PlayerEntry)
     (view : (serviceApplication setup deps duration leaks).PlayerView)
-    (first : serviceTurn setup deps duration leaks owner event past view = some 0) :
-    serviceTurn setup deps duration leaks owner other past view ≠ some 0 := by
+    (first : turnIndex (serviceTimeouts setup deps duration) leaks owner event past view = some 0) :
+    turnIndex (serviceTimeouts setup deps duration) leaks owner other past view ≠ some 0 := by
   intro otherFirst
   exact different (Option.some.inj
     ((sourceServiceTurn_first otherFirst).1.symm.trans (sourceServiceTurn_first first).1))
@@ -57,7 +57,7 @@ theorem fixedTurnPolicy_at_other
     (different : event ≠ other)
     (past : List (serviceApplication setup deps duration leaks).PlayerEntry)
     (view : (serviceApplication setup deps duration leaks).PlayerView)
-    (first : serviceTurn setup deps duration leaks owner other past view = some 0) :
+    (first : turnIndex (serviceTimeouts setup deps duration) leaks owner other past view = some 0) :
     fixedTurnPolicy bound owner event action fallback past view = fallback past view := by
   exact ite_eq_right (serviceTurn_first_ne_of_ne owner other event different past view first)
 
@@ -73,7 +73,8 @@ theorem fixedTurnPolicy_comm
       fixedTurnPolicy bound owner other otherAction
         (fixedTurnPolicy bound owner event action fallback) := by
   funext past view
-  by_cases first : serviceTurn setup deps duration leaks owner event past view = some 0
+  by_cases first : turnIndex (serviceTimeouts setup deps duration)
+    leaks owner event past view = some 0
   · have otherNotFirst :=
       serviceTurn_first_ne_of_ne owner event other different.symm past view first
     simp only [fixedTurnPolicy, first, otherNotFirst, ite_true, ite_false]
@@ -87,7 +88,8 @@ theorem fixedTurnPolicy_submitsAtTurn
     (atTurn : SubmitsAtTurn setup leaks fallback owner) :
     SubmitsAtTurn setup leaks (fixedTurnPolicy bound owner event action fallback) owner := by
   intro past view response member other submitted
-  by_cases first : serviceTurn setup deps duration leaks owner event past view = some 0
+  by_cases first : turnIndex (serviceTimeouts setup deps duration)
+    leaks owner event past view = some 0
   · have chosen : response ∈
         (decidedTurnPolicy setup leaks bound owner event action past view).support := by
       simpa only [fixedTurnPolicy, decidedTurnPolicy, ReactiveApplication.turnScheduledPolicy,
@@ -110,7 +112,8 @@ theorem fixedTurnPolicy_noRepeatedEvent
       ∀ other, (eventRecorded (serviceTimeouts setup deps duration)) leaks past other = true →
         (submittedEvent? (serviceTimeouts setup deps duration)) leaks response ≠ some other := by
   intro past view response member other recorded submitted
-  by_cases first : serviceTurn setup deps duration leaks owner event past view = some 0
+  by_cases first : turnIndex (serviceTimeouts setup deps duration)
+    leaks owner event past view = some 0
   · have chosen : response ∈
         (decidedTurnPolicy setup leaks bound owner event action past view).support := by
       simpa only [fixedTurnPolicy, decidedTurnPolicy, ReactiveApplication.turnScheduledPolicy,
@@ -120,7 +123,7 @@ theorem fixedTurnPolicy_noRepeatedEvent
     have same : other = event :=
       Option.some.inj (serving.symm.trans (sourceServiceTurn_first first).1)
     subst other
-    simp only [fixedTurnPolicy, first, ite_true, decidedOpportunity, recorded,
+    simp only [fixedTurnPolicy, first, ite_true, fixedOpportunity, recorded,
       ReactiveApplication.silentPolicy_apply] at member
     cases (PMF.mem_support_pure_iff _ _).mp member
     cases submitted
@@ -139,11 +142,11 @@ theorem serviceReferenceTurnPolicy_patch_at_execution
     (current : (serviceApplication setup deps duration leaks).Execution) :
     let committed := Function.update reference owner
       (EventGraph.patchPolicy event head (reference owner))
-    serviceReferenceTurnPolicy setup deps duration leaks bound turns
+    turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps) committed owner (current.logs owner)
         (current.observe (serviceApplication setup deps duration leaks) owner) =
       fixedTurnPolicy bound owner event action
-        (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+        (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
           (firstTurnTiming setup turns deps) reference owner) (current.logs owner)
         (current.observe (serviceApplication setup deps duration leaks) owner) := by
   classical
@@ -151,13 +154,13 @@ theorem serviceReferenceTurnPolicy_patch_at_execution
   let app := serviceApplication setup deps duration leaks
   let past := current.logs owner
   let view := current.observe app owner
-  change serviceReferenceTurnPolicy setup deps duration leaks bound turns
+  change turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
       (firstTurnTiming setup turns deps) committed owner past view =
     fixedTurnPolicy bound owner event action
-      (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+      (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps) reference owner) past view
   have atEvent (serving : view.application.publicView.ownTurn? owner = some event) :
-      serviceReferencePolicy setup deps duration leaks committed owner past view =
+      referencePolicy (serviceTimeouts setup deps duration) leaks committed owner past view =
         PMF.pure ((canonicalServiceDecision (serviceTimeouts setup deps duration)) leaks owner
           past view event action) := by
     rw [sourceServiceCanonicalPolicy_at_event_reference setup leaks committed owner current event
@@ -174,8 +177,8 @@ theorem serviceReferenceTurnPolicy_patch_at_execution
       (serving : view.application.publicView.ownTurn? owner = some selected)
       (actor : (serviceGraph setup deps).actor? selected = some owner)
       (different : selected ≠ event) :
-      serviceReferencePolicy setup deps duration leaks committed owner past view =
-        serviceReferencePolicy setup deps duration leaks reference owner past view := by
+      referencePolicy (serviceTimeouts setup deps duration) leaks committed owner past view =
+        referencePolicy (serviceTimeouts setup deps duration) leaks reference owner past view := by
     rw [sourceServiceCanonicalPolicy_at_event_reference setup leaks committed owner current
       selected serving actor, sourceServiceCanonicalPolicy_at_event_reference setup leaks
       reference owner current selected serving actor]
@@ -183,43 +186,49 @@ theorem serviceReferenceTurnPolicy_patch_at_execution
   have targetOnly {selected : (serviceGraph setup deps).EventId}
       (serving : view.application.publicView.ownTurn? owner = some selected)
       (different : selected ≠ event) :
-      serviceTurn setup deps duration leaks owner event past view ≠ some 0 := by
+      turnIndex (serviceTimeouts setup deps duration) leaks owner event past view ≠ some 0 := by
     intro first
     exact different (Option.some.inj (serving.symm.trans (sourceServiceTurn_first first).1))
   cases serving : view.application.publicView.ownTurn? owner with
   | none =>
-      have notFirst : serviceTurn setup deps duration leaks owner event past view ≠ some 0 := by
+      have notFirst :
+          turnIndex (serviceTimeouts setup deps duration) leaks owner event past view ≠ some 0 := by
         intro first
         have turn := (sourceServiceTurn_first first).1
         rw [serving] at turn
         cases turn
-      simp only [fixedTurnPolicy, notFirst, ite_false, serviceReferenceTurnPolicy, serving]
+      simp only [fixedTurnPolicy, notFirst, ite_false, EventGraphRuntime.turnPolicy, serving]
   | some selected =>
       by_cases actor : (serviceGraph setup deps).actor? selected = some owner
-      · by_cases first : serviceTurn setup deps duration leaks owner selected past view = some 0
+      · by_cases first :
+            turnIndex (serviceTimeouts setup deps duration) leaks owner selected past view = some 0
         · rw [sourceServiceTurnPolicy_firstTurn_reference actor first]
           by_cases same : selected = event
           · subst selected
             simp only [fixedTurnPolicy, first, ite_true]
-            unfold serviceReferenceOpportunity decidedOpportunity
+            unfold EventGraphRuntime.referenceOpportunity fixedOpportunity
             rw [atEvent serving]
             simp only [PMF.pure_bind]
           · rw [fixedTurnPolicy, ite_eq_right (targetOnly serving same),
               sourceServiceTurnPolicy_firstTurn_reference actor first]
-            unfold serviceReferenceOpportunity
+            unfold EventGraphRuntime.referenceOpportunity
             rw [atOther selected serving actor same]
-        · have noTarget : serviceTurn setup deps duration leaks owner event past view ≠ some 0 := by
+        · have noTarget :
+              turnIndex (serviceTimeouts setup deps duration) leaks owner event past view ≠
+                some 0 := by
             by_cases same : selected = event
             · simpa only [same] using first
             · exact targetOnly serving same
           rw [fixedTurnPolicy, ite_eq_right noTarget,
             sourceServiceTurnPolicy_laterTurn_reference actor serving first,
             sourceServiceTurnPolicy_laterTurn_reference actor serving first]
-      · have noTarget : serviceTurn setup deps duration leaks owner event past view ≠ some 0 := by
+      · have noTarget :
+              turnIndex (serviceTimeouts setup deps duration) leaks owner event past view ≠
+                some 0 := by
           by_cases same : selected = event
           · exact (actor (same.symm ▸ owned)).elim
           · exact targetOnly serving same
-        simp only [fixedTurnPolicy, noTarget, ite_false, serviceReferenceTurnPolicy, serving,
+        simp only [fixedTurnPolicy, noTarget, ite_false, EventGraphRuntime.turnPolicy, serving,
           actor, dite_false]
 theorem serviceReferenceTurnPolicy_patch_runUntil
     {count turns : Nat}
@@ -236,7 +245,7 @@ theorem serviceReferenceTurnPolicy_patch_runUntil
     (current : (serviceApplication setup deps duration leaks).Execution) :
     let committed := Function.update reference owner
       (EventGraph.patchPolicy event head (reference owner))
-    let client := fun profile => serviceReferenceTurnPolicy setup deps duration leaks bound turns
+    let client := fun profile => turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
       (firstTurnTiming setup turns deps) profile owner
     (serviceApplication setup deps duration leaks).runUntil scheduler
         (Function.update background owner (client committed)) stop count current =

@@ -48,7 +48,7 @@ private def BindingCalled (setup : Setup (Player := Player) (L := L))
   (∃ entry ∈ execution.logs owner,
     entry.beforeView.application.publicView.ownTurn? owner = some event) →
   ∃ entry ∈ execution.logs owner, ∃ message,
-    FreshCall setup leaks owner event bound entry message
+    FreshCall (serviceTimeouts setup deps duration) leaks owner event bound entry message
 
 private theorem first_of_never
     (execution : (serviceApplication setup deps duration leaks).Execution)
@@ -56,7 +56,7 @@ private theorem first_of_never
     (turn : execution.application.publicView.ownTurn? owner = some event)
     (never : ∀ entry ∈ execution.logs owner,
       entry.beforeView.application.publicView.ownTurn? owner ≠ some event) :
-    serviceTurn setup deps duration leaks owner event (execution.logs owner)
+    turnIndex (serviceTimeouts setup deps duration) leaks owner event (execution.logs owner)
       (execution.observe (serviceApplication setup deps duration leaks) owner) = some 0 := by
   change (if execution.application.publicView.ownTurn? owner = some event then
     some ((execution.logs owner).countP fun entry =>
@@ -82,7 +82,7 @@ private theorem bindingCalled_round {event : (serviceGraph setup deps).EventId}
     (fixed : ∀ view active, reference owner event
       (EventCode.actor_eq_of_binding ((serviceGraph setup deps).nodes event) binding) view active =
       PMF.pure (cast (congrArg EventField.Action binding.symm) (some result)))
-    (follows : players owner = serviceReferenceTurnPolicy setup deps duration leaks bound turns
+    (follows : players owner = turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
       (firstTurnTiming setup turns deps) reference owner)
     (remaining : Nat)
     (execution next : (serviceApplication setup deps duration leaks).Execution)
@@ -90,7 +90,7 @@ private theorem bindingCalled_round {event : (serviceGraph setup deps).EventId}
       (serviceInitialLaw setup deps) horizon scheduler).Trace
         (some ⟨remaining + 1, none, execution⟩))
     (answered : ActivationsAnswered setup leaks execution)
-    (atTurn : OwnSubmissionsAtTurn setup leaks execution owner)
+    (atTurn : OwnSubmissionsAtTurn (serviceTimeouts setup deps duration) leaks execution owner)
     (called : BindingCalled setup leaks bound execution owner event)
     (reached : next ∈ ((serviceApplication setup deps duration leaks).round scheduler players
       execution).support) :
@@ -114,12 +114,12 @@ private theorem bindingCalled_round {event : (serviceGraph setup deps).EventId}
     obtain ⟨entry, member, message, call⟩ := calledMiddle turned
     exact ⟨entry, by rw [recallSame]; exact member, message, call⟩
   subst who
-  obtain ⟨emitted, recalled, _⟩ := respond_recall_self setup leaks middle owner response
+  obtain ⟨emitted, recalled, _⟩ := respond_recall_self _ leaks middle owner response
   intro ⟨entry, member, turn⟩
   have old (prior : ∃ entry ∈ middle.logs owner,
       entry.beforeView.application.publicView.ownTurn? owner = some event) :
       ∃ entry ∈ (middle.respond app owner response).logs owner, ∃ message,
-        FreshCall setup leaks owner event bound entry message := by
+        FreshCall (serviceTimeouts setup deps duration) leaks owner event bound entry message := by
     obtain ⟨call, callMember, message, isCall⟩ := calledMiddle prior
     exact ⟨call, by rw [recalled]; exact List.mem_append_left _ callMember, message, isCall⟩
   rw [recalled] at member
@@ -145,7 +145,8 @@ private theorem bindingCalled_round {event : (serviceGraph setup deps).EventId}
   have activeBefore := execution.application.active_of_ready_owned facts.quiescent readyBefore
     owned
   have first := first_of_never middle owner event turnNow never
-  have firstBefore : serviceTurn setup deps duration leaks owner event (execution.logs owner)
+  have firstBefore : turnIndex (serviceTimeouts setup deps duration)
+    leaks owner event (execution.logs owner)
       (middle.observe app owner) = some 0 := by
     rw [← recallEq]
     exact first
@@ -187,7 +188,7 @@ private theorem bindingCalled_round {event : (serviceGraph setup deps).EventId}
       exact present
     exact never earlier present (atTurn earlier presentBefore event named)
   rw [follows, sourceServiceTurnPolicy_firstTurn_reference owned first] at chosen
-  unfold serviceReferenceOpportunity at chosen
+  unfold EventGraphRuntime.referenceOpportunity at chosen
   have fitsView : (middle.observe app owner).application.publicView.InclusionFitsDeadline
       (serviceTimeouts setup deps duration) bound event := fitsMiddle
   rw [ite_eq_right (by rw [unrecorded]; exact Bool.false_ne_true), ite_eq_left fitsView,
@@ -233,21 +234,21 @@ private theorem bindingCalled_runRounds {event : (serviceGraph setup deps).Event
     (fixed : ∀ view active, reference owner event
       (EventCode.actor_eq_of_binding ((serviceGraph setup deps).nodes event) binding) view active =
       PMF.pure (cast (congrArg EventField.Action binding.symm) (some result)))
-    (follows : players owner = serviceReferenceTurnPolicy setup deps duration leaks bound turns
+    (follows : players owner = turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
       (firstTurnTiming setup turns deps) reference owner) (remaining : Nat) :
     ∀ count (execution next : (serviceApplication setup deps duration leaks).Execution),
       ((serviceApplication setup deps duration leaks).protocol
         (serviceInitialLaw setup deps) horizon scheduler).Trace
           (some ⟨remaining + count, none, execution⟩) →
       BindingCalled setup leaks bound execution owner event →
-      OwnSubmissionsAtTurn setup leaks execution owner →
+      OwnSubmissionsAtTurn (serviceTimeouts setup deps duration) leaks execution owner →
       ActivationsAnswered setup leaks execution →
       OwnFreshCalls setup leaks bound execution owner →
       OneCallPerEvent setup leaks execution owner →
       next ∈ ((serviceApplication setup deps duration leaks).runRounds scheduler players count
         execution).support →
       BindingCalled setup leaks bound next owner event ∧
-        OwnSubmissionsAtTurn setup leaks next owner ∧
+        OwnSubmissionsAtTurn (serviceTimeouts setup deps duration) leaks next owner ∧
         ActivationsAnswered setup leaks next ∧
         OwnFreshCalls setup leaks bound next owner ∧
         OneCallPerEvent setup leaks next owner := by
@@ -268,7 +269,8 @@ private theorem bindingCalled_runRounds {event : (serviceGraph setup deps).Event
       have calledMiddle := bindingCalled_round unique contract timely players owner reference
         payload binding result fixed follows (remaining + count) execution middle trace answered
           truthful called moved
-      have truthfulMiddle := round_ownSubmissionsAtTurn setup leaks
+      have truthfulMiddle := EventGraphRuntime.round_ownSubmissionsAtTurn
+        (serviceTimeouts setup deps duration) leaks
         (follows ▸ sourceServiceTurnPolicy_submitsAtTurn_reference setup leaks bound turns
           (firstTurnTiming setup turns deps) reference owner) truthful moved
       have answeredMiddle := round_activationsAnswered setup leaks answered moved
@@ -295,13 +297,13 @@ theorem fixedBinding_withinDeadline_runRounds {horizon remaining count : Nat}
     (fixed : ∀ view active, reference owner event
       (EventCode.actor_eq_of_binding ((serviceGraph setup deps).nodes event) binding) view active =
       PMF.pure (cast (congrArg EventField.Action binding.symm) (some result)))
-    (follows : players owner = serviceReferenceTurnPolicy setup deps duration leaks bound turns
+    (follows : players owner = turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
       (firstTurnTiming setup turns deps) reference owner)
     (execution next : (serviceApplication setup deps duration leaks).Execution)
     (trace : ((serviceApplication setup deps duration leaks).protocol
       (serviceInitialLaw setup deps) horizon scheduler).Trace
         (some ⟨remaining + count, none, execution⟩))
-    (truthful : OwnSubmissionsAtTurn setup leaks execution owner)
+    (truthful : OwnSubmissionsAtTurn (serviceTimeouts setup deps duration) leaks execution owner)
     (answered : ActivationsAnswered setup leaks execution)
     (calls : OwnFreshCalls setup leaks bound execution owner)
     (once : OneCallPerEvent setup leaks execution owner)
@@ -372,12 +374,13 @@ theorem fixedBinding_block_endpoint
     (reference : (serviceGraph setup deps).BehavioralProfile) (compiled : Player → Prop)
     (players : Player → (serviceApplication setup deps duration leaks).Policy)
     (follows : ∀ owner, compiled owner → players owner =
-      serviceReferenceTurnPolicy setup deps duration leaks bound turns
+      turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps) reference owner)
     (anchor : (serviceApplication setup deps duration leaks).Execution)
     (trace : ((serviceApplication setup deps duration leaks).protocol
       (serviceInitialLaw setup deps) horizon scheduler).Trace (some ⟨budget, none, anchor⟩))
-    (truthful : ∀ owner, compiled owner → OwnSubmissionsAtTurn setup leaks anchor owner)
+    (truthful : ∀ owner, compiled owner → OwnSubmissionsAtTurn
+      (serviceTimeouts setup deps duration) leaks anchor owner)
     (answered : ActivationsAnswered setup leaks anchor)
     (calls : ∀ owner, compiled owner → OwnFreshCalls setup leaks bound anchor owner)
     (once : ∀ owner, compiled owner → OneCallPerEvent setup leaks anchor owner)
@@ -512,12 +515,13 @@ theorem fixedBinding_block_key
     (reference : (serviceGraph setup deps).BehavioralProfile) (compiled : Player → Prop)
     (players : Player → (serviceApplication setup deps duration leaks).Policy)
     (follows : ∀ owner, compiled owner → players owner =
-      serviceReferenceTurnPolicy setup deps duration leaks bound turns
+      turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps) reference owner)
     (anchor : (serviceApplication setup deps duration leaks).Execution)
     (trace : ((serviceApplication setup deps duration leaks).protocol
       (serviceInitialLaw setup deps) horizon scheduler).Trace (some ⟨budget, none, anchor⟩))
-    (truthful : ∀ owner, compiled owner → OwnSubmissionsAtTurn setup leaks anchor owner)
+    (truthful : ∀ owner, compiled owner → OwnSubmissionsAtTurn
+      (serviceTimeouts setup deps duration) leaks anchor owner)
     (answered : ActivationsAnswered setup leaks anchor)
     (calls : ∀ owner, compiled owner → OwnFreshCalls setup leaks bound anchor owner)
     (once : ∀ owner, compiled owner → OneCallPerEvent setup leaks anchor owner)
@@ -652,7 +656,8 @@ theorem native_binding_block_key_law
     (initialReach : origin.application.config.Reachable inputs)
     (trace : ((serviceApplication setup deps duration leaks).protocol
       (serviceInitialLaw setup deps) horizon scheduler).Trace (some ⟨budget, none, origin⟩))
-    (truthful : ∀ owner, OwnSubmissionsAtTurn setup leaks origin owner)
+    (truthful : ∀ owner, OwnSubmissionsAtTurn
+      (serviceTimeouts setup deps duration) leaks origin owner)
     (answered : ActivationsAnswered setup leaks origin)
     (calls : ∀ owner, OwnFreshCalls setup leaks bound origin owner)
     (once : ∀ owner, OneCallPerEvent setup leaks origin owner)
@@ -671,7 +676,7 @@ theorem native_binding_block_key_law
     let app := serviceApplication setup deps duration leaks
     let reference := G.prefixProfile profile
     (app.runUntil scheduler
-      (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+      (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps) reference)
       (fun current => BlockDone (start + count) current.application.config) budget origin).map
         (fun final => runKey final.application.config) =
@@ -681,7 +686,7 @@ theorem native_binding_block_key_law
   intro G app reference
   let finish := start + count
   let stop := fun current : app.Execution => BlockDone finish current.application.config
-  let clients := fun reference => serviceReferenceTurnPolicy setup deps duration leaks bound turns
+  let clients := fun reference => turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
     (firstTurnTiming setup turns deps) reference
   let source := G.runPlan (G.policyPlan reference G.canonicalScheduler) count
     origin.application.config
@@ -801,7 +806,8 @@ theorem native_binding_block_outcomeLaw
     (initialReach : origin.application.config.Reachable inputs)
     (trace : ((serviceApplication setup deps duration leaks).protocol
       (serviceInitialLaw setup deps) horizon scheduler).Trace (some ⟨budget, none, origin⟩))
-    (truthful : ∀ owner, OwnSubmissionsAtTurn setup leaks origin owner)
+    (truthful : ∀ owner, OwnSubmissionsAtTurn
+      (serviceTimeouts setup deps duration) leaks origin owner)
     (answered : ActivationsAnswered setup leaks origin)
     (calls : ∀ owner, OwnFreshCalls setup leaks bound origin owner)
     (once : ∀ owner, OneCallPerEvent setup leaks origin owner)
@@ -820,7 +826,7 @@ theorem native_binding_block_outcomeLaw
     let app := serviceApplication setup deps duration leaks
     let reference := G.prefixProfile profile
     (app.runUntil scheduler
-      (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+      (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps) reference)
       (fun current => BlockDone (start + count) current.application.config) budget origin).bind
         (fun final => outcomeLaw reference read final.application.config) =
@@ -828,7 +834,7 @@ theorem native_binding_block_outcomeLaw
   classical
   intro G app reference
   let law := app.runUntil scheduler
-    (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+    (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
       (firstTurnTiming setup turns deps) reference)
     (fun current => BlockDone (start + count) current.application.config) budget origin
   let source := G.runPlan (G.policyPlan reference G.canonicalScheduler) count
@@ -873,12 +879,13 @@ theorem fixedBinding_runUntil_clear_of_active
     (reference : (serviceGraph setup deps).BehavioralProfile) (focal : Player)
     (players : Player → (serviceApplication setup deps duration leaks).Policy)
     (follows : ∀ owner, owner ≠ focal → players owner =
-      serviceReferenceTurnPolicy setup deps duration leaks bound turns
+      turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps) reference owner)
     (anchor : (serviceApplication setup deps duration leaks).Execution)
     (trace : ((serviceApplication setup deps duration leaks).protocol
       (serviceInitialLaw setup deps) horizon scheduler).Trace (some ⟨budget, none, anchor⟩))
-    (truthful : ∀ owner, owner ≠ focal → OwnSubmissionsAtTurn setup leaks anchor owner)
+    (truthful : ∀ owner, owner ≠ focal → OwnSubmissionsAtTurn
+      (serviceTimeouts setup deps duration) leaks anchor owner)
     (answered : ActivationsAnswered setup leaks anchor)
     (calls : ∀ owner, owner ≠ focal → OwnFreshCalls setup leaks bound anchor owner)
     (once : ∀ owner, owner ≠ focal → OneCallPerEvent setup leaks anchor owner)

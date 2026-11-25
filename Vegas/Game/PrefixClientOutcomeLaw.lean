@@ -94,13 +94,13 @@ theorem effective_publication_block_outcomeLaw
     (inside : InBlock start finish origin.application.config)
     (supported : origin ∈ ((serviceApplication setup deps duration leaks).roundsFrom
       (serviceInitialLaw setup deps) scheduler
-      (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+      (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps) (effectiveOpening profile))
       origin.environmentRecall.length).support)
     (bounded : origin.environmentRecall.length ≤ horizon)
     (final : (serviceApplication setup deps duration leaks).Execution)
     (reached : final ∈ ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
-      (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+      (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps) (effectiveOpening profile))
       (fun current => BlockDone finish current.application.config) horizon origin).support) :
     BlockDone finish final.application.config ∧
@@ -109,7 +109,7 @@ theorem effective_publication_block_outcomeLaw
   classical
   let G := serviceGraph setup deps
   let app := serviceApplication setup deps duration leaks
-  let clients := serviceReferenceTurnPolicy setup deps duration leaks bound turns
+  let clients := turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
     (firstTurnTiming setup turns deps) (effectiveOpening profile)
   let stop := fun current : app.Execution => BlockDone finish current.application.config
   have shaped : BlockShaped (graph := G) start finish := by
@@ -259,7 +259,7 @@ private theorem honest_phase_outcomeLaw
     (invariant : ∀ config, read config.erase = read config)
     {rank : Nat} (origin : (serviceApplication setup deps duration leaks).Execution)
     (boundary : CompletionBoundary setup leaks scheduler
-      (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+      (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps)
         (effectiveOpening ((serviceGraph setup deps).prefixProfile profile))) rank origin)
     (budget : origin.environmentRecall.length ≤ horizon)
@@ -268,7 +268,7 @@ private theorem honest_phase_outcomeLaw
     let G := serviceGraph setup deps
     let app := serviceApplication setup deps duration leaks
     let reference := effectiveOpening (G.prefixProfile profile)
-    let clients := serviceReferenceTurnPolicy setup deps duration leaks bound turns
+    let clients := turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
       (firstTurnTiming setup turns deps) reference
     ∃ finish, rank < finish ∧ finish ≤ G.order.eventCount ∧
       BlockShaped (graph := G) rank finish ∧
@@ -398,7 +398,8 @@ private theorem honest_phase_outcomeLaw
       obtain ⟨inputs, _, valid⟩ := reactive_history_invariant
         (serviceTimeouts setup deps duration) leaks (setup.initialLaw.map setup.eventInputs)
           horizon scheduler inputTrace
-      have truthful : ∀ owner, OwnSubmissionsAtTurn setup leaks origin owner := by
+      have truthful : ∀ owner, OwnSubmissionsAtTurn
+        (serviceTimeouts setup deps duration) leaks origin owner := by
         intro owner
         exact SubmitsAtTurn.roundsFrom setup leaks
           (sourceServiceTurnPolicy_submitsAtTurn_reference setup leaks bound turns
@@ -452,7 +453,7 @@ theorem honest_prefix_runToHorizon_outcomeLaw
     let G := serviceGraph setup deps
     let app := serviceApplication setup deps duration leaks
     let reference := effectiveOpening (G.prefixProfile profile)
-    let clients := serviceReferenceTurnPolicy setup deps duration leaks bound turns
+    let clients := turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
       (firstTurnTiming setup turns deps) reference
     ∀ rank (origin : app.Execution),
       CompletionBoundary setup leaks scheduler clients rank origin →
@@ -601,7 +602,7 @@ theorem honest_prefix_roundsFrom_outcomeLaw
     let G := serviceGraph setup deps
     let app := serviceApplication setup deps duration leaks
     let reference := effectiveOpening (G.prefixProfile profile)
-    let clients := serviceReferenceTurnPolicy setup deps duration leaks bound turns
+    let clients := turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
       (firstTurnTiming setup turns deps) reference
     (app.roundsFrom (serviceInitialLaw setup deps) scheduler clients horizon).map
       (fun final => read final.application.config) =
@@ -665,7 +666,7 @@ private theorem native_intended_law_of_disclosing (setup : Setup (Player := Play
     let source := setup.decodeBehavioralProfile (CommitmentInterface.forfeiture setup.program)
       target
     let reference := effectiveOpening (compilePrescribedProfile setup.program deps source)
-    let clients := serviceReferenceTurnPolicy setup deps duration leaks bound turns
+    let clients := turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
       (firstTurnTiming setup turns deps) reference
     let native := app.roundsFrom (serviceInitialLaw setup deps) scheduler clients horizon
     (∀ final ∈ native.support, final.application.config.defaulted = ∅) ∧
@@ -886,7 +887,7 @@ theorem native_compileIntendedExtension_law (setup : Setup (Player := Player) (L
     let source := setup.decodeBehavioralProfile (CommitmentInterface.forfeiture setup.program)
       target
     let reference := effectiveOpening (compilePrescribedProfile setup.program deps source)
-    let clients := serviceReferenceTurnPolicy setup deps duration leaks bound turns
+    let clients := turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
       (firstTurnTiming setup turns deps) reference
     let native := app.roundsFrom (serviceInitialLaw setup deps) scheduler clients horizon
     (∀ final ∈ native.support,

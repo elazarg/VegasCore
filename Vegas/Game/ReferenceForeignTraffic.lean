@@ -41,11 +41,12 @@ theorem reference_foreign_fixedRun {horizon : Nat}
     (action : (serviceGraph setup deps).Action event)
     (execution : (serviceApplication setup deps duration leaks).Execution)
     (ready : execution.application.config.cut.Ready event) :
-    let baseline := serviceReferenceTurnPolicy setup deps duration leaks bound turns
+    let baseline := turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
       (firstTurnTiming setup turns deps) reference
     let member := fun past view =>
-      if serviceTurn setup deps duration leaks owner event past view = some 0 then
-        decidedOpportunity setup leaks bound owner event action past view
+      if turnIndex (serviceTimeouts setup deps duration) leaks owner event past view = some 0 then
+        fixedOpportunity (serviceTimeouts setup deps duration) leaks
+          bound owner event action past view
       else baseline owner past view
     ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
       (Function.update (Function.update baseline focal deviation) owner member)
@@ -81,7 +82,7 @@ theorem reference_foreign_fixedRun {horizon : Nat}
         owned
       dsimp only [member, decidedTurnPolicy, ReactiveApplication.turnScheduledPolicy]
       simp only [Fin.val_zero]
-      by_cases selected : serviceTurn setup deps duration leaks owner event
+      by_cases selected : turnIndex (serviceTimeouts setup deps duration) leaks owner event
           (middle.logs owner) (middle.observe app owner) = some 0
       · simp only [selected, ite_true]
       · simp only [selected, ite_false]
@@ -95,7 +96,7 @@ theorem reference_foreign_fixedRun {horizon : Nat}
           apply ownTurn?_none_of_alone alone middle.application middleReady actor
           rw [owned]
           exact fun equal => isOwner (Option.some.inj equal).symm
-        simp only [baseline, serviceReferenceTurnPolicy, idle,
+        simp only [baseline, EventGraphRuntime.turnPolicy, idle,
           ReactiveApplication.silentPolicy_apply]
   · intro current holds running next reached
     exact round_ready_of_pending alone (holds running) reached
@@ -124,12 +125,12 @@ theorem reference_binding_traffic_congr (serial : (serviceGraph setup deps).Acto
     (rightReady : right.application.config.cut.Ready event)
     (leftSupported : left ∈ ((serviceApplication setup deps duration leaks).roundsFrom
       (serviceInitialLaw setup deps) scheduler
-      (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+      (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps) reference) focal deviation)
       left.environmentRecall.length).support)
     (rightSupported : right ∈ ((serviceApplication setup deps duration leaks).roundsFrom
       (serviceInitialLaw setup deps) scheduler
-      (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+      (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps) reference) focal deviation)
       right.environmentRecall.length).support)
     (leftUntouched : Untouched setup leaks event left)
@@ -152,9 +153,9 @@ theorem reference_binding_traffic_congr (serial : (serviceGraph setup deps).Acto
         ((bindingTraffic (serviceTimeouts setup deps duration)) leaks focal)) := by
   let app := serviceApplication setup deps duration leaks
   let players := Function.update
-    (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+    (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
       (firstTurnTiming setup turns deps) reference) focal deviation
-  have follows : players owner = serviceReferenceTurnPolicy setup deps duration leaks
+  have follows : players owner = turnPolicy (serviceTimeouts setup deps duration) leaks
       bound turns (firstTurnTiming setup turns deps) reference owner :=
     Function.update_of_ne foreign _ _
   have facts (current : app.Execution)
@@ -164,7 +165,7 @@ theorem reference_binding_traffic_congr (serial : (serviceGraph setup deps).Acto
       (bounded : current.environmentRecall.length ≤ horizon) :
       Nonempty ((app.protocol (serviceInitialLaw setup deps) horizon scheduler).Trace
         (some ⟨horizon - current.environmentRecall.length, none, current⟩)) ∧
-      OwnSubmissionsAtTurn setup leaks current owner ∧
+      OwnSubmissionsAtTurn (serviceTimeouts setup deps duration) leaks current owner ∧
       CanonicalSlotsUsed setup leaks current owner ∧
       ownerTurns owner event current = 0 ∧
       (eventRecorded (serviceTimeouts setup deps duration)) leaks (current.logs owner) event =

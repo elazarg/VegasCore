@@ -191,8 +191,8 @@ theorem blockCounters_respond_congr_at
       blockCounters (right.respond (serviceApplication setup deps duration leaks) actor
         rightResponse) owner event := by
   let app := serviceApplication setup deps duration leaks
-  obtain ⟨_, leftRecalled, _⟩ := respond_recall_self setup leaks left actor leftResponse
-  obtain ⟨_, rightRecalled, _⟩ := respond_recall_self setup leaks right actor rightResponse
+  obtain ⟨_, leftRecalled, _⟩ := respond_recall_self _ leaks left actor leftResponse
+  obtain ⟨_, rightRecalled, _⟩ := respond_recall_self _ leaks right actor rightResponse
   by_cases owned : owner = actor
   · subst owner
     simp only [blockCounters, ownerTurns, EventGraphRuntime.eventRecorded, Prod.mk.injEq]
@@ -509,14 +509,14 @@ theorem referenceTurnPolicy_eq_decided_of_kernel
     (opens : reference owner event owned
         ((serviceGraph setup deps).playerObserve owner execution.application.config) active =
       PMF.pure action) :
-    serviceReferenceTurnPolicy setup deps duration leaks bound turns
+    turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps) reference owner (execution.logs owner)
         (execution.observe (serviceApplication setup deps duration leaks) owner) =
       decidedTurnPolicy setup leaks bound owner event action
         (execution.logs owner)
         (execution.observe (serviceApplication setup deps duration leaks) owner) := by
   let app := serviceApplication setup deps duration leaks
-  let family := serviceReferenceTurnFamily setup deps duration leaks bound reference owner event
+  let family := turnFamily (serviceTimeouts setup deps duration) leaks bound reference owner event
     turns
   have pin : (app.policyMixture (PMF.pure (0 : Fin (turns + 1))) family).posterior
       (execution.logs owner) = PMF.pure 0 := by
@@ -526,16 +526,17 @@ theorem referenceTurnPolicy_eq_decided_of_kernel
     event owned turn]
   change (app.policyMixture (PMF.pure (0 : Fin (turns + 1))) family).policy _ _ = _
   rw [app.policyMixture_policy, pin, PMF.pure_bind]
-  change app.turnScheduledPolicy (serviceTurn setup deps duration leaks owner event)
+  change app.turnScheduledPolicy (turnIndex (serviceTimeouts setup deps duration) leaks owner event)
     (some (0 : Fin (turns + 1)))
-    (serviceReferenceOpportunity setup deps duration leaks bound reference owner event)
+    (referenceOpportunity (serviceTimeouts setup deps duration) leaks bound reference owner event)
     app.silentPolicy _ _ = _
   unfold decidedTurnPolicy
-  by_cases selected : serviceTurn setup deps duration leaks owner event (execution.logs owner)
+  by_cases selected : turnIndex (serviceTimeouts setup deps duration)
+    leaks owner event (execution.logs owner)
       (execution.observe app owner) = some 0
   · rw [app.turnScheduledPolicy_selected _ (0 : Fin (turns + 1)) _ _ _ _ selected,
       app.turnScheduledPolicy_selected _ (0 : Fin 1) _ _ _ _ selected]
-    unfold serviceReferenceOpportunity decidedOpportunity
+    unfold EventGraphRuntime.referenceOpportunity fixedOpportunity
     rw [sourceServiceCanonicalPolicy_at_event_reference setup leaks reference owner execution
       event turn owned, dite_eq_right active]
     have opened : reference owner event owned
@@ -543,13 +544,13 @@ theorem referenceTurnPolicy_eq_decided_of_kernel
         active = PMF.pure action := opens
     rw [opened, PMF.pure_map, PMF.pure_bind]
   · have unselected : ∀ (slot : Fin (turns + 1)), some (0 : Fin (turns + 1)) = some slot →
-        serviceTurn setup deps duration leaks owner event (execution.logs owner)
+        turnIndex (serviceTimeouts setup deps duration) leaks owner event (execution.logs owner)
           (execution.observe app owner) ≠ some slot.val := by
       intro slot same
       cases same
       exact selected
     have unselectedOne : ∀ (slot : Fin 1), some (0 : Fin 1) = some slot →
-        serviceTurn setup deps duration leaks owner event (execution.logs owner)
+        turnIndex (serviceTimeouts setup deps duration) leaks owner event (execution.logs owner)
           (execution.observe app owner) ≠ some slot.val := by
       intro slot same
       cases same
@@ -666,7 +667,7 @@ theorem honest_block_matched_of_turns {horizon leftRemaining rightRemaining : Na
     (sample : Finset (MessageId Player))
     (sampled : sample ∈ ((serviceApplication setup deps duration leaks).observePending actor
       left.network.pending).support) :
-    let players := Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound
+    let players := Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound
       turns (firstTurnTiming setup turns deps) reference) who deviation
     let leftActive := left.sampledActivation (serviceApplication setup deps duration leaks)
       actor sample
@@ -694,7 +695,7 @@ theorem honest_block_matched_of_turns {horizon leftRemaining rightRemaining : Na
   have networks : left.network = right.network := congrArg Prod.fst sameTraffic
   have activated := bindingTraffic_activation timeouts leaks left right who actor
     sameTraffic sample
-  have follows : players actor = serviceReferenceTurnPolicy setup deps duration leaks bound
+  have follows : players actor = turnPolicy timeouts leaks bound
       turns (firstTurnTiming setup turns deps) reference actor := Function.update_of_ne other _ _
   simp only [follows]
   have leftMoved : leftActive ∈ (left.environmentStep app (.activate actor)).support := by
@@ -718,21 +719,21 @@ theorem honest_block_matched_of_turns {horizon leftRemaining rightRemaining : Na
   cases turnEq : left.application.publicView.ownTurn? actor with
   | none =>
       have rightTurn : right.application.publicView.ownTurn? actor = none := publics ▸ turnEq
-      have leftSilent : serviceReferenceTurnPolicy setup deps duration leaks bound turns
+      have leftSilent : turnPolicy timeouts leaks bound turns
           (firstTurnTiming setup turns deps) reference actor (leftActive.logs actor)
           (leftActive.observe app actor) = PMF.pure ⟨none⟩ := by
-        unfold serviceReferenceTurnPolicy
-        change (match left.application.publicView.ownTurn? actor with
-          | none => _ | some _ => _) = _
-        rw [turnEq]
+        unfold EventGraphRuntime.turnPolicy
+        have noTurn : (leftActive.observe app actor).application.publicView.ownTurn? actor =
+            none := turnEq
+        rw [noTurn]
         rfl
-      have rightSilent : serviceReferenceTurnPolicy setup deps duration leaks bound turns
+      have rightSilent : turnPolicy timeouts leaks bound turns
           (firstTurnTiming setup turns deps) reference actor (rightActive.logs actor)
           (rightActive.observe app actor) = PMF.pure ⟨none⟩ := by
-        unfold serviceReferenceTurnPolicy
-        change (match right.application.publicView.ownTurn? actor with
-          | none => _ | some _ => _) = _
-        rw [rightTurn]
+        unfold EventGraphRuntime.turnPolicy
+        have noTurn : (rightActive.observe app actor).application.publicView.ownTurn? actor =
+            none := rightTurn
+        rw [noTurn]
         rfl
       exact ⟨⟨none⟩, ⟨none⟩, leftSilent, rightSilent, rfl, silentTraffic⟩
   | some event =>
@@ -855,9 +856,9 @@ theorem honest_block_matched_of_turns {horizon leftRemaining rightRemaining : Na
               have silentAt (current : app.Execution)
                   (failed : ∀ value, binding.get? current.application.config.store ≠
                     some (.success value)) :
-                  decidedOpportunity setup leaks bound actor event action (current.logs actor)
+                  fixedOpportunity timeouts leaks bound actor event action (current.logs actor)
                     (current.observe app actor) = PMF.pure ⟨none⟩ := by
-                unfold decidedOpportunity
+                unfold fixedOpportunity
                 rw [unavailable current failed]
                 split_ifs <;> rfl
               refine ⟨⟨none⟩, ⟨none⟩, silentAt leftActive success,
@@ -932,7 +933,7 @@ theorem honest_block_matched_of {horizon leftRemaining rightRemaining : Nat}
     (sample : Finset (MessageId Player))
     (sampled : sample ∈ ((serviceApplication setup deps duration leaks).observePending actor
       left.network.pending).support) :
-    let players := Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound
+    let players := Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound
       turns (firstTurnTiming setup turns deps) reference) who deviation
     let leftActive := left.sampledActivation (serviceApplication setup deps duration leaks)
       actor sample
@@ -1009,7 +1010,7 @@ theorem honest_block_matched {horizon leftRemaining rightRemaining : Nat}
     (sample : Finset (MessageId Player))
     (sampled : sample ∈ ((serviceApplication setup deps duration leaks).observePending actor
       left.network.pending).support) :
-    let players := Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound
+    let players := Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound
       turns (firstTurnTiming setup turns deps) reference) who deviation
     let leftActive := left.sampledActivation (serviceApplication setup deps duration leaks)
       actor sample
@@ -1157,19 +1158,19 @@ theorem block_stopped_readout_congr {horizon : Nat}
       BindingsAgree start finish right.application.config right.application.config →
       blockReadout who left = blockReadout who right →
       ((serviceApplication setup deps duration leaks).runUntil scheduler
-        (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+        (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
           (firstTurnTiming setup turns deps) reference) who deviation)
         (fun final => BlockDone finish final.application.config) count left).map
           (blockReadout who) =
       ((serviceApplication setup deps duration leaks).runUntil scheduler
-        (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+        (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
           (firstTurnTiming setup turns deps) reference) who deviation)
         (fun final => BlockDone finish final.application.config) count right).map
           (blockReadout who) := by
   intro count leftRemaining rightRemaining left right leftTrace rightTrace leftInside
     rightInside agree rightAvailable same
   let app := serviceApplication setup deps duration leaks
-  let players := Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound
+  let players := Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound
     turns (firstTurnTiming setup turns deps) reference) who deviation
   let invariant := fun (origin : app.Execution) (count : Nat) (current : app.Execution) =>
     (∃ remaining, Nonempty ((app.protocol (serviceInitialLaw setup deps) horizon scheduler).Trace
@@ -1263,7 +1264,7 @@ theorem decidedTurnPolicy_support (bound : (serviceGraph setup deps).EventId →
   unfold decidedTurnPolicy ReactiveApplication.turnScheduledPolicy at chosen
   dsimp only at chosen
   split at chosen
-  · unfold decidedOpportunity at chosen
+  · unfold fixedOpportunity at chosen
     split_ifs at chosen <;>
       first
       | exact Or.inl ((PMF.mem_support_pure_iff _ _).mp chosen)
@@ -1295,7 +1296,7 @@ theorem honest_block_submits_accepted (bound : (serviceGraph setup deps).EventId
     (publications : ∀ event, execution.application.config.cut.Ready event →
       ((serviceGraph setup deps).outputLayout event).IsPublication)
     (response : (serviceApplication setup deps duration leaks).Action)
-    (chosen : response ∈ (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+    (chosen : response ∈ (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
       (firstTurnTiming setup turns deps) reference owner (execution.logs owner)
       (execution.observe (serviceApplication setup deps duration leaks) owner)).support)
     (event : (serviceGraph setup deps).EventId)
@@ -1307,13 +1308,13 @@ theorem honest_block_submits_accepted (bound : (serviceGraph setup deps).EventId
   let app := serviceApplication setup deps duration leaks
   cases turnEq : execution.application.publicView.ownTurn? owner with
   | none =>
-      have silent : serviceReferenceTurnPolicy setup deps duration leaks bound turns
+      have silent : turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
           (firstTurnTiming setup turns deps) reference owner (execution.logs owner)
           (execution.observe app owner) = PMF.pure ⟨none⟩ := by
-        unfold serviceReferenceTurnPolicy
-        change (match execution.application.publicView.ownTurn? owner with
-          | none => _ | some _ => _) = _
-        rw [turnEq]
+        unfold EventGraphRuntime.turnPolicy
+        have noTurn : (execution.observe app owner).application.publicView.ownTurn? owner =
+            none := turnEq
+        rw [noTurn]
         rfl
       rw [silent, PMF.mem_support_pure_iff] at chosen
       subst chosen

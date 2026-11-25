@@ -3,6 +3,8 @@ module
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 public import Vegas.Game.OnePacketSuccessorBoundary
+public import Vegas.Game.SourceServiceContinuation
+public import Vegas.EventGraph.SchedulerErasure
 public import Vegas.Pending.EventCommandFrame
 public import Vegas.Pending.ReactiveGraphSteps
 
@@ -517,19 +519,16 @@ theorem counted_chance_stopped_sourceContinuation
               rw [decodedPoint_eq_of_isPrefix nextPrefix]
               rfl
       _ = _ := by rw [configLaw, PMF.bind_map]; rfl
-  obtain ⟨law, sourceLaw, _policy, _effective⟩ :=
-    SourceResidual.head_law timeouts leaks residual event atRank ready
-  have fixed : law.bind (fun choice =>
-      (config.step event ready choice).bind (sourceContinuation setup profile (rank + 1))) =
-      (config.step event ready action).bind (sourceContinuation setup profile (rank + 1)) := by
-    have same : (fun choice => (config.step event ready choice).bind
-        (sourceContinuation setup profile (rank + 1))) =
-        (fun _ => (config.step event ready action).bind
-          (sourceContinuation setup profile (rank + 1))) := by
-      funext choice
-      rw [(setup.informationGraph.nodes event).action_eq_of_actor_none actorless choice action]
-    rw [same, PMF.bind_const]
-  exact factored.trans (sourceLaw.trans fixed).symm
+  apply factored.trans
+  rw [← residual.runPlan_readout_law,
+    EventGraph.runPlan_remaining_canonical_step _ config event ready (fun other otherReady => by
+      rw [setup.informationGraph.sequentialize_ready_unique _ otherReady ready])]
+  simp only [EventGraph.eventStep, EventGraph.actionLaw_of_ownerless _ config actorless,
+    PMF.pure_bind, PMF.map_bind]
+  apply bind_congr_on_support _
+  intro next reached
+  obtain ⟨successor, _⟩ := residual.step event ready action next reached
+  exact successor.runPlan_readout_law.symm
 
 end FiniteChance
 

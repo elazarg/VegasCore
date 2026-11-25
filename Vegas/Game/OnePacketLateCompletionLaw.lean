@@ -146,7 +146,7 @@ def LateOwnerShapeFrom (assessment : setup.intendedModel.BehavioralAssessment) {
       reached.observe (application setup timeouts leaks) who =
         start.observe (application setup timeouts leaks) who) →
     (reached.logs who ≠ start.logs who → ∃ response,
-      start.logs who ++ [respondEntry setup timeouts leaks start who response] <+:
+      start.logs who ++ [respondEntry timeouts leaks start who response] <+:
         reached.logs who) →
     (∃ options : PMF (LateOption slots),
       installed who (some (reached.logs who, reached.observe (application setup timeouts leaks)
@@ -279,7 +279,7 @@ theorem lateBinding_exitBound
         reached.observe (application setup timeouts leaks) who =
           execution.observe (application setup timeouts leaks) who) →
       (reached.logs who ≠ execution.logs who → ∃ response,
-        execution.logs who ++ [respondEntry setup timeouts leaks execution who response] <+:
+        execution.logs who ++ [respondEntry timeouts leaks execution who response] <+:
           reached.logs who) →
       ∀ slot < bounds.candidateCount,
         countPermits ((application setup timeouts leaks).outputs (reached.logs who))
@@ -317,7 +317,7 @@ theorem lateBinding_exitBound
     ∀ control : (application setup timeouts leaks).Control, state = some control →
       (control.execution.logs who = past → state = start.state) ∧
       (control.execution.logs who ≠ past → ∃ response,
-        past ++ [respondEntry setup timeouts leaks execution who response] <+:
+        past ++ [respondEntry timeouts leaks execution who response] <+:
           control.execution.logs who)
   let inside : (menu.protocol (initialLaw setup) horizon scheduler).History → Prop :=
     fun history => LateUnsent setup timeouts leaks who event sent past history.state ∧
@@ -480,7 +480,7 @@ theorem lateBinding_exitBound
           next.state = respondState ⟨none⟩ → inside next := by
         intro next nextState
         have recallEq : (reached.respond (application setup timeouts leaks) who ⟨none⟩).logs who =
-            reached.logs who ++ [respondEntry setup timeouts leaks reached who ⟨none⟩] := by
+            reached.logs who ++ [respondEntry timeouts leaks reached who ⟨none⟩] := by
           rw [(respond_recall timeouts) leaks reached who who ⟨none⟩, ite_eq_left rfl ..]
           rfl
         refine ⟨?_, ?_⟩
@@ -781,7 +781,7 @@ theorem lateBinding_completionPointLaw
         reached.observe (application setup timeouts leaks) who =
           execution.observe (application setup timeouts leaks) who) →
       (reached.logs who ≠ execution.logs who → ∃ response,
-        execution.logs who ++ [respondEntry setup timeouts leaks execution who response] <+:
+        execution.logs who ++ [respondEntry timeouts leaks execution who response] <+:
           reached.logs who) →
       ∀ slot < bounds.candidateCount,
         countPermits ((application setup timeouts leaks).outputs (reached.logs who))
@@ -880,7 +880,7 @@ theorem lateBinding_completionPointLaw
         reached.observe (application setup timeouts leaks) who =
           execution.observe (application setup timeouts leaks) who) →
       (reached.logs who ≠ execution.logs who → ∃ response,
-        execution.logs who ++ [respondEntry setup timeouts leaks execution who response] <+:
+        execution.logs who ++ [respondEntry timeouts leaks execution who response] <+:
           reached.logs who) →
       ∀ slot < bounds.candidateCount,
         countPermits ((application setup timeouts leaks).outputs (reached.logs who))

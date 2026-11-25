@@ -66,14 +66,15 @@ theorem sourceServiceCanonicalPolicy_submission_reference {reference :
     {view : (serviceApplication setup deps duration leaks).PlayerView}
     {response : (serviceApplication setup deps duration leaks).Action}
     (chosen : response ∈
-        (serviceReferencePolicy setup deps duration leaks reference who past view).support)
+        (referencePolicy (serviceTimeouts setup deps duration)
+          leaks reference who past view).support)
     {material : (serviceApplication setup deps duration leaks).Submission}
     (submits : response.transmission = some material) :
     ∃ event action, view.application.publicView.ownTurn? who = some event ∧
       response = (canonicalServiceDecision (serviceTimeouts setup deps duration)) leaks who past
         view
           event action := by
-  unfold serviceReferencePolicy at chosen
+  unfold EventGraphRuntime.referencePolicy at chosen
   split at chosen
   · split at chosen
     · rw [PMF.mem_support_pure_iff] at chosen
@@ -123,7 +124,8 @@ theorem sourceServiceCanonicalOpportunity_submission_reference
     {view : (serviceApplication setup deps duration leaks).PlayerView}
     {response : (serviceApplication setup deps duration leaks).Action}
     (chosen : response ∈
-        (serviceReferenceOpportunity setup deps duration leaks bound reference who event past
+        (referenceOpportunity (serviceTimeouts setup deps duration) leaks
+          bound reference who event past
         view).support) {material : (serviceApplication setup deps duration leaks).Submission}
     (submits : response.transmission = some material) :
     (eventRecorded (serviceTimeouts setup deps duration)) leaks past event = false ∧
@@ -132,7 +134,7 @@ theorem sourceServiceCanonicalOpportunity_submission_reference
     response = (canonicalServiceDecision (serviceTimeouts setup deps duration)) leaks who past view
     turnEvent
           action := by
-  unfold serviceReferenceOpportunity at chosen
+  unfold EventGraphRuntime.referenceOpportunity at chosen
   split at chosen
   · exact (silentPolicy_not_submit chosen material submits).elim
   · rename_i unrecorded
@@ -181,7 +183,8 @@ theorem sourceServiceTurnPolicy_submission_reference {bound :
     {view : (serviceApplication setup deps duration leaks).PlayerView}
     {response : (serviceApplication setup deps duration leaks).Action}
     (chosen : response ∈
-        (serviceReferenceTurnPolicy setup deps duration leaks bound turns timing reference who past
+        (turnPolicy (serviceTimeouts setup deps duration) leaks
+          bound turns timing reference who past
         view).support) {material : (serviceApplication setup deps duration leaks).Submission}
     (submits : response.transmission = some material) : ∃ event action,
     view.application.publicView.ownTurn? who = some event ∧
@@ -191,14 +194,14 @@ theorem sourceServiceTurnPolicy_submission_reference {bound :
       response = (canonicalServiceDecision (serviceTimeouts setup deps duration)) leaks who past
         view
           event action := by
-  unfold serviceReferenceTurnPolicy at chosen
+  unfold EventGraphRuntime.turnPolicy at chosen
   split at chosen
   · exact (silentPolicy_not_submit chosen material submits).elim
   · rename_i event turn
     split at chosen
     · rw [ReactiveApplication.policyMixture_policy, PMF.support_bind] at chosen
       obtain ⟨slot, _, member⟩ := Set.mem_iUnion₂.mp chosen
-      unfold serviceReferenceTurnFamily ReactiveApplication.turnScheduledPolicy at member
+      unfold EventGraphRuntime.turnFamily ReactiveApplication.turnScheduledPolicy at member
       dsimp only at member
       split at member
       · obtain ⟨unrecorded, fits, other, action, otherTurn, rfl⟩ :=
@@ -251,7 +254,7 @@ theorem serviceTurnPolicy_submitsCanonically_reference (bound :
     (turns : Nat) (timing : TurnTiming setup turns deps) (reference :
       (serviceGraph setup deps).BehavioralProfile)
     (who : Player) :
-    SubmitsCanonically (serviceReferenceTurnPolicy setup deps duration leaks bound turns timing
+    SubmitsCanonically (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns timing
       reference who)
       who := by
   intro past view response chosen material submits
@@ -373,7 +376,8 @@ theorem not_pendingBinding_at_turn
     (trace :
         ((serviceApplication setup deps duration leaks).protocol (serviceInitialLaw setup deps)
         horizon scheduler).Trace (some control))
-    (who : Player) (atTurn : OwnSubmissionsAtTurn setup leaks control.execution who)
+    (who : Player) (atTurn : OwnSubmissionsAtTurn
+      (serviceTimeouts setup deps duration) leaks control.execution who)
     (event : (serviceGraph setup deps).EventId)
     (ownerSolitary : (serviceGraph setup deps).OwnerSolitary event)
     (turn : control.execution.application.publicView.ownTurn? who = some event)
@@ -411,7 +415,8 @@ theorem canonicalSlot_fresh_of_used
     (trace :
         ((serviceApplication setup deps duration leaks).protocol (serviceInitialLaw setup deps)
         horizon scheduler).Trace (some control))
-    (who : Player) (atTurn : OwnSubmissionsAtTurn setup leaks control.execution who)
+    (who : Player) (atTurn : OwnSubmissionsAtTurn
+      (serviceTimeouts setup deps duration) leaks control.execution who)
     (valid : CanonicalSlotsUsed setup leaks control.execution who)
     (event : (serviceGraph setup deps).EventId)
     (ownerSolitary : (serviceGraph setup deps).OwnerSolitary event)
@@ -519,7 +524,7 @@ theorem canonicalSlotsUsed_respond
     {response : (serviceApplication setup deps duration leaks).Action}
     (chosen : response ∈ (policy (middle.logs who)
       (middle.observe (serviceApplication setup deps duration leaks) who)).support)
-    (atTurn : OwnSubmissionsAtTurn setup leaks middle who)
+    (atTurn : OwnSubmissionsAtTurn (serviceTimeouts setup deps duration) leaks middle who)
     (valid : CanonicalSlotsUsed setup leaks middle who) :
     CanonicalSlotsUsed setup leaks
         (middle.respond (serviceApplication setup deps duration leaks) who response)
@@ -527,7 +532,7 @@ theorem canonicalSlotsUsed_respond
   let app := serviceApplication setup deps duration leaks
   have appEq := (reactive_respond_application (serviceTimeouts setup deps duration)) leaks middle
       who response
-  obtain ⟨emitted, recalled, _⟩ := respond_recall_self setup leaks middle who response
+  obtain ⟨emitted, recalled, _⟩ := respond_recall_self _ leaks middle who response
   have recordedMono : ∀ event,
       (eventRecorded (serviceTimeouts setup deps duration)) leaks (middle.logs who) event = true →
         (eventRecorded (serviceTimeouts setup deps duration)) leaks
@@ -589,17 +594,19 @@ theorem canonicalSlots_round
     (trace :
         ((serviceApplication setup deps duration leaks).protocol (serviceInitialLaw setup deps)
         horizon scheduler).Trace (some ⟨remaining + 1, none, execution⟩))
-    (atTurn : OwnSubmissionsAtTurn setup leaks execution who)
+    (atTurn : OwnSubmissionsAtTurn (serviceTimeouts setup deps duration) leaks execution who)
     (valid : CanonicalSlotsUsed setup leaks execution who)
     (reached : next ∈
         ((serviceApplication setup deps duration leaks).round scheduler players
         execution).support) :
-    OwnSubmissionsAtTurn setup leaks next who ∧ CanonicalSlotsUsed setup leaks next who := by
+    OwnSubmissionsAtTurn
+      (serviceTimeouts setup deps duration) leaks next who ∧
+        CanonicalSlotsUsed setup leaks next who := by
   let app := serviceApplication setup deps duration leaks
   obtain ⟨command, selected, middle, moved, cases⟩ := round_cases setup leaks reached
   have recallEq := app.environmentStep_recall execution middle command moved
-  have atMiddle : OwnSubmissionsAtTurn setup leaks middle who := by
-    unfold OwnSubmissionsAtTurn
+  have atMiddle : OwnSubmissionsAtTurn (serviceTimeouts setup deps duration) leaks middle who := by
+    unfold EventGraphRuntime.OwnSubmissionsAtTurn
     rw [recallEq]
     exact atTurn
   have validMiddle := canonicalSlotsUsed_environment moved who valid
@@ -612,7 +619,8 @@ theorem canonicalSlots_round
     · subst responder
       refine ⟨?_, canonicalSlotsUsed_respond serial middleTrace canonical chosen atMiddle
         validMiddle⟩
-      obtain ⟨emitted, recalled, _⟩ := respond_recall_self setup leaks middle who response
+      obtain ⟨emitted, recalled, _⟩ :=
+        respond_recall_self _ leaks middle who response
       intro entry member event submitted
       rw [recalled] at member
       rcases List.mem_append.mp member with old | new
@@ -622,7 +630,7 @@ theorem canonicalSlots_round
         exact submitsAtTurn _ _ response chosen event submitted
     · have different : who ≠ responder := fun equal => same equal.symm
       refine ⟨?_, canonicalSlotsUsed_respond_other middle different response validMiddle⟩
-      unfold OwnSubmissionsAtTurn
+      unfold EventGraphRuntime.OwnSubmissionsAtTurn
       rw [app.respond_recall_other middle responder who different response]
       exact atMiddle
 
@@ -634,12 +642,13 @@ theorem canonicalSlots_roundsFrom_reference
     (players : Player → (serviceApplication setup deps duration leaks).Policy) (who : Player)
     {bound : (serviceGraph setup deps).EventId → Nat} {turns : Nat}
     (timing : TurnTiming setup turns deps) (reference : (serviceGraph setup deps).BehavioralProfile)
-    (follows : players who = serviceReferenceTurnPolicy setup deps duration leaks bound turns
+    (follows : players who = turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
       timing reference
         who) (count : Nat) (execution : (serviceApplication setup deps duration leaks).Execution)
     (reached : execution ∈
         ((serviceApplication setup deps duration leaks).roundsFrom (serviceInitialLaw setup deps)
-        scheduler players count).support) : OwnSubmissionsAtTurn setup leaks execution who ∧
+        scheduler players count).support) : OwnSubmissionsAtTurn
+          (serviceTimeouts setup deps duration) leaks execution who ∧
       CanonicalSlotsUsed setup leaks execution who := by
   let app := serviceApplication setup deps duration leaks
   induction count generalizing execution with
@@ -675,7 +684,8 @@ theorem canonicalSlots_roundsFrom
         who) (count : Nat) (execution : (serviceApplication setup deps duration leaks).Execution)
     (reached : execution ∈
         ((serviceApplication setup deps duration leaks).roundsFrom (serviceInitialLaw setup deps)
-        scheduler players count).support) : OwnSubmissionsAtTurn setup leaks execution who ∧
+        scheduler players count).support) : OwnSubmissionsAtTurn
+          (serviceTimeouts setup deps duration) leaks execution who ∧
       CanonicalSlotsUsed setup leaks execution who := by
   exact canonicalSlots_roundsFrom_reference serial scheduler players who timing
     (compileEventProfile setup.program profile) follows count execution reached
@@ -692,7 +702,8 @@ theorem canonicalSlot_resources_of_used
     (trace :
         ((serviceApplication setup deps duration leaks).protocol (serviceInitialLaw setup deps)
         horizon scheduler).Trace (some control))
-    (who : Player) (atTurn : OwnSubmissionsAtTurn setup leaks control.execution who)
+    (who : Player) (atTurn : OwnSubmissionsAtTurn
+      (serviceTimeouts setup deps duration) leaks control.execution who)
     (valid : CanonicalSlotsUsed setup leaks control.execution who)
     (event : (serviceGraph setup deps).EventId)
     (ownerSolitary : (serviceGraph setup deps).OwnerSolitary event)
@@ -765,7 +776,7 @@ theorem FreshCall.sole {horizon : Nat}
     (later : List (serviceApplication setup deps duration leaks).PlayerEntry)
     (message : Message Player (WitnessedPacket (serviceGraph setup deps)))
     (split : control.execution.logs owner = earlier ++ entry :: later)
-    (call : FreshCall setup leaks owner event bound entry message) :
+    (call : FreshCall (serviceTimeouts setup deps duration) leaks owner event bound entry message) :
     ∀ other ∈ earlier ++ later, ¬ EmitsOtherFor (serviceTimeouts setup deps duration) leaks
       other event message.id := by
   have signed := signedCommitments_history (serviceTimeouts setup deps duration) leaks
@@ -801,7 +812,8 @@ theorem round_freshCalls_reference
     {players : Player → (serviceApplication setup deps duration leaks).Policy} {who : Player}
     {bound : (serviceGraph setup deps).EventId → Nat} {turns : Nat}
     (timing : TurnTiming setup turns deps) (reference : (serviceGraph setup deps).BehavioralProfile)
-    (follows : players who = serviceReferenceTurnPolicy setup deps duration leaks bound turns timing
+    (follows : players who = turnPolicy (serviceTimeouts setup deps duration) leaks
+      bound turns timing
       reference who)
     {execution next : (serviceApplication setup deps duration leaks).Execution}
     (calls : OwnFreshCalls setup leaks bound execution who)
@@ -829,7 +841,8 @@ theorem round_freshCalls_reference
       rcases response with ⟨transmission⟩
       cases transmission with
       | none =>
-          obtain ⟨emitted, recalled, _⟩ := respond_recall_self setup leaks middle who ⟨none⟩
+          obtain ⟨emitted, recalled, _⟩ :=
+            respond_recall_self _ leaks middle who ⟨none⟩
           refine ⟨?_, ?_⟩
           · intro entry member material submitted
             rw [recalled] at member
@@ -920,7 +933,8 @@ theorem sourceServiceTurnPolicy_freshCalls_reference
     (players : Player → (serviceApplication setup deps duration leaks).Policy) (who : Player)
     {bound : (serviceGraph setup deps).EventId → Nat} {turns : Nat}
     (timing : TurnTiming setup turns deps) (reference : (serviceGraph setup deps).BehavioralProfile)
-    (follows : players who = serviceReferenceTurnPolicy setup deps duration leaks bound turns timing
+    (follows : players who = turnPolicy (serviceTimeouts setup deps duration) leaks
+      bound turns timing
       reference who) (count : Nat)
     (execution : (serviceApplication setup deps duration leaks).Execution)
     (reached : execution ∈ ((serviceApplication setup deps duration leaks).roundsFrom

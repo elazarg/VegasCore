@@ -13,7 +13,9 @@ not assume equilibrium.
 | --- | --- | --- |
 | Source to graph | `Vegas.scheduled_setup_law` | Exact complete source configuration law under every permitted public graph scheduler. |
 | Raw Interaction to graph | `Vegas.EventGraphRuntime.reactive_protocol_graph_refinement` | Every transition between initialized controls follows a finite supported graph path, including automatic completion. Every initialized raw history has a graph-reachable configuration; service completion makes all terminal fields available. |
-| Ledger to compiled graph | `Vegas.sourceServiceClientPolicy_canonicalGraph_law` | Actual sequential first-opportunity clients have exactly the complete terminal readout law of canonical execution of the compiled graph, run on their disclosure-normalized profile. A runtime discharges the per-event completion law of `Vegas.firstTurnGraphLaw_of_completion_law` and reuses the graph compiler theorem. |
+| Ledger event to graph event | `Vegas.EventGraphRuntime.firstTurn_client_event_config_law` | Starting at each reached first-turn boundary, the ledger configuration at the next completion has the law of one graph event followed by automatic completion of ready events belonging to defaulted players. |
+| Ledger run to graph run | `Vegas.EventGraphRuntime.firstTurn_client_config_law` | The recovered clients implement the full terminal configuration distribution of canonical execution on a sequentialized graph. The interface takes a graph input law, a realizable graph profile, and asynchronous service and timing hypotheses. |
+| Source profile to graph client | `Vegas.compileEventProfile_realizable` | A source profile with authentic disclosures supplies graph-realizable actions at every reachable, ready event. Disclosure normalization supplies authenticity for arbitrary source profiles. |
 | Source to ledger | `Vegas.sourceServiceClientPolicy_outcome_law` | The ledger-to-graph law composed with the source-to-graph law: those same physical clients preserve the joint typed-state/default source law for every source profile, without a finite wire catalogue, equilibrium, audit, utility-bound or independent-prior premise. |
 | Original compiled profile to ledger | `Vegas.sourceServiceClientPolicy_graph_law` | The clients and canonical execution of the original profile's compiled policy have the same law through every total reader of typed state and public defaults. |
 | Raw unilateral deviation to source | `Vegas.asyncDeviation_readout_law` | Every physical policy against first-turn clients has one behavioral source deviation with the same typed-state/full-default-history law on the sequential compiled service graph. No finite-player or wire-value catalogue premise. |
@@ -35,16 +37,17 @@ actual graph steps with their dependent actions; bookkeeping transitions
 may stutter. This establishes execution safety, not a probability comparison for
 arbitrary raw policies. The exact law concerns prescribed compiled clients.
 
-The ledger-to-graph law lifts one local graph-continuation identity through
-actual completion ranks: letting the ledger complete the next event and then
-finishing with the canonical graph plan has the same decoded terminal law as
-finishing with the graph plan alone. It composes omission/withholding, typed
-acceptance and chance sampling. Composing it with the canonical configuration
-law gives the source-to-ledger law. The comparison with the original profile's
-compiled policy goes through their common typed-state/default readout.
-Strategy completion
-and disclosure normalization preserve the original profile's joint
-typed-state/default law; private intentions after failure may differ.
+A completion boundary records a supported execution and its completed prefix. For each
+such boundary, the next ledger stop has the same graph configuration distribution as
+sampling the graph action, executing that event, and draining automatic completions.
+The graph configuration includes its chronological history. Network receipts and the
+ledger clock belong to the runtime. Several graph events can complete in one ledger round.
+
+The whole-run law follows by iterating the boundary simulation. The source adapter applies
+the typed decoder to the full graph configuration law for the normalized profile, then
+uses the source-to-graph compiler theorem. Normalization preserves the original profile's
+joint typed-state/default distribution. The graph history comparison uses the normalized
+profile because normalization can change a player's recorded action.
 
 ## Equilibrium client compilation
 
@@ -69,8 +72,10 @@ definitions and add no compiler-specification premise.
 
 ## Hypotheses and observations
 
-The direct forward physical laws use finitely many players, the sequential compiled
-graph, a supplied runtime with relative deadlines, and first-opportunity timing.
+The graph backend takes a sequentialized graph, a runtime with relative deadlines, and
+first-opportunity timing. Its simulation theorems work for any player type with decidable
+equality. A realizable graph profile requests an opening only when the binding has a value
+at that reached configuration. A deferred guard may still reject the opening.
 The asynchronous contract supplies all-history opportunity, protected inclusion
 and completion; `AsyncTimely` requires the reaction and inclusion bounds to sum
 to strictly less than each owned event's deadline. Source profiles are arbitrary.

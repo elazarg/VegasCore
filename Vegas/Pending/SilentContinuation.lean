@@ -491,5 +491,48 @@ theorem silent_runUntil_bind_continuation
     rw [terminal]
     exact Finset.mem_univ _
 
+/-- Silence at an owned ready head has the same continuation as the graph
+omission, even when expiry automatically completes further events. The initial
+execution may be any actual raw idle history. -/
+theorem silent_runUntil_bind_runPlan
+    (timeouts : EventTimeouts graph.sequentialize)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph.sequentialize))
+    (profile : graph.sequentialize.BehavioralProfile)
+    (scheduler : ((reactiveApplication timeouts) leaks).Scheduler)
+    (players : Player → ((reactiveApplication timeouts) leaks).Policy)
+    {inputs : PMF graph.sequentialize.Inputs} (horizon : Nat)
+    (complete : CompletesPlay timeouts leaks (inputs.map State.initial) horizon scheduler)
+    (event : graph.sequentialize.EventId) (owner : Player)
+    (owned : graph.sequentialize.actor? event = some owner)
+    (action : graph.sequentialize.Action event) (silent : SilentAction event action)
+    (execution : ((reactiveApplication timeouts) leaks).Execution)
+    (ready : execution.application.config.cut.Ready event)
+    {remaining : Nat}
+    (trace : (((reactiveApplication timeouts) leaks).protocol (inputs.map State.initial) horizon
+      scheduler).Trace
+      (some ⟨remaining, none, execution⟩))
+    (safe : ∀ message ∈ execution.network.pending, message.sender = owner →
+      message.payload.call.event? graph.sequentialize ≠ some event)
+    (quiet : ∀ past view, view.application.publicView.ownTurn? owner = some event →
+      players owner past view = PMF.pure ⟨none⟩) :
+    ((((reactiveApplication timeouts) leaks).runUntilHorizon scheduler players
+        (fun final => event ∈ final.application.config.cut.completed) horizon execution).bind
+      fun stopped =>
+        graph.sequentialize.runPlan (graph.sequentialize.policyPlan profile
+          graph.sequentialize.canonicalScheduler)
+          stopped.application.config.remaining stopped.application.config) =
+      (execution.application.config.step event ready action).bind fun after =>
+        graph.sequentialize.runPlan (graph.sequentialize.policyPlan profile
+          graph.sequentialize.canonicalScheduler)
+          after.remaining after :=
+  silent_runUntil_bind_continuation timeouts leaks
+    (fun config => graph.sequentialize.runPlan
+      (graph.sequentialize.policyPlan profile graph.sequentialize.canonicalScheduler)
+        config.remaining config)
+    (fun state => (EventGraphRuntime.State.drain_runPlan_canonical graph profile
+      state).symm) scheduler players horizon complete event
+    (graph.sequentialize_solitary event) owner owned action silent execution ready
+    (reactive_history_quiescent timeouts leaks inputs horizon scheduler trace) trace safe quiet
+
 end EventGraphRuntime
 end Vegas

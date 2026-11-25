@@ -131,7 +131,7 @@ theorem lastForeign_phase
     (execution : Seed → (serviceApplication setup deps duration leaks).Execution)
     (supported : ∀ seed ∈ prior.support, execution seed ∈
       ((serviceApplication setup deps duration leaks).roundsFrom (serviceInitialLaw setup deps)
-        scheduler (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound
+        scheduler (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound
           turns (firstTurnTiming setup turns deps) ((serviceGraph setup deps).normalizeProfile
             base)) who deviation)
         (execution seed).environmentRecall.length).support)
@@ -155,7 +155,7 @@ theorem lastForeign_phase
     ∃ nextNoise : Option ((serviceGraph setup deps).PlayerObservation who) → PMF _,
       (prior.bind fun seed =>
         ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
-          (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+          (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
             (firstTurnTiming setup turns deps) ((serviceGraph setup deps).normalizeProfile base))
             who deviation)
           (fun current => event ∈ current.application.config.cut.completed) horizon
@@ -163,7 +163,7 @@ theorem lastForeign_phase
             (bindingTraffic (serviceTimeouts setup deps duration)) leaks who final)) =
         (prior.bind fun seed =>
           ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
-            (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+            (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
               (firstTurnTiming setup turns deps) ((serviceGraph setup deps).normalizeProfile
                 base)) who deviation)
             (fun current => event ∈ current.application.config.cut.completed) horizon
@@ -171,7 +171,7 @@ theorem lastForeign_phase
           (fun current => (nextNoise (keyView who current)).map fun extra => (current, extra)) ∧
       ∀ policy, (prior.bind fun seed =>
         ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
-          (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+          (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
             (firstTurnTiming setup turns deps) ((serviceGraph setup deps).normalizeProfile base))
             who deviation)
           (fun current => event ∈ current.application.config.cut.completed) horizon
@@ -186,7 +186,7 @@ theorem lastForeign_phase
   let app := serviceApplication setup deps duration leaks
   let timeouts := serviceTimeouts setup deps duration
   let R := G.normalizeProfile base
-  let honest := serviceReferenceTurnPolicy setup deps duration leaks bound turns
+  let honest := turnPolicy timeouts leaks bound turns
     (firstTurnTiming setup turns deps) R
   let players := Function.update honest who deviation
   let stop := fun current : app.Execution => event ∈ current.application.config.cut.completed
@@ -195,8 +195,8 @@ theorem lastForeign_phase
   let traffic := (bindingTraffic timeouts) leaks who
   let normal := fun config : G.Config => G.normalizeObservation who (G.playerObserve who config)
   let member := fun (action : G.Action event) past view =>
-    if serviceTurn setup deps duration leaks owner event past view = some 0 then
-      decidedOpportunity setup leaks bound owner event action past view
+    if turnIndex timeouts leaks owner event past view = some 0 then
+      fixedOpportunity timeouts leaks bound owner event action past view
     else honest owner past view
   let decided := fun seed (action : G.Action event) => app.runUntilHorizon scheduler
     (Function.update players owner (member action)) stop horizon (execution seed)
@@ -240,7 +240,7 @@ theorem lastForeign_phase
       active
     have callback (current : app.Execution)
         (same : current.application.config = (execution seed).application.config) :
-        serviceReferencePolicy setup deps duration leaks R owner (current.logs owner)
+        referencePolicy timeouts leaks R owner (current.logs owner)
             (current.observe app owner) =
           law.map (fun action => (canonicalServiceDecision timeouts) leaks owner
             (current.logs owner) (current.observe app owner) event action) := by
@@ -256,9 +256,10 @@ theorem lastForeign_phase
       rw [sourceServiceCanonicalPolicy_at_event_reference setup leaks R owner current event
         turn owned, dite_eq_right currentActive]
       exact congrArg (PMF.map _) (kernel _ _ same currentActive active)
-    have mixed := serviceReference_firstTurn_mixture timeouts leaks scheduler bound R owner event
-      owned solitary players follows (execution seed) ready (supported seed present)
-      (untouched seed present pending) (bounded seed present) law callback
+    have mixed := firstTurn_mixture timeouts leaks scheduler bound R owner event owned players
+      follows (execution seed) (fun _ other => solitary _ other ready) (supported seed present)
+      (untouched seed present pending owner) (bounded seed present) law
+      (fun current same _ => callback current same)
     rw [actionLaw_of_actor _ _ ownedNode, dite_eq_right active]
     exact mixed
   have continued (seed : Seed) (present : seed ∈ prior.support)

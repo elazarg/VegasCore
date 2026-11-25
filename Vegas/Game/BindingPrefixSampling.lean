@@ -38,7 +38,7 @@ theorem serviceReference_binding_prefix_mixture
     (owned : (serviceGraph setup deps).actor? event = some owner)
     (notPublication : ¬ ((serviceGraph setup deps).outputLayout event).IsPublication)
     (background : Player → (serviceApplication setup deps duration leaks).Policy)
-    (follows : background owner = serviceReferenceTurnPolicy setup deps duration leaks bound turns
+    (follows : background owner = turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
       (firstTurnTiming setup turns deps) ((serviceGraph setup deps).prefixProfile profile) owner)
     (stop : (serviceApplication setup deps duration leaks).Execution → Prop) [DecidablePred stop]
     (execution : (serviceApplication setup deps duration leaks).Execution)
@@ -64,7 +64,7 @@ theorem serviceReference_binding_prefix_mixture
           (EventGraph.completion (serviceGraph setup deps) prior
             (some (cast (congrArg EventField.Action binding.symm) (some result)))
             (cast (congrArg EventField.Value binding.symm) result)))
-    (truthful : OwnSubmissionsAtTurn setup leaks execution owner)
+    (truthful : OwnSubmissionsAtTurn (serviceTimeouts setup deps duration) leaks execution owner)
     (untouched : ∀ prior : (serviceGraph setup deps).EventId,
       start ≤ prior.val → prior.val ≤ event.val →
       (serviceGraph setup deps).actor? prior = some owner → Untouched setup leaks prior execution)
@@ -73,21 +73,25 @@ theorem serviceReference_binding_prefix_mixture
         (some ⟨remaining + count, none, execution⟩)) :
     let app := serviceApplication setup deps duration leaks
     let reference := (serviceGraph setup deps).prefixProfile profile
-    let players := serviceReferenceTurnPolicy setup deps duration leaks bound turns
+    let players := turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
       (firstTurnTiming setup turns deps) reference
     app.runUntil scheduler background stop count execution =
       (actionLaw reference ghost event).bind (fun action =>
         app.runUntil scheduler
           (Function.update background owner (fun past view =>
-            if serviceTurn setup deps duration leaks owner event past view = some 0 then
-              decidedOpportunity setup leaks bound owner event action past view
+            if turnIndex (serviceTimeouts setup deps duration)
+              leaks owner event past view = some 0 then
+              fixedOpportunity (serviceTimeouts setup deps duration) leaks
+                bound owner event action past view
             else players owner past view)) stop count execution) := by
   classical
   intro app reference players
   let law := actionLaw reference ghost event
-  let first := fun past view => serviceTurn setup deps duration leaks owner event past view = some 0
+  let first := fun past view => turnIndex (serviceTimeouts setup deps duration)
+    leaks owner event past view = some 0
   let member := fun (action : (serviceGraph setup deps).Action event) past view =>
-    if first past view then decidedOpportunity setup leaks bound owner event action past view
+    if first past view then fixedOpportunity (serviceTimeouts setup deps duration) leaks
+      bound owner event action past view
     else players owner past view
   let invariant := fun current : app.Execution =>
     (∃ used, current ∈ (app.runRounds scheduler background used execution).support) ∧
@@ -167,12 +171,12 @@ theorem serviceReference_binding_prefix_mixture
       execution.application.config ghost start initialReach ordered middle middlePath ghostPath
       owner event owned notPublication middleReady ghostReady ghostActive bindings ownRecords
       middleTrace
-    change serviceReferenceTurnPolicy setup deps duration leaks bound turns
+    change turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
       (firstTurnTiming setup turns deps) reference owner (middle.logs owner)
         (middle.observe app owner) = _
     rw [sourceServiceTurnPolicy_firstTurn_reference owned firstNow]
     simp only [member, first, firstNow, ite_true]
-    unfold serviceReferenceOpportunity decidedOpportunity
+    unfold EventGraphRuntime.referenceOpportunity fixedOpportunity
     by_cases recorded : (eventRecorded (serviceTimeouts setup deps duration)) leaks
         (middle.logs owner) event = true
     · simp only [recorded, ite_true, PMF.bind_const]

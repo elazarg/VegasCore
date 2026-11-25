@@ -601,9 +601,9 @@ private theorem foreign_binding_fixed_endpoint
     (firstTurnTiming setup turns) wholeProfile
   let background := Function.update baseline focal deviation
   let member := fun past view =>
-    if serviceTurn setup setup.informationDependencies timeouts.duration leaks owner event past
+    if turnIndex timeouts leaks owner event past
       view = some 0 then
-      decidedOpportunity setup leaks bound owner event action past view
+      fixedOpportunity timeouts leaks bound owner event action past view
     else baseline owner past view
   let patched := Function.update background owner member
   let reference : setup.informationGraph.BehavioralProfile := compileEventProfile setup.program
@@ -1243,9 +1243,9 @@ private theorem foreign_reveal_fixed_endpoint
     (firstTurnTiming setup turns) wholeProfile
   let background := Function.update baseline focal deviation
   let member := fun past view =>
-    if serviceTurn setup setup.informationDependencies timeouts.duration leaks owner event past
+    if turnIndex timeouts leaks owner event past
       view = some 0 then
-      decidedOpportunity setup leaks bound owner event action past view
+      fixedOpportunity timeouts leaks bound owner event action past view
     else baseline owner past view
   let patched := Function.update background owner member
   let reference : setup.informationGraph.BehavioralProfile := compileEventProfile setup.program

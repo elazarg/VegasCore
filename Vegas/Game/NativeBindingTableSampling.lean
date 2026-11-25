@@ -84,7 +84,8 @@ theorem native_binding_subfamily_mixture
     (bindings : ∀ event : (serviceGraph setup deps).EventId,
       start ≤ event.val → event.val < start + bindingCount →
       ∃ owner payload, (serviceGraph setup deps).outputLayout event = .binding owner payload)
-    (truthful : ∀ owner, compiled owner → OwnSubmissionsAtTurn setup leaks execution owner)
+    (truthful : ∀ owner, compiled owner → OwnSubmissionsAtTurn
+      (serviceTimeouts setup deps duration) leaks execution owner)
     (untouched : ∀ owner, compiled owner →
       ∀ event : (serviceGraph setup deps).EventId,
       start ≤ event.val → event.val < start + bindingCount →
@@ -95,7 +96,8 @@ theorem native_binding_subfamily_mixture
     let G := serviceGraph setup deps
     let app := serviceApplication setup deps duration leaks
     let reference := G.prefixProfile profile
-    let clients := fun reference => serviceReferenceTurnPolicy setup deps duration leaks bound turns
+    let clients := fun reference => turnPolicy (serviceTimeouts setup deps duration) leaks
+      bound turns
       (firstTurnTiming setup turns deps) reference
     let prescribed := fun reference actor =>
       if compiled actor then clients reference actor else background actor
@@ -238,7 +240,7 @@ theorem native_binding_subfamily_mixture
           have notPublication : ¬ (G.outputLayout event).IsPublication := by
             rw [binding]
             exact fun impossible => impossible
-          have follows : players rank ghost owner = serviceReferenceTurnPolicy setup deps duration
+          have follows : players rank ghost owner = turnPolicy (serviceTimeouts setup deps duration)
               leaks bound turns (firstTurnTiming setup turns deps)
               (G.prefixProfile (frozen rank ghost)) owner :=
             by simp only [players, prescribed, clients, ite_eq_left isSelected]
@@ -381,7 +383,8 @@ theorem native_binding_unilateral_source_mixture
     (bindings : ∀ event : (serviceGraph setup deps).EventId,
       start ≤ event.val → event.val < start + bindingCount →
       ∃ owner payload, (serviceGraph setup deps).outputLayout event = .binding owner payload)
-    (truthful : ∀ owner, owner ≠ focal → OwnSubmissionsAtTurn setup leaks execution owner)
+    (truthful : ∀ owner, owner ≠ focal → OwnSubmissionsAtTurn
+      (serviceTimeouts setup deps duration) leaks execution owner)
     (untouched : ∀ owner, owner ≠ focal →
       ∀ event : (serviceGraph setup deps).EventId,
       start ≤ event.val → event.val < start + bindingCount →
@@ -391,7 +394,8 @@ theorem native_binding_unilateral_source_mixture
         (some ⟨remaining + nativeCount, none, execution⟩)) :
     let G := serviceGraph setup deps
     let app := serviceApplication setup deps duration leaks
-    let clients := fun reference => serviceReferenceTurnPolicy setup deps duration leaks bound turns
+    let clients := fun reference => turnPolicy (serviceTimeouts setup deps duration) leaks
+      bound turns
       (firstTurnTiming setup turns deps) reference
     let players := fun reference => Function.update (clients reference) focal deviation
     let placeholder := Function.update profile focal
@@ -518,7 +522,8 @@ theorem native_binding_unilateral_effective_source_mixture
     (bindings : ∀ event : (serviceGraph setup deps).EventId,
       start ≤ event.val → event.val < start + bindingCount →
       ∃ owner payload, (serviceGraph setup deps).outputLayout event = .binding owner payload)
-    (truthful : ∀ owner, owner ≠ focal → OwnSubmissionsAtTurn setup leaks execution owner)
+    (truthful : ∀ owner, owner ≠ focal → OwnSubmissionsAtTurn
+      (serviceTimeouts setup deps duration) leaks execution owner)
     (untouched : ∀ owner, owner ≠ focal →
       ∀ event : (serviceGraph setup deps).EventId,
       start ≤ event.val → event.val < start + bindingCount →
@@ -528,7 +533,7 @@ theorem native_binding_unilateral_effective_source_mixture
         (some ⟨remaining + nativeCount, none, execution⟩)) :
     let G := serviceGraph setup deps
     let app := serviceApplication setup deps duration leaks
-    let clients := fun raw => serviceReferenceTurnPolicy setup deps duration leaks bound turns
+    let clients := fun raw => turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
       (firstTurnTiming setup turns deps) (effectiveOpening (G.prefixProfile raw))
     let players := fun raw => Function.update (clients raw) focal deviation
     let placeholder := Function.update profile focal

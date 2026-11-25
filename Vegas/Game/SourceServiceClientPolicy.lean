@@ -57,7 +57,7 @@ theorem sourceServiceCanonicalDecision_canonical_of_slots
     (trace : ((bounds.rawMenu (serviceTimeouts setup deps duration) leaks).protocol
       (serviceInitialLaw setup deps) horizon scheduler).Trace
       (some ⟨remaining, some who, execution⟩))
-    (atTurn : OwnSubmissionsAtTurn setup leaks execution who)
+    (atTurn : OwnSubmissionsAtTurn (serviceTimeouts setup deps duration) leaks execution who)
     (valid : CanonicalSlotsUsed setup leaks execution who)
     (event : (serviceGraph setup deps).EventId)
     (ownerSolitary : (serviceGraph setup deps).OwnerSolitary event)
@@ -170,7 +170,7 @@ theorem sourceServiceTurnPolicy_canonical_of_slots
     (trace : ((bounds.rawMenu (serviceTimeouts setup deps duration) leaks).protocol
       (serviceInitialLaw setup deps) horizon scheduler).Trace
       (some ⟨remaining, some who, execution⟩))
-    (atTurn : OwnSubmissionsAtTurn setup leaks execution who)
+    (atTurn : OwnSubmissionsAtTurn (serviceTimeouts setup deps duration) leaks execution who)
     (valid : CanonicalSlotsUsed setup leaks execution who)
     (response : (serviceApplication setup deps duration leaks).Action)
     (supported : response ∈ (serviceTurnPolicy setup deps duration leaks bound turns timing
@@ -199,7 +199,9 @@ abbrev ConsistentSlots (bound : (serviceGraph setup deps).EventId → Nat) (turn
     (execution : (serviceApplication setup deps duration leaks).Execution) : Prop :=
   ∀ who, (serviceTurnPolicy setup deps duration leaks bound turns timing profile who).Consistent
       (execution.logs who) →
-    OwnSubmissionsAtTurn setup leaks execution who ∧ CanonicalSlotsUsed setup leaks execution who
+    OwnSubmissionsAtTurn
+      (serviceTimeouts setup deps duration) leaks execution who ∧
+        CanonicalSlotsUsed setup leaks execution who
 
 theorem consistentSlots_transition
     (serial : (serviceGraph setup deps).ActorSerial)
@@ -233,7 +235,7 @@ theorem consistentSlots_transition
           intro player consistent
           by_cases same : player = who
           · subst same
-            obtain ⟨emitted, recalled, _⟩ := respond_recall_self setup leaks execution player
+            obtain ⟨emitted, recalled, _⟩ := respond_recall_self _ leaks execution player
               ((joint player).getD ⟨none⟩)
             change (serviceTurnPolicy setup deps duration leaks bound turns timing profile
               player).Consistent ((execution.respond app player
@@ -260,7 +262,7 @@ theorem consistentSlots_transition
             rw [recallEq] at consistent
             obtain ⟨atTurn, slots⟩ := valid player consistent
             refine ⟨?_, canonicalSlotsUsed_respond_other execution same _ slots⟩
-            unfold OwnSubmissionsAtTurn
+            unfold EventGraphRuntime.OwnSubmissionsAtTurn
             rw [recallEq]
             exact atTurn
       | none =>
@@ -279,7 +281,7 @@ theorem consistentSlots_transition
               rw [recallEq] at consistent
               obtain ⟨atTurn, slots⟩ := valid player consistent
               refine ⟨?_, canonicalSlotsUsed_environment supported player slots⟩
-              unfold OwnSubmissionsAtTurn
+              unfold EventGraphRuntime.OwnSubmissionsAtTurn
               rw [recallEq]
               exact atTurn
 
@@ -300,7 +302,8 @@ theorem sourceServiceTurnPolicy_consistent_slots
         ReactiveApplication.serviceInvariant
         (fun execution => ∀ who,
             (serviceTurnPolicy setup deps duration leaks bound turns timing profile who).Consistent
-            (execution.logs who) → OwnSubmissionsAtTurn setup leaks execution who ∧
+            (execution.logs who) → OwnSubmissionsAtTurn
+              (serviceTimeouts setup deps duration) leaks execution who ∧
             CanonicalSlotsUsed setup leaks execution who) state
   | _, .start => trivial
   | _, .extend prior joint _ reached =>
@@ -329,9 +332,9 @@ theorem sourceServiceClientPolicy_raw_admissible
       (serviceInitialLaw setup deps) horizon scheduler who
       (serviceClientPolicy setup deps duration leaks bound turns timing profile who) := by
   intro control trace active response supported
-  by_cases consistent : (serviceReferenceTurnPolicy setup deps duration leaks bound turns timing
+  by_cases consistent : (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns timing
     (compileEventProfile setup.program profile) who).Consistent (control.execution.logs who)
-  · rw [serviceClientPolicy, serviceReferenceClientPolicy,
+  · rw [serviceClientPolicy, EventGraphRuntime.clientPolicy,
       ReactiveApplication.Policy.recover_eq _ _ _ _ consistent]
       at supported
     obtain ⟨atTurn, slots⟩ := sourceServiceTurnPolicy_consistent_slots bounds serial bound turns
@@ -351,7 +354,7 @@ theorem sourceServiceClientPolicy_raw_admissible
           effective
     rw [← normal]
     exact bounds.rawMenu_closed (serviceTimeouts setup deps duration) leaks who _ _ original allowed
-  · rw [serviceClientPolicy, serviceReferenceClientPolicy,
+  · rw [serviceClientPolicy, EventGraphRuntime.clientPolicy,
       ReactiveApplication.Policy.recover_eq_recovery _ _ _ _ consistent] at supported
     exact canonicalMenu_in_raw bounds who _ _
       (bounds.silent_canonical (serviceTimeouts setup deps duration) leaks who _ _ response

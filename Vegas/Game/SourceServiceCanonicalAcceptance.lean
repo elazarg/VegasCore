@@ -76,7 +76,7 @@ theorem canonical_freshCall {horizon : Nat}
       (control.execution.logs who)
       (control.execution.observe (serviceApplication setup deps duration leaks) who) event
       action).transmission = some material) :
-    FreshCall setup leaks who event bound
+    FreshCall (serviceTimeouts setup deps duration) leaks who event bound
       ⟨control.execution.observe (serviceApplication setup deps duration leaks) who,
         (canonicalServiceDecision (serviceTimeouts setup deps duration)) leaks who
           (control.execution.logs who)

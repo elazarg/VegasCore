@@ -89,7 +89,7 @@ theorem blockRun_facts
     (execution : (serviceApplication setup deps duration leaks).Execution)
     (supported : execution ∈ ((serviceApplication setup deps duration leaks).roundsFrom
       (serviceInitialLaw setup deps) scheduler
-      (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+      (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps) reference) who deviation)
       execution.environmentRecall.length).support)
     (bounded : execution.environmentRecall.length ≤ horizon)
@@ -99,14 +99,14 @@ theorem blockRun_facts
       event.val < finish → Untouched setup leaks event execution)
     (final : (serviceApplication setup deps duration leaks).Execution)
     (reached : final ∈ ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
-      (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+      (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps) reference) who deviation)
       (fun current => BlockDone finish current.application.config) horizon execution).support) :
     Relation.ReflTransGen Config.Step execution.application.config final.application.config ∧
       BlockRecordsSound who start finish execution.application.config
         final.application.config := by
   let app := serviceApplication setup deps duration leaks
-  let players := Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound
+  let players := Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound
     turns (firstTurnTiming setup turns deps) reference) who deviation
   let holds := fun (n : Nat) (current : app.Execution) =>
     current ∈ (app.roundsFrom (serviceInitialLaw setup deps) scheduler players
@@ -146,7 +146,8 @@ theorem blockRun_facts
         (fun current => BlockDone finish current.application.config) 0)).support
     rw [ite_eq_right running, PMF.support_bind]
     exact Set.mem_iUnion₂.mpr ⟨next, moved, by simp [ReactiveApplication.runUntil]⟩
-  have atTurn : ∀ owner, owner ≠ who → OwnSubmissionsAtTurn setup leaks execution owner :=
+  have atTurn : ∀ owner, owner ≠ who → OwnSubmissionsAtTurn
+    (serviceTimeouts setup deps duration) leaks execution owner :=
     fun owner different => (canonicalSlots_roundsFrom_reference serial scheduler players owner
       (firstTurnTiming setup turns deps) reference (Function.update_of_ne different _ _)
       execution.environmentRecall.length execution supported).1

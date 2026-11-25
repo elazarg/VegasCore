@@ -85,20 +85,20 @@ theorem concurrentDeviationSimulation {horizon : Nat}
     (concurrent : (serviceGraph setup deps).RevealsOnlyConcurrent) :
     ∀ rank, rank ≤ (serviceGraph setup deps).order.eventCount →
       DeviationSimulation scheduler
-        (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+        (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
           (firstTurnTiming setup turns deps) ((serviceGraph setup deps).normalizeProfile base))
           who deviation) horizon readErased
         (fun execution => runKey execution.application.config)
         ((bindingTraffic (serviceTimeouts setup deps duration)) leaks who) (keyView who)
         (fun policy => keyTarget ((serviceGraph setup deps).lastDeviationProfile base who policy)
           who)
-        (PhaseBoundary scheduler (Function.update (serviceReferenceTurnPolicy setup deps duration
+        (PhaseBoundary scheduler (Function.update (turnPolicy (serviceTimeouts setup deps duration)
           leaks bound turns (firstTurnTiming setup turns deps)
           ((serviceGraph setup deps).normalizeProfile base)) who deviation) horizon rank) := by
   classical
   let G := serviceGraph setup deps
   let app := serviceApplication setup deps duration leaks
-  let players := Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound
+  let players := Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound
     turns (firstTurnTiming setup turns deps) (G.normalizeProfile base)) who deviation
   suffices step : ∀ gap rank, G.order.eventCount - rank = gap → rank ≤ G.order.eventCount →
       DeviationSimulation scheduler players horizon readErased

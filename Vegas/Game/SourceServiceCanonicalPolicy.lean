@@ -3,7 +3,7 @@ module
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 public import Vegas.Game.SourceServicePolicy
-public import Vegas.Pending.ReactiveCanonicalDecision
+public import Vegas.Pending.TurnClient
 public import Vegas.Pending.ReactiveSubmissionRecall
 public import Vegas.Compile.EventGraphPolicyLaw
 public import Vegas.Game.SourceServiceFacts
@@ -41,54 +41,19 @@ variable (setup : Setup (Player := Player) (L := L)) (deps : setup.dataflowGraph
   (duration : (serviceGraph setup deps).EventId → Nat)
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup deps)))
 
-/-- A reference graph profile's decision at the player's turn, realized by the
-canonical decision. -/
-def serviceReferencePolicy (reference : (serviceGraph setup deps).BehavioralProfile)
-    (who : Player) : (serviceApplication setup deps duration leaks).Policy := fun past view =>
-  if identity : view.application.who = who then
-    match view.application.publicView.ownTurn? who with
-    | none => PMF.pure ⟨none⟩
-    | some event =>
-        if owned : (serviceGraph setup deps).actor? event = some who then
-          let observed := id
-            (identity ▸ view.application.observation)
-          if inactive : who ∈ observed.defaulted then PMF.pure ⟨none⟩ else
-            (reference who event owned observed inactive).map
-              ((canonicalServiceDecision (serviceTimeouts setup deps duration)) leaks who past view
-                event)
-        else PMF.pure ⟨none⟩
-  else PMF.pure ⟨none⟩
-
 /-- The source compiler's decision at the player's turn, realized by the
 canonical decision. -/
 def serviceCanonicalPolicy (profile : BehavioralProfile setup.program) (who : Player) :
     (serviceApplication setup deps duration leaks).Policy :=
-  serviceReferencePolicy setup deps duration leaks (compileEventProfile setup.program profile) who
-
-/-- One opportunity of a reference's turn-counted policy: silence once the event
-is recorded in the owner's recall or once a fresh call could no longer be
-included before the deadline within `bound event` slots; otherwise make the
-reference decision, retaining silence if it emits nothing. -/
-def serviceReferenceOpportunity (bound : (serviceGraph setup deps).EventId → Nat)
-    (reference : (serviceGraph setup deps).BehavioralProfile) (who : Player)
-    (event : (serviceGraph setup deps).EventId) :
-    (serviceApplication setup deps duration leaks).Policy := fun past view =>
-  if (eventRecorded (serviceTimeouts setup deps duration)) leaks past event then
-    (serviceApplication setup deps duration leaks).silentPolicy past view
-  else if view.application.publicView.InclusionFitsDeadline (serviceTimeouts setup deps duration)
-      bound event then
-    (serviceReferencePolicy setup deps duration leaks reference who past view).bind fun response =>
-      if response.transmission = none then
-        (serviceApplication setup deps duration leaks).silentPolicy past view
-      else PMF.pure response
-  else (serviceApplication setup deps duration leaks).silentPolicy past view
+  referencePolicy (serviceTimeouts setup deps duration)
+    leaks (compileEventProfile setup.program profile) who
 
 /-- One opportunity of the turn-counted policy of the compiled source profile. -/
 def serviceCanonicalOpportunity (bound : (serviceGraph setup deps).EventId → Nat)
     (profile : BehavioralProfile setup.program) (who : Player)
     (event : (serviceGraph setup deps).EventId) :
     (serviceApplication setup deps duration leaks).Policy :=
-  serviceReferenceOpportunity setup deps duration leaks bound
+  referenceOpportunity (serviceTimeouts setup deps duration) leaks bound
     (compileEventProfile setup.program profile) who event
 
 end Configured
@@ -116,7 +81,7 @@ theorem sourceServiceCanonicalPolicy_at_event_reference (reference :
     (event : (serviceGraph setup deps).EventId)
     (selected : execution.application.publicView.ownTurn? who = some event)
     (owned : (serviceGraph setup deps).actor? event = some who) :
-    serviceReferencePolicy setup deps duration leaks reference who (execution.logs who)
+    referencePolicy (serviceTimeouts setup deps duration) leaks reference who (execution.logs who)
         (execution.observe (serviceApplication setup deps duration leaks) who) =
       if inactive : who ∈ execution.application.config.defaulted then PMF.pure ⟨none⟩ else
         (reference who event owned
@@ -126,7 +91,7 @@ theorem sourceServiceCanonicalPolicy_at_event_reference (reference :
           ((canonicalServiceDecision (serviceTimeouts setup deps duration)) leaks who
             (execution.logs who)
             (execution.observe (serviceApplication setup deps duration leaks) who) event) := by
-  unfold serviceReferencePolicy
+  unfold EventGraphRuntime.referencePolicy
   rw [dite_eq_left
           (show (execution.observe (serviceApplication setup deps duration leaks)
           who).application.who = who from rfl)]
@@ -169,7 +134,8 @@ theorem sourceServiceCanonicalPolicy_at_event_history_reference
     (selected : control.execution.application.publicView.ownTurn? who = some event)
     (owned : (serviceGraph setup deps).actor? event = some who) :
     ∃ active : who ∉ control.execution.application.config.defaulted,
-      serviceReferencePolicy setup deps duration leaks reference who (control.execution.logs who)
+      referencePolicy (serviceTimeouts setup deps duration)
+        leaks reference who (control.execution.logs who)
           (control.execution.observe (serviceApplication setup deps duration leaks) who) =
         (reference who event owned
           (id

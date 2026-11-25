@@ -155,8 +155,9 @@ private theorem clientPolicy_congr {turns : Nat} (timing : TurnTiming service.se
       serviceClientPolicy service.setup service.setup.informationDependencies service.duration
         service.leaks service.bound turns timing other
         who := by
-  unfold serviceClientPolicy serviceReferenceClientPolicy serviceReferenceTurnPolicy
-    serviceReferenceTurnFamily serviceReferenceOpportunity serviceReferencePolicy
+  unfold serviceClientPolicy EventGraphRuntime.clientPolicy EventGraphRuntime.turnPolicy
+    EventGraphRuntime.turnFamily EventGraphRuntime.referenceOpportunity
+    EventGraphRuntime.referencePolicy
       compileEventProfile
   rw [same]
 

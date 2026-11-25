@@ -61,7 +61,7 @@ theorem counted_accepted_until_continuation
       message event sent action output (some control))
     (atSent : control.execution.application.config = sent)
     (owned : setup.informationGraph.actor? event = some who)
-    (fresh : FreshCall setup leaks who event bound entry message) :
+    (fresh : FreshCall timeouts leaks who event bound entry message) :
     ∀ stop ∈ ((model).runBehavioralUntil certificate players
       (fun history => (∃ final, history.state = some final ∧
         event ∈ final.execution.application.config.cut.completed) ∨
@@ -125,7 +125,7 @@ theorem counted_accepted_stop_continuation
       message event sent action output (some control))
     (atSent : control.execution.application.config = sent)
     (owned : setup.informationGraph.actor? event = some who)
-    (fresh : FreshCall setup leaks who event bound entry message) :
+    (fresh : FreshCall timeouts leaks who event bound entry message) :
     ∀ stop ∈ ((model).runBehavioralUntil certificate players
       (fun history => (∃ final, history.state = some final ∧
         event ∈ final.execution.application.config.cut.completed) ∨ ¬ Clear history.state)

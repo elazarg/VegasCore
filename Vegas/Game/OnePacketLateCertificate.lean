@@ -254,7 +254,7 @@ theorem lateBinding_successFree
         reached.observe (application setup timeouts leaks) who =
           execution.observe (application setup timeouts leaks) who) →
       (reached.logs who ≠ execution.logs who → ∃ response,
-        execution.logs who ++ [respondEntry setup timeouts leaks execution who response] <+:
+        execution.logs who ++ [respondEntry timeouts leaks execution who response] <+:
           reached.logs who) →
       ∀ slot < bounds.candidateCount,
         countPermits ((application setup timeouts leaks).outputs (reached.logs who))
@@ -444,7 +444,7 @@ theorem lateBinding_successFree
       by_cases atStart : reached.logs who = execution.logs who
       · exact ⟨_, [], by rw [atStart], sameView atStart⟩
       · obtain ⟨response, tail, tailEq⟩ := extended atStart
-        refine ⟨respondEntry setup timeouts leaks execution who response,
+        refine ⟨respondEntry timeouts leaks execution who response,
           tail ++ [⟨reached.observe (application setup timeouts leaks) who, slotResponse setup
             timeouts leaks who
             (reached.logs who) (reached.observe (application setup timeouts leaks) who) event slot
@@ -576,7 +576,7 @@ theorem certificate_lateSuccessFree (sequence : ℕ → setup.intendedModel.Beha
         reached.observe (application setup timeouts leaks) who =
           execution.observe (application setup timeouts leaks) who) →
       (reached.logs who ≠ execution.logs who → ∃ response,
-        execution.logs who ++ [respondEntry setup timeouts leaks execution who response] <+:
+        execution.logs who ++ [respondEntry timeouts leaks execution who response] <+:
           reached.logs who) →
       ∀ slot < bounds.candidateCount,
         countPermits ((application setup timeouts leaks).outputs (reached.logs who))

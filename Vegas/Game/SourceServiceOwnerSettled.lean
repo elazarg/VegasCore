@@ -77,7 +77,8 @@ theorem owner_packet_accepted {horizon : Nat}
     exact Option.some.inj entryEvent.symm
   subst callEvent
   obtain ⟨earlier, later, split⟩ := List.mem_iff_append.mp entryMember
-  have call : FreshCall setup leaks who event bound entry message := {
+  have call : FreshCall
+    (serviceTimeouts setup deps duration) leaks who event bound entry message := {
     fresh := ⟨material, transmission⟩
     emitted := entryEmitted
     authored := authored
@@ -110,7 +111,8 @@ theorem owner_packet_accepted {horizon : Nat}
       exact secondAddressed
     exact differentId (once issuer issuerMember entry entryMember event _ _ issuerEvent
       entryEvent issuerEmitted entryEmitted)
-  have settles : SettlesFreshCalls setup leaks who event bound control.execution :=
+  have settles : SettlesFreshCalls
+    (serviceTimeouts setup deps duration) leaks who event bound control.execution :=
     settlesFreshCalls_history setup leaks inclusion who event ownerSolitary owned trace
   exact (settles earlier entry later message split call sole).1 completed
 
@@ -256,7 +258,8 @@ theorem sourceServiceTurnPolicy_settledGood_reference
     (players : Player → (serviceApplication setup deps duration leaks).Policy) (who : Player)
     {turns : Nat} (timing : TurnTiming setup turns deps) (reference :
       (serviceGraph setup deps).BehavioralProfile)
-    (follows : players who = serviceReferenceTurnPolicy setup deps duration leaks bound turns timing
+    (follows : players who = turnPolicy (serviceTimeouts setup deps duration) leaks
+      bound turns timing
         reference who)
     (count : Nat) (within : count ≤ horizon)
     (execution : (serviceApplication setup deps duration leaks).Execution)
@@ -372,7 +375,8 @@ theorem sourceServiceTurnPolicy_owner_settled_reference
     (players : Player → (serviceApplication setup deps duration leaks).Policy) (who : Player)
     {turns : Nat} (timing : TurnTiming setup turns deps) (reference :
       (serviceGraph setup deps).BehavioralProfile)
-    (follows : players who = serviceReferenceTurnPolicy setup deps duration leaks bound turns timing
+    (follows : players who = turnPolicy (serviceTimeouts setup deps duration) leaks
+      bound turns timing
         reference who)
     (count : Nat) (within : count ≤ horizon)
     (execution : (serviceApplication setup deps duration leaks).Execution)

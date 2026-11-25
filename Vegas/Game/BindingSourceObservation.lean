@@ -53,7 +53,7 @@ theorem serviceReference_callback_of_binding_paths
     (trace : ((serviceApplication setup deps duration leaks).protocol
       (serviceInitialLaw setup deps) horizon scheduler).Trace
         (some ⟨remaining, acting, current⟩)) :
-    serviceReferencePolicy setup deps duration leaks
+    referencePolicy (serviceTimeouts setup deps duration) leaks
         ((serviceGraph setup deps).prefixProfile profile) who (current.logs who)
         (current.observe (serviceApplication setup deps duration leaks) who) =
       (actionLaw ((serviceGraph setup deps).prefixProfile profile) ghost event).map

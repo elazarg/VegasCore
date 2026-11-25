@@ -128,7 +128,7 @@ theorem firstResponse_not_main_of_publicFailure_of_settles
       scheduler).Trace (some ⟨remaining, none,
         execution.respond (application setup timeouts leaks) who response⟩))
     (next : (application setup timeouts leaks).Execution)
-    (settles : SettlesFreshCalls setup leaks who event bound next)
+    (settles : SettlesFreshCalls timeouts leaks who event bound next)
     (control : (application setup timeouts leaks).Control) (nextExecution : control.execution =
       next)
     (target : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon

@@ -146,8 +146,8 @@ theorem acceptanceInvariant_respond_commitment {remaining : Nat} {who : Player}
       horizon scheduler).Trace (some ⟨remaining, none,
         execution.respond (application setup timeouts leaks) who response⟩)) :
     AcceptanceInvariant setup timeouts leaks bounds horizon scheduler who
-        (respondEntry setup timeouts leaks execution who response)
-        (sentEnvelope setup timeouts leaks execution who material) event
+        (respondEntry timeouts leaks execution who response)
+        (sentEnvelope timeouts leaks execution who material) event
           execution.application.config
         (cast (congrArg EventGraph.EventField.Action outputEq.symm) (some (.success value)))
         (cast (congrArg EventGraph.EventField.Value outputEq.symm) (.success value))
@@ -195,15 +195,15 @@ theorem acceptanceInvariant_respond_commitment {remaining : Nat} {who : Player}
     (initialLaw setup) horizon rawTrace
   have identifiers := (application setup timeouts leaks).receipt_identifiers_history
     (initialLaw setup) horizon scheduler _ rawTrace
-  have callEq : (sentEnvelope setup timeouts leaks execution who material).payload.call =
+  have callEq : (sentEnvelope timeouts leaks execution who material).payload.call =
       .commitment event (who, .prepared serial) := by
     rcases material with ⟨call, evidence⟩
     change evidence = .none at evidenceNone
     subst evidenceNone
-    unfold sentEnvelope
+    unfold EventGraphRuntime.sentEnvelope
     rw [reactiveApplication_packet_none]
     exact packet
-  have witness : AcceptanceWitness event (sentEnvelope setup timeouts leaks execution who material)
+  have witness : AcceptanceWitness event (sentEnvelope timeouts leaks execution who material)
       execution.application.config
       (cast (congrArg EventGraph.EventField.Action outputEq.symm) (some (.success value)))
       (cast (congrArg EventGraph.EventField.Value outputEq.symm) (.success value))
@@ -252,8 +252,8 @@ theorem onePacket_commitment_freshCall {bound : setup.informationGraph.EventId �
     (material : (application setup timeouts leaks).Submission)
     (sends : response.transmission = some material) {serial : Nat}
     (packet : material.call.packet = .commitment event (who, .prepared serial)) :
-    FreshCall setup leaks who event bound (respondEntry setup timeouts leaks execution who response)
-      (sentEnvelope setup timeouts leaks execution who material) := by
+    FreshCall timeouts leaks who event bound (respondEntry timeouts leaks execution who response)
+      (sentEnvelope timeouts leaks execution who material) := by
   have rawTrace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
     scheduler).Trace
       (some ⟨remaining, some who, execution⟩) :=
@@ -292,7 +292,7 @@ theorem onePacket_commitment_freshCall {bound : setup.informationGraph.EventId �
       ready := readyView
       fits := fits
       conforming := ?_ }
-  · unfold sentEnvelope
+  · unfold EventGraphRuntime.sentEnvelope
     rw [reactiveApplication_packet_none]
     rfl
   · change (freshServiceAcceptable timeouts) execution.application.publicView

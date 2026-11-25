@@ -71,7 +71,7 @@ theorem effective_runToHorizon_outcomeLaw
       read left = read right)
     (invariant : ∀ config, read config.erase = read config)
     (twins : ∀ config, outcomeLaw effective read config = outcomeLaw reference read config) :
-    let players := serviceReferenceTurnPolicy setup deps duration leaks bound turns
+    let players := turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
       (firstTurnTiming setup turns deps) effective
     ∀ execution : (serviceApplication setup deps duration leaks).Execution,
       execution ∈ ((serviceApplication setup deps duration leaks).roundsFrom
@@ -234,13 +234,13 @@ theorem effective_roundsFrom_outcomeLaw
     (invariant : ∀ config, read config.erase = read config)
     (twins : ∀ config, outcomeLaw effective read config = outcomeLaw reference read config) :
     ((serviceApplication setup deps duration leaks).roundsFrom (serviceInitialLaw setup deps)
-        scheduler (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+        scheduler (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
           (firstTurnTiming setup turns deps) effective) horizon).map
         (fun final => read final.application.config) =
       (serviceInitialLaw setup deps).bind
         (fun state => outcomeLaw reference read state.config) := by
   let app := serviceApplication setup deps duration leaks
-  let players := serviceReferenceTurnPolicy setup deps duration leaks bound turns
+  let players := turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
     (firstTurnTiming setup turns deps) effective
   unfold ReactiveApplication.roundsFrom
   rw [PMF.map_bind]

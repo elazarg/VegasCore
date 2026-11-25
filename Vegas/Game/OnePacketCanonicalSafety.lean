@@ -3,7 +3,7 @@ module
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 public import Vegas.Game.OnePacketEventSuccess
-public import Vegas.Game.SourceServiceFreshCall
+public import Vegas.Pending.RecordedCall
 public import GameTheoryExtensions.Protocol.TracePrefix
 
 @[expose] public section
@@ -51,8 +51,8 @@ theorem canonical_firstResponse_result_of_settles
     (target : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control)) (isPrefix : TracePrefix after target)
     (next : (application setup timeouts leaks).Execution) (nextExecution : control.execution = next)
-    (settles : SettlesFreshCalls setup leaks who event bound next) :
-    ∃ output, AcceptanceWitness event (sentEnvelope setup timeouts leaks execution who material)
+    (settles : SettlesFreshCalls timeouts leaks who event bound next) :
+    ∃ output, AcceptanceWitness event (sentEnvelope timeouts leaks execution who material)
       execution.application.config action output next.application ∧
       (event ∈ next.application.config.cut.completed →
         next.application.config.outputs event = some output ∧
@@ -64,11 +64,11 @@ theorem canonical_firstResponse_result_of_settles
       {later : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
         scheduler).Trace state}, TracePrefix after later →
       AcceptanceInvariant setup timeouts leaks bounds horizon scheduler who
-        (respondEntry setup timeouts leaks execution who ((canonicalServiceDecision timeouts)
+        (respondEntry timeouts leaks execution who ((canonicalServiceDecision timeouts)
           leaks who
           (execution.logs who) (execution.observe (application setup timeouts leaks) who) event
             action))
-        (sentEnvelope setup timeouts leaks execution who material) event
+        (sentEnvelope timeouts leaks execution who material) event
           execution.application.config
         action output state := by
     intro state later earlier
@@ -83,16 +83,16 @@ theorem canonical_firstResponse_result_of_settles
     horizon scheduler trace
   have call := canonical_freshCall rawTrace bound who event turn fits action material submits
   obtain ⟨earlier, later, split⟩ := records
-  have member : (sentEnvelope setup timeouts leaks execution who material) ∈
+  have member : (sentEnvelope timeouts leaks execution who material) ∈
       (application setup timeouts leaks).outputs (control.execution.logs who) :=
-    List.mem_filterMap.mpr ⟨respondEntry setup timeouts leaks execution who
+    List.mem_filterMap.mpr ⟨respondEntry timeouts leaks execution who
       ((canonicalServiceDecision timeouts) leaks who (execution.logs who)
         (execution.observe (application setup timeouts leaks) who) event action),
       by rw [split]; simp, _emitted⟩
   rw [respondEntry_of_transmission (timeouts := timeouts) execution who _ material submits] at split
   have sole : ∀ other ∈ earlier ++ later,
       ¬ EmitsOtherFor timeouts leaks other event
-        (sentEnvelope setup timeouts leaks execution who material).id := by
+        (sentEnvelope timeouts leaks execution who material).id := by
     intro other present
     exact onePacket_not_emitsOtherFor (timeouts := timeouts) bounds target who event _ member
       call.addressed other

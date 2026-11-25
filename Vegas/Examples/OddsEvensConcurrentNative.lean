@@ -54,7 +54,7 @@ private theorem serviceTimely :
 
 /-- The compiled fair clients act at their first event opportunity. -/
 def clients : Player → (serviceApplication setup dependencies serviceDuration leaks).Policy :=
-  serviceReferenceTurnPolicy setup dependencies serviceDuration leaks (fun _ => 2) 0
+  turnPolicy (serviceTimeouts setup dependencies serviceDuration) leaks (fun _ => 2) 0
     (firstTurnTiming setup 0 dependencies) (effectiveOpening graphClients)
 
 /-- The compiled periodic application preserves the fair Nash equilibrium and its full law. -/

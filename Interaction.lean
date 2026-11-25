@@ -91,6 +91,7 @@ public import Interaction.ReactiveRoundTrace
 public import Interaction.ReactiveRounds
 public import Interaction.ReactiveServiceInvariant
 public import Interaction.ReactiveServiceRounds
+public import Interaction.ReactiveStoppedRecovery
 public import Interaction.ReactiveStoppedState
 public import Interaction.ReactiveStopping
 public import Interaction.ReactiveSubmissionSerial

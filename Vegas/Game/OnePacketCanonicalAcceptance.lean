@@ -4,7 +4,7 @@ module
 
 public import Vegas.Game.OnePacketCanonicalPermits
 public import Vegas.Game.SourceServiceCanonicalAcceptance
-public import Vegas.Game.SourceServiceFreshCall
+public import Vegas.Pending.RecordedCall
 public import Vegas.Pending.ReactiveAsyncContract
 
 @[expose] public section

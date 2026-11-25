@@ -53,7 +53,7 @@ theorem runUntil_reference_focal
       execution.application.config.cut.Ready event) :
     (serviceApplication setup deps duration leaks).runUntil scheduler
     (Function.update
-      (serviceReferenceTurnPolicy setup deps duration leaks bound turns timing reference) who
+      (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns timing reference) who
         deviation)
     (fun final => event ∈ final.application.config.cut.completed) count execution =
     (serviceApplication setup deps duration leaks).runUntil scheduler
@@ -85,7 +85,7 @@ theorem runUntil_reference_focal
           exact fun impossible => by cases impossible
         · rw [owned]
           exact fun equal => same (Option.some.inj equal).symm
-      simp only [serviceReferenceTurnPolicy, idle]
+      simp only [EventGraphRuntime.turnPolicy, idle]
   · intro current currentHolds running next reached
     exact round_ready_of_pending alone (currentHolds running) reached
   · exact holds
@@ -321,7 +321,7 @@ theorem lastOwned_phase_patched
     (completes : ∀ seed ∈ prior.support, ∀ final ∈
       ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
         (Function.update
-          (serviceReferenceTurnPolicy setup deps duration leaks bound turns timing reference) who
+          (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns timing reference) who
           deviation)
         (fun current => event ∈ current.application.config.cut.completed) horizon
         (execution seed)).support,
@@ -337,7 +337,7 @@ theorem lastOwned_phase_patched
       (prior.bind fun seed =>
         ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
           (Function.update
-            (serviceReferenceTurnPolicy setup deps duration leaks bound turns timing reference)
+            (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns timing reference)
             who deviation)
           (fun current => event ∈ current.application.config.cut.completed) horizon
           (execution seed)).map fun final => (runKey final.application.config,
@@ -345,7 +345,7 @@ theorem lastOwned_phase_patched
         (prior.bind fun seed =>
           ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
             (Function.update
-              (serviceReferenceTurnPolicy setup deps duration leaks bound turns timing reference)
+              (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns timing reference)
               who deviation)
             (fun current => event ∈ current.application.config.cut.completed) horizon
             (execution seed)).map fun final => runKey final.application.config).bind
@@ -353,7 +353,7 @@ theorem lastOwned_phase_patched
       (∀ policy, (prior.bind fun seed =>
         ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
           (Function.update
-            (serviceReferenceTurnPolicy setup deps duration leaks bound turns timing reference)
+            (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns timing reference)
             who deviation)
           (fun current => event ∈ current.application.config.cut.completed) horizon
           (execution seed)).bind fun final =>
@@ -372,7 +372,7 @@ theorem lastOwned_phase_patched
   let app := serviceApplication setup deps duration leaks
   let timeouts := serviceTimeouts setup deps duration
   let players := Function.update
-    (serviceReferenceTurnPolicy setup deps duration leaks bound turns timing reference) who
+    (turnPolicy timeouts leaks bound turns timing reference) who
     deviation
   let phase := fun seed => app.runUntilHorizon scheduler players
     (fun current => event ∈ current.application.config.cut.completed) horizon (execution seed)
@@ -714,7 +714,7 @@ theorem lastOwned_phase
     (completes : ∀ seed ∈ prior.support, ∀ final ∈
       ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
         (Function.update
-          (serviceReferenceTurnPolicy setup deps duration leaks bound turns timing reference) who
+          (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns timing reference) who
           deviation)
         (fun current => event ∈ current.application.config.cut.completed) horizon
         (execution seed)).support,
@@ -730,7 +730,7 @@ theorem lastOwned_phase
       (prior.bind fun seed =>
         ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
           (Function.update
-            (serviceReferenceTurnPolicy setup deps duration leaks bound turns timing reference)
+            (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns timing reference)
             who deviation)
           (fun current => event ∈ current.application.config.cut.completed) horizon
           (execution seed)).map fun final => (runKey final.application.config,
@@ -738,7 +738,7 @@ theorem lastOwned_phase
         (prior.bind fun seed =>
           ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
             (Function.update
-              (serviceReferenceTurnPolicy setup deps duration leaks bound turns timing reference)
+              (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns timing reference)
               who deviation)
             (fun current => event ∈ current.application.config.cut.completed) horizon
             (execution seed)).map fun final => runKey final.application.config).bind
@@ -746,7 +746,7 @@ theorem lastOwned_phase
       ∀ policy, (prior.bind fun seed =>
         ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
           (Function.update
-            (serviceReferenceTurnPolicy setup deps duration leaks bound turns timing reference)
+            (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns timing reference)
             who deviation)
           (fun current => event ∈ current.application.config.cut.completed) horizon
           (execution seed)).bind fun final =>

@@ -46,7 +46,7 @@ theorem settlesFreshCalls_counted_clear_history
       (_trace : ((nativeMenu).protocol (initialLaw setup) horizon scheduler).Trace state),
       (∀ current, state = some current → current.execution.application.config.defaulted = ∅) →
       ReactiveApplication.serviceInvariant
-        (SettlesFreshCalls setup leaks owner event bound) state
+        (SettlesFreshCalls timeouts leaks owner event bound) state
   | _, .start, _ => trivial
   | _, .extend (source := before) prior joint _ reached, clear => by
       have rawPrior := (nativeMenu).toRawTrace (initialLaw setup) horizon
@@ -68,7 +68,7 @@ theorem settlesFreshCalls_counted_clear_history
           cases actor with
           | some who =>
               cases (PMF.mem_support_pure_iff _ _).mp reached
-              exact settlesFreshCalls_respond setup leaks owner event bound execution
+              exact EventGraphRuntime.settlesFreshCalls_respond _ leaks owner event bound execution
                 (legalFacts setup leaks horizon _ _ rawPrior) who _ valid
           | none =>
               cases remaining with
@@ -79,7 +79,8 @@ theorem settlesFreshCalls_counted_clear_history
                   obtain ⟨next, supported, rfl⟩ := PMF.support_map .. ▸ moved
                   have atPrefix := inclusion ⟨remaining + 1, none, execution⟩ prior
                     (beforeClear _ rfl)
-                  exact SettlesFreshCalls.environment setup leaks owner event
+                  rw [initialLaw, serviceInitialLaw_eq_inputs setup] at rawPrior
+                  exact EventGraphRuntime.SettlesFreshCalls.environment timeouts leaks owner event
                     (setup.informationGraph.sequentialize_solitary event).ownerSolitary owned
                     remaining
                     execution atPrefix rawPrior valid command next supported
@@ -100,7 +101,7 @@ theorem settlesFreshCalls_counted_clear_environment
     (clear : execution.application.config.defaulted = ∅)
     (command : (N).Command) (next : (N).Execution)
     (reached : next ∈ (execution.environmentStep (N) command).support) :
-    SettlesFreshCalls setup leaks owner event bound next := by
+    SettlesFreshCalls timeouts leaks owner event bound next := by
   have valid := settlesFreshCalls_counted_clear_history setup timeouts leaks bounds horizon
     scheduler bound
     inclusion
@@ -108,7 +109,8 @@ theorem settlesFreshCalls_counted_clear_environment
   have atPrefix := inclusion ⟨remaining + 1, none, execution⟩ prior clear
   have rawPrior := (nativeMenu).toRawTrace (initialLaw setup) horizon
     scheduler prior
-  exact SettlesFreshCalls.environment setup leaks owner event
+  rw [initialLaw, serviceInitialLaw_eq_inputs setup] at rawPrior
+  exact EventGraphRuntime.SettlesFreshCalls.environment timeouts leaks owner event
     (setup.informationGraph.sequentialize_solitary event).ownerSolitary owned remaining execution
     atPrefix rawPrior valid command next reached
 
@@ -128,7 +130,7 @@ theorem prescribed_packet_counted_clear_settles
     (earlier later : List (N).PlayerEntry) (entry : (N).PlayerEntry)
     (message : Message Player (WitnessedPacket setup.informationGraph))
     (split : control.execution.logs owner = earlier ++ entry :: later)
-    (call : FreshCall setup leaks owner event bound entry message)
+    (call : FreshCall timeouts leaks owner event bound entry message)
     (sole : ∀ other ∈ earlier ++ later,
       ¬ EmitsOtherFor timeouts leaks other event message.id) :
     (entry.beforeView.application.publicView.clock + bound event <

@@ -129,7 +129,7 @@ theorem concurrentEffectiveClients_state_law (setup : Setup (Player := Player) (
     {Outcome : Type*} (read : State L setup.program.terminalCtx × DefaultHistory Player → Outcome) :
     ((serviceApplication setup setup.revealDependencies duration leaks).roundsFrom
         (serviceInitialLaw setup setup.revealDependencies) scheduler
-        (serviceReferenceTurnPolicy setup setup.revealDependencies duration leaks bound turns
+        (turnPolicy (serviceTimeouts setup setup.revealDependencies duration) leaks bound turns
           (firstTurnTiming setup turns setup.revealDependencies)
           (concurrentEffectiveReference setup source))
         horizon).map (fun final =>

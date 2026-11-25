@@ -706,7 +706,7 @@ theorem step_factor {sequence : ℕ → setup.intendedModel.BehavioralAssessment
           rw [transitionOne, mul_one] at mass
           by_cases owner : actor = who
           · subst owner
-            obtain ⟨emitted, recallEq, _⟩ := respond_recall_self setup leaks
+            obtain ⟨emitted, recallEq, _⟩ := EventGraphRuntime.respond_recall_self _ leaks
               control.execution actor
               ((joint actor).getD ⟨none⟩)
             have active : (application setup timeouts leaks).actor (some control) = some actor :=

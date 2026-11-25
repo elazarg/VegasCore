@@ -27,6 +27,7 @@ public import Vegas.Game.ConditionedSourceBayes
 public import Vegas.Game.ConditionedSourceReach
 public import Vegas.Game.ConditionedSourceRationality
 public import Vegas.Game.ObservedComponentEquilibrium
+public import Vegas.Game.CompiledProfileRealizability
 public import Vegas.Game.CompilerCorrectness
 public import Vegas.Game.DecodedRevelations
 public import Vegas.Game.EventCompilation
@@ -393,7 +394,6 @@ public import Vegas.Game.SourceServiceFacts
 public import Vegas.Game.SourceServiceFirstTurnCompletion
 public import Vegas.Game.SourceServiceFirstTurnMixture
 public import Vegas.Game.SourceServiceFirstTurnOpportunity
-public import Vegas.Game.SourceServiceFreshCall
 public import Vegas.Game.SourceServiceMenu
 public import Vegas.Game.SourceServiceOwnerSettled
 public import Vegas.Game.SourceServicePolicy
@@ -401,8 +401,6 @@ public import Vegas.Game.SourceServicePrefix
 public import Vegas.Game.SourceServiceReachedDecoding
 public import Vegas.Game.SourceServiceRetainedPolicy
 public import Vegas.Game.SourceServiceSettledSound
-public import Vegas.Game.SourceServiceAcceptedContinuation
-public import Vegas.Game.SourceServiceSilentContinuation
 public import Vegas.Game.SourceServiceSiteBridge
 public import Vegas.Game.SourceServiceSpec
 public import Vegas.Game.SourceServiceStep

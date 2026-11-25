@@ -317,7 +317,7 @@ structure ReachedBoundary (horizon : Nat) (scheduler : (application setup timeou
   ordered : execution.application.config.cut.IsPrefix rank
   untouched : ∀ event : setup.informationGraph.EventId, rank ≤ event.val →
     Untouched setup leaks event execution
-  turns : ∀ who, OwnSubmissionsAtTurn setup leaks execution who
+  turns : ∀ who, OwnSubmissionsAtTurn timeouts leaks execution who
 
 
 end Sequential
@@ -501,12 +501,12 @@ theorem roundsFrom_reference_support_of_untouched
     (unseen : ∀ event, changed event → Untouched setup leaks event after)
     (reached : after ∈ ((serviceApplication setup deps duration leaks).roundsFrom
       (serviceInitialLaw setup deps) scheduler
-      (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+      (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps) ((serviceGraph setup deps).prefixProfile left))
           focal deviation) count).support) :
     after ∈ ((serviceApplication setup deps duration leaks).roundsFrom
       (serviceInitialLaw setup deps) scheduler
-      (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+      (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps) ((serviceGraph setup deps).prefixProfile right))
           focal deviation) count).support := by
   classical

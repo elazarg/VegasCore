@@ -33,7 +33,8 @@ other, and every honest owner submits at its turns with canonical slots. -/
 def RunTurnFacts (who : Player)
     (execution : (serviceApplication setup deps duration leaks).Execution) : Prop :=
   ActivationsAnswered setup leaks execution ∧ ResponsesActivated setup leaks execution ∧
-    ∀ owner, owner ≠ who → OwnSubmissionsAtTurn setup leaks execution owner ∧
+    ∀ owner, owner ≠ who → OwnSubmissionsAtTurn
+      (serviceTimeouts setup deps duration) leaks execution owner ∧
       CanonicalSlotsUsed setup leaks execution owner
 
 /-- The recall facts hold on the support of rounds from initialization. -/
@@ -45,8 +46,9 @@ theorem runTurnFacts_roundsFrom
     (deviation : (serviceApplication setup deps duration leaks).Policy) (count : Nat)
     (execution : (serviceApplication setup deps duration leaks).Execution)
     (supported : execution ∈ ((serviceApplication setup deps duration leaks).roundsFrom
-      (serviceInitialLaw setup deps) scheduler (Function.update (serviceReferenceTurnPolicy
-        setup deps duration leaks bound turns (firstTurnTiming setup turns deps) reference)
+      (serviceInitialLaw setup deps) scheduler (Function.update (turnPolicy
+        (serviceTimeouts setup deps duration) leaks bound turns
+          (firstTurnTiming setup turns deps) reference)
         who deviation) count).support) :
     RunTurnFacts who execution :=
   ⟨roundsFrom_activationsAnswered count execution supported,
@@ -68,15 +70,15 @@ theorem RunTurnFacts.round
         (some ⟨remaining + 1, none, execution⟩))
     (facts : RunTurnFacts who execution)
     (reached : next ∈ ((serviceApplication setup deps duration leaks).round scheduler
-      (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+      (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps) reference) who deviation) execution).support) :
     RunTurnFacts who next := by
   obtain ⟨answered, activated, honest⟩ := facts
   refine ⟨round_activationsAnswered setup leaks answered reached,
     round_responsesActivated setup leaks activated reached, fun owner different => ?_⟩
-  have follows : Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound
+  have follows : Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound
       turns (firstTurnTiming setup turns deps) reference) who deviation owner =
-      serviceReferenceTurnPolicy setup deps duration leaks bound turns
+      turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps) reference owner := Function.update_of_ne different _ _
   obtain ⟨atTurn, valid⟩ := honest owner different
   exact canonicalSlots_round serial
@@ -89,7 +91,7 @@ theorem RunTurnFacts.round
 which it has had no turn. -/
 theorem eventRecorded_eq_false_of_ownerTurns
     {execution : (serviceApplication setup deps duration leaks).Execution} {owner : Player}
-    (atTurn : OwnSubmissionsAtTurn setup leaks execution owner)
+    (atTurn : OwnSubmissionsAtTurn (serviceTimeouts setup deps duration) leaks execution owner)
     {event : (serviceGraph setup deps).EventId} (none : ownerTurns owner event execution = 0) :
     (eventRecorded (serviceTimeouts setup deps duration)) leaks (execution.logs owner) event =
       false := by
@@ -135,12 +137,12 @@ theorem run_stopped_traffic_congr
     (leftGood rightGood : Nat → (serviceApplication setup deps duration leaks).Execution → Prop)
     (leftRound : ∀ n current, leftGood (n + 1) current → ¬ stop current →
       ∀ next ∈ ((serviceApplication setup deps duration leaks).round scheduler
-        (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+        (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
           (firstTurnTiming setup turns deps) reference) who deviation) current).support,
         leftGood n next)
     (rightRound : ∀ n current, rightGood (n + 1) current → ¬ stop current →
       ∀ next ∈ ((serviceApplication setup deps duration leaks).round scheduler
-        (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+        (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
           (firstTurnTiming setup turns deps) reference) who deviation) current).support,
         rightGood n next) :
     ∀ (count leftRemaining rightRemaining : Nat)
@@ -180,19 +182,19 @@ theorem run_stopped_traffic_congr
       (bindingTraffic (serviceTimeouts setup deps duration)) leaks who left =
         (bindingTraffic (serviceTimeouts setup deps duration)) leaks who right →
       ((serviceApplication setup deps duration leaks).runUntil scheduler
-        (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+        (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
           (firstTurnTiming setup turns deps) reference) who deviation)
         stop count left).map
           ((bindingTraffic (serviceTimeouts setup deps duration)) leaks who) =
       ((serviceApplication setup deps duration leaks).runUntil scheduler
-        (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+        (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
           (firstTurnTiming setup turns deps) reference) who deviation)
         stop count right).map
           ((bindingTraffic (serviceTimeouts setup deps duration)) leaks who) := by
   intro count leftRemaining rightRemaining left right leftTrace rightTrace leftInside
     rightInside leftValid rightValid leftFacts rightFacts leftStart rightStart agreeAt same
   let app := serviceApplication setup deps duration leaks
-  let players := Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound
+  let players := Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound
     turns (firstTurnTiming setup turns deps) reference) who deviation
   let window : (serviceGraph setup deps).EventId → Bool := fun _ => false
   have readoutOf (execution : app.Execution) : blockReadoutOn who window execution =

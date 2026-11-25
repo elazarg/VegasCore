@@ -147,7 +147,7 @@ theorem runPoint_simulation {horizon : Nat}
     {start finish : Nat}
     (run : RevealRun (serviceGraph setup deps) start finish)
     (tail : DeviationSimulation scheduler
-      (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+      (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps) ((serviceGraph setup deps).normalizeProfile base))
         who deviation) horizon readErased
       (fun execution => runKey (closure ((serviceGraph setup deps).normalizeProfile base) who
@@ -155,12 +155,12 @@ theorem runPoint_simulation {horizon : Nat}
       ((bindingTraffic (serviceTimeouts setup deps duration)) leaks who) (keyView who)
       (fun policy => keyTarget ((serviceGraph setup deps).lastDeviationProfile base who policy)
         who)
-      (PhaseBoundary scheduler (Function.update (serviceReferenceTurnPolicy setup deps duration
+      (PhaseBoundary scheduler (Function.update (turnPolicy (serviceTimeouts setup deps duration)
         leaks bound turns (firstTurnTiming setup turns deps)
         ((serviceGraph setup deps).normalizeProfile base)) who deviation) horizon finish)) :
     ∀ bar, bar ≤ finish →
       DeviationSimulation scheduler
-        (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+        (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
           (firstTurnTiming setup turns deps) ((serviceGraph setup deps).normalizeProfile base))
           who deviation) horizon readErased
         (fun execution => runKey (closure ((serviceGraph setup deps).normalizeProfile base) who
@@ -168,7 +168,7 @@ theorem runPoint_simulation {horizon : Nat}
         ((bindingTraffic (serviceTimeouts setup deps duration)) leaks who) (keyView who)
         (fun policy => keyTarget ((serviceGraph setup deps).lastDeviationProfile base who policy)
           who)
-        (RunPoint scheduler (Function.update (serviceReferenceTurnPolicy setup deps duration leaks
+        (RunPoint scheduler (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks
           bound turns (firstTurnTiming setup turns deps)
           ((serviceGraph setup deps).normalizeProfile base)) who deviation) horizon who start
           finish bar) := by
@@ -176,7 +176,7 @@ theorem runPoint_simulation {horizon : Nat}
   let G := serviceGraph setup deps
   let R := G.normalizeProfile base
   let app := serviceApplication setup deps duration leaks
-  let players := Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound
+  let players := Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound
     turns (firstTurnTiming setup turns deps) R) who deviation
   suffices step : ∀ gap bar, finish - bar = gap → bar ≤ finish →
       DeviationSimulation scheduler players horizon readErased

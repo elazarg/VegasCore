@@ -2,7 +2,8 @@ module
 
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-public import Vegas.Game.SourceServiceAcceptedContinuation
+public import Vegas.Pending.AcceptedContinuation
+public import Vegas.Game.SourceServiceAsyncTimeliness
 public import Vegas.Game.SourceServiceFirstTurnOpportunity
 public import Vegas.Game.SourceServiceFirstTurnMixture
 public import Vegas.Game.SourceServiceCanonicalAcceptance
@@ -54,17 +55,17 @@ theorem decidedOpportunity_binding_response_record
     (trace : (((reactiveApplication timeouts) leaks).protocol
       (serviceInitialLaw setup deps) horizon scheduler).Trace
       (some ⟨remaining, some owner, execution⟩))
-    (first : serviceTurn setup deps timeouts.duration leaks owner event
+    (first : turnIndex timeouts leaks owner event
       (execution.logs owner) (execution.observe ((reactiveApplication timeouts) leaks) owner) =
         some 0)
     (fits : execution.application.publicView.InclusionFitsDeadline timeouts bound event)
-    (truthful : OwnSubmissionsAtTurn setup leaks execution owner)
+    (truthful : OwnSubmissionsAtTurn timeouts leaks execution owner)
     (noRepeat : ∀ past view response,
       response ∈ (players owner past view).support →
       (eventRecorded timeouts) leaks past event = true →
       (submittedEvent? timeouts) leaks response ≠ some event)
     (response : ((reactiveApplication timeouts) leaks).Action)
-    (selected : response ∈ (decidedOpportunity setup leaks bound owner event action
+    (selected : response ∈ (fixedOpportunity timeouts leaks bound owner event action
       (execution.logs owner)
         (execution.observe ((reactiveApplication timeouts) leaks) owner)).support) :
     ∀ stopped ∈ (((reactiveApplication timeouts) leaks).runUntil scheduler
@@ -122,8 +123,8 @@ theorem decidedOpportunity_binding_response_record
       PMF.mem_support_pure_iff] using selected
   subst response
   let after := execution.respond app owner canonical
-  let entry := respondEntry setup timeouts leaks execution owner canonical
-  let message := sentEnvelope setup timeouts leaks execution owner material
+  let entry := respondEntry timeouts leaks execution owner canonical
+  let message := sentEnvelope timeouts leaks execution owner material
   have configEq : after.application.config = execution.application.config :=
     ((reactive_respond_application timeouts) leaks execution owner canonical).1
   have recalled : after.logs owner = execution.logs owner ++ [entry] := by
@@ -132,7 +133,7 @@ theorem decidedOpportunity_binding_response_record
   have recorded : entry ∈ after.logs owner := by
     rw [recalled]
     exact List.mem_append_right _ (List.mem_singleton_self _)
-  have call : FreshCall setup leaks owner event bound entry message := by
+  have call : FreshCall timeouts leaks owner event bound entry message := by
     dsimp only [entry, message]
     rw [respondEntry_of_transmission execution owner canonical material sends]
     exact canonical_freshCall trace bound owner event turn fits action material sends
@@ -188,8 +189,9 @@ theorem decidedOpportunity_binding_response_record
       (horizon - after.environmentRecall.length) after).support
     rw [countEq]
     exact reached
-  have records := FreshCall.accepted_binding_record timeouts leaks scheduler players bound
-    inclusion event ownerSolitary owner payload binding owned after afterTrace
+  rw [serviceInitialLaw_eq_inputs setup] at afterTrace inclusion
+  have records := EventGraphRuntime.FreshCall.accepted_binding_record timeouts leaks scheduler
+    players bound inclusion event ownerSolitary owner payload binding owned after afterTrace
     (configEq.symm ▸ ready) action output entry message recorded call sole witnessAfter noRepeat
     stopped reachedHorizon completed
   simpa only [valueEq] using records
@@ -215,21 +217,21 @@ theorem decidedOpportunity_first_binding_record
     (trace : (((reactiveApplication timeouts) leaks).protocol
       (serviceInitialLaw setup deps) horizon scheduler).Trace
       (some ⟨remaining + 1, none, current⟩))
-    (truthful : OwnSubmissionsAtTurn setup leaks current owner)
+    (truthful : OwnSubmissionsAtTurn timeouts leaks current owner)
     (answered : ActivationsAnswered setup leaks current)
     (selected : (.activate owner : ((reactiveApplication timeouts) leaks).Command) ∈
       (scheduler current.environmentRecall
         (current.observeEnvironment ((reactiveApplication timeouts) leaks))).support)
     (moved : middle ∈ (current.environmentStep ((reactiveApplication timeouts) leaks)
       (.activate owner)).support)
-    (first : serviceTurn setup deps timeouts.duration leaks owner event
+    (first : turnIndex timeouts leaks owner event
       (middle.logs owner) (middle.observe ((reactiveApplication timeouts) leaks) owner) = some 0)
     (noRepeat : ∀ past view response,
       response ∈ (players owner past view).support →
       (eventRecorded timeouts) leaks past event = true →
       (submittedEvent? timeouts) leaks response ≠ some event)
     (response : ((reactiveApplication timeouts) leaks).Action)
-    (responseSelected : response ∈ (decidedOpportunity setup leaks bound owner event
+    (responseSelected : response ∈ (fixedOpportunity timeouts leaks bound owner event
       (cast (congrArg EventField.Action binding.symm) (some result)) (middle.logs owner)
         (middle.observe ((reactiveApplication timeouts) leaks) owner)).support) :
     ∀ stopped ∈ (((reactiveApplication timeouts) leaks).runUntil scheduler players
@@ -252,7 +254,7 @@ theorem decidedOpportunity_first_binding_record
   have ready : current.application.config.cut.Ready event := by
     rw [← appEq]
     exact readyMiddle
-  have firstBefore : serviceTurn setup deps timeouts.duration leaks owner event
+  have firstBefore : turnIndex timeouts leaks owner event
       (current.logs owner) (middle.observe app owner) = some 0 := by
     rw [← congrFun recallEq owner]
     exact first
@@ -261,7 +263,7 @@ theorem decidedOpportunity_first_binding_record
   have fitsMiddle : middle.application.publicView.InclusionFitsDeadline timeouts bound event := by
     rw [appEq]
     exact fits
-  have truthfulMiddle : OwnSubmissionsAtTurn setup leaks middle owner := by
+  have truthfulMiddle : OwnSubmissionsAtTurn timeouts leaks middle owner := by
     intro entry present
     rw [congrFun recallEq owner] at present
     exact truthful entry present
@@ -283,7 +285,7 @@ private theorem fixed_reference_binding_response
     (fixed : ∀ view active, reference owner event owned view active = PMF.pure action)
     (execution : (serviceApplication setup deps duration leaks).Execution)
     (response : (serviceApplication setup deps duration leaks).Action)
-    (supported : response ∈ (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+    (supported : response ∈ (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
       (firstTurnTiming setup turns deps) reference owner (execution.logs owner)
         (execution.observe (serviceApplication setup deps duration leaks) owner)).support)
     (material : (serviceApplication setup deps duration leaks).Submission)
@@ -299,7 +301,8 @@ private theorem fixed_reference_binding_response
     exact named
   have turn := sourceServiceTurnPolicy_submitsAtTurn_reference setup leaks bound turns
     (firstTurnTiming setup turns deps) reference owner _ _ response supported event submitted
-  have first : serviceTurn setup deps duration leaks owner event (execution.logs owner)
+  have first : turnIndex (serviceTimeouts setup deps duration)
+    leaks owner event (execution.logs owner)
       (execution.observe app owner) = some 0 := by
     by_contra later
     rw [sourceServiceTurnPolicy_laterTurn_reference owned turn later,
@@ -307,7 +310,7 @@ private theorem fixed_reference_binding_response
     cases supported
     cases sends
   rw [sourceServiceTurnPolicy_firstTurn_reference owned first] at supported
-  unfold serviceReferenceOpportunity at supported
+  unfold EventGraphRuntime.referenceOpportunity at supported
   split at supported
   · cases (PMF.mem_support_pure_iff _ _).mp supported
     cases sends
@@ -357,14 +360,14 @@ private theorem fixed_reference_binding_witness
     (fixed : ∀ view active, reference owner event owned view active = PMF.pure action)
     (execution : (serviceApplication setup deps duration leaks).Execution)
     (response : (serviceApplication setup deps duration leaks).Action)
-    (supported : response ∈ (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+    (supported : response ∈ (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
       (firstTurnTiming setup turns deps) reference owner (execution.logs owner)
         (execution.observe (serviceApplication setup deps duration leaks) owner)).support)
     (material : (serviceApplication setup deps duration leaks).Submission)
     (sends : response.transmission = some material)
     (named : material.call.packet.event? (serviceGraph setup deps) = some event) :
     AcceptanceWitness event
-      (sentEnvelope setup (serviceTimeouts setup deps duration) leaks execution owner material)
+      (sentEnvelope (serviceTimeouts setup deps duration) leaks execution owner material)
       execution.application.config action (cast (congrArg EventField.Value binding.symm) result)
       (execution.respond (serviceApplication setup deps duration leaks) owner
         response).application := by
@@ -402,7 +405,7 @@ private theorem BindingCallsFixed.respond
     (actionEq : action = cast (congrArg EventField.Action binding.symm) (some result))
     (fixed : ∀ view active, reference owner event owned view active = PMF.pure action)
     (players : Player → (serviceApplication setup deps duration leaks).Policy)
-    (follows : players owner = serviceReferenceTurnPolicy setup deps duration leaks bound turns
+    (follows : players owner = turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
       (firstTurnTiming setup turns deps) reference owner)
     (execution : (serviceApplication setup deps duration leaks).Execution)
     (actor : Player) (response : (serviceApplication setup deps duration leaks).Action)
@@ -583,7 +586,7 @@ private theorem fixed_binding_policyInvariant
     (actionEq : action = cast (congrArg EventField.Action binding.symm) (some result))
     (fixed : ∀ view active, reference owner event owned view active = PMF.pure action)
     (players : Player → (serviceApplication setup deps duration leaks).Policy)
-    (follows : players owner = serviceReferenceTurnPolicy setup deps duration leaks bound turns
+    (follows : players owner = turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
       (firstTurnTiming setup turns deps) reference owner) :
     (serviceApplication setup deps duration leaks).PolicyInvariant players (fun execution =>
       execution.Provenance (serviceApplication setup deps duration leaks) ∧
@@ -624,14 +627,14 @@ theorem fixed_reference_binding_record_runRounds
     (fixed : ∀ view active, reference owner event owned view active =
       PMF.pure (cast (congrArg EventField.Action binding.symm) (some result)))
     (players : Player → (serviceApplication setup deps duration leaks).Policy)
-    (follows : players owner = serviceReferenceTurnPolicy setup deps duration leaks bound turns
+    (follows : players owner = turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
       (firstTurnTiming setup turns deps) reference owner)
     {horizon remaining : Nat} {acting : Option Player}
     (execution : (serviceApplication setup deps duration leaks).Execution)
     (trace : ((serviceApplication setup deps duration leaks).protocol
       (serviceInitialLaw setup deps) horizon scheduler).Trace
       (some ⟨remaining, acting, execution⟩))
-    (truthful : OwnSubmissionsAtTurn setup leaks execution owner)
+    (truthful : OwnSubmissionsAtTurn (serviceTimeouts setup deps duration) leaks execution owner)
     (untouched : Untouched setup leaks event execution)
     (unfinished : event ∉ execution.application.config.cut.completed)
     (count : Nat) (next : (serviceApplication setup deps duration leaks).Execution)

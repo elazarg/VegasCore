@@ -51,7 +51,7 @@ theorem publication_round_clear_or_focal_default
     (current next : (serviceApplication setup deps duration leaks).Execution)
     (supported : current ∈ ((serviceApplication setup deps duration leaks).roundsFrom
       (serviceInitialLaw setup deps) scheduler
-      (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+      (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps) (effectiveOpening reference)) focal deviation)
       current.environmentRecall.length).support)
     (bounded : current.environmentRecall.length ≤ horizon)
@@ -59,14 +59,14 @@ theorem publication_round_clear_or_focal_default
     (publications : ∀ event, current.application.config.cut.Ready event →
       ((serviceGraph setup deps).outputLayout event).IsPublication)
     (moved : next ∈ ((serviceApplication setup deps duration leaks).round scheduler
-      (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+      (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps) (effectiveOpening reference)) focal deviation)
       current).support) :
     focal ∈ next.application.config.defaulted ∨
       (next.application.config.defaulted = ∅ ∧ canonicalLaw profile next.application.config =
         canonicalLaw profile current.application.config) := by
   let G := serviceGraph setup deps
-  let players := Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+  let players := Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
     (firstTurnTiming setup turns deps) (effectiveOpening reference)) focal deviation
   have decides : ∀ (config : G.Config) (event : G.EventId) (owner : Player) (payload : L.Ty)
       (binding : FieldRef G.layout (.binding owner payload))
@@ -88,7 +88,7 @@ theorem publication_round_clear_or_focal_default
     (serviceTimeouts setup deps duration) leaks scheduler players current next focal law
     publications _ moved
   intro event owner ready actor foreign
-  have follows : players owner = serviceReferenceTurnPolicy setup deps duration leaks bound turns
+  have follows : players owner = turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
       (firstTurnTiming setup turns deps) (effectiveOpening reference) owner := by
     simp only [players, Function.update_of_ne foreign]
   exact effectivePublication_withinDeadline contract timely players owner
@@ -116,7 +116,7 @@ theorem publication_run_survives
     (origin : (serviceApplication setup deps duration leaks).Execution)
     (supported : origin ∈ ((serviceApplication setup deps duration leaks).roundsFrom
       (serviceInitialLaw setup deps) scheduler
-      (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+      (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps) (effectiveOpening reference)) focal deviation)
       origin.environmentRecall.length).support)
     (bounded : origin.environmentRecall.length ≤ horizon)
@@ -124,7 +124,7 @@ theorem publication_run_survives
     (law : outcomeLaw profile Config.defaulted origin.application.config = PMF.pure ∅)
     (final : (serviceApplication setup deps duration leaks).Execution)
     (reached : final ∈ ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
-      (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+      (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps) (effectiveOpening reference)) focal deviation)
       (fun current => BlockDone finish current.application.config) horizon origin).support) :
     BlockDone finish final.application.config ∧
@@ -133,7 +133,7 @@ theorem publication_run_survives
           canonicalLaw profile origin.application.config)) := by
   classical
   let app := serviceApplication setup deps duration leaks
-  let players := Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+  let players := Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
     (firstTurnTiming setup turns deps) (effectiveOpening reference)) focal deviation
   let stop := fun current : app.Execution => BlockDone finish current.application.config
   let holds := fun (remaining : Nat) (current : app.Execution) =>
@@ -265,11 +265,11 @@ private theorem effectivePublication_client_eq
     (publications : ∀ event : (serviceGraph setup deps).EventId,
       current.application.config.cut.Ready event →
         ((serviceGraph setup deps).outputLayout event).IsPublication) :
-    serviceReferenceTurnPolicy setup deps duration leaks bound turns
+    turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps) (effectiveOpening left)
         owner (current.logs owner)
         (current.observe (serviceApplication setup deps duration leaks) owner) =
-      serviceReferenceTurnPolicy setup deps duration leaks bound turns
+      turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps) (effectiveOpening right) owner (current.logs owner)
         (current.observe (serviceApplication setup deps duration leaks) owner) := by
   apply serviceReferenceTurnPolicy_eq_of_ready_kernels (setup := setup) (deps := deps)
@@ -305,7 +305,7 @@ private theorem effectivePublication_round_eq
         ((serviceGraph setup deps).outputLayout event).IsPublication) :
     let app := serviceApplication setup deps duration leaks
     let players := fun reference => Function.update
-      (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+      (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps) (effectiveOpening reference)) focal deviation
     app.round scheduler (players left) current = app.round scheduler (players right) current := by
   intro app players
@@ -334,21 +334,21 @@ private theorem effectivePublication_runUntil_eq
         ((serviceGraph setup deps).outputLayout event).IsPublication)
     (preserved : ∀ remaining current, holds (remaining + 1) current → ¬ stop current →
       ∀ next ∈ ((serviceApplication setup deps duration leaks).round scheduler
-        (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+        (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
           (firstTurnTiming setup turns deps) (effectiveOpening left)) focal deviation)
         current).support, holds remaining next) :
     ∀ count current, holds count current →
       (serviceApplication setup deps duration leaks).runUntil scheduler
-        (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+        (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
           (firstTurnTiming setup turns deps) (effectiveOpening left)) focal deviation)
         stop count current =
       (serviceApplication setup deps duration leaks).runUntil scheduler
-        (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+        (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
           (firstTurnTiming setup turns deps) (effectiveOpening right)) focal deviation)
         stop count current := by
   let app := serviceApplication setup deps duration leaks
   let players := fun reference => Function.update
-    (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+    (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
       (firstTurnTiming setup turns deps) (effectiveOpening reference)) focal deviation
   have rounds (n : Nat) (current : app.Execution) (valid : holds (n + 1) current)
       (running : ¬ stop current) :
@@ -391,11 +391,11 @@ theorem publication_first_failure_traffic_congr
     {start finish : Nat} (run : RevealRun (serviceGraph setup deps) start finish)
     (left right : (serviceApplication setup deps duration leaks).Execution)
     (leftBoundary : PhaseBoundary scheduler
-      (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+      (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps) (effectiveOpening leftReference)) focal deviation)
       horizon start left)
     (rightBoundary : PhaseBoundary scheduler
-      (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+      (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps) (effectiveOpening rightReference)) focal deviation)
       horizon start right)
     (leftDonor rightDonor : (serviceGraph setup deps).Config)
@@ -411,13 +411,13 @@ theorem publication_first_failure_traffic_congr
     (sameTraffic : (bindingTraffic (serviceTimeouts setup deps duration)) leaks focal left =
       (bindingTraffic (serviceTimeouts setup deps duration)) leaks focal right) :
     ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
-      (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+      (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps) (effectiveOpening leftReference)) focal deviation)
       (fun current => BlockDone finish current.application.config ∨
         focal ∈ current.application.config.defaulted) horizon left).map
       ((bindingTraffic (serviceTimeouts setup deps duration)) leaks focal) =
     ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
-      (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+      (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps) (effectiveOpening rightReference)) focal deviation)
       (fun current => BlockDone finish current.application.config ∨
         focal ∈ current.application.config.defaulted) horizon right).map
@@ -426,7 +426,7 @@ theorem publication_first_failure_traffic_congr
   let G := serviceGraph setup deps
   let app := serviceApplication setup deps duration leaks
   let players := fun reference => Function.update
-    (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+    (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
       (firstTurnTiming setup turns deps) (effectiveOpening reference)) focal deviation
   let traffic := (bindingTraffic (serviceTimeouts setup deps duration)) leaks focal
   let stop := fun current : app.Execution => BlockDone finish current.application.config ∨
@@ -684,11 +684,11 @@ theorem publication_surviving_traffic_congr
     {start finish : Nat} (run : RevealRun (serviceGraph setup deps) start finish)
     (left right : (serviceApplication setup deps duration leaks).Execution)
     (leftBoundary : PhaseBoundary scheduler
-      (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+      (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps) (effectiveOpening leftReference)) focal deviation)
       horizon start left)
     (rightBoundary : PhaseBoundary scheduler
-      (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+      (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps) (effectiveOpening rightReference)) focal deviation)
       horizon start right)
     (leftDonor rightDonor : (serviceGraph setup deps).Config)
@@ -704,13 +704,13 @@ theorem publication_surviving_traffic_congr
     (sameTraffic : (bindingTraffic (serviceTimeouts setup deps duration)) leaks focal left =
       (bindingTraffic (serviceTimeouts setup deps duration)) leaks focal right) :
     ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
-      (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+      (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps) (effectiveOpening leftReference)) focal deviation)
       (fun current => BlockDone finish current.application.config) horizon left).map
       (fun final => if focal ∈ final.application.config.defaulted then none else
         some ((bindingTraffic (serviceTimeouts setup deps duration)) leaks focal final)) =
     ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
-      (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+      (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps) (effectiveOpening rightReference)) focal deviation)
       (fun current => BlockDone finish current.application.config) horizon right).map
       (fun final => if focal ∈ final.application.config.defaulted then none else
@@ -719,7 +719,7 @@ theorem publication_surviving_traffic_congr
   let G := serviceGraph setup deps
   let app := serviceApplication setup deps duration leaks
   let players := fun reference => Function.update
-    (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+    (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
       (firstTurnTiming setup turns deps) (effectiveOpening reference)) focal deviation
   let traffic := (bindingTraffic (serviceTimeouts setup deps duration)) leaks focal
   let Traffic := MessageNetwork Player app.Payload × List (MessageId Player × Bool) ×
@@ -769,7 +769,7 @@ theorem publication_surviving_endpoint_key
     {start finish : Nat} (run : RevealRun (serviceGraph setup deps) start finish)
     (origin : (serviceApplication setup deps duration leaks).Execution)
     (boundary : PhaseBoundary scheduler
-      (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+      (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps) (effectiveOpening reference)) focal deviation)
       horizon start origin)
     (donor : (serviceGraph setup deps).Config) (ordered : donor.cut.IsPrefix finish)
@@ -777,14 +777,14 @@ theorem publication_surviving_endpoint_key
     (potential : canonicalLaw profile origin.application.config = canonicalLaw profile donor)
     (final : (serviceApplication setup deps duration leaks).Execution)
     (reached : final ∈ ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
-      (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+      (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps) (effectiveOpening reference)) focal deviation)
       (fun current => BlockDone finish current.application.config) horizon origin).support)
     (survived : focal ∉ final.application.config.defaulted) :
     final.application.config.defaulted = ∅ ∧
       runKey final.application.config = runKey donor := by
   let G := serviceGraph setup deps
-  let players := Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+  let players := Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
     (firstTurnTiming setup turns deps) (effectiveOpening reference)) focal deviation
   have originLaw : outcomeLaw profile Config.defaulted origin.application.config = PMF.pure ∅ :=
     (outcomeLaw_eq_of_canonicalLaw_eq Config.defaulted
@@ -846,7 +846,7 @@ theorem publication_surviving_joint
       (prior.map source).bind fun current =>
         (noise (observe current)).map fun extra => (current, extra))
     (boundary : ∀ seed ∈ prior.support, PhaseBoundary scheduler
-      (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+      (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps) (effectiveOpening (reference seed))) focal deviation)
       horizon start (execution seed))
     (reachable : ∀ seed ∈ prior.support,
@@ -871,7 +871,7 @@ theorem publication_surviving_joint
       PlayerView (serviceGraph setup deps) × PublicView (serviceGraph setup deps))),
       (prior.bind fun seed =>
         ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
-          (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+          (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
             (firstTurnTiming setup turns deps) (effectiveOpening (reference seed))) focal deviation)
           (fun current => BlockDone finish current.application.config) horizon (execution seed)).map
             fun final => (advance (source seed),
@@ -882,7 +882,7 @@ theorem publication_surviving_joint
   classical
   let app := serviceApplication setup deps duration leaks
   let players := fun seed => Function.update
-    (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+    (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
       (firstTurnTiming setup turns deps) (effectiveOpening (reference seed))) focal deviation
   let traffic := (bindingTraffic (serviceTimeouts setup deps duration)) leaks focal
   let phase := fun seed => (app.runUntilHorizon scheduler (players seed)

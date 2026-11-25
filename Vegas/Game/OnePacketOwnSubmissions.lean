@@ -254,7 +254,7 @@ theorem onePacket_ownSubmissionsAtTurn {horizon : Nat}
     (point : ProtocolState setup.program)
     (decoded : sourceServicePrefix? setup rank control.execution.application.config = some point)
     (intendedPoint : ProtocolState.Intended setup.program point) (who : Player) :
-    OwnSubmissionsAtTurn setup leaks control.execution who := by
+    OwnSubmissionsAtTurn timeouts leaks control.execution who := by
   obtain ⟨recordRank, ⟨residual⟩, record⟩ := ownTurnRecord_history (timeouts := timeouts) bounds
     (failureProfile setup.program) horizon scheduler trace control rfl
   have sameRank := EventOrder.Cut.IsPrefix.unique residual.checkpoint.ordered ordered

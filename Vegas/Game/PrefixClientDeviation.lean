@@ -947,7 +947,7 @@ private theorem native_focal_binding_graph_runUntil
           (some ⟨remaining, none, execution seed⟩)))
     (inside : ∀ seed ∈ prior.support, InBlock start finish (execution seed).application.config)
     (canonical : ∀ seed ∈ prior.support, ∀ actor, actor ≠ focal →
-      OwnSubmissionsAtTurn setup leaks (execution seed) actor ∧
+      OwnSubmissionsAtTurn (serviceTimeouts setup deps duration) leaks (execution seed) actor ∧
         CanonicalSlotsUsed setup leaks (execution seed) actor)
     (lower : start ≤ event.val)
     (completes : CompletesPlay (serviceTimeouts setup deps duration) leaks
@@ -981,7 +981,7 @@ private theorem native_focal_binding_graph_runUntil
     (floor bound : ℝ) (utilityBound : ∀ final, |utility final| ≤ bound)
     (utilityFloor : ∀ final, floor ≤ utility final) :
     let players := fun seed => Function.update
-      (serviceReferenceTurnPolicy setup deps duration leaks boundAt turns
+      (turnPolicy (serviceTimeouts setup deps duration) leaks boundAt turns
         (firstTurnTiming setup turns deps) (memberReference seed)) focal deviation
     let stop := fun final : (serviceApplication setup deps duration leaks).Execution =>
       event ∈ final.application.config.cut.completed
@@ -1228,7 +1228,7 @@ private def nativeSourceContinuation
         reference owner node actor observation active) →
     ∀ (execution : Seed → (serviceApplication setup deps duration leaks).Execution),
     let players := fun seed => Function.update
-      (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+      (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps) (effectiveOpening
           ((serviceGraph setup deps).prefixProfile (members seed)))) focal deviation
     (∀ seed ∈ prior.support,
@@ -1472,7 +1472,7 @@ private def nativeBindingContinuation
     (anchor execution : Seed → app.Execution) (budget used : Seed → Nat)
     (nativeGhost : Seed → G.Config),
   let players := fun seed => Function.update
-    (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+    (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
       (firstTurnTiming setup turns deps) (effectiveOpening (G.prefixProfile (members seed))))
       focal deviation
   (∀ seed ∈ prior.support, @(source seed).revelations = @frame.source.revelations) →
@@ -1506,7 +1506,7 @@ private def nativeBindingContinuation
   (∀ seed ∈ prior.support, (anchor seed).application.config.cut.IsPrefix start) →
   (∀ seed ∈ prior.support, (anchor seed).application.config.defaulted = ∅) →
   (∀ seed ∈ prior.support, ∀ owner, owner ≠ focal →
-    OwnSubmissionsAtTurn setup leaks (anchor seed) owner ∧
+    OwnSubmissionsAtTurn (serviceTimeouts setup deps duration) leaks (anchor seed) owner ∧
       CanonicalSlotsUsed setup leaks (anchor seed) owner ∧
       OwnFreshCalls setup leaks bound (anchor seed) owner ∧
       OneCallPerEvent setup leaks (anchor seed) owner) →
@@ -2906,12 +2906,13 @@ private theorem fixedBinding_submitted_stop
     (reference : (serviceGraph setup deps).BehavioralProfile) (focal : Player)
     (players : Player → (serviceApplication setup deps duration leaks).Policy)
     (follows : ∀ owner, owner ≠ focal → players owner =
-      serviceReferenceTurnPolicy setup deps duration leaks bound turns
+      turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps) reference owner)
     (anchor : (serviceApplication setup deps duration leaks).Execution)
     (trace : ((serviceApplication setup deps duration leaks).protocol
       (serviceInitialLaw setup deps) horizon scheduler).Trace (some ⟨budget, none, anchor⟩))
-    (truthful : ∀ owner, owner ≠ focal → OwnSubmissionsAtTurn setup leaks anchor owner)
+    (truthful : ∀ owner, owner ≠ focal → OwnSubmissionsAtTurn
+      (serviceTimeouts setup deps duration) leaks anchor owner)
     (answered : ActivationsAnswered setup leaks anchor)
     (calls : ∀ owner, owner ≠ focal → OwnFreshCalls setup leaks bound anchor owner)
     (once : ∀ owner, owner ≠ focal → OneCallPerEvent setup leaks anchor owner)
@@ -3130,7 +3131,7 @@ private theorem nativeBindingContinuation_owned_good
     let G := serviceGraph setup deps
     let app := serviceApplication setup deps duration leaks
     let players := fun seed => Function.update
-      (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+      (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps) (effectiveOpening (G.prefixProfile (members seed))))
           focal deviation
     let placeholder := setup.informationGraph.prefixProfile (Function.update reference focal
@@ -3163,7 +3164,7 @@ private theorem nativeBindingContinuation_owned_good
     (∀ seed ∈ prior.support, (anchor seed).application.config.cut.IsPrefix start) →
     (∀ seed ∈ prior.support, (anchor seed).application.config.defaulted = ∅) →
     (∀ seed ∈ prior.support, ∀ owner, owner ≠ focal →
-      OwnSubmissionsAtTurn setup leaks (anchor seed) owner ∧
+      OwnSubmissionsAtTurn (serviceTimeouts setup deps duration) leaks (anchor seed) owner ∧
         CanonicalSlotsUsed setup leaks (anchor seed) owner ∧
         OwnFreshCalls setup leaks bound (anchor seed) owner ∧
         OneCallPerEvent setup leaks (anchor seed) owner) →
@@ -3271,7 +3272,7 @@ private theorem nativeBindingContinuation_owned_good
   let G := serviceGraph setup deps
   let app := serviceApplication setup deps duration leaks
   let players := fun seed => Function.update
-    (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+    (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
       (firstTurnTiming setup turns deps) (effectiveOpening (G.prefixProfile (members seed))))
         focal deviation
   let placeholder := setup.informationGraph.prefixProfile (Function.update reference focal
@@ -3410,7 +3411,8 @@ private theorem nativeBindingContinuation_owned_good
     have member := (selectedFacts point).1
     let R := effectiveOpening (G.prefixProfile (members (old point)))
     have follows (owner : Player) (different : owner ≠ focal) :
-        players (old point) owner = serviceReferenceTurnPolicy setup deps duration leaks bound turns
+        players (old point) owner = turnPolicy (serviceTimeouts setup deps duration) leaks
+          bound turns
           (firstTurnTiming setup turns deps) R owner := Function.update_of_ne different _ _
     have constants : ∀ node : G.EventId, start ≤ node.val → node.val < finish → ∀ owner,
         (actor : G.actor? node = some owner) → owner ≠ focal → ∃ (kind : L.Ty)
@@ -3797,7 +3799,7 @@ private theorem nativeBindingContinuation_owned_expected
     let G := serviceGraph setup deps
     let app := serviceApplication setup deps duration leaks
     let players := fun seed => Function.update
-      (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+      (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps) (effectiveOpening (G.prefixProfile (members seed))))
           focal deviation
     let placeholder := setup.informationGraph.prefixProfile (Function.update reference focal
@@ -3830,7 +3832,7 @@ private theorem nativeBindingContinuation_owned_expected
     (∀ seed ∈ prior.support, (anchor seed).application.config.cut.IsPrefix start) →
     (∀ seed ∈ prior.support, (anchor seed).application.config.defaulted = ∅) →
     (∀ seed ∈ prior.support, ∀ owner, owner ≠ focal →
-      OwnSubmissionsAtTurn setup leaks (anchor seed) owner ∧
+      OwnSubmissionsAtTurn (serviceTimeouts setup deps duration) leaks (anchor seed) owner ∧
         CanonicalSlotsUsed setup leaks (anchor seed) owner ∧
         OwnFreshCalls setup leaks bound (anchor seed) owner ∧
         OneCallPerEvent setup leaks (anchor seed) owner) →
@@ -3975,9 +3977,10 @@ private theorem nativeBindingContinuation_owned_expected
     reactive_runRounds_graph_steps (serviceTimeouts setup deps duration) leaks scheduler
       (players seed) (used seed) (anchor seed) (execution seed) (supported seed member)
   have canonical (seed : Seed) (member : seed ∈ prior.support) (owner : Player)
-      (foreign : owner ≠ focal) : OwnSubmissionsAtTurn setup leaks (execution seed) owner ∧
+      (foreign : owner ≠ focal) : OwnSubmissionsAtTurn
+        (serviceTimeouts setup deps duration) leaks (execution seed) owner ∧
         CanonicalSlotsUsed setup leaks (execution seed) owner := by
-    have follows : players seed owner = serviceReferenceTurnPolicy setup deps duration leaks bound
+    have follows : players seed owner = turnPolicy (serviceTimeouts setup deps duration) leaks bound
         turns (firstTurnTiming setup turns deps) (effectiveOpening (G.prefixProfile (members seed)))
         owner := Function.update_of_ne foreign _ _
     exact canonicalSlots_roundsFrom_reference relaxed.actorSerial scheduler (players seed) owner
@@ -4403,7 +4406,7 @@ private theorem nativeBindingContinuation_finish
     intro seed member final reached
     let R := effectiveOpening (G.prefixProfile (members seed))
     have follows (owner : Player) (different : owner ≠ focal) :
-        players seed owner = serviceReferenceTurnPolicy setup deps duration leaks bound turns
+        players seed owner = turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
           (firstTurnTiming setup turns deps) R owner := by
       exact Function.update_of_ne different _ _
     obtain ⟨raw⟩ := trace seed member
@@ -4490,7 +4493,7 @@ private theorem nativeBindingContinuation_finish
     dsimp only at budgetEq
     omega
   have canonical : ∀ seed ∈ prior.support, ∀ owner, owner ≠ focal →
-      OwnSubmissionsAtTurn setup leaks (execution seed) owner ∧
+      OwnSubmissionsAtTurn (serviceTimeouts setup deps duration) leaks (execution seed) owner ∧
         CanonicalSlotsUsed setup leaks (execution seed) owner := by
     intro seed member owner different
     exact canonicalSlots_roundsFrom_reference relaxed.actorSerial scheduler (players seed) owner
@@ -5132,7 +5135,7 @@ private theorem publication_surviving_endpoint_boundary
     {start finish : Nat} (run : RevealRun (serviceGraph setup deps) start finish)
     (origin : (serviceApplication setup deps duration leaks).Execution)
     (boundary : PhaseBoundary scheduler
-      (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+      (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps) (effectiveOpening reference)) focal deviation)
       horizon start origin)
     (donor : (serviceGraph setup deps).Config) (ordered : donor.cut.IsPrefix finish)
@@ -5140,17 +5143,17 @@ private theorem publication_surviving_endpoint_boundary
     (potential : canonicalLaw profile origin.application.config = canonicalLaw profile donor)
     (final : (serviceApplication setup deps duration leaks).Execution)
     (reached : final ∈ ((serviceApplication setup deps duration leaks).runUntilHorizon scheduler
-      (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+      (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps) (effectiveOpening reference)) focal deviation)
       (fun current => BlockDone finish current.application.config) horizon origin).support)
     (survived : focal ∉ final.application.config.defaulted) :
     CompletionBoundary setup leaks scheduler
-      (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+      (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps) (effectiveOpening reference)) focal deviation)
       finish final ∧ final.environmentRecall.length ≤ horizon ∧
       runKey final.application.config = runKey donor := by
   let app := serviceApplication setup deps duration leaks
-  let players := Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+  let players := Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
     (firstTurnTiming setup turns deps) (effectiveOpening reference)) focal deviation
   obtain ⟨_finalClear, key⟩ := publication_surviving_endpoint_key scheduler bound relaxed contract
     timely profile reference independent opens focal deviation run origin boundary donor ordered
@@ -5209,7 +5212,7 @@ private theorem publication_surviving_phase_posterior
       (prior.map source).bind fun current =>
         (noise (observe current)).map fun extra => (current, extra))
     (boundary : ∀ seed ∈ prior.support, PhaseBoundary scheduler
-      (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+      (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps) (effectiveOpening (reference seed))) focal deviation)
       horizon start (execution seed))
     (reachable : ∀ seed ∈ prior.support,
@@ -5228,7 +5231,7 @@ private theorem publication_surviving_phase_posterior
         keyView focal (runKey (donor (advance (source right))))) :
     let app := serviceApplication setup deps duration leaks
     let players := fun seed => Function.update
-      (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+      (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps) (effectiveOpening (reference seed))) focal deviation
     let phase := fun seed => app.runUntilHorizon scheduler (players seed)
       (fun current => BlockDone finish current.application.config) horizon (execution seed)
@@ -5324,7 +5327,7 @@ private theorem native_block_expected_comparison
         PMF.pure (after seed)) :
     let app := serviceApplication setup deps duration leaks
     let players := fun seed => Function.update
-      (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+      (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps)
           (effectiveOpening ((serviceGraph setup deps).prefixProfile (members seed))))
             focal deviation
@@ -5521,7 +5524,7 @@ private theorem native_publication_expected_continuation
       finish ≤ node.val → members seed owner node actor observation active =
         reference owner node actor observation active)
     (boundary : ∀ seed ∈ prior.support, PhaseBoundary scheduler
-      (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+      (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps) (effectiveOpening
           ((serviceGraph setup deps).prefixProfile (members seed)))) focal deviation)
       horizon start (execution seed))
@@ -5557,7 +5560,7 @@ private theorem native_publication_expected_continuation
     ∃ policy : setup.informationGraph.BehavioralPolicy focal,
       expect (prior.bind fun seed =>
         (serviceApplication setup deps duration leaks).runToHorizon scheduler
-          (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+          (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
             (firstTurnTiming setup turns deps) (effectiveOpening
               ((serviceGraph setup deps).prefixProfile (members seed)))) focal deviation)
           horizon (execution seed))
@@ -5573,7 +5576,7 @@ private theorem native_publication_expected_continuation
   classical
   let app := serviceApplication setup deps duration leaks
   let players := fun seed => Function.update
-    (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+    (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
       (firstTurnTiming setup turns deps) (effectiveOpening
         ((serviceGraph setup deps).prefixProfile (members seed)))) focal deviation
   let phase := fun seed => app.runUntilHorizon scheduler (players seed)
@@ -5918,13 +5921,13 @@ private theorem roundsFrom_effective_reference_support_of_untouched
     (unseen : ∀ event, changed event → Untouched setup leaks event after)
     (reached : after ∈ ((serviceApplication setup deps duration leaks).roundsFrom
       (serviceInitialLaw setup deps) scheduler
-      (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+      (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps)
           (effectiveOpening ((serviceGraph setup deps).prefixProfile left)))
           focal deviation) count).support) :
     after ∈ ((serviceApplication setup deps duration leaks).roundsFrom
       (serviceInitialLaw setup deps) scheduler
-      (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+      (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps)
           (effectiveOpening ((serviceGraph setup deps).prefixProfile right)))
           focal deviation) count).support := by
@@ -6010,7 +6013,7 @@ private theorem nativeSourceContinuation_of_binding_interval
   let frozen := fun sample : Seed × setup.informationGraph.Config =>
     setup.informationGraph.freezeBindingsBefore (members sample.1) start finish sample.2
   let frozenPlayers := fun sample : Seed × setup.informationGraph.Config => Function.update
-    (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+    (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
       (firstTurnTiming setup turns deps) (effectiveOpening (G.prefixProfile (frozen sample))))
         focal deviation
   have support (sample : Seed × setup.informationGraph.Config)
@@ -6052,17 +6055,20 @@ private theorem nativeSourceContinuation_of_binding_interval
     exact ⟨inputs, invariant.reachable⟩
   have discipline (raw : G.BehavioralProfile) (current : app.Execution)
       (present : current ∈ (app.roundsFrom (serviceInitialLaw setup deps) scheduler
-        (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+        (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
           (firstTurnTiming setup turns deps) (effectiveOpening (G.prefixProfile raw)))
             focal deviation) current.environmentRecall.length).support) :
-      ∀ owner, owner ≠ focal → OwnSubmissionsAtTurn setup leaks current owner ∧
+      ∀ owner, owner ≠ focal → OwnSubmissionsAtTurn
+        (serviceTimeouts setup deps duration) leaks current owner ∧
         CanonicalSlotsUsed setup leaks current owner ∧
           OwnFreshCalls setup leaks bound current owner ∧
           OneCallPerEvent setup leaks current owner := by
     intro owner foreign
-    let clients := Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+    let clients := Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks
+      bound turns
       (firstTurnTiming setup turns deps) (effectiveOpening (G.prefixProfile raw))) focal deviation
-    have follows : clients owner = serviceReferenceTurnPolicy setup deps duration leaks bound turns
+    have follows : clients owner = turnPolicy (serviceTimeouts setup deps duration) leaks
+      bound turns
         (firstTurnTiming setup turns deps) (effectiveOpening (G.prefixProfile raw)) owner := by
       simp only [clients, Function.update_of_ne foreign]
     have slots := canonicalSlots_roundsFrom_reference relaxed.actorSerial scheduler clients owner
@@ -7380,7 +7386,7 @@ private theorem nativeSourceContinuation_initialized
         wholeProfile reference focal deviation nativePayoff sourcePayoff
           (SourceResidual.initial setup wholeProfile initial)) :
     let players := Function.update
-      (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+      (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps) (effectiveOpening
           ((serviceGraph setup deps).prefixProfile reference))) focal deviation
     ∃ policy : setup.informationGraph.BehavioralPolicy focal,
@@ -7393,7 +7399,7 @@ private theorem nativeSourceContinuation_initialized
   classical
   let app := serviceApplication setup deps duration leaks
   let players := Function.update
-    (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+    (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
       (firstTurnTiming setup turns deps) (effectiveOpening
         ((serviceGraph setup deps).prefixProfile reference))) focal deviation
   let ghost := fun initial : State L setup.context =>
@@ -7502,7 +7508,7 @@ theorem native_prefix_deviation_bound [Finite Player]
     ∃ policy : setup.informationGraph.BehavioralPolicy focal,
       expect ((serviceApplication setup deps duration leaks).roundsFrom
         (serviceInitialLaw setup deps) scheduler
-        (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+        (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
           (firstTurnTiming setup turns deps) (effectiveOpening
             ((serviceGraph setup deps).prefixProfile reference))) focal deviation) horizon)
         nativePayoff ≤

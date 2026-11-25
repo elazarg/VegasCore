@@ -149,19 +149,19 @@ theorem block_stopped_readoutOn_congr {horizon : Nat}
       blockReadoutOn who (blockWindow start finish) left =
         blockReadoutOn who (blockWindow start finish) right →
       ((serviceApplication setup deps duration leaks).runUntil scheduler
-        (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+        (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
           (firstTurnTiming setup turns deps) reference) who deviation)
         (fun final => BlockDone finish final.application.config) count left).map
           (blockReadoutOn who (blockWindow start finish)) =
       ((serviceApplication setup deps duration leaks).runUntil scheduler
-        (Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+        (Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
           (firstTurnTiming setup turns deps) reference) who deviation)
         (fun final => BlockDone finish final.application.config) count right).map
           (blockReadoutOn who (blockWindow start finish)) := by
   intro count leftRemaining rightRemaining left right leftTrace rightTrace leftInside
     rightInside leftValid rightValid agree same
   let app := serviceApplication setup deps duration leaks
-  let players := Function.update (serviceReferenceTurnPolicy setup deps duration leaks bound
+  let players := Function.update (turnPolicy (serviceTimeouts setup deps duration) leaks bound
     turns (firstTurnTiming setup turns deps) reference) who deviation
   let window := blockWindow (setup := setup) (deps := deps) start finish
   let invariant := fun (origin : app.Execution) (count : Nat) (current : app.Execution) =>

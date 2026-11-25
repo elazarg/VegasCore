@@ -56,7 +56,7 @@ theorem counted_stopped_freshCall_receipt
     (owned : setup.informationGraph.actor? event = some who)
     (entry : (application setup timeouts leaks).PlayerEntry)
     (message : Message Player (WitnessedPacket setup.informationGraph))
-    (call : FreshCall setup leaks who event bound entry message) :
+    (call : FreshCall timeouts leaks who event bound entry message) :
     ∀ stopped ∈ ((model).runBehavioralUntil certificate profile
         (fun history => ¬ Clear history.state ∨ extraStop history) start).support,
       ∀ final, stopped.state = some final → RecordsEntry setup timeouts leaks who entry (some

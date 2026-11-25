@@ -161,7 +161,7 @@ theorem reference_first_turn_action_mixture
     (selected : execution.application.publicView.ownTurn? owner = some event)
     (active : owner ∉ execution.application.config.defaulted)
     (first : ownerTurns owner event execution = 0) :
-    serviceReferenceTurnPolicy setup deps duration leaks bound turns
+    turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps) reference owner (execution.logs owner)
           (execution.observe (serviceApplication setup deps duration leaks) owner) =
       (reference owner event owned
@@ -169,18 +169,19 @@ theorem reference_first_turn_action_mixture
           (fun action => decidedTurnPolicy setup leaks bound owner event action
             (execution.logs owner)
               (execution.observe (serviceApplication setup deps duration leaks) owner)) := by
-  have turn : serviceTurn setup deps duration leaks owner event (execution.logs owner)
+  have turn : turnIndex (serviceTimeouts setup deps duration)
+    leaks owner event (execution.logs owner)
       (execution.observe (serviceApplication setup deps duration leaks) owner) = some 0 := by
     rw [serviceTurn_of_turn execution selected, first]
   rw [sourceServiceTurnPolicy_firstTurn_reference owned turn]
   have decided (action : (serviceGraph setup deps).Action event) :=
     decidedTurnPolicy_open (bound := bound) action execution selected first
   simp_rw [decided]
-  unfold serviceReferenceOpportunity
+  unfold EventGraphRuntime.referenceOpportunity
   by_cases recorded : (eventRecorded (serviceTimeouts setup deps duration)) leaks
       (execution.logs owner) event = true
   · simp only [recorded, ite_true, ReactiveApplication.silentPolicy_apply]
-    simp only [decidedOpportunity, recorded, ite_true, ReactiveApplication.silentPolicy_apply,
+    simp only [fixedOpportunity, recorded, ite_true, ReactiveApplication.silentPolicy_apply,
       PMF.bind_const]
   · have unrecorded : (eventRecorded (serviceTimeouts setup deps duration)) leaks
         (execution.logs owner) event = false := Bool.eq_false_iff.mpr recorded
@@ -191,11 +192,11 @@ theorem reference_first_turn_action_mixture
     · simp only [fits, ite_true]
       rw [sourceServiceCanonicalPolicy_at_event_reference setup leaks reference owner execution
         event selected owned, dite_eq_right active]
-      simp only [PMF.bind_map, Function.comp_def, decidedOpportunity, unrecorded,
+      simp only [PMF.bind_map, Function.comp_def, fixedOpportunity, unrecorded,
         Bool.false_eq_true, ite_false, fits, ite_true]
       rfl
     · simp only [fits, ite_false, ReactiveApplication.silentPolicy_apply]
-      simp only [decidedOpportunity, unrecorded, Bool.false_eq_true, ite_false, fits,
+      simp only [fixedOpportunity, unrecorded, Bool.false_eq_true, ite_false, fits,
         ReactiveApplication.silentPolicy_apply, PMF.bind_const]
 
 
@@ -250,8 +251,8 @@ private theorem bindingWindowReadout_response
     congrFun (congrFun (congrArg Prod.snd same) owner) event
   by_cases isActor : owner = actor
   · subst owner
-    obtain ⟨_, leftRecalled, _⟩ := respond_recall_self setup leaks left actor leftResponse
-    obtain ⟨_, rightRecalled, _⟩ := respond_recall_self setup leaks right actor rightResponse
+    obtain ⟨_, leftRecalled, _⟩ := respond_recall_self _ leaks left actor leftResponse
+    obtain ⟨_, rightRecalled, _⟩ := respond_recall_self _ leaks right actor rightResponse
     apply Prod.ext
     · have sameTurns : ownerTurns actor event left = ownerTurns actor event right :=
         congrArg Prod.fst counters
@@ -317,9 +318,9 @@ private theorem reference_binding_first_invoke_congr
         (some ⟨rightRemaining + 1, none, right⟩))
     (leftReady : left.application.config.cut.Ready event)
     (rightReady : right.application.config.cut.Ready event)
-    (leftOwn : OwnSubmissionsAtTurn setup leaks left owner)
+    (leftOwn : OwnSubmissionsAtTurn (serviceTimeouts setup deps duration) leaks left owner)
     (leftSlots : CanonicalSlotsUsed setup leaks left owner)
-    (rightOwn : OwnSubmissionsAtTurn setup leaks right owner)
+    (rightOwn : OwnSubmissionsAtTurn (serviceTimeouts setup deps duration) leaks right owner)
     (rightSlots : CanonicalSlotsUsed setup leaks right owner)
     (selected : (.activate owner : (serviceApplication setup deps duration leaks).Command) ∈
       (scheduler left.environmentRecall
@@ -331,7 +332,7 @@ private theorem reference_binding_first_invoke_congr
     let app := serviceApplication setup deps duration leaks
     let leftActive := left.sampledActivation app owner sample
     let rightActive := right.sampledActivation app owner sample
-    let clients := fun reference => serviceReferenceTurnPolicy setup deps duration leaks bound
+    let clients := fun reference => turnPolicy (serviceTimeouts setup deps duration) leaks bound
       turns (firstTurnTiming setup turns deps) reference
     ((clients leftReference owner (leftActive.logs owner) (leftActive.observe app owner)).map
         (leftActive.respond app owner)).map (bindingWindowReadout (leaks := leaks) focal) =
@@ -517,9 +518,9 @@ theorem reference_client_no_turn
     (past : List (serviceApplication setup deps duration leaks).PlayerEntry)
     (view : (serviceApplication setup deps duration leaks).PlayerView)
     (serving : view.application.publicView.ownTurn? who = none) :
-    serviceReferenceTurnPolicy setup deps duration leaks bound turns
+    turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps) reference who past view = PMF.pure ⟨none⟩ := by
-  simp only [serviceReferenceTurnPolicy, serving, ReactiveApplication.silentPolicy_apply]
+  simp only [EventGraphRuntime.turnPolicy, serving, ReactiveApplication.silentPolicy_apply]
 theorem ready_not_public_of_binding_ready
     (relaxed : (serviceGraph setup deps).RevealRelaxedOrdered)
     {event named : (serviceGraph setup deps).EventId} {owner : Player} {payload : L.Ty}
@@ -560,12 +561,16 @@ private theorem bindingWindow_round_readout
     (leftReady : left.application.config.cut.Ready event)
     (rightReady : right.application.config.cut.Ready event)
     (leftCanonical : ∀ actor, actor ≠ focal →
-      OwnSubmissionsAtTurn setup leaks left actor ∧ CanonicalSlotsUsed setup leaks left actor)
+      OwnSubmissionsAtTurn
+        (serviceTimeouts setup deps duration) leaks left actor ∧
+          CanonicalSlotsUsed setup leaks left actor)
     (rightCanonical : ∀ actor, actor ≠ focal →
-      OwnSubmissionsAtTurn setup leaks right actor ∧ CanonicalSlotsUsed setup leaks right actor) :
+      OwnSubmissionsAtTurn
+        (serviceTimeouts setup deps duration) leaks right actor ∧
+          CanonicalSlotsUsed setup leaks right actor) :
     let app := serviceApplication setup deps duration leaks
     let players := fun reference => Function.update
-      (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+      (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps) reference) focal deviation
     (app.round scheduler (players leftReference) left).map
         (bindingWindowReadout (leaks := leaks) focal) =
@@ -643,11 +648,11 @@ private theorem bindingWindow_round_readout
                 have rightNotFirst : ownerTurns actor named right ≠ 0 := by
                   rw [← sameTurns]
                   exact first
-                have leftLater : serviceTurn setup deps duration leaks actor named
+                have leftLater : turnIndex (serviceTimeouts setup deps duration) leaks actor named
                     (leftActive.logs actor) (leftActive.observe app actor) ≠ some 0 := by
                   rw [serviceTurn_of_turn leftActive leftServing]
                   exact fun equal => first (Option.some.inj equal)
-                have rightLater : serviceTurn setup deps duration leaks actor named
+                have rightLater : turnIndex (serviceTimeouts setup deps duration) leaks actor named
                     (rightActive.logs actor) (rightActive.observe app actor) ≠ some 0 := by
                   rw [serviceTurn_of_turn rightActive rightServing]
                   exact fun equal => rightNotFirst (Option.some.inj equal)
@@ -684,14 +689,14 @@ private theorem bindingWindow_stopped_readout
     (leftReady : leftStart.application.config.cut.Ready event)
     (rightReady : rightStart.application.config.cut.Ready event)
     (leftCanonical : ∀ actor, actor ≠ focal →
-      OwnSubmissionsAtTurn setup leaks leftStart actor ∧
+      OwnSubmissionsAtTurn (serviceTimeouts setup deps duration) leaks leftStart actor ∧
         CanonicalSlotsUsed setup leaks leftStart actor)
     (rightCanonical : ∀ actor, actor ≠ focal →
-      OwnSubmissionsAtTurn setup leaks rightStart actor ∧
+      OwnSubmissionsAtTurn (serviceTimeouts setup deps duration) leaks rightStart actor ∧
         CanonicalSlotsUsed setup leaks rightStart actor) :
     let app := serviceApplication setup deps duration leaks
     let players := fun reference => Function.update
-      (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+      (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps) reference) focal deviation
     (app.runUntil scheduler (players leftReference)
         (fun final => event ∈ final.application.config.cut.completed) count leftStart).map
@@ -706,7 +711,9 @@ private theorem bindingWindow_stopped_readout
     (event ∉ current.application.config.cut.completed →
       current.application.config.cut.Ready event) ∧
     ∀ actor, actor ≠ focal →
-      OwnSubmissionsAtTurn setup leaks current actor ∧ CanonicalSlotsUsed setup leaks current actor
+      OwnSubmissionsAtTurn
+        (serviceTimeouts setup deps duration) leaks current actor ∧
+          CanonicalSlotsUsed setup leaks current actor
   have advance (reference : (serviceGraph setup deps).BehavioralProfile) (n : Nat)
       (current : app.Execution) (valid : invariant (n + 1) current)
       (running : event ∉ current.application.config.cut.completed)
@@ -1040,12 +1047,16 @@ theorem bindingWindow_round_opacity
     (leftReady : left.application.config.cut.Ready event)
     (rightReady : right.application.config.cut.Ready event)
     (leftCanonical : ∀ actor, actor ≠ focal →
-      OwnSubmissionsAtTurn setup leaks left actor ∧ CanonicalSlotsUsed setup leaks left actor)
+      OwnSubmissionsAtTurn
+        (serviceTimeouts setup deps duration) leaks left actor ∧
+          CanonicalSlotsUsed setup leaks left actor)
     (rightCanonical : ∀ actor, actor ≠ focal →
-      OwnSubmissionsAtTurn setup leaks right actor ∧ CanonicalSlotsUsed setup leaks right actor) :
+      OwnSubmissionsAtTurn
+        (serviceTimeouts setup deps duration) leaks right actor ∧
+          CanonicalSlotsUsed setup leaks right actor) :
     let app := serviceApplication setup deps duration leaks
     let players := fun reference => Function.update
-      (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+      (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps) reference) focal deviation
     (app.round scheduler (players leftReference) left).map
         ((bindingTraffic (serviceTimeouts setup deps duration)) leaks focal) =
@@ -1082,14 +1093,14 @@ theorem bindingWindow_stopped_opacity
     (leftReady : leftStart.application.config.cut.Ready event)
     (rightReady : rightStart.application.config.cut.Ready event)
     (leftCanonical : ∀ actor, actor ≠ focal →
-      OwnSubmissionsAtTurn setup leaks leftStart actor ∧
+      OwnSubmissionsAtTurn (serviceTimeouts setup deps duration) leaks leftStart actor ∧
         CanonicalSlotsUsed setup leaks leftStart actor)
     (rightCanonical : ∀ actor, actor ≠ focal →
-      OwnSubmissionsAtTurn setup leaks rightStart actor ∧
+      OwnSubmissionsAtTurn (serviceTimeouts setup deps duration) leaks rightStart actor ∧
         CanonicalSlotsUsed setup leaks rightStart actor) :
     let app := serviceApplication setup deps duration leaks
     let players := fun reference => Function.update
-      (serviceReferenceTurnPolicy setup deps duration leaks bound turns
+      (turnPolicy (serviceTimeouts setup deps duration) leaks bound turns
         (firstTurnTiming setup turns deps) reference) focal deviation
     (app.runUntil scheduler (players leftReference)
         (fun final => event ∈ final.application.config.cut.completed) count leftStart).map
