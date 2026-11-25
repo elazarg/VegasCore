@@ -210,24 +210,25 @@ def oddObservation (execution : app.Execution) : List app.PlayerEntry × app.Pla
 /-- For equally weighted physical branches committing the two bits, identical
 Odd observation laws suffice for a fair posterior at every observed state of
 positive mass. The premises concern the branch laws up to the decision. -/
-theorem fiberPosterior_evenBinding_of_equal_observations
-    (run : Bool → PMF app.Execution)
-    (hidden : (run false).map oddObservation = (run true).map oddObservation)
+theorem fiberPosterior_evenBinding_of_equal_readouts
+    {Observation : Type} (run : Bool → PMF app.Execution)
+    (observe : app.Execution → Observation)
+    (hidden : (run false).map observe = (run true).map observe)
     (stored : ∀ bit execution, execution ∈ (run bit).support →
       evenBinding.get? execution.application.config.store = some (.success bit))
-    (observed : List app.PlayerEntry × app.PlayerView)
-    (present : observed ∈ (((uniformLaw Bool).bind run).map oddObservation).support) :
-    (fiberPosterior ((uniformLaw Bool).bind run) oddObservation observed).map
+    (observed : Observation)
+    (present : observed ∈ (((uniformLaw Bool).bind run).map observe).support) :
+    (fiberPosterior ((uniformLaw Bool).bind run) observe observed).map
       (fun execution => evenBinding.get? execution.application.config.store) =
       (uniformLaw Bool).map (fun bit => some (.success bit)) := by
   let committed := fun execution : app.Execution =>
     evenBinding.get? execution.application.config.store
-  let joint := fun execution : app.Execution => (oddObservation execution, committed execution)
+  let joint := fun execution : app.Execution => (observe execution, committed execution)
   let encode := fun bit : Bool => (some (.success bit) : Option (PublicationResult Bool))
-  let viewLaw := (run false).map oddObservation
+  let viewLaw := (run false).map observe
   have branch (bit : Bool) :
       (run bit).map joint = viewLaw.map (fun view => (view, encode bit)) := by
-    have equal : (run bit).map oddObservation = viewLaw := by
+    have equal : (run bit).map observe = viewLaw := by
       cases bit
       · rfl
       · exact hidden.symm
@@ -249,6 +250,20 @@ theorem fiberPosterior_evenBinding_of_equal_observations
   have projected := congrArg (PMF.map Prod.snd) conditioned
   rw [PMF.map_comp, factor, fiberPosterior_snd_bindPairLaw_const] at projected
   exact projected
+
+/-- In particular, full physical Odd observations retain the fair posterior
+when the observation laws of the two ordinary bit branches agree. -/
+theorem fiberPosterior_evenBinding_of_equal_observations
+    (run : Bool → PMF app.Execution)
+    (hidden : (run false).map oddObservation = (run true).map oddObservation)
+    (stored : ∀ bit execution, execution ∈ (run bit).support →
+      evenBinding.get? execution.application.config.store = some (.success bit))
+    (observed : List app.PlayerEntry × app.PlayerView)
+    (present : observed ∈ (((uniformLaw Bool).bind run).map oddObservation).support) :
+    (fiberPosterior ((uniformLaw Bool).bind run) oddObservation observed).map
+      (fun execution => evenBinding.get? execution.application.config.store) =
+      (uniformLaw Bool).map (fun bit => some (.success bit)) :=
+  fiberPosterior_evenBinding_of_equal_readouts run oddObservation hidden stored observed present
 
 def initialInputs : compiled.Inputs :=
   setup.eventInputs (Env.empty (CellVal simpleExpr))
@@ -274,11 +289,11 @@ def fixedFirstCommitmentRun (bit : Bool) : PMF app.Execution :=
     (fun execution => eventId 0 ∈ execution.application.config.cut.completed)
     OddsEvensService.horizon initialExecution
 
-/-- Both ordinary successful commitments induce the same Odd observation
+/-- Both ordinary successful commitments induce the same Odd traffic
 law at the first commitment's physical stop in the periodic service. -/
-theorem fixedFirstCommitmentRun_oddObservation :
-    (fixedFirstCommitmentRun false).map oddObservation =
-      (fixedFirstCommitmentRun true).map oddObservation := by
+theorem fixedFirstCommitmentRun_traffic :
+    (fixedFirstCommitmentRun false).map (bindingTraffic timeouts OddsEvensService.leaks odd) =
+      (fixedFirstCommitmentRun true).map (bindingTraffic timeouts OddsEvensService.leaks odd) := by
   let inputLaw := PMF.pure initialInputs
   have solitary (event : compiled.EventId) : compiled.Solitary event :=
     setup.dataflowGraph.sequentialize_solitary event
@@ -294,18 +309,30 @@ theorem fixedFirstCommitmentRun_oddObservation :
     (by decide) (eventId 0) (solitary _) (payload := .bool) rfl rfl rfl
     (some (.success false)) (some (.success true)) rfl initialExecution initialExecution
     (boundary _) (boundary _) (by decide) (by decide) rfl
+  exact same
+
+/-- Both ordinary successful commitments induce the same Odd observation
+law at the first commitment's physical stop in the periodic service. -/
+theorem fixedFirstCommitmentRun_oddObservation :
+    (fixedFirstCommitmentRun false).map oddObservation =
+      (fixedFirstCommitmentRun true).map oddObservation := by
   let observeTraffic := fun read : MessageNetwork Player app.Payload ×
       List (MessageId Player × Bool) × List app.EnvironmentEntry × List app.PlayerEntry ×
         PlayerView compiled × PublicView compiled => (read.2.2.2.1,
     (⟨read.1.observe odd, read.2.2.2.2.1, read.2.1⟩ : app.PlayerView))
-  have projected := congrArg (PMF.map observeTraffic) same
+  have projected := congrArg (PMF.map observeTraffic) fixedFirstCommitmentRun_traffic
   rw [PMF.map_comp, PMF.map_comp] at projected
   exact projected
 
-/-- The stopped fixed-commitment run stores exactly the selected bit. -/
-theorem fixedFirstCommitmentRun_stored (bit : Bool) (execution : app.Execution)
+/-- The graph state after a successful first commitment. -/
+def afterFirstCommitment (bit : Bool) : compiled.Config :=
+  initialExecution.application.config.complete (eventId 0) (by decide)
+    (some (.success bit)) (.success bit)
+
+/-- The fixed-commitment run stops at the single successful binding step. -/
+theorem fixedFirstCommitmentRun_config (bit : Bool) (execution : app.Execution)
     (reached : execution ∈ (fixedFirstCommitmentRun bit).support) :
-    evenBinding.get? execution.application.config.store = some (.success bit) := by
+    execution.application.config = afterFirstCommitment bit := by
   let inputLaw := PMF.pure initialInputs
   let event := eventId 0
   let start := initialExecution
@@ -327,13 +354,11 @@ theorem fixedFirstCommitmentRun_stored (bit : Bool) (execution : app.Execution)
   have ready : start.application.config.cut.Ready event :=
     (boundary background).ordered.ready (by decide)
   have solitary : compiled.Solitary event := setup.dataflowGraph.sequentialize_solitary _
-  let read := fun config : compiled.Config =>
-    evenBinding.get? (EventGraphRuntime.State.drainConfig config).store
+  let read := EventGraphRuntime.State.drainConfig (graph := compiled)
   have fixed := firstTurn_fixedAction_continuation timeouts OddsEvensService.leaks
     (turns := 1) OddsEvensService.scheduler (fun _ => 3) (fun _ => 2) initialReference
     (fun config => PMF.pure (read config))
-    (fun state => congrArg (fun config => PMF.pure (evenBinding.get? config.store))
-      (EventGraphRuntime.State.drainConfig_drain_eq state))
+    (fun state => congrArg PMF.pure (EventGraphRuntime.State.drainConfig_drain_eq state))
     contract (PeriodicService.timely (graph := compiled)) even event rfl solitary
     background (Function.update_of_ne (by decide : even ≠ odd) _ _) action start ready
     (boundary background).supported ((boundary background).untouched _ le_rfl)
@@ -350,12 +375,29 @@ theorem fixedFirstCommitmentRun_stored (bit : Bool) (execution : app.Execution)
     read final.application.config) reached
   rw [← PMF.support_map, fixed, PMF.support_map] at projected
   obtain ⟨primary, member, equal⟩ := projected
-  have primaryStored := EventGraph.Config.binding_step_output event even .bool rfl rfl
-    start.application.config primary ready action member
-  change primary.store evenBinding.field = some (.success bit) at primaryStored
-  have drainedStored := EventGraph.Config.Step.path_store_of_some
-    (EventGraphRuntime.State.ofConfig primary).drain_graph_steps _ _ primaryStored
-  have saved : read primary = some (.success bit) := drainedStored
+  have step : start.application.config.step event ready action =
+      PMF.pure (afterFirstCommitment bit) := by
+    let code : EventGraph.EventCode compiled.layout (.binding even .bool) :=
+      EventGraph.EventCode.bind (L := simpleExpr) (layout := compiled.layout) even BaseTy.bool
+    have law := start.application.config.step_eq_map_of_code event ready
+      (output := (.binding even BaseTy.bool : EventGraph.EventField Player simpleExpr))
+      rfl code rfl (some (.success bit)) (PMF.pure (.success bit)) (by
+        have active : even ∉ start.application.config.defaulted := by decide
+        simp [code, EventGraph.EventCode.effectiveAction, EventGraph.EventCode.actor,
+          EventGraph.EventCode.eval?, active])
+    rw [PMF.pure_map] at law
+    exact law
+  rw [step, PMF.mem_support_pure_iff] at member
+  subst primary
+  have saved : read (afterFirstCommitment bit) = afterFirstCommitment bit := by
+    apply EventGraphRuntime.State.drainConfig_of_quiescent
+      (EventGraphRuntime.State.ofConfig (afterFirstCommitment bit))
+    intro next eligible
+    obtain ⟨owner, _, inactive⟩ := eligible.owned
+    have clear : (afterFirstCommitment bit).defaulted = ∅ := by cases bit <;> decide
+    change owner ∈ (afterFirstCommitment bit).defaulted at inactive
+    rw [clear] at inactive
+    exact Finset.notMem_empty owner inactive
   have progress := runUntilHorizon_event_progress contract.completes event start execution
     (boundary _).supported (by decide) ready.1 reached
   obtain ⟨trace⟩ := app.raw_trace_roundsFrom _ _ OddsEvensService.scheduler _
@@ -365,6 +407,14 @@ theorem fixedFirstCommitmentRun_stored (bit : Bool) (execution : app.Execution)
   rw [saved] at equal
   simpa only [read, EventGraphRuntime.State.drainConfig_of_quiescent execution.application quiet]
     using equal.symm
+
+/-- The stopped fixed-commitment run stores exactly the selected bit. -/
+theorem fixedFirstCommitmentRun_stored (bit : Bool) (execution : app.Execution)
+    (reached : execution ∈ (fixedFirstCommitmentRun bit).support) :
+    evenBinding.get? execution.application.config.store = some (.success bit) := by
+  rw [fixedFirstCommitmentRun_config bit execution reached]
+  change (afterFirstCommitment bit).outputs (eventId 0) = some (.success bit)
+  exact EventGraph.Config.complete_output_same _ _ _ _ _
 
 /-- With ordinary fair first-commitment traffic, conditioning on any supported
 Odd observation at that physical stop leaves Even's commitment fair. -/
