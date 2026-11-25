@@ -184,6 +184,14 @@ utility-bound premise. Private-binding traffic opacity, conditional table
 sampling and checkpoint restoration retain the existing graph configurations
 and source checkpoints. Concurrent SE preservation remains open.
 
+At the source-to-graph boundary, simultaneous behavioral deviations by any set of
+players can be backtranslated while preserving every outsider’s original source
+policy. One translated profile matches the terminal configuration distribution for
+every initial state and every public scheduler, including after mixing over a
+setup’s joint initial distribution. Each player uses the observations and randomness
+of the existing behavioral strategy interface.
+[EventGraphDeviation](../Vegas/Compile/EventGraphDeviation.lean)
+
 For the information graph, the
 [physical deviation law](../Vegas/Game/AsyncDeviationReadout.lean)
 backtranslates every raw unilateral policy against first-turn clients to one

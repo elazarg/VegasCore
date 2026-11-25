@@ -156,6 +156,69 @@ theorem scheduled_setup_deviation_distribution (setup : Setup (Player := Player)
     replacement
     initial
 
+/-- Simultaneous behavioral replacements on any coalition admit one source
+profile that keeps the original policies of players outside the coalition.
+The same profile preserves the full terminal configuration law at every
+initial state and under every public scheduler. -/
+theorem coalition_deviation_terminalConfig_distribution
+    {Γ : SourceCtx Player L} {openNames : Finset VarId}
+    (program : SourceProgram Player L Γ openNames) (profile : BehavioralProfile program)
+    (coalition : Set Player) (deviation : (toInformationGraph program).BehavioralProfile)
+    (outsiders : ∀ who ∉ coalition, deviation who = compileEventProfile program profile who) :
+    ∃ translated : BehavioralProfile program,
+      (∀ who ∉ coalition, translated who = profile who) ∧
+      ∀ (state : State L Γ) (scheduler : (toInformationGraph program).PublicScheduler),
+        ((toInformationGraph program).terminalOutcomes scheduler deviation (encodeInputs state)).map
+            (terminalConfig program) = SourceProgram.run program translated state := by
+  classical
+  let graph := toInformationGraph program
+  let translated : BehavioralProfile program := fun who =>
+    if who ∈ coalition then backtranslateEventPolicy program who (deviation who) else profile who
+  refine ⟨translated, fun who outside => ite_eq_right outside, ?_⟩
+  intro state scheduler
+  have kernels : graph.runPolicies graph.canonicalScheduler (compileEventProfile program translated)
+      (encodeInputs state) = graph.runPolicies graph.canonicalScheduler deviation
+        (encodeInputs state) := by
+    apply EventGraph.runPolicies_canonical_eq_of_reachable
+    intro config reachable offset ordered event ready rank who actor active
+    by_cases member : who ∈ coalition
+    · simp only [compileEventProfile, translated, ite_eq_left member]
+      exact compileEventPolicy_backtranslate_at_prefix program who (deviation who)
+        (encodeInputs state) config reachable offset ordered event ready rank actor active
+    · rw [outsiders who member]
+      simp only [compileEventProfile, translated, ite_eq_right member]
+  have outcomes : graph.terminalOutcomes graph.canonicalScheduler
+      (compileEventProfile program translated) (encodeInputs state) =
+      graph.terminalOutcomes graph.canonicalScheduler deviation (encodeInputs state) := by
+    apply pmf_map_injective (f := Subtype.val) Subtype.val_injective
+    simpa only [EventGraph.terminalOutcomes_map_val] using kernels
+  rw [toInformationGraph_terminalOutcomes_eq program deviation scheduler graph.canonicalScheduler,
+    ← outcomes]
+  exact canonical_terminalConfig_distribution program translated state
+
+/-- The coalition backtranslation preserves the complete law with correlated
+initial draws. One source profile works for every public scheduler. -/
+theorem setup_coalition_deviation_distribution (setup : Setup (Player := Player) (L := L))
+    (profile : BehavioralProfile setup.program) (coalition : Set Player)
+    (deviation : setup.informationGraph.BehavioralProfile)
+    (outsiders : ∀ who ∉ coalition,
+      deviation who = compileEventProfile setup.program profile who) :
+    ∃ translated : BehavioralProfile setup.program,
+      (∀ who ∉ coalition, translated who = profile who) ∧
+      ∀ scheduler : setup.informationGraph.PublicScheduler,
+        (setup.initialDistribution.bind fun initial =>
+          (setup.informationGraph.terminalOutcomes scheduler deviation
+            (setup.eventInputs initial)).map (terminalConfig setup.program)) =
+          setup.run translated := by
+  obtain ⟨translated, unchanged, law⟩ :=
+    coalition_deviation_terminalConfig_distribution setup.program profile coalition deviation
+      outsiders
+  refine ⟨translated, unchanged, fun scheduler => ?_⟩
+  unfold Setup.run
+  apply bind_congr_on_support _
+  intro initial _
+  exact law initial scheduler
+
 /-- Finite source binding alphabets give finite graph action types. -/
 theorem toInformationGraph_finiteActions {Γ : SourceCtx Player L} {openNames : Finset VarId}
     (program : SourceProgram Player L Γ openNames) (finite : program.FiniteBindingTypes) :
