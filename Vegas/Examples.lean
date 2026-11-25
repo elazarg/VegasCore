@@ -33,6 +33,7 @@ public import Vegas.Examples.OddsEvensFullSource
 public import Vegas.Examples.OddsEvensLedgerClient
 public import Vegas.Examples.OddsEvensClientPosterior
 public import Vegas.Examples.OddsEvensClientInput
+public import Vegas.Examples.OddsEvensClientRecall
 public import Vegas.Examples.OddsEvensClientOpening
 public import Vegas.Examples.OddsEvensClientOutput
 public import Vegas.Examples.OddsEvensClientExecution
