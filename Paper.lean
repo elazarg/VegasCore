@@ -17,6 +17,7 @@ public import Vegas.Pending.CountReportObservation
 public import Vegas.Pending.CountReportSelection
 public import Vegas.Pending.GraphRefinement
 public import Vegas.Game.SourceServiceFirstTurnCompletion
+public import Vegas.Game.AsyncDeviationLaw
 public import Vegas.Game.AsyncServiceRawNash
 public import Vegas.Game.AsyncClientObservables
 public import Vegas.Game.ProgramPaymentAsyncNash
@@ -834,6 +835,44 @@ theorem Vegas.Paper.sourceServiceClientPolicy_law
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.sourceServiceClientPolicy_law
+
+theorem Vegas.Paper.sourceService_deviation_law [Fintype Player]
+    (setup : Setup (Player := Player) (L := L))
+    (timeouts : EventTimeouts setup.informationGraph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket setup.informationGraph))
+    (horizon : ℕ) (scheduler : (application setup timeouts leaks).Scheduler)
+    (delay bound : setup.informationGraph.EventId → ℕ) (turns : ℕ)
+    (contract : AsyncContract timeouts leaks (initialLaw setup) horizon scheduler delay bound)
+    (timely : AsyncTimely timeouts delay bound)
+    (profile : BehavioralProfile setup.program)
+    (effective : ∀ player, (profile player).EffectiveDisclosures setup.program []
+      (Revelations.initial setup.context))
+    (who : Player) (deviation : (application setup timeouts leaks).Policy) :
+    let players := Function.update
+      (serviceTurnPolicy setup setup.informationDependencies timeouts.duration
+        leaks bound turns (firstTurnTiming setup turns) profile) who deviation
+    let boundary := physicalPrefix (graph := setup.dataflowGraph) timeouts leaks scheduler
+      players (setup.initialLaw.map setup.eventInputs) horizon
+    ∃ policy : BehavioralPolicy who setup.program,
+      (∀ rank, rank ≤ eventCount setup.program →
+        (boundary rank).map (fun execution => sourceServicePrefix? setup rank
+          (EventGraph.Config.rankPrefix rank execution.application.config)) =
+        (setup.initialLaw.bind fun initial =>
+          (fun law => law.bind (ProtocolState.behavioralStateStep setup.program
+            (Function.update profile who policy)))^[rank]
+            (PMF.pure (ProtocolState.entry setup.program (Config.initial initial)))).map some) ∧
+      ((application setup timeouts leaks).roundsFrom (initialLaw setup) scheduler
+        players horizon).map
+          (fun final => sourceReadout setup timeouts leaks
+            ((application setup timeouts leaks).finished final)) =
+        (setup.run (Function.update profile who policy)).map some :=
+  Vegas.sourceService_deviation_prefix_readout_law setup timeouts leaks horizon scheduler delay
+    bound turns contract timely profile effective who deviation
+
+/-- info: 'Vegas.Paper.sourceService_deviation_law' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.sourceService_deviation_law
 
 end OrdinaryCompiler
 
