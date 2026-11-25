@@ -143,7 +143,12 @@ The semantic compiler's ledger clients agree with their selected assessment
 at every legal raw history under no pending delivery, including every
 compatible history described here. Agreement with the manually prescribed
 Odds–Evens candidate remains a separate obligation. Full source failure
-subgames can require program-specific continuation choices; the always-open
+subgames can require program-specific continuation choices. The distinction
+already arises when Even's first commitment includes a forbidden certificate.
+Odd can have followed its client on every prior callback and still face a new
+decision after Even's violation. The audited extension selects a continuation
+for that site. Identifying its action with the executable client's choice
+requires an additional proof. The always-open
 payoff argument above uses the actual Odds–Evens settlement rule.
 
 ## Scope of pending information

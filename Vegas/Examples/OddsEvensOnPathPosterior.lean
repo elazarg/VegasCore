@@ -3,7 +3,7 @@ module
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 public import Vegas.Examples.OddsEvensFirstInclusion
-public import Vegas.Examples.OddsEvensCommitmentObservation
+public import Vegas.Examples.OddsEvensClientPosterior
 
 @[expose] public section
 
