@@ -9,6 +9,7 @@ public import Vegas.Game.SourceServiceReachedDecoding
 public import Vegas.Game.SourceServiceFacts
 public import Vegas.Source.SetupProtocolEvaluation
 public import Vegas.Game.RevealServicePayoffs
+public import Vegas.Pending.PrefixBoundary
 public import Vegas.Pending.ReactiveGraphSteps
 public import Vegas.Pending.ReactiveAsyncContract
 public import Vegas.Pending.CanonicalOutcomePublication
@@ -315,22 +316,17 @@ theorem blockRun_untouched
 end
 
 /-- Every recorded response saw only events of rank at most `bound` ready. -/
-def ReadySeen (bound : Nat) (execution : (serviceApplication setup deps duration leaks).Execution) :
-    Prop := ∀ who, ∀ entry ∈ execution.logs who, ∀ event : (serviceGraph setup deps).EventId,
-    entry.beforeView.application.publicView.EventReady event → event.val ≤ bound
+abbrev ReadySeen (bound : Nat)
+    (execution : (serviceApplication setup deps duration leaks).Execution) : Prop :=
+  EventGraphRuntime.RememberedReadyAtMost bound execution
 
 /-- An execution where the events of rank below `rank` have completed, no
 recorded response has seen the event of rank `rank` ready, and which the
 players reach by complete rounds from initialization. -/
-structure CompletionBoundary (scheduler : (serviceApplication setup deps duration leaks).Scheduler)
+abbrev CompletionBoundary (scheduler : (serviceApplication setup deps duration leaks).Scheduler)
     (players : Player → (serviceApplication setup deps duration leaks).Policy) (rank : Nat)
-    (execution : (serviceApplication setup deps duration leaks).Execution) : Prop where
-  supported : execution ∈
-      ((serviceApplication setup deps duration leaks).roundsFrom (serviceInitialLaw setup deps)
-          scheduler players execution.environmentRecall.length).support
-  ordered : execution.application.config.cut.IsPrefix rank
-  untouched : ∀ event : (serviceGraph setup deps).EventId, rank ≤ event.val →
-    Untouched setup leaks event execution
+    (execution : (serviceApplication setup deps duration leaks).Execution) : Prop :=
+  EventGraphRuntime.PrefixBoundary (serviceInitialLaw setup deps) scheduler players rank execution
 
 /-- From every completion boundary within the horizon, the players' run to the
 horizon has the source continuation law of the configuration's typed prefix. -/
@@ -389,136 +385,6 @@ structure ReachedBoundary (horizon : Nat) (scheduler : (application setup timeou
     Untouched setup leaks event execution
   turns : ∀ who, OwnSubmissionsAtTurn setup leaks execution who
 
-
-/-- One scheduler round preserves the starting bound on remembered ready events
-and extends the completed prefix through its actual finite graph path. -/
-theorem round_prefix (scheduler : (application setup timeouts leaks).Scheduler)
-    (players : Player → (application setup timeouts leaks).Policy) (rank : Nat)
-    (execution next : (application setup timeouts leaks).Execution)
-    (ordered : execution.application.config.cut.IsPrefix rank)
-    (seen : ReadySeen setup leaks rank execution)
-    (reached : next ∈ ((application setup timeouts leaks).round scheduler players
-      execution).support) :
-    ReadySeen setup leaks rank next ∧
-      ∃ actualRank, rank ≤ actualRank ∧ next.application.config.cut.IsPrefix actualRank := by
-  let app := application setup timeouts leaks
-  obtain ⟨command, _, dispatched⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
-  obtain ⟨middle, moved, resumed⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ dispatched)
-  have recallEq := app.environmentStep_recall execution middle command moved
-  have path := ((reactiveApplication_graphSteps timeouts) leaks).environmentStep
-    execution middle command moved
-  have middlePrefix := EventGraph.Config.Step.path_isPrefix_sequential setup.informationGraph
-    path ordered
-  change next ∈ (app.resume players (command.actor? app) middle).support at resumed
-  by_cases activation : ∃ who, command = .activate who
-  · obtain ⟨who, rfl⟩ := activation
-    have sameApp : middle.application = execution.application := by
-      unfold ReactiveApplication.Execution.environmentStep at moved
-      rw [PMF.support_map] at moved
-      obtain ⟨updated, supported, rfl⟩ := moved
-      rw [PMF.support_map] at supported
-      obtain ⟨_, _, rfl⟩ := supported
-      rfl
-    change next ∈ (app.invoke players who middle).support at resumed
-    rw [ReactiveApplication.invoke, PMF.support_map] at resumed
-    obtain ⟨response, _, rfl⟩ := resumed
-    obtain ⟨configEq, _⟩ := (reactive_respond_application timeouts) leaks middle who response
-    refine ⟨?_, rank, le_rfl, ?_⟩
-    swap
-    · rw [configEq, sameApp]
-      exact ordered
-    intro observer entry member event readyView
-    rcases app.respond_entry_origin middle who observer response entry member with
-      prior | ⟨_, fresh⟩
-    · rw [recallEq] at prior
-      exact seen observer entry prior event readyView
-    · rw [fresh] at readyView
-      change middle.application.publicView.EventReady event at readyView
-      have readyNow := (State.publicView_eventReady _ event).mp readyView
-      rw [sameApp] at readyNow
-      have actual : execution.application.config.cut.IsPrefix event.val :=
-        ⟨event.isLt.le, fun query =>
-          setup.informationGraph.sequentialize_mem_completed_iff_lt_of_ready _ readyNow⟩
-      exact (actual.unique ordered).le
-  · have idle : command.actor? app = none := by
-      cases command with
-      | activate who => exact (activation ⟨who, rfl⟩).elim
-      | «include» _ => rfl
-      | application _ => rfl
-      | wait => rfl
-    rw [idle] at resumed
-    simp only [ReactiveApplication.resume, PMF.mem_support_pure_iff] at resumed
-    subst resumed
-    refine ⟨?_, middlePrefix⟩
-    intro observer entry member
-    rw [recallEq] at member
-    exact seen observer entry member
-
-
-/-- Every execution reached by complete rounds from initialization has a
-completed prefix, and its recorded responses saw nothing beyond it. -/
-theorem roundsFrom_ranked (scheduler : (application setup timeouts leaks).Scheduler)
-    (players : Player → (application setup timeouts leaks).Policy) (count : Nat)
-    (execution : (application setup timeouts leaks).Execution)
-    (supported : execution ∈ ((application setup timeouts leaks).roundsFrom (initialLaw setup)
-      scheduler
-      players count).support) :
-    ∃ rank, execution.application.config.cut.IsPrefix rank ∧
-      ReadySeen setup leaks rank execution := by
-  induction count generalizing execution with
-  | zero =>
-      obtain ⟨state, stateMem, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
-      cases (PMF.mem_support_pure_iff _ _).mp reached
-      obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ stateMem
-      refine ⟨0, EventOrder.Cut.empty_isPrefix _, ?_⟩
-      intro who entry member
-      simp [ReactiveApplication.Execution.initial] at member
-  | succ count ih =>
-      rw [ReactiveApplication.roundsFrom_succ] at supported
-      obtain ⟨prior, priorMem, moved⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
-      obtain ⟨rank, ordered, seen⟩ := ih prior priorMem
-      obtain ⟨nextSeen, actualRank, lower, nextPrefix⟩ :=
-        round_prefix setup timeouts leaks scheduler players rank prior execution ordered seen moved
-      exact ⟨actualRank, nextPrefix, fun who entry member event readyView =>
-        (nextSeen who entry member event readyView).trans lower⟩
-
-
-/-- Stopping at an event's completion preserves its starting view bound. The
-endpoint is its original prefix if unfinished, or an actual strictly later prefix. -/
-theorem runUntil_completion_prefix (scheduler : (application setup timeouts leaks).Scheduler)
-    (players : Player → (application setup timeouts leaks).Policy)
-    (event : setup.informationGraph.EventId)
-    (count : Nat) (execution stopped : (application setup timeouts leaks).Execution)
-    (ordered : execution.application.config.cut.IsPrefix event.val)
-    (seen : ReadySeen setup leaks event.val execution)
-    (reached : stopped ∈ ((application setup timeouts leaks).runUntil scheduler players
-      (fun final => event ∈ final.application.config.cut.completed) count execution).support) :
-    ReadySeen setup leaks event.val stopped ∧
-      (stopped.application.config.cut.IsPrefix event.val ∨
-        ∃ actualRank, event.val < actualRank ∧
-          stopped.application.config.cut.IsPrefix actualRank) := by
-  induction count generalizing execution with
-  | zero =>
-      cases (PMF.mem_support_pure_iff _ _).mp reached
-      exact ⟨seen, Or.inl ordered⟩
-  | succ count ih =>
-      have unfinished : event ∉ execution.application.config.cut.completed :=
-        fun done => (Nat.lt_irrefl _ ((ordered.2 event).mp done)).elim
-      simp only [ReactiveApplication.runUntil, unfinished, ↓reduceIte] at reached
-      obtain ⟨middle, moved, rest⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
-      obtain ⟨middleSeen, actualRank, lower, middlePrefix⟩ :=
-        round_prefix setup timeouts leaks scheduler players event.val execution middle ordered
-          seen moved
-      by_cases finished : event ∈ middle.application.config.cut.completed
-      · rw [ReactiveApplication.runUntil_of_stop _ _ _ _ _ middle finished] at rest
-        cases (PMF.mem_support_pure_iff _ _).mp rest
-        exact ⟨middleSeen, Or.inr ⟨actualRank, (middlePrefix.2 event).mp finished, middlePrefix⟩⟩
-      · have upper : actualRank ≤ event.val := by
-          by_contra advanced
-          exact finished ((middlePrefix.2 event).mpr (by omega))
-        have same : actualRank = event.val := by omega
-        rw [same] at middlePrefix
-        exact ih middle middlePrefix middleSeen rest
 
 end Sequential
 

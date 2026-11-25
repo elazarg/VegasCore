@@ -111,25 +111,9 @@ theorem CompletionBoundary.stopped {scheduler : (application setup timeouts leak
     (finished : event ∈ stopped.application.config.cut.completed) :
     stopped.environmentRecall.length ≤ horizon ∧
       ∃ actualRank, event.val < actualRank ∧
-        CompletionBoundary setup leaks scheduler players actualRank stopped := by
-  let app := application setup timeouts leaks
-  obtain ⟨rank, ranked, seen⟩ := roundsFrom_ranked setup timeouts leaks scheduler players _
-    execution
-    boundary.supported
-  have rankEq := EventOrder.Cut.IsPrefix.unique ranked boundary.ordered
-  subst rankEq
-  obtain ⟨used, within, _, length⟩ := app.runUntil_runRounds scheduler players _ _ execution
-    stopped reached
-  obtain ⟨stoppedSeen, stoppedConfig⟩ := runUntil_completion_prefix setup timeouts leaks scheduler
-    players event _ execution stopped boundary.ordered seen reached
-  rcases stoppedConfig with current | ⟨actualRank, later, ordered⟩
-  · exact (Nat.lt_irrefl _ ((current.2 event).mp finished)).elim
-  · refine ⟨by omega, actualRank, later,
-      app.roundsFrom_runUntil scheduler players (initialLaw setup) _ _ execution
-        stopped boundary.supported reached, ordered, ?_⟩
-    intro next rankNext observer entry member readyView
-    have := stoppedSeen observer entry member next readyView
-    omega
+        CompletionBoundary setup leaks scheduler players actualRank stopped :=
+  EventGraphRuntime.PrefixBoundary.stopped (graph := setup.dataflowGraph) timeouts leaks
+    event execution boundary bounded stopped reached finished
 
 variable (setup leaks)
 

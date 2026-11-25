@@ -111,6 +111,7 @@ public import Vegas.Pending.ReactiveFiniteCompiler
 public import Vegas.Pending.ReactiveFiniteResponses
 public import Vegas.Pending.ReactiveFirstOpportunity
 public import Vegas.Pending.ReactiveFreshCallAcceptance
+public import Vegas.Pending.PrefixBoundary
 public import Vegas.Pending.ReactiveGraphSteps
 public import Vegas.Pending.ReactiveGuardConformance
 public import Vegas.Pending.ReactiveGuardedResponse
