@@ -97,6 +97,12 @@ commitment. The two fixed-bit runs have identical distributions of Odd’s
 whole observation and recall, and each stores its prescribed bit. Mixing
 these runs with a fair coin leaves the bit fair conditional on every
 positive-probability observation at that stop.
+The [first ready callback theorem](../Vegas/Examples/OddsEvensReadyCommitment.lean)
+identifies the decision in the initialized periodic run of the handwritten clients.
+The selected command activates Odd with its second commitment ready. Every
+previous Odd callback selected no turn. Conditioning on any supported full
+view and recall after activation and before Odd responds gives probability
+one half to each of Even’s two successful commitment values.
 More generally, fix the distribution of Even’s publication across Odd’s
 choices and allow Even to fail. The [payoff criterion](../Vegas/Examples/OddsEvensCommitmentPayoff.lean)
 shows that a fair coin maximizes Odd’s base payoff over every randomized
