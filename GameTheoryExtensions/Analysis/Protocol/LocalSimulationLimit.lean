@@ -39,6 +39,51 @@ variable {Player : Type} [Finite Player] [DecidableEq Player]
   [Finite E.History] [Finite T.History]
   [∀ who, DecidableEq (N.InfoState who)]
 
+omit [DecidableEq Player] [∀ who, DecidableEq (N.InfoState who)] in
+/-- If two converging behavioral sequences produce asymptotically equal
+observed probabilities, their limiting observed laws agree. -/
+theorem runBehavioral_map_eq_of_lawError
+    {Outcome : Type*} (sourceObserve : E.History → Outcome) (targetObserve : T.History → Outcome)
+    (sourceFuel targetFuel : ℕ)
+    {sourceSequence : ℕ → ∀ who, M.BehavioralPolicy who}
+    {targetSequence : ℕ → ∀ who, N.BehavioralPolicy who}
+    {source : ∀ who, M.BehavioralPolicy who} {target : ∀ who, N.BehavioralPolicy who}
+    (sourceConverges : ∀ who (site : M.InformationSite who),
+      PMFConvergesPointwise (fun n => sourceSequence n who site.1) (source who site.1))
+    (targetConverges : ∀ who (site : N.InformationSite who),
+      PMFConvergesPointwise (fun n => targetSequence n who site.1) (target who site.1))
+    {lawError : ℕ → ℝ} (lawErrorVanishes : Tendsto lawError atTop (nhds 0))
+    (initialized : ∀ n outcome,
+      |(((N.runBehavioral (targetSequence n) targetFuel).map targetObserve) outcome).toReal -
+        (((M.runBehavioral (sourceSequence n) sourceFuel).map sourceObserve) outcome).toReal| ≤
+          lawError n) :
+    (N.runBehavioral target targetFuel).map targetObserve =
+      (M.runBehavioral source sourceFuel).map sourceObserve := by
+  classical
+  apply pmf_ext_toReal
+  intro outcome
+  let indicator (observed : Outcome) : ℝ := if outcome = observed then 1 else 0
+  have sourceLimit := M.runBehavioralFrom_expect_tendsto (.of_finite_history)
+    sourceSequence source sourceConverges (fun history => indicator (sourceObserve history))
+    sourceFuel E.initHistory
+  have targetLimit := N.runBehavioralFrom_expect_tendsto (.of_finite_history)
+    targetSequence target targetConverges (fun history => indicator (targetObserve history))
+    targetFuel T.initHistory
+  let sourceMass n := expect (M.runBehavioral (sourceSequence n) sourceFuel)
+    (fun history => indicator (sourceObserve history))
+  let targetMass n := expect (N.runBehavioral (targetSequence n) targetFuel)
+    (fun history => indicator (targetObserve history))
+  have differenceVanishes : Tendsto (fun n => targetMass n - sourceMass n) atTop (nhds 0) := by
+    apply squeeze_zero_norm _ lawErrorVanishes
+    intro n
+    have bound := initialized n outcome
+    rw [toReal_map_apply, toReal_map_apply] at bound
+    simpa only [Real.norm_eq_abs] using bound
+  have limits := sub_eq_zero.mp
+    (tendsto_nhds_unique (targetLimit.sub sourceLimit) differenceVanishes)
+  rw [toReal_map_apply, toReal_map_apply]
+  exact limits
+
 /-- Sequential rationality at a common consistent assessment limit, from local
 comparisons at copied information sites and optimality of the limit at the
 remaining free sites. At a copied site, every local target gain is bounded by an
@@ -110,7 +155,6 @@ theorem sequentialEquilibrium_of_copied_comparisons_limit_of_lawError
       (N.runBehavioral target.strategy targetFuel).map targetObserve =
         (M.runBehavioral source.strategy sourceFuel).map sourceObserve := by
   classical
-  have sourceTransitions : E.FiniteTransitions := .of_finite_history
   have targetTransitions : T.FiniteTransitions := .of_finite_history
   have pureOptimal (who : Player) (site : N.InformationSite who)
       (choice : N.Choice who site.1) :
@@ -230,41 +274,10 @@ theorem sequentialEquilibrium_of_copied_comparisons_limit_of_lawError
     exact localOptimal who site law
   refine ⟨(target.isSequentialEquilibrium_iff_truncated_of_bounded N _ certificate targetBounded
     _).mp terminal, ?_⟩
-  · apply pmf_ext_toReal
-    intro outcome
-    let indicator (observed : Outcome) : ℝ := if outcome = observed then 1 else 0
-    have sourceLimit := M.runBehavioralFrom_expect_tendsto sourceTransitions
-      (fun n => (sourceSequence n).strategy) source.strategy sourceConverges.strategy
-      (fun history => indicator (sourceObserve history)) sourceFuel E.initHistory
-    have targetLimit := N.runBehavioralFrom_expect_tendsto targetTransitions
-      (fun n => (targetSequence (index n)).strategy) target.strategy
-      targetConverges.strategy (fun history => indicator (targetObserve history))
-      targetFuel T.initHistory
-    have close (n : ℕ) :
-        |expect (N.runBehavioral (targetSequence (index n)).strategy targetFuel)
-            (fun history => indicator (targetObserve history)) -
-          expect (M.runBehavioral (sourceSequence (index n)).strategy sourceFuel)
-            (fun history => indicator (sourceObserve history))| ≤ lawError (index n) := by
-      have bound := initialized (index n) outcome
-      rwa [toReal_map_apply, toReal_map_apply] at bound
-    have differenceVanishes : Tendsto (fun n =>
-        expect (N.runBehavioral (targetSequence (index n)).strategy targetFuel)
-            (fun history => indicator (targetObserve history)) -
-          expect (M.runBehavioral (sourceSequence (index n)).strategy sourceFuel)
-            (fun history => indicator (sourceObserve history))) atTop (nhds 0) :=
-      squeeze_zero_norm (fun n => by rw [Real.norm_eq_abs]; exact close n)
-        (lawErrorVanishes.comp increasing.tendsto_atTop)
-    have limits := sub_eq_zero.mp (tendsto_nhds_unique
-      (targetLimit.sub (sourceLimit.comp increasing.tendsto_atTop)) differenceVanishes)
-    calc
-      (((N.runBehavioral target.strategy targetFuel).map targetObserve) outcome).toReal =
-          expect (N.runBehavioral target.strategy targetFuel)
-            (fun history => indicator (targetObserve history)) :=
-        toReal_map_apply _ _ _
-      _ = expect (M.runBehavioral source.strategy sourceFuel)
-          (fun history => indicator (sourceObserve history)) := limits
-      _ = (((M.runBehavioral source.strategy sourceFuel).map sourceObserve) outcome).toReal :=
-        (toReal_map_apply _ _ _).symm
+  exact runBehavioral_map_eq_of_lawError sourceObserve targetObserve sourceFuel targetFuel
+    (fun who site => (sourceConverges.strategy who site).subseq increasing)
+    targetConverges.strategy (lawErrorVanishes.comp increasing.tendsto_atTop)
+    (fun n => initialized (index n))
 
 /-- Local target gains bounded by original-source gain mixtures, up to one
 uniformly vanishing error, preserve sequential rationality at a common consistent
