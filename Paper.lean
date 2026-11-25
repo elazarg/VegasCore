@@ -74,40 +74,40 @@ open Interaction Vegas.EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
+section Source
+
+variable (setup : Setup (Player := Player) (L := L))
+
 /-- A complete terminal source configuration, including its default record. -/
-abbrev Vegas.Paper.TerminalConfig (setup : Setup (Player := Player) (L := L)) :=
+abbrev Vegas.Paper.TerminalConfig :=
   Config Player L setup.program.terminalCtx
 
 open Vegas.Paper
 
 /-- Every reveal owned by every player succeeded in the public result. -/
-def Vegas.Paper.NoFailedReveals (setup : Setup (Player := Player) (L := L))
+def Vegas.Paper.NoFailedReveals
     (terminal : TerminalConfig setup) : Prop :=
   ∀ who, setup.program.failedReveals who (setup.program.publicOutcome terminal) = 0
 
 /-- The terminal revelation references determined by the source syntax. -/
-abbrev Vegas.Paper.terminalRevelations (setup : Setup (Player := Player) (L := L)) :
+abbrev Vegas.Paper.terminalRevelations :
     Revelations setup.program.terminalCtx :=
   setup.program.finalRevelations (Revelations.initial setup.context)
 
 /-- A retained guard accepts the terminal published subject and inputs. -/
-def Vegas.Paper.PublishedGuardAccepts (setup : Setup (Player := Player) (L := L))
+def Vegas.Paper.PublishedGuardAccepts
     (terminal : TerminalConfig setup) (obligation : Obligation setup.program.terminalCtx) : Prop :=
   obligation.accepts (terminalRevelations setup) terminal.state = true
 
 /-- A terminal payoff lifted through the protocol's optional readout. -/
-def Vegas.Paper.readoutPayoff (setup : Setup (Player := Player) (L := L))
+def Vegas.Paper.readoutPayoff
     (payoff : TerminalConfig setup → Player → ℝ) (state : setup.ProtocolState) (who : Player) : ℝ :=
   (setup.protocolReadout state).elim 0 (fun terminal => payoff terminal who)
 
 /-- The joint observation of the terminal configuration and each player's payoff. -/
-def Vegas.Paper.readoutAndPayoff (setup : Setup (Player := Player) (L := L))
+def Vegas.Paper.readoutAndPayoff
     (payoff : TerminalConfig setup → Player → ℝ) (state : setup.ProtocolState) :=
   (setup.protocolReadout state, readoutPayoff setup payoff state)
-
-section Source
-
-variable (setup : Setup (Player := Player) (L := L))
 
 /-- A source instruction completes once; the extra step draws the initial state. -/
 theorem Vegas.Paper.protocol_bounded (admission : CommitmentInterface setup.program) :
@@ -532,24 +532,26 @@ theorem Vegas.Paper.topological_order_forced (graph : EventGraph Player L)
 
 variable {Γ : SourceCtx Player L} {openNames : Finset VarId}
 
-/-! Every public scheduler of the information graph selects the same event plan.
+/-! Every supported information graph run follows source instruction order
+under every public scheduler.
 Compiled profiles retain the complete source configuration law. Approximate Nash
 equilibrium is preserved and reflected with the same error for every utility of
 the public source outcome. -/
 
-theorem Vegas.Paper.toInformationGraph_policyPlan_eq
+theorem Vegas.Paper.toInformationGraph_runs_follow_source_order
     (program : SourceProgram Player L Γ openNames) :
     let infoGraph := toInformationGraph program
-    ∀ graphProfile : infoGraph.BehavioralProfile,
-      let planUnder := infoGraph.policyPlan graphProfile
-      ∀ first second : infoGraph.PublicScheduler, planUnder first = planUnder second :=
-  fun graphProfile first second =>
-    Vegas.toInformationGraph_policyPlan_eq program graphProfile first second
+    ∀ (scheduler : infoGraph.PublicScheduler) (profile : infoGraph.BehavioralProfile)
+      (inputs : infoGraph.Inputs) (final : infoGraph.Config),
+      final ∈ (infoGraph.runPolicies scheduler profile inputs).support →
+        final.history.map (fun completion => completion.event.val) =
+          List.range (eventCount program) :=
+  Vegas.toInformationGraph_runs_follow_source_order program
 
-/-- info: 'Vegas.Paper.toInformationGraph_policyPlan_eq' depends on axioms:
+/-- info: 'Vegas.Paper.toInformationGraph_runs_follow_source_order' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.Paper.toInformationGraph_policyPlan_eq
+#print axioms Vegas.Paper.toInformationGraph_runs_follow_source_order
 
 theorem Vegas.Paper.scheduled_terminalConfig_distribution_eq
     (program : SourceProgram Player L Γ openNames) :
@@ -611,9 +613,11 @@ A service completion guarantee additionally makes every terminal field available
 
 section Runtime
 
-theorem Vegas.Paper.reactive_protocol_graph_refinement {graph : EventGraph Player L}
-    (timeouts : EventTimeouts graph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+variable {graph : EventGraph Player L}
+variable (timeouts : EventTimeouts graph)
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+
+theorem Vegas.Paper.reactive_protocol_graph_refinement
     (inputs : PMF graph.Inputs) (horizon : ℕ)
     (scheduler : ((reactiveApplication timeouts) leaks).Scheduler) :
     let ledger := (reactiveApplication timeouts) leaks
@@ -637,23 +641,17 @@ theorem Vegas.Paper.reactive_protocol_graph_refinement {graph : EventGraph Playe
 
 /-- Reporting only the first observed violation per sender preserves the full
 charge-vector law under batch capture and delivery and satisfies role coverage. -/
-theorem Vegas.Paper.firstCountReports_audit {graph : EventGraph Player L}
-    (timeouts : EventTimeouts graph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+theorem Vegas.Paper.firstCountReports_audit
     (capture delivery : Set.Icc (0 : ℝ) 1) :
     let service := thinnedFirstCountReports (graph := graph) capture delivery
     CountEvidenceCoverage service (fun _ => capture.val) (fun _ => delivery.val) ∧
-    (∀ (seen : List (CountEvidence graph)) (who : Player),
-      (firstCountReports seen).find? (fun item => item.2.sender == who) =
-        seen.find? (fun item => item.2.sender == who && !countPermits item.1 item.2)) ∧
-    (∀ (seen : List (CountEvidence graph)) (reports : List (EvidenceReport (CountEvidence graph))),
-      reports ∈ (service.reports seen).support →
-        (reports.map (fun report => report.evidence.2.sender)).Nodup) ∧
+    (∀ seen who,
+      (firstCountReports (graph := graph) seen).filter (fun item => item.2.sender == who) =
+        (seen.find? (fun item => item.2.sender == who && !countPermits item.1 item.2)).toList) ∧
     ∀ traffic : List ((reactiveApplication timeouts) leaks).TrafficRecord,
       countAudit timeouts leaks service.sample traffic = countAudit timeouts leaks
-        (EvidenceReportService.thinned capture delivery).sample traffic := by
-  exact ⟨thinnedFirstCountReports_coverage capture delivery, find_firstCountReports,
-    thinnedFirstCountReports_senders_nodup capture delivery,
+        (EvidenceReportService.thinned capture delivery).sample traffic :=
+  ⟨thinnedFirstCountReports_coverage capture delivery, filter_firstCountReports_sender,
     thinnedFirstCountReports_audit timeouts leaks capture delivery⟩
 
 /-- info: 'Vegas.Paper.firstCountReports_audit' depends on axioms:
@@ -662,7 +660,7 @@ theorem Vegas.Paper.firstCountReports_audit {graph : EventGraph Player L}
 #print axioms Vegas.Paper.firstCountReports_audit
 
 /-- An authentic archive can certify forbidden packets by checking earlier sender serials. -/
-theorem Vegas.Paper.observed_count_reports {graph : EventGraph Player L}
+theorem Vegas.Paper.observed_count_reports
     (network : MessageNetwork Player (WitnessedPacket graph))
     (unique : network.UniqueIds) (seen : List (Message Player (WitnessedPacket graph)))
     (authentic : seen ⊆ network.inputs) (message : Message Player (WitnessedPacket graph)) :
@@ -678,9 +676,7 @@ theorem Vegas.Paper.observed_count_reports {graph : EventGraph Player L}
 #print axioms Vegas.Paper.observed_count_reports
 
 /-- A complete sender stream suffices on every legal prefix. -/
-theorem Vegas.Paper.sender_archive_report {graph : EventGraph Player L}
-    (timeouts : EventTimeouts graph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+theorem Vegas.Paper.sender_archive_report
     (initial : PMF (EventGraphRuntime.State graph)) (horizon : ℕ)
     (scheduler : ((reactiveApplication timeouts) leaks).Scheduler)
     (control : ((reactiveApplication timeouts) leaks).Control)
@@ -701,7 +697,7 @@ theorem Vegas.Paper.sender_archive_report {graph : EventGraph Player L}
 #print axioms Vegas.Paper.sender_archive_report
 
 /-- The same observed binding packet has opposite count verdicts across two histories. -/
-theorem Vegas.Paper.ambiguous_binding_report {graph : EventGraph Player L}
+theorem Vegas.Paper.ambiguous_binding_report
     (sender : Player) (event : graph.EventId)
     (owned : bindingOwnedBy graph sender event = true) (raw : Raw L) :
     ∃ (message first prior : Message Player (WitnessedPacket graph)),
@@ -719,7 +715,7 @@ theorem Vegas.Paper.ambiguous_binding_report {graph : EventGraph Player L}
 
 /-- An authentic subarchive preserves a permitted event-bound opening precisely
 when it contains an earlier matching commitment. -/
-theorem Vegas.Paper.opening_report_predecessor {graph : EventGraph Player L}
+theorem Vegas.Paper.opening_report_predecessor
     (actual seen : List (Message Player (WitnessedPacket graph))) (authentic : seen ⊆ actual)
     (message : Message Player (WitnessedPacket graph)) (event binding : graph.EventId)
     (handle : Handle graph) (raw : Raw L) (call : message.payload.call = .opening event handle raw)
@@ -738,7 +734,7 @@ theorem Vegas.Paper.opening_report_predecessor {graph : EventGraph Player L}
 #print axioms Vegas.Paper.opening_report_predecessor
 
 /-- A forbidden submission can leave the entire passive observation unchanged. -/
-theorem Vegas.Paper.unobserved_submission {graph : EventGraph Player L}
+theorem Vegas.Paper.unobserved_submission
     (sender observer : Player) (call : Payload graph) :
     let net : MessageNetwork Player (WitnessedPacket graph) := .empty
     let (message, after) := net.submit sender ⟨call, none, none⟩
@@ -752,7 +748,7 @@ theorem Vegas.Paper.unobserved_submission {graph : EventGraph Player L}
 #print axioms Vegas.Paper.unobserved_submission
 
 /-- Extending bounded inclusion to early watcher reports gives conditional delivery rate one. -/
-theorem Vegas.Paper.protected_report_delivery {graph : EventGraph Player L}
+theorem Vegas.Paper.protected_report_delivery
     (service : EvidenceReportService (CountEvidence graph)) (observationRate : Player → ℝ)
     (capture : ∀ actual who, actual ∈ countViolation who → observationRate who ≤
       ((service.observations actual).toOuterMeasure (countViolation who)).toReal)
@@ -769,7 +765,7 @@ theorem Vegas.Paper.protected_report_delivery {graph : EventGraph Player L}
 #print axioms Vegas.Paper.protected_report_delivery
 
 /-- With unrestricted inclusion delay, the sharp uniform collection bound is zero. -/
-theorem Vegas.Paper.uniform_count_collection_bound {graph : EventGraph Player L}
+theorem Vegas.Paper.uniform_count_collection_bound
     (window : ChallengeWindow) (actual : List (CountEvidence graph)) (sender : Player)
     (bound : ℝ) :
     (∀ service : EvidenceReportService (CountEvidence graph), service.window = window →
@@ -798,6 +794,8 @@ histories. `AsyncTimely` requires `delay event + bound event < duration event`
 for each owned event; both conditions concern the supplied scheduler and runtime. -/
 
 section OrdinaryCompiler
+
+open Vegas.Paper
 
 theorem Vegas.Paper.sourceServiceClientPolicy_observation_distributions_eq
     {setup : Setup (Player := Player) (L := L)} [Finite Player]
@@ -1160,7 +1158,6 @@ local notation "raw" => bounds.rawMenu timeouts leaks
 local notation "model" => ReactiveApplication.ResponseMenu.information
   (bounds.rawMenu timeouts leaks) Initial horizon scheduler
 local notation "sourceFuel" => instructionCount setup.program + 1
-local notation "sourceConfigAt" => sourceReadout setup timeouts leaks
 
 section Equilibrium
 
@@ -1184,11 +1181,13 @@ theorem Vegas.Paper.two_player_repair_retains_draw [DecidableEq (CellTy Player L
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.two_player_repair_retains_draw
 
-theorem Vegas.Paper.intended_raw_sequentialEquilibrium_preserved
-    (spec : ClientSpec setup timeouts leaks bounds horizon scheduler
-      parameter utility excludedPayoff)
-    (intended : setup.intendedModel.BehavioralAssessment)
-    (equilibrium : setup.IntendedSequentialEquilibrium parameter utility intended) :
+variable (spec : ClientSpec setup timeouts leaks bounds horizon scheduler
+    parameter utility excludedPayoff)
+  (intended : setup.intendedModel.BehavioralAssessment)
+  (equilibrium : setup.IntendedSequentialEquilibrium parameter utility intended)
+
+include equilibrium in
+theorem Vegas.Paper.intended_raw_sequentialEquilibrium_preserved :
     Nonempty (ClientCompilation spec intended) := by
   exact Vegas.intended_raw_sequentialEquilibrium_preserved spec intended equilibrium
 
@@ -1197,11 +1196,7 @@ theorem Vegas.Paper.intended_raw_sequentialEquilibrium_preserved
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.intended_raw_sequentialEquilibrium_preserved
 
-theorem Vegas.Paper.compile_correct
-    (spec : ClientSpec setup timeouts leaks bounds horizon scheduler
-      parameter utility excludedPayoff)
-    (intended : setup.intendedModel.BehavioralAssessment)
-    (equilibrium : setup.IntendedSequentialEquilibrium parameter utility intended) :
+theorem Vegas.Paper.compile_correct :
     let compiled := spec.compile intended equilibrium
     Nonempty (ClientAssessmentRefinement setup timeouts leaks bounds horizon scheduler
       intended compiled.assessment) ∧
@@ -1221,13 +1216,29 @@ theorem Vegas.Paper.compile_correct
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.compile_correct
 
+/-- With no pending delivery, the ledger clients ignore leaked fields and play
+the compiled assessment's strategy at every raw decision history. -/
+theorem Vegas.Paper.ledgerClients_ignore_leaked_fields_and_match_strategy
+    (unobserved : leaks.DeliversNothing) :
+    let compiled := spec.compile intended equilibrium
+    (∀ who, ReactiveApplication.Policy.IgnoresLeakedFields app (compiled.ledgerClients who)) ∧
+    (∀ (history : ((raw).protocol Initial horizon scheduler).History) who,
+      (raw).restrictPolicy Initial horizon scheduler who (compiled.ledgerClients who)
+        ((model).infoOf who history.trace) =
+      compiled.assessment.strategy who ((model).infoOf who history.trace)) := by
+  obtain ⟨_, _, ignores, agrees, _⟩ := spec.compile_ledger_correct intended equilibrium unobserved
+  exact ⟨ignores, agrees⟩
+
+/-- info: 'Vegas.Paper.ledgerClients_ignore_leaked_fields_and_match_strategy' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.ledgerClients_ignore_leaked_fields_and_match_strategy
+
+variable {spec intended} (compiled : ClientCompilation spec intended)
+
 /-- At matching raw sites, replay of the actual ledger belief has the supplied
 source posterior, even at a later activation or a zero-probability site. -/
-theorem Vegas.Paper.raw_belief_replay
-    {spec : ClientSpec setup timeouts leaks bounds horizon scheduler
-      parameter utility excludedPayoff}
-    {intended : setup.intendedModel.BehavioralAssessment}
-    (compiled : ClientCompilation spec intended) {who : Player}
+theorem Vegas.Paper.raw_belief_replay {who : Player}
     (source : setup.intendedModel.InformationSite who)
     (site : (onePacketModel setup timeouts leaks bounds Initial horizon
       scheduler).InformationSite who)
@@ -1251,42 +1262,10 @@ theorem Vegas.Paper.raw_belief_replay
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.raw_belief_replay
 
-theorem Vegas.Paper.compile_ledger_correct
-    (spec : ClientSpec setup timeouts leaks bounds horizon scheduler
-      parameter utility excludedPayoff)
-    (intended : setup.intendedModel.BehavioralAssessment)
-    (equilibrium : setup.IntendedSequentialEquilibrium parameter utility intended)
-    (unobserved : leaks.DeliversNothing) :
-    let compiled := spec.compile intended equilibrium
-    Nonempty (ClientAssessmentRefinement setup timeouts leaks bounds horizon scheduler
-      intended compiled.assessment) ∧
-    compiled.assessment.IsSequentialEquilibrium
-      ((raw).decisionInformationAntichain Initial horizon scheduler)
-      ((raw).bounded Initial horizon scheduler).wellFoundedHistories
-      (fun who final => spec.payoff who final.state) ∧
-    (∀ who, ReactiveApplication.Policy.IgnoresLeakedFields app (compiled.ledgerClients who)) ∧
-    (∀ (history : ((raw).protocol Initial horizon scheduler).History) who,
-      (raw).restrictPolicy Initial horizon scheduler who (compiled.ledgerClients who)
-        ((model).infoOf who history.trace) =
-      compiled.assessment.strategy who ((model).infoOf who history.trace)) ∧
-    ((app).finish Initial horizon scheduler compiled.ledgerClients none).bind spec.observation =
-      (setup.intendedModel.runBehavioral intended.strategy sourceFuel).map
-        (intendedReadoutExclusion setup parameter utility excludedPayoff) := by
-  exact spec.compile_ledger_correct intended equilibrium unobserved
-
-/-- info: 'Vegas.Paper.compile_ledger_correct' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Vegas.Paper.compile_ledger_correct
-
 /-- Physical continuations at represented clean source boundaries preserve
 ordinary source utility jointly with the full source configuration, without
 defaults, failed reveals or audit charges, including off-path boundaries. -/
 theorem Vegas.Paper.clients_continuation
-    {spec : ClientSpec setup timeouts leaks bounds horizon scheduler
-      parameter utility excludedPayoff}
-    {intended : setup.intendedModel.BehavioralAssessment}
-    (compiled : ClientCompilation spec intended)
     (rank : Nat)
     (nativeStart : ((bounds.onePacketMenu timeouts leaks).protocol Initial horizon
       scheduler).History)
@@ -1321,10 +1300,6 @@ theorem Vegas.Paper.clients_continuation
 #print axioms Vegas.Paper.clients_continuation
 
 theorem Vegas.Paper.clients_sequentiallyRational
-    {spec : ClientSpec setup timeouts leaks bounds horizon scheduler
-      parameter utility excludedPayoff}
-    {intended : setup.intendedModel.BehavioralAssessment}
-    (compiled : ClientCompilation spec intended)
     (who : Player) (site : (model).InformationSite who)
     (alternative : (app).Policy)
     (covered : (raw).Admissible Initial horizon scheduler who alternative) :
@@ -1342,10 +1317,6 @@ theorem Vegas.Paper.clients_sequentiallyRational
 #print axioms Vegas.Paper.clients_sequentiallyRational
 
 theorem Vegas.Paper.ledgerClients_sequentiallyRational
-    {spec : ClientSpec setup timeouts leaks bounds horizon scheduler
-      parameter utility excludedPayoff}
-    {intended : setup.intendedModel.BehavioralAssessment}
-    (compiled : ClientCompilation spec intended)
     (unobserved : leaks.DeliversNothing)
     (who : Player) (site : (model).InformationSite who)
     (alternative : (app).Policy)
@@ -1801,51 +1772,37 @@ theorem Vegas.Paper.privateValueAuction_single_opportunity (prior : PMF (auction
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.privateValueAuction_single_opportunity
 
-/-- The fixed auction runtime retains one truthful assessment, clean play,
-complete utility and executable-cash laws, and expected utility eight sevenths. -/
+/-- The uniform-prior auction has a native sequential equilibrium implemented by
+physical clients that preserve the truthful configuration and settled payoff law
+and the intended executable cash law, with clean play on their support. -/
 theorem Vegas.Paper.privateValueAuction_native_equilibrium :
-  (
-    Nonempty (ClientAssessmentRefinement game auctionTimeouts leaks bounds horizon scheduler
-      (truthfulAssessment uniformPrior) compilation.assessment) ∧
-    compilation.assessment.IsSequentialEquilibrium
-      (raw.decisionInformationAntichain auctionInitial horizon scheduler)
-      (raw.bounded auctionInitial horizon scheduler).wellFoundedHistories
-      (fun who final => specification.payoff who final.state) ∧
-    (∀ who, raw.restrictPolicy auctionInitial horizon scheduler who (compilation.clients who) =
-      compilation.assessment.strategy who) ∧
-    (∀ final ∈ (raw.run auctionInitial horizon scheduler compilation.assessment.strategy).support,
-      ∃ (control : app.Control) (terminal : Config auctionPlayer simpleExpr program.terminalCtx),
-        final.state = some control ∧ control.execution.application.config.cut.Terminal ∧
-        sourceReadout game auctionTimeouts leaks final.state = some terminal ∧
-        control.execution.application.config.defaulted = ∅ ∧
-        (∀ who, failedReveals program who (publicOutcome program terminal) = 0) ∧
-        ∀ who, TerminalAudit.charge app.stateTraffic
-          ((countAudit auctionTimeouts) leaks evidenceService.sample) final.state who = 0) ∧
-    (∀ state ∈ (app.finish auctionInitial horizon scheduler compilation.clients none).support,
-      ∃ (control : app.Control) (terminal : Config auctionPlayer simpleExpr program.terminalCtx),
-        state = some control ∧ control.execution.application.config.cut.Terminal ∧
-        sourceReadout game auctionTimeouts leaks state = some terminal ∧
-        control.execution.application.config.defaulted = ∅ ∧
-        (∀ who, failedReveals program who (publicOutcome program terminal) = 0) ∧
-        ∀ who, TerminalAudit.charge app.stateTraffic
-          ((countAudit auctionTimeouts) leaks evidenceService.sample) state who = 0) ∧
-    rawJointDistribution = jointDistribution ∧
-    ((app.finish auctionInitial horizon scheduler compilation.clients none).bind
-      specification.observation) = jointDistribution ∧
-    ∀ who, expect rawJointDistribution (fun realized => realized.2 who) = 8 / 7 ∧
-      expect ((app.finish auctionInitial horizon scheduler compilation.clients none).bind
-        specification.observation) (fun realized => realized.2 who) = 8 / 7
-  ) ∧
-  (
-    ((raw.run auctionInitial horizon scheduler compilation.assessment.strategy).bind
-      (fun final => specification.programPaymentObservation final.state)) =
+    ∃ (assessment : Vegas.Examples.BoundedAuctionService.model.BehavioralAssessment)
+        (clients : auctionPlayer → app.Policy),
+      let physical := app.finish auctionInitial horizon scheduler clients none
+      assessment.IsSequentialEquilibrium
+        (raw.decisionInformationAntichain auctionInitial horizon scheduler)
+        (raw.bounded auctionInitial horizon scheduler).wellFoundedHistories
+        (fun who final => specification.payoff who final.state) ∧
+      (∀ who, raw.restrictPolicy auctionInitial horizon scheduler who (clients who) =
+        assessment.strategy who) ∧
+      physical.bind specification.observation = jointDistribution ∧
+      physical.bind specification.programPaymentObservation =
         game.intendedPaymentDistribution (truthfulAssessment uniformPrior) ∧
-    ((app.finish auctionInitial horizon scheduler compilation.clients none).bind
-      specification.programPaymentObservation) =
-        game.intendedPaymentDistribution (truthfulAssessment uniformPrior)
-  ) :=
-  ⟨Vegas.Examples.BoundedAuctionService.native_equilibrium,
-    Vegas.Examples.BoundedAuctionService.program_payments_preserved⟩
+      ∀ state ∈ physical.support,
+        ∃ (control : app.Control) (terminal : Vegas.Paper.TerminalConfig game),
+          state = some control ∧ sourceReadout game auctionTimeouts leaks state = some terminal ∧
+          control.execution.application.config.defaulted = ∅ ∧
+          Vegas.Paper.NoFailedReveals game terminal ∧
+          ∀ who, TerminalAudit.charge app.stateTraffic
+            ((countAudit auctionTimeouts) leaks evidenceService.sample) state who = 0 := by
+  obtain ⟨_, equilibrium, restricts, _, physicalClean, _, physicalLaw, _⟩ :=
+    Vegas.Examples.BoundedAuctionService.native_equilibrium
+  refine ⟨compilation.assessment, compilation.clients, equilibrium, restricts, physicalLaw,
+    Vegas.Examples.BoundedAuctionService.program_payments_preserved.2, ?_⟩
+  intro state supported
+  obtain ⟨control, terminal, present, _, readout, defaults, reveals, charges⟩ :=
+    physicalClean state supported
+  exact ⟨control, terminal, present, readout, defaults, reveals, charges⟩
 
 /-- info: 'Vegas.Paper.privateValueAuction_native_equilibrium' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
@@ -1950,13 +1907,23 @@ end CorrelatedBits
 section AuctionObstruction
 open Vegas.Examples.CommitRevealAuction
 
-/-- Selective publication prevents truthful bidding from being dominant. -/
-theorem Vegas.Paper.commitRevealAuction_truthful_not_dominant
-    (values : Vegas.Examples.CommitRevealAuction.Player → ℝ) (forfeiture : ℝ)
-    (valuation : values .alice = 5) :
+variable (values : Player → ℝ) (forfeiture : ℝ) (valuation : values .alice = 5)
+
+include valuation
+
+/-- Against the same Bob policy, Alice receives utility one for bidding five
+and utility five for bidding six. Truthful bidding is not dominant. -/
+theorem Vegas.Paper.commitRevealAuction_truthful_not_dominant :
+    let play := fun bid => setup.valueBindingGame.play (profile bid)
+    let payoff := fun bid => expectedUtility (utility values forfeiture) .alice (play bid)
+    play 5 = PMF.pure (result (.success 5) (.success 4)) ∧
+    play 6 = PMF.pure (result (.success 6) .failure) ∧
+    payoff 5 = 1 ∧ payoff 6 = 5 ∧
     ¬ IsDominant setup.valueBindingGame (euPreference (utility values forfeiture))
-      Vegas.Examples.CommitRevealAuction.Player.alice (aliceStrategy 5) := by
-  exact Vegas.Examples.CommitRevealAuction.truthful_not_dominant values forfeiture valuation
+      Player.alice (aliceStrategy 5) := by
+  obtain ⟨truthful, misreport⟩ := truthful_and_misreport_payoffs values forfeiture valuation
+  exact ⟨play_truthful, play_misreport, truthful, misreport,
+    Vegas.Examples.CommitRevealAuction.truthful_not_dominant values forfeiture valuation⟩
 
 /-- info: 'Vegas.Paper.commitRevealAuction_truthful_not_dominant' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
@@ -1965,12 +1932,10 @@ theorem Vegas.Paper.commitRevealAuction_truthful_not_dominant
 
 /-- A utility-preserving translation retains the same dominance obstruction. -/
 theorem Vegas.Paper.translated_truthful_not_dominant
-    (values : Vegas.Examples.CommitRevealAuction.Player → ℝ) (forfeiture : ℝ)
-    (valuation : values .alice = 5)
-    (target : GameForm Vegas.Examples.CommitRevealAuction.Player)
-    (compile : (who : Vegas.Examples.CommitRevealAuction.Player) →
+    (target : GameForm Player)
+    (compile : (who : Player) →
       setup.valueBindingGame.sig.Strategy who → target.sig.Strategy who)
-    (targetUtility : target.sig.Outcome → Vegas.Examples.CommitRevealAuction.Player → ℝ)
+    (targetUtility : target.sig.Outcome → Player → ℝ)
     (preserves : ∀ players : Profile setup.valueBindingGame.sig,
       expectedUtility targetUtility .alice (target.play (Profile.map compile players)) =
         expectedUtility (utility values forfeiture) .alice (setup.valueBindingGame.play players))

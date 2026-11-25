@@ -3,6 +3,8 @@ module
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 public import Vegas.Compile.EventGraphCanonical
+import Vegas.EventGraph.ExecutionOrder
+import Vegas.EventGraph.SequentialNormalization
 
 @[expose] public section
 
@@ -52,6 +54,27 @@ theorem toInformationGraph_runPolicies_eq {Γ : SourceCtx Player L} {openNames :
       (toInformationGraph program).runPolicies second profile inputs := by
   unfold EventGraph.runPolicies
   rw [toInformationGraph_policyPlan_eq program profile first second]
+
+/-- Every supported information graph run completes all instructions in source order. -/
+theorem toInformationGraph_runs_follow_source_order
+    {Γ : SourceCtx Player L} {openNames : Finset VarId}
+    (program : SourceProgram Player L Γ openNames)
+    (scheduler : (toInformationGraph program).PublicScheduler)
+    (profile : (toInformationGraph program).BehavioralProfile)
+    (inputs : (toInformationGraph program).Inputs) (final : (toInformationGraph program).Config)
+    (supported : final ∈
+      ((toInformationGraph program).runPolicies scheduler profile inputs).support) :
+    final.history.map (fun completion => completion.event.val) =
+      List.range (eventCount program) := by
+  let graph := toInformationGraph program
+  have reachable := graph.run_reachable inputs (graph.policyPlan profile scheduler) final supported
+  have terminal := graph.runPolicies_terminal scheduler profile inputs final supported
+  have length : final.history.length = eventCount program := by
+    change final.history.length = graph.order.eventCount
+    simpa only [List.length_map] using (reachable.topological terminal).length
+  exact (EventGraph.history_map_val_of_reachable
+    (fun prior event earlier => (EventOrder.sequential.mem_predecessors prior event).mpr earlier)
+    reachable).trans (congrArg List.range length)
 
 /-- Attaching terminality certificates preserves exact scheduler independence
 of the complete graph configuration, including public defaults and own choices. -/

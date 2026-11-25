@@ -145,6 +145,16 @@ theorem update_profile (before after : Int) :
   funext who
   cases who <;> simp [profile, Profile.update]
 
+/-- Alice's exact payoffs against the same selective publication policy. -/
+theorem truthful_and_misreport_payoffs (values : Player → ℝ) (forfeiture : ℝ)
+    (valuation : values .alice = 5) :
+    expectedUtility (utility values forfeiture) Player.alice
+        (setup.valueBindingGame.play (profile 5)) = 1 ∧
+      expectedUtility (utility values forfeiture) Player.alice
+        (setup.valueBindingGame.play (profile 6)) = 5 := by
+  rw [play_truthful, play_misreport, expectedUtility_pure, expectedUtility_pure]
+  norm_num [utility, result, Env.get, Env.cons, valuation]
+
 /-- The witness keeps the same opponent policy and improves utility from 1 to 5. -/
 theorem profitable_misreport (values : Player → ℝ) (forfeiture : ℝ)
     (valuation : values .alice = 5) :
@@ -152,8 +162,9 @@ theorem profitable_misreport (values : Player → ℝ) (forfeiture : ℝ)
         (setup.valueBindingGame.play (profile 5)) <
       expectedUtility (utility values forfeiture) Player.alice
         (setup.valueBindingGame.play (profile 6)) := by
-  rw [play_truthful, play_misreport, expectedUtility_pure, expectedUtility_pure]
-  norm_num [utility, result, Env.get, Env.cons, valuation]
+  obtain ⟨truthful, misreport⟩ := truthful_and_misreport_payoffs values forfeiture valuation
+  rw [truthful, misreport]
+  norm_num
 
 /-- Truthful binding and disclosure is not dominant, for any withholding penalty. -/
 theorem truthful_not_dominant (values : Player → ℝ) (forfeiture : ℝ)

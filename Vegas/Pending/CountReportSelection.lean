@@ -24,10 +24,10 @@ def firstCountReports : List (CountEvidence graph) → List (CountEvidence graph
     if countPermits item.1 item.2 then firstCountReports rest
     else item :: (firstCountReports rest).filter (fun other => other.2.sender != item.2.sender)
 
-/-- The retained item for a sender is its earliest observed forbidden item. -/
-theorem find_firstCountReports (seen : List (CountEvidence graph)) (who : Player) :
-    (firstCountReports seen).find? (fun item => item.2.sender == who) =
-      seen.find? (fun item => item.2.sender == who && !countPermits item.1 item.2) := by
+/-- A sender contributes just its first observed forbidden item, if any. -/
+theorem filter_firstCountReports_sender (seen : List (CountEvidence graph)) (who : Player) :
+    (firstCountReports seen).filter (fun item => item.2.sender == who) =
+      (seen.find? (fun item => item.2.sender == who && !countPermits item.1 item.2)).toList := by
   induction seen with
   | nil => rfl
   | cons first rest ih =>
@@ -35,11 +35,18 @@ theorem find_firstCountReports (seen : List (CountEvidence graph)) (who : Player
     · simpa [firstCountReports, permitted, List.find?_cons] using ih
     · by_cases owner : first.2.sender = who
       · simp [firstCountReports, permitted, owner]
-      · simp only [firstCountReports, permitted, Bool.false_eq_true, ite_false, List.find?_cons,
-          beq_eq_false_iff_ne.mpr owner, Bool.false_and, List.find?_filter]
-        convert ih using 2
-        rename_i item _
+      · simp only [firstCountReports, permitted, Bool.false_eq_true, ite_false,
+          List.filter_cons, List.find?_cons, beq_eq_false_iff_ne.mpr owner, Bool.false_and,
+          List.filter_filter]
+        refine (List.filter_congr fun item _ => ?_).trans ih
         by_cases same : item.2.sender = who <;> simp [same, Ne.symm owner]
+
+/-- The retained item for a sender is its earliest observed forbidden item. -/
+theorem find_firstCountReports (seen : List (CountEvidence graph)) (who : Player) :
+    (firstCountReports seen).find? (fun item => item.2.sender == who) =
+      seen.find? (fun item => item.2.sender == who && !countPermits item.1 item.2) := by
+  simpa only [List.head?_filter, Option.head?_toList] using
+    congrArg List.head? (filter_firstCountReports_sender seen who)
 
 theorem firstCountReports_subset (seen : List (CountEvidence graph)) :
     firstCountReports seen ⊆ seen := by
