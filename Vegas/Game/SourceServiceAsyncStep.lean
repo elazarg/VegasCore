@@ -4,8 +4,7 @@ module
 
 public import Vegas.Game.SourceServiceTurnPolicy
 public import Vegas.Game.SourceServiceCompletion
-public import Vegas.Pending.ReactiveGraphSteps
-public import Interaction.ReactiveRawRoundTrace
+public import Vegas.Pending.GraphCompletionLaw
 public import GameTheoryExtensions.Math.Probability.TotalVariation
 
 @[expose] public section
@@ -63,42 +62,10 @@ theorem runRounds_config_terminal
       (serviceGraph setup deps).order.eventCount)
     (reached : next ∈ ((serviceApplication setup deps duration leaks).runRounds scheduler players
       count execution).support) :
-    next.application.config = execution.application.config := by
-  let app := serviceApplication setup deps duration leaks
-  induction count generalizing execution with
-  | zero =>
-      cases (PMF.mem_support_pure_iff _ _).mp reached
-      rfl
-  | succ count ih =>
-      obtain ⟨middle, moved, rest⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
-      obtain ⟨command, _, dispatched⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ moved)
-      obtain ⟨stepped, stepMember, resumed⟩ :=
-        Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ dispatched)
-      have stepConfig : stepped.application.config = execution.application.config :=
-        EventGraph.Config.Step.path_eq_of_terminal
-          (((reactiveApplication_graphSteps (serviceTimeouts setup deps duration))
-            leaks).environmentStep execution stepped command stepMember) terminal.terminal
-      have middleConfig : middle.application.config = execution.application.config := by
-        change middle ∈ (app.resume players (command.actor? app) stepped).support at resumed
-        cases actor : command.actor? app with
-        | none =>
-            rw [actor] at resumed
-            simp only [ReactiveApplication.resume, PMF.mem_support_pure_iff] at resumed
-            subst resumed
-            exact stepConfig
-        | some who =>
-            rw [actor] at resumed
-            change middle ∈ (app.invoke players who stepped).support at resumed
-            rw [ReactiveApplication.invoke, PMF.support_map] at resumed
-            obtain ⟨response, _, rfl⟩ := resumed
-            rw [((reactive_respond_application (serviceTimeouts setup deps duration)) leaks
-              stepped who
-              response).1, stepConfig]
-      have terminalMiddle : middle.application.config.cut.IsPrefix
-          (serviceGraph setup deps).order.eventCount := by
-        rw [middleConfig]
-        exact terminal
-      rw [ih middle terminalMiddle rest, middleConfig]
+    next.application.config = execution.application.config :=
+  EventGraph.Config.Step.path_eq_of_terminal (reactive_runRounds_graph_steps
+    (serviceTimeouts setup deps duration) leaks scheduler players count execution next reached)
+    terminal.terminal
 
 end Generic
 /-- The approximate version of `BoundaryContinuationLaw`: from every completion
@@ -194,73 +161,22 @@ theorem CompletionBoundary.runToHorizon_law {Outcome : Type*}
       (setup.informationGraph.runPlan
         (setup.informationGraph.policyPlan profile setup.informationGraph.canonicalScheduler)
         execution.application.config.remaining execution.application.config).map read := by
-  classical
-  let app := application setup timeouts leaks
   let plan := setup.informationGraph.policyPlan profile setup.informationGraph.canonicalScheduler
-  generalize remainingEq : execution.application.config.remaining = remaining
-  induction remaining using Nat.strong_induction_on generalizing rank execution with
-  | ind remaining ih =>
-      rw [← remainingEq]
-      by_cases finished : rank = setup.informationGraph.order.eventCount
-      · have terminal : execution.application.config.cut.IsPrefix
-            setup.informationGraph.order.eventCount := finished ▸ boundary.ordered
-        have zero : execution.application.config.remaining = 0 :=
-          execution.application.config.terminal_iff_remaining_zero.mp terminal.terminal
-        rw [zero, EventGraph.runPlan, PMF.pure_map]
-        change (app.runRounds scheduler players _ execution).map _ = _
-        rw [map_congr_on_support _
-          (g := fun _ => read execution.application.config)
-          (fun next reached => congrArg read (runRounds_config_terminal
-            (setup := setup) (leaks := leaks) scheduler players _ execution next terminal reached)),
-          pmf_map_fun_const]
-      · have active : rank < setup.informationGraph.order.eventCount := by
-          have rankBound : rank ≤ setup.informationGraph.order.eventCount := boundary.ordered.1
-          omega
-        let event : setup.informationGraph.EventId := ⟨rank, active⟩
-        rw [app.runToHorizon_eq_runUntilHorizon_bind scheduler players
-          (fun final => event ∈ final.application.config.cut.completed), PMF.map_bind]
-        calc
-          _ = (app.runUntilHorizon scheduler players
-              (fun final => event ∈ final.application.config.cut.completed) horizon
-              execution).bind (fun final =>
-                (setup.informationGraph.runPlan plan final.application.config.remaining
-                  final.application.config).map read) := by
-            apply bind_congr_on_support _
-            intro stopped reached
-            have stoppedDone : event ∈ stopped.application.config.cut.completed := by
-              rcases app.runUntilHorizon_stopped scheduler players
-                  (fun final => event ∈ final.application.config.cut.completed) horizon
-                  (horizon - execution.environmentRecall.length) execution stopped
-                  (by omega) reached with completed | spent
-              · exact completed
-              · have supported := app.roundsFrom_runUntil scheduler players (initialLaw setup)
-                  (fun final => event ∈ final.application.config.cut.completed) _ execution
-                  stopped boundary.supported reached
-                have supportedAtHorizon : stopped ∈
-                    (app.roundsFrom (initialLaw setup) scheduler players horizon).support := by
-                  simpa only [spent] using supported
-                obtain ⟨trace⟩ := app.raw_trace_roundsFrom (initialLaw setup) horizon scheduler
-                  players horizon le_rfl stopped supportedAtHorizon
-                have terminal := completes ⟨horizon - horizon, none, stopped⟩ trace
-                  ⟨Nat.sub_self _, rfl⟩
-                rw [EventOrder.Cut.Terminal] at terminal
-                rw [terminal]
-                exact Finset.mem_univ _
-            obtain ⟨stoppedBounded, actualRank, later, nextBoundary⟩ :=
-              boundary.stopped timeouts event execution bounded stopped reached stoppedDone
-            have decrease : stopped.application.config.remaining < remaining := by
-              have oldCard : execution.application.config.cut.completed.card = rank :=
-                boundary.ordered.card
-              have nextCard : stopped.application.config.cut.completed.card = actualRank :=
-                nextBoundary.ordered.card
-              have nextBound : actualRank ≤ setup.informationGraph.order.eventCount :=
-                nextBoundary.ordered.1
-              have laterRank : rank < actualRank := later
-              unfold EventGraph.Config.remaining at remainingEq ⊢
-              omega
-            exact ih stopped.application.config.remaining decrease stopped nextBoundary
-              stoppedBounded rfl
-          _ = _ := completionLaw event execution boundary bounded
+  let atBoundary := fun before : (application setup timeouts leaks).Execution =>
+    ∃ rank, CompletionBoundary setup leaks scheduler players rank before
+  have localLaw : EventCompletionLaw plan read scheduler players horizon atBoundary := by
+    intro before ⟨actualRank, current⟩ within nonterminal
+    have active : actualRank < setup.informationGraph.order.eventCount := by
+      apply lt_of_le_of_ne current.ordered.1
+      intro equal
+      exact nonterminal (equal ▸ current.ordered).terminal
+    let event : setup.informationGraph.EventId := ⟨actualRank, active⟩
+    refine ⟨event, fun done => (Nat.lt_irrefl actualRank) ((current.ordered.2 event).mp done),
+      ?_, completionLaw event before current within⟩
+    intro after reached done
+    obtain ⟨_, next, _, later⟩ := current.stopped timeouts event before within after reached done
+    exact ⟨next, later⟩
+  exact localLaw.runToHorizon completes execution ⟨rank, boundary⟩ boundary.supported bounded
 
 
 end Vegas
